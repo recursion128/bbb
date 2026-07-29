@@ -690,7 +690,9 @@ mod tests {
               "block.campfire.crackle": {"sounds": ["block/campfire/crackle"]},
               "block.fire.ambient": {"sounds": ["block/fire/ambient"]},
               "block.respawn_anchor.ambient": {"sounds": ["block/respawn_anchor/ambient"]},
-              "block.portal.ambient": {"sounds": ["block/portal/ambient"]}
+              "block.portal.ambient": {"sounds": ["block/portal/ambient"]},
+              "block.dried_ghast.ambient": {"sounds": ["block/dried_ghast/ambient"]},
+              "block.dried_ghast.ambient_water": {"sounds": ["block/dried_ghast/ambient_water"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -801,13 +803,6 @@ mod tests {
             "minecraft:block.water.ambient",
             "minecraft:block.lava.pop",
             "minecraft:block.lava.ambient",
-            "minecraft:block.furnace.fire_crackle",
-            "minecraft:block.blastfurnace.fire_crackle",
-            "minecraft:block.smoker.smoke",
-            "minecraft:block.campfire.crackle",
-            "minecraft:block.fire.ambient",
-            "minecraft:block.respawn_anchor.ambient",
-            "minecraft:block.portal.ambient",
         ] {
             let command = resolver
                 .play_positioned_sound(&SoundEventState {
@@ -824,6 +819,35 @@ mod tests {
                 panic!("expected positioned fluid sound");
             };
             assert_eq!(command.category, AudioCategory::Ambient);
+            assert_eq!(command.sound.event_id, sound_id);
+        }
+
+        for sound_id in [
+            "minecraft:block.furnace.fire_crackle",
+            "minecraft:block.blastfurnace.fire_crackle",
+            "minecraft:block.smoker.smoke",
+            "minecraft:block.campfire.crackle",
+            "minecraft:block.fire.ambient",
+            "minecraft:block.respawn_anchor.ambient",
+            "minecraft:block.portal.ambient",
+            "minecraft:block.dried_ghast.ambient",
+            "minecraft:block.dried_ghast.ambient_water",
+        ] {
+            let command = resolver
+                .play_positioned_sound(&SoundEventState {
+                    sound: direct_holder(sound_id),
+                    source: "block".to_string(),
+                    position: Vec3d::default(),
+                    volume: 0.3,
+                    pitch: 0.95,
+                    seed: 5,
+                    distance_delay: false,
+                })
+                .unwrap();
+            let AudioCommand::PlayPositionedSound(command) = command else {
+                panic!("expected positioned block sound");
+            };
+            assert_eq!(command.category, AudioCategory::Blocks);
             assert_eq!(command.sound.event_id, sound_id);
         }
     }

@@ -713,3 +713,6 @@
 - **2026-07-28（流体 animateTick 客户端效果闭环）**：流动水环境声、水源/落水
   underwater 粒子、岩浆 pop/ambient 与水/岩浆滴落现按两条 Vanilla 随机流、
   碰撞形状和生成的 `impermeable` 标签贯通 native 粒子及音频 sink。
+- **2026-07-29（干燥恶魂方块客户端效果工程闭环）**：干态支撑标签与水浸状态现按
+  Vanilla 26.1 的独立随机分支驱动对应环境音、white smoke 和 happy villager
+  粒子；标签由原版数据生成并贯通 world 采样、native runtime 与音频解析。

@@ -38,6 +38,7 @@ use crate::terrain::{
     block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
     block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
     block_name_is_wall_skull, block_name_is_wool_carpet,
+    block_name_triggers_dried_ghast_ambient_sound,
 };
 use crate::{
     BlockPos, BlockProbe, PistonDirection, TerrainFluidKind, TerrainMaterialClass, WorldStore,
@@ -68,6 +69,7 @@ pub struct EnvironmentAnimateBlockSample {
     pub down_face_sturdy: bool,
     pub up_face_sturdy: bool,
     pub fire_flammable: bool,
+    pub triggers_dried_ghast_ambient_sound: bool,
     pub impermeable: bool,
     pub collision_bounds: Option<EnvironmentAnimateCollisionBounds>,
 }
@@ -1427,6 +1429,9 @@ impl WorldStore {
             down_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Down)),
             up_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Up)),
             fire_flammable: block_name_is_fire_flammable(block_name),
+            triggers_dried_ghast_ambient_sound: block_name_triggers_dried_ghast_ambient_sound(
+                block_name,
+            ),
             impermeable: block_name_is_impermeable(block_name),
             collision_bounds: shape.and_then(BlockCollisionShape::environment_animate_bounds),
         })
@@ -6434,6 +6439,7 @@ mod tests {
                 down_face_sturdy: false,
                 up_face_sturdy: false,
                 fire_flammable: false,
+                triggers_dried_ghast_ambient_sound: false,
                 impermeable: false,
                 collision_bounds: None,
             })
@@ -6450,6 +6456,7 @@ mod tests {
                 down_face_sturdy: true,
                 up_face_sturdy: true,
                 fire_flammable: false,
+                triggers_dried_ghast_ambient_sound: false,
                 impermeable: false,
                 collision_bounds: Some(EnvironmentAnimateCollisionBounds {
                     min_x: 0.0,
@@ -6500,6 +6507,15 @@ mod tests {
                 .environment_animate_block_sample(pos)
                 .expect("loaded oak planks")
                 .fire_flammable
+        );
+
+        let soul_sand_id = vanilla_block_state_id("minecraft:soul_sand", []);
+        set_block(&mut world, pos, soul_sand_id);
+        assert!(
+            world
+                .environment_animate_block_sample(pos)
+                .expect("loaded soul sand")
+                .triggers_dried_ghast_ambient_sound
         );
 
         let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);

@@ -702,6 +702,9 @@ pub(super) const VANILLA_IMPERMEABLE_BLOCKS: &[&str] = &[
     "minecraft:barrier",
 ];
 
+pub(super) const VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS: &[&str] =
+    &["minecraft:soul_sand", "minecraft:soul_soil"];
+
 pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:iron_bars",
     "minecraft:copper_bars",
@@ -1499,6 +1502,7 @@ mod tests {
                         "VANILLA_WALL_SKULL_BLOCKS",
                         "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                         "VANILLA_IMPERMEABLE_BLOCKS",
+                        "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
                         "VANILLA_BARS_BLOCKS",
                         "VANILLA_SLAB_BLOCKS",
                         "VANILLA_STAIR_BLOCKS",
@@ -1596,6 +1600,10 @@ mod tests {
                             VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
                         ),
                         ("VANILLA_IMPERMEABLE_BLOCKS", VANILLA_IMPERMEABLE_BLOCKS),
+                        (
+                            "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
+                            VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS,
+                        ),
                         ("VANILLA_BARS_BLOCKS", VANILLA_BARS_BLOCKS),
                         ("VANILLA_SLAB_BLOCKS", VANILLA_SLAB_BLOCKS),
                         ("VANILLA_STAIR_BLOCKS", VANILLA_STAIR_BLOCKS),

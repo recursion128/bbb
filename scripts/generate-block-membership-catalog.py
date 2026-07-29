@@ -43,6 +43,11 @@ BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 
 BLOCK_TAG_CATALOGS = (
     ("VANILLA_IMPERMEABLE_BLOCKS", "minecraft:impermeable", 19),
+    (
+        "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
+        "minecraft:triggers_ambient_dried_ghast_block_sounds",
+        2,
+    ),
     ("VANILLA_BARS_BLOCKS", "minecraft:bars", 9),
     ("VANILLA_SLAB_BLOCKS", "minecraft:slabs", 62),
     ("VANILLA_STAIR_BLOCKS", "minecraft:stairs", 58),

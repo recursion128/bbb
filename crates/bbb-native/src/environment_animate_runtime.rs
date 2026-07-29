@@ -45,6 +45,8 @@ const SOUND_EVENT_CAMPFIRE_CRACKLE: &str = "minecraft:block.campfire.crackle";
 const SOUND_EVENT_FIRE_AMBIENT: &str = "minecraft:block.fire.ambient";
 const SOUND_EVENT_RESPAWN_ANCHOR_AMBIENT: &str = "minecraft:block.respawn_anchor.ambient";
 const SOUND_EVENT_PORTAL_AMBIENT: &str = "minecraft:block.portal.ambient";
+const SOUND_EVENT_DRIED_GHAST_AMBIENT: &str = "minecraft:block.dried_ghast.ambient";
+const SOUND_EVENT_DRIED_GHAST_AMBIENT_WATER: &str = "minecraft:block.dried_ghast.ambient_water";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -57,6 +59,8 @@ const PARTICLE_FLAME: &str = "minecraft:flame";
 const PARTICLE_LARGE_SMOKE: &str = "minecraft:large_smoke";
 const PARTICLE_REVERSE_PORTAL: &str = "minecraft:reverse_portal";
 const PARTICLE_PORTAL: &str = "minecraft:portal";
+const PARTICLE_WHITE_SMOKE: &str = "minecraft:white_smoke";
+const PARTICLE_HAPPY_VILLAGER: &str = "minecraft:happy_villager";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -303,6 +307,19 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:nether_portal" => {
                 self.animate_nether_portal(world, pos, animate_random, audio, spawns);
+            }
+            "minecraft:dried_ghast" => {
+                self.animate_dried_ghast(
+                    world,
+                    pos,
+                    block
+                        .block_properties
+                        .get("waterlogged")
+                        .is_some_and(|value| value == "true"),
+                    animate_random,
+                    audio,
+                    spawns,
+                );
             }
             _ => {}
         }
@@ -630,6 +647,38 @@ impl EnvironmentAnimateRuntime {
                 ],
                 0.5,
                 pitch,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_dried_ghast(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        waterlogged: bool,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let Some(sound_id) =
+            append_dried_ghast_animate_effects(world, pos, waterlogged, animate_random, spawns)
+        else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                sound_id,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                1.0,
+                1.0,
                 seed,
             ));
         }
@@ -1139,6 +1188,56 @@ fn append_nether_portal_animate_effects(
         });
     }
     pitch
+}
+
+fn append_dried_ghast_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    waterlogged: bool,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<&'static str> {
+    let center = [
+        f64::from(pos.x) + 0.5,
+        f64::from(pos.y) + 0.5,
+        f64::from(pos.z) + 0.5,
+    ];
+    if waterlogged {
+        let sound =
+            (random.next_int_bound(40) == 0).then_some(SOUND_EVENT_DRIED_GHAST_AMBIENT_WATER);
+        if random.next_int_bound(6) == 0 {
+            spawns.push(EnvironmentParticleSpawn {
+                particle: simple_client_particle_options(PARTICLE_HAPPY_VILLAGER),
+                position: [
+                    center[0] + f64::from((random.next_float() * 2.0 - 1.0) / 3.0),
+                    center[1] + 0.4,
+                    center[2] + f64::from((random.next_float() * 2.0 - 1.0) / 3.0),
+                ],
+                velocity: [0.0, f64::from(random.next_float()), 0.0],
+                always_show: false,
+            });
+        }
+        return sound;
+    }
+
+    let below = BlockPos {
+        y: pos.y.saturating_sub(1),
+        ..pos
+    };
+    let sound = (random.next_int_bound(40) == 0
+        && world
+            .environment_animate_block_sample(below)
+            .is_some_and(|sample| sample.triggers_dried_ghast_ambient_sound))
+    .then_some(SOUND_EVENT_DRIED_GHAST_AMBIENT);
+    if random.next_int_bound(6) == 0 {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_WHITE_SMOKE),
+            position: center,
+            velocity: [0.0, 0.02, 0.0],
+            always_show: false,
+        });
+    }
+    sound
 }
 
 fn append_ambient_particle_spawns(
@@ -2350,6 +2449,126 @@ mod tests {
             runtime.level_random.next_long(),
             expected_level_random.next_long(),
             "respawn-anchor playLocalSound consumes the shared level seed without an audio sink"
+        );
+    }
+
+    #[test]
+    fn dried_ghast_animate_effects_preserve_waterlogging_support_and_random_order() {
+        let mut world = world_with_ambient_particles();
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let below = BlockPos { y: 31, ..pos };
+        let effect_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                random.next_int_bound(40) == 0 && random.next_int_bound(6) == 0
+            })
+            .expect("deterministic dried-ghast sound and particle seed");
+
+        set_block(
+            &mut world,
+            below,
+            block_state_id("minecraft:soul_sand", &[]),
+        );
+        let mut dry_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut dry_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut dry_spawns = Vec::new();
+        assert_eq!(
+            append_dried_ghast_animate_effects(
+                &world,
+                pos,
+                false,
+                &mut dry_actual,
+                &mut dry_spawns,
+            ),
+            Some(SOUND_EVENT_DRIED_GHAST_AMBIENT)
+        );
+        assert_eq!(dry_expected.next_int_bound(40), 0);
+        assert_eq!(dry_expected.next_int_bound(6), 0);
+        assert_eq!(dry_spawns.len(), 1);
+        assert_eq!(dry_spawns[0].particle.resource_id, PARTICLE_WHITE_SMOKE);
+        assert_eq!(dry_spawns[0].position, [8.5, 32.5, 8.5]);
+        assert_eq!(dry_spawns[0].velocity, [0.0, 0.02, 0.0]);
+        assert!(!dry_spawns[0].always_show);
+        assert_eq!(dry_actual.next_long(), dry_expected.next_long());
+
+        set_block(&mut world, below, block_state_id("minecraft:stone", &[]));
+        let mut unsupported_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut unsupported_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut unsupported_spawns = Vec::new();
+        assert_eq!(
+            append_dried_ghast_animate_effects(
+                &world,
+                pos,
+                false,
+                &mut unsupported_actual,
+                &mut unsupported_spawns,
+            ),
+            None
+        );
+        assert_eq!(unsupported_expected.next_int_bound(40), 0);
+        assert_eq!(unsupported_expected.next_int_bound(6), 0);
+        assert_eq!(unsupported_spawns.len(), 1);
+        assert_eq!(
+            unsupported_spawns[0].particle.resource_id,
+            PARTICLE_WHITE_SMOKE
+        );
+        assert_eq!(
+            unsupported_actual.next_long(),
+            unsupported_expected.next_long()
+        );
+
+        let mut water_actual = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut water_expected = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut water_spawns = Vec::new();
+        assert_eq!(
+            append_dried_ghast_animate_effects(
+                &world,
+                pos,
+                true,
+                &mut water_actual,
+                &mut water_spawns,
+            ),
+            Some(SOUND_EVENT_DRIED_GHAST_AMBIENT_WATER)
+        );
+        assert_eq!(water_expected.next_int_bound(40), 0);
+        assert_eq!(water_expected.next_int_bound(6), 0);
+        let expected_position = [
+            8.5 + f64::from((water_expected.next_float() * 2.0 - 1.0) / 3.0),
+            32.9,
+            8.5 + f64::from((water_expected.next_float() * 2.0 - 1.0) / 3.0),
+        ];
+        let expected_velocity = [0.0, f64::from(water_expected.next_float()), 0.0];
+        assert_eq!(water_spawns.len(), 1);
+        assert_eq!(
+            water_spawns[0].particle.resource_id,
+            PARTICLE_HAPPY_VILLAGER
+        );
+        assert_eq!(water_spawns[0].position, expected_position);
+        assert_eq!(water_spawns[0].velocity, expected_velocity);
+        assert!(!water_spawns[0].always_show);
+        assert_eq!(water_actual.next_long(), water_expected.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(effect_seed);
+        let mut audio = None;
+        let mut runtime_spawns = Vec::new();
+        runtime.animate_dried_ghast(
+            &world,
+            pos,
+            true,
+            &mut animate_random,
+            &mut audio,
+            &mut runtime_spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "dried-ghast playLocalSound consumes the shared level seed without an audio sink"
         );
     }
 
