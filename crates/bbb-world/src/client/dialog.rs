@@ -22,9 +22,10 @@ pub(crate) use body::{
     validate_command_item_predicate_value, validate_command_item_stack_template,
 };
 pub use body::{
-    decode_persistent_component_select_value, DialogBodyState, DialogDataComponentPatchEntryState,
-    DialogDataComponentPatchState, DialogDataComponentValueState, DialogItemStackTemplateState,
-    DialogPlainMessageState,
+    decode_persistent_component_select_value,
+    decode_persistent_component_select_value_with_registry_access, DialogBodyState,
+    DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
+    DialogDataComponentValueState, DialogItemStackTemplateState, DialogPlainMessageState,
 };
 pub use input::{
     DialogInputControlState, DialogInputState, DialogNumberRangeState,

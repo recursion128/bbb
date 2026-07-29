@@ -32,12 +32,15 @@ mod ui;
 mod waypoints;
 mod world_border;
 
-pub use dialog::decode_persistent_component_select_value;
 pub(crate) use dialog::{
     decode_command_item_stack_template_summary, validate_command_dialog,
     validate_command_item_component, validate_command_item_predicate_value,
     validate_command_item_stack_template, validate_command_rich_text, validate_command_style,
     validate_rich_component_with_registry,
+};
+pub use dialog::{
+    decode_persistent_component_select_value,
+    decode_persistent_component_select_value_with_registry_access,
 };
 pub(crate) use entity_block_effects::{EntityBlockEffectWeather, EntityBlockEffectWorld};
 pub(crate) use local_player::game_type_player_abilities;

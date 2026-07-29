@@ -27,7 +27,7 @@ use bbb_protocol::packets::{
 };
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_render_types::VillagerModelType;
-use bbb_world::{RegistrySet, VanillaTrimPatternIdentity};
+use bbb_world::{FrozenRegistryAccess, VanillaTrimPatternIdentity};
 use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
@@ -1058,8 +1058,8 @@ impl ComponentSelectProperty {
         let Some(actual) = self.value_from_stack(ctx) else {
             return false;
         };
-        let expected = if ctx.registries.is_some() {
-            decode_component_select_when(self.type_id, &candidate.raw, ctx.registries)
+        let expected = if ctx.registry_access.is_some() {
+            decode_component_select_when(self.type_id, &candidate.raw, ctx.registry_access)
         } else {
             candidate.static_values.as_ref().cloned()
         }
@@ -1152,10 +1152,11 @@ impl ComponentSelectProperty {
                 if value.damage_type_id.is_none() {
                     let resource_id = ctx.default_damage_type?;
                     value.damage_type_id = ctx
-                        .registries
+                        .registry_access
                         .and_then(|registries| {
                             registries
-                                .holder_id_by_resource_id("minecraft:damage_type", resource_id)
+                                .entry_by_resource_id("minecraft:damage_type", resource_id)
+                                .map(|entry| entry.holder_id)
                         })
                         .or_else(|| {
                             ctx.damage_type_keys.and_then(|keys| {
@@ -1208,21 +1209,25 @@ pub(super) struct ComponentSelectCaseValue {
 fn decode_component_select_when(
     type_id: i32,
     raw: &Value,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
 ) -> Option<Vec<DataComponentPatchSummary>> {
     let alternatives = compact_component_select_when_values(raw)
         .into_iter()
         .map(|value| {
-            bbb_world::decode_persistent_component_select_value(type_id, value, registries)
-                .ok()
-                .flatten()
+            bbb_world::decode_persistent_component_select_value_with_registry_access(
+                type_id, value, registries,
+            )
+            .ok()
+            .flatten()
         })
         .collect::<Option<Vec<_>>>();
     alternatives.or_else(|| {
-        bbb_world::decode_persistent_component_select_value(type_id, raw, registries)
-            .ok()
-            .flatten()
-            .map(|value| vec![value])
+        bbb_world::decode_persistent_component_select_value_with_registry_access(
+            type_id, raw, registries,
+        )
+        .ok()
+        .flatten()
+        .map(|value| vec![value])
     })
 }
 
@@ -1471,7 +1476,7 @@ mod component_select_tests {
             &lore_object,
         ));
 
-        let registries = RegistrySet::vanilla_26_1();
+        let registries = bbb_world::RegistrySet::vanilla_26_1();
         let holder_id = registries
             .holder_id_by_resource_id("minecraft:damage_type", "minecraft:generic")
             .unwrap();
@@ -1780,7 +1785,7 @@ pub(super) struct IconResolveContext<'a> {
     pub component_patch: Option<&'a DataComponentPatchSummary>,
     /// Active level registry owner used to swap placeholder-backed component
     /// select cases into the current holder generation.
-    pub registries: Option<&'a RegistrySet>,
+    pub registry_access: Option<FrozenRegistryAccess<'a>>,
     /// Component types supplied by the item's registry prototype. Vanilla
     /// applies the stack patch over this prototype before evaluating item
     /// model component conditions.
