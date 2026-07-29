@@ -495,6 +495,9 @@ impl EnvironmentAnimateRuntime {
                 &mut self.level_random,
                 spawns,
             ),
+            "minecraft:ender_chest" => {
+                append_ender_chest_animate_effects(pos, animate_random, spawns);
+            }
             _ => {}
         }
 
@@ -1775,6 +1778,33 @@ fn append_lightning_rod_animate_effects(
             particle: simple_client_particle_options(PARTICLE_ELECTRIC_SPARK),
             position: [position.x, position.y, position.z],
             velocity: [velocity.x, velocity.y, velocity.z],
+            always_show: false,
+        });
+    }
+}
+
+fn append_ender_chest_animate_effects(
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    for _ in 0..3 {
+        let flip_x = random.next_int_bound(2) * 2 - 1;
+        let flip_z = random.next_int_bound(2) * 2 - 1;
+        let position = [
+            f64::from(pos.x) + 0.5 + 0.25 * f64::from(flip_x),
+            f64::from(pos.y) + f64::from(random.next_float()),
+            f64::from(pos.z) + 0.5 + 0.25 * f64::from(flip_z),
+        ];
+        let velocity = [
+            f64::from(random.next_float() * flip_x as f32),
+            f64::from((random.next_float() - 0.5_f32) * 0.125_f32),
+            f64::from(random.next_float() * flip_z as f32),
+        ];
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_PORTAL),
+            position,
+            velocity,
             always_show: false,
         });
     }
@@ -4560,6 +4590,87 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn ender_chest_animate_effects_preserve_float_math_signs_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let mut actual = LevelEventSoundRandomState::with_seed(73);
+        let mut spawns = Vec::new();
+        append_ender_chest_animate_effects(pos, &mut actual, &mut spawns);
+
+        let mut expected = LevelEventSoundRandomState::with_seed(73);
+        let expected_spawns = (0..3)
+            .map(|_| {
+                let flip_x = expected.next_int_bound(2) * 2 - 1;
+                let flip_z = expected.next_int_bound(2) * 2 - 1;
+                (
+                    [
+                        8.5 + 0.25 * f64::from(flip_x),
+                        32.0 + f64::from(expected.next_float()),
+                        8.5 + 0.25 * f64::from(flip_z),
+                    ],
+                    [
+                        f64::from(expected.next_float() * flip_x as f32),
+                        f64::from((expected.next_float() - 0.5_f32) * 0.125_f32),
+                        f64::from(expected.next_float() * flip_z as f32),
+                    ],
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| (spawn.position, spawn.velocity))
+                .collect::<Vec<_>>(),
+            expected_spawns
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| { spawn.particle.resource_id == PARTICLE_PORTAL && !spawn.always_show }));
+        assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_ender_chest_portal_particles_from_animate_random() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::default();
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id(
+                "minecraft:ender_chest",
+                &[("facing", "north"), ("waterlogged", "false")],
+            ),
+        );
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut actual = LevelEventSoundRandomState::with_seed(91);
+        let mut expected = LevelEventSoundRandomState::with_seed(91);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut actual,
+            &mut audio,
+            &mut spawns,
+        );
+        let mut expected_portals = Vec::new();
+        append_ender_chest_animate_effects(pos, &mut expected, &mut expected_portals);
+
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == PARTICLE_PORTAL)
+                .count(),
+            3
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
     }
 
     #[test]
