@@ -1218,6 +1218,7 @@ fn respawn_event_resets_local_player_runtime_state() {
         },
         on_ground: true,
         horizontal_collision: true,
+        minor_horizontal_collision: false,
         fall_distance: 8.0,
         sneaking: true,
         swimming: true,
