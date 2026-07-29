@@ -13,7 +13,8 @@ sprint state, or local audio:
 - four-corner suffocation escape against blocks whose live state is
   `isSuffocating`;
 - optional auto-jump, enabled by default and configurable only at process
-  startup, using the shared block/entity/world-border collision set;
+  startup, using Vanilla `getCollisions`' shared entity-then-block collision
+  set (which deliberately excludes the separately queried world border);
 - `minorHorizontalCollision` classification and run-sprint cancellation on a
   non-minor collision;
 - the up-to-eight-block fall-distance-resetting ray through the synchronized
@@ -55,8 +56,9 @@ The local source and data roots are
   when present.
 - `bbb-world::client::local_player_collision` remains the only block/entity/
   border shape collector and ray geometry owner. Movement calls narrow
-  suffocation, prospective-collision-box, and fall-reset ray queries instead of
-  duplicating shapes.
+  suffocation, prospective entity-then-block collision-box, and fall-reset ray
+  queries instead of duplicating shapes; auto-jump does not add the border to
+  `CollisionGetter.getCollisions`.
 - `bbb-world::client::local_player_movement` owns the per-tick order:
   consume/force an armed auto-jump input, update pose, apply four escape probes,
   travel and `Entity.move`, update auto-jump from the actual horizontal move,
@@ -104,7 +106,7 @@ gate before the next stage starts.
    membership tests.
 2. **Escape and auto-jump**: add the local-player private timer/config state,
    collision-owner queries, exact four-corner escape and auto-jump ordering,
-   plus block/entity/border/ceiling/disabled-option tests.
+   plus block/entity/border-exclusion/ceiling/disabled-option tests.
    Focused command:
    `scripts/cargo-dev.sh test -p bbb-world local_player_`.
 3. **Move-tail completion**: add minor-collision classification, fall-reset

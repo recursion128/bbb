@@ -55,6 +55,10 @@ pub struct LocalPlayerState {
     pub camera: CameraState,
     #[serde(default)]
     pub pose: Option<LocalPlayerPoseState>,
+    /// Process-configured `Options.autoJump` and LocalPlayer's private
+    /// one-tick `autoJumpTime`. Neither is server-owned snapshot state.
+    #[serde(skip)]
+    pub(crate) auto_jump: LocalPlayerAutoJumpState,
     #[serde(default)]
     pub last_look_at: Option<LocalPlayerLookAtState>,
     #[serde(default)]
@@ -74,8 +78,24 @@ impl Default for LocalPlayerState {
             portal_cooldown: 0,
             camera: CameraState::default(),
             pose: None,
+            auto_jump: LocalPlayerAutoJumpState::default(),
             last_look_at: None,
             interaction: LocalPlayerInteractionState::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct LocalPlayerAutoJumpState {
+    pub(crate) enabled: bool,
+    pub(crate) ticks_remaining: u8,
+}
+
+impl Default for LocalPlayerAutoJumpState {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            ticks_remaining: 0,
         }
     }
 }
@@ -317,6 +337,30 @@ impl Default for CameraState {
 }
 
 impl WorldStore {
+    pub fn set_local_player_auto_jump_enabled(&mut self, enabled: bool) {
+        self.local_player.auto_jump.enabled = enabled;
+    }
+
+    pub fn local_player_auto_jump_enabled(&self) -> bool {
+        self.local_player.auto_jump.enabled
+    }
+
+    pub(crate) fn consume_local_player_auto_jump_tick(&mut self) -> bool {
+        if self.local_player.auto_jump.ticks_remaining == 0 {
+            return false;
+        }
+        self.local_player.auto_jump.ticks_remaining -= 1;
+        true
+    }
+
+    pub(crate) fn arm_local_player_auto_jump(&mut self) {
+        self.local_player.auto_jump.ticks_remaining = 1;
+    }
+
+    pub(crate) fn local_player_auto_jump_is_armed(&self) -> bool {
+        self.local_player.auto_jump.ticks_remaining > 0
+    }
+
     pub fn set_local_player_profile_id(&mut self, profile_id: Uuid) {
         self.local_player_profile_id = Some(profile_id);
     }
@@ -350,7 +394,9 @@ impl WorldStore {
     }
 
     pub(crate) fn reset_local_player_for_login(&mut self, player_id: i32, game_type_id: i32) {
+        let auto_jump_enabled = self.local_player_auto_jump_enabled();
         self.local_player = LocalPlayerState::default();
+        self.set_local_player_auto_jump_enabled(auto_jump_enabled);
         self.local_player.abilities =
             Some(game_type_player_abilities(GameType::from_id(game_type_id)));
         self.local_player.camera = CameraState {

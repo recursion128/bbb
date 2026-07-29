@@ -352,6 +352,264 @@ fn local_player_movement_collides_with_world_border() {
 }
 
 #[test]
+fn local_player_suffocation_uses_live_state_fact_and_collision_shape() {
+    let mut world = flat_collision_world();
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let pos = BlockPos { x: 0, y: 1, z: 0 };
+
+    // Farmland's 15/16-block collision shape is nevertheless explicitly
+    // suffocating; mangrove roots retain collision but override the predicate
+    // to false.
+    set_test_block(
+        &mut world,
+        pos.x,
+        pos.y,
+        pos.z,
+        FARMLAND_MOISTURE_0_BLOCK_STATE_ID,
+    );
+    assert!(world.local_player_suffocates_at(pose, pos, false));
+    set_test_block(
+        &mut world,
+        pos.x,
+        pos.y,
+        pos.z,
+        MANGROVE_ROOTS_DRY_BLOCK_STATE_ID,
+    );
+    assert!(!world.local_player_suffocates_at(pose, pos, false));
+}
+
+#[test]
+fn local_player_suffocation_escape_selects_closest_open_direction() {
+    let mut world = flat_collision_world();
+    for (x, z) in [(1, 1), (0, 1), (1, 0), (1, 2)] {
+        set_test_block(&mut world, x, 1, z, GRASS_BLOCK_STATE_ID);
+    }
+    let mut pose = LocalPlayerPoseState {
+        position: vec3(1.5, 1.0, 1.5),
+        delta_movement: vec3(-0.4, 0.25, 0.3),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+
+    move_local_player_out_of_suffocating_blocks(&world, &mut pose, false);
+
+    assert_f64_near(pose.delta_movement.x, 0.1, 0.000001);
+    assert_f64_near(pose.delta_movement.y, 0.25, 0.000001);
+    assert_f64_near(pose.delta_movement.z, 0.3, 0.000001);
+}
+
+#[test]
+fn local_player_spectator_skips_suffocation_escape() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    for (x, z) in [(1, 1), (0, 1), (1, 0), (1, 2)] {
+        set_test_block(&mut world, x, 1, z, GRASS_BLOCK_STATE_ID);
+    }
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(1.5, 1.0, 1.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.x, 1.5, 0.000001);
+    assert_f64_near(pose.delta_movement.x, 0.0, 0.000001);
+}
+
+#[test]
+fn local_player_auto_jump_arms_on_block_and_forces_next_tick_jump() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        y_rot: 0.0,
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        ..LocalPlayerInputState::default()
+    };
+
+    let first = world
+        .advance_local_player_input(input, LOCAL_PHYSICS_TICK_SECONDS)
+        .unwrap();
+    assert!(world.local_player_auto_jump_is_armed());
+    assert_f64_near(first.position.y, 1.0, 0.000001);
+
+    let second = world
+        .advance_local_player_input(input, LOCAL_PHYSICS_TICK_SECONDS)
+        .unwrap();
+    assert!(
+        second.position.y > 1.0,
+        "position was {:?}",
+        second.position
+    );
+    assert!(second.delta_movement.y > 0.0);
+}
+
+#[test]
+fn local_player_auto_jump_disabled_option_and_low_jump_factor_do_not_arm() {
+    for (label, enabled, support_state) in [
+        ("disabled", false, GRASS_BLOCK_STATE_ID),
+        ("honey support", true, HONEY_BLOCK_STATE_ID),
+    ] {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, support_state);
+        set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_auto_jump_enabled(enabled);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(
+            !world.local_player_auto_jump_is_armed(),
+            "{label} unexpectedly armed auto-jump"
+        );
+    }
+}
+
+#[test]
+fn local_player_auto_jump_uses_collidable_entity_bounds() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645690),
+        entity_type_id: VANILLA_ENTITY_TYPE_SHULKER_ID,
+        position: vec3(0.5, 1.0, 1.5),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        y_rot: 0.0,
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let targets = world.entities.client_movement_entity_collision_targets();
+
+    update_local_player_auto_jump(
+        &mut world,
+        pose,
+        LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            ..LocalPlayerInputState::default()
+        },
+        0.01,
+        0.0,
+        &targets,
+    );
+
+    assert!(world.local_player_auto_jump_is_armed());
+}
+
+#[test]
+fn local_player_auto_jump_excludes_world_border_collision_shape() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 2, GRASS_BLOCK_STATE_ID);
+    world.apply_initialize_border(ProtocolInitializeBorder {
+        new_center_x: 0.0,
+        new_center_z: 0.0,
+        old_size: 4.0,
+        new_size: 4.0,
+        lerp_time: 0,
+        new_absolute_max_size: 29_999_984,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 1.0),
+        y_rot: 0.0,
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let targets = world.entities.client_movement_entity_collision_targets();
+
+    update_local_player_auto_jump(
+        &mut world,
+        pose,
+        LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            ..LocalPlayerInputState::default()
+        },
+        0.0,
+        0.4,
+        &targets,
+    );
+
+    // The block starts exactly at the border. Vanilla's prospective
+    // `getCollisions` still sees it because the border is queried elsewhere.
+    assert!(world.local_player_auto_jump_is_armed());
+}
+
+#[test]
+fn local_player_auto_jump_rejects_low_ceiling() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 0, GRASS_BLOCK_STATE_ID);
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        y_rot: 0.0,
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let targets = world.entities.client_movement_entity_collision_targets();
+
+    update_local_player_auto_jump(
+        &mut world,
+        pose,
+        LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            ..LocalPlayerInputState::default()
+        },
+        0.01,
+        0.0,
+        &targets,
+    );
+
+    assert!(!world.local_player_auto_jump_is_armed());
+}
+
+#[test]
 fn local_player_collision_excludes_same_root_vehicle() {
     let mut world = flat_collision_world();
     attach_local_player_entity(&mut world, 123);
@@ -2308,6 +2566,7 @@ fn local_player_respects_piglin_wall_head_wider_collision() {
         1,
         PIGLIN_WALL_HEAD_NORTH_BLOCK_STATE_ID,
     );
+    piglin_world.set_local_player_auto_jump_enabled(false);
     piglin_world.set_local_player_pose(LocalPlayerPoseState {
         position: vec3(1.06, 1.0, 0.5),
         y_rot: 0.0,
@@ -5733,6 +5992,9 @@ fn advance_forward_from_standard_start(
     world: &mut WorldStore,
     seconds: f64,
 ) -> LocalPlayerPoseState {
+    // This shared harness isolates travel/collision-shape behavior. Dedicated
+    // auto-jump tests above exercise the default-enabled option and timer.
+    world.set_local_player_auto_jump_enabled(false);
     world.set_local_player_pose(LocalPlayerPoseState {
         position: vec3(0.5, 1.0, 0.5),
         y_rot: 0.0,

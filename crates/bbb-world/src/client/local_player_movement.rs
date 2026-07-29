@@ -13,8 +13,9 @@ use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
 use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, LocalPlayerPoseState};
 use super::local_player_collision::{
-    local_player_collides, local_player_collides_with_context, LocalPlayerBounds,
-    LocalPlayerCollisionContext, COLLISION_EPSILON, LOCAL_PLAYER_HALF_WIDTH,
+    local_player_collides, local_player_collides_with_context,
+    world_collision_box_intersects_segment_bounds, LocalPlayerBounds, LocalPlayerCollisionContext,
+    COLLISION_EPSILON, LOCAL_PLAYER_HALF_WIDTH,
 };
 use super::local_player_fluid::local_player_fluid_contact;
 use crate::entities::{
@@ -105,6 +106,14 @@ const LOCAL_PLAYER_SPRINT_SPEED_MODIFIER: f64 = 1.3;
 const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
 const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
 const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
+const LOCAL_PLAYER_SUFFOCATION_ESCAPE_SPEED: f64 = 0.1;
+const LOCAL_PLAYER_AUTO_JUMP_MIN_MOVEMENT_SQUARED: f32 = 0.001;
+const LOCAL_PLAYER_AUTO_JUMP_MIN_OBSTACLE_HEIGHT: f32 = 0.5;
+const LOCAL_PLAYER_AUTO_JUMP_BASE_HEIGHT: f32 = 1.2;
+const LOCAL_PLAYER_AUTO_JUMP_BOOST_HEIGHT_PER_LEVEL: f32 = 0.75;
+const LOCAL_PLAYER_AUTO_JUMP_LOOK_AHEAD_TICKS: f32 = 7.0;
+const LOCAL_PLAYER_AUTO_JUMP_SEGMENT_HEIGHT: f64 = 0.51;
+const LOCAL_PLAYER_AUTO_JUMP_FACING_REJECTION_DOT: f32 = -0.15;
 
 pub(super) fn integrate_local_player_input_pose_with_world_effects(
     world: &mut WorldStore,
@@ -118,6 +127,10 @@ pub(super) fn integrate_local_player_input_pose_with_world_effects(
     let mut remaining_seconds = dt_seconds.max(0.0);
     while remaining_seconds > COLLISION_EPSILON {
         let step_seconds = remaining_seconds.min(LOCAL_PHYSICS_TICK_SECONDS);
+        let mut step_input = input;
+        if world.consume_local_player_auto_jump_tick() {
+            step_input.jump = true;
+        }
         // Vanilla `Entity.move` consumes the stuck-speed multiplier the
         // previous tick's `applyEffectsFromBlocks` recorded on the player
         // entity, then the post-travel `aiStep` slot runs the callback with
@@ -134,12 +147,20 @@ pub(super) fn integrate_local_player_input_pose_with_world_effects(
         let (next_pose, step_move) = advance_local_player_physics_step(
             world,
             pose,
-            input,
+            step_input,
             step_seconds,
             stuck_multiplier,
             &entity_collision_targets,
         );
         pose = next_pose;
+        update_local_player_auto_jump(
+            world,
+            pose,
+            step_input,
+            (step_move.to.x - step_move.from.x) as f32,
+            (step_move.to.z - step_move.from.z) as f32,
+            &entity_collision_targets,
+        );
         world.apply_local_player_block_effects(&mut pose, step_move);
         remaining_seconds -= step_seconds;
     }
@@ -160,6 +181,287 @@ pub(super) fn apply_local_player_input_look(
             .clamp(-90.0, 90.0);
     }
     pose
+}
+
+fn move_local_player_out_of_suffocating_blocks(
+    world: &WorldStore,
+    pose: &mut LocalPlayerPoseState,
+    descending: bool,
+) {
+    let offset = LOCAL_PLAYER_HALF_WIDTH * 0.35;
+    for (x, z) in [
+        (pose.position.x - offset, pose.position.z + offset),
+        (pose.position.x - offset, pose.position.z - offset),
+        (pose.position.x + offset, pose.position.z - offset),
+        (pose.position.x + offset, pose.position.z + offset),
+    ] {
+        move_local_player_towards_closest_space(world, pose, x, z, descending);
+    }
+}
+
+fn move_local_player_towards_closest_space(
+    world: &WorldStore,
+    pose: &mut LocalPlayerPoseState,
+    x: f64,
+    z: f64,
+    descending: bool,
+) {
+    let pos = BlockPos {
+        x: local_player_block_floor(x),
+        y: local_player_block_floor(pose.position.y),
+        z: local_player_block_floor(z),
+    };
+    if !world.local_player_suffocates_at(*pose, pos, descending) {
+        return;
+    }
+
+    let xd = x - f64::from(pos.x);
+    let zd = z - f64::from(pos.z);
+    let mut closest = f64::MAX;
+    let mut escape = None;
+    // Exact Vanilla order resolves equal edge distances west, east, north,
+    // then south because candidates only replace on a strict improvement.
+    for (dx, dz, distance) in [(-1, 0, xd), (1, 0, 1.0 - xd), (0, -1, zd), (0, 1, 1.0 - zd)] {
+        let adjacent = BlockPos {
+            x: pos.x.saturating_add(dx),
+            y: pos.y,
+            z: pos.z.saturating_add(dz),
+        };
+        if distance < closest && !world.local_player_suffocates_at(*pose, adjacent, descending) {
+            closest = distance;
+            escape = Some((dx, dz));
+        }
+    }
+    match escape {
+        Some((dx, 0)) => {
+            pose.delta_movement.x = f64::from(dx) * LOCAL_PLAYER_SUFFOCATION_ESCAPE_SPEED;
+        }
+        Some((0, dz)) => {
+            pose.delta_movement.z = f64::from(dz) * LOCAL_PLAYER_SUFFOCATION_ESCAPE_SPEED;
+        }
+        _ => {}
+    }
+}
+
+fn update_local_player_auto_jump(
+    world: &mut WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    xa: f32,
+    za: f32,
+    entity_collision_targets: &[crate::EntityPickTargetState],
+) {
+    if !can_local_player_auto_jump(world, pose, input) {
+        return;
+    }
+
+    let move_begin = [pose.position.x, pose.position.y, pose.position.z];
+    let move_end = [
+        move_begin[0] + f64::from(xa),
+        move_begin[1],
+        move_begin[2] + f64::from(za),
+    ];
+    let mut move_x = f64::from(xa);
+    let mut move_z = f64::from(za);
+    let effective_input = local_player_effective_movement_input(world, input);
+    let current_speed = local_player_ground_speed(world, effective_input) as f32;
+    let mut move_distance_squared = (move_x * move_x + move_z * move_z) as f32;
+    if move_distance_squared <= LOCAL_PLAYER_AUTO_JUMP_MIN_MOVEMENT_SQUARED {
+        let raw_x = axis_f32(input.left, input.right);
+        let raw_z = axis_f32(input.forward, input.backward);
+        let raw_length = (raw_x * raw_x + raw_z * raw_z).sqrt();
+        let (input_x, input_z) = if raw_length > 0.0 {
+            (raw_x / raw_length, raw_z / raw_length)
+        } else {
+            (0.0, 0.0)
+        };
+        let input_x = current_speed * input_x;
+        let input_z = current_speed * input_z;
+        let yaw = pose.y_rot.to_radians();
+        let sin = yaw.sin();
+        let cos = yaw.cos();
+        move_x = f64::from(input_x * cos - input_z * sin);
+        move_z = f64::from(input_z * cos + input_x * sin);
+        move_distance_squared = (move_x * move_x + move_z * move_z) as f32;
+        if move_distance_squared <= LOCAL_PLAYER_AUTO_JUMP_MIN_MOVEMENT_SQUARED {
+            return;
+        }
+    }
+
+    let inverse_move_distance = move_distance_squared.sqrt().recip();
+    let move_direction = [
+        move_x * f64::from(inverse_move_distance),
+        0.0,
+        move_z * f64::from(inverse_move_distance),
+    ];
+    let yaw = pose.y_rot.to_radians();
+    let pitch = pose.x_rot.to_radians();
+    let facing_x = -yaw.sin() * pitch.cos();
+    let facing_z = yaw.cos() * pitch.cos();
+    let facing_dot =
+        (f64::from(facing_x) * move_direction[0] + f64::from(facing_z) * move_direction[2]) as f32;
+    if facing_dot < LOCAL_PLAYER_AUTO_JUMP_FACING_REJECTION_DOT {
+        return;
+    }
+
+    let mut ceiling_pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y + pose.body_height()),
+        z: local_player_block_floor(pose.position.z),
+    };
+    if world
+        .local_player_block_collision_shape_max_y(pose, ceiling_pos, input.sneak)
+        .is_some()
+    {
+        return;
+    }
+    ceiling_pos.y = ceiling_pos.y.saturating_add(1);
+    if world
+        .local_player_block_collision_shape_max_y(pose, ceiling_pos, input.sneak)
+        .is_some()
+    {
+        return;
+    }
+
+    let mut jump_height = LOCAL_PLAYER_AUTO_JUMP_BASE_HEIGHT;
+    if let Some(amplifier) = local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
+    {
+        jump_height +=
+            (amplifier.saturating_add(1) as f32) * LOCAL_PLAYER_AUTO_JUMP_BOOST_HEIGHT_PER_LEVEL;
+    }
+    let look_ahead_distance = (current_speed * LOCAL_PLAYER_AUTO_JUMP_LOOK_AHEAD_TICKS)
+        .max(inverse_move_distance.recip());
+    let segment_end = [
+        move_end[0] + move_direction[0] * f64::from(look_ahead_distance),
+        move_end[1],
+        move_end[2] + move_direction[2] * f64::from(look_ahead_distance),
+    ];
+    let player_width = LOCAL_PLAYER_HALF_WIDTH * 2.0;
+    let test_bounds = LocalPlayerBounds::from_min_max(
+        [
+            move_begin[0].min(segment_end[0]) - player_width,
+            move_begin[1],
+            move_begin[2].min(segment_end[2]) - player_width,
+        ],
+        [
+            move_begin[0].max(segment_end[0]) + player_width,
+            move_begin[1] + pose.body_height(),
+            move_begin[2].max(segment_end[2]) + player_width,
+        ],
+    );
+    let segment_begin = [
+        move_begin[0],
+        move_begin[1] + LOCAL_PLAYER_AUTO_JUMP_SEGMENT_HEIGHT,
+        move_begin[2],
+    ];
+    let segment_end = [
+        segment_end[0],
+        segment_end[1] + LOCAL_PLAYER_AUTO_JUMP_SEGMENT_HEIGHT,
+        segment_end[2],
+    ];
+    let right_direction = [-move_direction[2], 0.0, move_direction[0]];
+    let right_offset = [
+        right_direction[0] * LOCAL_PLAYER_HALF_WIDTH,
+        0.0,
+        right_direction[2] * LOCAL_PLAYER_HALF_WIDTH,
+    ];
+    let left_segment_begin = [
+        segment_begin[0] - right_offset[0],
+        segment_begin[1],
+        segment_begin[2] - right_offset[2],
+    ];
+    let left_segment_end = [
+        segment_end[0] - right_offset[0],
+        segment_end[1],
+        segment_end[2] - right_offset[2],
+    ];
+    let right_segment_begin = [
+        segment_begin[0] + right_offset[0],
+        segment_begin[1],
+        segment_begin[2] + right_offset[2],
+    ];
+    let right_segment_end = [
+        segment_end[0] + right_offset[0],
+        segment_end[1],
+        segment_end[2] + right_offset[2],
+    ];
+
+    let collisions = world.local_player_auto_jump_collision_boxes(
+        pose,
+        test_bounds,
+        input.sneak,
+        entity_collision_targets,
+    );
+    let mut obstacle_height = None;
+    for collision_box in collisions {
+        if !world_collision_box_intersects_segment_bounds(
+            collision_box,
+            left_segment_begin,
+            left_segment_end,
+        ) && !world_collision_box_intersects_segment_bounds(
+            collision_box,
+            right_segment_begin,
+            right_segment_end,
+        ) {
+            continue;
+        }
+        let mut height = collision_box.max[1] as f32;
+        let obstacle_pos = BlockPos {
+            x: local_player_block_floor((collision_box.min[0] + collision_box.max[0]) * 0.5),
+            y: local_player_block_floor((collision_box.min[1] + collision_box.max[1]) * 0.5),
+            z: local_player_block_floor((collision_box.min[2] + collision_box.max[2]) * 0.5),
+        };
+        let mut steps = 1_i32;
+        while (steps as f32) < jump_height {
+            let above_pos = BlockPos {
+                y: obstacle_pos.y.saturating_add(steps),
+                ..obstacle_pos
+            };
+            if let Some(shape_max_y) =
+                world.local_player_block_collision_shape_max_y(pose, above_pos, input.sneak)
+            {
+                height = shape_max_y as f32;
+                if height - pose.position.y as f32 > jump_height {
+                    return;
+                }
+            }
+            if steps > 1 {
+                ceiling_pos.y = ceiling_pos.y.saturating_add(1);
+                if world
+                    .local_player_block_collision_shape_max_y(pose, ceiling_pos, input.sneak)
+                    .is_some()
+                {
+                    return;
+                }
+            }
+            steps = steps.saturating_add(1);
+        }
+        obstacle_height = Some(height);
+        break;
+    }
+
+    if let Some(obstacle_height) = obstacle_height {
+        let delta_y = obstacle_height - pose.position.y as f32;
+        if delta_y > LOCAL_PLAYER_AUTO_JUMP_MIN_OBSTACLE_HEIGHT && delta_y <= jump_height {
+            world.arm_local_player_auto_jump();
+        }
+    }
+}
+
+fn can_local_player_auto_jump(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+) -> bool {
+    world.local_player_auto_jump_enabled()
+        && !world.local_player_auto_jump_is_armed()
+        && pose.on_ground
+        && !input.sneak
+        && world.local_player_vehicle_id().is_none()
+        && input.focused
+        && (axis_f32(input.left, input.right) != 0.0
+            || axis_f32(input.forward, input.backward) != 0.0)
+        && local_player_block_jump_factor(world, pose) >= DEFAULT_BLOCK_JUMP_FACTOR
 }
 
 /// Applies the narrow `Entity.move(MoverType.SELF, 0, y, 0)` used by
@@ -274,6 +576,9 @@ fn advance_local_player_physics_step(
         pose.on_ground = false;
     }
     pose = local_player_update_body_pose(world, pose, input, flying, entity_collision_targets);
+    if !world.local_player_is_spectator() {
+        move_local_player_out_of_suffocating_blocks(world, &mut pose, input.sneak);
+    }
     let initial_fluid_contact = local_player_fluid_contact(world, pose);
     if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
         return advance_local_player_fluid_physics_step(
@@ -1616,6 +1921,10 @@ fn axis(positive: bool, negative: bool) -> f64 {
         (false, true) => -1.0,
         _ => 0.0,
     }
+}
+
+fn axis_f32(positive: bool, negative: bool) -> f32 {
+    axis(positive, negative) as f32
 }
 
 fn wrap_degrees_f32(degrees: f32) -> f32 {

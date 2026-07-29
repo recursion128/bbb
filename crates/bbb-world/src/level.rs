@@ -612,6 +612,7 @@ impl WorldStore {
 
     pub fn clear_client_level(&mut self) {
         self.advance_client_level_generation();
+        let auto_jump_enabled = self.local_player_auto_jump_enabled();
         self.reset_local_player_ambient_audio();
         self.stop_tutorial_for_missing_level();
         // Login and configuration re-entry construct a fresh
@@ -633,6 +634,7 @@ impl WorldStore {
         self.chunk_view = crate::ChunkViewState::default();
         self.last_block_changed_ack = None;
         self.local_player = crate::LocalPlayerState::default();
+        self.set_local_player_auto_jump_enabled(auto_jump_enabled);
         self.local_player_old_pose = None;
         self.local_player_id = None;
         self.local_player_vehicle_id = None;
@@ -889,7 +891,9 @@ impl WorldStore {
         self.reset_local_player_ambient_audio();
         let keep_entity_data = data_to_keep & RESPAWN_KEEP_ENTITY_DATA != 0;
         let keep_attribute_modifiers = data_to_keep & RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
+        let auto_jump_enabled = self.local_player_auto_jump_enabled();
         let old_local_player = std::mem::take(&mut self.local_player);
+        self.set_local_player_auto_jump_enabled(auto_jump_enabled);
         self.local_player_old_pose = None;
         let old_pose = old_local_player.pose;
 
@@ -1660,6 +1664,27 @@ mod tests {
             store.gameplay().previous_game_type_name.as_deref(),
             Some("creative")
         );
+    }
+
+    #[test]
+    fn local_player_auto_jump_option_survives_level_replacement_and_timer_resets() {
+        let mut store = respawn_state_with_local_player_data();
+        store.set_local_player_auto_jump_enabled(false);
+        store.arm_local_player_auto_jump();
+
+        store.apply_respawn(&respawn_packet(0));
+
+        assert!(!store.local_player_auto_jump_enabled());
+        assert!(!store.local_player_auto_jump_is_armed());
+        store.arm_local_player_auto_jump();
+        store.clear_client_level();
+        assert!(!store.local_player_auto_jump_enabled());
+        assert!(!store.local_player_auto_jump_is_armed());
+
+        store.arm_local_player_auto_jump();
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(!store.local_player_auto_jump_enabled());
+        assert!(!store.local_player_auto_jump_is_armed());
     }
 
     #[test]

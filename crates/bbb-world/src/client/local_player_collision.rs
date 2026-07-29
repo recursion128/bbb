@@ -210,6 +210,40 @@ pub(super) fn local_player_collides_with_context(
     false
 }
 
+fn local_player_collides_with_suffocating_block(
+    world: &WorldStore,
+    bounds: LocalPlayerBounds,
+    context: LocalPlayerCollisionContext,
+) -> bool {
+    let min_x = block_floor(bounds.min_x - COLLISION_EPSILON) - 1;
+    let max_x = block_floor(bounds.max_x + COLLISION_EPSILON) + 1;
+    let min_y = block_floor(bounds.min_y - COLLISION_EPSILON) - 1;
+    let max_y = block_floor(bounds.max_y + COLLISION_EPSILON) + 1;
+    let min_z = block_floor(bounds.min_z - COLLISION_EPSILON) - 1;
+    let max_z = block_floor(bounds.max_z + COLLISION_EPSILON) + 1;
+    for z in min_z..=max_z {
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                let pos = BlockPos { x, y, z };
+                let Some(block) = world.probe_block(pos) else {
+                    continue;
+                };
+                if !vanilla_block_state_support_facts(block.block_state_id)
+                    .is_some_and(|facts| facts.suffocating())
+                {
+                    continue;
+                }
+                if block_collision_shape_with_context(world, &block, pos, context)
+                    .is_some_and(|shape| bounds_intersects_block_shape(bounds, pos, shape))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn find_supporting_block(
     world: &WorldStore,
     entity_position: [f64; 3],
@@ -1665,6 +1699,111 @@ impl WorldStore {
         )
         .is_empty()
             && self.world_border_collision_boxes(query, bounds).is_empty()
+    }
+
+    /// Vanilla `LocalPlayer.suffocatesAt`: test the player's vertical span
+    /// inside one block-cell column against only states whose live
+    /// `isSuffocating` predicate is true.
+    pub(super) fn local_player_suffocates_at(
+        &self,
+        pose: LocalPlayerPoseState,
+        pos: BlockPos,
+        descending: bool,
+    ) -> bool {
+        let bounds = LocalPlayerBounds::from_min_max(
+            [
+                f64::from(pos.x) + COLLISION_EPSILON,
+                pose.position.y + COLLISION_EPSILON,
+                f64::from(pos.z) + COLLISION_EPSILON,
+            ],
+            [
+                f64::from(pos.x) + 1.0 - COLLISION_EPSILON,
+                pose.position.y + pose.body_height() - COLLISION_EPSILON,
+                f64::from(pos.z) + 1.0 - COLLISION_EPSILON,
+            ],
+        );
+        local_player_collides_with_suffocating_block(
+            self,
+            bounds,
+            LocalPlayerCollisionContext::for_pose(self, pose, descending),
+        )
+    }
+
+    /// Highest world-space Y in the live local-player collision shape at one
+    /// block cell. `LocalPlayer.updateAutoJump` uses this both for its ceiling
+    /// probes and for stacked obstacle-height refinement.
+    pub(super) fn local_player_block_collision_shape_max_y(
+        &self,
+        pose: LocalPlayerPoseState,
+        pos: BlockPos,
+        descending: bool,
+    ) -> Option<f64> {
+        let block = self.probe_block(pos)?;
+        block_collision_shape_with_context(
+            self,
+            &block,
+            pos,
+            LocalPlayerCollisionContext::for_pose(self, pose, descending),
+        )?
+        .to_aabbs()
+        .into_iter()
+        .map(|shape_box| f64::from(pos.y) + shape_box.max_y)
+        .reduce(f64::max)
+    }
+
+    /// Vanilla `CollisionGetter.getCollisions(player, bounds)` as consumed by
+    /// auto-jump: collidable entities first, then block `VoxelShape.toAabbs`
+    /// order. The world border is a separate collision source and is
+    /// deliberately absent from this query.
+    pub(super) fn local_player_auto_jump_collision_boxes(
+        &self,
+        pose: LocalPlayerPoseState,
+        bounds: LocalPlayerBounds,
+        descending: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> Vec<WorldCollisionBox> {
+        let block_context = LocalPlayerCollisionContext::for_pose(self, pose, descending);
+        let query = EntityCollisionQuery {
+            source_entity_id: self.local_player_id,
+            source_entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            source_position: [pose.position.x, pose.position.y, pose.position.z],
+            bounds: LocalPlayerBounds::for_pose(pose),
+            block_context,
+        };
+        let mut boxes = self.entity_collision_boxes_for_targets(
+            query,
+            bounds.inflated(COLLISION_EPSILON),
+            entity_collision_targets,
+        );
+
+        let min_x = block_floor(bounds.min_x - COLLISION_EPSILON) - 1;
+        let max_x = block_floor(bounds.max_x + COLLISION_EPSILON) + 1;
+        let min_y = block_floor(bounds.min_y - COLLISION_EPSILON) - 1;
+        let max_y = block_floor(bounds.max_y + COLLISION_EPSILON) + 1;
+        let min_z = block_floor(bounds.min_z - COLLISION_EPSILON) - 1;
+        let max_z = block_floor(bounds.max_z + COLLISION_EPSILON) + 1;
+        // `Cursor3D` advances X fastest, then Y, then Z.
+        for z in min_z..=max_z {
+            for y in min_y..=max_y {
+                for x in min_x..=max_x {
+                    let pos = BlockPos { x, y, z };
+                    let Some(block) = self.probe_block(pos) else {
+                        continue;
+                    };
+                    let Some(shape) =
+                        block_collision_shape_with_context(self, &block, pos, block_context)
+                    else {
+                        continue;
+                    };
+                    boxes.extend(shape.to_aabbs().into_iter().filter_map(|shape_box| {
+                        let collision_box = world_collision_box(pos, shape_box);
+                        world_collision_box_intersects_bounds(collision_box, bounds)
+                            .then_some(collision_box)
+                    }));
+                }
+            }
+        }
+        boxes
     }
 
     fn clip_locally_authoritative_collision_movement(
@@ -4623,6 +4762,19 @@ fn world_collision_box_intersects_bounds(
         && collision_box.min[1] < bounds.max_y
         && collision_box.max[2] > bounds.min_z
         && collision_box.min[2] < bounds.max_z
+}
+
+/// Vanilla `AABB.intersects(Vec3, Vec3)`: strict overlap with the endpoint
+/// bounds, not a ray/segment clip.
+pub(super) fn world_collision_box_intersects_segment_bounds(
+    collision_box: WorldCollisionBox,
+    from: [f64; 3],
+    to: [f64; 3],
+) -> bool {
+    (0..3).all(|axis| {
+        collision_box.min[axis] < from[axis].max(to[axis])
+            && collision_box.max[axis] > from[axis].min(to[axis])
+    })
 }
 
 fn world_collision_box(pos: BlockPos, shape: BlockCollisionBox) -> WorldCollisionBox {
