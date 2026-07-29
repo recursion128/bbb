@@ -71,6 +71,7 @@ const PARTICLE_DRIPPING_HONEY: &str = "minecraft:dripping_honey";
 const PARTICLE_FALLING_SPORE_BLOSSOM: &str = "minecraft:falling_spore_blossom";
 const PARTICLE_SPORE_BLOSSOM_AIR: &str = "minecraft:spore_blossom_air";
 const PARTICLE_ENCHANT: &str = "minecraft:enchant";
+const PARTICLE_END_ROD: &str = "minecraft:end_rod";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -387,6 +388,9 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:enchanting_table" => {
                 append_enchanting_table_animate_effects(world, pos, animate_random, spawns);
+            }
+            "minecraft:end_rod" => {
+                append_end_rod_animate_effect(pos, &block.block_properties, animate_random, spawns);
             }
             "minecraft:redstone_wire" => {
                 append_redstone_wire_animate_effects(
@@ -1531,6 +1535,54 @@ fn enchanting_table_bookshelf_offsets() -> impl Iterator<Item = (i32, i32, i32)>
             (-2_i32..=2).filter_map(move |x| (x.abs() == 2 || z.abs() == 2).then_some((x, y, z)))
         })
     })
+}
+
+fn append_end_rod_animate_effect(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let Some(direction) = properties
+        .get("facing")
+        .and_then(|facing| end_rod_direction(facing))
+    else {
+        return;
+    };
+    let x = f64::from(pos.x) + 0.55 - f64::from(random.next_float() * 0.1_f32);
+    let y = f64::from(pos.y) + 0.55 - f64::from(random.next_float() * 0.1_f32);
+    let z = f64::from(pos.z) + 0.55 - f64::from(random.next_float() * 0.1_f32);
+    let r = f64::from(0.4_f32 - (random.next_float() + random.next_float()) * 0.4_f32);
+    if random.next_int_bound(5) != 0 {
+        return;
+    }
+
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_END_ROD),
+        position: [
+            x + f64::from(direction[0]) * r,
+            y + f64::from(direction[1]) * r,
+            z + f64::from(direction[2]) * r,
+        ],
+        velocity: [
+            random.next_gaussian() * 0.005,
+            random.next_gaussian() * 0.005,
+            random.next_gaussian() * 0.005,
+        ],
+        always_show: false,
+    });
+}
+
+fn end_rod_direction(facing: &str) -> Option<[i32; 3]> {
+    match facing {
+        "down" => Some([0, -1, 0]),
+        "up" => Some([0, 1, 0]),
+        "north" => Some([0, 0, -1]),
+        "south" => Some([0, 0, 1]),
+        "west" => Some([-1, 0, 0]),
+        "east" => Some([1, 0, 0]),
+        _ => None,
+    }
 }
 
 fn append_redstone_wire_animate_effects(
@@ -3703,6 +3755,140 @@ mod tests {
         assert_eq!(open_spawns.len(), 1);
         assert_eq!(open_spawns[0].velocity, expected_first_velocity);
         assert_eq!(open_actual.next_long(), open_expected.next_long());
+    }
+
+    #[test]
+    fn end_rod_animate_effect_preserves_float_math_directions_and_gaussian_cache() {
+        let pos = BlockPos { x: 8, y: 32, z: -4 };
+        let seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                for _ in 0..5 {
+                    let _ = random.next_float();
+                }
+                random.next_int_bound(5) == 0
+            })
+            .expect("deterministic end-rod particle seed");
+        let facings = [
+            ("down", [0, -1, 0]),
+            ("up", [0, 1, 0]),
+            ("north", [0, 0, -1]),
+            ("south", [0, 0, 1]),
+            ("west", [-1, 0, 0]),
+            ("east", [1, 0, 0]),
+        ];
+
+        for (facing, direction) in facings {
+            let properties = BTreeMap::from([("facing".to_string(), facing.to_string())]);
+            let mut actual = LevelEventSoundRandomState::with_seed(seed);
+            let mut spawns = Vec::new();
+            append_end_rod_animate_effect(pos, &properties, &mut actual, &mut spawns);
+
+            let mut expected = LevelEventSoundRandomState::with_seed(seed);
+            let x = 8.55 - f64::from(expected.next_float() * 0.1_f32);
+            let y = 32.55 - f64::from(expected.next_float() * 0.1_f32);
+            let z = -3.45 - f64::from(expected.next_float() * 0.1_f32);
+            let r = f64::from(0.4_f32 - (expected.next_float() + expected.next_float()) * 0.4_f32);
+            assert_eq!(expected.next_int_bound(5), 0);
+            let expected_position = [
+                x + f64::from(direction[0]) * r,
+                y + f64::from(direction[1]) * r,
+                z + f64::from(direction[2]) * r,
+            ];
+            let expected_velocity = [
+                expected.next_gaussian() * 0.005,
+                expected.next_gaussian() * 0.005,
+                expected.next_gaussian() * 0.005,
+            ];
+
+            let [spawn] = spawns.as_slice() else {
+                panic!("{facing} end rod should emit one particle");
+            };
+            assert_eq!(spawn.particle.resource_id, PARTICLE_END_ROD);
+            assert_eq!(spawn.position, expected_position);
+            assert_eq!(spawn.velocity, expected_velocity);
+            assert!(!spawn.always_show);
+            assert_eq!(
+                actual.next_gaussian(),
+                expected.next_gaussian(),
+                "third Gaussian draw must leave the same cached pair value"
+            );
+            assert_eq!(actual.next_long(), expected.next_long());
+        }
+
+        let miss_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                for _ in 0..5 {
+                    let _ = random.next_float();
+                }
+                random.next_int_bound(5) != 0
+            })
+            .expect("deterministic end-rod miss seed");
+        let properties = BTreeMap::from([("facing".to_string(), "up".to_string())]);
+        let mut miss_actual = LevelEventSoundRandomState::with_seed(miss_seed);
+        let mut miss_expected = LevelEventSoundRandomState::with_seed(miss_seed);
+        let mut miss_spawns = Vec::new();
+        append_end_rod_animate_effect(pos, &properties, &mut miss_actual, &mut miss_spawns);
+        for _ in 0..5 {
+            let _ = miss_expected.next_float();
+        }
+        assert_ne!(miss_expected.next_int_bound(5), 0);
+        assert!(miss_spawns.is_empty());
+        assert_eq!(miss_actual.next_gaussian(), miss_expected.next_gaussian());
+        assert_eq!(miss_actual.next_long(), miss_expected.next_long());
+
+        let invalid = BTreeMap::from([("facing".to_string(), "invalid".to_string())]);
+        let mut invalid_actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut invalid_expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut invalid_spawns = Vec::new();
+        append_end_rod_animate_effect(pos, &invalid, &mut invalid_actual, &mut invalid_spawns);
+        assert!(invalid_spawns.is_empty());
+        assert_eq!(invalid_actual.next_long(), invalid_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_end_rod_animate_effect() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id("minecraft:end_rod", &[("facing", "east")]),
+        );
+        let seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                for _ in 0..5 {
+                    let _ = random.next_float();
+                }
+                random.next_int_bound(5) == 0
+            })
+            .expect("deterministic end-rod particle seed");
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == PARTICLE_END_ROD)
+                .count(),
+            1
+        );
     }
 
     #[test]
