@@ -17,11 +17,11 @@ use generated_26_1::{
     VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS,
     VANILLA_DEAD_BUSH_AMBIENT_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_DRY_GRASS_AMBIENT_BLOCKS,
     VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS, VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS,
-    VANILLA_FALLING_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS, VANILLA_FIRE_BLOCKS,
-    VANILLA_FIRE_FLAMMABLE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS,
-    VANILLA_FLOOR_TORCH_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
-    VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
-    VANILLA_IMPERMEABLE_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+    VANILLA_FALLING_BLOCKS, VANILLA_FALL_DAMAGE_RESETTING_BLOCKS, VANILLA_FENCE_BLOCKS,
+    VANILLA_FENCE_GATE_BLOCKS, VANILLA_FIRE_BLOCKS, VANILLA_FIRE_FLAMMABLE_BLOCKS,
+    VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS, VANILLA_FLOOR_TORCH_BLOCKS,
+    VANILLA_FLOWER_POT_BLOCKS, VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
+    VANILLA_HANGING_SIGN_BLOCKS, VANILLA_IMPERMEABLE_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
     VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES,
     VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS,
     VANILLA_NO_COLLISION_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS,
@@ -446,6 +446,10 @@ pub(crate) fn block_name_is_enchantment_power_transmitter(name: &str) -> bool {
 
 pub(crate) fn block_name_is_fire_flammable(name: &str) -> bool {
     VANILLA_FIRE_FLAMMABLE_BLOCKS.contains(&name)
+}
+
+pub(crate) fn block_name_resets_fall_damage(name: &str) -> bool {
+    VANILLA_FALL_DAMAGE_RESETTING_BLOCKS.contains(&name)
 }
 
 pub(crate) fn block_name_is_soul_fire_base(name: &str) -> bool {
@@ -885,6 +889,25 @@ mod tests {
         assert!(block_name_is_soul_fire_base("minecraft:soul_sand"));
         assert!(block_name_is_soul_fire_base("minecraft:soul_soil"));
         assert!(!block_name_is_soul_fire_base("minecraft:sand"));
+    }
+
+    #[test]
+    fn identifies_generated_fall_damage_resetting_membership() {
+        for name in [
+            "minecraft:ladder",
+            "minecraft:cave_vines_plant",
+            "minecraft:sweet_berry_bush",
+            "minecraft:cobweb",
+        ] {
+            assert!(block_name_resets_fall_damage(name), "{name}");
+        }
+        for name in [
+            "minecraft:stone",
+            "minecraft:water",
+            "minecraft:custom_ladder",
+        ] {
+            assert!(!block_name_resets_fall_damage(name), "{name}");
+        }
     }
 
     #[test]

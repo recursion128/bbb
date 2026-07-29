@@ -11,8 +11,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Emits the built-in block-state support, collision, occlusion-face,
- * replaceable, can-occlude, solid-render, redstone-conductor, and legacy
- * liquid facts cached by Vanilla.
+ * replaceable, can-occlude, solid-render, redstone-conductor, suffocating,
+ * and legacy liquid facts cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -99,6 +99,11 @@ public final class BlockStateSupportReport {
                     + (state.isSolidRender() ? 1 : 0)
                     + "\t"
                     + (state.isRedstoneConductor(
+                        EmptyBlockGetter.INSTANCE,
+                        BlockPos.ZERO
+                    ) ? 1 : 0)
+                    + "\t"
+                    + (state.isSuffocating(
                         EmptyBlockGetter.INSTANCE,
                         BlockPos.ZERO
                     ) ? 1 : 0)

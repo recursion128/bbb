@@ -2395,6 +2395,20 @@ pub(super) const VANILLA_CROP_BLOCKS: &[&str] = &[
     "minecraft:pitcher_crop",
 ];
 
+pub(super) const VANILLA_FALL_DAMAGE_RESETTING_BLOCKS: &[&str] = &[
+    "minecraft:ladder",
+    "minecraft:vine",
+    "minecraft:scaffolding",
+    "minecraft:weeping_vines",
+    "minecraft:weeping_vines_plant",
+    "minecraft:twisting_vines",
+    "minecraft:twisting_vines_plant",
+    "minecraft:cave_vines",
+    "minecraft:cave_vines_plant",
+    "minecraft:sweet_berry_bush",
+    "minecraft:cobweb",
+];
+
 pub(super) const VANILLA_ORE_BLOCKS: &[&str] = &[
     "minecraft:coal_ore",
     "minecraft:deepslate_coal_ore",
@@ -2496,6 +2510,7 @@ mod tests {
         assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);
         assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);
         assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);
+        assert_eq!(VANILLA_FALL_DAMAGE_RESETTING_BLOCKS.len(), 11);
     }
 
     #[test]
@@ -2611,6 +2626,7 @@ mod tests {
                         "VANILLA_BUTTON_BLOCKS",
                         "VANILLA_PRESSURE_PLATE_BLOCKS",
                         "VANILLA_CROP_BLOCKS",
+                        "VANILLA_FALL_DAMAGE_RESETTING_BLOCKS",
                         "VANILLA_ORE_BLOCKS",
                     ] {
                         if line.contains(name) {
@@ -2757,6 +2773,10 @@ mod tests {
                             VANILLA_PRESSURE_PLATE_BLOCKS,
                         ),
                         ("VANILLA_CROP_BLOCKS", VANILLA_CROP_BLOCKS),
+                        (
+                            "VANILLA_FALL_DAMAGE_RESETTING_BLOCKS",
+                            VANILLA_FALL_DAMAGE_RESETTING_BLOCKS,
+                        ),
                         ("VANILLA_ORE_BLOCKS", VANILLA_ORE_BLOCKS),
                     ] {
                         if resources.len() >= 4

@@ -24,7 +24,8 @@ use placement_defaults_26_1::{
 use support_facts_26_1::{
     VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_LIQUID_BITS,
     VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
-    VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+    VANILLA_BLOCK_STATE_SUFFOCATING_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
 };
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
@@ -167,8 +168,8 @@ impl VanillaBlockSupportType {
 }
 
 /// Runtime-generated support, collision, occlusion-face, replaceable,
-/// can-occlude, solid-render, redstone-conductor, and legacy liquid facts for
-/// one built-in Vanilla 26.1 block state.
+/// can-occlude, solid-render, redstone-conductor, suffocating, and legacy
+/// liquid facts for one built-in Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -179,6 +180,7 @@ pub struct VanillaBlockStateSupportFacts {
     can_occlude: bool,
     solid_render: bool,
     redstone_conductor: bool,
+    suffocating: bool,
     liquid: bool,
 }
 
@@ -201,6 +203,10 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn redstone_conductor(self) -> bool {
         self.redstone_conductor
+    }
+
+    pub const fn suffocating(self) -> bool {
+        self.suffocating
     }
 
     pub const fn liquid(self) -> bool {
@@ -249,6 +255,9 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
         redstone_conductor: VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        suffocating: VANILLA_BLOCK_STATE_SUFFOCATING_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
         liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
@@ -599,6 +608,10 @@ mod tests {
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
         assert_eq!(
+            VANILLA_BLOCK_STATE_SUFFOCATING_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
             VANILLA_BLOCK_STATE_LIQUID_BITS.len(),
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
@@ -609,6 +622,7 @@ mod tests {
         assert!(!air.can_occlude());
         assert!(!air.solid_render());
         assert!(!air.redstone_conductor());
+        assert!(!air.suffocating());
         assert!(!air.liquid());
         assert!(!air.face_sturdy(
             VanillaBlockSupportDirection::Up,
@@ -624,6 +638,7 @@ mod tests {
         assert!(stone.can_occlude());
         assert!(stone.solid_render());
         assert!(stone.redstone_conductor());
+        assert!(stone.suffocating());
         assert!(!stone.liquid());
         assert!(stone.occlusion_face_full(VanillaBlockSupportDirection::Up));
         assert!(!stone.replaceable());
@@ -661,6 +676,16 @@ mod tests {
             vanilla_block_state_support_facts(state_id("minecraft:soul_sand"))
                 .unwrap()
                 .redstone_conductor()
+        );
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:farmland"))
+                .unwrap()
+                .suffocating()
+        );
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:mangrove_roots"))
+                .unwrap()
+                .suffocating()
         );
         assert!(
             vanilla_block_state_support_facts(state_id("minecraft:water"))

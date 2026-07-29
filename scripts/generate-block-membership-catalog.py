@@ -125,6 +125,11 @@ BLOCK_TAG_CATALOGS = (
         16,
     ),
     ("VANILLA_CROP_BLOCKS", "minecraft:crops", 8),
+    (
+        "VANILLA_FALL_DAMAGE_RESETTING_BLOCKS",
+        "minecraft:fall_damage_resetting",
+        11,
+    ),
 )
 
 BLOCK_TAG_UNION_CATALOGS = (
@@ -562,6 +567,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);",
             "        assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);",
             "        assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);",
+            "        assert_eq!(VANILLA_FALL_DAMAGE_RESETTING_BLOCKS.len(), 11);",
             "    }",
             "",
             "    #[test]",
