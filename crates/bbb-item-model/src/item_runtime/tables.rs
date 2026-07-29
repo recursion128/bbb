@@ -232,6 +232,15 @@ impl NativeItemRuntime {
             .unwrap_or_default()
     }
 
+    pub fn default_component_codec_values_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, BTreeMap<i32, serde_json::Value>> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_component_codec_values_by_protocol_id)
+            .unwrap_or_default()
+    }
+
     pub fn default_dye_color_ids_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         self.registry
             .as_ref()

@@ -10,13 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+    copy_data_component_value_summary, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
     VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
 };
 use bbb_protocol::item_types::{
@@ -38,10 +33,15 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) registry_dependent_component_initializer_rules:
         PublicationShared<BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>>,
-    /// Component values resolved from the same frozen registry revision that
-    /// is currently committed in `WorldStore`.
+    /// Persistent codec inputs retained by resource id/tag until a frozen
+    /// registry generation can resolve every item prototype.
     #[serde(default)]
-    pub(crate) registry_dependent_item_defaults:
+    pub(crate) default_component_codec_values:
+        PublicationShared<BTreeMap<i32, BTreeMap<i32, serde_json::Value>>>,
+    /// Complete prototype patches resolved from the same frozen registry
+    /// revision that is currently committed in `WorldStore`.
+    #[serde(default, alias = "registry_dependent_item_defaults")]
+    pub(crate) default_item_component_patches:
         PublicationShared<BTreeMap<i32, DataComponentPatchSummary>>,
     /// Complete source-derived prototype component membership by item protocol id.
     #[serde(default, with = "publication_i32_map")]
@@ -218,18 +218,30 @@ impl ItemProfiles {
             .filter(|(item_id, rules)| *item_id >= 0 && !rules.is_empty())
             .collect::<BTreeMap<_, _>>()
             .into();
-        self.registry_dependent_item_defaults.clear();
+        self.default_item_component_patches.clear();
     }
 
-    pub(crate) fn commit_registry_dependent_item_defaults(
+    pub(crate) fn set_default_component_codec_values(
+        &mut self,
+        values: BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
+    ) {
+        self.default_component_codec_values = values
+            .into_iter()
+            .filter(|(item_id, values)| *item_id >= 0 && !values.is_empty())
+            .collect::<BTreeMap<_, _>>()
+            .into();
+        self.default_item_component_patches.clear();
+    }
+
+    pub(crate) fn commit_item_component_defaults(
         &mut self,
         defaults: BTreeMap<i32, DataComponentPatchSummary>,
     ) {
-        self.registry_dependent_item_defaults = defaults.into();
+        self.default_item_component_patches = defaults.into();
     }
 
-    pub(crate) fn clear_registry_dependent_item_defaults(&mut self) {
-        self.registry_dependent_item_defaults.clear();
+    pub(crate) fn clear_item_component_defaults(&mut self) {
+        self.default_item_component_patches.clear();
     }
 
     pub(crate) fn set_default_component_type_ids(
@@ -296,7 +308,7 @@ impl ItemProfiles {
                     .get(&item_id)
                     .is_some_and(|defaults| defaults.contains(&component_id))
                     || self
-                        .registry_dependent_item_defaults
+                        .default_item_component_patches
                         .get(&item_id)
                         .is_some_and(|defaults| defaults.added_type_ids.contains(&component_id))
             })
@@ -307,7 +319,7 @@ impl ItemProfiles {
         item_id: i32,
         patch: &DataComponentPatchSummary,
     ) -> Option<DataComponentPatchSummary> {
-        let registry_defaults = self.registry_dependent_item_defaults.get(&item_id);
+        let prototype_defaults = self.default_item_component_patches.get(&item_id);
         let default_dye_color_id = self.default_dye_color_ids.get(&item_id).copied();
         let default_potion_duration_scale_bits = self
             .default_potion_duration_scale_bits
@@ -318,7 +330,7 @@ impl ItemProfiles {
             .get(&item_id)
             .copied();
         let default_food_properties = self.default_item_food_properties.get(&item_id).copied();
-        if registry_defaults.is_none()
+        if prototype_defaults.is_none()
             && default_dye_color_id.is_none()
             && default_potion_duration_scale_bits.is_none()
             && default_use_cooldown_seconds_bits.is_none()
@@ -328,46 +340,16 @@ impl ItemProfiles {
         }
         let mut effective = patch.clone();
         let mut changed = false;
-        if let Some(defaults) = registry_defaults {
+        if let Some(defaults) = prototype_defaults {
             for component_id in &defaults.added_type_ids {
                 if patch.removed_type_ids.contains(component_id)
                     || patch.added_type_ids.contains(component_id)
                 {
                     continue;
                 }
+                copy_data_component_value_summary(*component_id, defaults, &mut effective)
+                    .expect("validated item prototype component must remain codec-copyable");
                 effective.added_type_ids.push(*component_id);
-                match *component_id {
-                    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => {
-                        effective.damage_resistant_type_registry_ids =
-                            defaults.damage_resistant_type_registry_ids.clone();
-                        effective.damage_resistant_type_tag =
-                            defaults.damage_resistant_type_tag.clone();
-                    }
-                    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
-                        effective.damage_type_id = defaults.damage_type_id;
-                    }
-                    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
-                        effective.blocks_attacks = defaults.blocks_attacks.clone();
-                    }
-                    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => {
-                        effective.instrument_id = defaults.instrument_id;
-                    }
-                    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => {
-                        effective.jukebox_song_id = defaults.jukebox_song_id;
-                    }
-                    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
-                        effective.provides_banner_pattern_registry_ids =
-                            defaults.provides_banner_pattern_registry_ids.clone();
-                        effective.provides_banner_pattern_tag =
-                            defaults.provides_banner_pattern_tag.clone();
-                    }
-                    VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
-                        effective.provides_trim_material_id = defaults.provides_trim_material_id;
-                        effective.provides_trim_material_direct =
-                            defaults.provides_trim_material_direct.clone();
-                    }
-                    _ => continue,
-                }
                 changed = true;
             }
         }
@@ -375,6 +357,8 @@ impl ItemProfiles {
         if let Some(dye_color_id) = default_dye_color_id {
             if !patch.removed_type_ids.contains(&dye_component_id)
                 && !patch.added_type_ids.contains(&dye_component_id)
+                && prototype_defaults
+                    .is_none_or(|defaults| !defaults.added_type_ids.contains(&dye_component_id))
             {
                 effective.added_type_ids.push(dye_component_id);
                 effective.dye_color_id = Some(dye_color_id);
@@ -387,6 +371,11 @@ impl ItemProfiles {
                 .removed_type_ids
                 .contains(&duration_scale_component_id)
                 && !patch.added_type_ids.contains(&duration_scale_component_id)
+                && prototype_defaults.is_none_or(|defaults| {
+                    !defaults
+                        .added_type_ids
+                        .contains(&duration_scale_component_id)
+                })
             {
                 effective.added_type_ids.push(duration_scale_component_id);
                 effective.potion_duration_scale_bits = Some(bits);
@@ -397,6 +386,9 @@ impl ItemProfiles {
         if let Some(bits) = default_use_cooldown_seconds_bits {
             if !patch.removed_type_ids.contains(&use_cooldown_component_id)
                 && !patch.added_type_ids.contains(&use_cooldown_component_id)
+                && prototype_defaults.is_none_or(|defaults| {
+                    !defaults.added_type_ids.contains(&use_cooldown_component_id)
+                })
             {
                 let seconds = f32::from_bits(bits);
                 effective.added_type_ids.push(use_cooldown_component_id);
@@ -410,6 +402,8 @@ impl ItemProfiles {
         if let Some(food) = default_food_properties {
             if !patch.removed_type_ids.contains(&food_component_id)
                 && !patch.added_type_ids.contains(&food_component_id)
+                && prototype_defaults
+                    .is_none_or(|defaults| !defaults.added_type_ids.contains(&food_component_id))
             {
                 effective.added_type_ids.push(food_component_id);
                 effective.food_nutrition = Some(food.nutrition);

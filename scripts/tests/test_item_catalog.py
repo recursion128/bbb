@@ -31,6 +31,24 @@ class ItemCatalogTests(unittest.TestCase):
             completed.stderr or completed.stdout,
         )
 
+    def test_generated_item_prototype_components_match_vanilla_runtime(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/generate-item-prototype-components.py"),
+                "--check",
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            completed.stderr or completed.stdout,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

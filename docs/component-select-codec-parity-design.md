@@ -53,11 +53,13 @@ Java value equality.
   existing persistent component decoder becomes the shared read-only bridge
   from one resource-pack `when` value to a typed component summary, and its
   registry revision remains the cache/generation identity.
-- `bbb-pack::ItemRegistryCatalog` derives exact prototype component summaries
-  from the checked-in Tree-sitter `Items.java` declaration IR and existing
-  source-derived profile values. A reverse assertion requires every declared
-  prototype membership to have an encodable value. No hand-maintained item
-  membership or holder ordinal is added.
+- `bbb-pack::ItemRegistryCatalog` derives prototype membership from the
+  checked-in Tree-sitter `Items.java` declaration IR and exact values from a
+  checked-in report produced by Vanilla's own
+  `DATA_COMPONENT_INITIALIZERS` plus each persistent codec. A reverse assertion
+  requires every independently declared membership to have exactly one
+  encodable value. No hand-maintained item membership or holder ordinal is
+  added.
 - `bbb-item-model` replaces the twelve-component enum with a descriptor-backed
   property (`type_id` plus resource id). Cases retain validated persistent
   values; selection asks the shared codec bridge for semantic equality against

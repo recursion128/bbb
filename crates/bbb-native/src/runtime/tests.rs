@@ -22964,7 +22964,7 @@ fn stonecutter_buttons_and_tooltips_follow_current_tag_and_trim_context() {
             },
         ],
     )]));
-    world.rebuild_registry_dependent_item_defaults().unwrap();
+    world.rebuild_item_component_defaults().unwrap();
     world.apply_update_recipes(stonecutter_builtin_update_recipes(2));
 
     let trim_option = stonecutter_visible_recipe_option_stacks(&world, 0)
@@ -24099,7 +24099,7 @@ fn stonecutter_world_with_builtin_slot_displays(encoded_pattern_holder_id: i32) 
             },
         ],
     )]));
-    world.rebuild_registry_dependent_item_defaults().unwrap();
+    world.rebuild_item_component_defaults().unwrap();
     let packet = stonecutter_builtin_update_recipes(encoded_pattern_holder_id);
     for recipe in &packet.stonecutter_recipes {
         world

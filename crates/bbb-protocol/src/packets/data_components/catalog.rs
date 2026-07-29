@@ -294,6 +294,32 @@ pub fn encode_data_component_value_summary(
     Ok(out.into_inner())
 }
 
+/// Copies exactly one typed component value between patch summaries through
+/// the descriptor's network codec. This keeps prototype/explicit patch
+/// composition on the same generated dispatch table as wire decode.
+pub fn copy_data_component_value_summary(
+    type_id: i32,
+    source: &DataComponentPatchSummary,
+    target: &mut DataComponentPatchSummary,
+) -> Result<()> {
+    let descriptor = vanilla_data_component_descriptor(type_id).ok_or_else(|| {
+        ProtocolError::InvalidData(format!("unknown data component type id {type_id}"))
+    })?;
+    let mut encoded = Encoder::new();
+    descriptor.encode(source, &mut encoded)?;
+    let encoded = encoded.into_inner();
+    let mut decoder = Decoder::new(&encoded);
+    descriptor.decode(&mut decoder, target)?;
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(format!(
+            "trailing {} bytes after data component {} value",
+            decoder.remaining_len(),
+            descriptor.resource_id()
+        )));
+    }
+    Ok(())
+}
+
 const fn wire_encode_handler(type_id: i32) -> Option<WireEncodeHandler> {
     match type_id {
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID => Some(encode_custom_data),
@@ -14124,5 +14150,29 @@ mod tests {
             crate::decode_nbt_summary(&encoded).unwrap(),
             Some(custom_data)
         );
+    }
+
+    #[test]
+    fn value_level_copy_delegates_to_the_descriptor_codec() {
+        let source = DataComponentPatchSummary {
+            max_stack_size: Some(16),
+            damage: Some(7),
+            ..DataComponentPatchSummary::default()
+        };
+        let mut target = DataComponentPatchSummary {
+            repair_cost: Some(3),
+            ..DataComponentPatchSummary::default()
+        };
+
+        copy_data_component_value_summary(
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+            &source,
+            &mut target,
+        )
+        .unwrap();
+
+        assert_eq!(target.max_stack_size, Some(16));
+        assert_eq!(target.repair_cost, Some(3));
+        assert_eq!(target.damage, None);
     }
 }

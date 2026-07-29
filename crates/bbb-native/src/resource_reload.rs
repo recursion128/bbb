@@ -497,6 +497,7 @@ fn upload_item_atlases(
 
 pub(crate) struct ItemRuntimeWorldDefaults {
     default_component_type_ids: BTreeMap<i32, BTreeSet<i32>>,
+    default_component_codec_values: BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
     default_dye_color_ids: BTreeMap<i32, i32>,
     default_potion_duration_scale_bits: BTreeMap<i32, u32>,
     default_use_cooldown_seconds_bits: BTreeMap<i32, u32>,
@@ -572,6 +573,7 @@ impl ItemRuntimeWorldDefaults {
         };
         Self {
             default_component_type_ids: items.default_component_type_ids_by_protocol_id(),
+            default_component_codec_values: items.default_component_codec_values_by_protocol_id(),
             default_dye_color_ids: items.default_dye_color_ids_by_protocol_id(),
             default_potion_duration_scale_bits: items
                 .default_potion_duration_scale_bits_by_protocol_id(),
@@ -633,16 +635,17 @@ impl ItemRuntimeWorldDefaults {
 
     pub(crate) fn apply(self, world: &mut WorldStore) {
         world.set_default_item_component_type_ids(self.default_component_type_ids);
+        world.set_default_item_component_codec_values(self.default_component_codec_values);
         world.set_default_item_dye_color_ids(self.default_dye_color_ids);
         world.set_default_item_potion_duration_scale_bits(self.default_potion_duration_scale_bits);
         world.set_default_item_use_cooldown_seconds_bits(self.default_use_cooldown_seconds_bits);
         world.set_registry_dependent_item_component_initializers(
             self.registry_dependent_component_initializers,
         );
-        if let Err(error) = world.rebuild_registry_dependent_item_defaults() {
+        if let Err(error) = world.rebuild_item_component_defaults() {
             tracing::debug!(
                 ?error,
-                "registry-dependent item defaults await a complete registry/tag revision"
+                "item prototype defaults await a complete registry/tag revision"
             );
         }
         world.set_default_item_max_stack_sizes(self.max_stack_sizes);

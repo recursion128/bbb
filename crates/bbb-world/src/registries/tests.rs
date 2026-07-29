@@ -2231,7 +2231,7 @@ fn component_initializer_failure_keeps_registry_revision_and_item_defaults_atomi
             tag: "minecraft:is_fire".to_string(),
         }],
     )]));
-    store.rebuild_registry_dependent_item_defaults().unwrap();
+    store.rebuild_item_component_defaults().unwrap();
     let active_revision = store.registry_access_revision();
     let stack = bbb_protocol::packets::ItemStackSummary {
         item_id: Some(7),

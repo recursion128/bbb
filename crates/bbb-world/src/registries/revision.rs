@@ -26,7 +26,7 @@ use super::game_tests::{
     TEST_INSTANCE_REGISTRY,
 };
 use super::instrument_values::{decode_instrument_with_access, INSTRUMENT_REGISTRY};
-use super::item_component_initializers::build_registry_dependent_item_defaults;
+use super::item_component_initializers::build_item_component_defaults;
 use super::jukebox_songs::{decode_jukebox_song_with_access, JUKEBOX_SONG_REGISTRY};
 use super::painting_variants::{decode_painting_variant, PAINTING_VARIANT_REGISTRY};
 use super::sound_variants::{
@@ -69,6 +69,7 @@ impl RegistryRevisionCandidate {
             i32,
             Vec<bbb_pack::RegistryDependentItemComponentInitializer>,
         >,
+        item_component_codec_values: &BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
     ) -> Result<Self, RegistryCandidateError> {
         let replaces_synchronized_contents = !pending.registries.is_empty();
         if replaces_synchronized_contents {
@@ -114,7 +115,8 @@ impl RegistryRevisionCandidate {
             }
         })?;
 
-        let item_defaults = build_registry_dependent_item_defaults(
+        let item_defaults = build_item_component_defaults(
+            item_component_codec_values,
             item_component_initializer_rules,
             registries.frozen_access(),
         )

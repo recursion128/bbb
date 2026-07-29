@@ -86,6 +86,11 @@ pub struct ItemRegistryCatalog {
     default_item_name_translation_keys: BTreeMap<String, String>,
     #[serde(default)]
     default_component_type_ids: BTreeMap<String, BTreeSet<i32>>,
+    /// Exact persistent-codec values from Vanilla's item prototype
+    /// initializers. Membership is reverse-checked against the independently
+    /// extracted `Items.java` declaration IR before this catalog is built.
+    #[serde(default)]
+    default_component_codec_values: BTreeMap<String, BTreeMap<i32, serde_json::Value>>,
     #[serde(default)]
     default_dye_color_ids: BTreeMap<String, i32>,
     /// Source-derived `DataComponents.POTION_DURATION_SCALE` prototype float bits.
@@ -281,6 +286,8 @@ use bbb_protocol::data_component_types as component_id;
 
 const GENERATED_ITEM_DECLARATIONS: &str =
     include_str!("../data/item_registry_declarations_26_1.json");
+const GENERATED_ITEM_PROTOTYPE_COMPONENTS: &str =
+    include_str!("../data/item_prototype_components_26_1.json");
 const ITEM_REGISTRY_CATALOG_OVERRIDE_PATH: &str = ".bbb/item_registry_catalog.json";
 
 #[derive(Debug, Deserialize)]
@@ -303,6 +310,27 @@ struct ItemSourceDeclaration {
     initializer: GeneratedJavaExpression,
 }
 
+#[derive(Debug, Deserialize)]
+struct ItemPrototypeComponentCatalog {
+    vanilla_version: String,
+    source: String,
+    item_resource_ids: Vec<String>,
+    component_values: Vec<ItemPrototypeComponentTypeValues>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemPrototypeComponentTypeValues {
+    type_id: i32,
+    resource_id: String,
+    values: Vec<ItemPrototypeComponentValueGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ItemPrototypeComponentValueGroup {
+    value: serde_json::Value,
+    item_id_ranges: Vec<[usize; 2]>,
+}
+
 fn insert_unique_resource_mapping(
     mappings: &mut BTreeMap<String, String>,
     key: &str,
@@ -317,6 +345,103 @@ fn insert_unique_resource_mapping(
     }
     mappings.insert(key.to_string(), value.to_string());
     Ok(())
+}
+
+fn load_default_component_codec_values(
+    resource_ids: &[String],
+    memberships: &BTreeMap<String, BTreeSet<i32>>,
+) -> Result<BTreeMap<String, BTreeMap<i32, serde_json::Value>>> {
+    let generated: ItemPrototypeComponentCatalog =
+        serde_json::from_str(GENERATED_ITEM_PROTOTYPE_COMPONENTS)?;
+    if generated.vanilla_version != crate::MC_VERSION
+        || generated.source
+            != "BuiltInRegistries.DATA_COMPONENT_INITIALIZERS with \
+                VanillaRegistries.createLookup and each persistent component codec"
+        || generated.item_resource_ids != resource_ids
+    {
+        bail!("unsupported generated item prototype component manifest");
+    }
+
+    let mut values = resource_ids
+        .iter()
+        .cloned()
+        .map(|resource_id| (resource_id, BTreeMap::new()))
+        .collect::<BTreeMap<_, _>>();
+    let mut seen_type_ids = BTreeSet::new();
+    for component in generated.component_values {
+        if !seen_type_ids.insert(component.type_id) {
+            bail!(
+                "duplicate generated item prototype component type id {}",
+                component.type_id
+            );
+        }
+        let Some(component_type) = component_id::VANILLA_DATA_COMPONENT_TYPES
+            .iter()
+            .find(|entry| entry.type_id == component.type_id)
+        else {
+            bail!(
+                "unknown generated item prototype component type id {}",
+                component.type_id
+            );
+        };
+        if !component_type.persistent || component_type.resource_id != component.resource_id {
+            bail!(
+                "generated item prototype component {} does not match persistent catalog entry {}",
+                component.resource_id,
+                component.type_id
+            );
+        }
+        for group in component.values {
+            let mut previous_end = None;
+            for [start, end] in group.item_id_ranges {
+                if start > end || end >= resource_ids.len() {
+                    bail!(
+                        "generated item prototype component {} has invalid item range {start}..={end}",
+                        component.resource_id
+                    );
+                }
+                if previous_end.is_some_and(|previous| start <= previous) {
+                    bail!(
+                        "generated item prototype component {} has unordered item ranges",
+                        component.resource_id
+                    );
+                }
+                previous_end = Some(end);
+                for resource_id in &resource_ids[start..=end] {
+                    if values
+                        .get_mut(resource_id)
+                        .expect("item prototype value map follows resource ids")
+                        .insert(component.type_id, group.value.clone())
+                        .is_some()
+                    {
+                        bail!(
+                            "item {resource_id} has duplicate generated prototype component {}",
+                            component.resource_id
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    for resource_id in resource_ids {
+        let actual = values
+            .get(resource_id)
+            .expect("item prototype value map follows resource ids")
+            .keys()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let expected = memberships.get(resource_id).ok_or_else(|| {
+            anyhow::anyhow!("missing item component membership for {resource_id}")
+        })?;
+        if &actual != expected {
+            bail!(
+                "item {resource_id} prototype codec values do not match Items.java membership: \
+                 expected {expected:?}, got {actual:?}"
+            );
+        }
+    }
+    Ok(values)
 }
 
 impl ItemRegistryCatalog {
@@ -666,6 +791,8 @@ impl ItemRegistryCatalog {
                 bail!("duplicate item registry id {resource_id}");
             }
         }
+        let default_component_codec_values =
+            load_default_component_codec_values(&resource_ids, &default_component_type_ids)?;
 
         Ok(Self {
             resource_ids,
@@ -674,6 +801,7 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_item_name_translation_keys,
             default_component_type_ids,
+            default_component_codec_values,
             default_dye_color_ids,
             default_potion_duration_scale_bits,
             default_use_cooldown_seconds_bits,
@@ -783,6 +911,28 @@ impl ItemRegistryCatalog {
                     .get(resource_id)
                     .copied()
                     .map(|item_id| (item_id, type_ids.clone()))
+            })
+            .collect()
+    }
+
+    pub fn default_component_codec_values(
+        &self,
+        resource_id: &str,
+    ) -> Option<&BTreeMap<i32, serde_json::Value>> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_component_codec_values.get(&resource_id)
+    }
+
+    pub fn default_component_codec_values_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, BTreeMap<i32, serde_json::Value>> {
+        self.default_component_codec_values
+            .iter()
+            .filter_map(|(resource_id, values)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, values.clone()))
             })
             .collect()
     }
@@ -2758,6 +2908,46 @@ mod tests {
         assert_eq!(
             catalog.default_use_cooldown_seconds("minecraft:snowball"),
             None
+        );
+    }
+
+    #[test]
+    fn generated_prototype_codec_values_reverse_cover_every_declared_membership() {
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        let values = catalog.default_component_codec_values_by_protocol_id();
+        let memberships = catalog.default_component_type_ids_by_protocol_id();
+
+        assert_eq!(values.len(), 1506);
+        assert_eq!(values.values().map(BTreeMap::len).sum::<usize>(), 18_981);
+        for item in bbb_protocol::item_types::VANILLA_ITEM_TYPES {
+            let actual = values[&item.id].keys().copied().collect::<BTreeSet<_>>();
+            assert_eq!(
+                actual, memberships[&item.id],
+                "{} prototype values diverged from Items.java membership",
+                item.resource_id
+            );
+        }
+
+        let item_values =
+            |resource_id| catalog.default_component_codec_values(resource_id).unwrap();
+        assert_eq!(
+            item_values("minecraft:stick")[&component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID],
+            serde_json::json!({"translate": "item.minecraft.stick"})
+        );
+        assert_eq!(
+            item_values("minecraft:wooden_spear")
+                [&component_id::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID],
+            serde_json::json!({"type": "stab", "duration": 13})
+        );
+        assert_eq!(
+            item_values("minecraft:diamond_chestplate")
+                [&component_id::VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID],
+            serde_json::json!({"items": "#minecraft:repairs_diamond_armor"})
+        );
+        assert_eq!(
+            item_values("minecraft:creeper_spawn_egg")
+                [&component_id::VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID],
+            serde_json::json!({"id": "minecraft:creeper"})
         );
     }
 

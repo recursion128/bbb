@@ -6384,7 +6384,7 @@ fn loom_selectable_patterns_honor_effective_defaults_overrides_and_removals() {
             },
         ],
     )]));
-    store.rebuild_registry_dependent_item_defaults().unwrap();
+    store.rebuild_item_component_defaults().unwrap();
 
     open_loom_with_pattern_stack(&mut store, item_stack(44, 1));
     assert_eq!(store.loom_selectable_banner_pattern_ids(), Some(vec![2, 0]));

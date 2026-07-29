@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap};
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::{
     data_component_types::{
-        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        copy_data_component_value_summary, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
@@ -12,8 +12,9 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
     },
     packets::{
-        BlocksAttacksSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
-        DataComponentPatchSummary, ItemDamageFunctionSummary, ItemStackSummary, SoundEventSummary,
+        validate_data_component_patch_summary, BlocksAttacksSummary, DamageReductionSummary,
+        DamageTypeHolderSetSummary, DataComponentPatchSummary, ItemDamageFunctionSummary,
+        ItemStackSummary, SoundEventSummary,
     },
 };
 
@@ -28,6 +29,59 @@ const INSTRUMENT_REGISTRY: &str = "minecraft:instrument";
 const SOUND_EVENT_REGISTRY: &str = "minecraft:sound_event";
 const TRIM_MATERIAL_REGISTRY: &str = "minecraft:trim_material";
 const BYPASSES_SHIELD_TAG: &str = "minecraft:bypasses_shield";
+
+pub(super) fn build_item_component_defaults(
+    codec_values: &BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
+    registry_dependent_rules: &BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
+    access: FrozenRegistryAccess<'_>,
+) -> Result<BTreeMap<i32, DataComponentPatchSummary>, RegistryValidationError> {
+    if codec_values.is_empty() {
+        return build_registry_dependent_item_defaults(registry_dependent_rules, access);
+    }
+    codec_values
+        .iter()
+        .map(|(item_id, values)| {
+            let mut defaults = DataComponentPatchSummary::default();
+            for (type_id, value) in values {
+                let decoded = crate::decode_persistent_component_select_value_with_registry_access(
+                    *type_id,
+                    value,
+                    Some(access),
+                )
+                .map_err(|message| prototype_codec_error(*item_id, *type_id, message))?
+                .ok_or_else(|| {
+                    prototype_codec_error(
+                        *item_id,
+                        *type_id,
+                        "persistent component has no typed projection".to_string(),
+                    )
+                })?;
+                copy_data_component_value_summary(*type_id, &decoded, &mut defaults).map_err(
+                    |error| prototype_codec_error(*item_id, *type_id, error.to_string()),
+                )?;
+                defaults.added_type_ids.push(*type_id);
+            }
+            defaults.added = defaults.added_type_ids.len();
+            validate_data_component_patch_summary(&defaults)
+                .map_err(|error| prototype_codec_error(*item_id, -1, error.to_string()))?;
+            Ok((*item_id, defaults))
+        })
+        .collect()
+}
+
+fn prototype_codec_error(
+    item_id: i32,
+    component_type_id: i32,
+    message: String,
+) -> RegistryValidationError {
+    RegistryValidationError {
+        registry: "minecraft:item".to_string(),
+        validator: "DataComponentInitializers.persistentCodec".to_string(),
+        message: format!(
+            "item {item_id} component {component_type_id} prototype decode failed: {message}"
+        ),
+    }
+}
 
 pub(super) fn build_registry_dependent_item_defaults(
     rules: &BTreeMap<i32, Vec<RegistryDependentItemComponentInitializer>>,
@@ -200,6 +254,13 @@ impl WorldStore {
         self.items.set_default_component_type_ids(defaults);
     }
 
+    pub fn set_default_item_component_codec_values(
+        &mut self,
+        values: BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
+    ) {
+        self.items.set_default_component_codec_values(values);
+    }
+
     pub fn set_default_item_dye_color_ids(&mut self, defaults: BTreeMap<i32, i32>) {
         self.items.set_default_dye_color_ids(defaults);
     }
@@ -220,14 +281,13 @@ impl WorldStore {
             .set_registry_dependent_component_initializer_rules(rules);
     }
 
-    pub fn rebuild_registry_dependent_item_defaults(
-        &mut self,
-    ) -> Result<(), RegistryValidationError> {
-        let defaults = build_registry_dependent_item_defaults(
+    pub fn rebuild_item_component_defaults(&mut self) -> Result<(), RegistryValidationError> {
+        let defaults = build_item_component_defaults(
+            &self.items.default_component_codec_values,
             &self.items.registry_dependent_component_initializer_rules,
             self.registries.frozen_access(),
         )?;
-        self.items.commit_registry_dependent_item_defaults(defaults);
+        self.items.commit_item_component_defaults(defaults);
         Ok(())
     }
 
@@ -274,10 +334,11 @@ impl WorldStore {
 mod tests {
     use std::collections::BTreeSet;
 
-    use bbb_pack::RegistryDependentItemComponentInitializer as Initializer;
+    use bbb_pack::{ItemRegistryCatalog, RegistryDependentItemComponentInitializer as Initializer};
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID,
@@ -404,9 +465,9 @@ mod tests {
             ),
         ]));
 
-        world.rebuild_registry_dependent_item_defaults().unwrap();
+        world.rebuild_item_component_defaults().unwrap();
 
-        let defaults = &world.items.registry_dependent_item_defaults;
+        let defaults = &world.items.default_item_component_patches;
         assert_eq!(defaults[&1].damage_resistant_type_registry_ids, vec![1]);
         assert_eq!(defaults[&2].jukebox_song_id, Some(1));
         assert_eq!(
@@ -437,33 +498,31 @@ mod tests {
     #[test]
     fn effective_stack_applies_defaults_without_overriding_patch_or_remove() {
         let mut world = WorldStore::new();
-        world
-            .items
-            .commit_registry_dependent_item_defaults(BTreeMap::from([(
-                7,
-                DataComponentPatchSummary {
-                    added: 2,
-                    added_type_ids: vec![
-                        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-                        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
-                    ],
-                    blocks_attacks: Some(BlocksAttacksSummary {
-                        block_delay_seconds_bits: 0,
-                        disable_cooldown_scale_bits: 1.0_f32.to_bits(),
-                        damage_reductions: Vec::new(),
-                        item_damage: ItemDamageFunctionSummary {
-                            threshold_bits: 0,
-                            base_bits: 0,
-                            factor_bits: 0,
-                        },
-                        bypassed_by: None,
-                        block_sound: None,
-                        disable_sound: None,
-                    }),
-                    jukebox_song_id: Some(9),
-                    ..DataComponentPatchSummary::default()
-                },
-            )]));
+        world.items.commit_item_component_defaults(BTreeMap::from([(
+            7,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                ],
+                blocks_attacks: Some(BlocksAttacksSummary {
+                    block_delay_seconds_bits: 0,
+                    disable_cooldown_scale_bits: 1.0_f32.to_bits(),
+                    damage_reductions: Vec::new(),
+                    item_damage: ItemDamageFunctionSummary {
+                        threshold_bits: 0,
+                        base_bits: 0,
+                        factor_bits: 0,
+                    },
+                    bypassed_by: None,
+                    block_sound: None,
+                    disable_sound: None,
+                }),
+                jukebox_song_id: Some(9),
+                ..DataComponentPatchSummary::default()
+            },
+        )]));
         let stack = ItemStackSummary {
             item_id: Some(7),
             count: 1,
@@ -508,7 +567,7 @@ mod tests {
                 damage_type: "minecraft:spear".to_string(),
             }],
         )]));
-        world.rebuild_registry_dependent_item_defaults().unwrap();
+        world.rebuild_item_component_defaults().unwrap();
 
         let stack = ItemStackSummary {
             item_id: Some(7),
@@ -562,13 +621,11 @@ mod tests {
                 damage_type: "minecraft:spear".to_string(),
             }],
         )]));
-        let error = missing
-            .rebuild_registry_dependent_item_defaults()
-            .unwrap_err();
+        let error = missing.rebuild_item_component_defaults().unwrap_err();
         assert!(error
             .message
             .contains("missing minecraft:damage_type resource"));
-        assert!(missing.items.registry_dependent_item_defaults.is_empty());
+        assert!(missing.items.default_item_component_patches.is_empty());
     }
 
     #[test]
@@ -630,16 +687,181 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn all_vanilla_item_prototypes_decode_and_patch_precedence_is_exact() {
+        let catalog = ItemRegistryCatalog::vanilla_26_1().unwrap();
+        let memberships = catalog.default_component_type_ids_by_protocol_id();
+        let codec_values = catalog.default_component_codec_values_by_protocol_id();
+        let mut world = WorldStore::new();
+        insert_referenced_dynamic_prototype_entries(&mut world, &codec_values);
+        insert_referenced_prototype_tags(&mut world, &codec_values);
+        world.set_default_item_component_type_ids(memberships.clone());
+        world.set_default_item_component_codec_values(codec_values);
+        world.rebuild_item_component_defaults().unwrap();
+
+        let defaults = &world.items.default_item_component_patches;
+        assert_eq!(defaults.len(), 1506);
+        assert_eq!(
+            defaults
+                .values()
+                .map(|patch| patch.added_type_ids.len())
+                .sum::<usize>(),
+            18_981
+        );
+        for (item_id, patch) in &**defaults {
+            assert_eq!(
+                patch
+                    .added_type_ids
+                    .iter()
+                    .copied()
+                    .collect::<BTreeSet<_>>(),
+                memberships[item_id],
+                "item {item_id} decoded prototype membership diverged"
+            );
+            validate_data_component_patch_summary(patch).unwrap_or_else(|error| {
+                panic!("item {item_id} prototype is not encodable: {error}")
+            });
+        }
+
+        let stick_id = catalog.protocol_id("minecraft:stick").unwrap();
+        let stick = ItemStackSummary {
+            item_id: Some(stick_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let effective = world.effective_item_stack(&stick);
+        assert_eq!(effective.component_patch.added, 12);
+        assert_eq!(effective.component_patch.max_stack_size, Some(64));
+        assert_eq!(
+            effective.component_patch.item_model.as_deref(),
+            Some("minecraft:stick")
+        );
+        assert_eq!(
+            effective.component_patch.item_name.as_deref(),
+            Some("item.minecraft.stick")
+        );
+
+        let explicit = ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID],
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID],
+                max_stack_size: Some(16),
+                ..DataComponentPatchSummary::default()
+            },
+            ..stick
+        };
+        let effective = world.effective_item_stack(&explicit);
+        assert_eq!(effective.component_patch.max_stack_size, Some(16));
+        assert!(!effective
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID));
+        assert!(effective.component_patch.item_name.is_none());
+        assert!(world.item_stack_has_effective_component(
+            &explicit,
+            VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID
+        ));
+        assert!(!world.item_stack_has_effective_component(
+            &explicit,
+            VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID
+        ));
+        validate_data_component_patch_summary(&effective.component_patch).unwrap();
+    }
+
+    fn insert_referenced_prototype_tags(
+        world: &mut WorldStore,
+        codec_values: &BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
+    ) {
+        let mut tags = BTreeSet::new();
+        for value in codec_values.values().flat_map(BTreeMap::values) {
+            collect_json_tags(value, &mut tags);
+        }
+        for registry in [
+            "minecraft:block",
+            "minecraft:item",
+            "minecraft:entity_type",
+            DAMAGE_TYPE_REGISTRY,
+            BANNER_PATTERN_REGISTRY,
+        ] {
+            for tag in &tags {
+                insert_tag(world, registry, tag, Vec::new());
+            }
+        }
+    }
+
+    fn insert_referenced_dynamic_prototype_entries(
+        world: &mut WorldStore,
+        codec_values: &BTreeMap<i32, BTreeMap<i32, serde_json::Value>>,
+    ) {
+        for (type_id, registry) in [
+            (
+                VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                DAMAGE_TYPE_REGISTRY,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                INSTRUMENT_REGISTRY,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+                TRIM_MATERIAL_REGISTRY,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                JUKEBOX_SONG_REGISTRY,
+            ),
+        ] {
+            let entries = codec_values
+                .values()
+                .filter_map(|values| values.get(&type_id))
+                .filter_map(serde_json::Value::as_str)
+                .map(str::to_string)
+                .collect::<BTreeSet<_>>();
+            insert_registry_owned(world, registry, entries);
+        }
+    }
+
+    fn collect_json_tags(value: &serde_json::Value, tags: &mut BTreeSet<String>) {
+        match value {
+            serde_json::Value::String(value) => {
+                if let Some(tag) = value.strip_prefix('#') {
+                    tags.insert(tag.to_string());
+                }
+            }
+            serde_json::Value::Array(values) => {
+                for value in values {
+                    collect_json_tags(value, tags);
+                }
+            }
+            serde_json::Value::Object(entries) => {
+                for value in entries.values() {
+                    collect_json_tags(value, tags);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn insert_registry(world: &mut WorldStore, registry: &str, entries: &[&str]) {
+        insert_registry_owned(
+            world,
+            registry,
+            entries.iter().map(|entry| (*entry).to_string()),
+        );
+    }
+
+    fn insert_registry_owned(
+        world: &mut WorldStore,
+        registry: &str,
+        entries: impl IntoIterator<Item = String>,
+    ) {
         world.registries.contents.insert(
             registry.to_string(),
             RegistryContentState {
                 registry: registry.to_string(),
                 packet_count: 1,
-                entries: entries
-                    .iter()
-                    .map(|entry| RegistryPacketEntry::stub(*entry))
-                    .collect(),
+                entries: entries.into_iter().map(RegistryPacketEntry::stub).collect(),
                 duplicate_entry_ids: BTreeMap::new(),
             },
         );
