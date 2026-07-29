@@ -104,6 +104,9 @@ pub(crate) fn advance_player_input_for_client_ticks(
     maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
+        for _ in 0..client_ticks {
+            world.advance_local_player_underwater_audio_tick();
+        }
         let input_state = input.local_player_input();
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
             let rotation_command_count =
@@ -165,6 +168,7 @@ fn advance_unmounted_local_player_input(
     movement_input.mouse_delta_y = 0.0;
 
     for _ in 0..client_ticks {
+        world.advance_local_player_underwater_audio_tick();
         pose =
             world.advance_local_player_input(movement_input, LOCAL_PLAYER_MOVEMENT_TICK_SECONDS)?;
     }
@@ -1720,6 +1724,46 @@ mod tests {
             riding_jump_command_data(Duration::from_millis(550).as_secs_f64()),
             90
         );
+    }
+
+    #[test]
+    fn local_player_underwater_audio_ticks_cover_unmounted_and_mounted_player_ticks() {
+        let now = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let commands = None;
+        let mut unmounted = WorldStore::new();
+        unmounted.apply_login(&protocol_play_login(99));
+        unmounted.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut unmounted,
+            &mut counters,
+            &commands,
+            now,
+            3,
+        );
+        let unmounted_ticks = unmounted.take_pending_local_player_underwater_audio_ticks();
+        assert_eq!(unmounted_ticks.len(), 3);
+        assert_eq!(unmounted_ticks[0].position, vec3(0.0, 64.0, 0.0));
+        assert!(unmounted_ticks.iter().all(|tick| !tick.underwater));
+
+        let mut mounted = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut mounted,
+            &mut counters,
+            &commands,
+            now,
+            3,
+        );
+        let mounted_ticks = mounted.take_pending_local_player_underwater_audio_ticks();
+        assert_eq!(mounted_ticks.len(), 3);
+        assert!(mounted_ticks.iter().all(|tick| !tick.underwater));
     }
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {

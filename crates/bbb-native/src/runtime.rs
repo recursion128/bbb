@@ -2796,14 +2796,19 @@ pub(crate) fn advance_simulation(
     );
     let animate_tick_profile_started_at = profiling_enabled.then(Instant::now);
     if let Some(audio_events) = audio_events.as_deref_mut() {
-        // `LocalPlayer.tick` advances biome ambient handlers after player
-        // movement. The local handler follows running player ticks.
+        // `LocalPlayer.tick` advances underwater and biome ambient handlers
+        // after player movement. Player entities keep ticking while the level
+        // is frozen, so these handlers follow raw local-player ticks.
         environment_audio.advance_for_ticks(
             world,
             net_counters.connection_generation,
-            running_ticks,
+            advanced_ticks,
             audio_events,
         );
+    } else {
+        // Audio may be disabled by a headless/test platform. Transition edges
+        // are per-tick effects and must not replay if a sink appears later.
+        world.take_pending_local_player_underwater_audio_ticks();
     }
     environment_animate.advance_for_ticks(
         world,

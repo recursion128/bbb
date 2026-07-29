@@ -612,6 +612,7 @@ impl WorldStore {
 
     pub fn clear_client_level(&mut self) {
         self.advance_client_level_generation();
+        self.reset_local_player_underwater_audio();
         self.stop_tutorial_for_missing_level();
         // Login and configuration re-entry construct a fresh
         // ClientDebugSubscriber. Unlike a dimension-only dropLevel, the new
@@ -885,6 +886,7 @@ impl WorldStore {
         game_type_id: i32,
         dimension_changed: bool,
     ) {
+        self.reset_local_player_underwater_audio();
         let keep_entity_data = data_to_keep & RESPAWN_KEEP_ENTITY_DATA != 0;
         let keep_attribute_modifiers = data_to_keep & RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
         let old_local_player = std::mem::take(&mut self.local_player);

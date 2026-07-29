@@ -390,9 +390,11 @@ fn block_ceil(value: f64) -> i32 {
 mod tests {
     use super::*;
 
+    use bbb_protocol::game_types::{VANILLA_GAME_TYPE_SPECTATOR_ID, VANILLA_GAME_TYPE_SURVIVAL_ID};
+
     use crate::{
-        ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-        PalettedContainerData, WorldDimension,
+        ChunkColumn, ChunkSection, ChunkState, LightData, LocalPlayerUnderwaterAudioTransition,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
     };
 
     const STONE_BLOCK_STATE_ID: i32 = 1;
@@ -510,6 +512,104 @@ mod tests {
             SOURCE_WATER_BLOCK_STATE_ID,
         );
         assert!(world.local_player_eye_in_water());
+    }
+
+    #[test]
+    fn local_player_underwater_audio_ticks_record_vanilla_transitions_and_seed_order() {
+        let mut world = empty_world();
+        let position = vec3(0.5, 0.0, 0.5);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position,
+            ..LocalPlayerPoseState::default()
+        });
+
+        assert!(world.advance_local_player_underwater_audio_tick());
+        assert_eq!(
+            world.take_pending_local_player_underwater_audio_ticks(),
+            vec![crate::LocalPlayerUnderwaterAudioTickState {
+                position,
+                underwater: false,
+                transition: None,
+            }]
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        let mut expected_random = world.clone();
+        let loop_seed = expected_random.next_sound_seed();
+        assert!(world.advance_local_player_underwater_audio_tick());
+        assert_eq!(
+            world.take_pending_local_player_underwater_audio_ticks(),
+            vec![crate::LocalPlayerUnderwaterAudioTickState {
+                position,
+                underwater: true,
+                transition: Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed }),
+            }]
+        );
+
+        assert!(world.advance_local_player_underwater_audio_tick());
+        assert_eq!(
+            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            None
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            crate::vanilla_air_block_state_id(),
+        );
+        assert!(world.advance_local_player_underwater_audio_tick());
+        assert_eq!(
+            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            Some(LocalPlayerUnderwaterAudioTransition::Exit)
+        );
+        assert_eq!(
+            world.next_sound_seed(),
+            expected_random.next_sound_seed(),
+            "only the unseeded underwater loop uses the client sound chain"
+        );
+    }
+
+    #[test]
+    fn local_player_underwater_audio_spectator_updates_state_without_transition_sounds() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        world.gameplay.game_type = VANILLA_GAME_TYPE_SPECTATOR_ID;
+
+        world.advance_local_player_underwater_audio_tick();
+        let spectator_enter = world.take_pending_local_player_underwater_audio_ticks();
+        assert!(spectator_enter[0].underwater);
+        assert_eq!(spectator_enter[0].transition, None);
+
+        world.gameplay.game_type = VANILLA_GAME_TYPE_SURVIVAL_ID;
+        world.advance_local_player_underwater_audio_tick();
+        assert_eq!(
+            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            None,
+            "leaving spectator mode while still underwater is not a fresh enter edge"
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            crate::vanilla_air_block_state_id(),
+        );
+        world.advance_local_player_underwater_audio_tick();
+        assert!(matches!(
+            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            Some(LocalPlayerUnderwaterAudioTransition::Exit)
+        ));
     }
 
     #[test]

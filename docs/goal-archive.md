@@ -704,3 +704,6 @@
 - **2026-07-28（天气环境效果工程闭环）**：simulation 侧现按 Vanilla
   `WeatherEffectRenderer` 的 tick seed、粒子等级、降水/高度图/碰撞面采样与
   雨声节流，向既有粒子和音频 effect sink 提交 rain/smoke 与上下方雨声。
+- **2026-07-28（本地玩家水下环境音工程闭环）**：移动前眼部水体 transition、
+  旁观者门禁、enter/exit、40-tick loop fade 与三档随机 additions 已按
+  `LocalPlayer` / `UnderwaterAmbientSound*` 顺序贯通 world 和 native audio。

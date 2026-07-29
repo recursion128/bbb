@@ -666,6 +666,85 @@ mod tests {
     }
 
     #[test]
+    fn resolves_underwater_audio_transition_loop_and_addition_commands() {
+        let assets_dir = unique_assets_dir("underwater-ambient");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "ambient.underwater.enter": {"sounds": ["ambient/underwater/enter"]},
+              "ambient.underwater.exit": {"sounds": ["ambient/underwater/exit"]},
+              "ambient.underwater.loop": {"sounds": ["ambient/underwater/loop"]},
+              "ambient.underwater.loop.additions": {"sounds": ["ambient/underwater/addition"]},
+              "ambient.underwater.loop.additions.rare": {"sounds": ["ambient/underwater/addition_rare"]},
+              "ambient.underwater.loop.additions.ultra_rare": {"sounds": ["ambient/underwater/addition_ultra_rare"]}
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+        let direct_holder = |sound_id: &str| SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(sound_id.to_string()),
+            fixed_range: None,
+        };
+
+        for sound_id in [
+            "minecraft:ambient.underwater.enter",
+            "minecraft:ambient.underwater.exit",
+        ] {
+            let command = resolver
+                .play_positioned_sound(&SoundEventState {
+                    sound: direct_holder(sound_id),
+                    source: "ambient".to_string(),
+                    position: Vec3d::default(),
+                    volume: 1.0,
+                    pitch: 1.0,
+                    seed: 1,
+                    distance_delay: false,
+                })
+                .unwrap();
+            let AudioCommand::PlayPositionedSound(command) = command else {
+                panic!("expected positioned underwater transition");
+            };
+            assert_eq!(command.category, AudioCategory::Ambient);
+            assert_eq!(command.sound.event_id, sound_id);
+        }
+
+        for sound_id in [
+            "minecraft:ambient.underwater.loop.additions",
+            "minecraft:ambient.underwater.loop.additions.rare",
+            "minecraft:ambient.underwater.loop.additions.ultra_rare",
+        ] {
+            let command = resolver
+                .play_local_sound(&LocalSoundEventState {
+                    sound: direct_holder(sound_id),
+                    source: "ambient".to_string(),
+                    volume: 1.0,
+                    pitch: 1.0,
+                    seed: 2,
+                })
+                .unwrap();
+            let AudioCommand::PlayLocalSound(command) = command else {
+                panic!("expected local underwater addition");
+            };
+            assert_eq!(command.category, AudioCategory::Ambient);
+            assert_eq!(command.sound.event_id, sound_id);
+        }
+
+        let command = resolver
+            .ambient_loop_sound(&AmbientLoopSoundState {
+                sound: ClientSoundEventHolder::Reference {
+                    resource_id: "minecraft:ambient.underwater.loop".to_string(),
+                },
+                gain: 0.5,
+                seed: 3,
+            })
+            .unwrap();
+        assert_eq!(command.sound.event_id, "minecraft:ambient.underwater.loop");
+        assert_near(command.channel_gain, 0.5);
+    }
+
+    #[test]
     fn event_reference_modifiers_wrap_resolved_file_sound() {
         let assets_dir = unique_assets_dir("event-reference-modifiers");
         let catalog = test_catalog(

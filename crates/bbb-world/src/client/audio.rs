@@ -131,6 +131,7 @@ const DEFAULT_LEVEL_EVENT_SOUND_SEED: i64 = 0;
 /// fixed seed keeps `WorldStore` serializable and deterministic.
 const SOUND_SEED_RANDOM_INITIAL_SEED: i64 = 0x5EED_50_1D_A0D_10;
 const MAX_PENDING_LOCAL_INTERACTION_SOUND_ACTIONS: usize = 8;
+const MAX_PENDING_LOCAL_PLAYER_UNDERWATER_AUDIO_TICKS: usize = 16;
 
 const fn default_true() -> bool {
     true
@@ -273,10 +274,17 @@ pub struct ClientAudioState {
     pub last_jukebox_event: Option<JukeboxLevelEventState>,
     #[serde(default)]
     pub sound_seed_random: SoundSeedRandomState,
+    /// Vanilla `Player.wasUnderwater`, retained beside the audio transition
+    /// queue because it exists solely to drive LocalPlayer ambient sounds.
+    #[serde(default)]
+    pub(crate) local_player_was_underwater: bool,
     #[serde(default)]
     pub(crate) active_tickable_entity_sounds: BTreeMap<i32, ActiveTickableEntitySound>,
     #[serde(skip)]
     pub(crate) pending_local_interaction_sound_actions: VecDeque<LocalInteractionSoundAction>,
+    #[serde(skip)]
+    pub(crate) pending_local_player_underwater_audio_ticks:
+        VecDeque<LocalPlayerUnderwaterAudioTickState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -324,6 +332,19 @@ pub enum LocalInteractionSoundEffect {
         state: SoundEntityEventState,
         position: Option<ProtocolVec3d>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalPlayerUnderwaterAudioTickState {
+    pub position: ProtocolVec3d,
+    pub underwater: bool,
+    pub transition: Option<LocalPlayerUnderwaterAudioTransition>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalPlayerUnderwaterAudioTransition {
+    Enter { loop_seed: i64 },
+    Exit,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -387,6 +408,63 @@ pub struct WorldBlockSoundProfile {
 }
 
 impl WorldStore {
+    /// Advances Vanilla `Player.updateIsUnderwater` at the pre-movement point
+    /// of one LocalPlayer tick and records the ordered audio observation for
+    /// the native ambient-sound handlers.
+    pub fn advance_local_player_underwater_audio_tick(&mut self) -> bool {
+        let Some(pose) = self.local_player.pose else {
+            return false;
+        };
+        let underwater = self.local_player_eye_in_water();
+        let was_underwater = self.client_audio.local_player_was_underwater;
+        self.client_audio.local_player_was_underwater = underwater;
+
+        let transition = if self.local_player_is_spectator() || underwater == was_underwater {
+            None
+        } else if underwater {
+            Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                loop_seed: self.next_sound_seed(),
+            })
+        } else {
+            Some(LocalPlayerUnderwaterAudioTransition::Exit)
+        };
+
+        if self
+            .client_audio
+            .pending_local_player_underwater_audio_ticks
+            .len()
+            >= MAX_PENDING_LOCAL_PLAYER_UNDERWATER_AUDIO_TICKS
+        {
+            self.client_audio
+                .pending_local_player_underwater_audio_ticks
+                .pop_front();
+        }
+        self.client_audio
+            .pending_local_player_underwater_audio_ticks
+            .push_back(LocalPlayerUnderwaterAudioTickState {
+                position: pose.position,
+                underwater,
+                transition,
+            });
+        true
+    }
+
+    pub fn take_pending_local_player_underwater_audio_ticks(
+        &mut self,
+    ) -> Vec<LocalPlayerUnderwaterAudioTickState> {
+        self.client_audio
+            .pending_local_player_underwater_audio_ticks
+            .drain(..)
+            .collect()
+    }
+
+    pub(crate) fn reset_local_player_underwater_audio(&mut self) {
+        self.client_audio.local_player_was_underwater = false;
+        self.client_audio
+            .pending_local_player_underwater_audio_ticks
+            .clear();
+    }
+
     pub(crate) fn queue_local_interaction_sound_action(
         &mut self,
         action: LocalInteractionSoundAction,
