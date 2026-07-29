@@ -212,7 +212,7 @@ use crate::{
     startup::VANILLA_UNLIMITED_FRAMERATE_LIMIT,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
-        TerrainTextureState,
+        TerrainTextureState, TerrainVisibilityContext,
     },
 };
 use bbb_protocol::attribute_types::{
@@ -4376,6 +4376,10 @@ pub(crate) fn update_renderer_from_publication(
             entity_flame_surfaces,
             entity_shadow_surfaces,
             entity_model_instances: entity_instances,
+            // Vanilla consumes the asynchronously published
+            // `SectionOcclusionGraph.currentGraph` during frame visibility
+            // extraction (`SectionOcclusionGraph.addSectionsInFrustum`).
+            terrain_visible_sections: terrain_upload.renderer_visible_sections(),
             camera_pose,
             camera_hurt_effect,
             camera_view_bob_effect,
@@ -4411,7 +4415,19 @@ pub(crate) fn update_renderer_from_publication(
     );
     let pump_scene_extracted_at = Instant::now();
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
-    maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
+    maybe_upload_decoded_terrain(
+        world,
+        renderer,
+        terrain_upload,
+        terrain_textures,
+        TerrainVisibilityContext {
+            camera_pose,
+            surface_size: [surface_size.width, surface_size.height],
+            camera_fov_degrees: camera_fov.culling_degrees,
+            render_distance_chunks,
+            smart_cull: input.debug_smart_cull_enabled(),
+        },
+    );
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);
     if let Some((level_generation, player_section_compiled_and_visible)) = terrain_upload

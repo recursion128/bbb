@@ -160,6 +160,9 @@ impl TerrainFluid {
 pub struct TerrainCell {
     pub block_state_id: i32,
     pub material: TerrainMaterialClass,
+    /// Exact loaded-empty-section input. Invisible non-air blocks remain false.
+    #[serde(default)]
+    pub is_air: bool,
     /// Exact Vanilla 26.1 `BlockState.isSolidRender()` input for `VisGraph`.
     #[serde(default)]
     pub solid_render: bool,
@@ -298,6 +301,7 @@ impl TerrainCell {
     pub const EMPTY: Self = Self {
         block_state_id: Self::NO_BLOCK_STATE_ID,
         material: TerrainMaterialClass::Empty,
+        is_air: true,
         solid_render: false,
         fluid: None,
         fluid_texture_indices: [0; 6],
@@ -321,6 +325,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            is_air: matches!(material, TerrainMaterialClass::Empty),
             solid_render: material.occludes_terrain(),
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
@@ -346,6 +351,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            is_air: matches!(material, TerrainMaterialClass::Empty),
             solid_render: material.occludes_terrain(),
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
@@ -537,7 +543,7 @@ impl TerrainFace {
         Self::East,
     ];
 
-    pub(crate) fn index(self) -> usize {
+    pub fn index(self) -> usize {
         match self {
             Self::Down => 0,
             Self::Up => 1,
@@ -548,7 +554,7 @@ impl TerrainFace {
         }
     }
 
-    pub(crate) fn opposite(self) -> Self {
+    pub fn opposite(self) -> Self {
         match self {
             Self::Down => Self::Up,
             Self::Up => Self::Down,
@@ -623,17 +629,28 @@ pub struct TerrainSectionVisibility {
     pub section_y: i32,
     visible_faces: u64,
     pub has_renderable_layers: bool,
+    pub loaded_empty: bool,
 }
 
 impl TerrainSectionVisibility {
     const FACE_COUNT: usize = 6;
     const ALL_VISIBLE_BITS: u64 = (1_u64 << (Self::FACE_COUNT * Self::FACE_COUNT)) - 1;
 
-    pub fn all_visible(section_y: i32, has_renderable_layers: bool) -> Self {
+    pub fn all_visible(section_y: i32, has_renderable_layers: bool, loaded_empty: bool) -> Self {
         Self {
             section_y,
             visible_faces: Self::ALL_VISIBLE_BITS,
             has_renderable_layers,
+            loaded_empty,
+        }
+    }
+
+    pub fn none_visible(section_y: i32, has_renderable_layers: bool, loaded_empty: bool) -> Self {
+        Self {
+            section_y,
+            visible_faces: 0,
+            has_renderable_layers,
+            loaded_empty,
         }
     }
 
@@ -975,15 +992,16 @@ fn resolve_section_visibility(
     let section_min_y = section_y.saturating_mul(16);
     let mut blocked = [false; CELL_COUNT];
     let mut opaque_count = 0;
+    let mut loaded_empty = true;
     for local_y in 0..SECTION_EDGE {
         for local_z in 0..SECTION_EDGE {
             for local_x in 0..SECTION_EDGE {
                 let snapshot_y = section_min_y
                     .saturating_add(local_y as i32)
                     .saturating_sub(target.min_y);
-                let solid_render = target
-                    .cell(local_x as i32, snapshot_y, local_z as i32)
-                    .is_some_and(|cell| cell.solid_render);
+                let cell = target.cell(local_x as i32, snapshot_y, local_z as i32);
+                let solid_render = cell.is_some_and(|cell| cell.solid_render);
+                loaded_empty &= cell.is_none_or(|cell| cell.is_air);
                 let index = section_cell_index(local_x, local_y, local_z);
                 blocked[index] = solid_render;
                 opaque_count += usize::from(solid_render);
@@ -992,12 +1010,17 @@ fn resolve_section_visibility(
     }
 
     if opaque_count < 256 {
-        return TerrainSectionVisibility::all_visible(section_y, has_renderable_layers);
+        return TerrainSectionVisibility::all_visible(
+            section_y,
+            has_renderable_layers,
+            loaded_empty,
+        );
     }
     let mut visibility = TerrainSectionVisibility {
         section_y,
         visible_faces: 0,
         has_renderable_layers,
+        loaded_empty,
     };
     if opaque_count == CELL_COUNT {
         return visibility;

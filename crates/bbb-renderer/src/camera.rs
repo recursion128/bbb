@@ -345,6 +345,13 @@ pub struct CameraFrustum {
     view_projection: Mat4,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AabbFrustumIntersection {
+    Outside,
+    Intersecting,
+    Inside,
+}
+
 impl CameraFrustum {
     pub fn from_pose(pose: CameraPose, aspect: f32, fov_degrees: f32) -> Self {
         let eye = Vec3::from_array(pose.position) + Vec3::Y * pose.eye_height;
@@ -371,12 +378,18 @@ impl CameraFrustum {
     /// Conservative AABB/frustum intersection. Invalid coordinates remain
     /// visible so malformed presentation data cannot hide a canonical entity.
     pub fn intersects_aabb(self, min: [f64; 3], max: [f64; 3]) -> bool {
+        self.classify_aabb(min, max) != AabbFrustumIntersection::Outside
+    }
+
+    /// Classifies an AABB for hierarchical traversal. Invalid coordinates are
+    /// intersecting so callers descend conservatively rather than hiding data.
+    pub fn classify_aabb(self, min: [f64; 3], max: [f64; 3]) -> AabbFrustumIntersection {
         if min
             .into_iter()
             .chain(max)
             .any(|coordinate| !coordinate.is_finite())
         {
-            return true;
+            return AabbFrustumIntersection::Intersecting;
         }
         let corners = [
             [min[0], min[1], min[2]],
@@ -398,12 +411,28 @@ impl CameraFrustum {
         let outside_top = corners.iter().all(|corner| corner.y > corner.w);
         let outside_near = corners.iter().all(|corner| corner.z < 0.0);
         let outside_far = corners.iter().all(|corner| corner.z > corner.w);
-        !(outside_left
+        if outside_left
             || outside_right
             || outside_bottom
             || outside_top
             || outside_near
-            || outside_far)
+            || outside_far
+        {
+            return AabbFrustumIntersection::Outside;
+        }
+        let fully_inside = corners.iter().all(|corner| {
+            corner.x >= -corner.w
+                && corner.x <= corner.w
+                && corner.y >= -corner.w
+                && corner.y <= corner.w
+                && corner.z >= 0.0
+                && corner.z <= corner.w
+        });
+        if fully_inside {
+            AabbFrustumIntersection::Inside
+        } else {
+            AabbFrustumIntersection::Intersecting
+        }
     }
 }
 
@@ -1200,6 +1229,14 @@ mod tests {
         assert!(!frustum.intersects_aabb([-0.5, -0.5, -5.0], [0.5, 0.5, -4.0]));
         assert!(frustum.intersects_aabb([-100.0, -1.0, 1.0], [100.0, 1.0, 2.0]));
         assert!(frustum.intersects_aabb([f64::NAN, 0.0, 0.0], [1.0; 3]));
+        assert_eq!(
+            frustum.classify_aabb([-0.1, -0.1, 4.0], [0.1, 0.1, 4.2]),
+            AabbFrustumIntersection::Inside
+        );
+        assert_eq!(
+            frustum.classify_aabb([-100.0, -1.0, 1.0], [100.0, 1.0, 2.0]),
+            AabbFrustumIntersection::Intersecting
+        );
     }
 
     #[test]

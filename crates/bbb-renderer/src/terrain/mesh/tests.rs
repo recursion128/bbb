@@ -624,6 +624,7 @@ fn cross_layers_preserve_emissive_light() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 2,
         material: TerrainMaterialClass::Cutout,
+        is_air: false,
         solid_render: false,
         fluid: None,
         fluid_texture_indices: [0; 6],
@@ -1163,6 +1164,7 @@ fn multi_box_model_skips_absent_faces() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
+        is_air: false,
         solid_render: true,
         fluid: None,
         fluid_texture_indices: [0; 6],
@@ -1239,6 +1241,7 @@ fn boxes_use_per_box_texture_and_tint() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
+        is_air: false,
         solid_render: true,
         fluid: None,
         fluid_texture_indices: [0; 6],

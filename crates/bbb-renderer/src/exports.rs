@@ -1,7 +1,7 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{
-    CameraFrustum, CameraHurtEffect, CameraPose, CameraSpinningEffect, CameraViewBobEffect,
-    ClearColor, FogEnvironment, LevelLighting, LightmapEnvironment,
+    AabbFrustumIntersection, CameraFrustum, CameraHurtEffect, CameraPose, CameraSpinningEffect,
+    CameraViewBobEffect, ClearColor, FogEnvironment, LevelLighting, LightmapEnvironment,
     VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
@@ -218,7 +218,9 @@ pub use crate::player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
     DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
-pub use crate::renderer::{Renderer, RendererFrameProfile, TerrainChunkMeshOwner};
+pub use crate::renderer::{
+    Renderer, RendererFrameProfile, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
+};
 pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
 };

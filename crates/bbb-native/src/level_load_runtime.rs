@@ -146,7 +146,7 @@ mod tests {
     fn production_checks_level_readiness_after_terrain_upload() {
         let source = include_str!("runtime.rs");
         let upload = source
-            .find("    maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);")
+            .find("    maybe_upload_decoded_terrain(")
             .expect("runtime should upload decoded terrain");
         let readiness = source
             .find("SimulationCommand::TerrainReadiness")

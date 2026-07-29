@@ -3056,6 +3056,34 @@ fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
 }
 
 #[test]
+fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
+    let runtime = include_str!("../runtime.rs");
+    assert!(
+        runtime.contains("terrain_visible_sections: terrain_upload.renderer_visible_sections(),")
+    );
+
+    let frame_source = include_str!("render_extract.rs");
+    let field = frame_source
+        .find(
+            "pub(crate) terrain_visible_sections: Option<&'a [bbb_renderer::TerrainSectionMeshOwner]>",
+        )
+        .expect("renderer frame carries terrain visibility");
+    let setter = frame_source
+        .find("renderer.set_terrain_visible_sections(frame.terrain_visible_sections);")
+        .expect("renderer frame applies terrain visibility");
+    assert!(
+        field < setter,
+        "terrain visibility must flow through the single renderer-frame commit"
+    );
+
+    let terrain_runtime = include_str!("../terrain_runtime.rs");
+    assert!(
+        !terrain_runtime.contains("renderer.set_terrain_visible_sections"),
+        "terrain runtime must publish visibility to RendererFrame instead of mutating renderer state"
+    );
+}
+
+#[test]
 fn camera_spinning_effect_ticks_and_interpolates_nausea_like_vanilla() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     attach_lightmap_local_player(&mut world, 42);

@@ -251,9 +251,9 @@ pub struct TerrainChunkMeshOwner {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct TerrainResidentMeshOwner {
-    chunk: TerrainChunkMeshOwner,
-    section_y: i32,
+pub struct TerrainSectionMeshOwner {
+    pub chunk: TerrainChunkMeshOwner,
+    pub section_y: i32,
 }
 
 pub struct Renderer {
@@ -423,7 +423,8 @@ pub struct Renderer {
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
-    terrain_section_revisions: BTreeMap<TerrainResidentMeshOwner, u64>,
+    terrain_section_revisions: BTreeMap<TerrainSectionMeshOwner, u64>,
+    terrain_visible_sections: Option<BTreeSet<TerrainSectionMeshOwner>>,
     // Cross-section back-to-front draw order (far→near) of indices into
     // `terrain_translucent`. Vanilla draws the TRANSLUCENT layer reversed so
     // sections render far→near (ChunkSectionsToRender.java:55-56, MC 26.1); we
@@ -912,7 +913,7 @@ pub struct Renderer {
 }
 
 pub(super) struct ResidentTerrainMesh {
-    owner: Option<TerrainResidentMeshOwner>,
+    owner: Option<TerrainSectionMeshOwner>,
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) index_buffer: wgpu::Buffer,
     pub(super) vertex_count: usize,
@@ -931,7 +932,7 @@ pub(super) struct ResidentTerrainMesh {
 
 fn retain_resident_terrain_sections(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    desired_sections: &BTreeSet<TerrainResidentMeshOwner>,
+    desired_sections: &BTreeSet<TerrainSectionMeshOwner>,
 ) -> usize {
     let before = meshes.len();
     meshes.retain(|mesh| {
@@ -943,7 +944,7 @@ fn retain_resident_terrain_sections(
 
 fn remove_resident_terrain_section(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    section: TerrainResidentMeshOwner,
+    section: TerrainSectionMeshOwner,
 ) -> usize {
     let before = meshes.len();
     meshes.retain(|mesh| mesh.owner != Some(section));
@@ -1902,6 +1903,7 @@ impl Renderer {
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
             terrain_section_revisions: BTreeMap::new(),
+            terrain_visible_sections: None,
             terrain_translucent_order: Vec::new(),
             terrain_source_sections: 0,
             terrain_bounds: None,
@@ -2784,6 +2786,7 @@ impl Renderer {
         self.counters.terrain_full_replacements =
             self.counters.terrain_full_replacements.saturating_add(1);
         self.terrain_section_revisions.clear();
+        self.terrain_visible_sections = None;
         self.terrain_opaque.clear();
         self.terrain_cutout.clear();
         self.terrain_translucent.clear();
@@ -2816,6 +2819,25 @@ impl Renderer {
         self.refresh_terrain_counters();
     }
 
+    /// Replaces the frame-visible terrain section owner set. `None` is the
+    /// conservative fallback used before a valid native occlusion result
+    /// exists; it keeps every resident owner visible.
+    pub fn set_terrain_visible_sections(&mut self, sections: Option<&[TerrainSectionMeshOwner]>) {
+        let unchanged = match (&self.terrain_visible_sections, sections) {
+            (None, None) => true,
+            (Some(current), Some(sections)) => {
+                current.len() == sections.len()
+                    && sections.iter().all(|owner| current.contains(owner))
+            }
+            _ => false,
+        };
+        if unchanged {
+            return;
+        }
+        self.terrain_visible_sections = sections.map(|sections| sections.iter().copied().collect());
+        self.refresh_terrain_counters();
+    }
+
     /// Synchronizes renderer-owned section/layer GPU residency by stable
     /// chunk/section owner and revision. Unchanged sections retain their exact
     /// wgpu buffers even when a sibling section in the chunk changes.
@@ -2837,12 +2859,28 @@ impl Renderer {
             .flat_map(|(chunk, revisions, _, _)| {
                 revisions
                     .iter()
-                    .map(|&(section_y, _)| TerrainResidentMeshOwner {
+                    .map(|&(section_y, _)| TerrainSectionMeshOwner {
                         chunk: *chunk,
                         section_y,
                     })
             })
             .collect();
+        let visibility_stale = self.terrain_section_revisions.len() != desired_sections.len()
+            || chunks.iter().any(|(chunk, revisions, _, _)| {
+                revisions.iter().any(|&(section_y, revision)| {
+                    self.terrain_section_revisions
+                        .get(&TerrainSectionMeshOwner {
+                            chunk: *chunk,
+                            section_y,
+                        })
+                        != Some(&revision)
+                })
+            });
+        if visibility_stale {
+            // The graph is rebuilt after worker results are integrated.
+            // Render conservatively until the next frame commits that result.
+            self.terrain_visible_sections = None;
+        }
 
         self.terrain_source_sections = source_sections;
         self.counters.queued_sections = source_sections;
@@ -2865,7 +2903,7 @@ impl Renderer {
 
         for (chunk, revisions, layers, mesh_camera_position) in chunks {
             for &(section_y, revision) in revisions {
-                let owner = TerrainResidentMeshOwner { chunk, section_y };
+                let owner = TerrainSectionMeshOwner { chunk, section_y };
                 if self.terrain_section_revisions.get(&owner) == Some(&revision) {
                     continue;
                 }
@@ -3016,7 +3054,19 @@ impl Renderer {
         } else {
             self.terrain_source_sections
         };
-        self.counters.visible_sections = self.counters.uploaded_sections;
+        self.counters.visible_sections = self.terrain_visible_sections.as_ref().map_or(
+            self.counters.uploaded_sections,
+            |visible| {
+                if self.terrain_section_revisions.is_empty() {
+                    self.counters.uploaded_sections
+                } else {
+                    self.terrain_section_revisions
+                        .keys()
+                        .filter(|owner| visible.contains(owner))
+                        .count()
+                }
+            },
+        );
         self.counters.resident_bytes = self
             .terrain_opaque
             .iter()
@@ -3083,7 +3133,7 @@ impl Renderer {
     fn create_resident_terrain_mesh(
         &mut self,
         mesh: &terrain::TerrainMesh,
-        owner: Option<TerrainResidentMeshOwner>,
+        owner: Option<TerrainSectionMeshOwner>,
         translucent_camera_position: Option<[f32; 3]>,
     ) -> Option<ResidentTerrainMesh> {
         if mesh.vertices.is_empty() || mesh.indices.is_empty() {
@@ -3138,6 +3188,14 @@ impl Renderer {
             resident_bytes,
             bounds,
             translucent_sort,
+        })
+    }
+
+    pub(super) fn terrain_mesh_is_visible(&self, mesh: &ResidentTerrainMesh) -> bool {
+        mesh.owner.is_none_or(|owner| {
+            self.terrain_visible_sections
+                .as_ref()
+                .is_none_or(|visible| visible.contains(&owner))
         })
     }
 
@@ -3493,7 +3551,7 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 mod tests {
     use super::{
         choose_format, choose_present_mode, translucent_section_draw_order, TerrainChunkMeshOwner,
-        TerrainTranslucentSortState,
+        TerrainSectionMeshOwner, TerrainTranslucentSortState,
     };
     use crate::camera::{CameraPose, TerrainBounds};
     use crate::terrain::{
@@ -3743,6 +3801,100 @@ mod tests {
         assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
         assert_eq!(renderer.counters().terrain_removed_owners, 1);
         assert_eq!(renderer.counters().terrain_full_replacements, 0);
+    }
+
+    #[test]
+    fn terrain_visibility_filter_limits_resident_section_draws_and_counter() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let layers = TerrainSectionMeshLayers {
+            opaque: vec![TerrainSectionMesh {
+                section_y: 4,
+                mesh: TerrainMesh {
+                    vertices: vec![
+                        terrain_vertex([0.0, 64.0, 0.0]),
+                        terrain_vertex([1.0, 64.0, 0.0]),
+                        terrain_vertex([0.0, 65.0, 0.0]),
+                    ],
+                    indices: vec![0, 1, 2],
+                    source_sections: 1,
+                    opaque_faces: 1,
+                    ..TerrainMesh::default()
+                },
+            }],
+            source_sections: 1,
+            ..TerrainSectionMeshLayers::default()
+        };
+        let west = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: -1,
+            chunk_z: 0,
+        };
+        let east = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: 0,
+            chunk_z: 0,
+        };
+
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [
+                (west, &[(4, 1)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
+        );
+        renderer.set_terrain_visible_sections(Some(&[TerrainSectionMeshOwner {
+            chunk: east,
+            section_y: 4,
+        }]));
+
+        assert_eq!(renderer.counters().uploaded_sections, 2);
+        assert_eq!(renderer.counters().visible_sections, 1);
+        assert_eq!(
+            renderer
+                .terrain_opaque
+                .iter()
+                .filter(|mesh| renderer.terrain_mesh_is_visible(mesh))
+                .count(),
+            1
+        );
+        assert!(renderer
+            .terrain_opaque
+            .iter()
+            .find(|mesh| mesh.owner.is_some_and(|owner| owner.chunk == east))
+            .is_some_and(|mesh| renderer.terrain_mesh_is_visible(mesh)));
+        assert!(renderer
+            .terrain_opaque
+            .iter()
+            .find(|mesh| mesh.owner.is_some_and(|owner| owner.chunk == west))
+            .is_some_and(|mesh| !renderer.terrain_mesh_is_visible(mesh)));
+
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [
+                (west, &[(4, 1)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
+        );
+        assert_eq!(
+            renderer.counters().visible_sections,
+            1,
+            "unchanged residency keeps the current graph result"
+        );
+
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [
+                (west, &[(4, 2)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
+        );
+        assert_eq!(renderer.counters().visible_sections, 2);
+        assert!(renderer
+            .terrain_opaque
+            .iter()
+            .all(|mesh| renderer.terrain_mesh_is_visible(mesh)));
     }
 
     #[test]
