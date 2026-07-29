@@ -354,6 +354,14 @@ impl SimulationInputRuntime {
                         .apply_debug_profiling_report_failed(context.world, &error);
                 }
             },
+            SimulationCommand::ServicesBlockListCompletion(completion) => {
+                if !context
+                    .services_block_lists
+                    .apply_completion(completion, context.world)
+                {
+                    tracing::debug!("ignored stale Services block-list completion");
+                }
+            }
             SimulationCommand::Control(request) => self.apply_control(request, context),
             SimulationCommand::Shutdown => self.request_shutdown(context),
         }
@@ -1933,6 +1941,8 @@ pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) net_counters: &'a mut bbb_control::NetCounters,
     pub(crate) net_commands: &'a Option<mpsc::Sender<NetCommand>>,
     pub(crate) server_resource_packs: &'a mut ServerResourcePackRuntime,
+    pub(crate) services_block_lists:
+        &'a mut crate::services_block_list_runtime::ServicesBlockListRuntime,
     pub(crate) particle_runtime: &'a mut Option<crate::particle_runtime::NativeParticleRuntime>,
     pub(crate) item_runtime: &'a mut Option<NativeItemRuntime>,
     pub(crate) terrain_textures: &'a mut crate::terrain_runtime::TerrainTextureState,

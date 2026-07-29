@@ -95,6 +95,7 @@ pub(crate) enum SimulationCommand {
         player_section_compiled_and_visible: bool,
     },
     DebugProfilingLifecycle(DebugProfilingLifecycle),
+    ServicesBlockListCompletion(crate::services_block_list_runtime::ServicesBlockListCompletion),
     Control(ControlWriteRequest),
     Shutdown,
 }

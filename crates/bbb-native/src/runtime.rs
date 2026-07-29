@@ -2462,6 +2462,7 @@ pub(crate) fn advance_simulation(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     server_resource_packs: &mut ServerResourcePackRuntime,
+    services_block_lists: &mut crate::services_block_list_runtime::ServicesBlockListRuntime,
     audio_events: Option<&mut dyn AudioEventSink>,
     particle_runtime: &mut Option<NativeParticleRuntime>,
     particle_batches: &mut dyn ParticleBatchSink,
@@ -2495,6 +2496,7 @@ pub(crate) fn advance_simulation(
     now: Instant,
 ) -> SimulationFrameState {
     let pump_started_at = Instant::now();
+    let wall_clock_epoch_seconds = wall_clock_millis_i64().div_euclid(1_000);
     let mut audio_events = audio_events;
     let input_screen_was_open = input_screen_is_open(input, world);
     let mut network_terminated = false;
@@ -2520,6 +2522,8 @@ pub(crate) fn advance_simulation(
             server_list.as_mut(),
             level_event_sound_random,
             Some(&mut network_terminated),
+            Some(services_block_lists),
+            wall_clock_epoch_seconds,
         );
     }
     world.expire_game_test_highlight_markers_at(monotonic_millis());
@@ -2573,6 +2577,7 @@ pub(crate) fn advance_simulation(
             net_counters,
             net_commands,
             server_resource_packs,
+            services_block_lists,
             particle_runtime,
             item_runtime,
             terrain_textures,
@@ -2585,6 +2590,7 @@ pub(crate) fn advance_simulation(
         },
         input_profiling_enabled,
     );
+    services_block_lists.tick(wall_clock_epoch_seconds);
     if network_terminated {
         input_runtime.request_network_terminal_shutdown(net_commands, platform_effects);
     }

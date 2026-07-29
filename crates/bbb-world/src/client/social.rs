@@ -10,11 +10,20 @@ use uuid::Uuid;
 use crate::{ChatReportEventKind, PlayerInfoProfileState, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServicesBlockListState {
+    pub generation: u64,
+    pub active: bool,
+    pub blocked_players: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerSocialState {
     #[serde(default)]
     pub discovered_names_to_uuid: BTreeMap<String, Uuid>,
     #[serde(default)]
     pub server_label: String,
+    #[serde(default)]
+    pub services_block_list: ServicesBlockListState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,15 +89,63 @@ impl WorldStore {
     }
 
     pub fn social_player_is_blocked(&self, profile_id: Uuid) -> bool {
+        if profile_id.is_nil() || Some(profile_id) == self.local_player_profile_id() {
+            return false;
+        }
         self.client_chat
             .presentation
             .blocked_players
             .binary_search(&profile_id)
             .is_ok()
+            || (self.player_social.services_block_list.active
+                && self
+                    .player_social
+                    .services_block_list
+                    .blocked_players
+                    .binary_search(&profile_id)
+                    .is_ok())
     }
 
     pub fn social_should_hide_message_from(&self, profile_id: Uuid) -> bool {
+        if profile_id.is_nil() || Some(profile_id) == self.local_player_profile_id() {
+            return false;
+        }
         self.social_player_is_hidden(profile_id) || self.social_player_is_blocked(profile_id)
+    }
+
+    pub fn services_block_list(&self) -> &ServicesBlockListState {
+        &self.player_social.services_block_list
+    }
+
+    pub fn begin_services_block_list_session(&mut self, generation: u64) {
+        self.player_social.services_block_list = ServicesBlockListState {
+            generation,
+            active: true,
+            blocked_players: Vec::new(),
+        };
+    }
+
+    pub fn stop_services_block_list_session(&mut self, generation: u64) {
+        self.player_social.services_block_list = ServicesBlockListState {
+            generation,
+            active: false,
+            blocked_players: Vec::new(),
+        };
+    }
+
+    pub fn replace_services_blocked_players(
+        &mut self,
+        generation: u64,
+        blocked_players: impl IntoIterator<Item = Uuid>,
+    ) -> bool {
+        let state = &mut self.player_social.services_block_list;
+        if !state.active || state.generation != generation {
+            return false;
+        }
+        state.blocked_players = blocked_players.into_iter().collect();
+        state.blocked_players.sort_unstable();
+        state.blocked_players.dedup();
+        true
     }
 
     pub fn hide_social_player(&mut self, profile_id: Uuid) -> bool {
@@ -365,6 +422,57 @@ mod tests {
         store.clear_client_level();
         assert_eq!(store.social_discovered_uuid("Ada"), Some(hidden_id));
         assert!(store.social_player_is_blocked(blocked_id));
+    }
+
+    #[test]
+    fn player_social_services_block_list_unions_configured_and_excludes_local_and_nil() {
+        let mut store = WorldStore::new();
+        let local_id = Uuid::from_u128(1);
+        let configured_id = Uuid::from_u128(2);
+        let services_id = Uuid::from_u128(3);
+        store.set_local_player_profile_id(local_id);
+        let mut config = store.chat_presentation_config().clone();
+        config.blocked_players = vec![configured_id, local_id, Uuid::nil()];
+        store.set_chat_presentation_config(config);
+
+        store.begin_services_block_list_session(7);
+        assert!(store.replace_services_blocked_players(
+            7,
+            [services_id, services_id, local_id, Uuid::nil()]
+        ));
+
+        assert!(store.social_player_is_blocked(configured_id));
+        assert!(store.social_player_is_blocked(services_id));
+        assert!(!store.social_player_is_blocked(local_id));
+        assert!(!store.social_player_is_blocked(Uuid::nil()));
+        assert!(store.social_should_hide_message_from(services_id));
+        assert_eq!(
+            store.services_block_list().blocked_players,
+            vec![Uuid::nil(), local_id, services_id]
+        );
+    }
+
+    #[test]
+    fn player_social_services_block_list_rejects_stale_or_inactive_replacement() {
+        let mut store = WorldStore::new();
+        let blocked_id = Uuid::from_u128(4);
+        store.begin_services_block_list_session(10);
+        assert!(!store.replace_services_blocked_players(9, [blocked_id]));
+        assert!(store.services_block_list().blocked_players.is_empty());
+
+        assert!(store.replace_services_blocked_players(10, [blocked_id]));
+        assert!(store.social_player_is_blocked(blocked_id));
+        store.stop_services_block_list_session(11);
+        assert!(!store.social_player_is_blocked(blocked_id));
+        assert!(!store.replace_services_blocked_players(10, [blocked_id]));
+        assert_eq!(
+            store.services_block_list(),
+            &ServicesBlockListState {
+                generation: 11,
+                active: false,
+                blocked_players: Vec::new(),
+            }
+        );
     }
 
     #[test]

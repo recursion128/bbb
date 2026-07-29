@@ -5,7 +5,9 @@ use std::{
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
-use bbb_net::{ConnectionOptions, NetCommand, NetEvent, ServerResourcePackPolicy};
+use bbb_net::{
+    ConnectionOptions, MinecraftUserApiClient, NetCommand, NetEvent, ServerResourcePackPolicy,
+};
 use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -521,6 +523,22 @@ fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
     Ok(options)
 }
 
+pub(crate) fn services_block_list_client_from_args(
+    args: &Args,
+) -> Result<Option<MinecraftUserApiClient>> {
+    ensure!(
+        args.profile_id.is_some() == args.access_token.is_some(),
+        "profile id and access token must be supplied together"
+    );
+    args.access_token
+        .as_ref()
+        .map(|access_token| {
+            MinecraftUserApiClient::authenticated(access_token.0.clone(), Duration::from_secs(5))
+                .map_err(Into::into)
+        })
+        .transpose()
+}
+
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
     ensure!(
         args.client_locale.len() <= 16,
@@ -797,6 +815,39 @@ mod tests {
         let options = connection_options_from_args(&authenticated).unwrap();
         assert!(options.is_authenticated());
         assert_eq!(options.profile_id, Uuid::parse_str(profile_id).unwrap());
+    }
+
+    #[test]
+    fn services_block_list_startup_client_requires_authenticated_nonempty_credentials() {
+        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(services_block_list_client_from_args(&offline)
+            .unwrap()
+            .is_none());
+
+        let authenticated = Args::try_parse_from([
+            "bbb-native",
+            "--profile-id",
+            "12345678-1234-5678-90ab-cdef12345678",
+            "--access-token",
+            "sensitive-access-token",
+        ])
+        .unwrap();
+        let client = services_block_list_client_from_args(&authenticated)
+            .unwrap()
+            .unwrap();
+        let debug = format!("{client:?}");
+        assert!(debug.contains("<redacted>"));
+        assert!(!debug.contains("sensitive-access-token"));
+
+        let empty = Args::try_parse_from([
+            "bbb-native",
+            "--profile-id",
+            "12345678-1234-5678-90ab-cdef12345678",
+            "--access-token",
+            "",
+        ])
+        .unwrap();
+        assert!(services_block_list_client_from_args(&empty).is_err());
     }
 
     #[test]

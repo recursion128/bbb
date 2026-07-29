@@ -521,7 +521,7 @@ impl WorldStore {
         };
         let name = &content[open + 1..open + 1 + close_offset];
         self.player_info.entries.iter().any(|(uuid, entry)| {
-            entry.profile.name == name && self.client_chat.presentation.hides_player(*uuid)
+            entry.profile.name == name && self.social_should_hide_message_from(*uuid)
         })
     }
 
@@ -937,7 +937,7 @@ impl WorldStore {
                     self.record_processed_player_chat_signature_state(signature.clone(), false)
                 });
             let sender = delayed.message.sender;
-            if sender.is_some_and(|sender| self.client_chat.presentation.hides_player(sender))
+            if sender.is_some_and(|sender| self.social_should_hide_message_from(sender))
                 || !self.client_chat.presentation.can_receive_player_messages()
             {
                 return ChatDeliveryOutcome {
@@ -973,7 +973,7 @@ impl WorldStore {
         let sender_hidden = delayed
             .message
             .sender
-            .is_some_and(|sender| self.client_chat.presentation.hides_player(sender));
+            .is_some_and(|sender| self.social_should_hide_message_from(sender));
         let can_show = !(delayed.only_show_secure && trust_level == ChatTrustLevelState::NotSecure)
             && !sender_hidden
             && delayed.message.filter_mask != ProtocolFilterMaskKind::FullyFiltered.as_str()
@@ -2971,10 +2971,8 @@ mod tests {
         let sender = Uuid::from_u128(63);
         let session_id = Uuid::from_u128(64);
         let private_key = install_remote_sender(&mut store, sender, session_id, 20_000);
-        store.set_chat_presentation_config(ChatPresentationConfig {
-            blocked_players: vec![sender],
-            ..ChatPresentationConfig::default()
-        });
+        store.begin_services_block_list_session(1);
+        assert!(store.replace_services_blocked_players(1, [sender]));
         let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "blocked");
 
         let outcome = store.apply_player_chat_at_times(packet, 1, 100);

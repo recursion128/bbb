@@ -37,6 +37,8 @@ pub struct ChatPresentationConfig {
     pub message_delay_millis: u64,
     #[serde(default)]
     pub hidden_players: Vec<Uuid>,
+    /// Explicit startup-configured blocked profiles. Minecraft Services
+    /// profiles are owned separately by `PlayerSocialState`.
     #[serde(default)]
     pub blocked_players: Vec<Uuid>,
 }
@@ -61,11 +63,6 @@ impl ChatPresentationConfig {
 
     pub(super) fn can_receive_system_messages(&self) -> bool {
         self.visibility != ChatVisibilityState::Hidden
-    }
-
-    pub(super) fn hides_player(&self, player: Uuid) -> bool {
-        self.hidden_players.binary_search(&player).is_ok()
-            || self.blocked_players.binary_search(&player).is_ok()
     }
 
     pub(super) fn normalize_player_sets(&mut self) {

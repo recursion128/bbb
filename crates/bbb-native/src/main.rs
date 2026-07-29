@@ -59,6 +59,7 @@ mod resource_pack_runtime;
 mod resource_reload;
 mod runtime;
 mod server_list;
+mod services_block_list_runtime;
 mod shulker_box_scene;
 mod sign_scene;
 mod simulation;
@@ -109,6 +110,7 @@ use runtime::{
     LightmapTickState,
 };
 use server_list::ServerListPersistence;
+use services_block_list_runtime::ServicesBlockListRuntime;
 use simulation::{
     commands::{DebugProfilingLifecycle, SimulationCommand, SimulationMailbox},
     effects::{
@@ -123,8 +125,8 @@ use sky_assets::load_sky_textures;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
     load_known_packs_manager, load_pack_roots, parse_args, run_probe_if_requested,
-    run_status_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
-    NetworkHandles,
+    run_status_if_requested, services_block_list_client_from_args, spawn_frame_tick,
+    start_control_api, start_network_if_requested, NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 use win_screen_resources::WinScreenResources;
@@ -422,6 +424,11 @@ fn main() -> Result<()> {
     let snapshot = control.snapshot.clone();
     let published_world = control.world.clone();
     let simulation_mailbox = SimulationMailbox::default();
+    let services_block_lists = ServicesBlockListRuntime::new(
+        runtime.handle().clone(),
+        simulation_mailbox.clone(),
+        services_block_list_client_from_args(&args)?,
+    );
     control
         .requests
         .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
@@ -819,6 +826,7 @@ fn main() -> Result<()> {
         net_events,
         net_commands,
         server_resource_packs: server_resource_pack_runtime,
+        services_block_lists,
         input,
         first_person_hand_presentation: Default::default(),
         world,

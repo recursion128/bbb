@@ -37,6 +37,7 @@ use crate::particle_runtime::{
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
 };
 use crate::server_list::ServerListPersistence;
+use crate::services_block_list_runtime::ServicesBlockListRuntime;
 use crate::simulation::effects::ParticleBatchSink;
 
 use super::control_state::apply_control_projection_event;
@@ -115,6 +116,8 @@ pub(in crate::runtime) fn drain_net_events_with_server_list(
         Some(server_list),
         &mut level_event_sound_random,
         None,
+        None,
+        0,
     )
 }
 
@@ -147,6 +150,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         None,
         level_event_sound_random,
         None,
+        None,
+        0,
     )
 }
 
@@ -165,6 +170,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     mut server_list: Option<&mut ServerListPersistence>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     mut network_terminal: Option<&mut bool>,
+    mut services_block_lists: Option<&mut ServicesBlockListRuntime>,
+    wall_clock_epoch_seconds: i64,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -174,6 +181,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             Err(mpsc::error::TryRecvError::Disconnected) => {
                 counters.connected = false;
                 *play_session_encrypted = false;
+                if let Some(services_block_lists) = services_block_lists.as_deref_mut() {
+                    services_block_lists.observe_net_event(
+                        &NetEvent::Disconnected { reason: None },
+                        world,
+                        wall_clock_epoch_seconds,
+                    );
+                }
                 if let Some(terminal) = network_terminal.as_deref_mut() {
                     *terminal = true;
                 }
@@ -194,6 +208,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             sampler.record_net_event(&event);
         }
         apply_control_projection_event(&event, counters);
+        if let Some(services_block_lists) = services_block_lists.as_deref_mut() {
+            services_block_lists.observe_net_event(&event, world, wall_clock_epoch_seconds);
+        }
 
         match event {
             NetEvent::PlayerPosition { update } => {
@@ -1735,6 +1752,8 @@ mod terminal_tests {
             None,
             &mut random,
             None,
+            None,
+            0,
         );
         assert_eq!(drained, 2);
         assert!(play_session_encrypted);
@@ -1757,6 +1776,8 @@ mod terminal_tests {
                 None,
                 &mut random,
                 None,
+                None,
+                0,
             ),
             1
         );
@@ -1780,6 +1801,8 @@ mod terminal_tests {
                 None,
                 &mut random,
                 None,
+                None,
+                0,
             ),
             0
         );
@@ -1813,6 +1836,8 @@ mod terminal_tests {
             None,
             &mut random,
             Some(&mut terminal),
+            None,
+            0,
         );
 
         assert_eq!(drained, 2);

@@ -59,6 +59,7 @@ pub(crate) struct SimulationCore {
     pub(crate) net_events: Option<mpsc::Receiver<NetEvent>>,
     pub(crate) net_commands: Option<mpsc::Sender<NetCommand>>,
     pub(crate) server_resource_packs: ServerResourcePackRuntime,
+    pub(crate) services_block_lists: crate::services_block_list_runtime::ServicesBlockListRuntime,
     pub(crate) input: ClientInputState,
     pub(crate) first_person_hand_presentation: FirstPersonHandPresentation,
     pub(crate) world: WorldStore,
@@ -166,6 +167,7 @@ impl SimulationCore {
             &mut self.net_events,
             &self.net_commands,
             &mut self.server_resource_packs,
+            &mut self.services_block_lists,
             self.audio_enabled
                 .then_some(&mut audio_effects as &mut dyn AudioEventSink),
             &mut self.particle_runtime,
