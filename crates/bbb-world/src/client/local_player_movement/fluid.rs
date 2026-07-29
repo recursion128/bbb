@@ -10,6 +10,7 @@ pub(super) fn advance_local_player_fluid_physics_step(
     step_seconds: f64,
     initial_fluid_contact: EntityFluidContactState,
     stuck_multiplier: Option<EntityVec3>,
+    entity_collision_targets: &[crate::EntityPickTargetState],
 ) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
     let input = local_player_effective_movement_input(world, input);
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
@@ -73,18 +74,22 @@ pub(super) fn advance_local_player_fluid_physics_step(
         requested_z *= stuck.z;
         pose.delta_movement = ProtocolVec3d::default();
     }
-    if should_back_off_from_edge(world, pose, input, requested_y) {
-        (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
+    if should_back_off_from_edge(world, pose, input, requested_y, entity_collision_targets) {
+        (requested_x, requested_z) = back_off_from_edge(
+            world,
+            pose,
+            requested_x,
+            requested_z,
+            entity_collision_targets,
+        );
     }
     let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
-    let movement = clip_local_player_movement(
-        world,
+    let movement = world.clip_local_player_collision_movement(
         pose,
-        requested_x,
-        requested_y,
-        requested_z,
-        pose.on_ground,
-        collision_context,
+        [requested_x, requested_y, requested_z],
+        LOCAL_PLAYER_STEP_HEIGHT as f32,
+        input.sneak,
+        entity_collision_targets,
     );
     let step_move = EntityBlockEffectMovement::clipped(
         EntityVec3 {
@@ -93,9 +98,9 @@ pub(super) fn advance_local_player_fluid_physics_step(
             z: pose.position.z,
         },
         EntityVec3 {
-            x: pose.position.x + movement.x,
-            y: pose.position.y + movement.y,
-            z: pose.position.z + movement.z,
+            x: pose.position.x + movement[0],
+            y: pose.position.y + movement[1],
+            z: pose.position.z + movement[2],
         },
         EntityVec3 {
             x: requested_x,
@@ -103,14 +108,14 @@ pub(super) fn advance_local_player_fluid_physics_step(
             z: requested_z,
         },
     );
-    pose.position.x += movement.x;
-    pose.position.y += movement.y;
-    pose.position.z += movement.z;
+    pose.position.x += movement[0];
+    pose.position.y += movement[1];
+    pose.position.z += movement[2];
 
-    let x_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON;
-    let z_collision = (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let x_collision = local_player_horizontal_axis_collided(requested_x, movement[0]);
+    let z_collision = local_player_horizontal_axis_collided(requested_z, movement[2]);
     let horizontal_collision = x_collision || z_collision;
-    let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
+    let vertical_collision = movement[1] != requested_y;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
     let bounced_on_slime = vertical_collision
@@ -121,7 +126,7 @@ pub(super) fn advance_local_player_fluid_physics_step(
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
     } else {
-        next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
+        next_local_player_fall_distance(pose.fall_distance, movement[1], on_ground)
     };
 
     // `Entity.move` tail on the carried delta: zero the collided horizontal

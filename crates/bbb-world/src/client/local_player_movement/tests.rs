@@ -9,11 +9,11 @@ use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
     EntityDataValueKind as ProtocolEntityDataValueKind, GameEvent as ProtocolGameEvent,
-    ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
-    PlayerHealth as ProtocolPlayerHealth, SetEntityData as ProtocolSetEntityData,
-    SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
-    UseEffectsSummary as ProtocolUseEffectsSummary,
+    InitializeBorder as ProtocolInitializeBorder, ItemStackSummary as ProtocolItemStackSummary,
+    MobEffectFlags as ProtocolMobEffectFlags, PlayerHealth as ProtocolPlayerHealth,
+    SetEntityData as ProtocolSetEntityData, SetPassengers as ProtocolSetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, UpdateAttributes as ProtocolUpdateAttributes,
+    UpdateMobEffect as ProtocolUpdateMobEffect, UseEffectsSummary as ProtocolUseEffectsSummary,
 };
 use uuid::Uuid;
 
@@ -21,6 +21,7 @@ use crate::{
     entities::{
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
     },
     BlockPos, ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
     PalettedContainerData, WorldCardinalLighting, WorldDimension, WorldLevelInfo,
@@ -235,6 +236,295 @@ fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
     );
     assert!(pose.horizontal_collision);
     assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_movement_collides_with_collidable_entity_bounds() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645678),
+        entity_type_id: VANILLA_ENTITY_TYPE_SHULKER_ID,
+        position: vec3(0.5, 1.0, 2.0),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        delta_movement: vec3(0.0, 0.0, 2.0),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.x, 0.5, 0.000001);
+    assert_f64_near(pose.position.z, 1.7, 0.000001);
+    assert!(pose.horizontal_collision);
+    assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_fluid_movement_uses_shared_entity_collision_ordering() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645681),
+        entity_type_id: VANILLA_ENTITY_TYPE_SHULKER_ID,
+        position: vec3(0.5, 1.0, 2.0),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.5),
+        delta_movement: vec3(0.0, 0.0, 2.0),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.z, 1.7, 0.000001);
+    assert!(pose.horizontal_collision);
+    assert_f64_near(pose.delta_movement.z, 0.0, 0.000001);
+}
+
+#[test]
+fn local_player_movement_collides_with_world_border() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_initialize_border(ProtocolInitializeBorder {
+        new_center_x: 0.0,
+        new_center_z: 0.0,
+        old_size: 4.0,
+        new_size: 4.0,
+        lerp_time: 0,
+        new_absolute_max_size: 29_999_984,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(1.5, 1.0, 0.5),
+        delta_movement: vec3(0.5, 0.0, 0.0),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.x, 1.7, 0.000001);
+    assert_f64_near(pose.position.z, 0.5, 0.000001);
+    assert!(pose.horizontal_collision);
+    assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_collision_excludes_same_root_vehicle() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645682),
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        position: vec3(0.5, 1.0, 1.5),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 456,
+        passenger_ids: vec![123],
+    }));
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let entity_collision_targets = world.entities.client_movement_entity_collision_targets();
+
+    assert_eq!(
+        world.clip_local_player_collision_movement(
+            pose,
+            [0.0, 0.0, 2.0],
+            LOCAL_PLAYER_STEP_HEIGHT as f32,
+            false,
+            &entity_collision_targets,
+        ),
+        [0.0, 0.0, 2.0]
+    );
+}
+
+#[test]
+fn local_player_pose_fit_includes_collidable_entities() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645679),
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        position: vec3(0.5, 2.5, 0.5),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        sneaking: true,
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    let entity_collision_targets = world.entities.client_movement_entity_collision_targets();
+    let standing_pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    assert!(!world.local_player_collision_bounds_are_free(
+        standing_pose,
+        LocalPlayerBounds::for_pose(standing_pose),
+        false,
+        &entity_collision_targets,
+    ));
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert!(pose.sneaking);
+    assert!(!pose.swimming);
+    assert_f64_near(pose.body_height(), 1.5, 0.000001);
+}
+
+#[test]
+fn local_player_sneak_edge_probe_accepts_entity_support() {
+    let mut world = single_floor_block_world();
+    attach_local_player_entity(&mut world, 123);
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645680),
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        position: vec3(0.5, 0.4, 1.5),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    let entity_collision_targets = world.entities.client_movement_entity_collision_targets();
+
+    assert!(!local_player_can_fall_at_least(
+        &world,
+        pose,
+        0.0,
+        1.0,
+        LOCAL_PLAYER_STEP_HEIGHT,
+        &entity_collision_targets,
+    ));
+    assert_eq!(
+        back_off_from_edge(&world, pose, 0.0, 1.0, &entity_collision_targets),
+        (0.0, 1.0)
+    );
+}
+
+#[test]
+fn local_player_spectator_no_physics_crosses_blocks_and_world_border() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    set_test_block(&mut world, 0, 1, 2, GRASS_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 2, GRASS_BLOCK_STATE_ID);
+    world.apply_initialize_border(ProtocolInitializeBorder {
+        new_center_x: 0.0,
+        new_center_z: 0.0,
+        old_size: 4.0,
+        new_size: 4.0,
+        lerp_time: 0,
+        new_absolute_max_size: 29_999_984,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        delta_movement: vec3(0.0, 0.0, 3.0),
+        on_ground: true,
+        horizontal_collision: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.z, 3.5, 0.000001);
+    assert!(!pose.on_ground);
+    assert!(!pose.horizontal_collision);
+}
+
+#[test]
+fn local_player_horizontal_collision_uses_vanilla_equal_threshold() {
+    assert!(!local_player_horizontal_axis_collided(9.999e-6, 0.0));
+    assert!(local_player_horizontal_axis_collided(
+        VANILLA_HORIZONTAL_COLLISION_EPSILON,
+        0.0
+    ));
+    assert!(local_player_horizontal_axis_collided(1.0, 0.0));
 }
 
 #[test]
@@ -5872,6 +6162,44 @@ fn local_player_fall_flying_level_glide_uses_lift_and_forward_conversion() {
     assert_f64_near(pose.position.y, 8.0 - 0.018 * 0.98, 0.000001);
     assert_f64_near(pose.position.z, 0.5 + 0.0018 * 0.99, 0.000001);
     assert!(!pose.on_ground);
+}
+
+#[test]
+fn local_player_fall_flying_uses_shared_entity_collision_ordering() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    world.apply_add_entity(ProtocolAddEntity {
+        id: 456,
+        uuid: Uuid::from_u128(0x45645678456456784564567845645683),
+        entity_type_id: VANILLA_ENTITY_TYPE_SHULKER_ID,
+        position: vec3(0.5, 1.0, 2.0),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.5),
+        delta_movement: vec3(0.0, 0.0, 2.0),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert_f64_near(pose.position.z, 1.7, 0.000001);
+    assert!(pose.horizontal_collision);
+    assert_f64_near(pose.delta_movement.z, 0.0, 0.000001);
 }
 
 #[test]

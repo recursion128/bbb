@@ -746,3 +746,7 @@
 - **2026-07-29（Vanilla 体素碰撞形状最终闭环）**：runtime probe 将 29,873 个
   方块状态压缩为精确静态 AABB palette，179 个动态状态保留给位置、方块实体与
   `CollisionContext` 路径；全状态投影与 716 个 override 注册实例均有反向门禁。
+- **2026-07-29（本地玩家碰撞 owner 工程闭环）**：普通、流体、滑翔与窄
+  Riptide 位移现共享 block/entity/world-border AABB 收集、精确轴裁剪与踏步候选；
+  姿态/潜行边缘查询、同载具过滤、旁观者 noPhysics 和碰撞标志阈值同步对齐，
+  合同见 `docs/archive/local-player-collision-owner-closeout-design.md`。

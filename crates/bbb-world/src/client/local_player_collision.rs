@@ -1576,10 +1576,6 @@ impl WorldStore {
             std::array::from_fn(|axis| position[axis] + relative_min[axis]),
             std::array::from_fn(|axis| position[axis] + relative_max[axis]),
         );
-        let swept = bounds
-            .swept_axis(CollisionAxis::X, movement[0])
-            .swept_axis(CollisionAxis::Y, movement[1])
-            .swept_axis(CollisionAxis::Z, movement[2]);
         let block_context = LocalPlayerCollisionContext::for_remote_entity(
             bounds.min_y,
             self.entities.is_descending(entity_id).unwrap_or(false),
@@ -1594,6 +1590,97 @@ impl WorldStore {
             bounds,
             block_context,
         };
+        self.clip_locally_authoritative_collision_movement(
+            query,
+            movement,
+            max_up_step,
+            on_ground,
+            entity_collision_targets,
+        )
+    }
+
+    /// Local-player `Entity.move`: use the live player collision context while
+    /// sharing exact block, entity, border, axis-order, and step-candidate
+    /// resolution with the other locally authoritative movement paths.
+    pub(super) fn clip_local_player_collision_movement(
+        &self,
+        pose: LocalPlayerPoseState,
+        movement: [f64; 3],
+        max_up_step: f32,
+        descending: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> [f64; 3] {
+        let position = [pose.position.x, pose.position.y, pose.position.z];
+        if !particle_collision_input_is_finite(position, movement)
+            || self.local_player_is_spectator()
+        {
+            return movement;
+        }
+        let bounds = LocalPlayerBounds::for_pose(pose);
+        let block_context = LocalPlayerCollisionContext::for_pose(self, pose, descending);
+        let query = EntityCollisionQuery {
+            source_entity_id: self.local_player_id,
+            source_entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            source_position: position,
+            bounds,
+            block_context,
+        };
+        self.clip_locally_authoritative_collision_movement(
+            query,
+            movement,
+            max_up_step,
+            pose.on_ground,
+            entity_collision_targets,
+        )
+    }
+
+    /// `CollisionGetter.noCollision(player, bounds)` for pose selection and
+    /// sneak-edge support probes. The query retains the current player as its
+    /// collision context/source while testing the supplied prospective box.
+    pub(super) fn local_player_collision_bounds_are_free(
+        &self,
+        pose: LocalPlayerPoseState,
+        bounds: LocalPlayerBounds,
+        descending: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> bool {
+        if self.local_player_is_spectator() {
+            return true;
+        }
+        let block_context = LocalPlayerCollisionContext::for_pose(self, pose, descending);
+        if local_player_collides_with_context(self, bounds, block_context) {
+            return false;
+        }
+        let query = EntityCollisionQuery {
+            source_entity_id: self.local_player_id,
+            source_entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            source_position: [pose.position.x, pose.position.y, pose.position.z],
+            bounds,
+            block_context,
+        };
+        self.entity_collision_boxes_for_targets(
+            query,
+            bounds.inflated(COLLISION_EPSILON),
+            entity_collision_targets,
+        )
+        .is_empty()
+            && self.world_border_collision_boxes(query, bounds).is_empty()
+    }
+
+    fn clip_locally_authoritative_collision_movement(
+        &self,
+        query: EntityCollisionQuery,
+        movement: [f64; 3],
+        max_up_step: f32,
+        on_ground: bool,
+        entity_collision_targets: &[crate::EntityPickTargetState],
+    ) -> [f64; 3] {
+        let bounds = query.bounds;
+        let block_context = query.block_context;
+        let swept = bounds
+            .swept_axis(CollisionAxis::X, movement[0])
+            .swept_axis(CollisionAxis::Y, movement[1])
+            .swept_axis(CollisionAxis::Z, movement[2]);
         let entity_colliders = self.entity_collision_boxes_for_targets(
             query,
             swept.inflated(COLLISION_EPSILON),
