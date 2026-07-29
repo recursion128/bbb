@@ -432,7 +432,11 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::super::schema::VANILLA_ENTITY_TYPE_METADATA_26_1;
+    use super::super::schema::{
+        vanilla_entity_metadata_type_client_movement_policy,
+        vanilla_entity_metadata_type_is_projectile, VanillaEntityClientMovementPolicy,
+        VANILLA_ENTITY_TYPE_METADATA_26_1,
+    };
     use super::*;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
@@ -473,6 +477,39 @@ mod tests {
             !vanilla_entity_metadata_type_is_projectile(entry.id) && entry.serializable
         }));
         assert!(!is_vanilla_saved_projectile_type(-1));
+    }
+
+    #[test]
+    fn every_projectile_runtime_class_has_an_explicit_client_movement_owner() {
+        let mut projectile_count = 0;
+        for entry in VANILLA_ENTITY_TYPES {
+            if !vanilla_entity_metadata_type_is_projectile(entry.id) {
+                continue;
+            }
+            projectile_count += 1;
+            let policy = vanilla_entity_metadata_type_client_movement_policy(entry.id)
+                .expect("fixed EntityType has a generated movement policy");
+            assert!(
+                matches!(
+                    policy,
+                    VanillaEntityClientMovementPolicy::ThrowableProjectile
+                        | VanillaEntityClientMovementPolicy::ThrownExperienceBottle
+                        | VanillaEntityClientMovementPolicy::ThrownPotion
+                        | VanillaEntityClientMovementPolicy::AbstractArrow
+                        | VanillaEntityClientMovementPolicy::HurtingProjectile
+                        | VanillaEntityClientMovementPolicy::WindCharge
+                        | VanillaEntityClientMovementPolicy::DragonFireball
+                        | VanillaEntityClientMovementPolicy::WitherSkull
+                        | VanillaEntityClientMovementPolicy::LlamaSpit
+                        | VanillaEntityClientMovementPolicy::FireworkRocket
+                        | VanillaEntityClientMovementPolicy::FishingHook
+                        | VanillaEntityClientMovementPolicy::ShulkerBullet
+                ),
+                "{} unexpectedly uses {policy:?}",
+                entry.resource_id
+            );
+        }
+        assert_eq!(projectile_count, 19);
     }
 
     #[test]

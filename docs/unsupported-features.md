@@ -300,19 +300,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   the entity's client-local `random.nextInt(40) + 180` timeout, so a remote
   client's particular phase is not reconstructable and bbb must not fabricate
   a seed.
-- **Local TNT movement / fuse countdown simulation.** The current slice consumes
-  world entity position and synced/default fuse metadata but does not advance
-  the Vanilla `PrimedTnt.tick` client presentation path.
-- **Client projectile presentation movement / gravity / drag tick parity.** Canonical
-  `Projectile` parent lifecycle now consumes the current transform, delta, real
-  type bounds, and owner mount graph, but bbb does not yet advance every remote
-  projectile subclass between server movement packets. This covers only the
-  motion/interpolation/trail/lifecycle work performed by the multiplayer client;
-  hit resolution, damage, explosions, block changes, and authoritative removal
-  remain server-owned. `LeftOwner` is sticky
-  and exact once the canonical projectile box separates; completing per-subclass
-  client motion will make that separation occur at vanilla's intermediate tick
-  instead of the next authoritative transform update.
 - **Minecart spawner animated block-entity display content.** Classified as
   block-entity special renderer presentation.
 

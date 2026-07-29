@@ -878,7 +878,9 @@ impl EntityStore {
                     fishing_hook_entity_hit = update.3;
                     fishing_hook_collision_delta = update.4;
                 }
-                _ => {}
+                VanillaEntityClientMovementPolicy::FallingBlock
+                | VanillaEntityClientMovementPolicy::PrimedTnt => {}
+                _ => unreachable!("filtered client movement collision policy"),
             }
             let requested_movement = if movement_skipped {
                 EntityVec3::default()
@@ -1840,7 +1842,8 @@ impl EntityStore {
                 VanillaEntityClientMovementPolicy::FireworkRocket => {
                     self.advance_firework_rocket(entity, entity_id, entity_type_id, &mut effects);
                 }
-                _ => {}
+                VanillaEntityClientMovementPolicy::ServerSynchronized
+                | VanillaEntityClientMovementPolicy::Vehicle => {}
             }
             if record_block_effect_movements
                 && vanilla_entity_metadata_type_block_effect_tick_policy(entity_type_id)
