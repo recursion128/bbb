@@ -177,6 +177,10 @@ impl LevelEventSoundRandomState {
         (high + low) as f64 / RANDOM_DOUBLE_DIVISOR
     }
 
+    pub fn next_boolean(&mut self) -> bool {
+        self.next_bits(1) != 0
+    }
+
     pub fn next_long(&mut self) -> i64 {
         let high = (self.next_bits(32) as i32 as i64) << 32;
         let low = self.next_bits(32) as i32 as i64;
@@ -4047,6 +4051,12 @@ mod tests {
         assert_eq!(random.next_int_bound(3), 1);
         assert_eq!(random.next_int_bound(4), 0);
         assert_eq!(random.next_int_bound(5), 2);
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(
+            (0..8).map(|_| random.next_boolean()).collect::<Vec<_>>(),
+            vec![true, true, false, true, true, false, true, false]
+        );
 
         let mut random = LevelEventSoundRandomState::with_seed(0);
         assert_close_f64(random.next_gaussian(), 0.802_533_063_739_030_5);

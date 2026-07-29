@@ -100,6 +100,12 @@ enum RedstoneWireSide {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RedstoneTorchAnimateKind {
+    Floor,
+    Wall,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct RedstoneWireDirection {
     property: &'static str,
     step: [i32; 3],
@@ -391,6 +397,32 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:end_rod" => {
                 append_end_rod_animate_effect(pos, &block.block_properties, animate_random, spawns);
+            }
+            "minecraft:redstone_torch" => {
+                append_redstone_torch_animate_effect(
+                    pos,
+                    &block.block_properties,
+                    RedstoneTorchAnimateKind::Floor,
+                    animate_random,
+                    spawns,
+                );
+            }
+            "minecraft:redstone_wall_torch" => {
+                append_redstone_torch_animate_effect(
+                    pos,
+                    &block.block_properties,
+                    RedstoneTorchAnimateKind::Wall,
+                    animate_random,
+                    spawns,
+                );
+            }
+            "minecraft:repeater" => {
+                append_repeater_animate_effect(
+                    pos,
+                    &block.block_properties,
+                    animate_random,
+                    spawns,
+                );
             }
             "minecraft:redstone_wire" => {
                 append_redstone_wire_animate_effects(
@@ -1545,7 +1577,7 @@ fn append_end_rod_animate_effect(
 ) {
     let Some(direction) = properties
         .get("facing")
-        .and_then(|facing| end_rod_direction(facing))
+        .and_then(|facing| block_state_direction(facing))
     else {
         return;
     };
@@ -1573,7 +1605,7 @@ fn append_end_rod_animate_effect(
     });
 }
 
-fn end_rod_direction(facing: &str) -> Option<[i32; 3]> {
+fn block_state_direction(facing: &str) -> Option<[i32; 3]> {
     match facing {
         "down" => Some([0, -1, 0]),
         "up" => Some([0, 1, 0]),
@@ -1583,6 +1615,97 @@ fn end_rod_direction(facing: &str) -> Option<[i32; 3]> {
         "east" => Some([1, 0, 0]),
         _ => None,
     }
+}
+
+fn append_redstone_torch_animate_effect(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    kind: RedstoneTorchAnimateKind,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("lit").map(String::as_str) != Some("true") {
+        return;
+    }
+    let direction = match kind {
+        RedstoneTorchAnimateKind::Floor => [0, 0, 0],
+        RedstoneTorchAnimateKind::Wall => {
+            let Some([x, 0, z]) = properties
+                .get("facing")
+                .and_then(|facing| block_state_direction(facing))
+            else {
+                return;
+            };
+            [-x, 0, -z]
+        }
+    };
+    spawns.push(EnvironmentParticleSpawn {
+        particle: dust_client_particle_options(REDSTONE_PARTICLE_COLOR, 1.0),
+        position: [
+            f64::from(pos.x)
+                + 0.5
+                + (random.next_double() - 0.5) * 0.2
+                + 0.27 * f64::from(direction[0]),
+            f64::from(pos.y)
+                + 0.7
+                + (random.next_double() - 0.5) * 0.2
+                + if kind == RedstoneTorchAnimateKind::Wall {
+                    0.22
+                } else {
+                    0.0
+                },
+            f64::from(pos.z)
+                + 0.5
+                + (random.next_double() - 0.5) * 0.2
+                + 0.27 * f64::from(direction[2]),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+}
+
+fn append_repeater_animate_effect(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if properties.get("powered").map(String::as_str) != Some("true") {
+        return;
+    }
+    let Some([step_x, 0, step_z]) = properties
+        .get("facing")
+        .and_then(|facing| block_state_direction(facing))
+    else {
+        return;
+    };
+    let Some(delay) = properties
+        .get("delay")
+        .and_then(|delay| delay.parse::<i32>().ok())
+        .filter(|delay| (1..=4).contains(delay))
+    else {
+        return;
+    };
+
+    let x = f64::from(pos.x) + 0.5 + (random.next_double() - 0.5) * 0.2;
+    let y = f64::from(pos.y) + 0.4 + (random.next_double() - 0.5) * 0.2;
+    let z = f64::from(pos.z) + 0.5 + (random.next_double() - 0.5) * 0.2;
+    let mut offset = -5.0_f32;
+    if random.next_boolean() {
+        offset = (delay * 2 - 1) as f32;
+    }
+    offset /= 16.0;
+
+    spawns.push(EnvironmentParticleSpawn {
+        particle: dust_client_particle_options(REDSTONE_PARTICLE_COLOR, 1.0),
+        position: [
+            x + f64::from(offset * step_x as f32),
+            y,
+            z + f64::from(offset * step_z as f32),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
 }
 
 fn append_redstone_wire_animate_effects(
@@ -3889,6 +4012,219 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn redstone_torch_animate_effects_preserve_lit_direction_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: -4 };
+        let lit = BTreeMap::from([("lit".to_string(), "true".to_string())]);
+        let mut floor_actual = LevelEventSoundRandomState::with_seed(42);
+        let mut floor_expected = LevelEventSoundRandomState::with_seed(42);
+        let mut floor_spawns = Vec::new();
+
+        append_redstone_torch_animate_effect(
+            pos,
+            &lit,
+            RedstoneTorchAnimateKind::Floor,
+            &mut floor_actual,
+            &mut floor_spawns,
+        );
+
+        let floor_position = [
+            8.5 + (floor_expected.next_double() - 0.5) * 0.2,
+            32.7 + (floor_expected.next_double() - 0.5) * 0.2,
+            -3.5 + (floor_expected.next_double() - 0.5) * 0.2,
+        ];
+        let [floor_spawn] = floor_spawns.as_slice() else {
+            panic!("lit floor redstone torch should emit one particle");
+        };
+        assert_eq!(floor_spawn.position, floor_position);
+        assert_eq!(
+            floor_spawn.particle.option,
+            bbb_world::ClientParticleOptionValue::Dust {
+                color: REDSTONE_PARTICLE_COLOR,
+                scale_bits: 1.0_f32.to_bits(),
+            }
+        );
+        assert_eq!(floor_spawn.velocity, [0.0; 3]);
+        assert!(!floor_spawn.always_show);
+        assert_eq!(floor_actual.next_long(), floor_expected.next_long());
+
+        for (facing, opposite) in [
+            ("north", [0, 0, 1]),
+            ("south", [0, 0, -1]),
+            ("west", [1, 0, 0]),
+            ("east", [-1, 0, 0]),
+        ] {
+            let properties = BTreeMap::from([
+                ("facing".to_string(), facing.to_string()),
+                ("lit".to_string(), "true".to_string()),
+            ]);
+            let mut actual = LevelEventSoundRandomState::with_seed(42);
+            let mut expected = LevelEventSoundRandomState::with_seed(42);
+            let mut spawns = Vec::new();
+            append_redstone_torch_animate_effect(
+                pos,
+                &properties,
+                RedstoneTorchAnimateKind::Wall,
+                &mut actual,
+                &mut spawns,
+            );
+            let expected_position = [
+                8.5 + (expected.next_double() - 0.5) * 0.2 + 0.27 * f64::from(opposite[0]),
+                32.7 + (expected.next_double() - 0.5) * 0.2 + 0.22,
+                -3.5 + (expected.next_double() - 0.5) * 0.2 + 0.27 * f64::from(opposite[2]),
+            ];
+            assert_eq!(spawns.len(), 1);
+            assert_eq!(spawns[0].position, expected_position, "{facing}");
+            assert_eq!(actual.next_long(), expected.next_long(), "{facing}");
+        }
+
+        let unlit = BTreeMap::from([("lit".to_string(), "false".to_string())]);
+        let mut unlit_actual = LevelEventSoundRandomState::with_seed(42);
+        let mut unlit_expected = LevelEventSoundRandomState::with_seed(42);
+        let mut unlit_spawns = Vec::new();
+        append_redstone_torch_animate_effect(
+            pos,
+            &unlit,
+            RedstoneTorchAnimateKind::Floor,
+            &mut unlit_actual,
+            &mut unlit_spawns,
+        );
+        assert!(unlit_spawns.is_empty());
+        assert_eq!(unlit_actual.next_long(), unlit_expected.next_long());
+    }
+
+    #[test]
+    fn repeater_animate_effect_preserves_delay_boolean_branch_and_float_offset() {
+        let pos = BlockPos { x: 8, y: 32, z: -4 };
+        let branch_seeds = [false, true].map(|expected_branch| {
+            (
+                expected_branch,
+                (0..100_000)
+                    .find(|seed| {
+                        let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                        for _ in 0..3 {
+                            let _ = random.next_double();
+                        }
+                        random.next_boolean() == expected_branch
+                    })
+                    .expect("deterministic repeater boolean branch seed"),
+            )
+        });
+
+        for (expected_branch, seed) in branch_seeds {
+            for (facing, delay, direction) in [
+                ("north", 1, [0, 0, -1]),
+                ("east", 2, [1, 0, 0]),
+                ("south", 3, [0, 0, 1]),
+                ("west", 4, [-1, 0, 0]),
+            ] {
+                let properties = BTreeMap::from([
+                    ("delay".to_string(), delay.to_string()),
+                    ("facing".to_string(), facing.to_string()),
+                    ("powered".to_string(), "true".to_string()),
+                ]);
+                let mut actual = LevelEventSoundRandomState::with_seed(seed);
+                let mut expected = LevelEventSoundRandomState::with_seed(seed);
+                let mut spawns = Vec::new();
+                append_repeater_animate_effect(pos, &properties, &mut actual, &mut spawns);
+
+                let x = 8.5 + (expected.next_double() - 0.5) * 0.2;
+                let y = 32.4 + (expected.next_double() - 0.5) * 0.2;
+                let z = -3.5 + (expected.next_double() - 0.5) * 0.2;
+                assert_eq!(expected.next_boolean(), expected_branch);
+                let offset = if expected_branch {
+                    (delay * 2 - 1) as f32
+                } else {
+                    -5.0
+                } / 16.0;
+                let expected_position = [
+                    x + f64::from(offset * direction[0] as f32),
+                    y,
+                    z + f64::from(offset * direction[2] as f32),
+                ];
+                assert_eq!(spawns.len(), 1);
+                assert_eq!(
+                    spawns[0].position, expected_position,
+                    "{facing} delay {delay} branch {expected_branch}"
+                );
+                assert_eq!(actual.next_long(), expected.next_long());
+            }
+        }
+
+        let unpowered = BTreeMap::from([
+            ("delay".to_string(), "4".to_string()),
+            ("facing".to_string(), "north".to_string()),
+            ("powered".to_string(), "false".to_string()),
+        ]);
+        let mut unpowered_actual = LevelEventSoundRandomState::with_seed(42);
+        let mut unpowered_expected = LevelEventSoundRandomState::with_seed(42);
+        let mut unpowered_spawns = Vec::new();
+        append_repeater_animate_effect(
+            pos,
+            &unpowered,
+            &mut unpowered_actual,
+            &mut unpowered_spawns,
+        );
+        assert!(unpowered_spawns.is_empty());
+        assert_eq!(unpowered_actual.next_long(), unpowered_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_active_redstone_component_animate_effects() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        for (name, properties) in [
+            ("minecraft:redstone_torch", vec![("lit", "true")]),
+            (
+                "minecraft:redstone_wall_torch",
+                vec![("facing", "north"), ("lit", "true")],
+            ),
+            (
+                "minecraft:repeater",
+                vec![
+                    ("delay", "4"),
+                    ("facing", "east"),
+                    ("locked", "false"),
+                    ("powered", "true"),
+                ],
+            ),
+        ] {
+            let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+            let pos =
+                sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+            let mut world = world_with_ambient_particles();
+            set_block(&mut world, pos, block_state_id(name, &properties));
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut animate_random = LevelEventSoundRandomState::with_seed(42);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+
+            runtime.do_animate_tick(
+                &mut world,
+                center,
+                NEAR_SAMPLE_RADIUS,
+                0,
+                &mut animate_random,
+                &mut audio,
+                &mut spawns,
+            );
+
+            assert_eq!(
+                spawns
+                    .iter()
+                    .filter(|spawn| {
+                        spawn.particle.option
+                            == bbb_world::ClientParticleOptionValue::Dust {
+                                color: REDSTONE_PARTICLE_COLOR,
+                                scale_bits: 1.0_f32.to_bits(),
+                            }
+                    })
+                    .count(),
+                1,
+                "{name}"
+            );
+        }
     }
 
     #[test]
