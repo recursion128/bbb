@@ -84,8 +84,13 @@ impl WorldStore {
             && self.local_using_item_item_id() == Some(VANILLA_ITEM_SPYGLASS_ID)
     }
 
-    pub fn local_player_camera_fov_modifier(&self, first_person: bool, effect_scale: f32) -> f32 {
-        let mut modifier = self.local_player_abilities_fov_modifier();
+    pub fn local_player_camera_fov_modifier(
+        &self,
+        first_person: bool,
+        effect_scale: f32,
+        effective_sprinting: bool,
+    ) -> f32 {
+        let mut modifier = self.local_player_abilities_fov_modifier(effective_sprinting);
         if self.local_player().interaction.using_item {
             if first_person && self.local_player_is_scoping() {
                 return 0.1;
@@ -243,8 +248,8 @@ mod tests {
 
         world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
         assert!(world.local_player_is_scoping());
-        assert!((world.local_player_camera_fov_modifier(true, 1.0) - 0.1).abs() < 1.0e-6);
-        assert!((world.local_player_camera_fov_modifier(false, 1.0) - 1.0).abs() < 1.0e-6);
+        assert!((world.local_player_camera_fov_modifier(true, 1.0, false) - 0.1).abs() < 1.0e-6);
+        assert!((world.local_player_camera_fov_modifier(false, 1.0, false) - 1.0).abs() < 1.0e-6);
         assert!(world.release_local_using_item());
         assert!(!world.local_player_is_scoping());
         assert_eq!(
@@ -256,8 +261,10 @@ mod tests {
         world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
         assert!(!world.local_player_is_scoping());
         world.advance_local_using_item_ticks(10);
-        assert!((world.local_player_camera_fov_modifier(true, 1.0) - 0.9625).abs() < 1.0e-6);
-        assert!((world.local_player_camera_fov_modifier(true, 0.5) - 0.98125).abs() < 1.0e-6);
+        assert!((world.local_player_camera_fov_modifier(true, 1.0, false) - 0.9625).abs() < 1.0e-6);
+        assert!(
+            (world.local_player_camera_fov_modifier(true, 0.5, false) - 0.98125).abs() < 1.0e-6
+        );
         world.take_local_using_item();
 
         set_inventory_item(&mut world, 0, VANILLA_ITEM_SPYGLASS_ID);

@@ -67,6 +67,7 @@ pub(crate) struct SimulationCore {
     pub(crate) play_session_encrypted: bool,
     pub(crate) client_animation_ticks: ClientAnimationTickState,
     pub(crate) camera_fov_ticks: CameraFovTickState,
+    pub(crate) camera_eye_height_ticks: crate::camera_pose::CameraEyeHeightTickState,
     pub(crate) camera_spinning_ticks: crate::runtime::CameraSpinningEffectTickState,
     pub(crate) hud_debug_network_sampler: HudDebugNetworkSampler,
     pub(crate) hud_debug_tps_sampler: HudDebugTpsSampler,
@@ -179,6 +180,7 @@ impl SimulationCore {
             &mut self.play_session_encrypted,
             &mut self.client_animation_ticks,
             &mut self.camera_fov_ticks,
+            &mut self.camera_eye_height_ticks,
             &mut self.camera_spinning_ticks,
             &mut self.hud_debug_network_sampler,
             &mut self.hud_debug_tps_sampler,
@@ -263,6 +265,7 @@ impl SimulationCore {
             renderer_counters: &self.renderer_counters,
             audio_counters: &self.audio_counters,
             camera_fov_ticks: self.camera_fov_ticks,
+            camera_eye_height_ticks: self.camera_eye_height_ticks,
             hud_debug_network_sampler: &self.hud_debug_network_sampler,
             hud_debug_tps_sampler: &self.hud_debug_tps_sampler,
             code_of_conduct_accepted: self

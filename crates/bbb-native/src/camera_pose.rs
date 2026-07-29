@@ -1,6 +1,33 @@
 use bbb_renderer::{CameraHurtEffect, CameraPose};
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct CameraEyeHeightTickState {
+    eye_height_old: f32,
+    eye_height: f32,
+}
+
+impl CameraEyeHeightTickState {
+    /// Vanilla `Camera.tick`: retain the previous endpoint and ease halfway
+    /// toward the active camera entity's current pose eye height.
+    pub(crate) fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
+        for _ in 0..ticks {
+            let Some(target) =
+                camera_pose_from_world_at_partial_tick(world, 1.0).map(|pose| pose.eye_height)
+            else {
+                continue;
+            };
+            self.eye_height_old = self.eye_height;
+            self.eye_height += (target - self.eye_height) * 0.5;
+        }
+    }
+
+    pub(crate) fn frame_eye_height(self, partial_ticks: f32) -> f32 {
+        let partial_ticks = partial_ticks.clamp(0.0, 1.0);
+        self.eye_height_old + (self.eye_height - self.eye_height_old) * partial_ticks
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum CameraType {
     #[default]
@@ -70,8 +97,10 @@ pub(crate) fn render_camera_pose_from_world_at_partial_tick(
     world: &WorldStore,
     partial_ticks: f32,
     camera_type: CameraType,
+    eye_height_ticks: CameraEyeHeightTickState,
 ) -> Option<CameraPose> {
-    let camera_pose = camera_pose_from_world_at_partial_tick(world, partial_ticks)?;
+    let mut camera_pose = camera_pose_from_world_at_partial_tick(world, partial_ticks)?;
+    camera_pose.eye_height = eye_height_ticks.frame_eye_height(partial_ticks);
     if camera_type.is_first_person() {
         return Some(camera_pose);
     }
@@ -264,5 +293,53 @@ mod tests {
         assert_eq!(rays[0].1, [-0.1, 8.9, -4.1]);
         assert_eq!(clipped.position, [0.0, 9.0, -2.0]);
         assert_eq!(rays[1].1[2] - rays[1].0[2], -2.0);
+    }
+
+    #[test]
+    fn camera_eye_height_tick_state_eases_and_interpolates_pose_transitions() {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let mut eye_height = CameraEyeHeightTickState::default();
+
+        eye_height.advance_for_world(1, &world);
+        assert!((eye_height.frame_eye_height(0.0) - 0.0).abs() < 1.0e-6);
+        assert!((eye_height.frame_eye_height(0.5) - 0.405).abs() < 1.0e-6);
+        assert!((eye_height.frame_eye_height(1.0) - 0.81).abs() < 1.0e-6);
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            swimming: true,
+            ..LocalPlayerPoseState::default()
+        });
+        eye_height.advance_for_world(1, &world);
+        assert!((eye_height.frame_eye_height(0.0) - 0.81).abs() < 1.0e-6);
+        assert!((eye_height.frame_eye_height(0.5) - 0.7075).abs() < 1.0e-6);
+        assert!((eye_height.frame_eye_height(1.0) - 0.605).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn camera_eye_height_is_applied_before_detached_camera_offset() {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let mut eye_height = CameraEyeHeightTickState::default();
+        eye_height.advance_for_world(1, &world);
+
+        let first_person = render_camera_pose_from_world_at_partial_tick(
+            &world,
+            1.0,
+            CameraType::FirstPerson,
+            eye_height,
+        )
+        .unwrap();
+        assert!((first_person.eye_height - 0.81).abs() < 1.0e-6);
+
+        let third_person = render_camera_pose_from_world_at_partial_tick(
+            &world,
+            1.0,
+            CameraType::ThirdPersonBack,
+            eye_height,
+        )
+        .unwrap();
+        assert!((third_person.position[1] - 0.81).abs() < 1.0e-6);
+        assert_eq!(third_person.eye_height, 0.0);
     }
 }

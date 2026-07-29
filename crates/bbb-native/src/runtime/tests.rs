@@ -2793,16 +2793,16 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     let mut fov = CameraFovTickState::default();
 
     assert!((fov.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
-    fov.advance_for_world(1, &world, true);
+    fov.advance_for_world(1, &world, true, false);
     assert!((fov.unmodified_fov_degrees(0.0) - 70.0).abs() < 1.0e-6);
     assert!((fov.unmodified_fov_degrees(1.0) - 61.25).abs() < 1.0e-6);
 
-    fov.advance_for_world(1, &world, true);
+    fov.advance_for_world(1, &world, true, false);
     assert!((fov.unmodified_fov_degrees(1.0) - 56.875).abs() < 1.0e-6);
 
     world.apply_add_entity(test_add_entity(100, VANILLA_ENTITY_TYPE_CREEPER_ID));
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 100 }));
-    fov.advance_for_world(1, &world, true);
+    fov.advance_for_world(1, &world, true, false);
     assert!((fov.unmodified_fov_degrees(1.0) - 63.4375).abs() < 1.0e-6);
 
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 42 }));
@@ -2821,7 +2821,7 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     world.advance_local_using_item_ticks(10);
     let mut bow_fov = CameraFovTickState::default();
-    bow_fov.advance_for_world(1, &world, true);
+    bow_fov.advance_for_world(1, &world, true, false);
     assert!((bow_fov.unmodified_fov_degrees(1.0) - 68.6875).abs() < 1.0e-6);
 
     world.take_local_using_item();
@@ -2831,8 +2831,37 @@ fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     });
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     let mut spyglass_fov = CameraFovTickState::default();
-    spyglass_fov.advance_for_world(1, &world, true);
+    spyglass_fov.advance_for_world(1, &world, true, false);
     assert!((spyglass_fov.unmodified_fov_degrees(1.0) - 38.5).abs() < 1.0e-6);
+}
+
+#[test]
+fn camera_fov_tick_state_includes_effective_sprint_for_ground_and_swim_sprint() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: false,
+        flying: false,
+        can_fly: false,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+
+    let mut ground_sprint = CameraFovTickState::default();
+    ground_sprint.advance_for_world(1, &world, true, true);
+    assert!((ground_sprint.unmodified_fov_degrees(1.0) - 75.25).abs() < 1.0e-6);
+
+    world.set_local_player_pose(LocalPlayerPoseState {
+        swimming: true,
+        ..LocalPlayerPoseState::default()
+    });
+    let mut swim_sprint = CameraFovTickState::default();
+    swim_sprint.advance_for_world(1, &world, true, true);
+    assert!((swim_sprint.unmodified_fov_degrees(1.0) - 75.25).abs() < 1.0e-6);
+
+    let mut not_sprinting = CameraFovTickState::default();
+    not_sprinting.advance_for_world(1, &world, true, false);
+    assert!((not_sprinting.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
 }
 
 #[test]
@@ -2845,7 +2874,7 @@ fn camera_perspective_third_person_suppresses_first_person_item_fov() {
     world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
     let mut fov = CameraFovTickState::default();
 
-    fov.advance_for_world(1, &world, false);
+    fov.advance_for_world(1, &world, false, false);
 
     assert!((fov.unmodified_fov_degrees(1.0) - 70.0).abs() < 1.0e-6);
 }
@@ -2862,7 +2891,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
         walking_speed: 0.2,
     });
     let mut fov = CameraFovTickState::new(90.0, 1.0);
-    fov.advance_for_world(1, &world, true);
+    fov.advance_for_world(1, &world, true, false);
 
     let frame = fov.frame_for_world(&world, None, None, [1920, 1080], 1.0);
 
@@ -2871,7 +2900,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
     assert_eq!(frame.hud_degrees, 70.0);
 
     let mut disabled_effects = CameraFovTickState::new(90.0, 0.0);
-    disabled_effects.advance_for_world(1, &world, true);
+    disabled_effects.advance_for_world(1, &world, true, false);
     let frame = disabled_effects.frame_for_world(&world, None, None, [1920, 1080], 1.0);
     assert_eq!(frame.world_degrees, 90.0);
     assert_eq!(frame.culling_degrees, 90.0);

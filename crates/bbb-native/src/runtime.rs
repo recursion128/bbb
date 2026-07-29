@@ -101,6 +101,7 @@ use crate::{
         camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
         camera_pose_from_world, camera_pose_from_world_at_partial_tick,
         current_post_effect_id_from_world, render_camera_pose_from_world_at_partial_tick,
+        CameraEyeHeightTickState,
     },
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
@@ -2479,6 +2480,7 @@ pub(crate) fn advance_simulation(
     play_session_encrypted: &mut bool,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
+    camera_eye_height_ticks: &mut CameraEyeHeightTickState,
     camera_spinning_ticks: &mut CameraSpinningEffectTickState,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
@@ -2666,6 +2668,7 @@ pub(crate) fn advance_simulation(
     }
     let running_ticks = client_animation_ticks.last_running_level_ticks;
     let entity_partial_tick = client_animation_ticks.entity_partial_tick();
+    camera_eye_height_ticks.advance_for_world(advanced_ticks, world);
     world.advance_tickable_entity_sounds(advanced_ticks, running_ticks);
     // Vanilla `Minecraft.tick` calls `Gui.tick` once per client tick (Gui.java:
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
@@ -2697,6 +2700,7 @@ pub(crate) fn advance_simulation(
         world,
         entity_partial_tick,
         input.camera_type(),
+        *camera_eye_height_ticks,
     );
     let clear_color = clear_color_for_world_at_camera_with_water_vision(
         world,
@@ -2860,6 +2864,7 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
         world,
         input.camera_type().is_first_person(),
+        world.local_player_effective_sprint(input.local_player_input()),
     );
     camera_spinning_ticks.advance_for_world(advanced_ticks, world);
     push_simulation_profile_section(
@@ -3107,6 +3112,7 @@ pub(crate) fn update_renderer_from_publication(
     let net_counters = &publication.net_counters;
     let audio_status = &publication.audio_counters;
     let camera_fov_ticks = publication.camera_fov_ticks;
+    let camera_eye_height_ticks = publication.camera_eye_height_ticks;
     let hud_debug_network_sampler = &publication.hud_debug_network_sampler;
     let hud_debug_tps_sampler = &publication.hud_debug_tps_sampler;
     let render_started_at = Instant::now();
@@ -3690,11 +3696,16 @@ pub(crate) fn update_renderer_from_publication(
     let enchantment_keys = item_registry_keys.enchantments;
     let damage_type_keys = item_registry_keys.damage_types;
     let attribute_keys = item_registry_keys.attributes;
-    let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);
+    let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick)
+        .map(|mut pose| {
+            pose.eye_height = camera_eye_height_ticks.frame_eye_height(entity_partial_tick);
+            pose
+        });
     let camera_pose = render_camera_pose_from_world_at_partial_tick(
         world,
         entity_partial_tick,
         input.camera_type(),
+        camera_eye_height_ticks,
     );
     let first_person_camera_pose = input
         .camera_type()
@@ -3704,8 +3715,13 @@ pub(crate) fn update_renderer_from_publication(
     hud_render_runtime.vignette.advance(
         advanced_ticks,
         world,
-        render_camera_pose_from_world_at_partial_tick(world, 1.0, input.camera_type())
-            .map(camera_eye_position),
+        render_camera_pose_from_world_at_partial_tick(
+            world,
+            1.0,
+            input.camera_type(),
+            camera_eye_height_ticks,
+        )
+        .map(camera_eye_position),
     );
     let hud_vignette = hud_render_runtime.vignette.extract(
         world,

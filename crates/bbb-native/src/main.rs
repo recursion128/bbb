@@ -75,6 +75,7 @@ use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
+use camera_pose::CameraEyeHeightTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayRenderer;
 use debug_entries::{DebugScreenEntryId, DebugScreenEntryList};
@@ -767,6 +768,7 @@ fn main() -> Result<()> {
     let client_animation_ticks = ClientAnimationTickState::default();
     let camera_fov_ticks =
         CameraFovTickState::new(f32::from(args.client_fov), args.client_fov_effect_scale);
+    let camera_eye_height_ticks = CameraEyeHeightTickState::default();
     let camera_spinning_ticks = runtime::CameraSpinningEffectTickState::default();
     let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
     let hud_debug_network_sampler = HudDebugNetworkSampler::default();
@@ -827,6 +829,7 @@ fn main() -> Result<()> {
             renderer_counters: &renderer_counters,
             audio_counters: &audio_status,
             camera_fov_ticks,
+            camera_eye_height_ticks,
             hud_debug_network_sampler: &hud_debug_network_sampler,
             hud_debug_tps_sampler: &hud_debug_tps_sampler,
         },
@@ -849,6 +852,7 @@ fn main() -> Result<()> {
         play_session_encrypted: false,
         client_animation_ticks,
         camera_fov_ticks,
+        camera_eye_height_ticks,
         camera_spinning_ticks,
         hud_debug_network_sampler,
         hud_debug_tps_sampler,

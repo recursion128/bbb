@@ -1534,14 +1534,17 @@ impl WorldStore {
     /// Vanilla `AbstractClientPlayer.getFieldOfViewModifier` ability and
     /// movement-speed contribution. Item-use zoom belongs to the presentation
     /// owner and is intentionally not folded into this packet-owned projection.
-    pub fn local_player_abilities_fov_modifier(&self) -> f32 {
+    pub fn local_player_abilities_fov_modifier(&self, effective_sprinting: bool) -> f32 {
         let Some(abilities) = self.local_player.abilities else {
             return 1.0;
         };
         let mut modifier = if abilities.flying { 1.1 } else { 1.0 };
         if abilities.walking_speed != 0.0 {
-            let speed_factor =
-                local_player_movement_speed_attribute_value(self) as f32 / abilities.walking_speed;
+            let mut movement_speed = local_player_movement_speed_attribute_value(self);
+            if effective_sprinting {
+                movement_speed *= LOCAL_PLAYER_SPRINT_SPEED_MODIFIER;
+            }
+            let speed_factor = movement_speed as f32 / abilities.walking_speed;
             modifier *= (speed_factor + 1.0) * 0.5;
         }
         if modifier.is_finite() {

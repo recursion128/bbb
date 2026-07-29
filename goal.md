@@ -328,6 +328,8 @@ ordinal。
 路径，覆盖账本中 protocol 已解码但尚未完整呈现的 level/chunk/block entity、
 input/movement/interaction、inventory/gameplay、particle/level event、audio
 与跨域 side effect。按用户可观察 vertical slice 推进，不按 crate 各做半条链。
+当前 sprint-swim camera/presentation 工程合同见
+`docs/sprint-swim-camera-presentation-design.md`。
 
 1. **ledger 路由**：维护 unsupported 一级域→goal queue 的双向清单；已由其它
    队列负责的条目只引用；其余进入 world、interaction、effects 三个 owner，

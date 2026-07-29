@@ -15,6 +15,7 @@ use bbb_world::WorldStore;
 use super::input_commands::SimulationInputPublication;
 use crate::{
     camera_fov::CameraFovTickState,
+    camera_pose::CameraEyeHeightTickState,
     input::{ClientInputState, RenderInputPublication},
     item_models::FirstPersonHandPresentation,
     runtime::{HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState},
@@ -46,6 +47,7 @@ pub(crate) struct SimulationPublication {
     pub(crate) renderer_counters: RendererCounters,
     pub(crate) audio_counters: AudioCounters,
     pub(crate) camera_fov_ticks: CameraFovTickState,
+    pub(crate) camera_eye_height_ticks: CameraEyeHeightTickState,
     pub(crate) hud_debug_network_sampler: HudDebugNetworkSampler,
     pub(crate) hud_debug_tps_sampler: HudDebugTpsSampler,
 }
@@ -100,6 +102,7 @@ pub(crate) struct SimulationPublicationInput<'a> {
     pub(crate) renderer_counters: &'a RendererCounters,
     pub(crate) audio_counters: &'a AudioCounters,
     pub(crate) camera_fov_ticks: CameraFovTickState,
+    pub(crate) camera_eye_height_ticks: CameraEyeHeightTickState,
     pub(crate) hud_debug_network_sampler: &'a HudDebugNetworkSampler,
     pub(crate) hud_debug_tps_sampler: &'a HudDebugTpsSampler,
 }
@@ -216,6 +219,7 @@ fn build_publication(
         renderer_counters: input.renderer_counters.clone(),
         audio_counters: input.audio_counters.clone(),
         camera_fov_ticks: input.camera_fov_ticks,
+        camera_eye_height_ticks: input.camera_eye_height_ticks,
         hud_debug_network_sampler: input.hud_debug_network_sampler.clone(),
         hud_debug_tps_sampler: input.hud_debug_tps_sampler.clone(),
     });
@@ -303,6 +307,7 @@ mod tests {
             renderer_counters: renderer,
             audio_counters: audio,
             camera_fov_ticks: CameraFovTickState::default(),
+            camera_eye_height_ticks: CameraEyeHeightTickState::default(),
             hud_debug_network_sampler: network,
             hud_debug_tps_sampler: tps,
         }
@@ -345,6 +350,42 @@ mod tests {
         assert_eq!(render.generation, control_snapshot.generation);
         assert!(Arc::ptr_eq(&render.world, &control_world.world));
         assert!(render.play_session_encrypted);
+    }
+
+    #[test]
+    fn camera_eye_height_publication_carries_one_immutable_tick_state() {
+        let control = bbb_control::ControlState::new("test");
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(bbb_world::LocalPlayerPoseState::default());
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let mut eye_height = CameraEyeHeightTickState::default();
+        eye_height.advance_for_world(1, &world);
+        let mut initial = input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        );
+        initial.camera_eye_height_ticks = eye_height;
+
+        let publisher = SimulationPublisher::new(initial, control.snapshot, control.world);
+
+        assert_eq!(
+            publisher.shared().load().camera_eye_height_ticks,
+            eye_height
+        );
     }
 
     #[test]
