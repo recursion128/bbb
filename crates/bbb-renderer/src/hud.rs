@@ -3058,6 +3058,10 @@ pub(super) enum HudDrawCommand<'a> {
         start: u32,
         end: u32,
     },
+    /// Complete dynamic map stack (pixels, decorations, and names) for one
+    /// sanitized cartography preview. The renderer resolves this index against
+    /// its resident GUI map targets.
+    MapPreview { preview_index: u8 },
     /// Blit of an entity preview's private PIP color texture into the HUD frame (vanilla
     /// `PictureInPictureRenderer.blitTexture` → `BlitRenderState` on the current GUI layer).
     /// Indexes `Renderer::hud_entity_preview_pip_targets` (same order as the sanitized
@@ -6974,13 +6978,14 @@ impl Renderer {
                     &self.hud_mob_effects,
                 );
             }
-            push_hud_inventory_background_layers(
+            push_hud_inventory_background_layers_with_map_previews(
                 &mut vertices,
                 &mut commands,
                 self,
                 surface_size,
                 screen,
                 &screen.background_layers,
+                &screen.map_previews,
             );
             if let Some(area) = &screen.scroll_area {
                 if push_hud_inventory_scissor(&mut commands, surface_size, screen, area.scissor) {
@@ -9548,6 +9553,38 @@ fn push_hud_inventory_background_layers<'a>(
                 layer.uv,
             );
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_background_layers_with_map_previews<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    renderer: &'a Renderer,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    layers: &[HudInventoryBackgroundLayer],
+    map_previews: &[HudInventoryMapPreview],
+) {
+    for (layer_index, layer) in layers.iter().enumerate() {
+        push_hud_inventory_background_layers(
+            vertices,
+            commands,
+            renderer,
+            surface_size,
+            screen,
+            std::slice::from_ref(layer),
+        );
+        commands.extend(
+            map_previews
+                .iter()
+                .enumerate()
+                .filter(|(_, preview)| preview.after_background_layer == layer_index)
+                .map(|(preview_index, _)| HudDrawCommand::MapPreview {
+                    preview_index: u8::try_from(preview_index)
+                        .expect("sanitized HUD map preview count fits u8"),
+                }),
+        );
     }
 }
 
@@ -20714,6 +20751,7 @@ mod tests {
     use super::*;
     use crate::ClearColor;
     use bbb_render_types::{HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET};
+    use glam::{Mat4, Vec3};
 
     fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
         for (actual, expected) in actual.into_iter().zip(expected) {
@@ -26229,6 +26267,301 @@ mod tests {
         let screen = sanitize_hud_inventory_screen(screen);
 
         assert_eq!(screen.map_previews, vec![valid, second_valid]);
+    }
+
+    #[test]
+    fn cartography_map_preview_commands_preserve_duplicate_and_locked_strata() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            eprintln!("skipping offscreen renderer test without a compatible adapter");
+            return;
+        };
+        renderer
+            .upload_hud_cartography_table_duplicated_map(1, 1, &[255; 4])
+            .unwrap();
+        renderer
+            .upload_hud_cartography_table_map(1, 1, &[255; 4])
+            .unwrap();
+        renderer
+            .upload_hud_cartography_table_locked(1, 1, &[255; 4])
+            .unwrap();
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
+                x: 83,
+                y: 13,
+                width: 50,
+                height: 66,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableDuplicatedMap,
+                x: 67,
+                y: 29,
+                width: 50,
+                height: 66,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        screen.map_previews = vec![
+            HudInventoryMapPreview {
+                map_id: 7,
+                x: 86,
+                y: 16,
+                scale: 0.34,
+                after_background_layer: 0,
+            },
+            HudInventoryMapPreview {
+                map_id: 7,
+                x: 70,
+                y: 32,
+                scale: 0.34,
+                after_background_layer: 1,
+            },
+        ];
+        renderer.set_hud_inventory_screen(Some(screen));
+        let draws = renderer.collect_hud_draws();
+        assert!(matches!(draws.commands[0], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[1],
+            HudDrawCommand::MapPreview { preview_index: 0 }
+        ));
+        assert!(matches!(draws.commands[2], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[3],
+            HudDrawCommand::MapPreview { preview_index: 1 }
+        ));
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableMap,
+                x: 67,
+                y: 13,
+                width: 66,
+                height: 66,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableLocked,
+                x: 118,
+                y: 60,
+                width: 10,
+                height: 14,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        screen.map_previews = vec![HudInventoryMapPreview {
+            map_id: 7,
+            x: 71,
+            y: 17,
+            scale: 0.45,
+            after_background_layer: 0,
+        }];
+        renderer.set_hud_inventory_screen(Some(screen));
+        let draws = renderer.collect_hud_draws();
+        assert!(matches!(draws.commands[0], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[1],
+            HudDrawCommand::MapPreview { preview_index: 0 }
+        ));
+        assert!(matches!(draws.commands[2], HudDrawCommand::Sprite { .. }));
+    }
+
+    #[test]
+    fn cartography_map_preview_offscreen_draws_pixels_decorations_names_before_lock_overlay() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            eprintln!("skipping offscreen renderer test without a compatible adapter");
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_cartography_table_map(1, 1, &[0, 0, 255, 255])
+            .unwrap();
+        renderer
+            .upload_hud_cartography_table_locked(1, 1, &[0, 255, 0, 255])
+            .unwrap();
+
+        let map_transform = Mat4::from_translation(Vec3::new(143.0, 54.0, 0.0))
+            * Mat4::from_scale(Vec3::new(0.45, 0.45, 1.0));
+        renderer.set_map_surfaces_with_gui(
+            Vec::new(),
+            Vec::new(),
+            vec![crate::item_models::ItemFrameMapTexture {
+                map_id: 7,
+                owner_generation: 1,
+                content_revision: 1,
+                rgba: Arc::from([255, 0, 0, 255].repeat(128 * 128)),
+                patch: None,
+            }],
+            Vec::new(),
+            Vec::new(),
+            vec![crate::item_models::HudMapPreviewSurface {
+                preview_index: 0,
+                surface: crate::item_models::bake_item_frame_map_surface(
+                    7,
+                    map_transform,
+                    crate::item_models::ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                ),
+            }],
+        );
+        let decoration = crate::item_models::bake_hud_map_decoration_surface(
+            0,
+            -80,
+            -80,
+            0,
+            0,
+            map_transform,
+            crate::item_models::ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            1,
+        )
+        .unwrap();
+        renderer.set_map_decoration_surfaces_with_gui(
+            Vec::new(),
+            Vec::new(),
+            vec![crate::item_models::ItemFrameMapDecorationTexture {
+                sprite_id: decoration.submission.texture.sprite_id.to_string(),
+                width: 1,
+                height: 1,
+                rgba: vec![255, 255, 0, 255],
+            }],
+            Vec::new(),
+            Vec::new(),
+            vec![crate::item_models::HudMapPreviewSurface {
+                preview_index: 0,
+                surface: decoration,
+            }],
+        );
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            'A',
+            HudAsciiGlyph {
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                width: 5,
+                height: 8,
+                advance: 6,
+                ascent: 7,
+            },
+        );
+        renderer.upload_item_frame_map_text_font(1, 1, &[255; 4]);
+        let text = crate::item_models::bake_hud_map_text_surface(
+            0,
+            "A",
+            40,
+            40,
+            1,
+            map_transform,
+            crate::item_models::ITEM_MODEL_FULL_BRIGHT_LIGHT,
+            0,
+            &glyphs,
+        )
+        .unwrap();
+        renderer.set_map_text_surfaces_with_gui(
+            Vec::new(),
+            Vec::new(),
+            vec![crate::item_models::HudMapPreviewSurface {
+                preview_index: 0,
+                surface: text,
+            }],
+        );
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableMap,
+                x: 67,
+                y: 13,
+                width: 66,
+                height: 66,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::CartographyTableLocked,
+                x: 118,
+                y: 60,
+                width: 10,
+                height: 14,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        screen.map_previews = vec![HudInventoryMapPreview {
+            map_id: 7,
+            x: 71,
+            y: 17,
+            scale: 0.45,
+            after_background_layer: 0,
+        }];
+        renderer.set_hud_inventory_screen(Some(screen));
+        renderer.update_camera();
+        assert!(renderer
+            .map_surface_residency
+            .dynamic_draws
+            .iter()
+            .any(|draw| draw.target == crate::item_models::MapSurfaceTarget::Gui(0)));
+        assert!(renderer
+            .map_surface_residency
+            .text_draws
+            .iter()
+            .any(|draw| draw.target == crate::item_models::MapSurfaceTarget::Gui(0)));
+        assert!(renderer
+            .collect_hud_draws()
+            .commands
+            .iter()
+            .any(|command| matches!(command, HudDrawCommand::MapPreview { preview_index: 0 })));
+
+        let pixels = renderer.render_offscreen_frame().unwrap();
+        let map_pixel = pixels.pixel(148, 59);
+        let locked_pixel = pixels.pixel(195, 103);
+        assert!(
+            map_pixel[0] > 128 && map_pixel[1] < 96 && map_pixel[2] < 96,
+            "map pixels should cover the static frame, got {map_pixel:?}"
+        );
+        assert!(
+            locked_pixel[1] > 128 && locked_pixel[0] < 96,
+            "locked overlay must cover the map stack, got {locked_pixel:?}"
+        );
+        let mut yellow = 0usize;
+        let mut white = 0usize;
+        for y in 54..112 {
+            for x in 143..201 {
+                let pixel = pixels.pixel(x, y);
+                if pixel[0] > 128 && pixel[1] > 128 && pixel[2] < 96 {
+                    yellow += 1;
+                }
+                if pixel[0] > 180 && pixel[1] > 180 && pixel[2] > 180 {
+                    white += 1;
+                }
+            }
+        }
+        assert!(yellow > 0, "decoration sprite should cover map pixels");
+        assert!(white > 0, "decoration name should cover map pixels");
     }
 
     #[test]

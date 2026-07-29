@@ -48,11 +48,12 @@ pub use entity_name_tag::{
 };
 pub use map::{
     bake_first_person_map_background_surface, bake_first_person_map_decoration_surface,
-    bake_first_person_map_text_surface, bake_item_frame_map_decoration_surface,
-    bake_item_frame_map_surface, bake_item_frame_map_text_surface, item_frame_map_decoration_type,
-    item_frame_map_text_width, FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSubmission,
+    bake_first_person_map_text_surface, bake_hud_map_decoration_surface, bake_hud_map_text_surface,
+    bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
+    bake_item_frame_map_text_surface, item_frame_map_decoration_type, item_frame_map_text_width,
+    FirstPersonMapBackgroundKind, FirstPersonMapBackgroundSubmission,
     FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
-    FirstPersonMapBackgroundTextureRef, ItemFrameMapDecorationSubmission,
+    FirstPersonMapBackgroundTextureRef, HudMapPreviewSurface, ItemFrameMapDecorationSubmission,
     ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapDecorationTextureRef,
     ItemFrameMapDecorationType, ItemFrameMapRenderType, ItemFrameMapSubmission,
     ItemFrameMapSurface, ItemFrameMapTextSubmission, ItemFrameMapTextSurface,

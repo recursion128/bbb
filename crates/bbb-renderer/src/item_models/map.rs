@@ -237,6 +237,17 @@ pub struct ItemFrameMapTextSurface {
     mesh: ItemModelMesh,
 }
 
+/// One resident map surface assigned to a sanitized GUI map-preview slot.
+///
+/// The preview index is deliberately independent of the map id: cartography
+/// duplication renders the same map twice at different transforms and GUI
+/// strata while sharing one dynamic texture owner.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudMapPreviewSurface<T> {
+    pub preview_index: u8,
+    pub surface: T,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct ItemFrameMapTextGlyphInstance {
     transform: Mat4,
@@ -310,6 +321,7 @@ pub(crate) struct ItemFrameMapAtlasPageGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
     free_slots: Vec<u32>,
 }
 
@@ -341,12 +353,10 @@ impl ItemFrameMapAtlasGpu {
                 self.overflow_pages
                     .get(page.saturating_sub(self.pages.len()))
             })
-            .map(|page| {
-                if target == MapSurfaceTarget::FirstPerson {
-                    &page.hud3d_bind_group
-                } else {
-                    &page.bind_group
-                }
+            .map(|page| match target {
+                MapSurfaceTarget::World => &page.bind_group,
+                MapSurfaceTarget::FirstPerson => &page.hud3d_bind_group,
+                MapSurfaceTarget::Gui(_) => &page.gui_bind_group,
             })
     }
 
@@ -386,6 +396,7 @@ pub(crate) struct ItemFrameMapDecorationAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
     pub(crate) layout: ItemFrameMapDecorationAtlasLayout,
 }
 
@@ -395,6 +406,7 @@ pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
+    pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
 #[repr(C)]
@@ -426,6 +438,7 @@ impl MapSurfaceGpuInstance {
 pub(crate) enum MapSurfaceTarget {
     World,
     FirstPerson,
+    Gui(u8),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -438,6 +451,7 @@ pub(crate) struct MapSurfaceDraw {
 
 pub(crate) struct MapSurfaceResidency {
     pub(crate) pipeline: wgpu::RenderPipeline,
+    pub(crate) gui_pipeline: wgpu::RenderPipeline,
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) index_buffer: wgpu::Buffer,
     pub(crate) index_count: u32,
@@ -501,6 +515,14 @@ impl MapSurfaceResidency {
                 format,
                 atlas_bind_group_layout,
                 lightmap_bind_group_layout,
+                true,
+            ),
+            gui_pipeline: create_map_surface_pipeline(
+                device,
+                format,
+                atlas_bind_group_layout,
+                lightmap_bind_group_layout,
+                false,
             ),
             vertex_buffer,
             index_buffer,
@@ -555,6 +577,7 @@ impl MapSurfaceResidency {
         atlas: Option<&ItemFrameMapAtlasGpu>,
         item_frame_surfaces: Vec<ItemFrameMapSurface>,
         first_person_surfaces: Vec<ItemFrameMapSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapSurface>>,
     ) -> MapInstanceUpload {
         self.dynamic_instances.clear();
         self.dynamic_draws.clear();
@@ -564,6 +587,13 @@ impl MapSurfaceResidency {
         };
         self.push_dynamic_target(atlas, item_frame_surfaces, MapSurfaceTarget::World);
         self.push_dynamic_target(atlas, first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        for surface in gui_surfaces {
+            self.push_dynamic_target(
+                atlas,
+                vec![surface.surface],
+                MapSurfaceTarget::Gui(surface.preview_index),
+            );
+        }
         let upload = upload_map_instances(
             device,
             queue,
@@ -669,6 +699,7 @@ impl MapSurfaceResidency {
         atlas: Option<&ItemFrameMapDecorationAtlasGpu>,
         item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
         first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapDecorationSurface>>,
     ) -> MapInstanceUpload {
         self.decoration_instances.clear();
         self.decoration_draws.clear();
@@ -678,6 +709,13 @@ impl MapSurfaceResidency {
         };
         self.push_decoration_target(atlas, item_frame_surfaces, MapSurfaceTarget::World);
         self.push_decoration_target(atlas, first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        for surface in gui_surfaces {
+            self.push_decoration_target(
+                atlas,
+                vec![surface.surface],
+                MapSurfaceTarget::Gui(surface.preview_index),
+            );
+        }
         let upload = upload_map_instances(
             device,
             queue,
@@ -720,13 +758,23 @@ impl MapSurfaceResidency {
             .len()
             .saturating_sub(first_instance);
         if instance_count != 0 {
+            let first_instance =
+                u32::try_from(first_instance).expect("map decoration instance count fits u32");
+            let instance_count =
+                u32::try_from(instance_count).expect("map decoration instance count fits u32");
+            if let Some(draw) = self.decoration_draws.last_mut() {
+                if draw.target == target
+                    && draw.first_instance.saturating_add(draw.instance_count) == first_instance
+                {
+                    draw.instance_count = draw.instance_count.saturating_add(instance_count);
+                    return;
+                }
+            }
             self.decoration_draws.push(MapSurfaceDraw {
                 target,
                 page: 0,
-                first_instance: u32::try_from(first_instance)
-                    .expect("map decoration instance count fits u32"),
-                instance_count: u32::try_from(instance_count)
-                    .expect("map decoration instance count fits u32"),
+                first_instance,
+                instance_count,
             });
         }
     }
@@ -738,6 +786,7 @@ impl MapSurfaceResidency {
         enabled: bool,
         item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
         first_person_surfaces: Vec<ItemFrameMapTextSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapTextSurface>>,
     ) -> MapInstanceUpload {
         self.text_instances.clear();
         self.text_draws.clear();
@@ -747,6 +796,12 @@ impl MapSurfaceResidency {
         }
         self.push_text_target(item_frame_surfaces, MapSurfaceTarget::World);
         self.push_text_target(first_person_surfaces, MapSurfaceTarget::FirstPerson);
+        for surface in gui_surfaces {
+            self.push_text_target(
+                vec![surface.surface],
+                MapSurfaceTarget::Gui(surface.preview_index),
+            );
+        }
         let upload =
             upload_map_instances(device, queue, &mut self.text_buffer, &self.text_instances);
         self.text_upload_bytes = upload.bytes;
@@ -767,13 +822,23 @@ impl MapSurfaceResidency {
         }
         let instance_count = self.text_instances.len().saturating_sub(first_instance);
         if instance_count != 0 {
+            let first_instance =
+                u32::try_from(first_instance).expect("map text instance count fits u32");
+            let instance_count =
+                u32::try_from(instance_count).expect("map text instance count fits u32");
+            if let Some(draw) = self.text_draws.last_mut() {
+                if draw.target == target
+                    && draw.first_instance.saturating_add(draw.instance_count) == first_instance
+                {
+                    draw.instance_count = draw.instance_count.saturating_add(instance_count);
+                    return;
+                }
+            }
             self.text_draws.push(MapSurfaceDraw {
                 target,
                 page: 0,
-                first_instance: u32::try_from(first_instance)
-                    .expect("map text instance count fits u32"),
-                instance_count: u32::try_from(instance_count)
-                    .expect("map text instance count fits u32"),
+                first_instance,
+                instance_count,
             });
         }
     }
@@ -849,33 +914,69 @@ fn create_map_surface_pipeline(
     format: wgpu::TextureFormat,
     atlas_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    depth: bool,
 ) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-map-surface-resident-pipeline")
-        .shader("bbb-map-surface-resident-shader", MAP_SURFACE_SHADER)
-        .layout(
-            "bbb-map-surface-resident-pipeline-layout",
-            &[atlas_bind_group_layout, lightmap_bind_group_layout],
-        )
-        .vertex_buffers(&[
-            wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<MapSurfaceVertex>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &MAP_SURFACE_VERTEX_ATTRIBUTES,
-            },
-            wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<MapSurfaceGpuInstance>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Instance,
-                attributes: &MAP_SURFACE_INSTANCE_ATTRIBUTES,
-            },
-        ])
-        .color_target(format, Some(wgpu::BlendState::REPLACE))
-        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
-            true,
-            wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+    let bind_group_layouts = [atlas_bind_group_layout, lightmap_bind_group_layout];
+    let builder = RenderPipelineBuilder::new(
+        device,
+        if depth {
+            "bbb-map-surface-resident-pipeline"
+        } else {
+            "bbb-map-surface-resident-gui-pipeline"
+        },
+    )
+    .shader(
+        if depth {
+            "bbb-map-surface-resident-shader"
+        } else {
+            "bbb-map-surface-resident-gui-shader"
+        },
+        if depth {
+            MAP_SURFACE_SHADER
+        } else {
+            MAP_SURFACE_GUI_SHADER
+        },
+    )
+    .layout(
+        "bbb-map-surface-resident-pipeline-layout",
+        &bind_group_layouts,
+    )
+    .vertex_buffers(&[
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<MapSurfaceVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &MAP_SURFACE_VERTEX_ATTRIBUTES,
+        },
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<MapSurfaceGpuInstance>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &MAP_SURFACE_INSTANCE_ATTRIBUTES,
+        },
+    ])
+    .color_target(
+        format,
+        Some(if depth {
+            wgpu::BlendState::REPLACE
+        } else {
+            wgpu::BlendState::ALPHA_BLENDING
+        }),
+    )
+    .cull_mode(if depth {
+        ITEM_MODEL_PIPELINE_CULL_MODE
+    } else {
+        None
+    });
+    if depth {
+        builder
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                true,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build()
+    } else {
+        builder.build()
+    }
 }
 
 const MAP_SURFACE_SHADER: &str = r#"
@@ -932,6 +1033,36 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     );
     let lit = vec4<f32>(sampled.rgb * sample_lightmap(input.light), sampled.a);
     return vec4<f32>(mix(lit.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), lit.a);
+}
+"#;
+
+const MAP_SURFACE_GUI_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var map_atlas: texture_2d<f32>;
+@group(0) @binding(2) var map_sampler: sampler;
+struct VertexIn {
+    @location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
+    @location(2) model_0: vec4<f32>, @location(3) model_1: vec4<f32>,
+    @location(4) model_2: vec4<f32>, @location(5) model_3: vec4<f32>,
+    @location(6) uv_rect: vec4<f32>, @location(7) light: vec4<f32>,
+};
+struct VertexOut {
+    @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>,
+};
+@vertex fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    out.position = camera.view_proj * model * vec4<f32>(input.position, 1.0);
+    out.uv = mix(input.uv_rect.xy, input.uv_rect.zw, input.uv);
+    return out;
+}
+@fragment fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let sampled = textureSample(map_atlas, map_sampler, input.uv);
+    if (sampled.a < 0.1) { discard; }
+    return sampled;
 }
 "#;
 
@@ -1066,6 +1197,31 @@ pub fn bake_first_person_map_decoration_surface(
     )
 }
 
+/// Bakes a GUI map decoration. Cartography previews use the same
+/// `showOnlyFrame=false` visibility rule as an ordinary held map.
+pub fn bake_hud_map_decoration_surface(
+    type_id: i32,
+    x: i8,
+    y: i8,
+    rot: u8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+) -> Option<ItemFrameMapDecorationSurface> {
+    bake_map_decoration_surface(
+        type_id,
+        x,
+        y,
+        rot,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        false,
+    )
+}
+
 fn bake_map_decoration_surface(
     type_id: i32,
     x: i8,
@@ -1171,6 +1327,32 @@ pub fn bake_item_frame_map_text_surface(
 }
 
 pub fn bake_first_person_map_text_surface(
+    type_id: i32,
+    text: impl Into<String>,
+    x: i8,
+    y: i8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+    glyphs: &HudFontGlyphMap,
+) -> Option<ItemFrameMapTextSurface> {
+    bake_map_text_surface(
+        type_id,
+        text,
+        x,
+        y,
+        decoration_index,
+        map_transform,
+        light,
+        submit_sequence,
+        glyphs,
+        false,
+    )
+}
+
+/// Bakes GUI map label text with the ordinary-map decoration visibility rule.
+pub fn bake_hud_map_text_surface(
     type_id: i32,
     text: impl Into<String>,
     x: i8,
@@ -1451,6 +1633,27 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapSurface>,
         first_person_surfaces: Vec<ItemFrameMapSurface>,
     ) {
+        self.set_map_surfaces_with_gui(
+            item_frame_textures,
+            first_person_textures,
+            Vec::new(),
+            item_frame_surfaces,
+            first_person_surfaces,
+            Vec::new(),
+        );
+    }
+
+    /// Sets decoded map surfaces for world, first-person, and GUI consumers.
+    /// All three targets share the same persistent map-id atlas.
+    pub fn set_map_surfaces_with_gui(
+        &mut self,
+        item_frame_textures: Vec<ItemFrameMapTexture>,
+        first_person_textures: Vec<ItemFrameMapTexture>,
+        gui_textures: Vec<ItemFrameMapTexture>,
+        item_frame_surfaces: Vec<ItemFrameMapSurface>,
+        first_person_surfaces: Vec<ItemFrameMapSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapSurface>>,
+    ) {
         #[cfg(test)]
         {
             self.item_frame_map_surfaces = item_frame_surfaces.clone();
@@ -1458,7 +1661,11 @@ impl Renderer {
         }
         self.counters.item_map_upload_bytes = 0;
         let mut textures = BTreeMap::new();
-        for texture in item_frame_textures.into_iter().chain(first_person_textures) {
+        for texture in item_frame_textures
+            .into_iter()
+            .chain(first_person_textures)
+            .chain(gui_textures)
+        {
             if texture.rgba.len() == ITEM_FRAME_MAP_RGBA_LEN {
                 textures.insert(texture.map_id, texture);
             }
@@ -1478,6 +1685,7 @@ impl Renderer {
             self.item_frame_map_atlas.as_ref(),
             item_frame_surfaces,
             first_person_surfaces,
+            gui_surfaces,
         );
         self.record_map_instance_upload(upload);
     }
@@ -1617,6 +1825,7 @@ impl Renderer {
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
             &self.hud3d_camera_buffer,
+            &self.gui_item_camera_buffer,
         ) else {
             return Some(texture);
         };
@@ -1657,6 +1866,7 @@ impl Renderer {
                         &self.terrain_bind_group_layout,
                         &self.camera_buffer,
                         &self.hud3d_camera_buffer,
+                        &self.gui_item_camera_buffer,
                     ));
             }
             let local_page = atlas.overflow_pages.len() - 1;
@@ -1756,6 +1966,26 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
         first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
     ) {
+        self.set_map_decoration_surfaces_with_gui(
+            item_frame_textures,
+            first_person_textures,
+            Vec::new(),
+            item_frame_surfaces,
+            first_person_surfaces,
+            Vec::new(),
+        );
+    }
+
+    /// Sets map-decoration surfaces for world, first-person, and GUI targets.
+    pub fn set_map_decoration_surfaces_with_gui(
+        &mut self,
+        item_frame_textures: Vec<ItemFrameMapDecorationTexture>,
+        first_person_textures: Vec<ItemFrameMapDecorationTexture>,
+        gui_textures: Vec<ItemFrameMapDecorationTexture>,
+        item_frame_surfaces: Vec<ItemFrameMapDecorationSurface>,
+        first_person_surfaces: Vec<ItemFrameMapDecorationSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapDecorationSurface>>,
+    ) {
         #[cfg(test)]
         {
             self.item_frame_map_decoration_surfaces = item_frame_surfaces.clone();
@@ -1765,7 +1995,8 @@ impl Renderer {
             self.item_frame_map_decoration_atlas = build_item_frame_map_decoration_atlas(
                 item_frame_textures
                     .iter()
-                    .chain(first_person_textures.iter()),
+                    .chain(first_person_textures.iter())
+                    .chain(gui_textures.iter()),
             )
             .map(|(layout, rgba)| {
                 create_item_frame_map_decoration_atlas_gpu(
@@ -1774,6 +2005,7 @@ impl Renderer {
                     &self.terrain_bind_group_layout,
                     &self.camera_buffer,
                     &self.hud3d_camera_buffer,
+                    &self.gui_item_camera_buffer,
                     layout,
                     &rgba,
                 )
@@ -1785,6 +2017,7 @@ impl Renderer {
             self.item_frame_map_decoration_atlas.as_ref(),
             item_frame_surfaces,
             first_person_surfaces,
+            gui_surfaces,
         );
         self.record_map_instance_upload(upload);
     }
@@ -1798,6 +2031,7 @@ impl Renderer {
             &self.terrain_bind_group_layout,
             &self.camera_buffer,
             &self.hud3d_camera_buffer,
+            &self.gui_item_camera_buffer,
             width,
             height,
             rgba,
@@ -1813,12 +2047,22 @@ impl Renderer {
         item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
         first_person_surfaces: Vec<ItemFrameMapTextSurface>,
     ) {
+        self.set_map_text_surfaces_with_gui(item_frame_surfaces, first_person_surfaces, Vec::new());
+    }
+
+    pub fn set_map_text_surfaces_with_gui(
+        &mut self,
+        item_frame_surfaces: Vec<ItemFrameMapTextSurface>,
+        first_person_surfaces: Vec<ItemFrameMapTextSurface>,
+        gui_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapTextSurface>>,
+    ) {
         let upload = self.map_surface_residency.set_text(
             &self.device,
             &self.queue,
             self.item_frame_map_text_font_atlas.is_some(),
             item_frame_surfaces,
             first_person_surfaces,
+            gui_surfaces,
         );
         self.record_map_instance_upload(upload);
     }
@@ -2048,6 +2292,7 @@ fn create_item_frame_map_atlas_page_gpu(
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
 ) -> ItemFrameMapAtlasPageGpu {
     let atlas_size = MAP_ATLAS_PAGE_SIDE_SLOTS * ITEM_FRAME_MAP_SIZE;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -2111,12 +2356,31 @@ fn create_item_frame_map_atlas_page_gpu(
             },
         ],
     });
+    let gui_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-atlas-gui-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: gui_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     ItemFrameMapAtlasPageGpu {
         texture,
         _view: view,
         _sampler: sampler,
         bind_group,
         hud3d_bind_group,
+        gui_bind_group,
         free_slots: (0..MAP_ATLAS_PAGE_SIDE_SLOTS * MAP_ATLAS_PAGE_SIDE_SLOTS)
             .rev()
             .collect(),
@@ -2129,6 +2393,7 @@ fn allocate_resident_map_slot(
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
 ) -> Option<(usize, u32)> {
     if let Some((page_index, slot)) = atlas
         .pages
@@ -2146,6 +2411,7 @@ fn allocate_resident_map_slot(
         bind_group_layout,
         camera_buffer,
         hud3d_camera_buffer,
+        gui_camera_buffer,
     ));
     let page_index = atlas.pages.len() - 1;
     let slot = atlas.pages[page_index]
@@ -2310,6 +2576,7 @@ fn create_item_frame_map_decoration_atlas_gpu(
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
     layout: ItemFrameMapDecorationAtlasLayout,
     rgba: &[u8],
 ) -> ItemFrameMapDecorationAtlasGpu {
@@ -2393,12 +2660,31 @@ fn create_item_frame_map_decoration_atlas_gpu(
             },
         ],
     });
+    let gui_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-decoration-atlas-gui-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: gui_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     ItemFrameMapDecorationAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
         hud3d_bind_group,
+        gui_bind_group,
         layout,
     }
 }
@@ -2409,6 +2695,7 @@ fn create_item_frame_map_text_font_atlas_gpu(
     bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
+    gui_camera_buffer: &wgpu::Buffer,
     width: u32,
     height: u32,
     rgba: &[u8],
@@ -2500,12 +2787,31 @@ fn create_item_frame_map_text_font_atlas_gpu(
             },
         ],
     });
+    let gui_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-text-font-atlas-gui-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: gui_camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     Some(ItemFrameMapTextFontAtlasGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
         bind_group,
         hud3d_bind_group,
+        gui_bind_group,
     })
 }
 

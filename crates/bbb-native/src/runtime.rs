@@ -103,6 +103,7 @@ use crate::{
         camera_view_bob_effect_from_world, current_post_effect_id_from_world,
         render_camera_pose_from_world_at_partial_tick, CameraEyeHeightTickState,
     },
+    cartography_preview::hud_map_preview_models,
     chest_scene::chest_model_instances_from_world_at_partial_tick,
     code_of_conduct::CodeOfConductAcceptance,
     component_text::{localized_component_runs, visit_localized_template, LocalizedTemplatePart},
@@ -4044,6 +4045,14 @@ pub(crate) fn update_renderer_from_publication(
     let block_entity_duration = block_entity_started_at.elapsed();
     let item_tail_started_at = Instant::now();
     let map_texture_cache = non_entity_render_extraction.begin_map_texture_frame();
+    let hud_map_preview_models = hud_map_preview_models(
+        world,
+        item_runtime,
+        hud_inventory_screen.as_ref(),
+        surface_size.width,
+        surface_size.height,
+        map_texture_cache,
+    );
     let first_person_item_models = first_person_item_models_with_map_cache(
         world,
         &publication.first_person_hand_presentation,
@@ -4402,6 +4411,11 @@ pub(crate) fn update_renderer_from_publication(
             first_person_map_decoration_textures: first_person_item_models.map_decoration_textures,
             first_person_map_decoration_surfaces: first_person_item_models.map_decoration_surfaces,
             first_person_map_text_surfaces: first_person_item_models.map_text_surfaces,
+            hud_map_preview_textures: hud_map_preview_models.textures,
+            hud_map_preview_surfaces: hud_map_preview_models.surfaces,
+            hud_map_preview_decoration_textures: hud_map_preview_models.decoration_textures,
+            hud_map_preview_decoration_surfaces: hud_map_preview_models.decoration_surfaces,
+            hud_map_preview_text_surfaces: hud_map_preview_models.text_surfaces,
             item_frame_map_textures,
             item_frame_map_surfaces,
             item_frame_map_decoration_textures,

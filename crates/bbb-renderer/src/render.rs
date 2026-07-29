@@ -42,6 +42,7 @@ enum TerrainOpaqueGroupLayer {
 enum HudActivePipeline {
     Sprite,
     ItemGlint,
+    Map,
 }
 
 const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
@@ -3276,7 +3277,7 @@ impl Renderer {
             timestamp_writes: None,
         });
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-        let (draw_calls, switches) = self.draw_hud_commands(&mut pass, commands);
+        let (draw_calls, switches) = self.draw_hud_commands(&mut pass, vertex_buffer, commands);
         stats.hud_draw_calls += draw_calls;
         stats.pipeline_switches += switches;
     }
@@ -4305,6 +4306,7 @@ impl Renderer {
     fn draw_hud_commands<'a>(
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
+        hud_vertex_buffer: &'a wgpu::Buffer,
         commands: &'a [crate::hud::HudDrawCommand<'a>],
     ) -> (u64, u64) {
         let mut active_pipeline = None;
@@ -4323,6 +4325,7 @@ impl Renderer {
                 crate::hud::HudDrawCommand::Sprite { sprite, start, end } => {
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                         active_pipeline = Some(HudActivePipeline::Sprite);
                         pipeline_switches += 1;
                     }
@@ -4336,6 +4339,7 @@ impl Renderer {
                     };
                     if active_pipeline != Some(HudActivePipeline::ItemGlint) {
                         pass.set_pipeline(&self.hud_item_glint_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                         pass.set_bind_group(0, &glint.gui_bind_group, &[]);
                         active_pipeline = Some(HudActivePipeline::ItemGlint);
                         pipeline_switches += 1;
@@ -4343,6 +4347,29 @@ impl Renderer {
                     pass.set_bind_group(1, &mask.bind_group, &[]);
                     pass.draw(*start..*end, 0..1);
                     draw_calls += 1;
+                }
+                crate::hud::HudDrawCommand::MapPreview { preview_index } => {
+                    let target = crate::item_models::MapSurfaceTarget::Gui(*preview_index);
+                    if !self.has_resident_map_surfaces(target)
+                        && !self.has_resident_map_text(target)
+                    {
+                        continue;
+                    }
+                    if active_pipeline != Some(HudActivePipeline::Map) {
+                        pass.set_pipeline(&self.map_surface_residency.gui_pipeline);
+                        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                        pass.set_vertex_buffer(
+                            0,
+                            self.map_surface_residency.vertex_buffer.slice(..),
+                        );
+                        pass.set_index_buffer(
+                            self.map_surface_residency.index_buffer.slice(..),
+                            wgpu::IndexFormat::Uint32,
+                        );
+                        active_pipeline = Some(HudActivePipeline::Map);
+                        pipeline_switches += 1;
+                    }
+                    draw_calls += self.draw_resident_gui_map_preview(pass, target);
                 }
                 // Vanilla `PictureInPictureRenderer.blitTexture`: the preview's private PIP color
                 // texture draws as a GUI-textured quad on the current layer. The PIP pass rendered
@@ -4358,6 +4385,7 @@ impl Renderer {
                     };
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                         active_pipeline = Some(HudActivePipeline::Sprite);
                         pipeline_switches += 1;
                     }
@@ -4368,6 +4396,7 @@ impl Renderer {
                 crate::hud::HudDrawCommand::LightmapPreview { start, end } => {
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                         active_pipeline = Some(HudActivePipeline::Sprite);
                         pipeline_switches += 1;
                     }
@@ -4378,6 +4407,72 @@ impl Renderer {
             }
         }
         (draw_calls, pipeline_switches)
+    }
+
+    fn draw_resident_gui_map_preview<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        target: crate::item_models::MapSurfaceTarget,
+    ) -> u64 {
+        let mut draw_calls = 0u64;
+        if let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_atlas,
+            self.map_surface_residency.dynamic_buffer(),
+        ) {
+            pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            for draw in &self.map_surface_residency.dynamic_draws {
+                if draw.target != target {
+                    continue;
+                }
+                let Some(bind_group) = atlas.page_bind_group(draw.page, target) else {
+                    continue;
+                };
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.draw_indexed(
+                    0..self.map_surface_residency.index_count,
+                    0,
+                    draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+                );
+                draw_calls = draw_calls.saturating_add(1);
+            }
+        }
+        if let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_decoration_atlas,
+            self.map_surface_residency.decoration_buffer(),
+        ) {
+            pass.set_bind_group(0, &atlas.gui_bind_group, &[]);
+            pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            for draw in &self.map_surface_residency.decoration_draws {
+                if draw.target != target {
+                    continue;
+                }
+                pass.draw_indexed(
+                    0..self.map_surface_residency.index_count,
+                    0,
+                    draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+                );
+                draw_calls = draw_calls.saturating_add(1);
+            }
+        }
+        if let (Some(atlas), Some(instance_buffer)) = (
+            &self.item_frame_map_text_font_atlas,
+            self.map_surface_residency.text_buffer(),
+        ) {
+            pass.set_bind_group(0, &atlas.gui_bind_group, &[]);
+            pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            for draw in &self.map_surface_residency.text_draws {
+                if draw.target != target {
+                    continue;
+                }
+                pass.draw_indexed(
+                    0..self.map_surface_residency.index_count,
+                    0,
+                    draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+                );
+                draw_calls = draw_calls.saturating_add(1);
+            }
+        }
+        draw_calls
     }
 
     fn has_entity_translucent_features(&self) -> bool {

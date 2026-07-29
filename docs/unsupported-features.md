@@ -223,8 +223,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its
   disabled/highlight coloring, hover tooltips.
-- `CartographyTableMenu`: live map pixels and decorations in the preview area,
-  invalid-transform prediction when item runtime or map state is unavailable.
 - `LoomMenu`: render each ordered selectable-pattern banner thumbnail, the
   composited banner preview, and the max-pattern error overlay.
 - `LecternMenu`: rich text styles and click events, exact vanilla font wrapping,

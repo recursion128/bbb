@@ -1,6 +1,6 @@
 # Cartography Table Presentation Engineering Contract
 
-Status: active from clean, fully gated and live-gated commit `c7613ec8f`.
+Status: completed and archived on 2026-07-29.
 
 ## Goal and completion
 

@@ -18,6 +18,7 @@ mod block_entity_visibility;
 mod block_outline;
 mod camera_fov;
 mod camera_pose;
+mod cartography_preview;
 mod chest_scene;
 mod code_of_conduct;
 mod code_of_conduct_overlay;

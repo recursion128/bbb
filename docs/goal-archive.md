@@ -794,3 +794,6 @@
   ICU4J option-8 Arabic shaping、Unicode bidi/mirroring 与逻辑序编辑边界已贯通
   HUD、交互命中及全部世界文本入口；合同见
   `docs/archive/bidirectional-text-shaping-design.md`。
+- **2026-07-29（地图工作台呈现工程闭环）**：四种 Vanilla 结果框、错误回退与
+  精确 strata 已贯通；GUI 预览复用动态地图像素、装饰、名称的共享驻留图集，
+  合同见 `docs/archive/cartography-table-presentation-design.md`。

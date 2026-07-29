@@ -17,21 +17,21 @@ use bbb_renderer::{
     HudComponentTextRun, HudCrosshairAttackIndicator, HudDeathLinkConfirmationScreen,
     HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
     HudDebugOverlay, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMobEffect, HudPauseScreen, HudPlayerHealth,
-    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
-    HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
-    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast,
-    HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay,
-    HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
-    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
-    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudTutorialToast,
-    HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
-    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
-    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
-    SignTextSurface, WorldBorderRenderState,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect,
+    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
+    HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
+    HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
+    HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
+    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
+    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
+    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
+    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
+    SelectionOutline, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -2766,6 +2766,12 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) first_person_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     pub(crate) first_person_map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
     pub(crate) first_person_map_text_surfaces: Vec<ItemFrameMapTextSurface>,
+    pub(crate) hud_map_preview_textures: Vec<ItemFrameMapTexture>,
+    pub(crate) hud_map_preview_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapSurface>>,
+    pub(crate) hud_map_preview_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub(crate) hud_map_preview_decoration_surfaces:
+        Vec<HudMapPreviewSurface<ItemFrameMapDecorationSurface>>,
+    pub(crate) hud_map_preview_text_surfaces: Vec<HudMapPreviewSurface<ItemFrameMapTextSurface>>,
     pub(crate) item_frame_map_textures: Vec<ItemFrameMapTexture>,
     pub(crate) item_frame_map_surfaces: Vec<ItemFrameMapSurface>,
     pub(crate) item_frame_map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -3224,21 +3230,26 @@ pub(crate) fn apply_renderer_frame(
         frame.first_person_map_background_textures,
         frame.first_person_map_background_surfaces,
     );
-    renderer.set_map_surfaces(
+    renderer.set_map_surfaces_with_gui(
         frame.item_frame_map_textures,
         frame.first_person_map_textures,
+        frame.hud_map_preview_textures,
         frame.item_frame_map_surfaces,
         frame.first_person_map_surfaces,
+        frame.hud_map_preview_surfaces,
     );
-    renderer.set_map_decoration_surfaces(
+    renderer.set_map_decoration_surfaces_with_gui(
         frame.item_frame_map_decoration_textures,
         frame.first_person_map_decoration_textures,
+        frame.hud_map_preview_decoration_textures,
         frame.item_frame_map_decoration_surfaces,
         frame.first_person_map_decoration_surfaces,
+        frame.hud_map_preview_decoration_surfaces,
     );
-    renderer.set_map_text_surfaces(
+    renderer.set_map_text_surfaces_with_gui(
         frame.item_frame_map_text_surfaces,
         frame.first_person_map_text_surfaces,
+        frame.hud_map_preview_text_surfaces,
     );
     if let RendererFrameUpdate::Replace(surfaces) = frame.sign_text_surfaces {
         renderer.set_sign_text_surfaces(surfaces);
