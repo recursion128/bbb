@@ -4,7 +4,7 @@ use super::super::local_player_fluid::{
 use super::*;
 
 pub(super) fn advance_local_player_fluid_physics_step(
-    world: &WorldStore,
+    world: &mut WorldStore,
     mut pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     step_seconds: f64,
@@ -108,6 +108,9 @@ pub(super) fn advance_local_player_fluid_physics_step(
             z: requested_z,
         },
     );
+    if pose.fall_distance != 0.0 && world.local_player_fall_reset_ray_hits(pose, movement) {
+        pose.fall_distance = 0.0;
+    }
     pose.position.x += movement[0];
     pose.position.y += movement[1];
     pose.position.z += movement[2];
@@ -115,14 +118,28 @@ pub(super) fn advance_local_player_fluid_physics_step(
     let x_collision = local_player_horizontal_axis_collided(requested_x, movement[0]);
     let z_collision = local_player_horizontal_axis_collided(requested_z, movement[2]);
     let horizontal_collision = x_collision || z_collision;
+    let minor_horizontal_collision = horizontal_collision
+        && local_player_horizontal_collision_is_minor(pose, input_x, input_z, movement);
     let vertical_collision = movement[1] != requested_y;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
-    let bounced_on_slime = vertical_collision
-        && requested_y < 0.0
-        && !input.sneak
-        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
+    pose.on_ground = on_ground;
     let fluid_contact = local_player_fluid_contact(world, pose);
+    let landing_fall_distance = on_ground.then_some(
+        pose.fall_distance
+            + if movement[1] < 0.0 && !fluid_contact.in_water() {
+                -movement[1]
+            } else {
+                0.0
+            },
+    );
+    let bounce = apply_local_player_landing_block_effects(
+        world,
+        pose,
+        input.sneak,
+        vertical_collision,
+        landing_fall_distance,
+    );
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
     } else {
@@ -139,11 +156,8 @@ pub(super) fn advance_local_player_fluid_physics_step(
         pose.delta_movement.z = 0.0;
     }
     if vertical_collision {
-        pose.delta_movement.y = if bounced_on_slime && pose.delta_movement.y < 0.0 {
-            -pose.delta_movement.y
-        } else {
-            0.0
-        };
+        pose.delta_movement.y =
+            local_player_vertical_velocity_after_fall_on(pose.delta_movement.y, bounce);
     }
     let block_speed_factor = local_player_block_speed_factor(world, pose);
     pose.delta_movement.x *= block_speed_factor;
@@ -188,8 +202,8 @@ pub(super) fn advance_local_player_fluid_physics_step(
         pose.delta_movement,
         horizontal_collision,
     );
-    pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
+    pose.minor_horizontal_collision = minor_horizontal_collision;
     (pose, step_move)
 }
 

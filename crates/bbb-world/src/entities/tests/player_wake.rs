@@ -119,6 +119,7 @@ fn player_wake_uses_safe_bed_position_and_updates_local_pose() {
         },
         on_ground: true,
         horizontal_collision: true,
+        minor_horizontal_collision: false,
         fall_distance: 3.0,
         sneaking: true,
         swimming: true,

@@ -111,6 +111,7 @@ const ZOMBIE_NAUTILUS_DASH_READY_LAND_SOUND_EVENT: &str =
     "minecraft:entity.zombie_nautilus.dash_ready_land";
 const BREEZE_DEFLECT_SOUND_EVENT: &str = "minecraft:entity.breeze.deflect";
 const FIREWORK_ROCKET_LAUNCH_SOUND_EVENT: &str = "minecraft:entity.firework_rocket.launch";
+const HONEY_BLOCK_SLIDE_SOUND_EVENT: &str = "minecraft:block.honey_block.slide";
 const PLAYER_BIG_FALL_SOUND_EVENT: &str = "minecraft:entity.player.big_fall";
 const PLAYER_SMALL_FALL_SOUND_EVENT: &str = "minecraft:entity.player.small_fall";
 const TRIDENT_RETURN_SOUND_EVENT: &str = "minecraft:item.trident.return";
@@ -2387,6 +2388,9 @@ impl WorldStore {
             }
             EntityClientMovementSoundKind::FireworkRocketLaunch => {
                 (FIREWORK_ROCKET_LAUNCH_SOUND_EVENT, "ambient", 3.0, 1.0)
+            }
+            EntityClientMovementSoundKind::PlayerHoneyBlockSlide => {
+                (HONEY_BLOCK_SLIDE_SOUND_EVENT, "player", 1.0, 1.0)
             }
             EntityClientMovementSoundKind::PlayerPowderSnowFall { big } => (
                 if big {
@@ -5332,6 +5336,28 @@ mod tests {
                 }
             );
         }
+    }
+
+    #[test]
+    fn entity_client_movement_sound_maps_player_honey_block_slide() {
+        let mut store = WorldStore::new();
+        let sound = store.record_entity_client_movement_sound(EntityClientMovementSoundState {
+            entity_id: 19,
+            kind: EntityClientMovementSoundKind::PlayerHoneyBlockSlide,
+            position: crate::EntityVec3 {
+                x: 4.5,
+                y: 65.9,
+                z: -5.5,
+            },
+        });
+
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.honey_block.slide")
+        );
+        assert_eq!(sound.source, "player");
+        assert_eq!(sound.volume, 1.0);
+        assert_eq!(sound.pitch, 1.0);
     }
 
     #[test]

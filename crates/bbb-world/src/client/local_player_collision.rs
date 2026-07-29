@@ -42,7 +42,7 @@ use crate::terrain::{
     block_name_is_lantern, block_name_is_leaves, block_name_is_rod, block_name_is_shelf,
     block_name_is_shulker_box, block_name_is_slab, block_name_is_stair, block_name_is_trapdoor,
     block_name_is_wall, block_name_is_wall_skull, block_name_is_wool_carpet,
-    block_name_triggers_dried_ghast_ambient_sound,
+    block_name_resets_fall_damage, block_name_triggers_dried_ghast_ambient_sound,
 };
 use crate::{
     BlockPos, BlockProbe, PistonDirection, TerrainFluidKind, TerrainMaterialClass, WorldStore,
@@ -56,6 +56,7 @@ pub(super) const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const SUPPORTING_BLOCK_PROBE_DEPTH: f64 = 1.0e-6;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
+const FALL_DAMAGE_RESETTING_BLOCK_TAG: &str = "minecraft:fall_damage_resetting";
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleBlockFluidSurfaceSample {
@@ -1806,6 +1807,59 @@ impl WorldStore {
         boxes
     }
 
+    /// Vanilla's bounded `ClipContext.Block.FALLDAMAGE_RESETTING` /
+    /// `ClipContext.Fluid.WATER` ray used by `Entity.move` before committing a
+    /// long local-player displacement.
+    pub(super) fn local_player_fall_reset_ray_hits(
+        &self,
+        pose: LocalPlayerPoseState,
+        movement: [f64; 3],
+    ) -> bool {
+        let movement_length_squared = movement.iter().map(|value| value * value).sum::<f64>();
+        if !movement_length_squared.is_finite() || movement_length_squared < 1.0 {
+            return false;
+        }
+        let movement_length = movement_length_squared.sqrt();
+        let scale = (8.0 / movement_length).min(1.0);
+        let from = [pose.position.x, pose.position.y, pose.position.z];
+        let to = std::array::from_fn(|axis| from[axis] + movement[axis] * scale);
+        block_hit_scale(
+            self,
+            from,
+            to,
+            LocalPlayerCollisionContext::for_pose(self, pose, false),
+            BlockClipShape::FallDamageResetting,
+        )
+        .is_some()
+    }
+
+    /// Current local-player `Entity.getOnPosLegacy()` block after collision
+    /// support selection. Landing callbacks and the movement-after-fall tail
+    /// consume this effect block rather than a separate feet sample.
+    pub(super) fn local_player_legacy_effect_block(
+        &self,
+        pose: LocalPlayerPoseState,
+        descending: bool,
+    ) -> Option<BlockProbe> {
+        let supporting_pos = pose.on_ground.then(|| {
+            find_supporting_block(
+                self,
+                [pose.position.x, pose.position.y, pose.position.z],
+                LocalPlayerBounds::for_pose(pose),
+                LocalPlayerCollisionContext::for_pose(self, pose, descending),
+            )
+        })?;
+        let effect_pos = self.legacy_on_pos(
+            supporting_pos,
+            crate::EntityVec3 {
+                x: pose.position.x,
+                y: pose.position.y,
+                z: pose.position.z,
+            },
+        );
+        self.probe_block(effect_pos)
+    }
+
     fn clip_locally_authoritative_collision_movement(
         &self,
         query: EntityCollisionQuery,
@@ -2504,6 +2558,7 @@ fn step_candidate_heights<'a>(
 enum BlockClipShape {
     Collision,
     Visual,
+    FallDamageResetting,
 }
 
 fn block_hit_scale(
@@ -2592,6 +2647,7 @@ fn block_shape_hit_scale(
             block_collision_shape_with_context(world, &block, pos, context)
         }
         BlockClipShape::Visual => block_visual_shape_with_context(world, &block, pos, context),
+        BlockClipShape::FallDamageResetting => fall_damage_resetting_shape(world, &block, pos),
     }?;
     let delta = std::array::from_fn::<_, 3, _>(|axis| to[axis] - from[axis]);
     let test_point = std::array::from_fn::<_, 3, _>(|axis| from[axis] + delta[axis] * 0.001);
@@ -2610,6 +2666,42 @@ fn block_shape_hit_scale(
             scale,
             block_state_id: block.block_state_id,
         })
+}
+
+fn fall_damage_resetting_shape(
+    world: &WorldStore,
+    block: &BlockProbe,
+    pos: BlockPos,
+) -> Option<BlockCollisionShape> {
+    let block_name = block.block_name.as_deref();
+    let synchronized_members = world
+        .registry_tags("minecraft:block")
+        .and_then(|tags| tags.tags.get(FALL_DAMAGE_RESETTING_BLOCK_TAG));
+    let block_resets = synchronized_members.map_or_else(
+        || block_name.is_some_and(block_name_resets_fall_damage),
+        |members| {
+            block_name
+                .and_then(|name| {
+                    world.resolved_registry_entry_by_resource_id("minecraft:block", name)
+                })
+                .is_some_and(|entry| members.contains(&entry.holder_id))
+        },
+    ) || block_name
+        .is_some_and(|name| matches!(name, "minecraft:end_gateway" | "minecraft:end_portal"));
+    if block_resets {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+    }
+
+    let fluid = block
+        .fluid
+        .filter(|fluid| fluid.kind == TerrainFluidKind::Water)?;
+    let height = crate::fluid::fluid_height_at(world, pos, fluid);
+    (height > 0.0).then(|| {
+        BlockCollisionShape::single(BlockCollisionBox {
+            max_y: height,
+            ..BlockCollisionBox::FULL
+        })
+    })
 }
 
 fn world_collision_box_contains(bounds: WorldCollisionBox, point: [f64; 3]) -> bool {

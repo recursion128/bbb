@@ -893,6 +893,7 @@ pub enum EntityClientMovementSoundKind {
     },
     BreezeDeflect,
     FireworkRocketLaunch,
+    PlayerHoneyBlockSlide,
     PlayerPowderSnowFall {
         big: bool,
     },

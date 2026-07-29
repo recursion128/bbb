@@ -11,9 +11,11 @@ use bbb_protocol::packets::{
     EntityDataValueKind as ProtocolEntityDataValueKind, GameEvent as ProtocolGameEvent,
     InitializeBorder as ProtocolInitializeBorder, ItemStackSummary as ProtocolItemStackSummary,
     MobEffectFlags as ProtocolMobEffectFlags, PlayerHealth as ProtocolPlayerHealth,
-    SetEntityData as ProtocolSetEntityData, SetPassengers as ProtocolSetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, UpdateAttributes as ProtocolUpdateAttributes,
-    UpdateMobEffect as ProtocolUpdateMobEffect, UseEffectsSummary as ProtocolUseEffectsSummary,
+    RegistryTags as ProtocolRegistryTags, SetEntityData as ProtocolSetEntityData,
+    SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    TagNetworkPayload as ProtocolTagNetworkPayload, UpdateAttributes as ProtocolUpdateAttributes,
+    UpdateMobEffect as ProtocolUpdateMobEffect, UpdateTags as ProtocolUpdateTags,
+    UseEffectsSummary as ProtocolUseEffectsSummary,
 };
 use uuid::Uuid;
 
@@ -235,7 +237,95 @@ fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
         pose.position
     );
     assert!(pose.horizontal_collision);
+    assert!(!pose.minor_horizontal_collision);
     assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_minor_horizontal_collision_tracks_tangential_input_in_air_and_fluid() {
+    for fluid_state in [None, Some(SOURCE_WATER_BLOCK_STATE_ID)] {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, GRASS_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 2, 0, GRASS_BLOCK_STATE_ID);
+        if let Some(fluid_state) = fluid_state {
+            set_test_block(&mut world, 1, 1, 0, fluid_state);
+        }
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(1.3, 1.0, 0.5),
+            delta_movement: vec3(-0.2, 0.0, 0.0),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.horizontal_collision, "fluid state {fluid_state:?}");
+        assert!(
+            pose.minor_horizontal_collision,
+            "fluid state {fluid_state:?}, pose {pose:?}"
+        );
+    }
+}
+
+#[test]
+fn local_player_minor_horizontal_collision_fall_flying_uses_modified_input_direction() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    assert!(apply_fall_flying(&mut world, 123));
+    set_test_block(&mut world, 0, 1, 0, GRASS_BLOCK_STATE_ID);
+    set_test_block(&mut world, 0, 2, 0, GRASS_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(1.3, 1.0, 0.5),
+        delta_movement: vec3(-0.2, 0.0, 0.2),
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+
+    let pose = world
+        .advance_local_player_input(
+            LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                ..LocalPlayerInputState::default()
+            },
+            LOCAL_PHYSICS_TICK_SECONDS,
+        )
+        .unwrap();
+
+    assert!(pose.horizontal_collision, "pose {pose:?}");
+    assert!(pose.minor_horizontal_collision, "pose {pose:?}");
+}
+
+#[test]
+fn local_player_minor_horizontal_collision_angle_threshold_matches_vanilla() {
+    let pose = LocalPlayerPoseState::default();
+    assert!(local_player_horizontal_collision_is_minor(
+        pose,
+        0.0,
+        0.98,
+        [0.0, 0.0, 0.2],
+    ));
+    assert!(!local_player_horizontal_collision_is_minor(
+        pose,
+        0.0,
+        0.98,
+        [0.2, 0.0, 0.0],
+    ));
+    assert!(!local_player_horizontal_collision_is_minor(
+        pose,
+        0.0,
+        0.0,
+        [0.0, 0.0, 0.2],
+    ));
 }
 
 #[test]
@@ -5151,6 +5241,107 @@ fn powder_snow_fall_sound_thresholds_are_exact() {
 }
 
 #[test]
+fn local_player_fall_reset_ray_uses_fallback_synchronized_tag_and_player_extras() {
+    let mut world = flat_collision_world();
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 8.0, 0.5),
+        fall_distance: 10.0,
+        ..LocalPlayerPoseState::default()
+    };
+    let movement = [0.0, -4.0, 0.0];
+    set_test_block(&mut world, 0, 5, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+    assert!(world.local_player_fall_reset_ray_hits(pose, movement));
+
+    world.apply_update_tags(ProtocolUpdateTags {
+        registries: vec![ProtocolRegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![ProtocolTagNetworkPayload {
+                tag: "minecraft:fall_damage_resetting".to_string(),
+                entries: Vec::new(),
+            }],
+        }],
+    });
+    assert!(!world.local_player_fall_reset_ray_hits(pose, movement));
+
+    let ladder_holder_id = world
+        .resolved_registry_entry_by_resource_id("minecraft:block", "minecraft:ladder")
+        .expect("vanilla ladder block holder")
+        .holder_id;
+    world.apply_update_tags(ProtocolUpdateTags {
+        registries: vec![ProtocolRegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![ProtocolTagNetworkPayload {
+                tag: "minecraft:fall_damage_resetting".to_string(),
+                entries: vec![ladder_holder_id],
+            }],
+        }],
+    });
+    assert!(world.local_player_fall_reset_ray_hits(pose, movement));
+
+    set_test_block(&mut world, 0, 5, 0, END_PORTAL_BLOCK_STATE_ID);
+    world.apply_update_tags(ProtocolUpdateTags {
+        registries: vec![ProtocolRegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![ProtocolTagNetworkPayload {
+                tag: "minecraft:fall_damage_resetting".to_string(),
+                entries: Vec::new(),
+            }],
+        }],
+    });
+    assert!(world.local_player_fall_reset_ray_hits(pose, movement));
+
+    set_test_block(&mut world, 0, 5, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    assert!(world.local_player_fall_reset_ray_hits(pose, movement));
+}
+
+#[test]
+fn local_player_fall_reset_ray_is_bounded_to_eight_blocks() {
+    let mut world = flat_collision_world();
+    set_test_block(&mut world, 0, 4, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+    let pose = LocalPlayerPoseState {
+        position: vec3(0.5, 14.0, 0.5),
+        fall_distance: 10.0,
+        ..LocalPlayerPoseState::default()
+    };
+
+    assert!(!world.local_player_fall_reset_ray_hits(pose, [0.0, -12.0, 0.0]));
+    assert!(!world.local_player_fall_reset_ray_hits(pose, [0.0, -0.999, 0.0]));
+}
+
+#[test]
+fn local_player_fall_reset_long_move_runs_in_air_fluid_and_fall_flying_paths() {
+    for path in ["air", "lava", "fall_flying"] {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 5, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        if path == "lava" {
+            set_test_block(&mut world, 0, 8, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        }
+        if path == "fall_flying" {
+            attach_local_player_entity(&mut world, 123);
+            assert!(apply_fall_flying(&mut world, 123));
+        }
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 8.0, 0.5),
+            delta_movement: vec3(0.0, -4.0, 0.0),
+            fall_distance: 10.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let current_move_fall_distance = 8.0 - pose.position.y;
+        assert_f64_near(pose.fall_distance, current_move_fall_distance, 0.000001);
+        assert!(pose.fall_distance < 8.0, "{path} pose {pose:?}");
+    }
+}
+
+#[test]
 fn local_player_leather_boots_jump_climbs_out_of_powder_snow() {
     let mut world = flat_collision_world();
     set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
@@ -5855,6 +6046,81 @@ fn local_player_sneak_suppresses_slime_block_bounce() {
     assert_f64_near(pose.delta_movement.y, -0.08 * 0.98, 0.000001);
     assert_f64_near(pose.fall_distance, 0.0, 0.000001);
     assert!(pose.on_ground);
+}
+
+#[test]
+fn local_player_bed_bounce_uses_living_factor_and_sneak_suppression() {
+    for suppressing_bounce in [false, true] {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, WHITE_BED_NORTH_FOOT_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.8, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: suppressing_bounce,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 9.0 / 16.0, 0.0001);
+        let fall_on_velocity = if suppressing_bounce {
+            0.0
+        } else {
+            0.8 * f64::from(LOCAL_PLAYER_BED_BOUNCE_FACTOR)
+        };
+        assert_f64_near(
+            pose.delta_movement.y,
+            (fall_on_velocity - 0.08) * 0.98,
+            0.000001,
+        );
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(pose.on_ground);
+    }
+}
+
+#[test]
+fn local_player_honey_block_landing_queues_slide_sound_before_post_move_effects() {
+    let mut world = flat_collision_world();
+    attach_local_player_entity(&mut world, 123);
+    set_test_block(&mut world, 0, 0, 0, HONEY_BLOCK_STATE_ID);
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.2, 0.5),
+        delta_movement: vec3(0.0, -0.5, 0.0),
+        fall_distance: 2.0,
+        on_ground: false,
+        ..LocalPlayerPoseState::default()
+    });
+    world.drain_entity_client_movement_effect_states();
+
+    let pose = world
+        .advance_local_player_input(LocalPlayerInputState::default(), LOCAL_PHYSICS_TICK_SECONDS)
+        .unwrap();
+
+    assert!(pose.on_ground);
+    assert_f64_near(pose.position.y, 15.0 / 16.0, 0.0001);
+    let effects = world
+        .drain_entity_client_movement_effect_states()
+        .collect::<Vec<_>>();
+    let [crate::entities::EntityClientMovementEffectState::Sound(sound)] = effects.as_slice()
+    else {
+        panic!("expected one honey landing sound, got {effects:?}");
+    };
+    assert_eq!(sound.entity_id, 123);
+    assert_eq!(
+        sound.kind,
+        crate::entities::EntityClientMovementSoundKind::PlayerHoneyBlockSlide
+    );
+    assert_f64_near(sound.position.y, pose.position.y, 0.000001);
 }
 
 #[test]

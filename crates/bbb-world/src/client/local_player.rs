@@ -230,6 +230,8 @@ pub struct LocalPlayerPoseState {
     #[serde(default)]
     pub horizontal_collision: bool,
     #[serde(default)]
+    pub minor_horizontal_collision: bool,
+    #[serde(default)]
     pub fall_distance: f64,
     #[serde(default)]
     pub sneaking: bool,
@@ -292,6 +294,7 @@ impl LocalPlayerPoseState {
             delta_movement: state.delta_movement,
             on_ground: false,
             horizontal_collision: false,
+            minor_horizontal_collision: false,
             fall_distance: 0.0,
             sneaking: false,
             swimming: false,

@@ -22,7 +22,9 @@ use crate::entities::{
     vanilla_living_entity_type, EntityBlockEffectMovement, EntityClientMovementEffectState,
     EntityClientMovementSoundKind, EntityClientMovementSoundState, LocalPlayerBlockEffectStep,
 };
-use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, EntityVec3, WorldStore};
+use crate::{
+    block_name_is_bed, block_name_is_trapdoor, BlockPos, BlockProbe, EntityVec3, WorldStore,
+};
 
 mod fluid;
 #[cfg(test)]
@@ -81,6 +83,7 @@ const VANILLA_SPEED_EFFECT_MODIFIER_ID: &str = "minecraft:effect.speed";
 const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
 const VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID: &str = "minecraft:powder_snow";
 const LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME: &str = "minecraft:powder_snow";
+const LOCAL_PLAYER_HONEY_BLOCK_NAME: &str = "minecraft:honey_block";
 const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
@@ -114,6 +117,8 @@ const LOCAL_PLAYER_AUTO_JUMP_BOOST_HEIGHT_PER_LEVEL: f32 = 0.75;
 const LOCAL_PLAYER_AUTO_JUMP_LOOK_AHEAD_TICKS: f32 = 7.0;
 const LOCAL_PLAYER_AUTO_JUMP_SEGMENT_HEIGHT: f64 = 0.51;
 const LOCAL_PLAYER_AUTO_JUMP_FACING_REJECTION_DOT: f32 = -0.15;
+const LOCAL_PLAYER_MINOR_COLLISION_MAX_ANGLE_RADIANS: f32 = 0.13962634;
+const LOCAL_PLAYER_BED_BOUNCE_FACTOR: f32 = 0.66;
 
 pub(super) fn integrate_local_player_input_pose_with_world_effects(
     world: &mut WorldStore,
@@ -495,6 +500,7 @@ pub(super) fn move_local_player_self_upward(
     pose.position.y += movement[1];
     pose.on_ground = false;
     pose.horizontal_collision = false;
+    pose.minor_horizontal_collision = false;
     pose
 }
 
@@ -744,6 +750,9 @@ fn advance_local_player_physics_step(
             z: requested_z,
         },
     );
+    if pose.fall_distance != 0.0 && world.local_player_fall_reset_ray_hits(pose, movement) {
+        pose.fall_distance = 0.0;
+    }
     pose.position.x += movement[0];
     pose.position.y += movement[1];
     pose.position.z += movement[2];
@@ -751,20 +760,29 @@ fn advance_local_player_physics_step(
     let x_collision = local_player_horizontal_axis_collided(requested_x, movement[0]);
     let z_collision = local_player_horizontal_axis_collided(requested_z, movement[2]);
     let horizontal_collision = x_collision || z_collision;
+    let minor_horizontal_collision = horizontal_collision
+        && local_player_horizontal_collision_is_minor(pose, input_x, input_z, movement);
     let vertical_collision = movement[1] != requested_y;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
-    let landing_fall_distance = on_ground
-        .then_some(pose.fall_distance + if movement[1] < 0.0 { -movement[1] } else { 0.0 });
-    let bounced_on_slime = vertical_collision
-        && requested_y < 0.0
-        && !input.sneak
-        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
+    pose.on_ground = on_ground;
     let on_climbable_after = flying.is_none() && local_player_climbable_kind(world, pose).is_some();
     let fluid_contact = local_player_fluid_contact(world, pose);
-    if let Some(fall_distance) = landing_fall_distance {
-        append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
-    }
+    let landing_fall_distance = on_ground.then_some(
+        pose.fall_distance
+            + if movement[1] < 0.0 && !fluid_contact.in_water() {
+                -movement[1]
+            } else {
+                0.0
+            },
+    );
+    let bounce = apply_local_player_landing_block_effects(
+        world,
+        pose,
+        input.sneak,
+        vertical_collision,
+        landing_fall_distance,
+    );
     pose.fall_distance = if fluid_contact.in_water() || on_climbable_before || on_climbable_after {
         0.0
     } else {
@@ -782,11 +800,8 @@ fn advance_local_player_physics_step(
         pose.delta_movement.z = 0.0;
     }
     if vertical_collision {
-        pose.delta_movement.y = if bounced_on_slime && pose.delta_movement.y < 0.0 {
-            -pose.delta_movement.y
-        } else {
-            0.0
-        };
+        pose.delta_movement.y =
+            local_player_vertical_velocity_after_fall_on(pose.delta_movement.y, bounce);
     }
     // `Player.getBlockSpeedFactor` is pinned to 1.0 while creative-flying.
     let block_speed_factor = if flying.is_some() {
@@ -817,8 +832,8 @@ fn advance_local_player_physics_step(
     pose.delta_movement.x *= horizontal_drag;
     pose.delta_movement.z *= horizontal_drag;
 
-    pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
+    pose.minor_horizontal_collision = minor_horizontal_collision;
     (pose, step_move)
 }
 
@@ -835,6 +850,9 @@ fn advance_local_player_fall_flying_physics_step(
     entity_collision_targets: &[crate::EntityPickTargetState],
 ) -> (LocalPlayerPoseState, EntityBlockEffectMovement) {
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    let initial_fluid_contact = local_player_fluid_contact(world, pose);
+    let (input_x, input_z) =
+        local_player_modified_input(world, pose, input, initial_fluid_contact.in_water());
     pose.delta_movement = local_player_fall_flying_updated_movement(world, pose, step_ticks);
 
     let mut requested_x = pose.delta_movement.x * step_ticks;
@@ -880,6 +898,9 @@ fn advance_local_player_fall_flying_physics_step(
             z: requested_z,
         },
     );
+    if pose.fall_distance != 0.0 && world.local_player_fall_reset_ray_hits(pose, movement) {
+        pose.fall_distance = 0.0;
+    }
     pose.position.x += movement[0];
     pose.position.y += movement[1];
     pose.position.z += movement[2];
@@ -887,19 +908,28 @@ fn advance_local_player_fall_flying_physics_step(
     let x_collision = local_player_horizontal_axis_collided(requested_x, movement[0]);
     let z_collision = local_player_horizontal_axis_collided(requested_z, movement[2]);
     let horizontal_collision = x_collision || z_collision;
+    let minor_horizontal_collision = horizontal_collision
+        && local_player_horizontal_collision_is_minor(pose, input_x, input_z, movement);
     let vertical_collision = movement[1] != requested_y;
     let on_ground = vertical_collision && requested_y < 0.0
         || local_player_supported(world, pose, collision_context);
-    let landing_fall_distance = on_ground
-        .then_some(pose.fall_distance + if movement[1] < 0.0 { -movement[1] } else { 0.0 });
-    let bounced_on_slime = vertical_collision
-        && requested_y < 0.0
-        && !input.sneak
-        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
+    pose.on_ground = on_ground;
     let fluid_contact = local_player_fluid_contact(world, pose);
-    if let Some(fall_distance) = landing_fall_distance {
-        append_local_player_powder_snow_fall_sound(world, pose, fall_distance);
-    }
+    let landing_fall_distance = on_ground.then_some(
+        pose.fall_distance
+            + if movement[1] < 0.0 && !fluid_contact.in_water() {
+                -movement[1]
+            } else {
+                0.0
+            },
+    );
+    let bounce = apply_local_player_landing_block_effects(
+        world,
+        pose,
+        input.sneak,
+        vertical_collision,
+        landing_fall_distance,
+    );
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
     } else {
@@ -919,15 +949,12 @@ fn advance_local_player_fall_flying_physics_step(
         pose.delta_movement.z = 0.0;
     }
     if vertical_collision {
-        pose.delta_movement.y = if bounced_on_slime && pose.delta_movement.y < 0.0 {
-            -pose.delta_movement.y
-        } else {
-            0.0
-        };
+        pose.delta_movement.y =
+            local_player_vertical_velocity_after_fall_on(pose.delta_movement.y, bounce);
     }
 
-    pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
+    pose.minor_horizontal_collision = minor_horizontal_collision;
     (pose, step_move)
 }
 
@@ -1118,6 +1145,35 @@ fn local_player_horizontal_axis_collided(requested: f64, resolved: f64) -> bool 
     (resolved - requested).abs() >= VANILLA_HORIZONTAL_COLLISION_EPSILON
 }
 
+fn local_player_horizontal_collision_is_minor(
+    pose: LocalPlayerPoseState,
+    input_x: f64,
+    input_z: f64,
+    movement: [f64; 3],
+) -> bool {
+    // `LocalPlayer.xxa`/`zza` and Mth's yaw trig are floats even though the
+    // resulting world-space dot product uses doubles.
+    // The native movement helper keeps a right-positive strafe axis, while
+    // Vanilla's `xxa` is the left-positive `ClientInput.moveVector.x`.
+    let input_x = f64::from(-(input_x as f32));
+    let input_z = f64::from(input_z as f32);
+    let yaw = pose.y_rot.to_radians();
+    let yaw_sin = f64::from(yaw.sin());
+    let yaw_cos = f64::from(yaw.cos());
+    let desired_x = input_x * yaw_cos - input_z * yaw_sin;
+    let desired_z = input_z * yaw_cos + input_x * yaw_sin;
+    let desired_length_squared = desired_x * desired_x + desired_z * desired_z;
+    let movement_length_squared = movement[0] * movement[0] + movement[2] * movement[2];
+    if desired_length_squared < f64::from(1.0e-5_f32)
+        || movement_length_squared < f64::from(1.0e-5_f32)
+    {
+        return false;
+    }
+    let dot = desired_x * movement[0] + desired_z * movement[2];
+    let angle = (dot / (desired_length_squared * movement_length_squared).sqrt()).acos();
+    angle < f64::from(LOCAL_PLAYER_MINOR_COLLISION_MAX_ANGLE_RADIANS)
+}
+
 fn should_back_off_from_edge(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
@@ -1160,17 +1216,59 @@ fn next_local_player_fall_distance(previous: f64, vertical_movement: f64, on_gro
     }
 }
 
-fn append_local_player_powder_snow_fall_sound(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LocalPlayerFallBounce {
+    None,
+    Slime,
+    Bed,
+}
+
+fn apply_local_player_landing_block_effects(
     world: &mut WorldStore,
     pose: LocalPlayerPoseState,
-    fall_distance: f64,
-) {
-    let Some(big) = player_powder_snow_fall_sound_size(fall_distance) else {
-        return;
+    suppressing_bounce: bool,
+    vertical_collision: bool,
+    landing_fall_distance: Option<f64>,
+) -> LocalPlayerFallBounce {
+    let Some(effect_block) = world.local_player_legacy_effect_block(pose, suppressing_bounce)
+    else {
+        return LocalPlayerFallBounce::None;
     };
-    if !local_player_standing_on_block(world, pose, LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME) {
-        return;
+    let Some(block_name) = effect_block.block_name.as_deref() else {
+        return LocalPlayerFallBounce::None;
+    };
+
+    if let Some(fall_distance) = landing_fall_distance.filter(|distance| *distance > 0.0) {
+        let sound_kind = if block_name == LOCAL_PLAYER_HONEY_BLOCK_NAME {
+            Some(EntityClientMovementSoundKind::PlayerHoneyBlockSlide)
+        } else if block_name == LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME {
+            player_powder_snow_fall_sound_size(fall_distance)
+                .map(|big| EntityClientMovementSoundKind::PlayerPowderSnowFall { big })
+        } else {
+            None
+        };
+        if let Some(sound_kind) = sound_kind {
+            append_local_player_landing_sound(world, pose, sound_kind);
+        }
     }
+
+    if !vertical_collision || suppressing_bounce {
+        return LocalPlayerFallBounce::None;
+    }
+    if block_name == "minecraft:slime_block" {
+        LocalPlayerFallBounce::Slime
+    } else if block_name_is_bed(block_name) {
+        LocalPlayerFallBounce::Bed
+    } else {
+        LocalPlayerFallBounce::None
+    }
+}
+
+fn append_local_player_landing_sound(
+    world: &mut WorldStore,
+    pose: LocalPlayerPoseState,
+    kind: EntityClientMovementSoundKind,
+) {
     let Some(entity_id) = world.local_player_id else {
         return;
     };
@@ -1180,7 +1278,7 @@ fn append_local_player_powder_snow_fall_sound(
     world.entities.push_entity_client_movement_effect_state(
         EntityClientMovementEffectState::Sound(EntityClientMovementSoundState {
             entity_id,
-            kind: EntityClientMovementSoundKind::PlayerPowderSnowFall { big },
+            kind,
             position: EntityVec3 {
                 x: pose.position.x,
                 y: pose.position.y,
@@ -1188,6 +1286,22 @@ fn append_local_player_powder_snow_fall_sound(
             },
         }),
     );
+}
+
+fn local_player_vertical_velocity_after_fall_on(
+    vertical_velocity: f64,
+    bounce: LocalPlayerFallBounce,
+) -> f64 {
+    if vertical_velocity >= 0.0 {
+        return 0.0;
+    }
+    match bounce {
+        LocalPlayerFallBounce::None => 0.0,
+        LocalPlayerFallBounce::Slime => -vertical_velocity,
+        LocalPlayerFallBounce::Bed => {
+            -vertical_velocity * f64::from(LOCAL_PLAYER_BED_BOUNCE_FACTOR)
+        }
+    }
 }
 
 /// Vanilla `PowderSnowBlock.fallOn`: distances below four are silent, then
@@ -1586,22 +1700,6 @@ fn local_player_block_jump_factor(world: &WorldStore, pose: LocalPlayerPoseState
                 .map(|name| f64::from(crate::terrain::vanilla_block_jump_factor(Some(name))))
         })
         .unwrap_or(DEFAULT_BLOCK_JUMP_FACTOR)
-}
-
-fn local_player_standing_on_block(
-    world: &WorldStore,
-    pose: LocalPlayerPoseState,
-    name: &str,
-) -> bool {
-    let pos = BlockPos {
-        x: local_player_block_floor(pose.position.x),
-        y: local_player_block_floor(pose.position.y - SUPPORT_EPSILON),
-        z: local_player_block_floor(pose.position.z),
-    };
-    world
-        .probe_block(pos)
-        .and_then(|block| block.block_name)
-        .is_some_and(|block_name| block_name == name)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
