@@ -1,6 +1,6 @@
 # Chunk Section Occlusion Closeout
 
-Status: active engineering-slice contract.
+Status: completed engineering-slice contract.
 
 ## Goal and completion
 

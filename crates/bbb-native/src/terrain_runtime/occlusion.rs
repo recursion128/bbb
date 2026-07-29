@@ -8,6 +8,9 @@ use bbb_renderer::{
 };
 use bbb_world::ChunkPos;
 
+mod debug;
+pub(crate) use debug::ChunkSectionDebugGizmos;
+
 const MINIMUM_ADVANCED_CULLING_SECTION_DISTANCE: i32 = 60_i32.div_euclid(16);
 const CEILED_SECTION_DIAGONAL: f64 = 28.0;
 
@@ -121,6 +124,7 @@ pub(super) struct OctreeVisit {
 #[derive(Debug, Default)]
 pub(super) struct TerrainSectionOcclusionGraph {
     nodes: BTreeMap<SectionPosition, OcclusionNode>,
+    section_visibility: BTreeMap<SectionPosition, TerrainSectionVisibility>,
     reachable_sections: BTreeSet<SectionPosition>,
     octree: Option<SectionOctree>,
     valid: bool,
@@ -139,14 +143,17 @@ impl TerrainSectionOcclusionGraph {
         smart_cull: bool,
     ) {
         self.nodes.clear();
+        self.section_visibility.clear();
         self.reachable_sections.clear();
         self.octree = None;
         self.valid = false;
 
-        let sections: BTreeMap<_, _> = sections
-            .into_iter()
-            .map(|section| (section.position, section.visibility))
-            .collect();
+        self.section_visibility.extend(
+            sections
+                .into_iter()
+                .map(|section| (section.position, section.visibility)),
+        );
+        let sections = &self.section_visibility;
         let Some(camera_section) = SectionPosition::from_block_position(camera_position) else {
             return;
         };

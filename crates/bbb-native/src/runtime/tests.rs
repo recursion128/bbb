@@ -3061,6 +3061,24 @@ fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
     assert!(
         runtime.contains("terrain_visible_sections: terrain_upload.renderer_visible_sections(),")
     );
+    let refresh = runtime
+        .find("terrain_upload.refresh_frame_visibility(terrain_visibility_context);")
+        .expect("current frustum publishes the graph result");
+    let entity_visibility = runtime
+        .find("EntityRenderVisibilityContext {")
+        .expect("entity extraction consumes terrain visibility");
+    let block_entity_visibility = runtime
+        .find("let block_entity_visibility = BlockEntityVisibility::new(")
+        .expect("block-entity extraction consumes terrain visibility");
+    let chunk_section_debug = runtime
+        .find("terrain_upload.chunk_section_debug_gizmos(")
+        .expect("chunk-section debug consumes the graph");
+    assert!(
+        refresh < entity_visibility
+            && entity_visibility < block_entity_visibility
+            && block_entity_visibility < chunk_section_debug,
+        "one current-frustum graph result must precede entity, block-entity, and debug consumers"
+    );
 
     let frame_source = include_str!("render_extract.rs");
     let field = frame_source

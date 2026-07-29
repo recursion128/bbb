@@ -633,7 +633,7 @@ fn render_path(info: &DebugPathInfo, camera: Option<CameraPose>, output: &mut Re
         output.lines.push(DebugLine::new(
             node_center(nodes[0]),
             node_center(to),
-            hsv_rgb(hue, 0.9, 0.9),
+            vanilla_hsv_rgb(hue, 0.9, 0.9),
             DebugLine::DEFAULT_WIDTH,
         ));
     }
@@ -1621,9 +1621,12 @@ const fn cross(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
     ]
 }
 
-fn hsv_rgb(hue: f32, saturation: f32, value: f32) -> [u8; 4] {
-    let sector = (hue.fract() * 6.0).floor() as i32;
-    let fraction = hue.fract() * 6.0 - sector as f32;
+pub(crate) fn vanilla_hsv_rgb(hue: f32, saturation: f32, value: f32) -> [u8; 4] {
+    // Keep `Mth.hsvToRgb`'s Java ordering: the sector is reduced modulo six
+    // before it is subtracted from the unwrapped hue. Values above one
+    // therefore clamp rather than becoming purely periodic.
+    let sector = (hue * 6.0) as i32 % 6;
+    let fraction = hue * 6.0 - sector as f32;
     let p = value * (1.0 - saturation);
     let q = value * (1.0 - fraction * saturation);
     let t = value * (1.0 - (1.0 - fraction) * saturation);
@@ -1635,7 +1638,12 @@ fn hsv_rgb(hue: f32, saturation: f32, value: f32) -> [u8; 4] {
         4 => (t, p, value),
         _ => (value, p, q),
     };
-    [(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, 255]
+    [
+        ((r * 255.0) as i32).clamp(0, 255) as u8,
+        ((g * 255.0) as i32).clamp(0, 255) as u8,
+        ((b * 255.0) as i32).clamp(0, 255) as u8,
+        255,
+    ]
 }
 
 const fn argb(value: i32) -> [u8; 4] {

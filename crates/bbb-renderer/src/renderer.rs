@@ -3898,6 +3898,91 @@ mod tests {
     }
 
     #[test]
+    fn terrain_visibility_filter_changes_deterministic_frame_pixels() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(64, 64) else {
+            return;
+        };
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &[255; 4])
+            .expect("white terrain atlas");
+        let vertex = |position| {
+            let mut vertex = terrain_vertex(position);
+            vertex.normal = [0.0, 0.0, -1.0];
+            vertex.uv = [0.5; 2];
+            vertex.light = [1.0; 2];
+            vertex.tint = [1.0, 0.0, 0.0];
+            vertex
+        };
+        let layers = TerrainSectionMeshLayers {
+            opaque: vec![TerrainSectionMesh {
+                section_y: 0,
+                mesh: TerrainMesh {
+                    vertices: vec![
+                        vertex([-1.0, -1.0, 2.0]),
+                        vertex([1.0, -1.0, 2.0]),
+                        vertex([1.0, 1.0, 2.0]),
+                        vertex([-1.0, 1.0, 2.0]),
+                    ],
+                    // Both windings keep this readback independent of the
+                    // backend's viewport-Y front-face convention.
+                    indices: vec![0, 1, 2, 2, 3, 0, 0, 3, 2, 2, 1, 0],
+                    source_sections: 1,
+                    opaque_faces: 2,
+                    ..TerrainMesh::default()
+                },
+            }],
+            source_sections: 1,
+            ..TerrainSectionMeshLayers::default()
+        };
+        let chunk = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: 0,
+            chunk_z: 0,
+        };
+        let owner = TerrainSectionMeshOwner {
+            chunk,
+            section_y: 0,
+        };
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            1,
+            [(chunk, &[(0, 1)][..], &layers, [0.0; 3])],
+        );
+        renderer.set_terrain_visible_sections(Some(&[owner]));
+        let visible = renderer
+            .render_offscreen_frame()
+            .expect("visible terrain frame");
+
+        renderer.set_terrain_visible_sections(Some(&[]));
+        let hidden = renderer
+            .render_offscreen_frame()
+            .expect("culled terrain frame");
+
+        let visible_center = visible.pixel(32, 32);
+        let hidden_center = hidden.pixel(32, 32);
+        assert!(
+            visible_center[0] > visible_center[2],
+            "visible owner should draw the red terrain quad, got {visible_center:?}"
+        );
+        assert!(
+            hidden_center[2] > hidden_center[0],
+            "culled owner should expose the blue clear color, got {hidden_center:?}"
+        );
+        assert_ne!(visible.rgba, hidden.rgba);
+    }
+
+    #[test]
     fn incremental_terrain_residency_preserves_unchanged_sibling_section_buffers() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
             return;

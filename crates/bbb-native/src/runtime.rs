@@ -3765,6 +3765,16 @@ pub(crate) fn update_renderer_from_publication(
     // F5 may clear/reselect independently of the canonical camera entity, while
     // a later SetCamera refresh may select again even in third person.
     let current_post_effect_id = input.camera_post_effect_id();
+    let terrain_visibility_context = TerrainVisibilityContext::new(
+        camera_pose,
+        [surface_size.width, surface_size.height],
+        camera_fov.culling_degrees,
+        render_distance_chunks,
+        input.debug_smart_cull_enabled(),
+    );
+    // Vanilla traverses the asynchronously published graph with this frame's
+    // frustum before block/entity visibility extraction and gizmo emission.
+    terrain_upload.refresh_frame_visibility(terrain_visibility_context);
     let renderer_counters = renderer.counters();
     let gpu_utilization = renderer.gpu_utilization();
     let hud_audio_counters = audio_events
@@ -4188,7 +4198,26 @@ pub(crate) fn update_renderer_from_publication(
             world.game_test_highlight_render_revision(),
             || game_test_highlight_gizmos(world),
         );
+    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let chunk_section_debug_gizmos = terrain_upload.chunk_section_debug_gizmos(
+        terrain_visibility_context,
+        input.debug_screen_entry_enabled(DebugScreenEntryId::ChunkSectionPaths, reduced_debug_info),
+        input
+            .debug_screen_entry_enabled(DebugScreenEntryId::ChunkSectionOctree, reduced_debug_info),
+        input.debug_screen_entry_enabled(
+            DebugScreenEntryId::ChunkSectionVisibility,
+            reduced_debug_info,
+        ),
+    );
     let mut debug_buffers = non_entity_render_extraction.begin_debug_frame();
+    // `DebugRenderer.refreshRendererList` registers `OctreeDebugRenderer`
+    // before water/heightmap/collision renderers.
+    debug_buffers
+        .lines
+        .extend(chunk_section_debug_gizmos.octree_lines);
+    debug_buffers
+        .text_billboards
+        .extend(chunk_section_debug_gizmos.octree_text_billboards);
     // Vanilla `DebugRenderer.refreshRendererList` registers WaterDebugRenderer
     // before HeightMapRenderer, so their shared debugFilledBox submissions keep
     // that renderer order when both custom entries are enabled.
@@ -4232,6 +4261,13 @@ pub(crate) fn update_renderer_from_publication(
         .extend(debug_sky_light_section_rects);
     debug_buffers.lines.extend(debug_sky_light_section_lines);
     debug_buffers.lines.extend(remote_debug_gizmos.lines);
+    // `ChunkCullingDebugRenderer` is always the final Vanilla debug renderer.
+    debug_buffers
+        .filled_boxes
+        .extend(chunk_section_debug_gizmos.culling_filled_boxes);
+    debug_buffers
+        .lines
+        .extend(chunk_section_debug_gizmos.culling_lines);
     // Vanilla `LevelRenderer.extractBlockDestroyAnimation` reads block-breaking state during
     // render extract, after the client tick; local destroy overlay ticks are advanced above.
     let block_destroy_overlays = if stable_world_unchanged {
@@ -4420,13 +4456,7 @@ pub(crate) fn update_renderer_from_publication(
         renderer,
         terrain_upload,
         terrain_textures,
-        TerrainVisibilityContext {
-            camera_pose,
-            surface_size: [surface_size.width, surface_size.height],
-            camera_fov_degrees: camera_fov.culling_degrees,
-            render_distance_chunks,
-            smart_cull: input.debug_smart_cull_enabled(),
-        },
+        terrain_visibility_context,
     );
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);

@@ -786,3 +786,7 @@
 - **2026-07-29（工作流 v8：延期状态完整性）**：真实延期项改留在所属 Todo
   域并强制 `Reopen when ...` 判据；门禁拒绝顶层 Deferred，选片面板把遗留
   Deferred bullet 视为 active，避免“零活动项”假完成。
+- **2026-07-29（Chunk section occlusion 工程闭环）**：精确 solid-render
+  face matrix、FIFO 可达性图、camera-ordered octree 与生产 terrain filter
+  已贯通，三套 F3 gizmo 共用同一 owner；合同见
+  `docs/archive/chunk-section-occlusion-closeout-design.md`。

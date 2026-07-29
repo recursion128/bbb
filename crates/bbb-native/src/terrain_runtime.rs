@@ -27,7 +27,9 @@ mod textures;
 use mesh_worker::{
     TerrainMeshJob, TerrainMeshJobKey, TerrainMeshResult, TerrainMeshSubmit, TerrainMeshWorker,
 };
-use occlusion::{ResidentSection, SectionPosition, TerrainSectionOcclusionGraph};
+use occlusion::{
+    ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainSectionOcclusionGraph,
+};
 pub(crate) use textures::{
     load_terrain_textures, try_load_terrain_textures, BlockRenderPosition,
     TerrainParticleTintCatalog, TerrainTextureState,
@@ -89,9 +91,56 @@ pub(crate) struct TerrainVisibilityContext {
     pub(crate) smart_cull: bool,
 }
 
+impl TerrainVisibilityContext {
+    pub(crate) fn new(
+        camera_pose: Option<CameraPose>,
+        surface_size: [u32; 2],
+        camera_fov_degrees: f32,
+        render_distance_chunks: u32,
+        smart_cull: bool,
+    ) -> Self {
+        Self {
+            camera_pose,
+            surface_size,
+            camera_fov_degrees,
+            render_distance_chunks,
+            smart_cull,
+        }
+    }
+
+    fn frustum(self) -> Option<CameraFrustum> {
+        let pose = self.camera_pose?;
+        let aspect = self.surface_size[0].max(1) as f32 / self.surface_size[1].max(1) as f32;
+        Some(CameraFrustum::from_pose(
+            pose,
+            aspect,
+            self.camera_fov_degrees,
+        ))
+    }
+}
+
 impl TerrainUploadState {
+    pub(crate) fn refresh_frame_visibility(&mut self, context: TerrainVisibilityContext) {
+        publish_terrain_frustum_visibility(self, context);
+    }
+
     pub(crate) fn renderer_visible_sections(&self) -> Option<&[TerrainSectionMeshOwner]> {
         self.renderer_visible_sections.as_deref()
+    }
+
+    pub(crate) fn chunk_section_debug_gizmos(
+        &self,
+        context: TerrainVisibilityContext,
+        show_paths: bool,
+        show_octree: bool,
+        show_visibility: bool,
+    ) -> ChunkSectionDebugGizmos {
+        context
+            .frustum()
+            .map_or_else(ChunkSectionDebugGizmos::default, |frustum| {
+                self.occlusion_graph
+                    .debug_gizmos(frustum, show_paths, show_octree, show_visibility)
+            })
     }
 
     pub(crate) fn has_uploaded_chunks(&self) -> bool {
@@ -767,10 +816,9 @@ fn refresh_terrain_visibility(
     upload: &mut TerrainUploadState,
     context: TerrainVisibilityContext,
 ) {
-    let fallback_sections = selected_resident_sections(upload);
     let Some(camera_pose) = context.camera_pose else {
-        upload.compiled_and_visible_sections = fallback_sections;
-        upload.renderer_visible_sections = None;
+        upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+        publish_terrain_frustum_visibility(upload, context);
         return;
     };
     let camera_position = [
@@ -817,13 +865,21 @@ fn refresh_terrain_visibility(
         world.dimension().section_count(),
         context.smart_cull,
     );
-    if !upload.occlusion_graph.is_valid() {
-        upload.compiled_and_visible_sections = fallback_sections;
+    publish_terrain_frustum_visibility(upload, context);
+}
+
+fn publish_terrain_frustum_visibility(
+    upload: &mut TerrainUploadState,
+    context: TerrainVisibilityContext,
+) {
+    let Some(frustum) = context
+        .frustum()
+        .filter(|_| upload.occlusion_graph.is_valid())
+    else {
+        upload.compiled_and_visible_sections = selected_resident_sections(upload);
         upload.renderer_visible_sections = None;
         return;
-    }
-    let aspect = context.surface_size[0] as f32 / context.surface_size[1].max(1) as f32;
-    let frustum = CameraFrustum::from_pose(camera_pose, aspect, context.camera_fov_degrees);
+    };
     let visible = upload.occlusion_graph.visible_sections(frustum);
     upload.compiled_and_visible_sections = visible
         .iter()
