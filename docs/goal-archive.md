@@ -780,3 +780,6 @@
   合同见 `docs/archive/component-select-codec-parity-design.md`。
 - **2026-07-29（工作流 v7：active TODO 选片面板）**：开放面板改按实际 bullet
   分类，显式 deferred/not-needed 与 invariant 不再伪装成 ready 候选。
+- **2026-07-29（非生物物品 owner 收窄）**：掉落物、投掷物和烟花物品模型现按
+  Vanilla `ItemOwner.asLivingEntity()` 的 null 结果解析
+  `context_entity_type`，不再误用被渲染实体自身的类型。

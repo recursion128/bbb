@@ -1,8 +1,8 @@
 use super::*;
 use crate::map_textures::map_color_rgba8;
 use bbb_protocol::entity_data_serializers::{
-    VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-    VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID, VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_INT_ID, VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
     VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
 };
 use bbb_protocol::packets::{
@@ -17,6 +17,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type, ChunkColumn,
     ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -3920,6 +3921,114 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
 }
 
 #[test]
+fn non_living_item_billboards_use_null_context_entity_type_select() {
+    // Vanilla `ItemModelResolver.updateForNonLiving` carries an `ItemOwner`,
+    // but `SelectItemModel.update` narrows it through `asLivingEntity()`.
+    // ItemEntity, Snowball, and FireworkRocket therefore all select the null
+    // fallback rather than a case for the rendered entity's own type.
+    let root = unique_item_model_temp_dir("non-living-context-entity-type-select");
+    write_context_entity_type_select_item_runtime_fixture(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let fallback = item_runtime.icon_for_stack(&stack).expect("fallback icon");
+    let fallback_uv = fallback.layers[0].uv;
+    let mut world = WorldStore::new();
+
+    const ITEM_ENTITY_ID: i32 = 620;
+    world.apply_add_entity(protocol_add_entity(
+        ITEM_ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    let item_data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: ITEM_ENTITY_ID,
+        values: vec![EntityDataValue {
+            data_id: item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(stack.clone()),
+        }],
+    }));
+
+    const SNOWBALL_ENTITY_ID: i32 = 621;
+    world.apply_add_entity(protocol_add_entity(
+        SNOWBALL_ENTITY_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+    ));
+    let snowball_item_data_id =
+        bbb_world::vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+            VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+            "ITEM_STACK",
+        )
+        .expect("generated Snowball item accessor")
+        .data_id;
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: SNOWBALL_ENTITY_ID,
+        values: vec![EntityDataValue {
+            data_id: snowball_item_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+            value: EntityDataValueKind::ItemStack(stack.clone()),
+        }],
+    }));
+
+    const FIREWORK_ENTITY_ID: i32 = 622;
+    world.apply_add_entity(protocol_add_entity(
+        FIREWORK_ENTITY_ID,
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    ));
+    let firework_accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    )
+    .expect("generated FireworkRocket metadata accessors");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: FIREWORK_ENTITY_ID,
+        values: vec![
+            EntityDataValue {
+                data_id: firework_accessors.item_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+                value: EntityDataValueKind::ItemStack(stack),
+            },
+            EntityDataValue {
+                data_id: firework_accessors.shot_at_angle_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+
+    let billboards = crate::item_entities::item_entity_billboards_from_world(
+        &world,
+        Some(&item_runtime),
+        &BTreeSet::new(),
+    );
+    assert_eq!(billboards.len(), 3);
+    assert!(billboards
+        .iter()
+        .all(|billboard| billboard.layers[0].uv.min == fallback_uv.min
+            && billboard.layers[0].uv.max == fallback_uv.max));
+    assert!(billboards.iter().any(|billboard| {
+        billboard.position[1] == 64.25
+            && billboard.orientation == bbb_renderer::ItemEntityBillboardOrientation::CameraFacing
+    }));
+    assert!(billboards.iter().any(|billboard| {
+        billboard.position[1] == 64.0
+            && billboard.orientation == bbb_renderer::ItemEntityBillboardOrientation::CameraFacing
+    }));
+    assert!(billboards.iter().any(|billboard| {
+        billboard.orientation == bbb_renderer::ItemEntityBillboardOrientation::FireworkShotAtAngle
+    }));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn held_generated_item_context_dimension_select_uses_world_level() {
     // Vanilla `ContextDimension.get` returns `level.dimension()` when the
     // item resolver is called with a `ClientLevel`. The held-item path uses
@@ -5486,6 +5595,18 @@ fn write_context_entity_type_select_item_runtime_fixture(root: &Path) {
                     {
                         "when": "minecraft:witch",
                         "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_witch" }
+                    },
+                    {
+                        "when": "minecraft:item",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_item" }
+                    },
+                    {
+                        "when": "minecraft:snowball",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_snowball" }
+                    },
+                    {
+                        "when": "minecraft:firework_rocket",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_firework_rocket" }
                     }
                 ],
                 "fallback": { "type": "minecraft:model", "model": "minecraft:item/entity_selector" }
@@ -5495,6 +5616,13 @@ fn write_context_entity_type_select_item_runtime_fixture(root: &Path) {
     write_flat_item_model_and_texture(&assets, "entity_selector", &[40, 80, 120, 255]);
     write_flat_item_model_and_texture(&assets, "entity_selector_player", &[120, 40, 80, 255]);
     write_flat_item_model_and_texture(&assets, "entity_selector_witch", &[80, 120, 40, 255]);
+    write_flat_item_model_and_texture(&assets, "entity_selector_item", &[120, 80, 40, 255]);
+    write_flat_item_model_and_texture(&assets, "entity_selector_snowball", &[40, 120, 80, 255]);
+    write_flat_item_model_and_texture(
+        &assets,
+        "entity_selector_firework_rocket",
+        &[80, 40, 120, 255],
+    );
 }
 
 fn write_context_dimension_select_item_runtime_fixture(root: &Path) {

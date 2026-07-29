@@ -47,7 +47,6 @@ pub(crate) fn item_entity_billboards_from_world(
                 &icon_context,
                 item_runtime,
                 &state.stack,
-                Some("minecraft:item"),
                 state.entity_id,
             )?;
             Some(item_entity_billboard_from_icon(
@@ -63,14 +62,11 @@ pub(crate) fn item_entity_billboards_from_world(
     // Thrown-item projectiles (snowball, egg, ender pearl, potions, fireballs, …) render the same item
     // sprite via vanilla `ThrownItemRenderer`, centered on the entity at that renderer's sprite scale.
     for (type_id, scale) in vanilla_entity_renderer_thrown_item_scales() {
-        let context_entity_type =
-            bbb_protocol::entity_types::vanilla_entity_resource_id_for_type_id(type_id);
         for state in world.item_stacks_for_entity_types(&[type_id]) {
             if let Some(icon) = item_icon_for_world_stack(
                 &icon_context,
                 item_runtime,
                 &state.stack,
-                context_entity_type.as_deref(),
                 state.entity_id,
             ) {
                 billboards.push(item_entity_billboard_from_icon(
@@ -87,13 +83,9 @@ pub(crate) fn item_entity_billboards_from_world(
     // Firework rockets use vanilla `FireworkEntityRenderer`: a camera-facing `ItemStackRenderState`
     // with an extra post-camera rotation when `FireworkRocketRenderState.isShotAtAngle` is true.
     for state in world.firework_rocket_item_states() {
-        if let Some(icon) = item_icon_for_world_stack(
-            &icon_context,
-            item_runtime,
-            &state.stack,
-            Some("minecraft:firework_rocket"),
-            state.entity_id,
-        ) {
+        if let Some(icon) =
+            item_icon_for_world_stack(&icon_context, item_runtime, &state.stack, state.entity_id)
+        {
             billboards.push(firework_rocket_billboard_from_icon(&state, icon));
         }
     }
@@ -127,7 +119,6 @@ fn item_icon_for_world_stack(
     context: &WorldItemIconContext<'_>,
     item_runtime: &NativeItemRuntime,
     stack: &bbb_protocol::packets::ItemStackSummary,
-    context_entity_type: Option<&str>,
     item_model_seed: i32,
 ) -> Option<ItemAtlasIcon> {
     let effective_stack = context.world.effective_item_stack(stack);
@@ -146,7 +137,11 @@ fn item_icon_for_world_stack(
             context.damage_type_keys.as_deref(),
             context.attribute_keys.as_deref(),
             None,
-            context_entity_type,
+            // `ItemModelResolver.updateForNonLiving` retains the entity as an
+            // `ItemOwner`, but `SelectItemModel.update` passes only
+            // `owner.asLivingEntity()` to select properties. These billboard
+            // families are all non-living, so `context_entity_type` is null.
+            None,
             None,
             context
                 .world

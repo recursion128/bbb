@@ -118,10 +118,6 @@ Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
 
-- Match `SelectItemModel.update` owner narrowing for non-living item consumers:
-  dropped items, thrown projectiles, and firework rockets must resolve
-  `minecraft:context_entity_type` through a null living owner instead of the
-  rendered entity's own type.
 - Additional ambient-context numeric `range_dispatch` properties are
   `deferred`: Vanilla 26.1 registers no property beyond the implemented set.
   Reopen when a later target registers one and its exact GUI ambient state
