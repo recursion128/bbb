@@ -261,8 +261,12 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;
   derive the date at the native presentation boundary without introducing
   wall-clock state into serializable `bbb-world`.
-- **Trial-spawner display-state behavior**, and custom `SpawnData` entity NBT
-  variants, which currently render through default entity metadata.
+- **Trial-spawner display-state behavior and custom `SpawnData` entity NBT
+  variants** are `deferred`: Vanilla creates the cached display entity through
+  `EntityType.loadEntityRecursive`, while bbb has no inbound synthetic-entity
+  NBT load owner for the renderer-observable persistent fields. Reopen when
+  that bounded projection exists with current-session registry and equipment
+  context; do not approximate custom tags as default entity metadata.
 - **Biome blend for block-break particles.** They still sample the single centre
   biome, unlike terrain tints which blend over `biomeBlendRadius`.
 
