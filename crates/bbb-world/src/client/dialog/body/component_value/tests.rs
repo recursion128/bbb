@@ -102,6 +102,13 @@ fn persistent_component_select_bridge_decodes_semantic_values_and_rejects_transi
         crate::RegistryPacketEntry::stub("example:custom"),
     ];
     registries.contents.insert(registry.to_string(), contents);
+    registries.tags.insert(
+        registry.to_string(),
+        crate::RegistryTagState {
+            registry: registry.to_string(),
+            tags: std::collections::BTreeMap::from([("minecraft:is_fire".to_string(), vec![0])]),
+        },
+    );
     let holder = crate::decode_persistent_component_select_value(
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
         &serde_json::json!("example:custom"),
@@ -110,6 +117,23 @@ fn persistent_component_select_bridge_decodes_semantic_values_and_rejects_transi
     .unwrap()
     .unwrap();
     assert_eq!(holder.damage_type_id, Some(1));
+
+    let holder_set = crate::decode_persistent_component_select_value(
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+        &serde_json::json!({"types": "#minecraft:is_fire"}),
+        Some(&registries),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(holder_set.damage_resistant_type_registry_ids, vec![0]);
+    assert_eq!(
+        holder_set.damage_resistant_type_tag.as_deref(),
+        Some("minecraft:is_fire")
+    );
+    let codec_projection = crate::component_select_codec_projection(&holder_set);
+    assert!(codec_projection
+        .damage_resistant_type_registry_ids
+        .is_empty());
 
     let error = crate::decode_persistent_component_select_value(
         VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
@@ -2823,10 +2847,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
     ));
 
     assert_eq!(patch.repairable_item_registry_ids, vec![3, 5]);
-    assert_eq!(
-        patch.provides_banner_pattern_registry_ids,
-        Vec::<i32>::new()
-    );
+    assert_eq!(patch.provides_banner_pattern_registry_ids, vec![7]);
     assert_eq!(
         patch.provides_banner_pattern_tag.as_deref(),
         Some("example:tag")
@@ -2838,7 +2859,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
         Some("example:direct")
     );
     assert_eq!(patch.jukebox_song_id, Some(6));
-    assert_eq!(patch.damage_resistant_type_registry_ids, Vec::<i32>::new());
+    assert_eq!(patch.damage_resistant_type_registry_ids, vec![7]);
     assert_eq!(
         patch.damage_resistant_type_tag.as_deref(),
         Some("example:tag")

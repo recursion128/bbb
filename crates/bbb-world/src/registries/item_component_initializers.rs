@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap};
 use bbb_pack::RegistryDependentItemComponentInitializer;
 use bbb_protocol::{
     data_component_types::{
-        copy_data_component_value_summary, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
@@ -56,14 +56,19 @@ pub(super) fn build_item_component_defaults(
                         "persistent component has no typed projection".to_string(),
                     )
                 })?;
-                copy_data_component_value_summary(*type_id, &decoded, &mut defaults).map_err(
-                    |error| prototype_codec_error(*item_id, *type_id, error.to_string()),
-                )?;
+                crate::item_profiles::copy_persistent_component_value_summary(
+                    *type_id,
+                    &decoded,
+                    &mut defaults,
+                )
+                .map_err(|error| prototype_codec_error(*item_id, *type_id, error.to_string()))?;
                 defaults.added_type_ids.push(*type_id);
             }
             defaults.added = defaults.added_type_ids.len();
-            validate_data_component_patch_summary(&defaults)
-                .map_err(|error| prototype_codec_error(*item_id, -1, error.to_string()))?;
+            validate_data_component_patch_summary(&crate::component_select_codec_projection(
+                &defaults,
+            ))
+            .map_err(|error| prototype_codec_error(*item_id, -1, error.to_string()))?;
             Ok((*item_id, defaults))
         })
         .collect()
@@ -694,6 +699,7 @@ mod tests {
         let codec_values = catalog.default_component_codec_values_by_protocol_id();
         let mut world = WorldStore::new();
         insert_referenced_dynamic_prototype_entries(&mut world, &codec_values);
+        insert_registry(&mut world, BANNER_PATTERN_REGISTRY, &["minecraft:base"]);
         insert_referenced_prototype_tags(&mut world, &codec_values);
         world.set_default_item_component_type_ids(memberships.clone());
         world.set_default_item_component_codec_values(codec_values);
@@ -718,9 +724,10 @@ mod tests {
                 memberships[item_id],
                 "item {item_id} decoded prototype membership diverged"
             );
-            validate_data_component_patch_summary(patch).unwrap_or_else(|error| {
-                panic!("item {item_id} prototype is not encodable: {error}")
-            });
+            validate_data_component_patch_summary(&crate::component_select_codec_projection(patch))
+                .unwrap_or_else(|error| {
+                    panic!("item {item_id} prototype is not encodable: {error}")
+                });
         }
 
         let stick_id = catalog.protocol_id("minecraft:stick").unwrap();
@@ -740,6 +747,21 @@ mod tests {
             effective.component_patch.item_name.as_deref(),
             Some("item.minecraft.stick")
         );
+
+        let wooden_pickaxe_id = catalog.protocol_id("minecraft:wooden_pickaxe").unwrap();
+        let wooden_pickaxe = &defaults[&wooden_pickaxe_id];
+        let named_tool_rules = wooden_pickaxe
+            .tool
+            .as_ref()
+            .unwrap()
+            .rules
+            .iter()
+            .filter(|rule| rule.block_tag.is_some())
+            .collect::<Vec<_>>();
+        assert_eq!(named_tool_rules.len(), 2);
+        assert!(named_tool_rules
+            .iter()
+            .all(|rule| rule.block_registry_ids == [0]));
 
         let explicit = ItemStackSummary {
             component_patch: DataComponentPatchSummary {
@@ -785,7 +807,7 @@ mod tests {
             BANNER_PATTERN_REGISTRY,
         ] {
             for tag in &tags {
-                insert_tag(world, registry, tag, Vec::new());
+                insert_tag(world, registry, tag, vec![0]);
             }
         }
     }

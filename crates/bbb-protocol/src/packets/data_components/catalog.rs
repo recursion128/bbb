@@ -296,7 +296,9 @@ pub fn encode_data_component_value_summary(
 
 /// Copies exactly one typed component value between patch summaries through
 /// the descriptor's network codec. This keeps prototype/explicit patch
-/// composition on the same generated dispatch table as wire decode.
+/// composition on the same generated dispatch table as wire decode. Callers
+/// retaining a persistent named holder set's resolved members must first use
+/// its tag-only network projection, then restore those generation-local ids.
 pub fn copy_data_component_value_summary(
     type_id: i32,
     source: &DataComponentPatchSummary,

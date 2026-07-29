@@ -1265,16 +1265,18 @@ fn component_select_values_equal(
                     })
         }
         _ => {
+            let actual = bbb_world::component_select_codec_projection(actual);
+            let expected = bbb_world::component_select_codec_projection(expected);
             let Ok(actual) =
                 bbb_protocol::data_component_types::encode_data_component_value_summary(
-                    type_id, actual,
+                    type_id, &actual,
                 )
             else {
                 return false;
             };
             let Ok(expected) =
                 bbb_protocol::data_component_types::encode_data_component_value_summary(
-                    type_id, expected,
+                    type_id, &expected,
                 )
             else {
                 return false;
@@ -1495,6 +1497,29 @@ mod component_select_tests {
                 ..DataComponentPatchSummary::default()
             },
             &holder,
+        ));
+
+        let named_holder_actual = DataComponentPatchSummary {
+            damage_resistant_type_registry_ids: vec![3, 5],
+            damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        let named_holder_case = DataComponentPatchSummary {
+            damage_resistant_type_tag: Some("minecraft:is_fire".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        assert!(component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+            &named_holder_actual,
+            &named_holder_case,
+        ));
+        assert!(!component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+            &named_holder_actual,
+            &DataComponentPatchSummary {
+                damage_resistant_type_registry_ids: vec![3, 5],
+                ..DataComponentPatchSummary::default()
+            },
         ));
     }
 }

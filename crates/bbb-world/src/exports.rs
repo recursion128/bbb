@@ -1,7 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::client::{
-    decode_persistent_component_select_value,
+    component_select_codec_projection, decode_persistent_component_select_value,
     decode_persistent_component_select_value_with_registry_access,
 };
 pub use crate::climate::{biome_height_adjusted_temperature, biome_info_noise};

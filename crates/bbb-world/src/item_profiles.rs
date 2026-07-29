@@ -9,10 +9,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use bbb_pack::RegistryDependentItemComponentInitializer;
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID;
 use bbb_protocol::data_component_types::{
-    copy_data_component_value_summary, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FOOD_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-    VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+    copy_data_component_value_summary, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+    VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+    VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
 };
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
@@ -347,7 +356,7 @@ impl ItemProfiles {
                 {
                     continue;
                 }
-                copy_data_component_value_summary(*component_id, defaults, &mut effective)
+                copy_persistent_component_value_summary(*component_id, defaults, &mut effective)
                     .expect("validated item prototype component must remain codec-copyable");
                 effective.added_type_ids.push(*component_id);
                 changed = true;
@@ -705,6 +714,73 @@ impl ItemProfiles {
     ) {
         self.default_wolf_body_armor_materials = filter_item_id_keys(armor_materials).into();
     }
+}
+
+pub(crate) fn copy_persistent_component_value_summary(
+    type_id: i32,
+    source: &DataComponentPatchSummary,
+    target: &mut DataComponentPatchSummary,
+) -> bbb_protocol::codec::Result<()> {
+    let codec_projection = crate::component_select_codec_projection(source);
+    copy_data_component_value_summary(type_id, &codec_projection, target)?;
+
+    // A named holder set is encoded as its tag on the network. World state
+    // additionally owns the members resolved for the current registry
+    // generation, so restore that derived projection after descriptor copy.
+    match type_id {
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => {
+            target.can_place_on = source.can_place_on.clone();
+            target.can_place_on_persistent = source.can_place_on_persistent.clone();
+        }
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+            target.can_break = source.can_break.clone();
+            target.can_break_persistent = source.can_break_persistent.clone();
+        }
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => {
+            target.consumable_effects = source.consumable_effects.clone();
+        }
+        VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
+            target.use_remainder = source.use_remainder.clone();
+        }
+        VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID => {
+            target.damage_resistant_type_registry_ids =
+                source.damage_resistant_type_registry_ids.clone();
+        }
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => {
+            target.tool = source.tool.clone();
+        }
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => {
+            target.equippable = source.equippable.clone();
+        }
+        VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID => {
+            target.repairable_item_registry_ids = source.repairable_item_registry_ids.clone();
+        }
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
+            target.death_protection_effects = source.death_protection_effects.clone();
+        }
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
+            target.blocks_attacks = source.blocks_attacks.clone();
+        }
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => {
+            target.charged_projectiles_items = source.charged_projectiles_items.clone();
+        }
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => {
+            target.bundle_contents_items = source.bundle_contents_items.clone();
+        }
+        VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID => {
+            target.provides_banner_pattern_registry_ids =
+                source.provides_banner_pattern_registry_ids.clone();
+        }
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => {
+            target.container_items = source.container_items.clone();
+            target.container_slots = source.container_slots.clone();
+        }
+        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => {
+            target.lock_predicate = source.lock_predicate.clone();
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn filter_item_ids(item_ids: BTreeSet<i32>) -> BTreeSet<i32> {

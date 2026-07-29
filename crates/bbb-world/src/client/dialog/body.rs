@@ -29,6 +29,7 @@ mod component_value;
 
 #[cfg(test)]
 use component_value::apply_item_patch_value;
+pub use component_value::component_select_codec_projection;
 pub use component_value::DialogDataComponentValueState;
 use component_value::{
     apply_item_patch_entry_value, decode_supported_component_value_with_context,
@@ -165,7 +166,8 @@ fn decode_persistent_data_component_patch_entry_with_context(
     }
     patch.added = 1;
     patch.added_type_ids.push(type_id);
-    validate_data_component_patch_summary(&patch).map_err(|error| error.to_string())?;
+    validate_data_component_patch_summary(&component_select_codec_projection(&patch))
+        .map_err(|error| error.to_string())?;
     Ok(Some(patch))
 }
 
@@ -259,7 +261,8 @@ impl DialogDataComponentPatchState {
             component_patch.added_type_ids.push(entry.type_id);
         }
         component_patch.added = component_patch.added_type_ids.len();
-        validate_data_component_patch_summary(&component_patch).ok()?;
+        validate_data_component_patch_summary(&component_select_codec_projection(&component_patch))
+            .ok()?;
         Some(component_patch)
     }
 }

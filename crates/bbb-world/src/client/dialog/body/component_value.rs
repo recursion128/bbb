@@ -1386,7 +1386,10 @@ fn holder_set_summary_parts(
     value: &DialogRegistryHolderSetState,
 ) -> Option<(Vec<i32>, Option<String>)> {
     match (value.holder_set_kind.as_str(), &value.tag) {
-        ("named", Some(tag)) => Some((Vec::new(), Some(tag.clone()))),
+        ("named", Some(tag)) => Some((
+            value.entries.iter().map(|entry| entry.holder_id).collect(),
+            Some(tag.clone()),
+        )),
         ("direct", None) => Some((
             value.entries.iter().map(|entry| entry.holder_id).collect(),
             None,
@@ -1683,6 +1686,138 @@ fn apply_holder_set(
     *registry_ids = ids;
     *tag = named_tag;
     true
+}
+
+/// Returns the network-codec-shaped projection of a persistent component value.
+///
+/// World-owned persistent summaries retain both a named holder-set tag and the
+/// members resolved for the current registry generation. Vanilla's network
+/// holder-set codec carries only the tag for a named set, so descriptor-backed
+/// comparison and validation must omit those derived member ids.
+pub fn component_select_codec_projection(
+    patch: &DataComponentPatchSummary,
+) -> DataComponentPatchSummary {
+    let mut projection = patch.clone();
+    project_patch_named_holder_sets_for_codec(&mut projection);
+    projection
+}
+
+fn project_patch_named_holder_sets_for_codec(patch: &mut DataComponentPatchSummary) {
+    clear_named_holder_members(
+        &mut patch.damage_resistant_type_registry_ids,
+        &patch.damage_resistant_type_tag,
+    );
+    for rule in patch.tool.iter_mut().flat_map(|tool| tool.rules.iter_mut()) {
+        clear_named_holder_members(&mut rule.block_registry_ids, &rule.block_tag);
+    }
+    if let Some(allowed_entities) = patch
+        .equippable
+        .as_mut()
+        .and_then(|equippable| equippable.allowed_entities.as_mut())
+    {
+        clear_named_holder_members(&mut allowed_entities.registry_ids, &allowed_entities.tag);
+    }
+    clear_named_holder_members(
+        &mut patch.repairable_item_registry_ids,
+        &patch.repairable_item_tag,
+    );
+    project_consume_effects_named_holder_sets(&mut patch.consumable_effects);
+    project_consume_effects_named_holder_sets(&mut patch.death_protection_effects);
+    if let Some(blocks_attacks) = patch.blocks_attacks.as_mut() {
+        for reduction in &mut blocks_attacks.damage_reductions {
+            if let Some(types) = reduction.damage_types.as_mut() {
+                clear_named_holder_members(&mut types.registry_ids, &types.tag);
+            }
+        }
+        if let Some(types) = blocks_attacks.bypassed_by.as_mut() {
+            clear_named_holder_members(&mut types.registry_ids, &types.tag);
+        }
+    }
+    clear_named_holder_members(
+        &mut patch.provides_banner_pattern_registry_ids,
+        &patch.provides_banner_pattern_tag,
+    );
+    if let Some(predicate) = patch.can_place_on_persistent.as_mut() {
+        project_adventure_mode_predicate_named_holder_sets(predicate);
+        patch.can_place_on = Some(adventure_mode_predicate_summary(predicate));
+    }
+    if let Some(predicate) = patch.can_break_persistent.as_mut() {
+        project_adventure_mode_predicate_named_holder_sets(predicate);
+        patch.can_break = Some(adventure_mode_predicate_summary(predicate));
+    }
+    if let Some(items) = patch
+        .lock_predicate
+        .as_mut()
+        .and_then(|predicate| predicate.items.as_mut())
+    {
+        clear_named_holder_members(&mut items.registry_ids, &items.tag);
+    }
+
+    if let Some(remainder) = patch.use_remainder.as_deref_mut() {
+        project_patch_named_holder_sets_for_codec(&mut remainder.component_patch);
+    }
+    for item in &mut patch.charged_projectiles_items {
+        project_patch_named_holder_sets_for_codec(&mut item.component_patch);
+    }
+    for item in &mut patch.bundle_contents_items {
+        project_patch_named_holder_sets_for_codec(&mut item.component_patch);
+    }
+    for item in &mut patch.container_items {
+        project_patch_named_holder_sets_for_codec(&mut item.component_patch);
+    }
+    for slot in &mut patch.container_slots {
+        project_patch_named_holder_sets_for_codec(&mut slot.item.component_patch);
+    }
+}
+
+fn clear_named_holder_members(registry_ids: &mut Vec<i32>, tag: &Option<String>) {
+    if tag.is_some() {
+        registry_ids.clear();
+    }
+}
+
+fn project_consume_effects_named_holder_sets(effects: &mut [ConsumeEffectSummary]) {
+    for effect in effects {
+        if let ConsumeEffectSummary::RemoveEffects {
+            effect_registry_ids,
+            effect_tag,
+        } = effect
+        {
+            clear_named_holder_members(effect_registry_ids, effect_tag);
+        }
+    }
+}
+
+fn project_adventure_mode_predicate_named_holder_sets(
+    predicate: &mut AdventureModePredicateDataSummary,
+) {
+    for block in &mut predicate.predicates {
+        if let Some(blocks) = block.blocks.as_mut() {
+            clear_named_holder_members(&mut blocks.registry_ids, &blocks.tag);
+        }
+        if let Some(exact) = block.exact_components.as_deref_mut() {
+            project_patch_named_holder_sets_for_codec(exact);
+        }
+    }
+}
+
+fn adventure_mode_predicate_summary(
+    predicate: &AdventureModePredicateDataSummary,
+) -> AdventureModePredicateSummary {
+    let mut summary = AdventureModePredicateSummary::default();
+    for predicate in &predicate.predicates {
+        let Some(blocks) = &predicate.blocks else {
+            summary.unknown = true;
+            continue;
+        };
+        summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
+        for registry_id in &blocks.registry_ids {
+            if !summary.block_registry_ids.contains(registry_id) {
+                summary.block_registry_ids.push(*registry_id);
+            }
+        }
+    }
+    summary
 }
 
 fn banner_pattern_summary(value: &DialogBannerPatternLayerState) -> BannerPatternLayerSummary {

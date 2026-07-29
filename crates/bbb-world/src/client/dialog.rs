@@ -16,16 +16,16 @@ mod input;
 pub(in crate::client::dialog) use canonical_json::canonical_component_json_utf16_len_with_context;
 
 pub use action::{DialogActionState, DialogCommandTemplateState};
+pub use body::{
+    component_select_codec_projection, decode_persistent_component_select_value,
+    decode_persistent_component_select_value_with_registry_access, DialogBodyState,
+    DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
+    DialogDataComponentValueState, DialogItemStackTemplateState, DialogPlainMessageState,
+};
 pub(crate) use body::{
     decode_command_item_stack_template_summary, decode_persistent_data_component_patch_entry,
     decode_persistent_data_component_patch_summary, validate_command_item_component,
     validate_command_item_predicate_value, validate_command_item_stack_template,
-};
-pub use body::{
-    decode_persistent_component_select_value,
-    decode_persistent_component_select_value_with_registry_access, DialogBodyState,
-    DialogDataComponentPatchEntryState, DialogDataComponentPatchState,
-    DialogDataComponentValueState, DialogItemStackTemplateState, DialogPlainMessageState,
 };
 pub use input::{
     DialogInputControlState, DialogInputState, DialogNumberRangeState,
