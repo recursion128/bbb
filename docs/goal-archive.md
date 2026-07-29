@@ -750,3 +750,7 @@
   Riptide 位移现共享 block/entity/world-border AABB 收集、精确轴裁剪与踏步候选；
   姿态/潜行边缘查询、同载具过滤、旁观者 noPhysics 和碰撞标志阈值同步对齐，
   合同见 `docs/archive/local-player-collision-owner-closeout-design.md`。
+- **2026-07-29（本地玩家生存物理最终闭环）**：窒息逃逸、可选自动跳跃、
+  major collision 冲刺停止、摔落重置射线、床反弹与蜂蜜块落地音效已按
+  Vanilla tick/move 顺序贯通，合同见
+  `docs/archive/local-player-survival-physics-closeout-design.md`。

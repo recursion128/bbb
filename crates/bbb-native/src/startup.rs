@@ -158,6 +158,12 @@ pub(crate) struct Args {
     pub(crate) client_allow_server_listing: bool,
     #[arg(long = "client-particles", value_enum, default_value = "all")]
     pub(crate) client_particles: ClientParticleStatusArg,
+    #[arg(
+        long = "client-auto-jump",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_auto_jump: bool,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
@@ -955,6 +961,15 @@ mod tests {
 
         let disabled = Args::try_parse_from(["bbb-native", "--client-vsync", "false"]).unwrap();
         assert!(!disabled.client_vsync);
+    }
+
+    #[test]
+    fn startup_client_auto_jump_uses_vanilla_default_and_explicit_toggle() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.client_auto_jump);
+
+        let disabled = Args::try_parse_from(["bbb-native", "--client-auto-jump", "false"]).unwrap();
+        assert!(!disabled.client_auto_jump);
     }
 
     #[test]

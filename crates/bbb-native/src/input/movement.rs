@@ -140,7 +140,9 @@ pub(crate) fn advance_player_input_for_client_ticks(
     input.last_vehicle_command_at = None;
     input.riding_jump_charge_seconds = None;
 
-    let Some(pose) = advance_unmounted_local_player_input(input, world, client_ticks) else {
+    let Some(pose) =
+        advance_unmounted_local_player_input(input, world, counters, net_commands, client_ticks)
+    else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -159,15 +161,17 @@ pub(crate) fn advance_player_input_for_client_ticks(
 fn advance_unmounted_local_player_input(
     input: &mut ClientInputState,
     world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
     client_ticks: u32,
 ) -> Option<LocalPlayerPoseState> {
-    let input_state = input.local_player_input();
-    let mut pose = world.advance_local_player_look_input(input_state)?;
-    let mut movement_input = input_state;
-    movement_input.mouse_delta_x = 0.0;
-    movement_input.mouse_delta_y = 0.0;
+    let mut pose = world.advance_local_player_look_input(input.local_player_input())?;
 
     for _ in 0..client_ticks {
+        stop_run_sprinting_for_previous_major_collision(input, world, counters, net_commands);
+        let mut movement_input = input.local_player_input();
+        movement_input.mouse_delta_x = 0.0;
+        movement_input.mouse_delta_y = 0.0;
         world.begin_local_player_ambient_audio_tick();
         let next_pose =
             world.advance_local_player_input(movement_input, LOCAL_PLAYER_MOVEMENT_TICK_SECONDS);
@@ -176,6 +180,32 @@ fn advance_unmounted_local_player_input(
     }
 
     Some(pose)
+}
+
+fn stop_run_sprinting_for_previous_major_collision(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> bool {
+    let should_stop = world.local_player_pose().is_some_and(|pose| {
+        !pose.swimming
+            && pose.horizontal_collision
+            && !pose.minor_horizontal_collision
+            && effective_sprinting_from_state(world, input)
+    });
+    if !should_stop {
+        return false;
+    }
+
+    // `LocalPlayer.aiStep` observes the previous `Entity.move` collision
+    // result before the current travel step. Clear the native sprint latch so
+    // catch-up ticks cannot emit the same transition more than once.
+    input.sprint = false;
+    input.pending_attack_sprint_stop = false;
+    queue_player_input_command(counters, net_commands, player_input_from_state(input));
+    queue_sprint_command(counters, world, net_commands, false);
+    true
 }
 
 fn resolve_pending_attack_sprint_stop(
@@ -557,6 +587,93 @@ mod tests {
                 .and_then(|toast| toast.progress_millionths),
             Some(125_000)
         );
+    }
+
+    #[test]
+    fn run_sprint_major_collision_stops_once_before_catch_up_movement_command() {
+        let (tx, mut rx) = mpsc::channel(8);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.sprint = true;
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            horizontal_collision: true,
+            minor_horizontal_collision: false,
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+        let now = Instant::now();
+
+        assert!(advance_unmounted_local_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            0,
+        )
+        .is_some());
+        assert!(input.sprint);
+        assert!(rx.try_recv().is_err());
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            now,
+            5,
+        );
+
+        let raw_input = match rx.try_recv().unwrap() {
+            NetCommand::PlayerInput(input) => input,
+            other => panic!("expected raw player input before sprint stop, got {other:?}"),
+        };
+        assert!(!raw_input.sprint);
+        let sprint_stop = match rx.try_recv().unwrap() {
+            NetCommand::PlayerCommand(command) => command,
+            other => panic!("expected sprint stop before movement, got {other:?}"),
+        };
+        assert_eq!(sprint_stop.action, PlayerCommandAction::StopSprinting);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
+        assert!(rx.try_recv().is_err());
+        assert!(!input.sprint);
+        assert_eq!(counters.player_input_commands_queued, 1);
+        assert_eq!(counters.player_command_commands_queued, 1);
+        assert_eq!(counters.player_move_commands_queued, 1);
+    }
+
+    #[test]
+    fn run_sprint_minor_or_swimming_collision_does_not_stop() {
+        for (minor_horizontal_collision, swimming) in [(true, false), (false, true)] {
+            let (tx, mut rx) = mpsc::channel(2);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            input.forward = true;
+            input.sprint = true;
+            let mut world = WorldStore::new();
+            world.apply_login(&protocol_play_login(99));
+            world.set_local_player_pose(LocalPlayerPoseState {
+                horizontal_collision: true,
+                minor_horizontal_collision,
+                swimming,
+                ..LocalPlayerPoseState::default()
+            });
+            let mut counters = NetCounters::default();
+
+            assert!(!stop_run_sprinting_for_previous_major_collision(
+                &mut input,
+                &world,
+                &mut counters,
+                &commands,
+            ));
+            assert!(input.sprint);
+            assert!(rx.try_recv().is_err());
+            assert_eq!(counters.player_input_commands_queued, 0);
+            assert_eq!(counters.player_command_commands_queued, 0);
+        }
     }
 
     #[test]

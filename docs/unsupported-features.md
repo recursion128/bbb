@@ -71,9 +71,6 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
 Movement:
-- Cover the remaining vanilla survival physics beyond the synchronized local
-  movement cadence; active engineering contract:
-  `docs/local-player-survival-physics-closeout-design.md`.
 - Add sprint-swim camera, animation, and presentation nuance.
 
 Commands:
