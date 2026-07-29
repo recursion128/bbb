@@ -348,9 +348,6 @@ input/movement/interaction、inventory/gameplay、particle/level event、audio
    state、runtime command/counter 与适用 screenshot/audio resolver 结果；只
    完成 decode、只加 counter 或只画 fallback 不得删除账本条目。
 
-当前 renderer block-feature / ordered world-text 工程合同见
-`docs/block-feature-ordered-submission-design.md`；完成后归档并删除本指针。
-
 完成标准：账本每个非实体条目都有唯一 queue owner；目标客户端适用条目完成或
 仅剩有依据的 `not-applicable`/`deferred`；playable-gate 覆盖基础 movement/
 interaction/inventory/world effects；不存在已 decode 但任一段无主的 required

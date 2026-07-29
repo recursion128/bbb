@@ -76,14 +76,6 @@ Inventory:
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 
-Submission surfaces:
-
-- Add renderer submission surfaces for remaining block-feature submissions,
-  then wire their draw ordering into vanilla's
-  ordered text phase. Texture-backed special geometry added by these surfaces
-  must record complete submission metadata before atlas lookup rather than
-  reuse the no-texture custom-geometry path.
-
 Living-entity render state:
 
 - Project the remaining conversion-time shaking input;

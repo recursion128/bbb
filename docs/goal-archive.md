@@ -770,3 +770,7 @@
   LegacyRandom 游标、Riptide 预测及弩的第一/第三人称与物品模型蓄力时长均已
   贯通；客户端/服务端组件分区由源码守卫锁定，合同见
   `docs/archive/synchronized-enchantment-client-effects-design.md`。
+- **2026-07-29（Block feature 与有序世界文本工程闭环）**：moving/model/
+  breaking 三类方块节点现有独立 lane，地图与 TextDisplay 的 custom/text
+  order 保留完整提交元数据；合同见
+  `docs/archive/block-feature-ordered-submission-design.md`。
