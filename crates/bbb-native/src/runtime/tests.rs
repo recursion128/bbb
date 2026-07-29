@@ -547,7 +547,13 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
     let messages = hud_chat_messages_from_world(&world, None);
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].interactions.len(), 1);
-    assert_eq!(messages[0].interactions[0].tooltip_runs[0].text, "details");
+    assert_eq!(messages[0].runs[0].font.as_deref(), Some("example:compact"));
+    assert_eq!(
+        messages[0].interactions[0].tooltip.as_ref().unwrap().lines[0].runs[0]
+            .visual
+            .text,
+        "details"
+    );
     assert_eq!(
         hud_chat_component_click_event(
             &world,
@@ -676,7 +682,7 @@ fn game_event_chat_components_localize_for_hud_and_system_narration() {
         messages[0]
             .runs
             .iter()
-            .map(|run| run.text.as_str())
+            .map(|run| run.visual.text.as_str())
             .collect::<String>(),
         "No respawn anchor"
     );
@@ -684,7 +690,7 @@ fn game_event_chat_components_localize_for_hud_and_system_narration() {
         messages[1]
             .runs
             .iter()
-            .map(|run| run.text.as_str())
+            .map(|run| run.visual.text.as_str())
             .collect::<String>(),
         "Move with W, A, S, and D"
     );
@@ -719,7 +725,11 @@ fn chat_render_cache_rebuilds_only_for_display_revision_or_level() {
     assert!(matches!(
         runtime.chat_messages_update(&world, None),
         RendererFrameUpdate::Replace(messages)
-            if messages.len() == 1 && messages[0].runs.iter().any(|run| run.text == "hello")
+            if messages.len() == 1
+                && messages[0]
+                    .runs
+                    .iter()
+                    .any(|run| run.visual.text == "hello")
     ));
     assert!(matches!(
         runtime.chat_messages_update(&world, None),

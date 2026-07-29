@@ -477,8 +477,8 @@ mod tests {
 
     use crate::{
         entity_model_texture_refs, ClearColor, EntityModelTextureImage, HudAsciiGlyph,
-        HudChatMessage, HudCrosshairAttackIndicator, HudFontGlyphBook, HudFontGlyphMap,
-        HudStyledTextRun, HudVignette, ParticleSpriteUv, ParticleUvRect, Renderer,
+        HudChatMessage, HudComponentTextRun, HudCrosshairAttackIndicator, HudFontGlyphBook,
+        HudFontGlyphMap, HudVignette, ParticleSpriteUv, ParticleUvRect, Renderer,
     };
 
     #[test]
@@ -726,7 +726,10 @@ mod tests {
         renderer.set_hud_chat_messages(vec![HudChatMessage {
             display_sequence: 1,
             added_tick: 0,
-            runs: vec![HudStyledTextRun::plain(&"a".repeat(60))],
+            runs: vec![HudComponentTextRun {
+                visual: crate::HudStyledTextRun::plain("a".repeat(60)),
+                font: Some("example:old".to_string()),
+            }],
             interactions: Vec::new(),
             tag: None,
         }]);

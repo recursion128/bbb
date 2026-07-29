@@ -4,9 +4,9 @@ use super::{
     absolute_hud_rect, hud_font_glyph, hud_font_runs_width, hud_styled_text_pass_geometry,
     hud_wrap_chat_runs_with_interactions, push_hud_debug_tinted_rect,
     push_hud_draw_with_uv_and_tint, push_hud_pause_button, push_hud_styled_text_pass,
-    sanitize_hud_text_preserving_empty, HudChatInteraction, HudDrawCommand, HudFontGlyphMap,
-    HudNineSliceSprite, HudObfuscatedGlyphPool, HudSpriteGpu, HudStyledTextRun, HudUvRect,
-    HudVertex, HUD_TINT_WHITE,
+    sanitize_hud_text_preserving_empty, HudChatInteraction, HudComponentTextRun, HudDrawCommand,
+    HudFontGlyphMap, HudNineSliceSprite, HudObfuscatedGlyphPool, HudRichTooltip,
+    HudRichTooltipLine, HudSpriteGpu, HudStyledTextRun, HudUvRect, HudVertex, HUD_TINT_WHITE,
 };
 
 pub const HUD_BOOK_WIDTH: i32 = 192;
@@ -233,7 +233,20 @@ fn book_chat_interactions(screen: &HudBookScreen) -> Vec<HudChatInteraction> {
             start_char: interaction.start_char,
             end_char: interaction.end_char,
             target_index: interaction.source_run_index,
-            tooltip_runs: interaction.tooltip_runs.clone(),
+            tooltip: (!interaction.tooltip_runs.is_empty()).then(|| HudRichTooltip {
+                style: None,
+                lines: vec![HudRichTooltipLine {
+                    runs: interaction
+                        .tooltip_runs
+                        .iter()
+                        .cloned()
+                        .map(|visual| HudComponentTextRun { visual, font: None })
+                        .collect(),
+                    tint: HUD_TINT_WHITE,
+                }],
+                advanced_lines: None,
+                wrap_text: true,
+            }),
         })
         .collect()
 }

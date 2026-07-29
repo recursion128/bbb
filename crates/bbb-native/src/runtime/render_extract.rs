@@ -1907,10 +1907,9 @@ pub(crate) fn hud_chat_messages_from_world(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ProjectedChatRun {
-    visual: HudStyledTextRun,
+    visual: HudComponentTextRun,
     click_event: Option<bbb_protocol::ComponentClickEvent>,
     hover_event: Option<bbb_protocol::ComponentHoverEvent>,
-    font: Option<String>,
 }
 
 fn hud_chat_message(
@@ -1924,14 +1923,14 @@ fn hud_chat_message(
     let mut runs = Vec::with_capacity(projected.len());
     for (target_index, run) in projected.into_iter().enumerate() {
         let start_char = char_offset;
-        char_offset = char_offset.saturating_add(run.visual.text.chars().count());
+        char_offset = char_offset.saturating_add(run.visual.visual.text.chars().count());
         if run.click_event.is_some() || run.hover_event.is_some() {
             if let Ok(target_index) = u16::try_from(target_index) {
                 interactions.push(HudChatInteraction {
                     start_char,
                     end_char: char_offset,
                     target_index,
-                    tooltip_runs: hud_chat_hover_runs(
+                    tooltip: super::component_hover::hud_component_hover_tooltip(
                         world,
                         item_runtime,
                         run.hover_event.as_ref(),
@@ -2014,10 +2013,9 @@ fn hud_chat_message_runs(
     }
     if message.styled_content.is_empty() {
         vec![ProjectedChatRun {
-            visual: HudStyledTextRun::plain(message.content.clone()),
+            visual: HudComponentTextRun::plain(message.content.clone()),
             click_event: None,
             hover_event: None,
-            font: None,
         }]
     } else {
         message
@@ -2029,27 +2027,19 @@ fn hud_chat_message_runs(
 }
 
 fn projected_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> ProjectedChatRun {
-    let mut visual = hud_chat_run(text, style);
-    visual.text.retain(|ch| ch == '\n' || !ch.is_control());
+    let mut visual = HudComponentTextRun {
+        visual: hud_chat_run(text, style),
+        font: style.font.clone(),
+    };
+    visual
+        .visual
+        .text
+        .retain(|ch| ch == '\n' || !ch.is_control());
     ProjectedChatRun {
         visual,
         click_event: style.click_event.clone(),
         hover_event: style.hover_event.clone(),
-        font: style.font.clone(),
     }
-}
-
-fn hud_chat_hover_runs(
-    world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
-    hover: Option<&bbb_protocol::ComponentHoverEvent>,
-) -> Vec<HudStyledTextRun> {
-    super::component_hover::hud_component_hover_tooltip(world, item_runtime, hover)
-        .into_iter()
-        .flat_map(|tooltip| tooltip.lines)
-        .flat_map(|line| line.runs)
-        .map(|run| run.visual)
-        .collect()
 }
 
 pub(crate) fn hud_chat_component_click_event(
@@ -2115,7 +2105,7 @@ pub(crate) fn chat_narration_text(
             &arguments,
         )
         .into_iter()
-        .map(|run| run.visual.text)
+        .map(|run| run.visual.visual.text)
         .collect();
     }
     if narration.styled_content.is_empty() {
@@ -2164,13 +2154,13 @@ fn push_projected_chat_literal(
     }
     let run = projected_chat_run(text, style);
     if let Some(previous) = runs.last_mut().filter(|previous| {
-        previous.visual.style == run.visual.style
-            && previous.visual.color == run.visual.color
+        previous.visual.visual.style == run.visual.visual.style
+            && previous.visual.visual.color == run.visual.visual.color
             && previous.click_event == run.click_event
             && previous.hover_event == run.hover_event
-            && previous.font == run.font
+            && previous.visual.font == run.visual.font
     }) {
-        previous.visual.text.push_str(text);
+        previous.visual.visual.text.push_str(text);
     } else {
         runs.push(run);
     }

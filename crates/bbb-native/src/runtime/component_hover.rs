@@ -57,12 +57,13 @@ pub(super) fn hud_component_hover_tooltip(
             else {
                 return Some(fallback());
             };
+            let lines = inventory_tooltip_lines(normal.lines);
             let advanced_lines = hud_item_tooltip(world, item_runtime, &stack, true, creative)
                 .map(|tooltip| inventory_tooltip_lines(tooltip.lines))
-                .filter(|lines| *lines != inventory_tooltip_lines(normal.lines.clone()));
+                .filter(|advanced| advanced != &lines);
             Some(HudRichTooltip {
                 style: normal.style,
-                lines: inventory_tooltip_lines(normal.lines),
+                lines,
                 advanced_lines,
                 wrap_text: false,
             })

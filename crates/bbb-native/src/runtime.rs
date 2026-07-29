@@ -3297,6 +3297,7 @@ pub(crate) fn update_renderer_from_publication(
         resources_loaded: item_runtime.is_some(),
         gui_ticks: world.client_chat().gui_ticks,
         focused: input.chat_entry_is_active(),
+        advanced_item_tooltips: input.debug_advanced_item_tooltips(),
         scroll_lines: input.chat_scroll_lines(),
         cursor_position: publication
             .input_runtime
