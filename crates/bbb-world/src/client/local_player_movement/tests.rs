@@ -1537,17 +1537,13 @@ fn local_player_does_not_collide_with_no_collision_rails_and_controls() {
 }
 
 #[test]
-fn local_player_does_not_collide_with_sign_outline() {
+fn local_player_does_not_collide_with_noncolliding_sign_outlines() {
     let cases = [
         ("standing sign", OAK_SIGN_ROTATION_0_BLOCK_STATE_ID),
         ("wall sign", OAK_WALL_SIGN_NORTH_BLOCK_STATE_ID),
         (
             "ceiling hanging sign",
             OAK_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID,
-        ),
-        (
-            "wall hanging sign",
-            OAK_WALL_HANGING_SIGN_NORTH_BLOCK_STATE_ID,
         ),
     ];
 
@@ -1565,6 +1561,28 @@ fn local_player_does_not_collide_with_sign_outline() {
         assert!(!pose.horizontal_collision, "{name}");
         assert!(pose.on_ground, "{name}");
     }
+}
+
+#[test]
+fn local_player_collides_with_wall_hanging_sign_plank() {
+    let mut world = flat_collision_world();
+    set_test_block(
+        &mut world,
+        0,
+        1,
+        1,
+        OAK_WALL_HANGING_SIGN_NORTH_BLOCK_STATE_ID,
+    );
+    let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+    assert_f64_near(pose.position.y, 1.0, 0.0005);
+    assert!(
+        pose.position.z > 1.0 && pose.position.z <= 1.076,
+        "wall hanging sign position was {:?}",
+        pose.position
+    );
+    assert!(pose.horizontal_collision);
+    assert!(pose.on_ground);
 }
 
 #[test]
