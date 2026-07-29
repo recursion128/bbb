@@ -65,6 +65,8 @@ const PARTICLE_PORTAL: &str = "minecraft:portal";
 const PARTICLE_WHITE_SMOKE: &str = "minecraft:white_smoke";
 const PARTICLE_HAPPY_VILLAGER: &str = "minecraft:happy_villager";
 const PARTICLE_DRIPPING_HONEY: &str = "minecraft:dripping_honey";
+const PARTICLE_FALLING_SPORE_BLOSSOM: &str = "minecraft:falling_spore_blossom";
+const PARTICLE_SPORE_BLOSSOM_AIR: &str = "minecraft:spore_blossom_air";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -343,6 +345,9 @@ impl EnvironmentAnimateRuntime {
                     &mut self.level_random,
                     spawns,
                 );
+            }
+            "minecraft:spore_blossom" => {
+                append_spore_blossom_animate_effects(world, pos, animate_random, spawns);
             }
             _ => {}
         }
@@ -1360,6 +1365,45 @@ fn append_beehive_animate_effect(
                 x1 + level_random.next_double() * (x2 - x1),
                 height,
                 z1 + level_random.next_double() * (z2 - z1),
+            ],
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
+}
+
+fn append_spore_blossom_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_FALLING_SPORE_BLOSSOM),
+        position: [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + 0.7,
+            f64::from(pos.z) + random.next_double(),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+
+    for _ in 0..14 {
+        let ambient_pos = BlockPos {
+            x: pos.x + random.next_int_bound(21) - 10,
+            y: pos.y - random.next_int_bound(10),
+            z: pos.z + random.next_int_bound(21) - 10,
+        };
+        if world.sample_block_collision_shape_is_full_block(ambient_pos) != Some(false) {
+            continue;
+        }
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_SPORE_BLOSSOM_AIR),
+            position: [
+                f64::from(ambient_pos.x) + random.next_double(),
+                f64::from(ambient_pos.y) + random.next_double(),
+                f64::from(ambient_pos.z) + random.next_double(),
             ],
             velocity: [0.0; 3],
             always_show: false,
@@ -3105,6 +3149,121 @@ mod tests {
         let _ = water_expected_level.next_float();
         assert!(water_spawns.is_empty());
         assert_eq!(water_level.next_long(), water_expected_level.next_long());
+    }
+
+    #[test]
+    fn spore_blossom_animate_effects_preserve_fourteen_collision_samples_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                let _ = random.next_double();
+                let _ = random.next_double();
+                let first = BlockPos {
+                    x: pos.x + random.next_int_bound(21) - 10,
+                    y: pos.y - random.next_int_bound(10),
+                    z: pos.z + random.next_int_bound(21) - 10,
+                };
+                (0..16).contains(&first.x) && (0..16).contains(&first.z) && first != pos
+            })
+            .expect("deterministic loaded first spore-blossom ambient sample");
+        let mut first_random = LevelEventSoundRandomState::with_seed(seed);
+        let _ = first_random.next_double();
+        let _ = first_random.next_double();
+        let first_ambient = BlockPos {
+            x: pos.x + first_random.next_int_bound(21) - 10,
+            y: pos.y - first_random.next_int_bound(10),
+            z: pos.z + first_random.next_int_bound(21) - 10,
+        };
+
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id("minecraft:spore_blossom", &[]),
+        );
+        set_block(
+            &mut world,
+            first_ambient,
+            block_state_id("minecraft:stone", &[]),
+        );
+        let mut actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut spawns = Vec::new();
+        append_spore_blossom_animate_effects(&world, pos, &mut actual, &mut spawns);
+
+        let mut expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut expected_particles = vec![PARTICLE_FALLING_SPORE_BLOSSOM];
+        let mut expected_positions = vec![[
+            8.0 + expected.next_double(),
+            32.7,
+            8.0 + expected.next_double(),
+        ]];
+        for _ in 0..14 {
+            let ambient_pos = BlockPos {
+                x: pos.x + expected.next_int_bound(21) - 10,
+                y: pos.y - expected.next_int_bound(10),
+                z: pos.z + expected.next_int_bound(21) - 10,
+            };
+            if world.sample_block_collision_shape_is_full_block(ambient_pos) != Some(false) {
+                continue;
+            }
+            expected_particles.push(PARTICLE_SPORE_BLOSSOM_AIR);
+            expected_positions.push([
+                f64::from(ambient_pos.x) + expected.next_double(),
+                f64::from(ambient_pos.y) + expected.next_double(),
+                f64::from(ambient_pos.z) + expected.next_double(),
+            ]);
+        }
+        assert!(expected_particles.len() > 1);
+        assert!(expected_particles.len() < 15);
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.particle.resource_id.as_str())
+                .collect::<Vec<_>>(),
+            expected_particles
+        );
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            expected_positions
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.velocity == [0.0; 3] && !spawn.always_show));
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let stone_id = block_state_id("minecraft:stone", &[]);
+        let mut blocked_world = world_with_ambient_particles_and_block_state(stone_id);
+        set_block(
+            &mut blocked_world,
+            pos,
+            block_state_id("minecraft:spore_blossom", &[]),
+        );
+        let mut blocked_actual = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_expected = LevelEventSoundRandomState::with_seed(seed);
+        let mut blocked_spawns = Vec::new();
+        append_spore_blossom_animate_effects(
+            &blocked_world,
+            pos,
+            &mut blocked_actual,
+            &mut blocked_spawns,
+        );
+        let _ = blocked_expected.next_double();
+        let _ = blocked_expected.next_double();
+        for _ in 0..14 {
+            let _ = blocked_expected.next_int_bound(21);
+            let _ = blocked_expected.next_int_bound(10);
+            let _ = blocked_expected.next_int_bound(21);
+        }
+        assert_eq!(blocked_spawns.len(), 1);
+        assert_eq!(
+            blocked_spawns[0].particle.resource_id,
+            PARTICLE_FALLING_SPORE_BLOSSOM
+        );
+        assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
     }
 
     #[test]
