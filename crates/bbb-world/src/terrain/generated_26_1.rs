@@ -734,6 +734,40 @@ pub(super) const VANILLA_WALL_SKULL_BLOCKS: &[&str] = &[
     "minecraft:piglin_wall_head",
 ];
 
+pub(super) const VANILLA_FALLING_BLOCKS: &[&str] = &[
+    "minecraft:sand",
+    "minecraft:red_sand",
+    "minecraft:gravel",
+    "minecraft:dragon_egg",
+    "minecraft:anvil",
+    "minecraft:chipped_anvil",
+    "minecraft:damaged_anvil",
+    "minecraft:white_concrete_powder",
+    "minecraft:orange_concrete_powder",
+    "minecraft:magenta_concrete_powder",
+    "minecraft:light_blue_concrete_powder",
+    "minecraft:yellow_concrete_powder",
+    "minecraft:lime_concrete_powder",
+    "minecraft:pink_concrete_powder",
+    "minecraft:gray_concrete_powder",
+    "minecraft:light_gray_concrete_powder",
+    "minecraft:cyan_concrete_powder",
+    "minecraft:purple_concrete_powder",
+    "minecraft:blue_concrete_powder",
+    "minecraft:brown_concrete_powder",
+    "minecraft:green_concrete_powder",
+    "minecraft:red_concrete_powder",
+    "minecraft:black_concrete_powder",
+];
+
+pub(super) const VANILLA_BRUSHABLE_BLOCKS: &[&str] =
+    &["minecraft:suspicious_sand", "minecraft:suspicious_gravel"];
+
+pub(super) const VANILLA_DRY_GRASS_AMBIENT_BLOCKS: &[&str] =
+    &["minecraft:short_dry_grass", "minecraft:tall_dry_grass"];
+
+pub(super) const VANILLA_DEAD_BUSH_AMBIENT_BLOCKS: &[&str] = &["minecraft:dead_bush"];
+
 pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:air",
     "minecraft:water",
@@ -747,6 +781,53 @@ pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:void_air",
     "minecraft:cave_air",
     "minecraft:bubble_column",
+];
+
+pub(super) const VANILLA_FIRE_BLOCKS: &[&str] = &["minecraft:fire", "minecraft:soul_fire"];
+
+pub(super) const VANILLA_TERRACOTTA_BLOCKS: &[&str] = &[
+    "minecraft:terracotta",
+    "minecraft:white_terracotta",
+    "minecraft:orange_terracotta",
+    "minecraft:magenta_terracotta",
+    "minecraft:light_blue_terracotta",
+    "minecraft:yellow_terracotta",
+    "minecraft:lime_terracotta",
+    "minecraft:pink_terracotta",
+    "minecraft:gray_terracotta",
+    "minecraft:light_gray_terracotta",
+    "minecraft:cyan_terracotta",
+    "minecraft:purple_terracotta",
+    "minecraft:blue_terracotta",
+    "minecraft:brown_terracotta",
+    "minecraft:green_terracotta",
+    "minecraft:red_terracotta",
+    "minecraft:black_terracotta",
+];
+
+pub(super) const VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS: &[&str] =
+    &["minecraft:sand", "minecraft:red_sand"];
+
+pub(super) const VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS: &[&str] = &[
+    "minecraft:terracotta",
+    "minecraft:white_terracotta",
+    "minecraft:orange_terracotta",
+    "minecraft:magenta_terracotta",
+    "minecraft:light_blue_terracotta",
+    "minecraft:yellow_terracotta",
+    "minecraft:lime_terracotta",
+    "minecraft:pink_terracotta",
+    "minecraft:gray_terracotta",
+    "minecraft:light_gray_terracotta",
+    "minecraft:cyan_terracotta",
+    "minecraft:purple_terracotta",
+    "minecraft:blue_terracotta",
+    "minecraft:brown_terracotta",
+    "minecraft:green_terracotta",
+    "minecraft:red_terracotta",
+    "minecraft:black_terracotta",
+    "minecraft:sand",
+    "minecraft:red_sand",
 ];
 
 pub(super) const VANILLA_IMPERMEABLE_BLOCKS: &[&str] = &[
@@ -1605,7 +1686,15 @@ mod tests {
                         "VANILLA_AMETHYST_CLUSTER_BLOCKS",
                         "VANILLA_FLOOR_SKULL_BLOCKS",
                         "VANILLA_WALL_SKULL_BLOCKS",
+                        "VANILLA_FALLING_BLOCKS",
+                        "VANILLA_BRUSHABLE_BLOCKS",
+                        "VANILLA_DRY_GRASS_AMBIENT_BLOCKS",
+                        "VANILLA_DEAD_BUSH_AMBIENT_BLOCKS",
                         "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
+                        "VANILLA_FIRE_BLOCKS",
+                        "VANILLA_TERRACOTTA_BLOCKS",
+                        "VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS",
+                        "VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS",
                         "VANILLA_IMPERMEABLE_BLOCKS",
                         "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
                         "VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS",
@@ -1702,9 +1791,29 @@ mod tests {
                         ),
                         ("VANILLA_FLOOR_SKULL_BLOCKS", VANILLA_FLOOR_SKULL_BLOCKS),
                         ("VANILLA_WALL_SKULL_BLOCKS", VANILLA_WALL_SKULL_BLOCKS),
+                        ("VANILLA_FALLING_BLOCKS", VANILLA_FALLING_BLOCKS),
+                        ("VANILLA_BRUSHABLE_BLOCKS", VANILLA_BRUSHABLE_BLOCKS),
+                        (
+                            "VANILLA_DRY_GRASS_AMBIENT_BLOCKS",
+                            VANILLA_DRY_GRASS_AMBIENT_BLOCKS,
+                        ),
+                        (
+                            "VANILLA_DEAD_BUSH_AMBIENT_BLOCKS",
+                            VANILLA_DEAD_BUSH_AMBIENT_BLOCKS,
+                        ),
                         (
                             "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                             VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+                        ),
+                        ("VANILLA_FIRE_BLOCKS", VANILLA_FIRE_BLOCKS),
+                        ("VANILLA_TERRACOTTA_BLOCKS", VANILLA_TERRACOTTA_BLOCKS),
+                        (
+                            "VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS",
+                            VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS,
+                        ),
+                        (
+                            "VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS",
+                            VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS,
                         ),
                         ("VANILLA_IMPERMEABLE_BLOCKS", VANILLA_IMPERMEABLE_BLOCKS),
                         (

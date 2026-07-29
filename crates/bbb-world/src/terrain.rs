@@ -9,11 +9,13 @@ mod generated_26_1;
 use generated_26_1::{
     VANILLA_AIR_BLOCKS, VANILLA_AMETHYST_CLUSTER_BLOCKS, VANILLA_ANVIL_BLOCKS, VANILLA_BARS_BLOCKS,
     VANILLA_BED_BLOCKS, VANILLA_BLOCK_FRICTION_OVERRIDES, VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES,
-    VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS, VANILLA_CANDLE_BLOCKS,
-    VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS, VANILLA_CHAIN_BLOCKS,
-    VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS, VANILLA_COPPER_GRATE_BLOCKS,
-    VANILLA_CROP_BLOCKS, VANILLA_DOOR_BLOCKS, VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS,
-    VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS,
+    VANILLA_BRUSHABLE_BLOCKS, VANILLA_BUTTON_BLOCKS, VANILLA_CAMPFIRE_BLOCKS,
+    VANILLA_CANDLE_BLOCKS, VANILLA_CANDLE_CAKE_BLOCKS, VANILLA_CAULDRON_BLOCKS,
+    VANILLA_CHAIN_BLOCKS, VANILLA_CHEST_BLOCKS, VANILLA_COPPER_GOLEM_STATUE_BLOCKS,
+    VANILLA_COPPER_GRATE_BLOCKS, VANILLA_CROP_BLOCKS, VANILLA_DEAD_BUSH_AMBIENT_BLOCKS,
+    VANILLA_DOOR_BLOCKS, VANILLA_DRY_GRASS_AMBIENT_BLOCKS,
+    VANILLA_ENCHANTMENT_POWER_PROVIDER_BLOCKS, VANILLA_ENCHANTMENT_POWER_TRANSMITTER_BLOCKS,
+    VANILLA_FALLING_BLOCKS, VANILLA_FENCE_BLOCKS, VANILLA_FENCE_GATE_BLOCKS, VANILLA_FIRE_BLOCKS,
     VANILLA_FIRE_FLAMMABLE_BLOCKS, VANILLA_FIXED_SOURCE_WATER_BLOCKS, VANILLA_FLOOR_SKULL_BLOCKS,
     VANILLA_FLOOR_TORCH_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
     VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
@@ -26,9 +28,12 @@ use generated_26_1::{
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS,
     VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
-    VANILLA_TRAPDOOR_BLOCKS, VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS,
-    VANILLA_WALL_BLOCKS, VANILLA_WALL_SIGN_BLOCKS, VANILLA_WALL_SKULL_BLOCKS,
-    VANILLA_WALL_TORCH_BLOCKS, VANILLA_WOOL_CARPET_BLOCKS,
+    VANILLA_TERRACOTTA_BLOCKS, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS,
+    VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS,
+    VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS, VANILLA_WALL_BLOCKS,
+    VANILLA_WALL_SIGN_BLOCKS, VANILLA_WALL_SKULL_BLOCKS, VANILLA_WALL_TORCH_BLOCKS,
+    VANILLA_WOOL_CARPET_BLOCKS,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -370,6 +375,34 @@ pub fn classify_terrain_skip_rendering(
 
 pub fn block_name_is_air(name: &str) -> bool {
     VANILLA_AIR_BLOCKS.contains(&name)
+}
+
+pub fn block_name_has_falling_dust_animate_tick(name: &str) -> bool {
+    VANILLA_FALLING_BLOCKS.contains(&name) || VANILLA_BRUSHABLE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_dry_grass_ambient(name: &str) -> bool {
+    VANILLA_DRY_GRASS_AMBIENT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_dead_bush_ambient(name: &str) -> bool {
+    VANILLA_DEAD_BUSH_AMBIENT_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_fire(name: &str) -> bool {
+    VANILLA_FIRE_BLOCKS.contains(&name)
+}
+
+pub fn block_name_is_terracotta(name: &str) -> bool {
+    VANILLA_TERRACOTTA_BLOCKS.contains(&name)
+}
+
+pub fn block_name_triggers_ambient_desert_sand_block_sounds(name: &str) -> bool {
+    VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS.contains(&name)
+}
+
+pub fn block_name_triggers_ambient_desert_dry_vegetation_block_sounds(name: &str) -> bool {
+    VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS.contains(&name)
 }
 
 pub(crate) fn block_name_is_impermeable(name: &str) -> bool {
@@ -1167,6 +1200,54 @@ mod tests {
             assert_eq!(profile.tint, LeafParticleTint::FixedArgb(0xff70_922d));
         }
         assert_eq!(leaf_animate_particle_profile("example:oak_leaves"), None);
+    }
+
+    #[test]
+    fn falling_and_desert_memberships_follow_generated_vanilla_owners_and_tags() {
+        for block_name in [
+            "minecraft:sand",
+            "minecraft:red_sand",
+            "minecraft:gravel",
+            "minecraft:dragon_egg",
+            "minecraft:anvil",
+            "minecraft:white_concrete_powder",
+            "minecraft:suspicious_sand",
+            "minecraft:suspicious_gravel",
+        ] {
+            assert!(block_name_has_falling_dust_animate_tick(block_name));
+        }
+        assert!(!block_name_has_falling_dust_animate_tick(
+            "minecraft:white_concrete"
+        ));
+
+        assert!(block_name_is_dry_grass_ambient("minecraft:short_dry_grass"));
+        assert!(block_name_is_dry_grass_ambient("minecraft:tall_dry_grass"));
+        assert!(block_name_is_dead_bush_ambient("minecraft:dead_bush"));
+        assert!(!block_name_is_dead_bush_ambient(
+            "minecraft:potted_dead_bush"
+        ));
+
+        assert!(block_name_is_fire("minecraft:fire"));
+        assert!(block_name_is_fire("minecraft:soul_fire"));
+        assert!(!block_name_is_fire("minecraft:campfire"));
+        assert!(block_name_is_terracotta("minecraft:terracotta"));
+        assert!(block_name_is_terracotta("minecraft:red_terracotta"));
+        assert!(!block_name_is_terracotta("minecraft:red_sand"));
+
+        for block_name in ["minecraft:sand", "minecraft:red_sand"] {
+            assert!(block_name_triggers_ambient_desert_sand_block_sounds(
+                block_name
+            ));
+            assert!(block_name_triggers_ambient_desert_dry_vegetation_block_sounds(block_name));
+        }
+        assert!(
+            block_name_triggers_ambient_desert_dry_vegetation_block_sounds(
+                "minecraft:blue_terracotta"
+            )
+        );
+        assert!(!block_name_triggers_ambient_desert_sand_block_sounds(
+            "minecraft:sandstone"
+        ));
     }
 
     #[test]

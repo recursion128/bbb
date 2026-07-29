@@ -115,9 +115,9 @@ impl VanillaBlockSupportType {
     }
 }
 
-/// Runtime-generated support, collision, occlusion-face, can-occlude,
-/// solid-render, redstone-conductor, and legacy liquid facts for one built-in
-/// Vanilla 26.1 block state.
+/// Runtime-generated support, collision, occlusion-face, replaceable,
+/// can-occlude, solid-render, redstone-conductor, and legacy liquid facts for
+/// one built-in Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -177,6 +177,11 @@ impl VanillaBlockStateSupportFacts {
     /// face used by `Block.shouldRenderFace`'s first culling branch.
     pub const fn occlusion_face_full(self, direction: VanillaBlockSupportDirection) -> bool {
         self.facts & (1 << (32 + direction.index())) != 0
+    }
+
+    /// Vanilla's context-free `BlockState.canBeReplaced()` property.
+    pub const fn replaceable(self) -> bool {
+        self.facts & (1 << 38) != 0
     }
 }
 
@@ -443,6 +448,7 @@ mod tests {
         assert!(!air.collision_face_nonempty(VanillaBlockSupportDirection::Up));
         assert!(!air.collision_face_full(VanillaBlockSupportDirection::Up));
         assert!(!air.occlusion_face_full(VanillaBlockSupportDirection::Up));
+        assert!(air.replaceable());
 
         let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
         assert!(stone.legacy_solid());
@@ -451,6 +457,12 @@ mod tests {
         assert!(stone.redstone_conductor());
         assert!(!stone.liquid());
         assert!(stone.occlusion_face_full(VanillaBlockSupportDirection::Up));
+        assert!(!stone.replaceable());
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:short_grass"))
+                .unwrap()
+                .replaceable()
+        );
         assert!(
             !vanilla_block_state_support_facts(state_id("minecraft:glass"))
                 .unwrap()

@@ -46,6 +46,18 @@ BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 PARTICLE_TYPES_SOURCE = Path("net/minecraft/core/particles/ParticleTypes.java")
 
 BLOCK_TAG_CATALOGS = (
+    ("VANILLA_FIRE_BLOCKS", "minecraft:fire", 2),
+    ("VANILLA_TERRACOTTA_BLOCKS", "minecraft:terracotta", 17),
+    (
+        "VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS",
+        "minecraft:triggers_ambient_desert_sand_block_sounds",
+        2,
+    ),
+    (
+        "VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS",
+        "minecraft:triggers_ambient_desert_dry_vegetation_block_sounds",
+        19,
+    ),
     ("VANILLA_IMPERMEABLE_BLOCKS", "minecraft:impermeable", 19),
     (
         "VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS",
@@ -258,6 +270,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.WallSkullBlock",
         4,
     )
+    falling_block_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.FallingBlock",
+        6,
+    )
     entries = no_terrain_particle_blocks(source)
     no_collision_entries = no_collision_blocks(source, block_id_constants)
     air_entries = air_blocks(source)
@@ -308,6 +325,22 @@ def generate(source_root: Path) -> str:
             ("VANILLA_AMETHYST_CLUSTER_BLOCKS", amethyst_cluster_types, 4),
             ("VANILLA_FLOOR_SKULL_BLOCKS", floor_skull_types, 7),
             ("VANILLA_WALL_SKULL_BLOCKS", wall_skull_types, 7),
+            ("VANILLA_FALLING_BLOCKS", falling_block_types, 23),
+            (
+                "VANILLA_BRUSHABLE_BLOCKS",
+                frozenset({"BrushableBlock"}),
+                2,
+            ),
+            (
+                "VANILLA_DRY_GRASS_AMBIENT_BLOCKS",
+                frozenset({"ShortDryGrassBlock", "TallDryGrassBlock"}),
+                2,
+            ),
+            (
+                "VANILLA_DEAD_BUSH_AMBIENT_BLOCKS",
+                frozenset({"DryVegetationBlock"}),
+                1,
+            ),
             (
                 "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                 invisible_render_shape_types,

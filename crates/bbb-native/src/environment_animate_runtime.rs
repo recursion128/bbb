@@ -8,24 +8,28 @@ use bbb_protocol::{
     packets::{SoundSource, Vec3d as ProtocolVec3d},
 };
 use bbb_world::{
-    block_name_is_candle, block_name_is_candle_cake, block_name_is_pale_oak_log,
-    leaf_animate_particle_profile, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
-    LeafAnimateParticleProfile, LeafParticleTint, LevelEventSoundRandomState, LocalPlayerPoseState,
-    SoundEventState, TerrainFluidKind, TerrainFluidState, WorldStore,
+    block_name_has_falling_dust_animate_tick, block_name_is_air, block_name_is_candle,
+    block_name_is_candle_cake, block_name_is_dead_bush_ambient, block_name_is_dry_grass_ambient,
+    block_name_is_pale_oak_log, block_name_is_terracotta,
+    block_name_triggers_ambient_desert_dry_vegetation_block_sounds,
+    block_name_triggers_ambient_desert_sand_block_sounds, leaf_animate_particle_profile, BlockPos,
+    ClientSoundEventHolder, EnvironmentBiomeSampling, LeafAnimateParticleProfile, LeafParticleTint,
+    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEntityEventState, SoundEventState,
+    TerrainFluidKind, TerrainFluidState, WorldStore,
 };
 
 use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        candle_wick_offsets, color_client_particle_options, dust_client_particle_options,
-        dust_color_transition_client_particle_options, particle_utils_axis_sample,
-        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
-        redstone_ore_particle_positions, redstone_ore_solid_render_faces,
-        simple_client_particle_options, EnvironmentParticleColorSource, EnvironmentParticleSpawn,
-        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
-        ELECTRIC_SPARK_AXIS_RADIUS, REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR,
-        SCULK_PARTICLE_COLOR,
+        block_client_particle_options, candle_wick_offsets, color_client_particle_options,
+        dust_client_particle_options, dust_color_transition_client_particle_options,
+        particle_utils_axis_sample, pointed_dripstone_drip_context,
+        pointed_dripstone_particle_position, redstone_ore_particle_positions,
+        redstone_ore_solid_render_faces, simple_client_particle_options,
+        EnvironmentParticleColorSource, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+        ParticleBiomeSampler, ParticleEventSink, ELECTRIC_SPARK_AXIS_RADIUS,
+        REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -40,6 +44,11 @@ const FIREFLY_HORIZONTAL_RANGE: f64 = 10.0;
 const FIREFLY_VERTICAL_RANGE: f64 = 5.0;
 const CREAKING_SOUND_CHANCE_BOUND: i32 = 16;
 const BUBBLE_COLUMN_SOUND_CHANCE_BOUND: i32 = 200;
+const FALLING_DUST_CHANCE_BOUND: i32 = 16;
+const DESERT_SAND_SOUND_CHANCE_BOUND: i32 = 2100;
+const DESERT_DRY_GRASS_SOUND_CHANCE_BOUND: i32 = 200;
+const DESERT_DEAD_BUSH_SOUND_CHANCE_BOUND: i32 = 130;
+const DESERT_DEAD_BUSH_BADLANDS_DECREASED_CHANCE_BOUND: i32 = 3;
 const SOUND_EVENT_FIREFLY_BUSH_IDLE: &str = "minecraft:block.firefly_bush.idle";
 const SOUND_EVENT_CREAKING_HEART_IDLE: &str = "minecraft:block.creaking_heart.idle";
 const SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT: &str =
@@ -59,6 +68,9 @@ const SOUND_EVENT_PORTAL_AMBIENT: &str = "minecraft:block.portal.ambient";
 const SOUND_EVENT_DRIED_GHAST_AMBIENT: &str = "minecraft:block.dried_ghast.ambient";
 const SOUND_EVENT_DRIED_GHAST_AMBIENT_WATER: &str = "minecraft:block.dried_ghast.ambient_water";
 const SOUND_EVENT_CANDLE_AMBIENT: &str = "minecraft:block.candle.ambient";
+const SOUND_EVENT_SAND_IDLE: &str = "minecraft:block.sand.idle";
+const SOUND_EVENT_DRY_GRASS_AMBIENT: &str = "minecraft:block.dry_grass.ambient";
+const SOUND_EVENT_DEAD_BUSH_IDLE: &str = "minecraft:block.deadbush.idle";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -81,6 +93,7 @@ const PARTICLE_END_ROD: &str = "minecraft:end_rod";
 const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear";
 const PARTICLE_SMALL_FLAME: &str = "minecraft:small_flame";
 const PARTICLE_ELECTRIC_SPARK: &str = "minecraft:electric_spark";
+const PARTICLE_FALLING_DUST: &str = "minecraft:falling_dust";
 const LIGHTNING_ROD_SPARK_CYCLE: i32 = 200;
 
 const OPPOSITE_EFFECT_DIRECTION_INDICES: [usize; 6] = [1, 0, 3, 2, 5, 4];
@@ -508,6 +521,31 @@ impl EnvironmentAnimateRuntime {
                     append_end_gateway_animate_effects(pos, particle_count, animate_random, spawns);
                 }
             }
+            name if block_name_triggers_ambient_desert_sand_block_sounds(name) => {
+                append_falling_dust_animate_effect(
+                    world,
+                    pos,
+                    block.block_state_id,
+                    animate_random,
+                    spawns,
+                );
+                self.animate_desert_sand(world, pos, animate_random, audio);
+            }
+            name if block_name_is_dry_grass_ambient(name) => {
+                self.animate_desert_dry_grass(world, pos, animate_random, audio);
+            }
+            name if block_name_is_dead_bush_ambient(name) => {
+                self.animate_desert_dead_bush(world, pos, animate_random, audio);
+            }
+            name if block_name_has_falling_dust_animate_tick(name) => {
+                append_falling_dust_animate_effect(
+                    world,
+                    pos,
+                    block.block_state_id,
+                    animate_random,
+                    spawns,
+                );
+            }
             _ => {
                 if let Some(profile) = leaf_animate_particle_profile(block_name) {
                     append_leaves_animate_effects(world, pos, profile, animate_random, spawns);
@@ -534,6 +572,119 @@ impl EnvironmentAnimateRuntime {
             .and_then(|attributes| attributes.ambient_particles)
             .unwrap_or_default();
         append_ambient_particle_spawns(&mut self.level_random, pos, particles, spawns);
+    }
+
+    fn animate_desert_sand(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+    ) {
+        if !block_name_at(
+            world,
+            BlockPos {
+                y: pos.y.saturating_add(1),
+                ..pos
+            },
+        )
+        .is_some_and(|name| name == "minecraft:air")
+            || random.next_int_bound(DESERT_SAND_SOUND_CHANCE_BOUND) != 0
+            || !should_play_ambient_desert_sand_sound(world, pos)
+        {
+            return;
+        }
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_SAND_IDLE,
+                SoundSource::Ambient,
+                block_position(pos),
+                1.0,
+                1.0,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_desert_dry_grass(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+    ) {
+        if random.next_int_bound(DESERT_DRY_GRASS_SOUND_CHANCE_BOUND) != 0
+            || !supports_ambient_desert_dry_vegetation_sound(world, pos)
+        {
+            return;
+        }
+        let Some(entity_id) = world.local_player_id() else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_entity_sound(
+                &SoundEntityEventState {
+                    sound: sound_holder_state(
+                        world,
+                        &ClientSoundEventHolder::Reference {
+                            resource_id: SOUND_EVENT_DRY_GRASS_AMBIENT.to_string(),
+                        },
+                    ),
+                    source: SoundSource::Ambient.as_str().to_string(),
+                    entity_id,
+                    volume: 1.0,
+                    pitch: 1.0,
+                    seed,
+                    looping: false,
+                    linear_attenuation: true,
+                    tickable: false,
+                },
+                world
+                    .local_player_pose()
+                    .map(|pose| [pose.position.x, pose.position.y, pose.position.z]),
+            );
+        }
+    }
+
+    fn animate_desert_dead_bush(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+    ) {
+        if random.next_int_bound(DESERT_DEAD_BUSH_SOUND_CHANCE_BOUND) != 0 {
+            return;
+        }
+        let below = BlockPos {
+            y: pos.y.saturating_sub(1),
+            ..pos
+        };
+        let badlands_substrate = block_name_at(world, below)
+            .is_some_and(|name| name == "minecraft:red_sand" || block_name_is_terracotta(&name));
+        if badlands_substrate
+            && random.next_int_bound(DESERT_DEAD_BUSH_BADLANDS_DECREASED_CHANCE_BOUND) != 0
+        {
+            return;
+        }
+        if !supports_ambient_desert_dry_vegetation_sound(world, pos) {
+            return;
+        }
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_DEAD_BUSH_IDLE,
+                SoundSource::Ambient,
+                block_position(pos),
+                1.0,
+                1.0,
+                seed,
+            ));
+        }
     }
 
     fn animate_firefly_bush(
@@ -1903,6 +2054,128 @@ fn append_end_gateway_animate_effects(
     }
 }
 
+fn append_falling_dust_animate_effect(
+    world: &WorldStore,
+    pos: BlockPos,
+    block_state_id: i32,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if random.next_int_bound(FALLING_DUST_CHANCE_BOUND) != 0
+        || world.falling_block_is_free(BlockPos {
+            y: pos.y.saturating_sub(1),
+            ..pos
+        }) != Some(true)
+    {
+        return;
+    }
+    append_particle_below(
+        pos,
+        block_client_particle_options(PARTICLE_FALLING_DUST, block_state_id),
+        None,
+        random,
+        spawns,
+    );
+}
+
+fn should_play_ambient_desert_sand_sound(world: &WorldStore, pos: BlockPos) -> bool {
+    const DIRECTIONS: [[i32; 2]; 4] = [[0, -8], [8, 0], [0, 8], [-8, 0]];
+
+    let mut matching_blocks_found = 0;
+    let mut sides_checked = 0;
+    for [dx, dz] in DIRECTIONS {
+        let column_pos = BlockPos {
+            x: pos.x.saturating_add(dx),
+            y: pos.y,
+            z: pos.z.saturating_add(dz),
+        };
+        if column_contains_ambient_desert_sand_trigger(world, column_pos) {
+            let previous_matches = matching_blocks_found;
+            matching_blocks_found += 1;
+            if previous_matches >= 3 {
+                return true;
+            }
+        }
+
+        sides_checked += 1;
+        let remaining_sides = 4 - sides_checked;
+        if remaining_sides + matching_blocks_found < 3 {
+            return false;
+        }
+    }
+    false
+}
+
+fn column_contains_ambient_desert_sand_trigger(world: &WorldStore, pos: BlockPos) -> bool {
+    let Some(surface_y) = world
+        .sample_heightmap_first_available(VANILLA_HEIGHTMAP_WORLD_SURFACE_ID, pos.x, pos.z)
+        .and_then(|first_available| first_available.checked_sub(1))
+    else {
+        return false;
+    };
+
+    if surface_y.abs_diff(pos.y) > 5 {
+        let mut above_name = block_name_at(
+            world,
+            BlockPos {
+                y: pos.y.saturating_add(6),
+                ..pos
+            },
+        );
+        for offset in (pos.y.saturating_sub(4)..=pos.y.saturating_add(5)).rev() {
+            let current_name = block_name_at(world, BlockPos { y: offset, ..pos });
+            if above_name.as_deref().is_some_and(block_name_is_air)
+                && current_name
+                    .as_deref()
+                    .is_some_and(block_name_triggers_ambient_desert_sand_block_sounds)
+            {
+                return true;
+            }
+            above_name = current_name;
+        }
+        return false;
+    }
+
+    block_name_at(
+        world,
+        BlockPos {
+            y: surface_y.saturating_add(1),
+            ..pos
+        },
+    )
+    .as_deref()
+    .is_some_and(block_name_is_air)
+        && block_name_at(
+            world,
+            BlockPos {
+                y: surface_y,
+                ..pos
+            },
+        )
+        .as_deref()
+        .is_some_and(block_name_triggers_ambient_desert_sand_block_sounds)
+}
+
+fn supports_ambient_desert_dry_vegetation_sound(world: &WorldStore, pos: BlockPos) -> bool {
+    let below = BlockPos {
+        y: pos.y.saturating_sub(1),
+        ..pos
+    };
+    let below_below = BlockPos {
+        y: below.y.saturating_sub(1),
+        ..below
+    };
+    [below, below_below].into_iter().all(|support| {
+        block_name_at(world, support)
+            .as_deref()
+            .is_some_and(block_name_triggers_ambient_desert_dry_vegetation_block_sounds)
+    })
+}
+
+fn block_name_at(world: &WorldStore, pos: BlockPos) -> Option<String> {
+    world.probe_block(pos)?.block_name
+}
+
 fn append_leaves_animate_effects(
     world: &WorldStore,
     pos: BlockPos,
@@ -2532,6 +2805,7 @@ mod tests {
     #[derive(Default)]
     struct RecordingEnvironmentAudio {
         positioned: Vec<SoundEventState>,
+        entity: Vec<(SoundEntityEventState, Option<[f64; 3]>)>,
     }
 
     impl AudioEventSink for RecordingEnvironmentAudio {
@@ -2549,11 +2823,8 @@ mod tests {
             self.positioned.push(state.clone());
         }
 
-        fn play_entity_sound(
-            &mut self,
-            _state: &SoundEntityEventState,
-            _position: Option<[f64; 3]>,
-        ) {
+        fn play_entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>) {
+            self.entity.push((state.clone(), position));
         }
 
         fn play_jukebox_song(&mut self, _state: &JukeboxLevelEventState) {}
@@ -4539,6 +4810,318 @@ mod tests {
     }
 
     #[test]
+    fn falling_dust_preserves_free_gate_block_option_coordinates_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let sand_id = block_state_id("minecraft:sand", &[]);
+        let chance_seed = (0..100_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(FALLING_DUST_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic falling-dust chance seed");
+        let mut world = world_with_ambient_particles();
+        let mut actual = LevelEventSoundRandomState::with_seed(chance_seed);
+        let mut expected = LevelEventSoundRandomState::with_seed(chance_seed);
+        let mut spawns = Vec::new();
+
+        append_falling_dust_animate_effect(&world, pos, sand_id, &mut actual, &mut spawns);
+
+        assert_eq!(expected.next_int_bound(FALLING_DUST_CHANCE_BOUND), 0);
+        let expected_position = [
+            f64::from(pos.x) + expected.next_double(),
+            f64::from(pos.y) - 0.05,
+            f64::from(pos.z) + expected.next_double(),
+        ];
+        let [spawn] = spawns.as_slice() else {
+            panic!("free block below should emit one falling-dust particle");
+        };
+        assert_eq!(spawn.particle.resource_id, PARTICLE_FALLING_DUST);
+        assert_eq!(
+            spawn.particle.option,
+            bbb_world::ClientParticleOptionValue::Block {
+                block_state_id: sand_id
+            }
+        );
+        assert_eq!(spawn.position, expected_position);
+        assert_eq!(spawn.velocity, [0.0; 3]);
+        assert!(!spawn.always_show);
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        set_block(
+            &mut world,
+            BlockPos {
+                y: pos.y - 1,
+                ..pos
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        let mut blocked_actual = LevelEventSoundRandomState::with_seed(chance_seed);
+        let mut blocked_expected = LevelEventSoundRandomState::with_seed(chance_seed);
+        let mut blocked_spawns = Vec::new();
+        append_falling_dust_animate_effect(
+            &world,
+            pos,
+            sand_id,
+            &mut blocked_actual,
+            &mut blocked_spawns,
+        );
+        assert_eq!(
+            blocked_expected.next_int_bound(FALLING_DUST_CHANCE_BOUND),
+            0
+        );
+        assert!(blocked_spawns.is_empty());
+        assert_eq!(blocked_actual.next_long(), blocked_expected.next_long());
+    }
+
+    #[test]
+    fn falling_block_dispatch_emits_typed_dust_from_the_animate_random_stream() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let gravel_id = block_state_id("minecraft:gravel", &[]);
+        let chance_seed = (0..100_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(FALLING_DUST_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic falling-dust dispatch seed");
+        let mut world = world_with_ambient_particles();
+        set_block(&mut world, pos, gravel_id);
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(chance_seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert!(spawns.iter().any(|spawn| {
+            spawn.particle.resource_id == PARTICLE_FALLING_DUST
+                && spawn.particle.option
+                    == bbb_world::ClientParticleOptionValue::Block {
+                        block_state_id: gravel_id,
+                    }
+        }));
+    }
+
+    #[test]
+    fn desert_sand_columns_require_all_four_vanilla_direction_matches() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let mut world = world_with_desert_sand_ring(pos);
+        assert!(should_play_ambient_desert_sand_sound(&world, pos));
+
+        set_block(
+            &mut world,
+            BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z - 8,
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        assert!(!should_play_ambient_desert_sand_sound(&world, pos));
+
+        let far_column = BlockPos { x: 8, y: 32, z: 8 };
+        let mut far_world = world_with_surface(far_column, 60, 0);
+        set_block(
+            &mut far_world,
+            BlockPos {
+                y: far_column.y + 3,
+                ..far_column
+            },
+            block_state_id("minecraft:red_sand", &[]),
+        );
+        assert!(column_contains_ambient_desert_sand_trigger(
+            &far_world, far_column
+        ));
+        set_block(
+            &mut far_world,
+            BlockPos {
+                y: far_column.y + 4,
+                ..far_column
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        assert!(!column_contains_ambient_desert_sand_trigger(
+            &far_world, far_column
+        ));
+    }
+
+    #[test]
+    fn desert_ambient_sounds_preserve_position_entity_binding_and_level_seeds() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let sand_chance_seed = (0..1_000_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(DESERT_SAND_SOUND_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic ambient sand sound seed");
+        let dry_grass_chance_seed = (0..100_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(DESERT_DRY_GRASS_SOUND_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic ambient dry-grass sound seed");
+        let dead_bush_chance_seed = (0..100_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(DESERT_DEAD_BUSH_SOUND_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic ambient dead-bush sound seed");
+
+        let mut sand_world = world_with_desert_sand_ring(pos);
+        let mut sand_runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(91),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut sand_random = LevelEventSoundRandomState::with_seed(sand_chance_seed);
+        let mut sand_recording = RecordingEnvironmentAudio::default();
+        {
+            let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut sand_recording);
+            sand_runtime.animate_desert_sand(&sand_world, pos, &mut sand_random, &mut audio);
+        }
+        let mut sand_level_expected = LevelEventSoundRandomState::with_seed(91);
+        let [sand_sound] = sand_recording.positioned.as_slice() else {
+            panic!("four matching sand columns should emit the positioned idle sound");
+        };
+        assert_eq!(sand_sound.source, SoundSource::Ambient.as_str());
+        assert_eq!(
+            [
+                sand_sound.position.x,
+                sand_sound.position.y,
+                sand_sound.position.z,
+            ],
+            block_position(pos)
+        );
+        assert_eq!(sand_sound.seed, sand_level_expected.next_long());
+        assert!(sand_recording.entity.is_empty());
+        assert_eq!(
+            sand_runtime.level_random.next_long(),
+            sand_level_expected.next_long()
+        );
+
+        for y in [pos.y - 1, pos.y - 2] {
+            set_block(
+                &mut sand_world,
+                BlockPos { y, ..pos },
+                block_state_id("minecraft:sand", &[]),
+            );
+        }
+        let mut dry_runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(37),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut dry_random = LevelEventSoundRandomState::with_seed(dry_grass_chance_seed);
+        let mut dry_recording = RecordingEnvironmentAudio::default();
+        {
+            let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut dry_recording);
+            dry_runtime.animate_desert_dry_grass(&sand_world, pos, &mut dry_random, &mut audio);
+        }
+        let mut dry_level_expected = LevelEventSoundRandomState::with_seed(37);
+        let [(dry_sound, dry_position)] = dry_recording.entity.as_slice() else {
+            panic!("supported dry grass should emit one player-bound sound");
+        };
+        assert_eq!(dry_sound.source, SoundSource::Ambient.as_str());
+        assert_eq!(dry_sound.entity_id, 42);
+        assert_eq!(dry_sound.seed, dry_level_expected.next_long());
+        assert_eq!(*dry_position, Some([1.0, 32.0, 1.0]));
+        assert!(dry_recording.positioned.is_empty());
+        assert_eq!(
+            dry_runtime.level_random.next_long(),
+            dry_level_expected.next_long()
+        );
+
+        let mut dead_runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(73),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut dead_random = LevelEventSoundRandomState::with_seed(dead_bush_chance_seed);
+        let mut dead_recording = RecordingEnvironmentAudio::default();
+        {
+            let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut dead_recording);
+            dead_runtime.animate_desert_dead_bush(&sand_world, pos, &mut dead_random, &mut audio);
+        }
+        let mut dead_level_expected = LevelEventSoundRandomState::with_seed(73);
+        let [dead_sound] = dead_recording.positioned.as_slice() else {
+            panic!("supported dead bush should emit one positioned idle sound");
+        };
+        assert_eq!(dead_sound.source, SoundSource::Ambient.as_str());
+        assert_eq!(
+            [
+                dead_sound.position.x,
+                dead_sound.position.y,
+                dead_sound.position.z,
+            ],
+            block_position(pos)
+        );
+        assert_eq!(dead_sound.seed, dead_level_expected.next_long());
+        assert!(dead_recording.entity.is_empty());
+        assert_eq!(
+            dead_runtime.level_random.next_long(),
+            dead_level_expected.next_long()
+        );
+
+        for y in [pos.y - 1, pos.y - 2] {
+            set_block(
+                &mut sand_world,
+                BlockPos { y, ..pos },
+                block_state_id("minecraft:red_sand", &[]),
+            );
+        }
+        let badlands_seed = (0..1_000_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                random.next_int_bound(DESERT_DEAD_BUSH_SOUND_CHANCE_BOUND) == 0
+                    && random.next_int_bound(DESERT_DEAD_BUSH_BADLANDS_DECREASED_CHANCE_BOUND) != 0
+            })
+            .expect("deterministic badlands dead-bush suppression seed");
+        let mut badlands_runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(19),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut badlands_actual = LevelEventSoundRandomState::with_seed(badlands_seed);
+        let mut badlands_expected = LevelEventSoundRandomState::with_seed(badlands_seed);
+        let mut badlands_recording = RecordingEnvironmentAudio::default();
+        {
+            let mut audio: Option<&mut dyn AudioEventSink> = Some(&mut badlands_recording);
+            badlands_runtime.animate_desert_dead_bush(
+                &sand_world,
+                pos,
+                &mut badlands_actual,
+                &mut audio,
+            );
+        }
+        assert_eq!(
+            badlands_expected.next_int_bound(DESERT_DEAD_BUSH_SOUND_CHANCE_BOUND),
+            0
+        );
+        assert_ne!(
+            badlands_expected.next_int_bound(DESERT_DEAD_BUSH_BADLANDS_DECREASED_CHANCE_BOUND),
+            0
+        );
+        assert_eq!(badlands_actual.next_long(), badlands_expected.next_long());
+        assert!(badlands_recording.positioned.is_empty());
+        assert!(badlands_recording.entity.is_empty());
+        let mut badlands_level_expected = LevelEventSoundRandomState::with_seed(19);
+        assert_eq!(
+            badlands_runtime.level_random.next_long(),
+            badlands_level_expected.next_long()
+        );
+    }
+
+    #[test]
     fn candle_animate_effects_preserve_wick_order_chance_branches_and_random_order() {
         assert_eq!(candle_wick_offsets(1, false), &[[8.0, 8.0, 8.0]]);
         assert_eq!(
@@ -6473,6 +7056,59 @@ mod tests {
         world
     }
 
+    fn world_with_desert_sand_ring(pos: BlockPos) -> WorldStore {
+        let mut world = world_with_ambient_particles();
+        let dimension = world.dimension();
+        let mut columns_by_chunk = BTreeMap::<(i32, i32), Vec<(u8, u8, i32)>>::new();
+        let targets = [
+            BlockPos {
+                z: pos.z - 8,
+                ..pos
+            },
+            BlockPos {
+                x: pos.x + 8,
+                ..pos
+            },
+            BlockPos {
+                z: pos.z + 8,
+                ..pos
+            },
+            BlockPos {
+                x: pos.x - 8,
+                ..pos
+            },
+        ];
+        for target in targets {
+            columns_by_chunk
+                .entry((target.x.div_euclid(16), target.z.div_euclid(16)))
+                .or_default()
+                .push((
+                    target.x.rem_euclid(16) as u8,
+                    target.z.rem_euclid(16) as u8,
+                    target.y + 1,
+                ));
+        }
+        for ((chunk_x, chunk_z), columns) in columns_by_chunk {
+            let mut chunk = chunk_with_biome(dimension, 0, 0);
+            chunk.pos = ChunkPos {
+                x: chunk_x,
+                z: chunk_z,
+            };
+            chunk
+                .heightmaps
+                .push(heightmap_with_first_available_columns(
+                    dimension,
+                    VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+                    &columns,
+                ));
+            world.insert_decoded_chunk(chunk);
+        }
+        for target in targets {
+            set_block(&mut world, target, block_state_id("minecraft:sand", &[]));
+        }
+        world
+    }
+
     fn thundering_world_with_surface(
         pos: BlockPos,
         first_available: i32,
@@ -6520,15 +7156,29 @@ mod tests {
         local_z: u8,
         first_available: i32,
     ) -> HeightmapData {
+        heightmap_with_first_available_columns(
+            dimension,
+            kind_id,
+            &[(local_x, local_z, first_available)],
+        )
+    }
+
+    fn heightmap_with_first_available_columns(
+        dimension: WorldDimension,
+        kind_id: i32,
+        columns: &[(u8, u8, i32)],
+    ) -> HeightmapData {
         let value_range = u64::try_from(dimension.height).unwrap() + 1;
         let bits = (u64::BITS - (value_range - 1).leading_zeros()).max(1) as usize;
         let values_per_long = 64 / bits;
         let mut data = vec![0_i64; (16_usize * 16).div_ceil(values_per_long)];
-        let index = usize::from(local_x) + usize::from(local_z) * 16;
-        let cell_index = index / values_per_long;
-        let bit_index = (index - cell_index * values_per_long) * bits;
-        let raw = u64::try_from(first_available - dimension.min_y).unwrap();
-        data[cell_index] = (raw << bit_index) as i64;
+        for &(local_x, local_z, first_available) in columns {
+            let index = usize::from(local_x) + usize::from(local_z) * 16;
+            let cell_index = index / values_per_long;
+            let bit_index = (index - cell_index * values_per_long) * bits;
+            let raw = u64::try_from(first_available - dimension.min_y).unwrap();
+            data[cell_index] |= (raw << bit_index) as i64;
+        }
         HeightmapData { kind_id, data }
     }
 

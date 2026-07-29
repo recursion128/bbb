@@ -737,3 +737,6 @@
 - **2026-07-29（末地传送门家族环境粒子工程闭环）**：方块状态 probe 现生成精确
   六面 occlusion-full 事实；末地传送门烟粒子与折跃门按可见面数生成的 portal
   粒子已按 Vanilla 随机序贯通 world/native。
+- **2026-07-29（落沙与沙漠方块环境效果工程闭环）**：23 个 FallingBlock 与
+  2 个 BrushableBlock 现按 `isFree` 和原始随机序生成带方块状态的 falling-dust；
+  沙、干草与枯灌木的方向/高度图/基底门禁及定位或玩家绑定音效同步贯通。

@@ -223,6 +223,20 @@ pub(crate) fn simple_client_particle_options(resource_id: &str) -> ClientParticl
     }
 }
 
+pub(crate) fn block_client_particle_options(
+    resource_id: &str,
+    block_state_id: i32,
+) -> ClientParticleOptions {
+    ClientParticleOptions {
+        resource_id: resource_id.to_string(),
+        fields: vec![bbb_protocol::NbtSummaryEntry {
+            name: "type".to_string(),
+            value: bbb_protocol::NbtSummaryValue::String(resource_id.to_string()),
+        }],
+        option: ClientParticleOptionValue::Block { block_state_id },
+    }
+}
+
 pub(crate) fn color_client_particle_options(resource_id: &str, argb: u32) -> ClientParticleOptions {
     ClientParticleOptions {
         resource_id: resource_id.to_string(),

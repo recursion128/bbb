@@ -1544,7 +1544,8 @@ mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
 pub(crate) use environment::{
-    color_client_particle_options, particle_utils_axis_sample, simple_client_particle_options,
+    block_client_particle_options, color_client_particle_options, particle_utils_axis_sample,
+    simple_client_particle_options,
 };
 mod explosion;
 mod ids;

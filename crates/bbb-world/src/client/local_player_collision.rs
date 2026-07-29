@@ -36,11 +36,11 @@ use crate::terrain::{
     block_name_is_chest, block_name_is_copper_golem_statue, block_name_is_copper_grate,
     block_name_is_door, block_name_is_enchantment_power_provider,
     block_name_is_enchantment_power_transmitter, block_name_is_fence, block_name_is_fence_gate,
-    block_name_is_fire_flammable, block_name_is_floor_skull, block_name_is_flower_pot,
-    block_name_is_hanging_sign, block_name_is_impermeable, block_name_is_lantern,
-    block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
-    block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
-    block_name_is_wall_skull, block_name_is_wool_carpet,
+    block_name_is_fire, block_name_is_fire_flammable, block_name_is_floor_skull,
+    block_name_is_flower_pot, block_name_is_hanging_sign, block_name_is_impermeable,
+    block_name_is_lantern, block_name_is_leaves, block_name_is_rod, block_name_is_shelf,
+    block_name_is_shulker_box, block_name_is_slab, block_name_is_stair, block_name_is_trapdoor,
+    block_name_is_wall, block_name_is_wall_skull, block_name_is_wool_carpet,
     block_name_triggers_dried_ghast_ambient_sound,
 };
 use crate::{
@@ -1482,6 +1482,24 @@ impl WorldStore {
             impermeable: block_name_is_impermeable(block_name),
             collision_bounds: shape.and_then(BlockCollisionShape::environment_animate_bounds),
         })
+    }
+
+    /// Mirrors `FallingBlock.isFree` for a loaded client block. Positions
+    /// outside the dimension's build height are Vanilla void air; unloaded
+    /// in-range positions remain unknown so ambient effects stay conservative.
+    pub fn falling_block_is_free(&self, pos: BlockPos) -> Option<bool> {
+        if !self.dimension().contains_y(pos.y) {
+            return Some(true);
+        }
+        let block = self.probe_block(pos)?;
+        let block_name = block.block_name.as_deref()?;
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        Some(
+            block_name_is_air(block_name)
+                || block_name_is_fire(block_name)
+                || facts.liquid()
+                || facts.replaceable(),
+        )
     }
 
     pub fn particle_block_fluid_surface_height(&self, position: [f64; 3]) -> f64 {
@@ -6642,6 +6660,45 @@ mod tests {
             world.environment_animate_block_sample(BlockPos { x: 32, ..pos }),
             None
         );
+    }
+
+    #[test]
+    fn falling_block_free_query_matches_air_fire_liquid_and_replaceable_states() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+
+        for block_state_id in [
+            vanilla_block_state_id("minecraft:air", []),
+            vanilla_block_state_id(
+                "minecraft:fire",
+                [
+                    ("age", "0"),
+                    ("east", "false"),
+                    ("north", "false"),
+                    ("south", "false"),
+                    ("up", "false"),
+                    ("west", "false"),
+                ],
+            ),
+            vanilla_block_state_id("minecraft:soul_fire", []),
+            vanilla_block_state_id("minecraft:water", [("level", "0")]),
+            vanilla_block_state_id("minecraft:short_grass", []),
+        ] {
+            set_block(&mut world, pos, block_state_id);
+            assert_eq!(world.falling_block_is_free(pos), Some(true));
+        }
+
+        set_block(
+            &mut world,
+            pos,
+            vanilla_block_state_id("minecraft:stone", []),
+        );
+        assert_eq!(world.falling_block_is_free(pos), Some(false));
+        assert_eq!(
+            world.falling_block_is_free(BlockPos { y: -1, ..pos }),
+            Some(true)
+        );
+        assert_eq!(world.falling_block_is_free(BlockPos { x: 32, ..pos }), None);
     }
 
     #[test]
