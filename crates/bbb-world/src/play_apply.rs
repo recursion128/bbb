@@ -1763,6 +1763,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
+    use bbb_protocol::game_event_types::{
+        VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
+        VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
+    };
     use bbb_protocol::item_types::{
         VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
     };
@@ -3041,23 +3045,23 @@ mod tests {
 
         for packet in [
             PlayClientbound::GameEvent(GameEvent {
-                event_id: 6,
+                event_id: VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
                 param: 0.0,
             }),
             PlayClientbound::GameEvent(GameEvent {
-                event_id: 9,
+                event_id: VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
                 param: 0.0,
             }),
             PlayClientbound::GameEvent(GameEvent {
-                event_id: 10,
+                event_id: VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
                 param: 0.5,
             }),
             PlayClientbound::GameEvent(GameEvent {
-                event_id: 10,
+                event_id: VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
                 param: 1.5,
             }),
             PlayClientbound::GameEvent(GameEvent {
-                event_id: 10,
+                event_id: VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
                 param: 0.0,
             }),
         ] {
@@ -3129,7 +3133,11 @@ mod tests {
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut effects = RecordingEffects::default();
 
-        for event_id in [6, 9, 10] {
+        for event_id in [
+            VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
+            VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
+            VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
+        ] {
             let leftover = store.apply_play_packet(
                 PlayClientbound::GameEvent(GameEvent {
                     event_id,

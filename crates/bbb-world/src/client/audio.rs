@@ -3437,6 +3437,7 @@ mod tests {
         VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
     };
+    use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_TYPES;
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, EntityDataValue, EntityDataValueKind,
         EquipmentSlotUpdate, ItemStackSummary, LevelEvent, PlayTime, RegistryTags, RemoveEntities,
@@ -4086,6 +4087,35 @@ mod tests {
             });
 
             assert_eq!(sound.is_some(), expected, "param={param:?}");
+        }
+    }
+
+    #[test]
+    fn game_event_sound_mapping_covers_every_vanilla_event_type() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(crate::LocalPlayerPoseState::default());
+
+        for event in VANILLA_CLIENT_GAME_EVENT_TYPES {
+            let sound = store.game_event_positioned_sound(ProtocolGameEvent {
+                event_id: event.id,
+                param: 1.0,
+            });
+            let expected = match event.constant_name {
+                "PLAY_ARROW_HIT_SOUND" => Some(ARROW_HIT_PLAYER_SOUND_EVENT),
+                "PUFFER_FISH_STING" => Some(PUFFER_FISH_STING_SOUND_EVENT),
+                "GUARDIAN_ELDER_EFFECT" => Some(ELDER_GUARDIAN_CURSE_SOUND_EVENT),
+                _ => None,
+            };
+
+            assert_eq!(
+                sound
+                    .as_ref()
+                    .and_then(|state| state.sound.location.as_deref()),
+                expected,
+                "game event {} ({})",
+                event.id,
+                event.constant_name
+            );
         }
     }
 

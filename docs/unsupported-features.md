@@ -144,7 +144,6 @@ resolver by adding a value provider. No new selection machinery is required.
 
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
-- Validate remaining synthesized/game-event sound mappings against vanilla.
 - Client-owned animal ambient/step/eat and cat/wolf state-trigger loops are
   `not-needed`: vanilla `Entity.playSound` delegates through
   `Level.playSound(null, ...)`, `ClientLevel.playSeededSound` only submits when

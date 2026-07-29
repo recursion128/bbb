@@ -1623,7 +1623,19 @@ fn game_test_highlight_network_apply_uses_monotonic_deadline() {
 #[test]
 fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
     let (tx, mut rx) = mpsc::channel(5);
-    for (event_id, param) in [(6, 0.0), (9, 0.0), (10, 0.5), (10, 1.5), (10, 0.0)] {
+    use bbb_protocol::game_event_types::{
+        VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
+        VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
+        VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
+    };
+
+    for (event_id, param) in [
+        (VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID, 0.0),
+        (VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID, 0.0),
+        (VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID, 0.5),
+        (VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID, 1.5),
+        (VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID, 0.0),
+    ] {
         tx.try_send(NetEvent::Play(PlayClientbound::GameEvent(
             bbb_protocol::packets::GameEvent { event_id, param },
         )))
