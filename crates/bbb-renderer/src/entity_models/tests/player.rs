@@ -3110,6 +3110,20 @@ fn player_charging_a_crossbow_braces_and_draws_the_string() {
         left.rotation[0]
     );
 
+    let mut quick_charge = PlayerModel::new(false);
+    quick_charge.prepare(
+        &base
+            .with_player_charging_crossbow(true)
+            .with_crossbow_charge_duration_ticks(15.0),
+    );
+    let quick_left = quick_charge.root_mut().child_mut("left_arm").pose;
+    let quick_alpha = 12.5 / 15.0;
+    assert!(
+        (quick_left.rotation[1] - (0.4 + (0.85 - 0.4) * quick_alpha)).abs() < 1e-6,
+        "a synchronized 15-tick duration advances the arm draw: {}",
+        quick_left.rotation[1]
+    );
+
     // Vanilla `holdingInRightArm = false` mirrors the brace into the left arm and makes the right arm pull.
     let mut off = PlayerModel::new(false);
     off.prepare(

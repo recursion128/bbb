@@ -354,6 +354,7 @@ impl WorldStore {
     /// `EnchantmentEffectComponents.TRIDENT_SPIN_ATTACK_STRENGTH` effects in
     /// stack order. Stubbed Riptide entries use the generated Vanilla identity
     /// fallback; synchronized definitions remain authoritative.
+    #[cfg(test)]
     pub(crate) fn trident_spin_attack_strength(
         &self,
         enchantments: &[ItemEnchantmentSummary],

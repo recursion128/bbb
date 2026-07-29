@@ -4614,6 +4614,69 @@ fn entity_model_instances_crossbow_charge_pose_needs_a_resolved_crossbow() {
 }
 
 #[test]
+fn entity_model_instances_project_synchronized_crossbow_charge_duration() {
+    const CROSSBOW_ID: i32 = 0;
+    const ENTITY_ID: i32 = 2_560;
+    let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:crossbow"],
+        "protocol_ids": { "minecraft:crossbow": CROSSBOW_ID }
+    }))
+    .unwrap();
+    let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        bbb_pack::EquipmentAssetCatalog::default(),
+    );
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:enchantment",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:patient_loading",
+            crossbow_charge_time_enchantment_nbt(0.75),
+        )],
+    );
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [7.0, 64.0, -10.0],
+    ));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: ENTITY_ID,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: ItemStackSummary {
+                item_id: Some(CROSSBOW_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        }],
+    }));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: ENTITY_ID,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
+        )],
+    }));
+
+    let state = entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == ENTITY_ID)
+        .unwrap()
+        .render_state;
+    assert!(state.player_charging_crossbow);
+    assert_eq!(state.crossbow_charge_duration_ticks, 15.0);
+}
+
+#[test]
 fn entity_model_instances_crossbow_hold_pose_needs_a_resolved_charged_crossbow() {
     // The CROSSBOW_HOLD pose needs the held item resolved through the item registry to confirm a CHARGED
     // crossbow; without an item runtime neither the main-hand nor off-hand projection can resolve, so
@@ -13718,6 +13781,22 @@ fn piglins_zombify_dimension_nbt(value: bool) -> Vec<u8> {
     out.push(i8::from(value) as u8);
     out.push(0);
     out.push(0);
+    out
+}
+
+fn crossbow_charge_time_enchantment_nbt(seconds: f32) -> Vec<u8> {
+    let mut out = vec![10];
+    out.push(10);
+    write_test_nbt_string(&mut out, "effects");
+    out.push(10);
+    write_test_nbt_string(&mut out, "minecraft:crossbow_charge_time");
+    out.push(8);
+    write_test_nbt_string(&mut out, "type");
+    write_test_nbt_string(&mut out, "minecraft:set");
+    out.push(5);
+    write_test_nbt_string(&mut out, "value");
+    out.extend(seconds.to_be_bytes());
+    out.extend([0, 0, 0]);
     out
 }
 

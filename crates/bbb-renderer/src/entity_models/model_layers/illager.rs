@@ -1,8 +1,7 @@
 use super::{
     apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_half_amplitude_leg_swing,
     apply_head_look, apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named,
-    humanoid_arm_swing_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, ILLAGER_HAT_COLOR,
-    ILLAGER_ROBE, PART_POSE_ZERO,
+    humanoid_arm_swing_pose, PartPose, ILLAGER_HAT_COLOR, ILLAGER_ROBE, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::IllagerModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -468,7 +467,7 @@ impl EntityModel for IllagerModel {
                 if render_state.is_charging_crossbow {
                     apply_crossbow_charge_pose(
                         &mut self.root,
-                        CROSSBOW_CHARGE_DURATION_TICKS,
+                        render_state.crossbow_charge_duration_ticks,
                         render_state.crossbow_charge_ticks,
                     );
                 } else if illager_is_holding_crossbow(instance) {

@@ -740,7 +740,8 @@ entity_render_state! {
     /// Vanilla `HumanoidModel.poseRightArm` / `poseLeftArm` use-item arm pose `CROSSBOW_CHARGE`
     /// (`AnimationUtils.animateCrossbowCharge`): while a player draws an uncharged crossbow, the holding arm
     /// braces and the opposite arm pulls the string back over the draw, lerping by
-    /// [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) `/ 25`. The holding arm is selected by
+    /// [`crossbow_charge_ticks`](Self::crossbow_charge_ticks) divided by the synchronized
+    /// [`crossbow_charge_duration_ticks`](Self::crossbow_charge_duration_ticks). The holding arm is selected by
     /// [`use_item_off_hand`](Self::use_item_off_hand). `false` for every entity not drawing a crossbow — only
     /// `PlayerModel` consumes it on this flag (the pillager/piglin route through their own
     /// `is_charging_crossbow`).
@@ -778,12 +779,17 @@ entity_render_state! {
     /// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17):
     /// `Pillager.getArmPose` returns `CROSSBOW_CHARGE` instead of `CROSSBOW_HOLD` while drawing, so the
     /// pillager pulls the crossbow back ([`crossbow_charge_ticks`](Self::crossbow_charge_ticks)
-    /// drives the draw). `false` for every non-pillager entity.
+    /// and [`crossbow_charge_duration_ticks`](Self::crossbow_charge_duration_ticks) drive the draw).
+    /// `false` for every non-pillager entity.
     (with_is_charging_crossbow) is_charging_crossbow: bool = false;
     /// Vanilla render-state `ticksUsingItem`: the reconstructed `getTicksUsingItem()` counter used by
     /// crossbow `CROSSBOW_CHARGE` poses and the player's spear kinetic use sway. `AnimationUtils`
     /// consumers clamp it to their own durations. `0.0` for anything not using / charging.
     (with_crossbow_charge_ticks) crossbow_charge_ticks: f32 = 0.0;
+    /// Vanilla `CrossbowItem.getChargeDuration(stack, livingOwner)`: synchronized enchantment
+    /// effects may replace the base 25-tick duration, so crossbow arm poses consume this projected
+    /// per-owner value instead of a renderer constant.
+    (with_crossbow_charge_duration_ticks) crossbow_charge_duration_ticks: f32 = 25.0;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
     /// ±0.05`). `false` for every other entity.
@@ -3197,6 +3203,7 @@ mod tests {
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,
                 crossbow_charge_ticks: 0.0,
+                crossbow_charge_duration_ticks: 25.0,
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,

@@ -11,6 +11,7 @@ pub(super) const VANILLA_BOW_USE_DURATION_TICKS: f32 = 72_000.0;
 /// Vanilla `CrossbowItem.getUseDuration`.
 pub(super) const VANILLA_CROSSBOW_USE_DURATION_TICKS: f32 = 72_000.0;
 /// Vanilla base `CrossbowItem.getChargeDuration`: 1.25 seconds * 20 TPS.
+#[cfg(test)]
 pub(super) const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
 /// Vanilla `TridentItem.getUseDuration`.
 pub(super) const VANILLA_TRIDENT_USE_DURATION_TICKS: f32 = 72_000.0;
@@ -327,10 +328,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
                         partial_ticks,
                     );
                 }
-                FirstPersonUseAnimation::Crossbow {
-                    use_duration_ticks,
-                    charge_duration_ticks,
-                } => {
+                FirstPersonUseAnimation::Crossbow { use_duration_ticks } => {
                     if first_person_stack_is_charged_crossbow(stack, item_runtime) {
                         attach = first_person_apply_whack_swing(attach, arm_left, attack);
                         if hand == InteractionHand::MainHand && attack < 0.001 {
@@ -339,6 +337,24 @@ pub(crate) fn first_person_item_models_with_map_cache(
                             );
                         }
                     } else {
+                        // Vanilla `ItemInHandRenderer` evaluates
+                        // `CrossbowItem.getChargeDuration(stack, player)` before
+                        // item-model property resolution. Keep that first owner
+                        // RNG query here; the held-item baker performs the second.
+                        let charge_duration_ticks = world
+                            .local_player_id()
+                            .and_then(|entity_id| {
+                                item_runtime.crossbow_charge_duration_ticks_for_living_owner(
+                                    world,
+                                    &stack.component_patch.enchantments,
+                                    entity_id,
+                                )
+                            })
+                            .unwrap_or_else(|| {
+                                world.crossbow_charge_duration_ticks(
+                                    &stack.component_patch.enchantments,
+                                )
+                            }) as f32;
                         attach = first_person_apply_crossbow_use_transform(
                             attach,
                             arm_left,
@@ -389,6 +405,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
             context,
             arm_left,
             Some(owner_main_hand_left),
+            world.local_player_id(),
             Some("minecraft:player"),
             world.local_player_team_color_rgb(),
             using_this_hand,
@@ -661,7 +678,6 @@ pub(super) enum FirstPersonUseAnimation {
     },
     Crossbow {
         use_duration_ticks: f32,
-        charge_duration_ticks: f32,
     },
     Spear {
         kinetic_weapon: SpearKineticWeapon,
@@ -763,7 +779,6 @@ pub(super) fn first_person_stack_supported_use_animation(
     ) {
         return Some(FirstPersonUseAnimation::Crossbow {
             use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
-            charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
         });
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {

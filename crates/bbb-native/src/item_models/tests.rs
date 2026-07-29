@@ -2847,7 +2847,6 @@ fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
         ),
         Some(FirstPersonUseAnimation::Crossbow {
             use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
-            charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
         }),
         "CrossbowItem.getUseAnimation overrides stack CONSUMABLE data"
     );
@@ -2898,6 +2897,34 @@ fn first_person_item_models_apply_crossbow_use_and_charged_pose() {
     assert_ne!(
         idle.flat_meshes[0], using.flat_meshes[0],
         "uncharged CROSSBOW use applies ItemInHandRenderer's draw transform"
+    );
+
+    let mut quick_charge_crossbow = crossbow.clone();
+    quick_charge_crossbow.component_patch.enchantments =
+        vec![bbb_protocol::packets::ItemEnchantmentSummary {
+            holder_id: 1,
+            level: 2,
+        }];
+    let mut quick_charge_world = world_with_level_dimension("minecraft:overworld");
+    quick_charge_world.apply_add_entity(protocol_add_entity(1, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    record_enchantment_registry(&mut quick_charge_world);
+    quick_charge_world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: quick_charge_crossbow,
+    });
+    quick_charge_world.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+    quick_charge_world.advance_local_using_item_ticks(12);
+    let quick_charge = first_person_item_models(
+        &quick_charge_world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        camera,
+        0.5,
+    );
+    assert_eq!(quick_charge.flat_meshes.len(), 1);
+    assert_ne!(
+        using.flat_meshes[0], quick_charge.flat_meshes[0],
+        "synchronized Quick Charge changes the first-person draw transform"
     );
 
     let mut charged_crossbow = crossbow;
@@ -3666,6 +3693,7 @@ fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
             owner_main_hand_left,
             None,
             None,
+            None,
             false,
             0.0,
             None,
@@ -3744,6 +3772,7 @@ fn held_generated_item_context_entity_type_select_uses_owner_kind() {
             BlockModelDisplayContext::ThirdPersonRightHand,
             false,
             Some(false),
+            None,
             context_entity_type,
             None,
             false,
@@ -4499,6 +4528,7 @@ fn shared_hand_item_bake_submits_selected_special_geometry() {
         BlockModelDisplayContext::ThirdPersonRightHand,
         false,
         Some(false),
+        None,
         Some("minecraft:player"),
         None,
         false,

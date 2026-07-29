@@ -8,7 +8,7 @@ use super::{
     apply_humanoid_spear_use_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
     apply_humanoid_toot_horn_pose, humanoid_crouch_head_pose, humanoid_rot_lerp_rad, PartPose,
-    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PLAYER_BLUE,
+    PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -563,7 +563,7 @@ impl EntityModel for PlayerModel {
         if render_state.player_charging_crossbow {
             apply_crossbow_charge_pose_for_hand(
                 &mut self.root,
-                CROSSBOW_CHARGE_DURATION_TICKS,
+                render_state.crossbow_charge_duration_ticks,
                 render_state.crossbow_charge_ticks,
                 render_state.use_item_off_hand,
             );

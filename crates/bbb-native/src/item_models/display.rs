@@ -234,6 +234,7 @@ fn bake_item_display(
         context,
         left_hand,
         None,
+        None,
         Some(ITEM_DISPLAY_ENTITY_TYPE),
         None,
         false,

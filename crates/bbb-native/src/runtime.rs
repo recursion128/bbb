@@ -16922,11 +16922,37 @@ fn hud_item_model_use_context(
     item: &bbb_protocol::packets::ItemStackSummary,
     using_item: bool,
 ) -> bbb_item_model::ItemModelUseContext {
-    if using_item {
+    let is_crossbow = item
+        .item_id
+        .and_then(|item_id| item_runtime.item_resource_id(item_id))
+        .is_some_and(|resource_id| {
+            bbb_protocol::item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                bbb_protocol::item_types::VANILLA_ITEM_CROSSBOW_ID,
+            )
+        });
+    if using_item && is_crossbow {
+        let charge_duration = world
+            .local_player_id()
+            .and_then(|entity_id| {
+                item_runtime.crossbow_charge_duration_ticks_for_living_owner(
+                    world,
+                    &item.component_patch.enchantments,
+                    entity_id,
+                )
+            })
+            .unwrap_or_else(|| {
+                world.crossbow_charge_duration_ticks(&item.component_patch.enchantments)
+            });
         item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
             item,
             world.local_player().interaction.using_item_ticks,
-            Some(world.crossbow_charge_duration_ticks(&item.component_patch.enchantments)),
+            Some(charge_duration),
+        )
+    } else if using_item {
+        item_runtime.item_model_use_context_for_stack(
+            item,
+            world.local_player().interaction.using_item_ticks,
         )
     } else {
         bbb_item_model::ItemModelUseContext::inactive()

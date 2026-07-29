@@ -63,6 +63,7 @@ use bbb_world::{
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemFoodProperties as WorldItemFoodProperties,
     ItemUseEffects as WorldItemUseEffects, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     MountArmorSlotKind as WorldMountArmorSlotKind, WorldItemMiningProfile, WorldItemMiningRule,
+    WorldStore,
 };
 
 use crate::{
@@ -264,6 +265,14 @@ pub struct NativeItemRuntime {
     time_randoms: RefCell<HashMap<ItemTimeRandomKey, ItemLegacyRandom>>,
     compass_wobblers: RefCell<HashMap<ItemCompassWobblerKey, ItemNeedleWobbler>>,
     compass_randoms: RefCell<HashMap<ItemCompassRandomKey, ItemLegacyRandom>>,
+    enchantment_entity_randoms:
+        RefCell<HashMap<(i32, uuid::Uuid), bbb_world::LevelEventSoundRandomState>>,
+}
+
+fn enchantment_entity_random_seed(entity_id: i32, entity_uuid: uuid::Uuid) -> i64 {
+    let uuid = entity_uuid.as_u128();
+    let folded_uuid = uuid as u64 ^ (uuid >> 64) as u64;
+    (folded_uuid ^ entity_id as u32 as u64 ^ 0x656e_6368_5f72_6e67) as i64
 }
 
 fn load_local_dynamic_player_texture(
@@ -624,7 +633,32 @@ impl NativeItemRuntime {
             time_randoms: RefCell::default(),
             compass_wobblers: RefCell::default(),
             compass_randoms: RefCell::default(),
+            enchantment_entity_randoms: RefCell::default(),
         }
+    }
+
+    /// Resolves `CrossbowItem.getChargeDuration` against one living render
+    /// owner. Vanilla passes `LivingEntity.getRandom()`; the runtime retains
+    /// the equivalent mutable cursor per concrete `(entity id, UUID)` owner.
+    pub fn crossbow_charge_duration_ticks_for_living_owner(
+        &self,
+        world: &WorldStore,
+        enchantments: &[ItemEnchantmentSummary],
+        entity_id: i32,
+    ) -> Option<i32> {
+        let entity_uuid = world.entity_uuid(entity_id)?;
+        let key = (entity_id, entity_uuid);
+        let mut randoms = self.enchantment_entity_randoms.borrow_mut();
+        randoms.retain(|(known_id, known_uuid), _| {
+            *known_id != entity_id || *known_uuid == entity_uuid
+        });
+        let random = randoms.entry(key).or_insert_with(|| {
+            bbb_world::LevelEventSoundRandomState::with_seed(enchantment_entity_random_seed(
+                entity_id,
+                entity_uuid,
+            ))
+        });
+        Some(world.crossbow_charge_duration_ticks_with_random(enchantments, random))
     }
 
     pub fn load(roots: &PackRoots) -> Result<Self> {
@@ -944,6 +978,7 @@ impl NativeItemRuntime {
             time_randoms: RefCell::default(),
             compass_wobblers: RefCell::default(),
             compass_randoms: RefCell::default(),
+            enchantment_entity_randoms: RefCell::default(),
         })
     }
 
@@ -1008,6 +1043,7 @@ impl NativeItemRuntime {
             time_randoms: RefCell::default(),
             compass_wobblers: RefCell::default(),
             compass_randoms: RefCell::default(),
+            enchantment_entity_randoms: RefCell::default(),
         }
     }
 

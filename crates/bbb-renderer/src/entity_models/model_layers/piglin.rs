@@ -4,7 +4,7 @@ use super::{
     apply_humanoid_mob_spear_arm_poses, apply_humanoid_no_swing_attack_animation,
     apply_humanoid_stab_attack_animation, apply_humanoid_weapon_swing_down,
     apply_zombie_arms_held_out_named, humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose,
-    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -691,7 +691,7 @@ impl EntityModel for PiglinModel {
         if render_state.piglin_crossbow_charge {
             apply_crossbow_charge_pose(
                 &mut self.root,
-                CROSSBOW_CHARGE_DURATION_TICKS,
+                render_state.crossbow_charge_duration_ticks,
                 render_state.crossbow_charge_ticks,
             );
         }

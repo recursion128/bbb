@@ -816,8 +816,6 @@ pub(in crate::entity_models) fn apply_crossbow_hold_pose_for_hand(
 
 /// Vanilla `AnimationUtils.animateCrossbowCharge(rightArm, leftArm, maxChargeDuration, ticksUsingItem,
 /// holdingInRightArm = true)`, the right-handed branch shared by pillagers, piglins, and main-hand players.
-pub(in crate::entity_models) const CROSSBOW_CHARGE_DURATION_TICKS: f32 = 25.0;
-
 pub(in crate::entity_models) fn apply_crossbow_charge_pose(
     root: &mut ModelPart,
     max_charge_duration: f32,
@@ -830,7 +828,7 @@ pub(in crate::entity_models) fn apply_crossbow_charge_pose(
 /// `xRot = -0.97079635`) while the pulling arm draws the string back over the charge — its `xRot` lerps
 /// `-0.97079635 → -π/2` and its signed `yRot` lerps `±0.4 → ±0.85` as
 /// `ticksUsingItem / maxChargeDuration` climbs `0 → 1` (clamped). `max_charge_duration` is the vanilla
-/// `CrossbowItem.getChargeDuration` ([`CROSSBOW_CHARGE_DURATION_TICKS`], 25 ticks without Quick Charge).
+/// `CrossbowItem.getChargeDuration` (25 ticks without synchronized enchantment effects).
 pub(in crate::entity_models) fn apply_crossbow_charge_pose_for_hand(
     root: &mut ModelPart,
     max_charge_duration: f32,

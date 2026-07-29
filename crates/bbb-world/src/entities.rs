@@ -3457,6 +3457,10 @@ impl WorldStore {
         self.entities.entity_type_id(id)
     }
 
+    pub fn entity_uuid(&self, id: i32) -> Option<uuid::Uuid> {
+        self.entities.identity(id).map(|identity| identity.uuid)
+    }
+
     pub fn entity_debug_passenger_vehicle_target(
         &self,
         passenger_id: i32,

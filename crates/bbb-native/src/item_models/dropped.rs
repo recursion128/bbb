@@ -1782,6 +1782,7 @@ fn bake_held_hand(
             context,
             left_arm,
             Some(instance.render_state.main_arm_left),
+            Some(instance.entity_id),
             entity_model_context_entity_type(instance.kind),
             world.entity_team_color_rgb(instance.entity_id),
             using_item,
@@ -1858,6 +1859,7 @@ fn bake_fox_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        Some(instance.entity_id),
         entity_model_context_entity_type(instance.kind),
         world.entity_team_color_rgb(instance.entity_id),
         using_item,
@@ -1923,6 +1925,7 @@ fn bake_dolphin_carried_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        Some(instance.entity_id),
         entity_model_context_entity_type(instance.kind),
         world.entity_team_color_rgb(instance.entity_id),
         using_item,
@@ -1988,6 +1991,7 @@ fn bake_witch_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        Some(instance.entity_id),
         entity_model_context_entity_type(instance.kind),
         world.entity_team_color_rgb(instance.entity_id),
         using_item,
@@ -2058,6 +2062,7 @@ fn bake_copper_golem_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            Some(instance.entity_id),
             entity_model_context_entity_type(instance.kind),
             world.entity_team_color_rgb(instance.entity_id),
             using_item,
@@ -2131,6 +2136,7 @@ fn bake_allay_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            Some(instance.entity_id),
             entity_model_context_entity_type(instance.kind),
             world.entity_team_color_rgb(instance.entity_id),
             using_item,
@@ -2196,6 +2202,7 @@ fn bake_villager_crossed_arms_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        Some(instance.entity_id),
         entity_model_context_entity_type(instance.kind),
         world.entity_team_color_rgb(instance.entity_id),
         using_item,
@@ -2261,6 +2268,7 @@ fn bake_panda_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        Some(instance.entity_id),
         entity_model_context_entity_type(instance.kind),
         world.entity_team_color_rgb(instance.entity_id),
         using_item,
@@ -2335,6 +2343,7 @@ fn bake_custom_head_item(
             BlockModelDisplayContext::Head,
             false,
             Some(instance.render_state.main_arm_left),
+            Some(instance.entity_id),
             entity_model_context_entity_type(instance.kind),
             world.entity_team_color_rgb(instance.entity_id),
             false,
@@ -2443,6 +2452,7 @@ pub(super) fn bake_item_stack_at_transform(
     context: BlockModelDisplayContext,
     left_hand: bool,
     owner_main_hand_left: Option<bool>,
+    living_owner_entity_id: Option<i32>,
     context_entity_type: Option<&str>,
     owner_team_color_rgb: Option<u32>,
     using_item: bool,
@@ -2474,6 +2484,7 @@ pub(super) fn bake_item_stack_at_transform(
         context,
         left_hand,
         owner_main_hand_left,
+        living_owner_entity_id,
         context_entity_type,
         owner_team_color_rgb,
         using_item,
@@ -2513,6 +2524,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     context: BlockModelDisplayContext,
     left_hand: bool,
     owner_main_hand_left: Option<bool>,
+    living_owner_entity_id: Option<i32>,
     context_entity_type: Option<&str>,
     owner_team_color_rgb: Option<u32>,
     using_item: bool,
@@ -2554,12 +2566,34 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
         ItemModelDrawTarget::World
     };
 
-    let use_context = if using_item {
+    let is_crossbow = item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_CROSSBOW_ID,
+            )
+        });
+    let use_context = if using_item && is_crossbow {
+        let charge_duration = living_owner_entity_id
+            .and_then(|entity_id| {
+                item_runtime.crossbow_charge_duration_ticks_for_living_owner(
+                    world,
+                    &stack.component_patch.enchantments,
+                    entity_id,
+                )
+            })
+            .unwrap_or_else(|| {
+                world.crossbow_charge_duration_ticks(&stack.component_patch.enchantments)
+            });
         item_runtime.item_model_use_context_for_stack_with_crossbow_charge_duration(
             stack,
             item_model_elapsed_ticks(using_item_ticks),
-            Some(world.crossbow_charge_duration_ticks(&stack.component_patch.enchantments)),
+            Some(charge_duration),
         )
+    } else if using_item {
+        item_runtime
+            .item_model_use_context_for_stack(stack, item_model_elapsed_ticks(using_item_ticks))
     } else {
         ItemModelUseContext::inactive()
     };

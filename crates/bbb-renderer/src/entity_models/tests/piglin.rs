@@ -1057,6 +1057,18 @@ fn piglin_pulls_its_crossbow_back_while_charging() {
         "mid-draw the pulling arm is between rest and full: {}",
         left_mid.rotation[1]
     );
+    let quick_charge =
+        EntityModelInstance::piglin(98, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_piglin_crossbow_charge(true)
+            .with_crossbow_charge_ticks(12.5)
+            .with_crossbow_charge_duration_ticks(15.0);
+    let mut quick_model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    quick_model.prepare(&quick_charge);
+    let quick_left = quick_model.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (quick_left.rotation[1] - (0.4 + (0.85 - 0.4) * (12.5 / 15.0))).abs() < 1.0e-6,
+        "a synchronized 15-tick duration advances the piglin arm draw"
+    );
     let (_, left_over) = arms(40.0);
     assert!(
         (left_over.rotation[1] - 0.85).abs() < 1.0e-6,

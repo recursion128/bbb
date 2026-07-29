@@ -468,6 +468,57 @@ pub(super) fn entity_model_instance(
             && !piglin_is_dancing(source.entity_type_id, &source.data_values)
             && !piglin_admiring
             && !piglin_attacking_with_melee;
+    let pillager_crossbow_charge =
+        pillager_is_charging_crossbow(source.entity_type_id, &source.data_values);
+    let use_item_enchantments = if source.is_using_item {
+        world
+            .held_item(source.entity_id, source.use_item_off_hand)
+            .map(|stack| stack.component_patch.enchantments)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let resolve_crossbow_charge_duration = || {
+        item_runtime
+            .and_then(|item_runtime| {
+                item_runtime.crossbow_charge_duration_ticks_for_living_owner(
+                    world,
+                    &use_item_enchantments,
+                    source.entity_id,
+                )
+            })
+            .unwrap_or_else(|| world.crossbow_charge_duration_ticks(&use_item_enchantments))
+            as f32
+    };
+    // Vanilla `HumanoidMobRenderer.extractHumanoidRenderState` asks
+    // `CrossbowItem.getChargeDuration(entity.getUseItem(), entity)` once for
+    // every humanoid render state. `PiglinRenderer` then repeats that query
+    // into its piglin-specific field; `IllagerRenderer` instead asks only for
+    // CROSSBOW_CHARGE. Preserve both the selected value and the owner RNG
+    // cursor order before held-item model properties are evaluated.
+    let uses_humanoid_render_state = matches!(
+        kind,
+        EntityModelKind::Player { .. }
+            | EntityModelKind::Humanoid { .. }
+            | EntityModelKind::Zombie { .. }
+            | EntityModelKind::ZombieVariant { .. }
+            | EntityModelKind::Skeleton
+            | EntityModelKind::SkeletonVariant { .. }
+            | EntityModelKind::Piglin { .. }
+            | EntityModelKind::ArmorStand { .. }
+            | EntityModelKind::Enderman
+            | EntityModelKind::Giant
+    );
+    let mut crossbow_charge_duration_ticks = if uses_humanoid_render_state {
+        resolve_crossbow_charge_duration()
+    } else {
+        25.0
+    };
+    if matches!(kind, EntityModelKind::Piglin { .. }) {
+        crossbow_charge_duration_ticks = resolve_crossbow_charge_duration();
+    } else if pillager_crossbow_charge {
+        crossbow_charge_duration_ticks = resolve_crossbow_charge_duration();
+    }
     // Vanilla `Goat.getRammingXHeadRot()`: the world-projected `lowerHeadTick` ram counter scaled by the
     // adult/baby max head pitch. Resolved here because the baby flag lives in the goat kind.
     let goat_ramming_x_head_rot = match kind {
@@ -688,6 +739,7 @@ pub(super) fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_crossbow_charge_duration_ticks(crossbow_charge_duration_ticks)
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)

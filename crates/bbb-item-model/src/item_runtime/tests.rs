@@ -10643,6 +10643,73 @@ fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
 }
 
 #[test]
+fn living_owner_crossbow_random_keeps_one_cursor_per_entity_incarnation() {
+    const ENTITY_ID: i32 = 77;
+    let first_uuid = uuid::Uuid::from_u128(0x1111);
+    let second_uuid = uuid::Uuid::from_u128(0x2222);
+    let mut world = WorldStore::new();
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![bbb_protocol::packets::RegistryDataEntry {
+            id: "example:random_loading".to_string(),
+            raw_data: Some(random_crossbow_charge_time_enchantment_nbt()),
+        }],
+        raw_payload_len: 0,
+    });
+    let add_entity = |uuid| bbb_protocol::packets::AddEntity {
+        id: ENTITY_ID,
+        uuid,
+        entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: bbb_protocol::packets::Vec3d::default(),
+        delta_movement: bbb_protocol::packets::Vec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    };
+    world.apply_add_entity(add_entity(first_uuid));
+    let enchantments = [ItemEnchantmentSummary {
+        holder_id: 0,
+        level: 1,
+    }];
+    let runtime = NativeItemRuntime::empty_for_test();
+    let mut expected_random = bbb_world::LevelEventSoundRandomState::with_seed(
+        enchantment_entity_random_seed(ENTITY_ID, first_uuid),
+    );
+
+    for _ in 0..2 {
+        let expected =
+            world.crossbow_charge_duration_ticks_with_random(&enchantments, &mut expected_random);
+        assert_eq!(
+            runtime.crossbow_charge_duration_ticks_for_living_owner(
+                &world,
+                &enchantments,
+                ENTITY_ID,
+            ),
+            Some(expected)
+        );
+    }
+
+    assert_eq!(
+        world.apply_remove_entities(bbb_protocol::packets::RemoveEntities {
+            entity_ids: vec![ENTITY_ID],
+        }),
+        1
+    );
+    world.apply_add_entity(add_entity(second_uuid));
+    let mut replacement_random = bbb_world::LevelEventSoundRandomState::with_seed(
+        enchantment_entity_random_seed(ENTITY_ID, second_uuid),
+    );
+    let expected_replacement =
+        world.crossbow_charge_duration_ticks_with_random(&enchantments, &mut replacement_random);
+    assert_eq!(
+        runtime.crossbow_charge_duration_ticks_for_living_owner(&world, &enchantments, ENTITY_ID,),
+        Some(expected_replacement),
+        "reusing an entity id with a new UUID resets the render-side RNG cursor"
+    );
+}
+
+#[test]
 fn native_item_runtime_resolves_main_hand_select_from_owner_context() {
     let root = unique_temp_dir("item-runtime-main-hand-select");
     write_main_hand_select_fixture(&root);
@@ -18376,6 +18443,82 @@ fn drain_until_player_texture_download_results(
         thread::sleep(Duration::from_millis(10));
     }
     panic!("timed out waiting for player profile texture download results");
+}
+
+fn random_crossbow_charge_time_enchantment_nbt() -> Vec<u8> {
+    let effect = test_compound_payload(vec![
+        test_string_tag("type", "minecraft:all_of"),
+        test_compound_list_tag(
+            "effects",
+            vec![
+                test_compound_payload(vec![
+                    test_string_tag("type", "minecraft:set"),
+                    test_float_tag("value", 5.0),
+                ]),
+                test_compound_payload(vec![
+                    test_string_tag("type", "minecraft:remove_binomial"),
+                    test_float_tag("chance", 0.5),
+                ]),
+            ],
+        ),
+    ]);
+    test_compound_payload(vec![test_compound_tag(
+        "effects",
+        vec![test_named_compound_payload(
+            "minecraft:crossbow_charge_time",
+            effect,
+        )],
+    )])
+}
+
+fn test_compound_payload(entries: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut out = vec![10];
+    for entry in entries {
+        out.extend(entry);
+    }
+    out.push(0);
+    out
+}
+
+fn test_compound_tag(name: &str, entries: Vec<Vec<u8>>) -> Vec<u8> {
+    test_named_compound_payload(name, test_compound_payload(entries))
+}
+
+fn test_named_compound_payload(name: &str, payload: Vec<u8>) -> Vec<u8> {
+    let mut out = vec![10];
+    write_test_nbt_string(&mut out, name);
+    out.extend(payload.into_iter().skip(1));
+    out
+}
+
+fn test_compound_list_tag(name: &str, payloads: Vec<Vec<u8>>) -> Vec<u8> {
+    let mut out = vec![9];
+    write_test_nbt_string(&mut out, name);
+    out.push(10);
+    out.extend((payloads.len() as i32).to_be_bytes());
+    for payload in payloads {
+        out.extend(payload.into_iter().skip(1));
+    }
+    out
+}
+
+fn test_string_tag(name: &str, value: &str) -> Vec<u8> {
+    let mut out = vec![8];
+    write_test_nbt_string(&mut out, name);
+    write_test_nbt_string(&mut out, value);
+    out
+}
+
+fn test_float_tag(name: &str, value: f32) -> Vec<u8> {
+    let mut out = vec![5];
+    write_test_nbt_string(&mut out, name);
+    out.extend(value.to_be_bytes());
+    out
+}
+
+fn write_test_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend((value.len() as u16).to_be_bytes());
+    out.extend(value.as_bytes());
 }
 
 fn write_test_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {

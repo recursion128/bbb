@@ -361,6 +361,14 @@ fn riding_illager_arm_poses_still_override_the_seated_arms() {
     assert!((charge_right[0] - (-0.97079635)).abs() < 1e-6);
     assert!((charge_right[1] - (-0.8)).abs() < 1e-6);
     assert!(charge_left[1] > 0.4 && charge_left[1] < 0.85);
+    let quick_charge = crossbow_charge.with_crossbow_charge_duration_ticks(15.0);
+    let mut quick_model = IllagerModel::new(&quick_charge, IllagerModelFamily::Pillager);
+    quick_model.prepare(&quick_charge);
+    let quick_left = quick_model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!(
+        (quick_left[1] - (0.4 + (0.85 - 0.4) * (12.5 / 15.0))).abs() < 1e-6,
+        "a synchronized 15-tick duration advances the pillager arm draw"
+    );
 
     let bow_aim =
         EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner)
