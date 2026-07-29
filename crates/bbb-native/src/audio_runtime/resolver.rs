@@ -688,7 +688,9 @@ mod tests {
               "block.blastfurnace.fire_crackle": {"sounds": ["block/blastfurnace/fire_crackle"]},
               "block.smoker.smoke": {"sounds": ["block/smoker/smoke"]},
               "block.campfire.crackle": {"sounds": ["block/campfire/crackle"]},
-              "block.fire.ambient": {"sounds": ["block/fire/ambient"]}
+              "block.fire.ambient": {"sounds": ["block/fire/ambient"]},
+              "block.respawn_anchor.ambient": {"sounds": ["block/respawn_anchor/ambient"]},
+              "block.portal.ambient": {"sounds": ["block/portal/ambient"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -804,6 +806,8 @@ mod tests {
             "minecraft:block.smoker.smoke",
             "minecraft:block.campfire.crackle",
             "minecraft:block.fire.ambient",
+            "minecraft:block.respawn_anchor.ambient",
+            "minecraft:block.portal.ambient",
         ] {
             let command = resolver
                 .play_positioned_sound(&SoundEventState {

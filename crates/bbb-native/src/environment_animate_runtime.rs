@@ -43,6 +43,8 @@ const SOUND_EVENT_BLAST_FURNACE_FIRE_CRACKLE: &str = "minecraft:block.blastfurna
 const SOUND_EVENT_SMOKER_SMOKE: &str = "minecraft:block.smoker.smoke";
 const SOUND_EVENT_CAMPFIRE_CRACKLE: &str = "minecraft:block.campfire.crackle";
 const SOUND_EVENT_FIRE_AMBIENT: &str = "minecraft:block.fire.ambient";
+const SOUND_EVENT_RESPAWN_ANCHOR_AMBIENT: &str = "minecraft:block.respawn_anchor.ambient";
+const SOUND_EVENT_PORTAL_AMBIENT: &str = "minecraft:block.portal.ambient";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
@@ -53,6 +55,8 @@ const PARTICLE_DRIPPING_LAVA: &str = "minecraft:dripping_lava";
 const PARTICLE_SMOKE: &str = "minecraft:smoke";
 const PARTICLE_FLAME: &str = "minecraft:flame";
 const PARTICLE_LARGE_SMOKE: &str = "minecraft:large_smoke";
+const PARTICLE_REVERSE_PORTAL: &str = "minecraft:reverse_portal";
+const PARTICLE_PORTAL: &str = "minecraft:portal";
 
 type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
 type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
@@ -286,6 +290,19 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:soul_fire" => {
                 self.animate_fire(world, pos, true, animate_random, audio, spawns);
+            }
+            "minecraft:respawn_anchor" => {
+                self.animate_respawn_anchor(
+                    world,
+                    pos,
+                    &block.block_properties,
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+            }
+            "minecraft:nether_portal" => {
+                self.animate_nether_portal(world, pos, animate_random, audio, spawns);
             }
             _ => {}
         }
@@ -552,6 +569,66 @@ impl EnvironmentAnimateRuntime {
                     f64::from(pos.z) + 0.5,
                 ],
                 volume,
+                pitch,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_respawn_anchor(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        properties: &std::collections::BTreeMap<String, String>,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        if !append_respawn_anchor_animate_effects(pos, properties, animate_random, spawns) {
+            return;
+        }
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_RESPAWN_ANCHOR_AMBIENT,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                1.0,
+                1.0,
+                seed,
+            ));
+        }
+    }
+
+    fn animate_nether_portal(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let Some(pitch) = append_nether_portal_animate_effects(world, pos, animate_random, spawns)
+        else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                SOUND_EVENT_PORTAL_AMBIENT,
+                SoundSource::Blocks,
+                [
+                    f64::from(pos.x) + 0.5,
+                    f64::from(pos.y) + 0.5,
+                    f64::from(pos.z) + 0.5,
+                ],
+                0.5,
                 pitch,
                 seed,
             ));
@@ -988,6 +1065,80 @@ fn append_fire_animate_effects(
         }
     }
     sound
+}
+
+fn append_respawn_anchor_animate_effects(
+    pos: BlockPos,
+    properties: &std::collections::BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> bool {
+    if !properties
+        .get("charges")
+        .is_some_and(|charges| charges != "0")
+    {
+        return false;
+    }
+    let play_sound = random.next_int_bound(100) == 0;
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_REVERSE_PORTAL),
+        position: [
+            f64::from(pos.x) + 0.5 + (0.5 - random.next_double()),
+            f64::from(pos.y) + 1.0,
+            f64::from(pos.z) + 0.5 + (0.5 - random.next_double()),
+        ],
+        velocity: [0.0, f64::from(random.next_float()) * 0.04, 0.0],
+        always_show: false,
+    });
+    play_sound
+}
+
+fn append_nether_portal_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<f32> {
+    let pitch = (random.next_int_bound(100) == 0).then(|| random.next_float() * 0.4 + 0.8);
+    let portal_at = |target| {
+        world
+            .probe_block(target)
+            .is_some_and(|block| block.block_name.as_deref() == Some("minecraft:nether_portal"))
+    };
+    let pin_x = !portal_at(BlockPos {
+        x: pos.x.saturating_sub(1),
+        ..pos
+    }) && !portal_at(BlockPos {
+        x: pos.x.saturating_add(1),
+        ..pos
+    });
+    for _ in 0..4 {
+        let mut position = [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + random.next_double(),
+            f64::from(pos.z) + random.next_double(),
+        ];
+        let mut velocity = [
+            (f64::from(random.next_float()) - 0.5) * 0.5,
+            (f64::from(random.next_float()) - 0.5) * 0.5,
+            (f64::from(random.next_float()) - 0.5) * 0.5,
+        ];
+        let flip = random.next_int_bound(2) * 2 - 1;
+        if pin_x {
+            position[0] = f64::from(pos.x) + 0.5 + 0.25 * f64::from(flip);
+            velocity[0] = f64::from(random.next_float() * 2.0 * flip as f32);
+        } else {
+            position[2] = f64::from(pos.z) + 0.5 + 0.25 * f64::from(flip);
+            velocity[2] = f64::from(random.next_float() * 2.0 * flip as f32);
+        }
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_PORTAL),
+            position,
+            velocity,
+            always_show: false,
+        });
+    }
+    pitch
 }
 
 fn append_ambient_particle_spawns(
@@ -2037,6 +2188,168 @@ mod tests {
             runtime.level_random.next_long(),
             expected_level_random.next_long(),
             "fire playLocalSound consumes the shared level seed without an audio sink"
+        );
+    }
+
+    #[test]
+    fn portal_block_animate_effects_preserve_state_axis_and_random_order() {
+        let mut world = world_with_ambient_particles();
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let sound_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(100) == 0)
+            .expect("deterministic portal ambient sound seed");
+
+        let charged = BTreeMap::from([("charges".to_string(), "1".to_string())]);
+        let mut anchor_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut anchor_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut anchor_spawns = Vec::new();
+        assert!(append_respawn_anchor_animate_effects(
+            pos,
+            &charged,
+            &mut anchor_actual,
+            &mut anchor_spawns,
+        ));
+        assert_eq!(anchor_expected.next_int_bound(100), 0);
+        assert_eq!(anchor_spawns.len(), 1);
+        assert_eq!(
+            anchor_spawns[0].particle.resource_id,
+            PARTICLE_REVERSE_PORTAL
+        );
+        assert_eq!(
+            anchor_spawns[0].position,
+            [
+                8.5 + (0.5 - anchor_expected.next_double()),
+                33.0,
+                8.5 + (0.5 - anchor_expected.next_double()),
+            ]
+        );
+        assert_eq!(
+            anchor_spawns[0].velocity,
+            [0.0, f64::from(anchor_expected.next_float()) * 0.04, 0.0]
+        );
+        assert_eq!(anchor_actual.next_long(), anchor_expected.next_long());
+
+        let uncharged = BTreeMap::from([("charges".to_string(), "0".to_string())]);
+        let mut uncharged_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut uncharged_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut uncharged_spawns = Vec::new();
+        assert!(!append_respawn_anchor_animate_effects(
+            pos,
+            &uncharged,
+            &mut uncharged_actual,
+            &mut uncharged_spawns,
+        ));
+        assert!(uncharged_spawns.is_empty());
+        assert_eq!(uncharged_actual.next_long(), uncharged_expected.next_long());
+
+        set_block(
+            &mut world,
+            pos,
+            block_state_id("minecraft:nether_portal", &[("axis", "x")]),
+        );
+        let expected_portal_spawns = |random: &mut LevelEventSoundRandomState, pin_x: bool| {
+            (0..4)
+                .map(|_| {
+                    let mut position = [
+                        8.0 + random.next_double(),
+                        32.0 + random.next_double(),
+                        8.0 + random.next_double(),
+                    ];
+                    let mut velocity = [
+                        (f64::from(random.next_float()) - 0.5) * 0.5,
+                        (f64::from(random.next_float()) - 0.5) * 0.5,
+                        (f64::from(random.next_float()) - 0.5) * 0.5,
+                    ];
+                    let flip = random.next_int_bound(2) * 2 - 1;
+                    if pin_x {
+                        position[0] = 8.5 + 0.25 * f64::from(flip);
+                        velocity[0] = f64::from(random.next_float() * 2.0 * flip as f32);
+                    } else {
+                        position[2] = 8.5 + 0.25 * f64::from(flip);
+                        velocity[2] = f64::from(random.next_float() * 2.0 * flip as f32);
+                    }
+                    (position, velocity)
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let mut portal_x_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut portal_x_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut portal_x_spawns = Vec::new();
+        let portal_x_pitch = append_nether_portal_animate_effects(
+            &world,
+            pos,
+            &mut portal_x_actual,
+            &mut portal_x_spawns,
+        );
+        assert_eq!(portal_x_expected.next_int_bound(100), 0);
+        assert_eq!(
+            portal_x_pitch,
+            Some(portal_x_expected.next_float() * 0.4 + 0.8)
+        );
+        let expected_x = expected_portal_spawns(&mut portal_x_expected, true);
+        assert_eq!(
+            portal_x_spawns
+                .iter()
+                .map(|spawn| (spawn.position, spawn.velocity))
+                .collect::<Vec<_>>(),
+            expected_x
+        );
+        assert!(portal_x_spawns
+            .iter()
+            .all(|spawn| { spawn.particle.resource_id == PARTICLE_PORTAL && !spawn.always_show }));
+        assert_eq!(portal_x_actual.next_long(), portal_x_expected.next_long());
+
+        set_block(
+            &mut world,
+            BlockPos { x: 7, ..pos },
+            block_state_id("minecraft:nether_portal", &[("axis", "x")]),
+        );
+        let mut portal_z_actual = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut portal_z_expected = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut portal_z_spawns = Vec::new();
+        let portal_z_pitch = append_nether_portal_animate_effects(
+            &world,
+            pos,
+            &mut portal_z_actual,
+            &mut portal_z_spawns,
+        );
+        assert_eq!(portal_z_expected.next_int_bound(100), 0);
+        assert_eq!(
+            portal_z_pitch,
+            Some(portal_z_expected.next_float() * 0.4 + 0.8)
+        );
+        let expected_z = expected_portal_spawns(&mut portal_z_expected, false);
+        assert_eq!(
+            portal_z_spawns
+                .iter()
+                .map(|spawn| (spawn.position, spawn.velocity))
+                .collect::<Vec<_>>(),
+            expected_z
+        );
+        assert_eq!(portal_z_actual.next_long(), portal_z_expected.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(sound_seed);
+        let mut audio = None;
+        let mut runtime_spawns = Vec::new();
+        runtime.animate_respawn_anchor(
+            &world,
+            pos,
+            &charged,
+            &mut animate_random,
+            &mut audio,
+            &mut runtime_spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "respawn-anchor playLocalSound consumes the shared level seed without an audio sink"
         );
     }
 
