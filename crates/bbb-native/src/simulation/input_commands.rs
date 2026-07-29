@@ -153,6 +153,11 @@ impl SimulationInputRuntime {
         context: &mut SimulationInputContext<'_, '_, '_>,
         profiling_enabled: bool,
     ) -> SimulationInputProfile {
+        self.code_of_conduct_overlay.sync(
+            context.world,
+            self.surface_size,
+            &self.text_measurements,
+        );
         let mut profile = SimulationInputProfile::default();
         for command in commands {
             if self.shutdown_requested {
@@ -279,6 +284,7 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
+                self.code_of_conduct_overlay.handle_cursor_left();
                 context.input.handle_death_screen_hover(None);
                 context.input.handle_game_event_screen_hover(None);
                 context
@@ -308,9 +314,21 @@ impl SimulationInputRuntime {
                 context.input.clear_dialog_ime_preedit();
                 context.input.clear_sign_editor_ime_preedit();
             }
-            SimulationCommand::SurfaceResized(size) => self.surface_size = size,
+            SimulationCommand::SurfaceResized(size) => {
+                self.surface_size = size;
+                self.code_of_conduct_overlay.sync(
+                    context.world,
+                    self.surface_size,
+                    &self.text_measurements,
+                );
+            }
             SimulationCommand::TextMeasurements(measurements) => {
                 self.text_measurements = measurements;
+                self.code_of_conduct_overlay.sync(
+                    context.world,
+                    self.surface_size,
+                    &self.text_measurements,
+                );
             }
             SimulationCommand::CursorCaptureResult { captured } => {
                 self.cursor_captured = captured;
@@ -409,6 +427,16 @@ impl SimulationInputRuntime {
     ) {
         let previous_cursor_position = self.cursor_position;
         self.cursor_position = Some(position);
+        if self.code_of_conduct_overlay.handle_cursor_moved(
+            context.world,
+            previous_cursor_position,
+            self.cursor_position,
+            self.surface_size,
+            &self.text_measurements,
+        ) {
+            self.request_cursor_capture(false, context.platform);
+            return;
+        }
         if context
             .input
             .handle_debug_game_mode_switcher_cursor_moved(self.cursor_position, self.surface_size)
@@ -602,6 +630,16 @@ impl SimulationInputRuntime {
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
+            let overlay_input = self.code_of_conduct_overlay.handle_key_input(
+                context.world,
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+            );
+            if let Some(request) = overlay_input.request {
+                self.apply_control_request(Some(request), None, None, context);
+            }
             self.request_cursor_capture(false, context.platform);
             return;
         }
@@ -1228,6 +1266,7 @@ impl SimulationInputRuntime {
                 state,
                 self.cursor_position,
                 self.surface_size,
+                &self.text_measurements,
             );
             if let Some(request) = overlay_input.request {
                 self.apply_control_request(Some(request), None, None, context);
@@ -1753,6 +1792,13 @@ impl SimulationInputRuntime {
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if self.code_of_conduct_overlay.is_visible(context.world) {
+            self.code_of_conduct_overlay.handle_mouse_wheel(
+                context.world,
+                delta,
+                self.cursor_position,
+                self.surface_size,
+                &self.text_measurements,
+            );
             self.request_cursor_capture(false, context.platform);
             return;
         }
