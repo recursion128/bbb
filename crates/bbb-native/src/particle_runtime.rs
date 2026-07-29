@@ -1581,7 +1581,7 @@ mod block_map_color;
 mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
-pub(crate) use environment::simple_client_particle_options;
+pub(crate) use environment::{dust_client_particle_options, simple_client_particle_options};
 mod explosion;
 mod ids;
 mod resolver_block_events;

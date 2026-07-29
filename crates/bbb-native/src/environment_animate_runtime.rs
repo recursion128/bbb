@@ -15,9 +15,10 @@ use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        pointed_dripstone_drip_context, pointed_dripstone_particle_position,
-        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
-        ParticleBiomeSampler, ParticleEventSink,
+        dust_client_particle_options, pointed_dripstone_drip_context,
+        pointed_dripstone_particle_position, simple_client_particle_options,
+        EnvironmentParticleSpawn, LevelParticleSpawnContext, ParticleBiomeSampler,
+        ParticleEventSink,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -87,6 +88,38 @@ enum FireSmokeFace {
     South,
     Up,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RedstoneWireSide {
+    Up,
+    Side,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RedstoneWireDirection {
+    property: &'static str,
+    step: [i32; 3],
+}
+
+const REDSTONE_WIRE_DIRECTIONS: [RedstoneWireDirection; 4] = [
+    RedstoneWireDirection {
+        property: "north",
+        step: [0, 0, -1],
+    },
+    RedstoneWireDirection {
+        property: "east",
+        step: [1, 0, 0],
+    },
+    RedstoneWireDirection {
+        property: "south",
+        step: [0, 0, 1],
+    },
+    RedstoneWireDirection {
+        property: "west",
+        step: [-1, 0, 0],
+    },
+];
 
 /// Non-serializable owner of Vanilla `ClientLevel.animateTick` random cursors.
 #[derive(Debug)]
@@ -352,6 +385,14 @@ impl EnvironmentAnimateRuntime {
             }
             "minecraft:enchanting_table" => {
                 append_enchanting_table_animate_effects(world, pos, animate_random, spawns);
+            }
+            "minecraft:redstone_wire" => {
+                append_redstone_wire_animate_effects(
+                    pos,
+                    &block.block_properties,
+                    animate_random,
+                    spawns,
+                );
             }
             _ => {}
         }
@@ -1471,6 +1512,113 @@ fn enchanting_table_bookshelf_offsets() -> impl Iterator<Item = (i32, i32, i32)>
             (-2_i32..=2).filter_map(move |x| (x.abs() == 2 || z.abs() == 2).then_some((x, y, z)))
         })
     })
+}
+
+fn append_redstone_wire_animate_effects(
+    pos: BlockPos,
+    properties: &BTreeMap<String, String>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let Some(power) = properties
+        .get("power")
+        .and_then(|value| value.parse::<u8>().ok())
+        .filter(|power| *power <= 15)
+    else {
+        return;
+    };
+    if power == 0 {
+        return;
+    }
+    let [Some(north), Some(east), Some(south), Some(west)] =
+        REDSTONE_WIRE_DIRECTIONS.map(|direction| {
+            redstone_wire_side(properties.get(direction.property).map(String::as_str))
+        })
+    else {
+        return;
+    };
+    let sides = [north, east, south, west];
+
+    let color = redstone_wire_color(power);
+    for (direction, side) in REDSTONE_WIRE_DIRECTIONS.into_iter().zip(sides) {
+        if side == RedstoneWireSide::Up {
+            append_redstone_wire_particle_along_line(
+                pos,
+                color,
+                direction.step,
+                [0, 1, 0],
+                -0.5,
+                0.5,
+                random,
+                spawns,
+            );
+        }
+        let (from, to) = if side == RedstoneWireSide::None {
+            (0.0, 0.3)
+        } else {
+            (0.0, 0.5)
+        };
+        append_redstone_wire_particle_along_line(
+            pos,
+            color,
+            [0, -1, 0],
+            direction.step,
+            from,
+            to,
+            random,
+            spawns,
+        );
+    }
+}
+
+fn redstone_wire_side(value: Option<&str>) -> Option<RedstoneWireSide> {
+    match value {
+        Some("up") => Some(RedstoneWireSide::Up),
+        Some("side") => Some(RedstoneWireSide::Side),
+        Some("none") => Some(RedstoneWireSide::None),
+        _ => None,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_redstone_wire_particle_along_line(
+    pos: BlockPos,
+    color: u32,
+    side: [i32; 3],
+    along: [i32; 3],
+    from: f32,
+    to: f32,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let span = to - from;
+    if random.next_float() >= 0.2 * span {
+        return;
+    }
+    let position_on_line = from + span * random.next_float();
+    let coordinate = |axis: usize| {
+        0.5 + f64::from(0.4375_f32 * side[axis] as f32)
+            + f64::from(position_on_line * along[axis] as f32)
+    };
+    spawns.push(EnvironmentParticleSpawn {
+        particle: dust_client_particle_options(color, 1.0),
+        position: [
+            f64::from(pos.x) + coordinate(0),
+            f64::from(pos.y) + coordinate(1),
+            f64::from(pos.z) + coordinate(2),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
+}
+
+fn redstone_wire_color(power: u8) -> u32 {
+    let power = f32::from(power) / 15.0;
+    let red = power * 0.6 + if power > 0.0 { 0.4 } else { 0.3 };
+    let green = (power * power * 0.7 - 0.5).clamp(0.0, 1.0);
+    let blue = (power * power * 0.6 - 0.7).clamp(0.0, 1.0);
+    let channel = |value: f32| (value * 255.0).floor() as u32;
+    (channel(1.0) << 24) | (channel(red) << 16) | (channel(green) << 8) | channel(blue)
 }
 
 fn append_ambient_particle_spawns(
@@ -3472,6 +3620,164 @@ mod tests {
         assert_eq!(open_spawns.len(), 1);
         assert_eq!(open_spawns[0].velocity, expected_first_velocity);
         assert_eq!(open_actual.next_long(), open_expected.next_long());
+    }
+
+    #[test]
+    fn redstone_wire_colors_match_vanilla_power_table() {
+        assert_eq!(
+            (0..=15).map(redstone_wire_color).collect::<Vec<_>>(),
+            vec![
+                0xff4c_0000,
+                0xff70_0000,
+                0xff7a_0000,
+                0xff84_0000,
+                0xff8e_0000,
+                0xff99_0000,
+                0xffa3_0000,
+                0xffad_0000,
+                0xffb7_0000,
+                0xffc1_0000,
+                0xffcc_0000,
+                0xffd6_0000,
+                0xffe0_0000,
+                0xffea_0600,
+                0xfff4_1b00,
+                0xffff_3200,
+            ]
+        );
+    }
+
+    #[test]
+    fn redstone_wire_animate_effects_preserve_direction_fallthrough_and_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let properties = [
+            ("power", "15"),
+            ("north", "up"),
+            ("east", "side"),
+            ("south", "none"),
+            ("west", "up"),
+        ]
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect::<BTreeMap<_, _>>();
+        let mut actual = LevelEventSoundRandomState::with_seed(245_131);
+        let mut spawns = Vec::new();
+
+        append_redstone_wire_animate_effects(pos, &properties, &mut actual, &mut spawns);
+
+        assert_eq!(spawns.len(), 6);
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| spawn.position)
+                .collect::<Vec<_>>(),
+            vec![
+                [8.5, 32.634_743_452_072_144, 8.0625],
+                [8.5, 32.0625, 8.389_978_110_790_253],
+                [8.556_022_971_868_515, 32.0625, 8.5],
+                [8.5, 32.0625, 8.795_673_221_349_716],
+                [8.0625, 32.041_953_563_690_186, 8.5],
+                [8.402_953_326_702_118, 32.0625, 8.5],
+            ]
+        );
+        assert!(spawns.iter().all(|spawn| {
+            spawn.particle.resource_id == "minecraft:dust"
+                && spawn.particle.option
+                    == bbb_world::ClientParticleOptionValue::Dust {
+                        color: 0xffff_3200,
+                        scale_bits: 1.0_f32.to_bits(),
+                    }
+                && spawn.velocity == [0.0; 3]
+                && !spawn.always_show
+        }));
+        assert_eq!(
+            spawns[0].particle.fields,
+            vec![
+                bbb_protocol::NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::String("minecraft:dust".to_string()),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "color".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Int(0xffff_3200_u32 as i32),
+                },
+                bbb_protocol::NbtSummaryEntry {
+                    name: "scale".to_string(),
+                    value: bbb_protocol::NbtSummaryValue::Float(1.0_f32.to_bits()),
+                },
+            ]
+        );
+        let mut expected = LevelEventSoundRandomState::with_seed(245_131);
+        for _ in 0..12 {
+            let _ = expected.next_float();
+        }
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        let mut unpowered = properties;
+        unpowered.insert("power".to_string(), "0".to_string());
+        let mut unpowered_actual = LevelEventSoundRandomState::with_seed(245_131);
+        let mut unpowered_expected = LevelEventSoundRandomState::with_seed(245_131);
+        let mut unpowered_spawns = Vec::new();
+        append_redstone_wire_animate_effects(
+            pos,
+            &unpowered,
+            &mut unpowered_actual,
+            &mut unpowered_spawns,
+        );
+        assert!(unpowered_spawns.is_empty());
+        assert_eq!(unpowered_actual.next_long(), unpowered_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_powered_redstone_wire_animate_effects() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id(
+                "minecraft:redstone_wire",
+                &[
+                    ("east", "side"),
+                    ("north", "up"),
+                    ("power", "15"),
+                    ("south", "none"),
+                    ("west", "up"),
+                ],
+            ),
+        );
+        let probe = world
+            .probe_block(pos)
+            .expect("redstone wire test block should be loaded");
+        assert_eq!(probe.block_name.as_deref(), Some("minecraft:redstone_wire"));
+        assert_eq!(
+            probe.block_properties.get("power").map(String::as_str),
+            Some("15")
+        );
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(245_131);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == "minecraft:dust")
+                .count(),
+            6
+        );
     }
 
     #[test]
