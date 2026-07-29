@@ -72,7 +72,17 @@ class CoverageStatusTests(unittest.TestCase):
                     "## Update Rules",
                     "# Todo",
                     "## First open domain",
+                    "Owner: `one`",
+                    "- Implement the first behavior.",
+                    "- Existing remote branch is `not-needed`: no wire input.",
+                    "## Deferred-only domain",
+                    "- Remaining screen is `deferred`: reopen with a UI owner.",
                     "## Second open domain",
+                    "Invariant prose does not create an active item.",
+                    "- Complete the second behavior",
+                    "  through its runtime boundary.",
+                    "## Invariant-only domain",
+                    "Keep this behavior stable.",
                     "# Deferred",
                     "## One deferred section",
                     "# Not needed",
@@ -114,12 +124,20 @@ class CoverageStatusTests(unittest.TestCase):
             "open minecraft:no_status_fields: (no status fields):?", output
         )
         self.assertIn(
-            "unsupported-features.md: 2 todo domains"
+            "unsupported-features.md: 2 active todo domains"
+            " | 2 active items | 1 deferred items | 1 not-needed items"
             " | 1 deferred sections | 1 not-needed sections",
             output,
         )
         self.assertIn("  todo First open domain", output)
         self.assertIn("  todo Second open domain", output)
+        self.assertIn("    - Implement the first behavior.", output)
+        self.assertIn(
+            "    - Complete the second behavior through its runtime boundary.",
+            output,
+        )
+        self.assertNotIn("todo Deferred-only domain", output)
+        self.assertNotIn("todo Invariant-only domain", output)
         self.assertNotIn("todo Update Rules", output)
 
     def test_real_repo_ledgers_parse(self) -> None:

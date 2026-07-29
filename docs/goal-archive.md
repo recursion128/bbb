@@ -778,3 +778,5 @@
   component descriptor、1,506 个物品原型默认值与动态 holder/holder-set
   registry remap 已贯通有效 ItemStack 和全部 level-backed 物品渲染消费者；
   合同见 `docs/archive/component-select-codec-parity-design.md`。
+- **2026-07-29（工作流 v7：active TODO 选片面板）**：开放面板改按实际 bullet
+  分类，显式 deferred/not-needed 与 invariant 不再伪装成 ready 候选。

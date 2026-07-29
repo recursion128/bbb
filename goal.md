@@ -156,8 +156,9 @@ unused/dead-code lint。
    人工归类新增命中，有明确非 P0 依据的附注释写入 allowlist。不与历史计数对比。
 3. **P0 分支**：命中重开条件 → P0 regression slice 只修 blocker；未命中 →
    立即进入候选选择，不等待确认。
-4. **Hardest-ready 选择**：先跑 `scripts/coverage-status.py` 取账本开放面板，
-   与 P1～P4 路线图开放项合并建候选集（原子与工程形态并列），在完整语义工程
+4. **Hardest-ready 选择**：先跑 `scripts/coverage-status.py` 取 active TODO
+   item 面板（显式 `deferred` / `not-needed` 与 invariant 不进入候选），与
+   P1～P4 路线图开放项合并建候选集（原子与工程形态并列），在完整语义工程
    层面按五项评估难度：架构/协议/状态机风险、跨边界集成范围、vanilla/wire
    不确定性、验证复杂度、失败影响与定位难度。默认选最难的 ready 工程；只有真实 blocker 或集成契约无法冻结
    时，才选择能解锁它的最难且 ready 的有界前置 slice。难度相当时依次看：

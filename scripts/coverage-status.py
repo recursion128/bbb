@@ -4,7 +4,9 @@
 Informational panel for the goal.md hardest-ready selection step: for every
 coverage ledger it prints the row total and the closed/deferred/open split
 with each open row's non-closed units, and for docs/unsupported-features.md
-it lists the top-level Todo domains. Always exits 0; gates own enforcement.
+it lists only domains with active Todo bullets. Explicit deferred/not-needed
+items and invariant prose are counted but excluded from the ready-candidate
+list. Always exits 0; gates own enforcement.
 """
 
 from __future__ import annotations
@@ -23,6 +25,10 @@ FEATURE_LEDGER = "docs/unsupported-features.md"
 CLOSED_STATUSES = frozenset({"complete", "not-applicable", "not-needed"})
 DEFERRED_STATUSES = frozenset({"deferred"})
 ROW_LABEL_KEYS = ("resource_id", "constant_name", "class_name", "id")
+FEATURE_ITEM_STATE_MARKERS = {
+    "deferred": "`deferred`",
+    "not-needed": "`not-needed`",
+}
 
 
 def collect_statuses(value, path=""):
@@ -86,29 +92,81 @@ def summarize_ledger(path: Path) -> list[str]:
     return lines
 
 
-def summarize_feature_ledger(path: Path) -> list[str]:
+def classify_feature_item(item: str) -> str:
+    for state, marker in FEATURE_ITEM_STATE_MARKERS.items():
+        if marker in item:
+            return state
+    return "active"
+
+
+def collect_feature_ledger(path: Path):
+    """Return Todo items by domain plus Deferred/Not-needed section counts."""
     section = None
-    todo_domains = []
+    current_domain = None
+    current_item = None
+    todo_items = {}
     deferred_count = 0
     not_needed_count = 0
+
+    def flush_item():
+        nonlocal current_item
+        if current_item is None or current_domain is None:
+            current_item = None
+            return
+        item = " ".join(part for part in current_item if part)
+        if item:
+            todo_items.setdefault(current_domain, []).append(
+                (classify_feature_item(item), item)
+            )
+        current_item = None
+
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("# "):
+            flush_item()
             section = line[2:].strip().lower()
+            current_domain = None
         elif line.startswith("## "):
+            flush_item()
             heading = line[3:].strip()
-            if section == "todo":
-                todo_domains.append(heading)
-            elif section == "deferred":
+            current_domain = heading if section == "todo" else None
+            if section == "deferred":
                 deferred_count += 1
             elif section == "not needed":
                 not_needed_count += 1
+        elif section == "todo" and current_domain is not None:
+            if line.startswith("- "):
+                flush_item()
+                current_item = [line[2:].strip()]
+            elif current_item is not None and line.startswith("  "):
+                current_item.append(line.strip())
+            elif current_item is not None and line.strip():
+                flush_item()
+    flush_item()
+    return todo_items, deferred_count, not_needed_count
+
+
+def summarize_feature_ledger(path: Path) -> list[str]:
+    todo_items, deferred_count, not_needed_count = collect_feature_ledger(path)
+    active_domains = [
+        (domain, [item for state, item in items if state == "active"])
+        for domain, items in todo_items.items()
+        if any(state == "active" for state, _item in items)
+    ]
+    item_counts = {"active": 0, "deferred": 0, "not-needed": 0}
+    for items in todo_items.values():
+        for state, _item in items:
+            item_counts[state] += 1
     lines = [
-        f"{path.name}: {len(todo_domains)} todo domains"
+        f"{path.name}: {len(active_domains)} active todo domains"
+        f" | {item_counts['active']} active items"
+        f" | {item_counts['deferred']} deferred items"
+        f" | {item_counts['not-needed']} not-needed items"
         f" | {deferred_count} deferred sections"
         f" | {not_needed_count} not-needed sections"
     ]
-    for domain in todo_domains:
+    for domain, items in active_domains:
         lines.append(f"  todo {domain}")
+        lines.extend(f"    - {item}" for item in items)
     return lines
 
 

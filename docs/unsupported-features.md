@@ -40,37 +40,32 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- Measure and reduce the remaining dynamic item-model property-selection,
-  draw/pipeline state churn, and driver-deferred resident-release tails. Any
-  change must preserve exact phase/translucent order and the explicit
-  bounded-owner fallback rather than dropping visible instances.
-- Complete equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low,
-  and chunk-update comparison captures; report any losing scene by measured
-  owner instead of reducing visible work.
+- Further reduction of dynamic item-model property-selection, draw/pipeline
+  state churn, and driver-deferred resident-release tails is `deferred`: the
+  repo-native optimization phases and before/after matrices have landed, but no
+  remaining losing owner has been measured. Reopen when an equal-scene capture
+  or runtime observation identifies a concrete regression or dominant owner;
+  preserve exact phase/translucent order and bounded-owner fallback.
+- Equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low, and
+  chunk-update comparison captures are `deferred`: this host lacks the official
+  asset/account launch, deterministic common camera replay, and equivalent
+  external frame/GPU capture path recorded in
+  `docs/simulation-render-performance-design.md`. Reopen when those inputs are
+  provisioned, and report any losing scene by measured owner instead of
+  reducing visible work.
 
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
-Movement:
-
-Commands:
-
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
   owner becomes client-visible on the wire.
-Inventory:
-
-- Creative hotbar presets (`HotbarManager`) are implemented end to end: the
-  `C`/`X` activator-key lifecycle from `Minecraft.handleKeybinds` and
-  `CreativeModeInventoryScreen.handleHotbarLoadOrSave`, nine persistent
-  nine-slot groups, and the `inventory.hotbarSaved` overlay/narration. The
-  store is a bbb-owned JSON file of `ItemStackSummary` rows
-  (`hotbar-presets.json`) rather than vanilla's registry-coupled `hotbar.nbt`
-  `ItemStack` codec, so preset files do not interchange with a vanilla
-  installation. Reopen the file-format half only if full item NBT codec
-  support with registry context lands.
+- Vanilla `hotbar.nbt` interchange for creative hotbar presets is `deferred`:
+  the current store is a bbb-owned JSON file of `ItemStackSummary` rows, while
+  Vanilla uses a registry-coupled `ItemStack` codec. Reopen when full item NBT
+  codec support with registry context lands.
 
 ## Renderer scene parity
 
@@ -123,13 +118,24 @@ Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
 
-- Thread newly discovered ambient-context numeric `range_dispatch` properties
-  through the icon resolver as that state becomes available to the GUI icon path.
-- Wire `minecraft:context_entity_type` for non-GUI item consumers that gain a
-  real living owner outside the current owner-backed generated held-item path.
-- Complete `minecraft:local_time`: full localized symbols and the long-tail ICU
-  pattern fields — locale-specific week data beyond the selected English
-  regional groups, IANA long `z`, generic `v`, and one-/four-letter `V` widths.
+- Match `SelectItemModel.update` owner narrowing for non-living item consumers:
+  dropped items, thrown projectiles, and firework rockets must resolve
+  `minecraft:context_entity_type` through a null living owner instead of the
+  rendered entity's own type.
+- Additional ambient-context numeric `range_dispatch` properties are
+  `deferred`: Vanilla 26.1 registers no property beyond the implemented set.
+  Reopen when a later target registers one and its exact GUI ambient state
+  becomes available.
+- Additional `minecraft:context_entity_type` non-GUI wiring is `deferred`: the
+  current generated held/head consumers already carry their real living owner.
+  Reopen when another item consumer gains a real living owner; non-living
+  `ItemOwner` values remain null after Vanilla's `asLivingEntity` narrowing.
+- Full `minecraft:local_time` ICU parity is `deferred`: the remaining localized
+  symbols, locale-specific week data, IANA long `z`, generic `v`, and
+  one-/four-letter `V` widths have no portable ICU owner compatible with the
+  workspace Rust 1.80 target. Reopen when an approved repo-native provider can
+  cover Vanilla's arbitrary `SimpleDateFormat` patterns, locale calendar data,
+  and timezone names without raising the MSRV implicitly.
 - `not-needed`: synchronized conditional value/entity/location enchantment
   effects, damage immunity, equipment-drop prevention, and crossbow charging
   sounds remain server-owned in Vanilla 26.1. Conditional execution enters
@@ -147,16 +153,8 @@ Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
   the excluded entity is its local player, and `ServerLevel` supplies remote
   listeners with Sound/SoundEntity packets. Reopen only if a target animal path
   is shown to call `playLocalSound` or stops being server-packet-owned.
-- Clientbound SoundEntity holder/category/entity/volume/pitch/seed handling,
-  missing or silent entity gates, fixed range, entity following, and removal stop
-  are covered.
-- Clientbound Sound holder/category/fixed-point position/volume/pitch/seed handling,
-  no-distance-delay behavior, fixed range, registry resolution, seeded selection,
-  and spatial attenuation are covered.
-- Clientbound StopSound covers source/name/all four filter combinations and unknown
-  flag bits. Filtered stops affect active sounds only; stop-all also clears queued
-  distance-delayed sounds, matching SoundEngine rather than over-stopping the queue.
-- Keep unit tests independent of an audio device.
+
+Audio unit tests must remain independent of an audio device.
 
 ## Official 26.1 resource-pack coverage
 
