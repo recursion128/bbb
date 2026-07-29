@@ -4,6 +4,7 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 goal="$repo_root/goal.md"
 archive="$repo_root/docs/goal-archive.md"
+feature_ledger="$repo_root/docs/unsupported-features.md"
 
 # workflow-v5 (2026-07-21) rewrote goal.md down to 513 lines: completed
 # foundations moved to the goal-archive milestone index and workflow prose was
@@ -42,6 +43,60 @@ if completed_history=$(rg -n --no-heading --color never \
   failed=1
 fi
 
+# workflow-v8 (2026-07-29): deferred gaps stay under their owning Todo domain
+# with an explicit restart condition. A top-level Deferred section made the
+# hardest-ready panel silently report zero active work.
+if legacy_deferred=$(rg -n --no-heading --color never \
+  '^# Deferred$' "$feature_ledger"); then
+  echo "feature ledger lint: top-level Deferred sections are not allowed:" >&2
+  echo "$legacy_deferred" >&2
+  echo "feature ledger lint fix: keep the item under its owning Todo domain and mark it \`deferred\` with an explicit 'Reopen when ...' condition" >&2
+  failed=1
+fi
+
+deferred_without_reopen=$(
+  awk '
+    function flush_item() {
+      if (item ~ /`deferred`/ && item !~ /Reopen when /) {
+        print item_line ":" item
+      }
+      item = ""
+      item_line = 0
+    }
+    /^# Todo$/ {
+      flush_item()
+      in_todo = 1
+      next
+    }
+    /^# / {
+      flush_item()
+      in_todo = 0
+      next
+    }
+    in_todo && /^- / {
+      flush_item()
+      item = $0
+      item_line = NR
+      next
+    }
+    in_todo && item != "" && /^  / {
+      item = item " " $0
+      next
+    }
+    in_todo && item != "" && NF {
+      flush_item()
+    }
+    END {
+      flush_item()
+    }
+  ' "$feature_ledger"
+)
+if [ -n "$deferred_without_reopen" ]; then
+  echo "feature ledger lint: deferred Todo items need an explicit 'Reopen when ...' condition:" >&2
+  echo "$deferred_without_reopen" >&2
+  failed=1
+fi
+
 # workflow-v6 (2026-07-28): top-level docs/*-design.md files are active
 # contracts and must be referenced from an active root (goal.md, AGENTS.md, or
 # another top-level doc). docs/goal-archive.md is a history index and does not
@@ -72,4 +127,4 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
-echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, design docs referenced, no completed coverage prose"
+echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, owned deferred gaps, design docs referenced, no completed coverage prose"

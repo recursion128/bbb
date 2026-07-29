@@ -6,7 +6,9 @@ coverage ledger it prints the row total and the closed/deferred/open split
 with each open row's non-closed units, and for docs/unsupported-features.md
 it lists only domains with active Todo bullets. Explicit deferred/not-needed
 items and invariant prose are counted but excluded from the ready-candidate
-list. Always exits 0; gates own enforcement.
+list. Legacy top-level Deferred bullets are surfaced as active because that
+layout loses semantic ownership and is rejected by docs-lint. Always exits 0;
+gates own enforcement.
 """
 
 from __future__ import annotations
@@ -100,25 +102,33 @@ def classify_feature_item(item: str) -> str:
 
 
 def collect_feature_ledger(path: Path):
-    """Return Todo items by domain plus Deferred/Not-needed section counts."""
+    """Return owned items plus legacy-Deferred and Not-needed section counts."""
     section = None
     current_domain = None
     current_item = None
+    current_item_section = None
     todo_items = {}
-    deferred_count = 0
+    legacy_deferred_count = 0
     not_needed_count = 0
 
     def flush_item():
-        nonlocal current_item
+        nonlocal current_item, current_item_section
         if current_item is None or current_domain is None:
             current_item = None
+            current_item_section = None
             return
         item = " ".join(part for part in current_item if part)
         if item:
+            state = (
+                "active"
+                if current_item_section == "deferred"
+                else classify_feature_item(item)
+            )
             todo_items.setdefault(current_domain, []).append(
-                (classify_feature_item(item), item)
+                (state, item)
             )
         current_item = None
+        current_item_section = None
 
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("# "):
@@ -128,25 +138,26 @@ def collect_feature_ledger(path: Path):
         elif line.startswith("## "):
             flush_item()
             heading = line[3:].strip()
-            current_domain = heading if section == "todo" else None
+            current_domain = heading if section in {"todo", "deferred"} else None
             if section == "deferred":
-                deferred_count += 1
+                legacy_deferred_count += 1
             elif section == "not needed":
                 not_needed_count += 1
-        elif section == "todo" and current_domain is not None:
+        elif section in {"todo", "deferred"} and current_domain is not None:
             if line.startswith("- "):
                 flush_item()
                 current_item = [line[2:].strip()]
+                current_item_section = section
             elif current_item is not None and line.startswith("  "):
                 current_item.append(line.strip())
             elif current_item is not None and line.strip():
                 flush_item()
     flush_item()
-    return todo_items, deferred_count, not_needed_count
+    return todo_items, legacy_deferred_count, not_needed_count
 
 
 def summarize_feature_ledger(path: Path) -> list[str]:
-    todo_items, deferred_count, not_needed_count = collect_feature_ledger(path)
+    todo_items, legacy_deferred_count, not_needed_count = collect_feature_ledger(path)
     active_domains = [
         (domain, [item for state, item in items if state == "active"])
         for domain, items in todo_items.items()
@@ -161,7 +172,7 @@ def summarize_feature_ledger(path: Path) -> list[str]:
         f" | {item_counts['active']} active items"
         f" | {item_counts['deferred']} deferred items"
         f" | {item_counts['not-needed']} not-needed items"
-        f" | {deferred_count} deferred sections"
+        f" | {legacy_deferred_count} legacy deferred sections"
         f" | {not_needed_count} not-needed sections"
     ]
     for domain, items in active_domains:

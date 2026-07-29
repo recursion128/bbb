@@ -85,6 +85,7 @@ class CoverageStatusTests(unittest.TestCase):
                     "Keep this behavior stable.",
                     "# Deferred",
                     "## One deferred section",
+                    "- Legacy hidden gap must remain visible.",
                     "# Not needed",
                     "## One not-needed section",
                 ]
@@ -124,14 +125,16 @@ class CoverageStatusTests(unittest.TestCase):
             "open minecraft:no_status_fields: (no status fields):?", output
         )
         self.assertIn(
-            "unsupported-features.md: 2 active todo domains"
-            " | 2 active items | 1 deferred items | 1 not-needed items"
-            " | 1 deferred sections | 1 not-needed sections",
+            "unsupported-features.md: 3 active todo domains"
+            " | 3 active items | 1 deferred items | 1 not-needed items"
+            " | 1 legacy deferred sections | 1 not-needed sections",
             output,
         )
         self.assertIn("  todo First open domain", output)
         self.assertIn("  todo Second open domain", output)
+        self.assertIn("  todo One deferred section", output)
         self.assertIn("    - Implement the first behavior.", output)
+        self.assertIn("    - Legacy hidden gap must remain visible.", output)
         self.assertIn(
             "    - Complete the second behavior through its runtime boundary.",
             output,

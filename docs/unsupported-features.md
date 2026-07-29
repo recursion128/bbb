@@ -26,8 +26,9 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
   target requires a real blocker under `goal.md`, not merely "scope too large".
 - Two states are not todos, and deleting one silently re-opens a decision that
   was already made:
-  - **Deferred** — a real gap, intentionally not scheduled. Carries the
-    condition that turns it back into a todo.
+  - **Deferred** — a real gap, intentionally not scheduled. It stays under its
+    owning `# Todo` domain, uses the literal `deferred` marker, and carries an
+    explicit `Reopen when ...` condition.
   - **Not needed** — vanilla 26.1 has no such behavior, or bbb has no surface
     for it. Carries the vanilla evidence.
 - This file does not overflow into sibling files. If it grows, the gap list grew.
@@ -83,12 +84,11 @@ Living-entity render state:
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 - `chunk_section_paths`, `chunk_section_octree`, and
-  `chunk_section_visibility` are `deferred`: stable per-section CPU/GPU
-  residency now exists, but a repo-native `SectionOcclusionGraph`/octree and
-  compiled-section face-visibility matrix do not. Restart by wiring the stable
-  resident section owners into vanilla node step/source directions, octree node
-  bounds/depth/frustum state, and `facesCanSeeEachother` without reconstructing
-  them heuristically.
+  `chunk_section_visibility` need a repo-native
+  `SectionOcclusionGraph`/octree and compiled-section face-visibility matrix.
+  Wire the stable resident section owners into vanilla node step/source
+  directions, octree node bounds/depth/frustum state, and
+  `facesCanSeeEachother` without reconstructing them heuristically.
 - `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
   `ChunkDebugRenderer.emitGizmos` refreshes data only when
   `Minecraft.getSingleplayerServer()` returns an `IntegratedServer`, and its
@@ -185,47 +185,49 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
   resource pack cannot add either registry entry. Reopen if the target protocol
   begins synchronizing one of those registries.
 
----
-
-# Deferred
-
-Real gaps, intentionally not scheduled. Each carries the condition that turns it
-back into a todo. Do not delete these.
-
 ## Screens and presentation
 
+Owner: `bbb-native` + `bbb-renderer`
+
 - **Code of Conduct screen presentation parity.** Canonical UI state and control
-  requests are covered. Restart when the renderer UI stack grows fuller vanilla
-  screen and font rendering.
+  requests still need the full `CodeOfConductScreen` background, layout, text,
+  button, hover, focus, and scroll presentation.
 - **Entity-in-UI preview `item_layers` GPU drawing**, per-preview override-camera
   orientation, and PIP-camera glint scroll animation time
-  (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`). Hand/head item models need
-  a native-side baked item-quad handoff. Restart with GUI surface work.
-- **Entity-in-UI item/entity lighting contexts.** Restart with GUI surface work.
+  (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`) are `deferred`: hand/head
+  item models do not expose baked item quads at the native renderer boundary.
+  Reopen when that baked item-quad handoff is available.
+- **Entity-in-UI item/entity lighting contexts.** Match the
+  `GuiEntityRenderer` flat-item and entity-lighting setup around each preview.
+
 ## Fonts and text
 
-- **`unihex` / CJK.** The consumed assets tree ships no `font/unifont*.zip`
-  archive, so the `include/unifont` reference cannot resolve its data;
-  codepoints outside the bitmap pages degrade to the `?` replacement glyph.
-  Restart when a unifont source exists in the consumed assets.
+Owner: `bbb-pack` + `bbb-renderer`
+
+- **`unihex` / CJK** is `deferred`: the consumed assets tree ships no
+  `font/unifont*.zip` archive, so the `include/unifont` reference cannot resolve
+  its data and codepoints outside the bitmap pages degrade to the `?`
+  replacement glyph. Reopen when a unifont source exists in the consumed
+  assets.
 - **Bidirectional shaping.** Vanilla routes through ICU4J `ArabicShaping` /
   `Bidi` in `Font` / `StringSplitter`; current consumers render logical order
-  only. Restart with the rest of rich text layout.
+  only.
 
 ## Container menu presentation parity
 
-- Keep clientbound container lifecycle audits aligned with vanilla even when a
-  packet field is redundant: ContainerClose carries an id but the 26.1 client
-  closes its current menu unconditionally; matching-id behavior is not an
-  additional authority check.
-- ContainerSetData is gated by the current `containerMenu` id in vanilla.
-  Mismatched property updates must remain ignored rather than creating a future
-  synthetic menu or replacing the active one.
-- ContainerSetSlot also rejects mismatched nonzero menu ids.
-- PlayerCombatEnter is a strict unit packet whose 26.1 client handler is empty;
-  its diagnostic counter is not evidence of an additional combat-mode runtime.
-- PlayerCombatEnd likewise has an empty 26.1 handler; its decoded duration may
-  remain diagnostic but does not establish a client combat-mode transition.
+Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
+
+- A matching-id authority check for ContainerClose is `not-needed`: vanilla
+  26.1 carries an id but closes the current menu unconditionally.
+- A synthetic menu fallback for mismatched ContainerSetData is `not-needed`:
+  `ClientPacketListener.handleContainerSetData` accepts only the current
+  `containerMenu` id.
+- A synthetic menu fallback for mismatched nonzero ContainerSetSlot is
+  `not-needed`: `ClientPacketListener.handleContainerSetSlot` rejects it.
+- A combat-mode runtime transition for PlayerCombatEnter is `not-needed`: its
+  26.1 client handler is empty.
+- A combat-mode runtime transition for PlayerCombatEnd is `not-needed`: its
+  decoded duration is diagnostic and its 26.1 client handler is empty.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
 - `EnchantmentMenu`: animated book model, enchanting glyph text and its
@@ -241,29 +243,34 @@ back into a todo. Do not delete these.
 
 ## HUD and debug overlay
 
+Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
+
 - **Heart damage/heal blink flash.** Needs the untracked
   `player.invulnerableTime` (no client-side sync) and the wall-clock
   `displayHealth` / `lastHealthTime` hold, neither reproducible
   deterministically. `HudPlayerHealth` always draws `blinking = false`; sprite
   names are already complete for when it lands.
 - **Air bubble-pop sound** (`playAirBubblePoppedSound`, `Gui.java:930-937`).
-  Restart when a HUD-side sound sink exists.
+  Route the air-decrease edge through the native audio sink.
 - **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
 - **Jukebox now-playing path** (`Gui.setNowPlaying`, the only `animate_color=true`
   producer). The flag is already carried end to end.
 - **Sound-captions subtitle overlay** (`extractSubtitleOverlay`), distinct from
   the title subtitle drawn inside `extractTitle`.
-- **Client-only debug entries with no HUD line**: LocalDifficulty,
-  EntitySpawnCounts, ChunkGenerationStats. Restart when an integrated
-  local-server mirror (`ServerLevel`, `NaturalSpawner.SpawnState`,
-  `ChunkGenerator` / `RandomState` / `BiomeSource`) exists.
+- **Client-only debug entries with no HUD line** are `not-needed`:
+  LocalDifficulty, EntitySpawnCounts, and ChunkGenerationStats read an
+  integrated local-server mirror (`ServerLevel`,
+  `NaturalSpawner.SpawnState`, `ChunkGenerator` / `RandomState` /
+  `BiomeSource`) that an external native client does not own.
 
 ## Block entities and terrain
 
+Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
   disables depth writes; bbb's shared translucent pipeline keeps them on.
-  Equal-depth `LessEqual` layering is unaffected. Restart only if a dedicated
-  no-depth-write pass matters.
+  Add the dedicated no-depth-write state without changing equal-depth
+  `LessEqual` layering.
 - **Sign glowing 8-way outline glyph pass.** Glowing text renders full-bright
   without outlines.
 - **Sign underline/strikethrough effect bars.** They need a white pixel outside
@@ -272,16 +279,18 @@ back into a todo. Do not delete these.
 - **Sign POLYGON_OFFSET font display mode**, currently approximated by the fixed
   `TEXT_OFFSET` z gap.
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;
-  `bbb-world` serializable state must not introduce one.
+  derive the date at the native presentation boundary without introducing
+  wall-clock state into serializable `bbb-world`.
 - **Trial-spawner display-state behavior**, and custom `SpawnData` entity NBT
-  variants, which render through default entity metadata. Restart when broader
-  synthetic entity NBT projection exists.
+  variants, which currently render through default entity metadata.
 - **Biome blend for block-break particles.** They still sample the single centre
   biome, unlike terrain tints which blend over `biomeBlendRadius`.
 
 ## Entity models and animation
 
-### Deferred model and animation details
+Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+
+### Model and animation details
 
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
@@ -293,12 +302,13 @@ back into a todo. Do not delete these.
   animation.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
   from synced `DATA_VARIANT_ID` by bootstrap order.
-- **Rabbit `IDLE_HEAD_TILT` keyframe — not-needed.** Vanilla starts it from the
-  entity's client-local `random.nextInt(40) + 180` timeout, so a remote client's
-  particular phase is not reconstructable and bbb must not fabricate a seed.
+- **Rabbit `IDLE_HEAD_TILT` keyframe** is `not-needed`: vanilla starts it from
+  the entity's client-local `random.nextInt(40) + 180` timeout, so a remote
+  client's particular phase is not reconstructable and bbb must not fabricate
+  a seed.
 - **Local TNT movement / fuse countdown simulation.** The current slice consumes
-  world entity position and synced/default fuse metadata. Restart with broader
-  entity-physics parity.
+  world entity position and synced/default fuse metadata but does not advance
+  the Vanilla `PrimedTnt.tick` client presentation path.
 - **Client projectile presentation movement / gravity / drag tick parity.** Canonical
   `Projectile` parent lifecycle now consumes the current transform, delta, real
   type bounds, and owner mount graph, but bbb does not yet advance every remote
@@ -311,33 +321,46 @@ back into a todo. Do not delete these.
   instead of the next authoritative transform update.
 - **Minecart spawner animated block-entity display content.** Classified as
   block-entity special renderer presentation.
+
 ## GPU and resources
 
+Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
+
 - **Fine-grained/coalesced GPU render-state split.** The backend folds compatible
-  submissions into atlas buckets. Later GPU work should split the remaining
-  coalesced render-type state, dynamic `LightTexture` / darkness-adjusted gamma,
-  and diffuse visual parity. Not a blocker for the CPU submission graph.
+  submissions into atlas buckets; split the remaining coalesced render-type
+  state, dynamic `LightTexture` / darkness-adjusted gamma, and diffuse visual
+  parity without changing the CPU submission graph.
 - **Standalone mip/sampler generalization**, full vanilla mip generation, and
-  standalone texture sampler parity. Belongs to resource parity work.
+  standalone texture sampler parity.
+
 ## Movement and interaction
 
-- **Non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision.** Restart when
+Owner: `bbb-world` + `bbb-native`
+
+- **Non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision** is `deferred`:
+  there is no locally controlled non-player movement surface. Reopen when
   locally controlled non-player entities are added.
-- **Non-player freeze-immune entity type exceptions** (`canFreeze` nuance beyond
-  the local player). Restart when locally controlled entity freezing is added.
+- **Non-player freeze-immune entity type exceptions** are `deferred`: there is
+  no locally controlled non-player freezing surface for the `canFreeze` type
+  nuance. Reopen when locally controlled entity freezing is added.
 - **No-collision hazard `entityInside` effects**: sweet berry bush age-gated
-  damage, fox/bee exceptions. Restart when locally controlled non-player entities
+  damage and fox/bee exceptions are `deferred`: there is no locally controlled
+  non-player hazard surface. Reopen when locally controlled non-player entities
   are added.
+
 ## Particles and level events
+
+Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 - **Broader collision-clipping parity** for special contexts beyond the covered
   `WakeParticle` case.
 - **Player-coupled particle emitters** beyond the currently covered scoped cases.
 - **Idle/tick block-entity client effects** beyond packet-owned level events (the
   vault event `3015` context remains the audit anchor).
-- **LevelEvent-adjacent parity owned elsewhere**: terrain/item atlas rendering,
-  block-entity client-effect presentation, and audio-device/runtime parity. The
-  `LevelEventHandler` switch cases themselves are covered.
+
+Routing invariant: terrain/item atlas rendering, block-entity client-effect
+presentation, and audio-device/runtime parity stay with their owning domains;
+the `LevelEventHandler` switch itself is not a second owner.
 
 ---
 

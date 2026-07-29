@@ -102,8 +102,10 @@
   子模块 + 外置 tests.rs；新增代码进对应子模块，不得回填 facade 或新开巨型
   内联测试块。
 - `docs/unsupported-features.md` 是纯 TODO list：只列还要做什么，slice 落地
-  即删对应 todo，不写“已完成”。两种非待办状态：`deferred`（附重启判据）与
-  `not-needed`（附 vanilla 判据），删除即视为可重开，故不得删。
+  即删对应 todo，不写“已完成”。两种非待办状态：`deferred`（留在所属
+  Todo 域、附 `Reopen when ...` 重启判据）与 `not-needed`（附 vanilla
+  判据），删除即视为可重开，故不得删；顶层 Deferred 区域由门禁禁止，避免
+  状态面板静默漏项。
 
 ## 提交前门禁
 
@@ -273,7 +275,8 @@ foundation milestone 均已闭环（见 goal-archive 索引；RegistryAccess 消
 
 - entity-in-UI preview 的 `item_layers` GPU 绘制（原 P1-4）：defer，需 native
   侧 baked hand/head item model 元数据。
-- font bidi / unihex（原 P1-3 font 五连剩余）：defer。
+- font unihex（原 P1-3 font 五连剩余）：defer，需 consumed assets 提供
+  unifont 源；bidi 仍是屏幕/字体队列的 active gap。
 
 ### P1：可玩 Session 端到端门禁
 

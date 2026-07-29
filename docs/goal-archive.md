@@ -783,3 +783,6 @@
 - **2026-07-29（非生物物品 owner 收窄）**：掉落物、投掷物和烟花物品模型现按
   Vanilla `ItemOwner.asLivingEntity()` 的 null 结果解析
   `context_entity_type`，不再误用被渲染实体自身的类型。
+- **2026-07-29（工作流 v8：延期状态完整性）**：真实延期项改留在所属 Todo
+  域并强制 `Reopen when ...` 判据；门禁拒绝顶层 Deferred，选片面板把遗留
+  Deferred bullet 视为 active，避免“零活动项”假完成。
