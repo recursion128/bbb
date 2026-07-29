@@ -666,7 +666,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_underwater_and_bubble_column_environment_audio_commands() {
+    fn resolves_underwater_bubble_column_and_fluid_environment_audio_commands() {
         let assets_dir = unique_assets_dir("underwater-ambient");
         let catalog = test_catalog(
             &assets_dir,
@@ -680,7 +680,10 @@ mod tests {
               "block.bubble_column.upwards_inside": {"sounds": ["block/bubble_column/upwards_inside"]},
               "block.bubble_column.whirlpool_inside": {"sounds": ["block/bubble_column/whirlpool_inside"]},
               "block.bubble_column.upwards_ambient": {"sounds": ["block/bubble_column/upwards_ambient"]},
-              "block.bubble_column.whirlpool_ambient": {"sounds": ["block/bubble_column/whirlpool_ambient"]}
+              "block.bubble_column.whirlpool_ambient": {"sounds": ["block/bubble_column/whirlpool_ambient"]},
+              "block.water.ambient": {"sounds": ["block/water/ambient"]},
+              "block.lava.pop": {"sounds": ["block/lava/pop"]},
+              "block.lava.ambient": {"sounds": ["block/lava/ambient"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -784,6 +787,29 @@ mod tests {
                 panic!("expected positioned bubble-column sound");
             };
             assert_eq!(command.category, category);
+            assert_eq!(command.sound.event_id, sound_id);
+        }
+
+        for sound_id in [
+            "minecraft:block.water.ambient",
+            "minecraft:block.lava.pop",
+            "minecraft:block.lava.ambient",
+        ] {
+            let command = resolver
+                .play_positioned_sound(&SoundEventState {
+                    sound: direct_holder(sound_id),
+                    source: "ambient".to_string(),
+                    position: Vec3d::default(),
+                    volume: 0.3,
+                    pitch: 0.95,
+                    seed: 5,
+                    distance_delay: false,
+                })
+                .unwrap();
+            let AudioCommand::PlayPositionedSound(command) = command else {
+                panic!("expected positioned fluid sound");
+            };
+            assert_eq!(command.category, AudioCategory::Ambient);
             assert_eq!(command.sound.event_id, sound_id);
         }
     }

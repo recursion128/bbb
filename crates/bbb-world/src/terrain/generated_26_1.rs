@@ -680,6 +680,28 @@ pub(super) const VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS: &[&str] = &[
     "minecraft:bubble_column",
 ];
 
+pub(super) const VANILLA_IMPERMEABLE_BLOCKS: &[&str] = &[
+    "minecraft:glass",
+    "minecraft:white_stained_glass",
+    "minecraft:orange_stained_glass",
+    "minecraft:magenta_stained_glass",
+    "minecraft:light_blue_stained_glass",
+    "minecraft:yellow_stained_glass",
+    "minecraft:lime_stained_glass",
+    "minecraft:pink_stained_glass",
+    "minecraft:gray_stained_glass",
+    "minecraft:light_gray_stained_glass",
+    "minecraft:cyan_stained_glass",
+    "minecraft:purple_stained_glass",
+    "minecraft:blue_stained_glass",
+    "minecraft:brown_stained_glass",
+    "minecraft:green_stained_glass",
+    "minecraft:red_stained_glass",
+    "minecraft:black_stained_glass",
+    "minecraft:tinted_glass",
+    "minecraft:barrier",
+];
+
 pub(super) const VANILLA_BARS_BLOCKS: &[&str] = &[
     "minecraft:iron_bars",
     "minecraft:copper_bars",
@@ -1476,6 +1498,7 @@ mod tests {
                         "VANILLA_FLOOR_SKULL_BLOCKS",
                         "VANILLA_WALL_SKULL_BLOCKS",
                         "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
+                        "VANILLA_IMPERMEABLE_BLOCKS",
                         "VANILLA_BARS_BLOCKS",
                         "VANILLA_SLAB_BLOCKS",
                         "VANILLA_STAIR_BLOCKS",
@@ -1572,6 +1595,7 @@ mod tests {
                             "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
                             VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
                         ),
+                        ("VANILLA_IMPERMEABLE_BLOCKS", VANILLA_IMPERMEABLE_BLOCKS),
                         ("VANILLA_BARS_BLOCKS", VANILLA_BARS_BLOCKS),
                         ("VANILLA_SLAB_BLOCKS", VANILLA_SLAB_BLOCKS),
                         ("VANILLA_STAIR_BLOCKS", VANILLA_STAIR_BLOCKS),

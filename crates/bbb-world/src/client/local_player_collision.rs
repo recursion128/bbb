@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::block_state_types::vanilla_block_state_support_facts;
 use bbb_protocol::block_types::{
     vanilla_block_type_for_resource_id, VanillaPropagatesSkylightDownOverride,
 };
@@ -32,10 +33,10 @@ use crate::terrain::{
     block_name_is_candle, block_name_is_candle_cake, block_name_is_cauldron, block_name_is_chain,
     block_name_is_chest, block_name_is_copper_golem_statue, block_name_is_copper_grate,
     block_name_is_door, block_name_is_fence, block_name_is_fence_gate, block_name_is_floor_skull,
-    block_name_is_flower_pot, block_name_is_hanging_sign, block_name_is_lantern,
-    block_name_is_leaves, block_name_is_rod, block_name_is_shelf, block_name_is_shulker_box,
-    block_name_is_slab, block_name_is_stair, block_name_is_trapdoor, block_name_is_wall,
-    block_name_is_wall_skull, block_name_is_wool_carpet,
+    block_name_is_flower_pot, block_name_is_hanging_sign, block_name_is_impermeable,
+    block_name_is_lantern, block_name_is_leaves, block_name_is_rod, block_name_is_shelf,
+    block_name_is_shulker_box, block_name_is_slab, block_name_is_stair, block_name_is_trapdoor,
+    block_name_is_wall, block_name_is_wall_skull, block_name_is_wool_carpet,
 };
 use crate::{
     BlockPos, BlockProbe, PistonDirection, TerrainFluidKind, TerrainMaterialClass, WorldStore,
@@ -56,6 +57,26 @@ pub struct ParticleBlockFluidSurfaceSample {
     pub fluid_height: f64,
     pub fluid_kind: Option<TerrainFluidKind>,
     pub block_is_air: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnvironmentAnimateBlockSample {
+    pub fluid: Option<crate::TerrainFluidState>,
+    pub block_is_air: bool,
+    pub solid_render: bool,
+    pub down_face_sturdy: bool,
+    pub impermeable: bool,
+    pub collision_bounds: Option<EnvironmentAnimateCollisionBounds>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnvironmentAnimateCollisionBounds {
+    pub min_x: f64,
+    pub min_y: f64,
+    pub min_z: f64,
+    pub max_x: f64,
+    pub max_y: f64,
+    pub max_z: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1384,6 +1405,26 @@ impl WorldStore {
             fluid_kind: block.fluid.map(|fluid| fluid.kind),
             block_is_air: block.block_name.as_deref().map_or(true, block_name_is_air),
         }
+    }
+
+    /// Loaded block-state facts consumed by `ClientLevel.doAnimateTick` fluid
+    /// animation and dripping-particle placement.
+    pub fn environment_animate_block_sample(
+        &self,
+        pos: BlockPos,
+    ) -> Option<EnvironmentAnimateBlockSample> {
+        let block = self.probe_block(pos)?;
+        let shape = block_collision_shape_empty_context(&block, pos);
+        let block_name = block.block_name.as_deref()?;
+        Some(EnvironmentAnimateBlockSample {
+            fluid: block.fluid,
+            block_is_air: block_name_is_air(block_name),
+            solid_render: vanilla_block_state_support_facts(block.block_state_id)
+                .is_some_and(|facts| facts.solid_render()),
+            down_face_sturdy: shape.is_some_and(|shape| shape.has_full_face(BlockDirection::Down)),
+            impermeable: block_name_is_impermeable(block_name),
+            collision_bounds: shape.and_then(BlockCollisionShape::environment_animate_bounds),
+        })
     }
 
     pub fn particle_block_fluid_surface_height(&self, position: [f64; 3]) -> f64 {
@@ -5011,6 +5052,29 @@ impl BlockCollisionShape {
             .fold(0.0, f64::max)
     }
 
+    fn environment_animate_bounds(self) -> Option<EnvironmentAnimateCollisionBounds> {
+        let mut boxes = self.boxes();
+        let first = boxes.next()?;
+        Some(boxes.fold(
+            EnvironmentAnimateCollisionBounds {
+                min_x: first.min_x,
+                min_y: first.min_y,
+                min_z: first.min_z,
+                max_x: first.max_x,
+                max_y: first.max_y,
+                max_z: first.max_z,
+            },
+            |bounds, shape_box| EnvironmentAnimateCollisionBounds {
+                min_x: bounds.min_x.min(shape_box.min_x),
+                min_y: bounds.min_y.min(shape_box.min_y),
+                min_z: bounds.min_z.min(shape_box.min_z),
+                max_x: bounds.max_x.max(shape_box.max_x),
+                max_y: bounds.max_y.max(shape_box.max_y),
+                max_z: bounds.max_z.max(shape_box.max_z),
+            },
+        ))
+    }
+
     fn invert_y(self) -> Self {
         Self {
             boxes: self
@@ -6348,6 +6412,93 @@ mod tests {
         assert_f64_near(
             world.particle_block_fluid_surface_height([0.5, 0.25, 0.5]),
             8.0 / 9.0,
+        );
+    }
+
+    #[test]
+    fn environment_animate_block_sample_reports_fluid_shape_and_drip_facts() {
+        let mut world = empty_world();
+        let pos = BlockPos { x: 0, y: 0, z: 0 };
+
+        assert_eq!(
+            world.environment_animate_block_sample(pos),
+            Some(EnvironmentAnimateBlockSample {
+                fluid: None,
+                block_is_air: true,
+                solid_render: false,
+                down_face_sturdy: false,
+                impermeable: false,
+                collision_bounds: None,
+            })
+        );
+
+        let stone_id = vanilla_block_state_id("minecraft:stone", []);
+        set_block(&mut world, pos, stone_id);
+        assert_eq!(
+            world.environment_animate_block_sample(pos),
+            Some(EnvironmentAnimateBlockSample {
+                fluid: None,
+                block_is_air: false,
+                solid_render: true,
+                down_face_sturdy: true,
+                impermeable: false,
+                collision_bounds: Some(EnvironmentAnimateCollisionBounds {
+                    min_x: 0.0,
+                    min_y: 0.0,
+                    min_z: 0.0,
+                    max_x: 1.0,
+                    max_y: 1.0,
+                    max_z: 1.0,
+                }),
+            })
+        );
+
+        let top_slab_id = vanilla_block_state_id(
+            "minecraft:oak_slab",
+            [("type", "top"), ("waterlogged", "false")],
+        );
+        set_block(&mut world, pos, top_slab_id);
+        let top_slab = world
+            .environment_animate_block_sample(pos)
+            .expect("loaded top slab");
+        assert!(!top_slab.solid_render);
+        assert!(!top_slab.down_face_sturdy);
+        assert_eq!(
+            top_slab.collision_bounds,
+            Some(EnvironmentAnimateCollisionBounds {
+                min_x: 0.0,
+                min_y: 0.5,
+                min_z: 0.0,
+                max_x: 1.0,
+                max_y: 1.0,
+                max_z: 1.0,
+            })
+        );
+
+        let glass_id = vanilla_block_state_id("minecraft:glass", []);
+        set_block(&mut world, pos, glass_id);
+        let glass = world
+            .environment_animate_block_sample(pos)
+            .expect("loaded glass");
+        assert!(glass.impermeable);
+        assert!(!glass.solid_render);
+
+        let water_id = vanilla_block_state_id("minecraft:water", [("level", "0")]);
+        set_block(&mut world, pos, water_id);
+        assert_eq!(
+            world
+                .environment_animate_block_sample(pos)
+                .expect("loaded water")
+                .fluid,
+            Some(crate::TerrainFluidState::new(
+                TerrainFluidKind::Water,
+                8,
+                false,
+            ))
+        );
+        assert_eq!(
+            world.environment_animate_block_sample(BlockPos { x: 32, ..pos }),
+            None
         );
     }
 

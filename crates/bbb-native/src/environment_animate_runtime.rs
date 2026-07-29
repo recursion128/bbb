@@ -5,7 +5,8 @@ use bbb_protocol::{
 };
 use bbb_world::{
     block_name_is_pale_oak_log, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
-    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEventState, WorldStore,
+    LevelEventSoundRandomState, LocalPlayerPoseState, SoundEventState, TerrainFluidKind,
+    TerrainFluidState, WorldStore,
 };
 
 use crate::{
@@ -34,9 +35,19 @@ const SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT: &str =
     "minecraft:block.bubble_column.upwards_ambient";
 const SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT: &str =
     "minecraft:block.bubble_column.whirlpool_ambient";
+const SOUND_EVENT_WATER_AMBIENT: &str = "minecraft:block.water.ambient";
+const SOUND_EVENT_LAVA_POP: &str = "minecraft:block.lava.pop";
+const SOUND_EVENT_LAVA_AMBIENT: &str = "minecraft:block.lava.ambient";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
 const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
 const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
+const PARTICLE_UNDERWATER: &str = "minecraft:underwater";
+const PARTICLE_LAVA: &str = "minecraft:lava";
+const PARTICLE_DRIPPING_WATER: &str = "minecraft:dripping_water";
+const PARTICLE_DRIPPING_LAVA: &str = "minecraft:dripping_lava";
+
+type FluidAnimateSound = (&'static str, [f64; 3], f32, f32);
+type FluidAnimateSounds = [Option<FluidAnimateSound>; 2];
 
 /// Non-serializable owner of Vanilla `ClientLevel.animateTick` random cursors.
 #[derive(Debug)]
@@ -190,13 +201,15 @@ impl EnvironmentAnimateRuntime {
                     audio,
                     spawns,
                 );
-                append_source_water_animate_effects(animate_random, pos, spawns);
-                // Bubble-column fluid is a non-falling water source. After
-                // Fluid.animateTick, ClientLevel tests its dripping-water
-                // particle with the shared level random.
-                let _ = self.level_random.next_int_bound(10);
             }
             _ => {}
+        }
+
+        if let Some(fluid) = block.fluid {
+            self.animate_fluid(world, pos, fluid, animate_random, audio, spawns);
+            if self.level_random.next_int_bound(10) == 0 {
+                append_fluid_drip_particle(world, pos, fluid.kind, &mut self.level_random, spawns);
+            }
         }
 
         if world.sample_block_collision_shape_is_full_block(pos) != Some(false) {
@@ -315,6 +328,46 @@ impl EnvironmentAnimateRuntime {
             ));
         }
     }
+
+    fn animate_fluid(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        fluid: TerrainFluidState,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let sound = match fluid.kind {
+            TerrainFluidKind::Water => {
+                append_water_fluid_animate_effects(pos, fluid, animate_random, spawns)
+            }
+            TerrainFluidKind::Lava => {
+                let above = BlockPos {
+                    y: pos.y.saturating_add(1),
+                    ..pos
+                };
+                let exposed = world
+                    .environment_animate_block_sample(above)
+                    .is_some_and(|sample| sample.block_is_air && !sample.solid_render);
+                append_lava_fluid_animate_effects(pos, exposed, animate_random, spawns)
+            }
+        };
+        for (sound_id, position, volume, pitch) in sound.into_iter().flatten() {
+            let seed = self.level_random.next_long();
+            if let Some(audio) = audio.as_deref_mut() {
+                audio.play_positioned_sound(&local_block_sound(
+                    world,
+                    sound_id,
+                    SoundSource::Ambient,
+                    position,
+                    volume,
+                    pitch,
+                    seed,
+                ));
+            }
+        }
+    }
 }
 
 fn append_bubble_column_animate_effects(
@@ -364,20 +417,169 @@ fn append_bubble_column_animate_effects(
     ))
 }
 
-fn append_source_water_animate_effects(
-    random: &mut LevelEventSoundRandomState,
+fn append_water_fluid_animate_effects(
     pos: BlockPos,
+    fluid: TerrainFluidState,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> FluidAnimateSounds {
+    if fluid.amount < 8 && !fluid.falling {
+        if random.next_int_bound(64) == 0 {
+            return [
+                Some((
+                    SOUND_EVENT_WATER_AMBIENT,
+                    [
+                        f64::from(pos.x) + 0.5,
+                        f64::from(pos.y) + 0.5,
+                        f64::from(pos.z) + 0.5,
+                    ],
+                    random.next_float() * 0.25 + 0.75,
+                    random.next_float() + 0.5,
+                )),
+                None,
+            ];
+        }
+    } else if random.next_int_bound(10) == 0 {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_UNDERWATER),
+            position: [
+                f64::from(pos.x) + random.next_double(),
+                f64::from(pos.y) + random.next_double(),
+                f64::from(pos.z) + random.next_double(),
+            ],
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+    }
+    [None; 2]
+}
+
+fn append_lava_fluid_animate_effects(
+    pos: BlockPos,
+    exposed: bool,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> FluidAnimateSounds {
+    if !exposed {
+        return [None; 2];
+    }
+    let mut sounds = [None; 2];
+    let mut next_sound = 0;
+    if random.next_int_bound(100) == 0 {
+        let position = [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + 1.0,
+            f64::from(pos.z) + random.next_double(),
+        ];
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_LAVA),
+            position,
+            velocity: [0.0; 3],
+            always_show: false,
+        });
+        sounds[next_sound] = Some((
+            SOUND_EVENT_LAVA_POP,
+            position,
+            0.2 + random.next_float() * 0.2,
+            0.9 + random.next_float() * 0.15,
+        ));
+        next_sound += 1;
+    }
+    if random.next_int_bound(200) == 0 {
+        sounds[next_sound] = Some((
+            SOUND_EVENT_LAVA_AMBIENT,
+            block_position(pos),
+            0.2 + random.next_float() * 0.2,
+            0.9 + random.next_float() * 0.15,
+        ));
+    }
+    sounds
+}
+
+fn append_fluid_drip_particle(
+    world: &WorldStore,
+    fluid_pos: BlockPos,
+    fluid_kind: TerrainFluidKind,
+    random: &mut LevelEventSoundRandomState,
     spawns: &mut Vec<EnvironmentParticleSpawn>,
 ) {
-    if random.next_int_bound(10) != 0 {
+    let Some(fluid_block) = world.environment_animate_block_sample(fluid_pos) else {
+        return;
+    };
+    let below_pos = BlockPos {
+        y: fluid_pos.y.saturating_sub(1),
+        ..fluid_pos
+    };
+    let Some(below) = world.environment_animate_block_sample(below_pos) else {
+        return;
+    };
+    if below.fluid.is_some() {
         return;
     }
+
+    let below_top = below
+        .collision_bounds
+        .map_or(f64::NEG_INFINITY, |bounds| bounds.max_y);
+    let range_and_y = if below_top < 1.0 {
+        fluid_block.down_face_sturdy.then_some((
+            [f64::from(below_pos.x), f64::from(below_pos.x) + 1.0],
+            [f64::from(below_pos.z), f64::from(below_pos.z) + 1.0],
+            f64::from(below_pos.y) + 0.95,
+        ))
+    } else if below.impermeable {
+        None
+    } else {
+        let Some(bounds) = below.collision_bounds else {
+            return;
+        };
+        if bounds.min_y > 0.0 {
+            Some((
+                [
+                    f64::from(below_pos.x) + bounds.min_x,
+                    f64::from(below_pos.x) + bounds.max_x,
+                ],
+                [
+                    f64::from(below_pos.z) + bounds.min_z,
+                    f64::from(below_pos.z) + bounds.max_z,
+                ],
+                f64::from(below_pos.y) + bounds.min_y - 0.05,
+            ))
+        } else {
+            let two_below_pos = BlockPos {
+                y: below_pos.y.saturating_sub(1),
+                ..below_pos
+            };
+            let Some(two_below) = world.environment_animate_block_sample(two_below_pos) else {
+                return;
+            };
+            let two_below_top = two_below
+                .collision_bounds
+                .map_or(f64::NEG_INFINITY, |bounds| bounds.max_y);
+            (two_below_top < 1.0 && two_below.fluid.is_none()).then_some((
+                [
+                    f64::from(below_pos.x) + bounds.min_x,
+                    f64::from(below_pos.x) + bounds.max_x,
+                ],
+                [
+                    f64::from(below_pos.z) + bounds.min_z,
+                    f64::from(below_pos.z) + bounds.max_z,
+                ],
+                f64::from(below_pos.y) - 0.05,
+            ))
+        }
+    };
+    let Some((x_range, z_range, y)) = range_and_y else {
+        return;
+    };
     spawns.push(EnvironmentParticleSpawn {
-        particle: simple_client_particle_options("minecraft:underwater"),
+        particle: simple_client_particle_options(match fluid_kind {
+            TerrainFluidKind::Water => PARTICLE_DRIPPING_WATER,
+            TerrainFluidKind::Lava => PARTICLE_DRIPPING_LAVA,
+        }),
         position: [
-            f64::from(pos.x) + random.next_double(),
-            f64::from(pos.y) + random.next_double(),
-            f64::from(pos.z) + random.next_double(),
+            x_range[0] + random.next_double() * (x_range[1] - x_range[0]),
+            y,
+            z_range[0] + random.next_double() * (z_range[1] - z_range[0]),
         ],
         velocity: [0.0; 3],
         always_show: false,
@@ -820,7 +1022,12 @@ mod tests {
             .expect("deterministic underwater particle seed");
         let mut water_random = LevelEventSoundRandomState::with_seed(water_seed);
         let mut water_spawns = Vec::new();
-        append_source_water_animate_effects(&mut water_random, pos, &mut water_spawns);
+        let _ = append_water_fluid_animate_effects(
+            pos,
+            TerrainFluidState::new(TerrainFluidKind::Water, 8, false),
+            &mut water_random,
+            &mut water_spawns,
+        );
         let mut expected_water = LevelEventSoundRandomState::with_seed(water_seed);
         assert_eq!(expected_water.next_int_bound(10), 0);
         assert_eq!(water_spawns.len(), 1);
@@ -859,6 +1066,299 @@ mod tests {
             expected_level_random.next_long(),
             "playLocalSound consumes the shared level seed even without an audio sink"
         );
+    }
+
+    #[test]
+    fn fluid_animate_effects_preserve_vanilla_sound_particle_and_random_order() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let water_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(64) == 0)
+            .expect("deterministic flowing-water sound seed");
+        let mut water_random = LevelEventSoundRandomState::with_seed(water_seed);
+        let mut water_spawns = Vec::new();
+        let water_sounds = append_water_fluid_animate_effects(
+            pos,
+            TerrainFluidState::new(TerrainFluidKind::Water, 7, false),
+            &mut water_random,
+            &mut water_spawns,
+        );
+        let mut expected_water = LevelEventSoundRandomState::with_seed(water_seed);
+        assert_eq!(expected_water.next_int_bound(64), 0);
+        assert_eq!(
+            water_sounds,
+            [
+                Some((
+                    SOUND_EVENT_WATER_AMBIENT,
+                    [-3.5, 12.5, 30.5],
+                    expected_water.next_float() * 0.25 + 0.75,
+                    expected_water.next_float() + 0.5,
+                )),
+                None
+            ]
+        );
+        assert!(water_spawns.is_empty());
+        assert_eq!(water_random.next_long(), expected_water.next_long());
+
+        let lava_pop_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                if random.next_int_bound(100) != 0 {
+                    return false;
+                }
+                let _ = random.next_double();
+                let _ = random.next_double();
+                let _ = random.next_float();
+                let _ = random.next_float();
+                random.next_int_bound(200) != 0
+            })
+            .expect("deterministic lava pop-only seed");
+        let mut lava_pop_random = LevelEventSoundRandomState::with_seed(lava_pop_seed);
+        let mut lava_pop_spawns = Vec::new();
+        let lava_pop_sounds = append_lava_fluid_animate_effects(
+            pos,
+            true,
+            &mut lava_pop_random,
+            &mut lava_pop_spawns,
+        );
+        let mut expected_lava_pop = LevelEventSoundRandomState::with_seed(lava_pop_seed);
+        assert_eq!(expected_lava_pop.next_int_bound(100), 0);
+        let expected_pop_position = [
+            -4.0 + expected_lava_pop.next_double(),
+            13.0,
+            30.0 + expected_lava_pop.next_double(),
+        ];
+        assert_eq!(
+            lava_pop_sounds,
+            [
+                Some((
+                    SOUND_EVENT_LAVA_POP,
+                    expected_pop_position,
+                    0.2 + expected_lava_pop.next_float() * 0.2,
+                    0.9 + expected_lava_pop.next_float() * 0.15,
+                )),
+                None
+            ]
+        );
+        assert_ne!(expected_lava_pop.next_int_bound(200), 0);
+        assert_eq!(lava_pop_spawns.len(), 1);
+        assert_eq!(lava_pop_spawns[0].particle.resource_id, PARTICLE_LAVA);
+        assert_eq!(lava_pop_spawns[0].position, expected_pop_position);
+        assert_eq!(lava_pop_spawns[0].velocity, [0.0; 3]);
+        assert!(!lava_pop_spawns[0].always_show);
+        assert_eq!(lava_pop_random.next_long(), expected_lava_pop.next_long());
+
+        let lava_ambient_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                random.next_int_bound(100) != 0 && random.next_int_bound(200) == 0
+            })
+            .expect("deterministic lava ambient-only seed");
+        let mut lava_ambient_random = LevelEventSoundRandomState::with_seed(lava_ambient_seed);
+        let mut lava_ambient_spawns = Vec::new();
+        let lava_ambient_sounds = append_lava_fluid_animate_effects(
+            pos,
+            true,
+            &mut lava_ambient_random,
+            &mut lava_ambient_spawns,
+        );
+        let mut expected_lava_ambient = LevelEventSoundRandomState::with_seed(lava_ambient_seed);
+        assert_ne!(expected_lava_ambient.next_int_bound(100), 0);
+        assert_eq!(expected_lava_ambient.next_int_bound(200), 0);
+        assert_eq!(
+            lava_ambient_sounds,
+            [
+                Some((
+                    SOUND_EVENT_LAVA_AMBIENT,
+                    [-4.0, 12.0, 30.0],
+                    0.2 + expected_lava_ambient.next_float() * 0.2,
+                    0.9 + expected_lava_ambient.next_float() * 0.15,
+                )),
+                None
+            ]
+        );
+        assert!(lava_ambient_spawns.is_empty());
+        assert_eq!(
+            lava_ambient_random.next_long(),
+            expected_lava_ambient.next_long()
+        );
+
+        let mut covered_random = LevelEventSoundRandomState::with_seed(lava_pop_seed);
+        let mut expected_covered = LevelEventSoundRandomState::with_seed(lava_pop_seed);
+        let mut covered_spawns = Vec::new();
+        assert!(append_lava_fluid_animate_effects(
+            pos,
+            false,
+            &mut covered_random,
+            &mut covered_spawns,
+        )
+        .iter()
+        .all(Option::is_none));
+        assert!(covered_spawns.is_empty());
+        assert_eq!(covered_random.next_long(), expected_covered.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut sound_random = LevelEventSoundRandomState::with_seed(water_seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+        runtime.animate_fluid(
+            &WorldStore::default(),
+            pos,
+            TerrainFluidState::new(TerrainFluidKind::Water, 7, false),
+            &mut sound_random,
+            &mut audio,
+            &mut spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "playLocalSound consumes the shared level seed even without an audio sink"
+        );
+    }
+
+    #[test]
+    fn fluid_drips_use_vanilla_collision_branches_tags_and_level_random_order() {
+        let mut world = world_with_ambient_particles();
+        let fluid_pos = BlockPos { x: 8, y: 32, z: 8 };
+        let below_pos = BlockPos { y: 31, ..fluid_pos };
+        let two_below_pos = BlockPos { y: 30, ..fluid_pos };
+        let water = block_state_id("minecraft:water", &[("level", "0")]);
+        let bottom_slab = block_state_id(
+            "minecraft:oak_slab",
+            &[("type", "bottom"), ("waterlogged", "false")],
+        );
+        let top_slab = block_state_id(
+            "minecraft:oak_slab",
+            &[("type", "top"), ("waterlogged", "false")],
+        );
+
+        set_block(
+            &mut world,
+            fluid_pos,
+            block_state_id("minecraft:mangrove_roots", &[("waterlogged", "true")]),
+        );
+        set_block(&mut world, below_pos, bottom_slab);
+        let mut watertight_random = LevelEventSoundRandomState::with_seed(11);
+        let mut expected_watertight = LevelEventSoundRandomState::with_seed(11);
+        let mut spawns = Vec::new();
+        append_fluid_drip_particle(
+            &world,
+            fluid_pos,
+            TerrainFluidKind::Water,
+            &mut watertight_random,
+            &mut spawns,
+        );
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_DRIPPING_WATER);
+        assert_eq!(
+            spawns[0].position,
+            [
+                8.0 + expected_watertight.next_double(),
+                31.95,
+                8.0 + expected_watertight.next_double(),
+            ]
+        );
+        assert_eq!(
+            watertight_random.next_long(),
+            expected_watertight.next_long()
+        );
+
+        set_block(&mut world, fluid_pos, water);
+        set_block(&mut world, below_pos, top_slab);
+        let mut raised_bottom_random = LevelEventSoundRandomState::with_seed(12);
+        let mut expected_raised_bottom = LevelEventSoundRandomState::with_seed(12);
+        spawns.clear();
+        append_fluid_drip_particle(
+            &world,
+            fluid_pos,
+            TerrainFluidKind::Lava,
+            &mut raised_bottom_random,
+            &mut spawns,
+        );
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_DRIPPING_LAVA);
+        assert_eq!(
+            spawns[0].position,
+            [
+                8.0 + expected_raised_bottom.next_double(),
+                31.45,
+                8.0 + expected_raised_bottom.next_double(),
+            ]
+        );
+        assert_eq!(
+            raised_bottom_random.next_long(),
+            expected_raised_bottom.next_long()
+        );
+
+        set_block(
+            &mut world,
+            below_pos,
+            block_state_id("minecraft:glass", &[]),
+        );
+        let mut impermeable_random = LevelEventSoundRandomState::with_seed(13);
+        let mut expected_impermeable = LevelEventSoundRandomState::with_seed(13);
+        spawns.clear();
+        append_fluid_drip_particle(
+            &world,
+            fluid_pos,
+            TerrainFluidKind::Water,
+            &mut impermeable_random,
+            &mut spawns,
+        );
+        assert!(spawns.is_empty());
+        assert_eq!(
+            impermeable_random.next_long(),
+            expected_impermeable.next_long()
+        );
+
+        set_block(
+            &mut world,
+            below_pos,
+            block_state_id("minecraft:stone", &[]),
+        );
+        set_block(&mut world, two_below_pos, 0);
+        let mut underside_random = LevelEventSoundRandomState::with_seed(14);
+        let mut expected_underside = LevelEventSoundRandomState::with_seed(14);
+        spawns.clear();
+        append_fluid_drip_particle(
+            &world,
+            fluid_pos,
+            TerrainFluidKind::Water,
+            &mut underside_random,
+            &mut spawns,
+        );
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(
+            spawns[0].position,
+            [
+                8.0 + expected_underside.next_double(),
+                30.95,
+                8.0 + expected_underside.next_double(),
+            ]
+        );
+        assert_eq!(underside_random.next_long(), expected_underside.next_long());
+
+        set_block(&mut world, below_pos, water);
+        let mut submerged_random = LevelEventSoundRandomState::with_seed(15);
+        let mut expected_submerged = LevelEventSoundRandomState::with_seed(15);
+        spawns.clear();
+        append_fluid_drip_particle(
+            &world,
+            fluid_pos,
+            TerrainFluidKind::Water,
+            &mut submerged_random,
+            &mut spawns,
+        );
+        assert!(spawns.is_empty());
+        assert_eq!(submerged_random.next_long(), expected_submerged.next_long());
     }
 
     #[test]

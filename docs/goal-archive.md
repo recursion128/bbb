@@ -710,3 +710,6 @@
 - **2026-07-28（气泡柱客户端效果工程闭环）**：移动后收缩 AABB 进入检测、
   上升/漩涡 inside 与 ambient 音效、always-visible 粒子速度及水源 animate
   随机序已按 `BubbleColumnAmbientSoundHandler` / `BubbleColumnBlock` 贯通。
+- **2026-07-28（流体 animateTick 客户端效果闭环）**：流动水环境声、水源/落水
+  underwater 粒子、岩浆 pop/ambient 与水/岩浆滴落现按两条 Vanilla 随机流、
+  碰撞形状和生成的 `impermeable` 标签贯通 native 粒子及音频 sink。

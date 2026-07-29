@@ -76,6 +76,7 @@ pub use crate::client::local_player::{
 };
 pub use crate::client::local_player_collision::{
     DebugEntitySupportingBlocks, DebugLocalSupportingBlocks, DebugSupportingBlockHighlight,
+    EnvironmentAnimateBlockSample, EnvironmentAnimateCollisionBounds,
     ParticleBlockFluidSurfaceSample, WorldCollisionBox,
 };
 pub use crate::client::local_player_destroy::{

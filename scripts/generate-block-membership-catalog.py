@@ -42,6 +42,7 @@ BLOCK_TAG_SOURCE_DIR = Path("data/minecraft/tags/block")
 BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
 
 BLOCK_TAG_CATALOGS = (
+    ("VANILLA_IMPERMEABLE_BLOCKS", "minecraft:impermeable", 19),
     ("VANILLA_BARS_BLOCKS", "minecraft:bars", 9),
     ("VANILLA_SLAB_BLOCKS", "minecraft:slabs", 62),
     ("VANILLA_STAIR_BLOCKS", "minecraft:stairs", 58),
