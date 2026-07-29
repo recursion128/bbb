@@ -7300,7 +7300,7 @@ fn renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state(
         .expect("pump should compute partial tick before outline extraction");
     let camera_pose = source
         .find(
-            "let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick);",
+            "let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick)",
         )
         .expect("pump should extract the interaction camera pose before outlines");
     let selection_outline = source
