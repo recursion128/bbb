@@ -8,6 +8,10 @@
 
 use serde::{Deserialize, Serialize};
 
+use bbb_protocol::block_state_types::{
+    vanilla_block_state_support_facts, VanillaBlockSupportDirection,
+};
+
 use crate::{
     chunks::EndGatewayBlockEntityData, BlockPos, ChunkColumn, PaletteKind, RegistrySet, WorldStore,
 };
@@ -16,6 +20,14 @@ const END_GATEWAY_SPAWN_TICKS: i64 = 200;
 const END_GATEWAY_COOLDOWN_TICKS: i32 = 40;
 const END_GATEWAY_SPAWN_COLOR: u32 = 0xFFC74EBD;
 const END_GATEWAY_COOLDOWN_COLOR: u32 = 0xFF8932B8;
+const END_GATEWAY_PARTICLE_FACE_NEIGHBORS: [([i32; 3], VanillaBlockSupportDirection); 6] = [
+    ([0, -1, 0], VanillaBlockSupportDirection::Up),
+    ([0, 1, 0], VanillaBlockSupportDirection::Down),
+    ([0, 0, -1], VanillaBlockSupportDirection::South),
+    ([0, 0, 1], VanillaBlockSupportDirection::North),
+    ([-1, 0, 0], VanillaBlockSupportDirection::East),
+    ([1, 0, 0], VanillaBlockSupportDirection::West),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EndPortalBlockKind {
@@ -149,6 +161,34 @@ impl WorldStore {
 
     pub fn end_gateway_states(&self) -> &[EndGatewayBlockState] {
         &self.end_gateways
+    }
+
+    /// Vanilla `TheEndGatewayBlockEntity.getParticleAmount`: one particle for
+    /// each direction whose neighbouring full occlusion face does not hide the
+    /// gateway. The gateway itself has no occlusion shape and does not
+    /// `skipRendering`, so `Block.shouldRenderFace` reduces exactly to this
+    /// neighbour-full test.
+    pub fn end_gateway_particle_amount(&self, pos: BlockPos) -> Option<usize> {
+        self.end_gateways
+            .iter()
+            .any(|state| state.pos == pos)
+            .then(|| {
+                END_GATEWAY_PARTICLE_FACE_NEIGHBORS
+                    .iter()
+                    .filter(|(step, neighbor_face)| {
+                        let neighbor = BlockPos {
+                            x: pos.x.saturating_add(step[0]),
+                            y: pos.y.saturating_add(step[1]),
+                            z: pos.z.saturating_add(step[2]),
+                        };
+                        self.probe_block(neighbor)
+                            .and_then(|block| {
+                                vanilla_block_state_support_facts(block.block_state_id)
+                            })
+                            .is_none_or(|facts| !facts.occlusion_face_full(*neighbor_face))
+                    })
+                    .count()
+            })
     }
 
     pub fn end_portal_model_source_states(
@@ -490,5 +530,51 @@ mod tests {
             .unwrap();
         assert_eq!(beam.color_argb, END_GATEWAY_COOLDOWN_COLOR);
         assert!(beam.height > 0);
+    }
+
+    #[test]
+    fn gateway_particle_amount_counts_only_non_occluding_neighbor_faces() {
+        let mut world = world_with_air_chunk();
+        let pos = BlockPos { x: 2, y: 3, z: 4 };
+        set_block(&mut world, pos, "minecraft:end_gateway");
+        assert_eq!(world.end_gateway_particle_amount(pos), None);
+        world.advance_end_gateway_ticks(0);
+        assert_eq!(world.end_gateway_particle_amount(pos), Some(6));
+
+        set_block(
+            &mut world,
+            BlockPos {
+                y: pos.y + 1,
+                ..pos
+            },
+            "minecraft:stone",
+        );
+        set_block(
+            &mut world,
+            BlockPos {
+                z: pos.z - 1,
+                ..pos
+            },
+            "minecraft:stone",
+        );
+        assert_eq!(world.end_gateway_particle_amount(pos), Some(4));
+
+        set_block(
+            &mut world,
+            BlockPos {
+                x: pos.x + 1,
+                ..pos
+            },
+            "minecraft:glass",
+        );
+        assert_eq!(
+            world.end_gateway_particle_amount(pos),
+            Some(4),
+            "glass has no face occlusion shape"
+        );
+
+        set_block(&mut world, pos, "minecraft:stone");
+        world.advance_end_gateway_ticks(0);
+        assert_eq!(world.end_gateway_particle_amount(pos), None);
     }
 }

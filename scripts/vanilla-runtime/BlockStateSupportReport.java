@@ -6,11 +6,13 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SupportType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Emits the built-in block-state support, collision, can-occlude, solid-render,
- * redstone-conductor, and legacy liquid facts cached by Vanilla.
+ * Emits the built-in block-state support, collision, occlusion-face,
+ * can-occlude, solid-render, redstone-conductor, and legacy liquid facts
+ * cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -78,6 +80,9 @@ public final class BlockStateSupportReport {
                 }
                 if (Block.isFaceFull(collisionShape, direction)) {
                     facts |= 1L << (26 + directionIndex);
+                }
+                if (state.getFaceOcclusionShape(direction) == Shapes.block()) {
+                    facts |= 1L << (32 + directionIndex);
                 }
             }
 

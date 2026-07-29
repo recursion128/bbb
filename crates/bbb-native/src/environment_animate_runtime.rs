@@ -500,6 +500,14 @@ impl EnvironmentAnimateRuntime {
             "minecraft:ender_chest" => {
                 append_ender_chest_animate_effects(pos, animate_random, spawns);
             }
+            "minecraft:end_portal" => {
+                append_end_portal_animate_effect(pos, animate_random, spawns);
+            }
+            "minecraft:end_gateway" => {
+                if let Some(particle_count) = world.end_gateway_particle_amount(pos) {
+                    append_end_gateway_animate_effects(pos, particle_count, animate_random, spawns);
+                }
+            }
             _ => {
                 if let Some(profile) = leaf_animate_particle_profile(block_name) {
                     append_leaves_animate_effects(world, pos, profile, animate_random, spawns);
@@ -1832,6 +1840,59 @@ fn append_ender_chest_animate_effects(
             f64::from((random.next_float() - 0.5_f32) * 0.125_f32),
             f64::from(random.next_float() * flip_z as f32),
         ];
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_PORTAL),
+            position,
+            velocity,
+            always_show: false,
+            color_source: None,
+        });
+    }
+}
+
+fn append_end_portal_animate_effect(
+    pos: BlockPos,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options(PARTICLE_SMOKE),
+        position: [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + 0.8,
+            f64::from(pos.z) + random.next_double(),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source: None,
+    });
+}
+
+fn append_end_gateway_animate_effects(
+    pos: BlockPos,
+    particle_count: usize,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    for _ in 0..particle_count {
+        let mut position = [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + random.next_double(),
+            f64::from(pos.z) + random.next_double(),
+        ];
+        let mut velocity = [
+            (random.next_double() - 0.5) * 0.5,
+            (random.next_double() - 0.5) * 0.5,
+            (random.next_double() - 0.5) * 0.5,
+        ];
+        let flip = random.next_int_bound(2) * 2 - 1;
+        if random.next_boolean() {
+            position[2] = f64::from(pos.z) + 0.5 + 0.25 * f64::from(flip);
+            velocity[2] = f64::from(random.next_float() * 2.0 * flip as f32);
+        } else {
+            position[0] = f64::from(pos.x) + 0.5 + 0.25 * f64::from(flip);
+            velocity[0] = f64::from(random.next_float() * 2.0 * flip as f32);
+        }
         spawns.push(EnvironmentParticleSpawn {
             particle: simple_client_particle_options(PARTICLE_PORTAL),
             position,
@@ -4786,6 +4847,121 @@ mod tests {
             3
         );
         assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
+    fn end_portal_and_gateway_animate_effects_preserve_vanilla_random_order() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let mut portal_actual = LevelEventSoundRandomState::with_seed(73);
+        let mut portal_expected = LevelEventSoundRandomState::with_seed(73);
+        let mut spawns = Vec::new();
+        append_end_portal_animate_effect(pos, &mut portal_actual, &mut spawns);
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_SMOKE);
+        assert_eq!(
+            spawns[0].position,
+            [
+                f64::from(pos.x) + portal_expected.next_double(),
+                f64::from(pos.y) + 0.8,
+                f64::from(pos.z) + portal_expected.next_double(),
+            ]
+        );
+        assert_eq!(spawns[0].velocity, [0.0; 3]);
+        assert!(!spawns[0].always_show);
+        assert_eq!(portal_actual.next_long(), portal_expected.next_long());
+
+        let mut gateway_actual = LevelEventSoundRandomState::with_seed(91);
+        let mut gateway_expected = LevelEventSoundRandomState::with_seed(91);
+        spawns.clear();
+        append_end_gateway_animate_effects(pos, 3, &mut gateway_actual, &mut spawns);
+        let expected_spawns = (0..3)
+            .map(|_| {
+                let mut position = [
+                    f64::from(pos.x) + gateway_expected.next_double(),
+                    f64::from(pos.y) + gateway_expected.next_double(),
+                    f64::from(pos.z) + gateway_expected.next_double(),
+                ];
+                let mut velocity = [
+                    (gateway_expected.next_double() - 0.5) * 0.5,
+                    (gateway_expected.next_double() - 0.5) * 0.5,
+                    (gateway_expected.next_double() - 0.5) * 0.5,
+                ];
+                let flip = gateway_expected.next_int_bound(2) * 2 - 1;
+                if gateway_expected.next_boolean() {
+                    position[2] = f64::from(pos.z) + 0.5 + 0.25 * f64::from(flip);
+                    velocity[2] = f64::from(gateway_expected.next_float() * 2.0 * flip as f32);
+                } else {
+                    position[0] = f64::from(pos.x) + 0.5 + 0.25 * f64::from(flip);
+                    velocity[0] = f64::from(gateway_expected.next_float() * 2.0 * flip as f32);
+                }
+                (position, velocity)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            spawns
+                .iter()
+                .map(|spawn| (spawn.position, spawn.velocity))
+                .collect::<Vec<_>>(),
+            expected_spawns
+        );
+        assert!(spawns
+            .iter()
+            .all(|spawn| spawn.particle.resource_id == PARTICLE_PORTAL && !spawn.always_show));
+        assert_eq!(gateway_actual.next_long(), gateway_expected.next_long());
+    }
+
+    #[test]
+    fn environment_dispatches_end_portal_family_particles_from_animate_random() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        for (block_name, expected_particle, expected_count) in [
+            ("minecraft:end_portal", PARTICLE_SMOKE, 1),
+            ("minecraft:end_gateway", PARTICLE_PORTAL, 6),
+        ] {
+            let mut sampled_level_random = LevelEventSoundRandomState::default();
+            let pos =
+                sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+            let mut world = world_with_ambient_particles();
+            set_block(&mut world, pos, block_state_id(block_name, &[]));
+            world.advance_end_gateway_ticks(0);
+            let mut runtime = EnvironmentAnimateRuntime::default();
+            let mut actual = LevelEventSoundRandomState::with_seed(107);
+            let mut expected = LevelEventSoundRandomState::with_seed(107);
+            let mut audio = None;
+            let mut spawns = Vec::new();
+
+            runtime.do_animate_tick(
+                &mut world,
+                center,
+                NEAR_SAMPLE_RADIUS,
+                0,
+                &mut actual,
+                &mut audio,
+                &mut spawns,
+            );
+            if block_name == "minecraft:end_portal" {
+                let _ = expected.next_double();
+                let _ = expected.next_double();
+            } else {
+                for _ in 0..expected_count {
+                    for _ in 0..6 {
+                        let _ = expected.next_double();
+                    }
+                    let _ = expected.next_int_bound(2);
+                    let _ = expected.next_boolean();
+                    let _ = expected.next_float();
+                }
+            }
+
+            assert_eq!(
+                spawns
+                    .iter()
+                    .filter(|spawn| spawn.particle.resource_id == expected_particle)
+                    .count(),
+                expected_count,
+                "{block_name}"
+            );
+            assert_eq!(actual.next_long(), expected.next_long(), "{block_name}");
+        }
     }
 
     #[test]

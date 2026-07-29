@@ -115,16 +115,16 @@ impl VanillaBlockSupportType {
     }
 }
 
-/// Runtime-generated support, collision, can-occlude, solid-render,
-/// redstone-conductor, and legacy liquid facts for one built-in Vanilla 26.1
-/// block state.
+/// Runtime-generated support, collision, occlusion-face, can-occlude,
+/// solid-render, redstone-conductor, and legacy liquid facts for one built-in
+/// Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
 /// of using the report's `EmptyBlockGetter` result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaBlockStateSupportFacts {
-    facts: u32,
+    facts: u64,
     can_occlude: bool,
     solid_render: bool,
     redstone_conductor: bool,
@@ -171,6 +171,12 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn collision_face_full(self, direction: VanillaBlockSupportDirection) -> bool {
         self.facts & (1 << (26 + direction.index())) != 0
+    }
+
+    /// Whether `BlockState.getFaceOcclusionShape(direction)` is the full block
+    /// face used by `Block.shouldRenderFace`'s first culling branch.
+    pub const fn occlusion_face_full(self, direction: VanillaBlockSupportDirection) -> bool {
+        self.facts & (1 << (32 + direction.index())) != 0
     }
 }
 
@@ -436,6 +442,7 @@ mod tests {
         ));
         assert!(!air.collision_face_nonempty(VanillaBlockSupportDirection::Up));
         assert!(!air.collision_face_full(VanillaBlockSupportDirection::Up));
+        assert!(!air.occlusion_face_full(VanillaBlockSupportDirection::Up));
 
         let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
         assert!(stone.legacy_solid());
@@ -443,6 +450,17 @@ mod tests {
         assert!(stone.solid_render());
         assert!(stone.redstone_conductor());
         assert!(!stone.liquid());
+        assert!(stone.occlusion_face_full(VanillaBlockSupportDirection::Up));
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:glass"))
+                .unwrap()
+                .occlusion_face_full(VanillaBlockSupportDirection::Up)
+        );
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:end_gateway"))
+                .unwrap()
+                .occlusion_face_full(VanillaBlockSupportDirection::Up)
+        );
         assert!(
             !vanilla_block_state_support_facts(state_id("minecraft:glass"))
                 .unwrap()

@@ -40,7 +40,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
 
     def test_render_rust_uses_a_first_seen_palette_and_u8_state_indices(self):
         rendered = GENERATOR.render_rust(
-            (0, 0xFFFF_FFFF, 0, 7),
+            (0, 0xFFFF_FFFF_FFFF_FFFF, 0, 7),
             (True, True, False, False),
             (False, True, False, True),
             (False, True, True, False),
@@ -49,9 +49,9 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
 
         self.assertIn("@generated", rendered)
         self.assertIn("Dynamic-shape states are marked", rendered)
-        self.assertIn("    0x00000000,", rendered)
-        self.assertIn("    0xffffffff,", rendered)
-        self.assertIn("    0x00000007,", rendered)
+        self.assertIn("    0x0000000000000000,", rendered)
+        self.assertIn("    0xffffffffffffffff,", rendered)
+        self.assertIn("    0x0000000000000007,", rendered)
         self.assertIn("    0, 1, 0, 2,", rendered)
         self.assertIn("VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS", rendered)
         self.assertIn("    0x0000000000000003,", rendered)
@@ -85,15 +85,15 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid runtime fact at id 0"):
             GENERATOR.parse_facts(source, 2)
 
-    def test_parse_facts_rejects_masks_outside_u32(self):
+    def test_parse_facts_rejects_masks_outside_u64(self):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t4294967296\t0\t0\t0\t0",
+                "0\t18446744073709551616\t0\t0\t0\t0",
             ]
         )
 
-        with self.assertRaisesRegex(ValueError, "outside u32"):
+        with self.assertRaisesRegex(ValueError, "outside u64"):
             GENERATOR.parse_facts(source, 1)
 
     def test_parse_facts_rejects_invalid_solid_render_fact(self):
