@@ -125,6 +125,8 @@ Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
+The active component-codec engineering contract is
+`docs/component-select-codec-parity-design.md`.
 
 - Thread newly discovered ambient-context numeric `range_dispatch` properties
   through the icon resolver as that state becomes available to the GUI icon path.
