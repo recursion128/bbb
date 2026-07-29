@@ -362,6 +362,9 @@ pub enum EntityModelKind {
     /// `BannerRenderer.MAX_PATTERNS = 16` render cap, `None` past the stored stack.
     Banner {
         wall: bool,
+        /// GUI Loom result previews submit only the flag model; world block
+        /// entities submit the standing/wall frame first.
+        flag_only: bool,
         base_color: EntityDyeColor,
         layers: [Option<BannerPatternLayer>; 16],
     },

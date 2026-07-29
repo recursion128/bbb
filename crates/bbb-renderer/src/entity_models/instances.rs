@@ -1912,11 +1912,32 @@ impl EntityModelInstance {
             entity_id,
             EntityModelKind::Banner {
                 wall,
+                flag_only: false,
                 base_color,
                 layers,
             },
             position,
             y_rot,
+        )
+    }
+
+    /// Vanilla `GuiBannerResultRenderer`: the standing flag model without its
+    /// pole/bar frame, centered and scaled by the owning GUI PIP descriptor.
+    pub fn banner_flag(
+        entity_id: i32,
+        base_color: EntityDyeColor,
+        layers: [Option<BannerPatternLayer>; 16],
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Banner {
+                wall: false,
+                flag_only: true,
+                base_color,
+                layers,
+            },
+            [0.0, 0.0, 0.0],
+            0.0,
         )
     }
 

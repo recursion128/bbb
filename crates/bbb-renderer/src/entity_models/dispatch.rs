@@ -632,18 +632,26 @@ impl EntityModelSink for TexturedSink<'_> {
         passes: &[EntityModelLayerPass],
     ) {
         model.prepare(instance);
-        if let EntityModelKind::Banner { layers, .. } = &instance.kind {
-            // The frame, flag, and base-color mask remain in the static entity atlas. Every
+        if let EntityModelKind::Banner {
+            flag_only, layers, ..
+        } = &instance.kind
+        {
+            // The optional frame, flag, and base-color mask remain in the static entity atlas. Every
             // pattern then selects its own atlas entry while preserving `submitPatterns` order;
             // this avoids forcing one dynamic handle onto the whole banner instance.
+            let static_count = if *flag_only { 2 } else { 3 };
             render_textured_layers(
                 self.meshes,
                 &model,
                 transform,
-                passes.iter().take(3).cloned(),
+                passes.iter().take(static_count).cloned(),
                 self.atlas,
             );
-            for (layer, pass) in layers.iter().flatten().zip(passes.iter().skip(3)) {
+            for (layer, pass) in layers
+                .iter()
+                .flatten()
+                .zip(passes.iter().skip(static_count))
+            {
                 match layer.texture {
                     BannerPatternTexture::Builtin(_) => render_textured_layers(
                         self.meshes,
@@ -2015,13 +2023,14 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         ),
         EntityModelKind::Banner {
             wall,
+            flag_only,
             base_color,
             layers,
         } => sink.model(
             BannerModel::new(wall),
             banner_model_root_transform(*instance),
             instance,
-            &banner_textured_layer_passes(wall, base_color, &layers),
+            &banner_textured_layer_passes(wall, flag_only, base_color, &layers),
         ),
         EntityModelKind::PaintingTile { .. } => sink.painting_tile(instance),
         EntityModelKind::ExperienceOrb { .. } => sink.experience_orb(instance),

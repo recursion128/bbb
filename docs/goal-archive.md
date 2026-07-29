@@ -800,3 +800,7 @@
 - **2026-07-29（附魔台屏幕呈现工程闭环）**：screen-local GUI 书动画、隔离 PIP、
   seeded alt-font 名称、选项 strata 与 registry-backed tooltip 已按 Vanilla 贯通；
   合同见 `docs/archive/enchantment-table-presentation-design.md`。
+- **2026-07-29（织布机屏幕呈现工程闭环）**：同步 holder 顺序的缩略图、悬停
+  tooltip、六图案错误状态与 flag-only 结果 PIP 已按 Vanilla strata 贯通；静态/
+  动态实体图集由 HUD 原位复用，合同见
+  `docs/archive/loom-table-presentation-design.md`。

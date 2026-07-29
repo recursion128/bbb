@@ -10260,6 +10260,30 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         enchantment_book,
         partial_tick,
     );
+    if let Some(result) = loom_presentation
+        .as_ref()
+        .and_then(|presentation| presentation.result.as_ref())
+    {
+        entity_previews.push(HudEntityPreview {
+            entity: EntityModelInstance::banner_flag(-1, result.base_color, result.layers)
+                .with_light_coords(ENTITY_FULL_BRIGHT_LIGHT_COORDS),
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            rect: HudEntityPreviewRect {
+                x: 141,
+                y: 8,
+                width: 20,
+                height: 40,
+            },
+            scissor: None,
+            translation: [0.0, 0.25, 0.0],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 16.0,
+            depth_isolated: true,
+            after_background_layer: Some(result.after_background_layer),
+            item_layers: Vec::new(),
+        });
+    }
     offset_hud_entity_previews(&mut entity_previews, main_offset_x);
     let mut map_previews = if layout.background == InventoryScreenBackground::CartographyTable {
         cartography_table_presentation(world, item_runtime).map_previews

@@ -1,6 +1,6 @@
 # Loom Table Presentation Engineering Contract
 
-Status: active engineering contract.
+Status: completed on 2026-07-29.
 
 ## Goal and completion
 
@@ -94,9 +94,9 @@ authoritative.
 
 ## Fallback rules
 
-1. A missing item runtime derives banner and dye identities only from
-   resource-derived world item profiles and effective components; it never
-   embeds protocol ids.
+1. A missing item runtime derives banner identity from the generated Vanilla
+   item catalog and dye/pattern state from effective components; it never
+   embeds handwritten protocol ids.
 2. Missing synchronized holder presentation omits that thumbnail image and
    tooltip identity while retaining its ordered button. It does not reuse a
    bootstrap holder at the same ordinal.

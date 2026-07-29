@@ -1995,6 +1995,7 @@ pub(in crate::entity_models) fn decorated_pot_textured_layer_passes(
 /// unaffected).
 pub(in crate::entity_models) fn banner_textured_layer_passes(
     wall: bool,
+    flag_only: bool,
     base_color: EntityDyeColor,
     layers: &[Option<BannerPatternLayer>; 16],
 ) -> Vec<EntityModelLayerPass> {
@@ -2011,8 +2012,9 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             STANDING_BANNER_FRAME_PARTS,
         )
     };
-    let mut passes = vec![
-        EntityModelLayerPass {
+    let mut passes = Vec::with_capacity(3 + layers.iter().flatten().count());
+    if !flag_only {
+        passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::BannerBase,
             render_type: EntityModelLayerRenderType::EntitySolid,
             model_layer: frame_layer,
@@ -2021,7 +2023,10 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,
             submit_sequence: 0,
-        },
+        });
+    }
+    let flag_sequence = u32::from(!flag_only);
+    passes.extend([
         EntityModelLayerPass {
             kind: EntityModelLayerKind::BannerFlag,
             render_type: EntityModelLayerRenderType::EntitySolid,
@@ -2030,7 +2035,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,
-            submit_sequence: 1,
+            submit_sequence: flag_sequence,
         },
         // `submitPatterns`' first layer: the full-flag `base` mask tinted by the banner's base
         // color.
@@ -2042,9 +2047,9 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
             tint: base_color.texture_diffuse_color(),
             order: 0,
-            submit_sequence: 2,
+            submit_sequence: flag_sequence + 1,
         },
-    ];
+    ]);
     for (index, layer) in layers.iter().flatten().enumerate() {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::BannerPattern,
@@ -2059,7 +2064,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
             tint: layer.color.texture_diffuse_color(),
             order: 0,
-            submit_sequence: 3 + index as u32,
+            submit_sequence: flag_sequence + 2 + index as u32,
         });
     }
     passes

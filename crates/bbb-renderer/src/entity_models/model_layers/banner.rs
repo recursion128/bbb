@@ -1,6 +1,7 @@
 use std::f32::consts::{PI, TAU};
 
 use super::{PartPose, BANNER_CLOTH, PART_POSE_ZERO, SIGN_WOOD};
+use crate::entity_models::catalog::EntityModelKind;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -139,6 +140,17 @@ impl EntityModel for BannerModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        if matches!(
+            instance.kind,
+            EntityModelKind::Banner {
+                flag_only: true,
+                ..
+            }
+        ) {
+            // `GuiBannerResultRenderer` submits the baked flag part directly
+            // and never calls `BannerFlagModel.setupAnim`.
+            return;
+        }
         self.root.child_mut("flag").pose.rotation[0] =
             banner_flag_swing_x_rot(instance.render_state.banner_flag_phase);
     }

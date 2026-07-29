@@ -7,8 +7,8 @@ use anyhow::{bail, Result};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 use crate::entity_models::{
-    BannerPatternTexture, EntityModelInstance, SignModelAttachment, SignModelWood,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    banner_pattern_texture_ref, BannerPatternTexture, EntityDyeColor, EntityModelInstance,
+    EntityModelUvRect, SignModelAttachment, SignModelWood, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use crate::item_models::{
     GuiItemLightingEntry, HudBlockItemModel, HudResidentItemLayer, ItemModelAssetRequest,
@@ -3079,6 +3079,13 @@ pub(super) enum HudDrawCommand<'a> {
         start: u32,
         end: u32,
     },
+    /// One Loom banner-pattern crop sampled directly from a resident entity
+    /// texture atlas through the ordinary HUD sprite pipeline.
+    BannerPattern {
+        atlas: HudBannerPatternAtlas,
+        start: u32,
+        end: u32,
+    },
     ItemGlint {
         mask: &'a HudSpriteGpu,
         start: u32,
@@ -3100,6 +3107,12 @@ pub(super) enum HudDrawCommand<'a> {
     /// Vanilla F3+4 lightmap preview: blits the renderer-owned level lightmap
     /// texture into the bottom-right HUD corner after debug text.
     LightmapPreview { start: u32, end: u32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum HudBannerPatternAtlas {
+    StaticEntity,
+    DynamicEntity,
 }
 
 pub(super) struct HudDraws<'a> {
@@ -7008,13 +7021,14 @@ impl Renderer {
                     &self.hud_mob_effects,
                 );
             }
-            push_hud_inventory_background_layers_with_map_previews(
+            push_hud_inventory_background_layers_with_dynamic_previews(
                 &mut vertices,
                 &mut commands,
                 self,
                 surface_size,
                 screen,
                 &screen.background_layers,
+                &screen.banner_pattern_previews,
                 &screen.map_previews,
                 &screen.entity_previews,
             );
@@ -9566,13 +9580,14 @@ fn push_hud_inventory_background_layers<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn push_hud_inventory_background_layers_with_map_previews<'a>(
+fn push_hud_inventory_background_layers_with_dynamic_previews<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     renderer: &'a Renderer,
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
     layers: &[HudInventoryBackgroundLayer],
+    banner_pattern_previews: &[HudInventoryBannerPatternPreview],
     map_previews: &[HudInventoryMapPreview],
     entity_previews: &[HudEntityPreview],
 ) {
@@ -9585,6 +9600,19 @@ fn push_hud_inventory_background_layers_with_map_previews<'a>(
             screen,
             std::slice::from_ref(layer),
         );
+        for preview in banner_pattern_previews
+            .iter()
+            .filter(|preview| preview.after_background_layer == layer_index)
+        {
+            push_hud_banner_pattern_preview(
+                vertices,
+                commands,
+                renderer,
+                surface_size,
+                screen,
+                preview,
+            );
+        }
         commands.extend(
             map_previews
                 .iter()
@@ -9608,6 +9636,98 @@ fn push_hud_inventory_background_layers_with_map_previews<'a>(
                 );
             }
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_banner_pattern_preview<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    renderer: &'a Renderer,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    preview: &HudInventoryBannerPatternPreview,
+) {
+    let rect = inventory_background_hud_rect(
+        surface_size,
+        screen.width,
+        screen.height,
+        preview.x,
+        preview.y,
+        preview.width,
+        preview.height,
+    );
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        &renderer.hud_white_pixel,
+        surface_size,
+        rect,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        EntityDyeColor::Gray.texture_diffuse_color(),
+    );
+
+    let Some(texture) = preview.texture else {
+        return;
+    };
+    let Some((atlas, atlas_uv)) = hud_banner_pattern_atlas_uv(renderer, texture) else {
+        return;
+    };
+    let uv = compose_hud_uv_rect(atlas_uv, preview.uv);
+    let start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_quad_vertices(surface_size, rect, uv, [1.0; 4]));
+    commands.push(HudDrawCommand::BannerPattern {
+        atlas,
+        start,
+        end: vertices.len() as u32,
+    });
+}
+
+fn hud_banner_pattern_atlas_uv(
+    renderer: &Renderer,
+    texture: BannerPatternTexture,
+) -> Option<(HudBannerPatternAtlas, EntityModelUvRect)> {
+    match texture {
+        BannerPatternTexture::Builtin(pattern) => {
+            let texture = banner_pattern_texture_ref(pattern);
+            let uv = renderer
+                .entity_model_texture_atlas
+                .as_ref()?
+                .layout
+                .entries
+                .iter()
+                .find(|entry| entry.texture == texture)?
+                .uv;
+            Some((HudBannerPatternAtlas::StaticEntity, uv))
+        }
+        BannerPatternTexture::Runtime(texture) => {
+            let uv = renderer
+                .entity_dynamic_player_texture_atlas
+                .as_ref()?
+                .layout
+                .entries
+                .iter()
+                .find(|entry| entry.handle == texture.handle)?
+                .uv;
+            Some((HudBannerPatternAtlas::DynamicEntity, uv))
+        }
+    }
+}
+
+fn compose_hud_uv_rect(atlas: EntityModelUvRect, crop: HudUvRect) -> HudUvRect {
+    let span = [atlas.max[0] - atlas.min[0], atlas.max[1] - atlas.min[1]];
+    HudUvRect {
+        min: [
+            atlas.min[0] + crop.min[0] * span[0],
+            atlas.min[1] + crop.min[1] * span[1],
+        ],
+        max: [
+            atlas.min[0] + crop.max[0] * span[0],
+            atlas.min[1] + crop.max[1] * span[1],
+        ],
     }
 }
 
@@ -19823,8 +19943,8 @@ fn hud_entity_preview_blit_uv(
 }
 
 fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntityPreview> {
-    let is_gui_sign_preview = is_gui_sign_preview(&preview);
-    if (!is_gui_sign_preview && preview.lighting != GuiItemLightingEntry::EntityInUi)
+    let is_flat_gui_preview = is_flat_gui_preview(&preview);
+    if (!is_flat_gui_preview && preview.lighting != GuiItemLightingEntry::EntityInUi)
         || !preview.depth_isolated
     {
         return None;
@@ -19867,11 +19987,15 @@ fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntit
     Some(preview)
 }
 
-fn is_gui_sign_preview(preview: &HudEntityPreview) -> bool {
+fn is_flat_gui_preview(preview: &HudEntityPreview) -> bool {
     preview.lighting == GuiItemLightingEntry::ItemsFlat
         && matches!(
             preview.entity.kind,
             crate::entity_models::EntityModelKind::Sign { .. }
+                | crate::entity_models::EntityModelKind::Banner {
+                    flag_only: true,
+                    ..
+                }
         )
 }
 
@@ -26499,6 +26623,118 @@ mod tests {
     }
 
     #[test]
+    fn loom_pattern_thumbnails_interleave_static_and_dynamic_entity_atlases() {
+        use crate::entity_models::{EntityDynamicTexture, EntityModelTextureImage};
+        use crate::DynamicEntityTextureImage;
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_loom_pattern(1, 1, &[255, 0, 0, 255])
+            .unwrap();
+        let pattern = crate::BannerPatternKind::StripeTop;
+        let pattern_texture = banner_pattern_texture_ref(pattern);
+        renderer
+            .upload_entity_model_textures(&[EntityModelTextureImage::new(
+                pattern_texture,
+                [0, 0, 255, 255].repeat(
+                    usize::try_from(pattern_texture.size[0] * pattern_texture.size[1]).unwrap(),
+                ),
+            )])
+            .unwrap();
+        renderer
+            .upload_dynamic_entity_texture(DynamicEntityTextureImage {
+                handle: 81_261,
+                size: [64, 64],
+                rgba: [255, 255, 0, 255].repeat(64 * 64),
+            })
+            .unwrap();
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::LoomPattern,
+                x: 60,
+                y: 13,
+                width: 14,
+                height: 14,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::LoomPattern,
+                x: 74,
+                y: 13,
+                width: 14,
+                height: 14,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        let thumbnail = |texture, x, after_background_layer| HudInventoryBannerPatternPreview {
+            texture: Some(texture),
+            x,
+            y: 15,
+            width: 5,
+            height: 10,
+            uv: HudUvRect {
+                min: [0.0, 1.0 / 64.0],
+                max: [21.0 / 64.0, 41.0 / 64.0],
+            },
+            after_background_layer,
+        };
+        screen.banner_pattern_previews = vec![
+            thumbnail(BannerPatternTexture::Builtin(pattern), 64, 0),
+            thumbnail(
+                BannerPatternTexture::Runtime(EntityDynamicTexture { handle: 81_261 }),
+                78,
+                1,
+            ),
+        ];
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 6);
+        assert!(matches!(draws.commands[0], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(draws.commands[1], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[2],
+            HudDrawCommand::BannerPattern {
+                atlas: HudBannerPatternAtlas::StaticEntity,
+                ..
+            }
+        ));
+        assert!(matches!(draws.commands[3], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(draws.commands[4], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[5],
+            HudDrawCommand::BannerPattern {
+                atlas: HudBannerPatternAtlas::DynamicEntity,
+                ..
+            }
+        ));
+
+        let pixels = renderer.render_offscreen_frame().unwrap();
+        let origin_x = (320 - 176) / 2;
+        let origin_y = (240 - 166) / 2;
+        let static_pixel = pixels.pixel(origin_x + 66, origin_y + 20);
+        assert!(
+            static_pixel[2] > 192 && static_pixel[0] < 64 && static_pixel[1] < 64,
+            "static banner atlas should paint the first thumbnail blue, got {static_pixel:?}"
+        );
+        let dynamic_pixel = pixels.pixel(origin_x + 80, origin_y + 20);
+        assert!(
+            dynamic_pixel[0] > 192 && dynamic_pixel[1] > 192 && dynamic_pixel[2] < 64,
+            "dynamic banner atlas should paint the second thumbnail yellow, got {dynamic_pixel:?}"
+        );
+    }
+
+    #[test]
     fn cartography_map_preview_commands_preserve_duplicate_and_locked_strata() {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             eprintln!("skipping offscreen renderer test without a compatible adapter");
@@ -27063,6 +27299,112 @@ mod tests {
         assert!(
             option_pixel[0] > 192 && option_pixel[1] < 64 && option_pixel[2] < 64,
             "highlighted option stratum should remain above the PIP insertion, got {option_pixel:?}"
+        );
+    }
+
+    #[test]
+    fn loom_result_banner_pip_renders_flag_before_pattern_button_stratum() {
+        use crate::entity_models::{banner_entity_texture_refs, EntityModelTextureImage};
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_loom_background(1, 1, &[0, 0, 255, 255])
+            .unwrap();
+        renderer
+            .upload_hud_loom_pattern(1, 1, &[255, 0, 0, 255])
+            .unwrap();
+        let banner_images = banner_entity_texture_refs()
+            .iter()
+            .map(|texture| {
+                EntityModelTextureImage::new(
+                    *texture,
+                    [0, 255, 0, 255]
+                        .repeat(usize::try_from(texture.size[0] * texture.size[1]).unwrap()),
+                )
+            })
+            .collect::<Vec<_>>();
+        renderer
+            .upload_entity_model_textures(&banner_images)
+            .unwrap();
+
+        let preview = HudEntityPreview {
+            entity: EntityModelInstance::banner_flag(-1, EntityDyeColor::White, [None; 16]),
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            rect: HudEntityPreviewRect {
+                x: 141,
+                y: 8,
+                width: 20,
+                height: 40,
+            },
+            scissor: None,
+            translation: [0.0, 0.25, 0.0],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 16.0,
+            depth_isolated: true,
+            after_background_layer: Some(0),
+            item_layers: Vec::new(),
+        };
+        let mut screen = hud_inventory_screen_with_entity_previews(vec![preview]);
+        screen.background_layers = vec![
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::Loom,
+                x: 0,
+                y: 0,
+                width: 176,
+                height: 166,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+            HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::LoomPattern,
+                x: 145,
+                y: 20,
+                width: 10,
+                height: 10,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            },
+        ];
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let pixels = renderer.render_offscreen_frame().unwrap();
+        let draws = renderer.collect_hud_draws();
+        assert!(matches!(draws.commands[0], HudDrawCommand::Sprite { .. }));
+        assert!(matches!(
+            draws.commands[1],
+            HudDrawCommand::EntityPreviewBlit {
+                target_index: 0,
+                ..
+            }
+        ));
+        assert!(matches!(draws.commands[2], HudDrawCommand::Sprite { .. }));
+
+        let origin_x = (320 - 176) / 2;
+        let origin_y = (240 - 166) / 2;
+        let mut green_flag_pixels = 0usize;
+        for y in (origin_y + 8)..(origin_y + 48) {
+            for x in (origin_x + 141)..(origin_x + 161) {
+                let pixel = pixels.pixel(x, y);
+                if pixel[1] > 64 && pixel[1] > pixel[0] && pixel[1] > pixel[2] {
+                    green_flag_pixels += 1;
+                }
+            }
+        }
+        assert!(
+            green_flag_pixels > 0,
+            "Loom result PIP should contribute flag-model pixels"
+        );
+        let overlay = pixels.pixel(origin_x + 146, origin_y + 21);
+        assert!(
+            overlay[0] > 192 && overlay[1] < 64 && overlay[2] < 64,
+            "later pattern button should cover the PIP, got {overlay:?}"
         );
     }
 
@@ -28556,7 +28898,7 @@ mod tests {
     }
 
     #[test]
-    fn sanitize_entity_preview_allows_items_flat_only_for_gui_signs() {
+    fn sanitize_entity_preview_allows_items_flat_only_for_gui_owned_models() {
         let base = hud_entity_preview_for_test();
         assert!(sanitize_hud_entity_preview(HudEntityPreview {
             lighting: GuiItemLightingEntry::ItemsFlat,
@@ -28594,6 +28936,38 @@ mod tests {
             sanitized.entity.render_state.light_coords,
             ENTITY_FULL_BRIGHT_LIGHT_COORDS
         );
+
+        let gui_banner = HudEntityPreview {
+            entity: EntityModelInstance::banner_flag(-1, EntityDyeColor::Red, [None; 16]),
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            rect: HudEntityPreviewRect {
+                x: 141,
+                y: 8,
+                width: 20,
+                height: 40,
+            },
+            scissor: None,
+            translation: [0.0, 0.25, 0.0],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 16.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: Vec::new(),
+        };
+        assert!(sanitize_hud_entity_preview(gui_banner.clone()).is_some());
+        assert!(sanitize_hud_entity_preview(HudEntityPreview {
+            entity: EntityModelInstance::banner(
+                -1,
+                [0.0, 0.0, 0.0],
+                0.0,
+                false,
+                EntityDyeColor::Red,
+                [None; 16],
+            ),
+            ..gui_banner
+        })
+        .is_none());
     }
 
     #[test]

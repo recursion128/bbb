@@ -21889,6 +21889,78 @@ fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_loom_result_banner_pip() {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+        title: bbb_protocol::RichTextComponent::plain("Loom"),
+    });
+    let mut result = item_stack(bbb_protocol::item_types::VANILLA_ITEM_RED_BANNER_ID, 1);
+    result.component_patch.added = 1;
+    result
+        .component_patch
+        .added_type_ids
+        .push(bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID);
+    result.component_patch.banner_pattern_layers =
+        vec![bbb_protocol::packets::BannerPatternLayerSummary {
+            registry_id: None,
+            asset_id: Some("minecraft:stripe_top".to_string()),
+            translation_key: Some("block.minecraft.banner.stripe_top".to_string()),
+            color_id: VANILLA_DYE_COLOR_RED_ID,
+        }];
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
+    items[3] = result;
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert_eq!(screen.entity_previews.len(), 1);
+    let preview = &screen.entity_previews[0];
+    assert_eq!(preview.lighting, GuiItemLightingEntry::ItemsFlat);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 141,
+            y: 8,
+            width: 20,
+            height: 40,
+        }
+    );
+    assert_eq!(preview.translation, [0.0, 0.25, 0.0]);
+    assert_eq!(preview.rotation, [0.0, 0.0, 0.0, 1.0]);
+    assert_eq!(preview.scale, 16.0);
+    assert!(preview.depth_isolated);
+    assert_eq!(preview.after_background_layer, Some(4));
+    let EntityModelKind::Banner {
+        wall,
+        flag_only,
+        base_color,
+        layers,
+    } = preview.entity.kind
+    else {
+        panic!("Loom result should use the banner flag model");
+    };
+    assert!(!wall);
+    assert!(flag_only);
+    assert_eq!(base_color, bbb_renderer::EntityDyeColor::Red);
+    assert_eq!(
+        layers[0],
+        Some(bbb_renderer::BannerPatternLayer {
+            texture: bbb_renderer::BannerPatternTexture::Builtin(
+                bbb_renderer::BannerPatternKind::StripeTop,
+            ),
+            color: bbb_renderer::EntityDyeColor::Red,
+        })
+    );
+}
+
+#[test]
 fn hud_inventory_screen_uses_the_loom_component_holder_set_size() {
     let mut world = WorldStore::new();
     world.record_registry_data(bbb_protocol::packets::RegistryData {
@@ -23862,6 +23934,7 @@ fn block_entity_crumbling_acceptance_matches_vanilla_model_renderers() {
         },
         bbb_renderer::EntityModelKind::Banner {
             wall: false,
+            flag_only: false,
             base_color: bbb_renderer::EntityDyeColor::White,
             layers: [None; 16],
         },

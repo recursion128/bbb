@@ -4333,6 +4333,30 @@ impl Renderer {
                     pass.draw(*start..*end, 0..1);
                     draw_calls += 1;
                 }
+                crate::hud::HudDrawCommand::BannerPattern { atlas, start, end } => {
+                    let bind_group = match atlas {
+                        crate::hud::HudBannerPatternAtlas::StaticEntity => self
+                            .entity_model_texture_atlas
+                            .as_ref()
+                            .map(|atlas| &atlas.hud_bind_group),
+                        crate::hud::HudBannerPatternAtlas::DynamicEntity => self
+                            .entity_dynamic_player_texture_atlas
+                            .as_ref()
+                            .map(|atlas| &atlas.hud_bind_group),
+                    };
+                    let Some(bind_group) = bind_group else {
+                        continue;
+                    };
+                    if active_pipeline != Some(HudActivePipeline::Sprite) {
+                        pass.set_pipeline(&self.hud_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
+                        active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
                 crate::hud::HudDrawCommand::ItemGlint { mask, start, end } => {
                     let Some(glint) = &self.item_glint_texture else {
                         continue;

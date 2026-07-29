@@ -73,6 +73,7 @@ pub(crate) struct EntityModelTextureAtlasGpu {
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
+    pub(crate) hud_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityModelTextureAtlasLayout,
     #[allow(dead_code)]
     pub(crate) owned_entries: Vec<EntityModelOwnedTextureAtlasEntry>,
@@ -131,6 +132,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
+    pub(crate) hud_bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
 }
 
@@ -2603,6 +2605,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
+            &self.hud_bind_group_layout,
             &self.camera_buffer,
             &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
@@ -2694,6 +2697,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
+            &self.hud_bind_group_layout,
             &self.camera_buffer,
             &self.hud3d_camera_buffer,
             &self.gui_item_camera_buffer,
@@ -3231,6 +3235,7 @@ fn create_entity_model_texture_atlas_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
+    hud_bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
@@ -3321,6 +3326,13 @@ fn create_entity_model_texture_atlas_gpu(
         &sampler,
         "bbb-entity-model-texture-hud3d-bind-group",
     );
+    let hud_bind_group = create_hud_texture_bind_group(
+        device,
+        hud_bind_group_layout,
+        &view,
+        &sampler,
+        "bbb-entity-model-texture-hud-bind-group",
+    );
 
     Ok(EntityModelTextureAtlasGpu {
         _texture: texture,
@@ -3329,6 +3341,7 @@ fn create_entity_model_texture_atlas_gpu(
         bind_group,
         hud3d_bind_group,
         gui_bind_group,
+        hud_bind_group,
         layout,
         owned_entries,
         equipment_assets,
@@ -3430,6 +3443,7 @@ fn create_dynamic_player_texture_atlas_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
+    hud_bind_group_layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     hud3d_camera_buffer: &wgpu::Buffer,
     gui_camera_buffer: &wgpu::Buffer,
@@ -3514,6 +3528,13 @@ fn create_dynamic_player_texture_atlas_gpu(
         &sampler,
         "bbb-dynamic-player-texture-hud3d-bind-group",
     );
+    let hud_bind_group = create_hud_texture_bind_group(
+        device,
+        hud_bind_group_layout,
+        &view,
+        &sampler,
+        "bbb-dynamic-player-texture-hud-bind-group",
+    );
 
     Ok(EntityDynamicPlayerTextureAtlasGpu {
         _texture: texture,
@@ -3522,6 +3543,7 @@ fn create_dynamic_player_texture_atlas_gpu(
         bind_group,
         hud3d_bind_group,
         gui_bind_group,
+        hud_bind_group,
         layout,
     })
 }
@@ -3548,6 +3570,29 @@ fn create_entity_model_texture_bind_group(
             },
             wgpu::BindGroupEntry {
                 binding: 2,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
+fn create_hud_texture_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+    label: &'static str,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
                 resource: wgpu::BindingResource::Sampler(sampler),
             },
         ],

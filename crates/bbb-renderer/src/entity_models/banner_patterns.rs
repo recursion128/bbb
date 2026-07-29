@@ -361,9 +361,7 @@ const VANILLA_BANNER_PATTERN_PRESENTATIONS: &[VanillaBannerPatternPresentation] 
     },
 ];
 
-pub(in crate::entity_models) fn banner_pattern_texture_ref(
-    pattern: BannerPatternKind,
-) -> EntityModelTextureRef {
+pub(crate) fn banner_pattern_texture_ref(pattern: BannerPatternKind) -> EntityModelTextureRef {
     VANILLA_BANNER_PATTERN_PRESENTATIONS[pattern.vanilla_registry_index()].texture_ref
 }
 

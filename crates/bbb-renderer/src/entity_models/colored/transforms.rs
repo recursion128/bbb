@@ -946,8 +946,20 @@ pub(in crate::entity_models) const BANNER_RENDER_SCALE: f32 = 0.666_666_7;
 /// `MODEL_SCALE = (⅔, -⅔, -⅔)` — the same shape for the ground (`ROTATION`
 /// segments) and wall (`FACING`) forms; only the mesh differs.
 /// `instance.position` is the banner block's min corner and `body_rot`
-/// carries the pre-negated `-angle` degrees, like the signs.
+/// carries the pre-negated `-angle` degrees, like the signs. The Loom GUI's
+/// flag-only model bypasses this world transform because
+/// `GuiBannerResultRenderer` submits the baked flag directly under its PIP
+/// pose stack.
 pub(in crate::entity_models) fn banner_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    if matches!(
+        instance.kind,
+        EntityModelKind::Banner {
+            flag_only: true,
+            ..
+        }
+    ) {
+        return entity_root_position_transform(instance);
+    }
     entity_root_position_transform(instance)
         * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5))
         * Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())

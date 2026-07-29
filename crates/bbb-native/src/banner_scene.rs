@@ -394,6 +394,7 @@ mod tests {
             standing.kind,
             EntityModelKind::Banner {
                 wall: false,
+                flag_only: false,
                 base_color: EntityDyeColor::Lime,
                 layers,
             }
@@ -410,6 +411,7 @@ mod tests {
             wall.kind,
             EntityModelKind::Banner {
                 wall: true,
+                flag_only: false,
                 base_color: EntityDyeColor::Red,
                 layers: [None; 16],
             }
@@ -511,6 +513,7 @@ mod tests {
             instances[0].kind,
             EntityModelKind::Banner {
                 wall: false,
+                flag_only: false,
                 base_color: EntityDyeColor::White,
                 layers: [None; 16],
             }
@@ -526,6 +529,7 @@ mod tests {
             instances[0].kind,
             EntityModelKind::Banner {
                 wall: false,
+                flag_only: false,
                 base_color: EntityDyeColor::White,
                 layers: [None; 16],
             }

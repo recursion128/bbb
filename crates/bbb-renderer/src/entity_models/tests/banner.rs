@@ -146,7 +146,7 @@ fn banner_layer_passes_match_vanilla_renderer() {
     // `submitPatterns` layers the `base` mask (tinted by the base color) and each pattern sheet
     // (tinted by its dye) over the same flag geometry through `RenderTypes::bannerPattern`
     // (translucent blend).
-    let passes = banner_textured_layer_passes(false, EntityDyeColor::Lime, &two_layers());
+    let passes = banner_textured_layer_passes(false, false, EntityDyeColor::Lime, &two_layers());
     assert_eq!(passes.len(), 5);
     let frame = &passes[0];
     assert_eq!(frame.kind, EntityModelLayerKind::BannerBase);
@@ -204,7 +204,7 @@ fn banner_layer_passes_match_vanilla_renderer() {
     }
     // The wall form swaps the frame parts (no pole) and the wall layer ids; a plain banner still
     // submits the base-color mask.
-    let wall_passes = banner_textured_layer_passes(true, EntityDyeColor::Red, &[None; 16]);
+    let wall_passes = banner_textured_layer_passes(true, false, EntityDyeColor::Red, &[None; 16]);
     assert_eq!(wall_passes.len(), 3);
     assert_eq!(wall_passes[0].model_layer, MODEL_LAYER_WALL_BANNER);
     assert_eq!(
@@ -220,9 +220,35 @@ fn banner_layer_passes_match_vanilla_renderer() {
 }
 
 #[test]
+fn banner_flag_only_passes_match_gui_result_renderer() {
+    let passes = banner_textured_layer_passes(false, true, EntityDyeColor::Red, &two_layers());
+    assert_eq!(passes.len(), 4);
+    assert!(passes
+        .iter()
+        .all(|pass| pass.kind != EntityModelLayerKind::BannerBase));
+    assert_eq!(passes[0].kind, EntityModelLayerKind::BannerFlag);
+    assert_eq!(passes[0].submit_sequence, 0);
+    assert_eq!(passes[1].kind, EntityModelLayerKind::BannerPattern);
+    assert_eq!(passes[1].texture, BANNER_PATTERN_BASE_TEXTURE_REF);
+    assert_eq!(passes[1].submit_sequence, 1);
+    assert_eq!(passes[2].submit_sequence, 2);
+    assert_eq!(passes[3].submit_sequence, 3);
+
+    let instance = EntityModelInstance::banner_flag(-1, EntityDyeColor::Red, [None; 16]);
+    assert_eq!(banner_model_root_transform(instance), glam::Mat4::IDENTITY);
+    let mut model = BannerModel::new(false);
+    model.prepare(&instance);
+    assert_eq!(
+        model.root().try_child("flag").unwrap().pose.rotation[0],
+        0.0
+    );
+}
+
+#[test]
 fn banner_model_keys_and_texture_refs_match_vanilla_selection() {
     let kind = EntityModelKind::Banner {
         wall: false,
+        flag_only: false,
         base_color: EntityDyeColor::Lime,
         layers: [None; 16],
     };
