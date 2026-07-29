@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::block_state_types::vanilla_block_state_support_facts;
+use bbb_protocol::block_state_types::{
+    vanilla_block_state_support_facts, VanillaBlockSupportDirection, VanillaBlockSupportType,
+};
 use bbb_protocol::block_types::{
     vanilla_block_type_for_resource_id, VanillaPropagatesSkylightDownOverride,
 };
@@ -683,6 +685,24 @@ impl WorldStore {
             .into_iter()
             .position(|candidate| candidate == direction)
             .is_some_and(|index| self.debug_block_sturdy_faces(block)[index])
+    }
+
+    /// Mirrors cached `BlockState.isFaceSturdy(direction, SupportType.FULL)`;
+    /// dynamic states fall back to their live empty-context support shape.
+    pub(crate) fn block_full_face_sturdy(
+        &self,
+        block: &BlockProbe,
+        direction: ProtocolDirection,
+    ) -> Option<bool> {
+        let facts = vanilla_block_state_support_facts(block.block_state_id)?;
+        Some(if facts.dynamic_shape() {
+            self.block_has_full_sturdy_face(block, direction)
+        } else {
+            facts.face_sturdy(
+                vanilla_support_direction(direction),
+                VanillaBlockSupportType::Full,
+            )
+        })
     }
 
     /// Mirrors `SupportType.CENTER` for the vertical support queries used by
@@ -4702,6 +4722,17 @@ fn block_direction(direction: ProtocolDirection) -> BlockDirection {
     }
 }
 
+fn vanilla_support_direction(direction: ProtocolDirection) -> VanillaBlockSupportDirection {
+    match direction {
+        ProtocolDirection::Down => VanillaBlockSupportDirection::Down,
+        ProtocolDirection::Up => VanillaBlockSupportDirection::Up,
+        ProtocolDirection::North => VanillaBlockSupportDirection::North,
+        ProtocolDirection::South => VanillaBlockSupportDirection::South,
+        ProtocolDirection::West => VanillaBlockSupportDirection::West,
+        ProtocolDirection::East => VanillaBlockSupportDirection::East,
+    }
+}
+
 const DEBUG_SOLID_FACE_DIRECTIONS: [BlockDirection; 6] = [
     BlockDirection::West,
     BlockDirection::South,
@@ -7664,6 +7695,29 @@ mod tests {
             set_block(&mut world, pos, block_state_id);
             let probe = world.probe_block(pos).expect("test block probe");
             assert_eq!(world.debug_block_sturdy_faces(&probe), expected);
+            for (direction, expected) in [
+                ProtocolDirection::Down,
+                ProtocolDirection::Up,
+                ProtocolDirection::North,
+                ProtocolDirection::South,
+                ProtocolDirection::West,
+                ProtocolDirection::East,
+            ]
+            .into_iter()
+            .zip([
+                expected[4],
+                expected[5],
+                expected[3],
+                expected[1],
+                expected[0],
+                expected[2],
+            ]) {
+                assert_eq!(
+                    world.block_full_face_sturdy(&probe, direction),
+                    Some(expected),
+                    "{block_state_id} {direction:?}"
+                );
+            }
         }
     }
 
@@ -7686,6 +7740,14 @@ mod tests {
         assert_eq!(
             world.debug_block_sturdy_faces(&probe),
             [true, false, false, false, false, false]
+        );
+        assert_eq!(
+            world.block_full_face_sturdy(&probe, ProtocolDirection::West),
+            Some(true)
+        );
+        assert_eq!(
+            world.block_full_face_sturdy(&probe, ProtocolDirection::East),
+            Some(false)
         );
     }
 

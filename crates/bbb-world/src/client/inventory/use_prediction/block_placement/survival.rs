@@ -659,12 +659,15 @@ impl WorldStore {
         direction: Direction,
         support_type: VanillaBlockSupportType,
     ) -> Option<bool> {
+        if support_type == VanillaBlockSupportType::Full {
+            return self.block_full_face_sturdy(block, direction);
+        }
         let facts = vanilla_block_state_support_facts(block.block_state_id)?;
         if !facts.dynamic_shape() {
             return Some(facts.face_sturdy(support_direction(direction), support_type));
         }
         Some(match support_type {
-            VanillaBlockSupportType::Full => self.block_has_full_sturdy_face(block, direction),
+            VanillaBlockSupportType::Full => unreachable!("FULL returned above"),
             VanillaBlockSupportType::Center => {
                 self.block_has_vertical_center_sturdy_face(block, direction)
             }
