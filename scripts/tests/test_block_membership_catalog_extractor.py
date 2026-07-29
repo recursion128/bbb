@@ -19,8 +19,10 @@ from block_membership_catalog_extractor import (  # noqa: E402
     constructor_types_extending,
     fire_flammable_blocks,
     invisible_render_shape_constructor_types,
+    leaf_animate_particle_profiles,
     no_collision_blocks,
     no_terrain_particle_blocks,
+    tinted_leaves_particle_constant,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -403,6 +405,137 @@ class OtherBlock extends Block {}
             constructor_types_extending(
                 [base, child], "net.minecraft.world.level.block.BaseBlock", 4
             )
+
+    def test_leaf_animate_profiles_preserve_constructor_particle_semantics(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b"""package net.minecraft.world.level.block;
+class Blocks {
+  static final Block OAK = register(
+      "oak", p -> new TintedParticleLeavesBlock(0.01F, p), properties());
+  static final Block CHERRY = register(
+      "cherry", p -> new UntintedParticleLeavesBlock(
+          0.1F, ParticleTypes.CHERRY_LEAVES, p), properties());
+  static final Block AZALEA = register(
+      "azalea", p -> new UntintedParticleLeavesBlock(
+          0.02F,
+          ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, -9399763),
+          p),
+      properties());
+}""",
+        )
+        entries = [
+            BlockMembershipEntry("OAK", "minecraft:oak"),
+            BlockMembershipEntry("CHERRY", "minecraft:cherry"),
+            BlockMembershipEntry("AZALEA", "minecraft:azalea"),
+        ]
+        profiles = leaf_animate_particle_profiles(
+            source,
+            entries,
+            frozenset(
+                {"TintedParticleLeavesBlock", "UntintedParticleLeavesBlock"}
+            ),
+            frozenset({"TintedParticleLeavesBlock"}),
+            {
+                "TINTED_LEAVES": "minecraft:tinted_leaves",
+                "CHERRY_LEAVES": "minecraft:cherry_leaves",
+            },
+            "TINTED_LEAVES",
+            3,
+        )
+        self.assertEqual(
+            [
+                (
+                    profile.resource_id,
+                    profile.chance,
+                    profile.particle_resource_id,
+                    profile.foliage_tinted,
+                    profile.color_argb,
+                )
+                for profile in profiles
+            ],
+            [
+                (
+                    "minecraft:oak",
+                    0.01,
+                    "minecraft:tinted_leaves",
+                    True,
+                    None,
+                ),
+                (
+                    "minecraft:cherry",
+                    0.1,
+                    "minecraft:cherry_leaves",
+                    False,
+                    None,
+                ),
+                (
+                    "minecraft:azalea",
+                    0.02,
+                    "minecraft:tinted_leaves",
+                    False,
+                    0xFF70922D,
+                ),
+            ],
+        )
+
+    def test_leaf_animate_profiles_reject_nonliteral_configuration(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/Blocks.java",
+            b"""package net.minecraft.world.level.block;
+class Blocks {
+  static final Block OAK = register(
+      "oak", p -> new TintedParticleLeavesBlock(CHANCE, p), properties());
+}""",
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "leaf particle chance is not a float literal",
+        ):
+            leaf_animate_particle_profiles(
+                source,
+                [BlockMembershipEntry("OAK", "minecraft:oak")],
+                frozenset({"TintedParticleLeavesBlock"}),
+                frozenset({"TintedParticleLeavesBlock"}),
+                {"TINTED_LEAVES": "minecraft:tinted_leaves"},
+                "TINTED_LEAVES",
+                1,
+            )
+
+    def test_tinted_leaf_particle_comes_from_override_body(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/TintedParticleLeavesBlock.java",
+            b"""package net.minecraft.world.level.block;
+class TintedParticleLeavesBlock {
+  protected void spawnFallingLeavesParticle(Level level, BlockPos pos, Random random) {
+    ColorParticleOption particle = ColorParticleOption.create(
+        ParticleTypes.TINTED_LEAVES, level.getClientLeafTintColor(pos));
+    level.addParticle(particle);
+  }
+}""",
+        )
+        self.assertEqual(
+            tinted_leaves_particle_constant([source]),
+            "TINTED_LEAVES",
+        )
+
+    def test_tinted_leaf_particle_rejects_a_non_client_leaf_color(self) -> None:
+        source = parse_source(
+            "net/minecraft/world/level/block/TintedParticleLeavesBlock.java",
+            b"""package net.minecraft.world.level.block;
+class TintedParticleLeavesBlock {
+  protected void spawnFallingLeavesParticle(Level level, BlockPos pos, Random random) {
+    ColorParticleOption particle = ColorParticleOption.create(
+        ParticleTypes.TINTED_LEAVES, 0xff00ff);
+    level.addParticle(particle);
+  }
+}""",
+        )
+        with self.assertRaisesRegex(
+            BlockMembershipCatalogExtractionError,
+            "tinted leaf color must come from getClientLeafTintColor",
+        ):
+            tinted_leaves_particle_constant([source])
 
     def test_invisible_render_shape_classes_use_method_return_cst(self) -> None:
         source = parse_source(

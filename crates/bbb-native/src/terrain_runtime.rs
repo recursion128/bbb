@@ -15,10 +15,7 @@ use bbb_world::{
     WorldStore,
 };
 
-use crate::biome_tint::{
-    block_wants_biome_blend, BiomeBlend, BIOME_BLEND_DIAMETER, BIOME_BLEND_RADIUS,
-    BIOME_BLEND_SAMPLES,
-};
+use crate::biome_tint::{block_wants_biome_blend, build_biome_blend, BiomeBlend};
 use crate::camera_pose::camera_pose_from_world;
 
 mod mesh_worker;
@@ -818,7 +815,7 @@ fn convert_terrain_snapshot(
                 .as_deref()
                 .map(|name| block_wants_biome_blend(name, has_water_fluid))
                 .unwrap_or(has_water_fluid);
-            let blend = wants_blend.then(|| build_biome_blend(biome_sampler, position));
+            let blend = wants_blend.then(|| build_chunk_biome_blend(biome_sampler, position));
             let mut render_data = textures.block_render_data(
                 cell.block_name.as_deref(),
                 &cell.block_properties,
@@ -891,22 +888,11 @@ fn convert_terrain_snapshot(
 /// pulling neighbour-chunk biomes through `sampler`. Columns whose chunk is not
 /// loaded stay `None`, so the averaging step honestly truncates the window at
 /// the render-distance edge instead of inventing biome data.
-fn build_biome_blend(
+fn build_chunk_biome_blend(
     sampler: &bbb_world::ChunkBiomeSampler,
     center: BlockRenderPosition,
 ) -> BiomeBlend {
-    let mut samples = [None; BIOME_BLEND_SAMPLES];
-    for row in 0..BIOME_BLEND_DIAMETER {
-        for col in 0..BIOME_BLEND_DIAMETER {
-            let index = (row * BIOME_BLEND_DIAMETER + col) as usize;
-            samples[index] = sampler.biome_id_at(
-                center.x - BIOME_BLEND_RADIUS + col,
-                center.y,
-                center.z - BIOME_BLEND_RADIUS + row,
-            );
-        }
-    }
-    BiomeBlend::new(center, samples)
+    build_biome_blend(center, |pos| sampler.biome_id_at(pos.x, pos.y, pos.z))
 }
 
 fn renderer_skip_rendering(

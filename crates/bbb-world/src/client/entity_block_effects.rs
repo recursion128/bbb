@@ -110,9 +110,6 @@ impl<'a> EntityBlockEffectWorld<'a> {
     /// Vanilla `Entity.isInRain`: `Level.isRainingAt` at the entity's block
     /// position and at that column sampled at the bounding-box top.
     pub(crate) fn is_in_rain(&self, position: EntityVec3, bounds_max_y: f64) -> bool {
-        if !self.weather.raining {
-            return false;
-        }
         let block_pos = BlockPos {
             x: floor_i32(position.x),
             y: floor_i32(position.y),
@@ -125,12 +122,14 @@ impl<'a> EntityBlockEffectWorld<'a> {
             })
     }
 
-    /// Vanilla `Level.precipitationAt == Biome.Precipitation.RAIN` with the
-    /// `isRaining` gate hoisted into [`Self::is_in_rain`]. Sky exposure uses
+    /// Vanilla `Level.isRainingAt`, including the `isRaining` gate. Sky exposure uses
     /// the synced sky-light data (`canSeeSky` needs full brightness) and the
     /// packet `MOTION_BLOCKING` heightmap; positions above the build height
     /// stay exposed like vanilla's light engine padding.
-    fn is_raining_at(&self, pos: BlockPos) -> bool {
+    pub(crate) fn is_raining_at(&self, pos: BlockPos) -> bool {
+        if !self.weather.raining {
+            return false;
+        }
         let top_y = self.dimension.min_y + self.dimension.height;
         if pos.y < self.dimension.min_y {
             return false;

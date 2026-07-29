@@ -31,6 +31,16 @@ class BlockFloatPropertyEntry:
     value: float
 
 
+@dataclass(frozen=True)
+class LeafAnimateParticleProfileEntry:
+    constant_name: str
+    resource_id: str
+    chance: float
+    particle_resource_id: str
+    foliage_tinted: bool
+    color_argb: int | None
+
+
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
     span = expression.span
     raise BlockMembershipCatalogExtractionError(
@@ -520,6 +530,197 @@ def constructor_family_blocks(
             f"{source.relative_path}: duplicate constructor-family block resource id"
         )
     return entries
+
+
+def tinted_leaves_particle_constant(
+    sources: list[JavaSource],
+    owner_fqcn: str = "net.minecraft.world.level.block.TintedParticleLeavesBlock",
+) -> str:
+    matches: list[tuple[JavaSource, JavaExpression]] = []
+    for source in sources:
+        for method in source.methods_for(owner_fqcn):
+            if method.name != "spawnFallingLeavesParticle" or method.body is None:
+                continue
+            for call in source.calls:
+                if not (
+                    method.span.start_byte <= call.span.start_byte
+                    and call.span.end_byte <= method.span.end_byte
+                    and call.name == "create"
+                    and call.qualifier is not None
+                    and call.qualifier.canonical.replace(" ", "") == "ColorParticleOption"
+                    and len(call.arguments) == 2
+                ):
+                    continue
+                constant_name = field_constant(
+                    source, call.arguments[0], "ParticleTypes"
+                )
+                if constant_name is None:
+                    _fail(
+                        source,
+                        call.arguments[0],
+                        "tinted leaf particle must be a ParticleTypes constant",
+                    )
+                tint_calls = [
+                    candidate
+                    for candidate in source.calls
+                    if call.arguments[1].span.start_byte
+                    <= candidate.span.start_byte
+                    and candidate.span.end_byte <= call.arguments[1].span.end_byte
+                    and candidate.name == "getClientLeafTintColor"
+                ]
+                if (
+                    len(tint_calls) != 1
+                    or tint_calls[0].span != call.arguments[1].span
+                    or len(tint_calls[0].arguments) != 1
+                ):
+                    _fail(
+                        source,
+                        call.arguments[1],
+                        "tinted leaf color must come from getClientLeafTintColor",
+                    )
+                matches.append((source, call.arguments[0]))
+
+    if len(matches) != 1:
+        raise BlockMembershipCatalogExtractionError(
+            f"expected one {owner_fqcn}.spawnFallingLeavesParticle "
+            f"ColorParticleOption.create call, extracted {len(matches)}"
+        )
+    source, expression = matches[0]
+    constant_name = field_constant(source, expression, "ParticleTypes")
+    assert constant_name is not None
+    return constant_name
+
+
+def leaf_animate_particle_profiles(
+    source: JavaSource,
+    leaf_entries: list[BlockMembershipEntry],
+    leaf_constructor_types: frozenset[str],
+    foliage_tinted_constructor_types: frozenset[str],
+    particle_resource_ids: dict[str, str],
+    foliage_particle_constant: str,
+    expected_count: int = 11,
+) -> list[LeafAnimateParticleProfileEntry]:
+    """Extract ``LeavesBlock.animateTick`` constructor configuration."""
+
+    if not foliage_tinted_constructor_types <= leaf_constructor_types:
+        raise BlockMembershipCatalogExtractionError(
+            "foliage-tinted leaf constructor family is not a leaf-family subset"
+        )
+    leaf_by_constant = {entry.constant_name: entry for entry in leaf_entries}
+    profiles: list[LeafAnimateParticleProfileEntry] = []
+    for field in source.fields_for("net.minecraft.world.level.block.Blocks"):
+        leaf_entry = leaf_by_constant.get(field.name)
+        if leaf_entry is None:
+            continue
+        if field.initializer is None:
+            raise BlockMembershipCatalogExtractionError(
+                f"{source.relative_path}: leaf field {field.name} lacks initializer"
+            )
+        creations = [
+            node
+            for node in descendants(field.initializer.node)
+            if _constructed_type_name(source, node) in leaf_constructor_types
+        ]
+        if len(creations) != 1:
+            _fail(
+                source,
+                field.initializer,
+                f"leaf field {field.name} must contain one leaf constructor",
+            )
+        creation = creations[0]
+        constructor_type = _constructed_type_name(source, creation)
+        assert constructor_type is not None
+        arguments = creation.child_by_field_name("arguments")
+        if arguments is None:
+            _fail(source, source.expression(creation), "leaf constructor lacks arguments")
+        args = [source.expression(child) for child in arguments.named_children]
+        expected_arity = 2 if constructor_type in foliage_tinted_constructor_types else 3
+        if len(args) != expected_arity:
+            _fail(
+                source,
+                source.expression(creation),
+                f"{constructor_type} constructor expected {expected_arity} arguments",
+            )
+        chance_literal = args[0].canonical.replace(" ", "")
+        if not chance_literal.endswith(("F", "f")):
+            _fail(source, args[0], "leaf particle chance is not a float literal")
+        try:
+            chance = float(chance_literal[:-1])
+        except ValueError:
+            _fail(source, args[0], "leaf particle chance is not a float literal")
+        if not 0.0 <= chance <= 1.0:
+            _fail(source, args[0], "leaf particle chance is outside [0, 1]")
+
+        foliage_tinted = constructor_type in foliage_tinted_constructor_types
+        color_argb = None
+        if foliage_tinted:
+            particle_constant = foliage_particle_constant
+        else:
+            particle_constant = field_constant(source, args[1], "ParticleTypes")
+            if particle_constant is None:
+                matching_calls = [
+                    call
+                    for call in source.calls
+                    if call.span == args[1].span
+                    and call.name == "create"
+                    and call.qualifier is not None
+                    and call.qualifier.canonical.replace(" ", "")
+                    == "ColorParticleOption"
+                ]
+                if len(matching_calls) != 1 or len(matching_calls[0].arguments) != 2:
+                    _fail(
+                        source,
+                        args[1],
+                        "untinted leaf particle must be a ParticleTypes constant "
+                        "or ColorParticleOption.create",
+                    )
+                particle_constant = field_constant(
+                    source, matching_calls[0].arguments[0], "ParticleTypes"
+                )
+                if particle_constant is None:
+                    _fail(
+                        source,
+                        matching_calls[0].arguments[0],
+                        "colored leaf particle must be a ParticleTypes constant",
+                    )
+                color_literal = matching_calls[0].arguments[1].canonical.replace(" ", "")
+                try:
+                    color_argb = int(color_literal, 10) & 0xFFFF_FFFF
+                except ValueError:
+                    _fail(
+                        source,
+                        matching_calls[0].arguments[1],
+                        "colored leaf ARGB value is not an integer literal",
+                    )
+
+        particle_resource_id = particle_resource_ids.get(particle_constant)
+        if particle_resource_id is None:
+            _fail(
+                source,
+                args[0],
+                f"unresolved ParticleTypes.{particle_constant}",
+            )
+        profiles.append(
+            LeafAnimateParticleProfileEntry(
+                constant_name=field.name,
+                resource_id=leaf_entry.resource_id,
+                chance=chance,
+                particle_resource_id=particle_resource_id,
+                foliage_tinted=foliage_tinted,
+                color_argb=color_argb,
+            )
+        )
+
+    if len(profiles) != expected_count:
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} leaf animate profiles, "
+            f"extracted {len(profiles)}"
+        )
+    if len({profile.resource_id for profile in profiles}) != len(profiles):
+        raise BlockMembershipCatalogExtractionError(
+            f"{source.relative_path}: duplicate leaf animate profile resource id"
+        )
+    return profiles
 
 
 def constructor_types_extending(

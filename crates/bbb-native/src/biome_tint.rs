@@ -124,6 +124,24 @@ pub(crate) const BIOME_BLEND_DIAMETER: i32 = BIOME_BLEND_RADIUS * 2 + 1;
 pub(crate) const BIOME_BLEND_SAMPLES: usize =
     (BIOME_BLEND_DIAMETER * BIOME_BLEND_DIAMETER) as usize;
 
+pub(crate) fn build_biome_blend(
+    center: BlockRenderPosition,
+    mut sample: impl FnMut(BlockRenderPosition) -> Option<i32>,
+) -> BiomeBlend {
+    let mut samples = [None; BIOME_BLEND_SAMPLES];
+    for row in 0..BIOME_BLEND_DIAMETER {
+        for col in 0..BIOME_BLEND_DIAMETER {
+            let index = (row * BIOME_BLEND_DIAMETER + col) as usize;
+            samples[index] = sample(BlockRenderPosition {
+                x: center.x - BIOME_BLEND_RADIUS + col,
+                y: center.y,
+                z: center.z - BIOME_BLEND_RADIUS + row,
+            });
+        }
+    }
+    BiomeBlend::new(center, samples)
+}
+
 /// The biome-id window used to average biome tint colours across the
 /// `biomeBlendRadius` neighbourhood, mirroring vanilla
 /// `ClientLevel.calculateBlockTint`. Sampling happens only in the x/z plane at

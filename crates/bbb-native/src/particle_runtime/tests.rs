@@ -7332,6 +7332,7 @@ fn environment_particle_bridge_preserves_diagnostics_and_rejects_mismatched_type
             position: [1.0, 64.0, 0.0],
             velocity: [0.0, 0.04, 0.0],
             always_show: true,
+            color_source: None,
         },
         environment_particle_spawn("minecraft:enchanted_hit", Vec::new()),
         environment_particle_spawn(
@@ -7512,6 +7513,79 @@ fn environment_particle_bridge_preserves_every_typed_render_option_family() {
 }
 
 #[test]
+fn environment_leaf_color_source_uses_leaf_position_blend_and_fixed_sources() {
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+        test_biome_color_profile(
+            11,
+            [110, 120, 130],
+            [140, 150, 160],
+            [170, 180, 190],
+            [4, 5, 6],
+        ),
+    ]));
+    let leaf_pos = WorldBlockPos { x: 0, y: 32, z: 0 };
+    let mut oak = typed_environment_particle_spawn(
+        "minecraft:tinted_leaves",
+        ClientParticleOptionValue::Color { argb: u32::MAX },
+    );
+    oak.position = [0.25, 31.95, 0.75];
+    oak.color_source = Some(EnvironmentParticleColorSource::ClientLeaf {
+        block_pos: leaf_pos,
+        block_resource_id: "minecraft:oak_leaves",
+    });
+    let mut spruce = oak.clone();
+    spruce.color_source = Some(EnvironmentParticleColorSource::ClientLeaf {
+        block_pos: leaf_pos,
+        block_resource_id: "minecraft:spruce_leaves",
+    });
+    let mut runtime = test_native_particle_runtime(0, ClientParticleStatus::All);
+    runtime.resolver.set_terrain_particle_sprite_ids(&textures);
+    let vertical_sampler = SplitYBiomeSampler {
+        split_y: 32,
+        below_biome_id: 7,
+        at_or_above_biome_id: 11,
+    };
+
+    let batch = runtime.spawn_environment_particles(
+        &[oak.clone(), spruce],
+        LevelParticleSpawnContext::default(),
+        Some(&vertical_sampler),
+        None,
+    );
+
+    assert_eq!(batch.len(), 2);
+    assert_eq!(
+        batch.commands[0].option_color,
+        Some(rgb_option(140, 150, 160)),
+        "the source leaf y, not the below-block particle y, selects the biome"
+    );
+    assert_eq!(
+        batch.commands[1].option_color,
+        Some(rgb_option(0x61, 0x99, 0x61)),
+        "spruce uses its fixed BlockTintSource"
+    );
+
+    let horizontal_sampler = SplitXBiomeSampler {
+        split_x: 0,
+        left_biome_id: 7,
+        right_biome_id: 11,
+    };
+    let blended = runtime.spawn_environment_particles(
+        &[oak],
+        LevelParticleSpawnContext::default(),
+        Some(&horizontal_sampler),
+        None,
+    );
+    assert_eq!(blended.len(), 1);
+    assert_eq!(
+        blended.commands[0].option_color,
+        Some(rgb_option(100, 110, 120)),
+        "the default 5x5 window has two left and three right columns"
+    );
+}
+
+#[test]
 fn environment_particle_bridge_uses_existing_block_provider_acceptance() {
     let spawn = typed_environment_particle_spawn(
         "minecraft:block",
@@ -7652,6 +7726,7 @@ fn environment_particle_spawn(
         position: [0.0, 64.0, 0.0],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     }
 }
 
@@ -7671,6 +7746,7 @@ fn typed_environment_particle_spawn(
         position: [0.0, 64.0, 0.0],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     }
 }
 
@@ -10940,6 +11016,22 @@ impl ParticleBiomeSampler for SplitXBiomeSampler {
             self.left_biome_id
         } else {
             self.right_biome_id
+        })
+    }
+}
+
+struct SplitYBiomeSampler {
+    split_y: i32,
+    below_biome_id: i32,
+    at_or_above_biome_id: i32,
+}
+
+impl ParticleBiomeSampler for SplitYBiomeSampler {
+    fn biome_id_at(&self, pos: WorldBlockPos) -> Option<i32> {
+        Some(if pos.y < self.split_y {
+            self.below_biome_id
+        } else {
+            self.at_or_above_biome_id
         })
     }
 }

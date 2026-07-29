@@ -9,8 +9,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Emits the built-in block-state support, collision, solid-render, redstone
- * conductor, and legacy liquid facts cached by Vanilla.
+ * Emits the built-in block-state support, collision, can-occlude, solid-render,
+ * redstone-conductor, and legacy liquid facts cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -85,6 +85,8 @@ public final class BlockStateSupportReport {
                 id
                     + "\t"
                     + facts
+                    + "\t"
+                    + (state.canOcclude() ? 1 : 0)
                     + "\t"
                     + (state.isSolidRender() ? 1 : 0)
                     + "\t"

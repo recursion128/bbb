@@ -731,3 +731,6 @@
 - **2026-07-29（雷电导杆环境粒子工程闭环）**：雷暴、200-tick 周期与
   WORLD_SURFACE 顶面门禁现按 `LightningRodBlock.animateTick` 运行；环境动画与
   雷击 level event 共用三轴 electric-spark 采样公式和确定性 level 随机流。
+- **2026-07-29（树叶客户端环境粒子工程闭环）**：11 种树叶的概率、粒子选项与
+  固定色由 Vanilla 注册生成；雨滴和落叶按 `canOcclude`/碰撞上表面及原始随机序
+  运行，动态叶色复用 5×5 生物群系混色并保留云杉/白桦固定 tint source。

@@ -68,10 +68,14 @@ pub struct ParticleBlockFluidSurfaceSample {
 pub struct EnvironmentAnimateBlockSample {
     pub fluid: Option<crate::TerrainFluidState>,
     pub block_is_air: bool,
+    pub can_occlude: bool,
     pub solid_render: bool,
     /// `BlockState.isFaceSturdy(..., SupportType.FULL)` in Vanilla
     /// `Direction.values()` order: down, up, north, south, west, east.
     pub full_face_sturdy: [bool; 6],
+    /// `Block.isFaceFull(collisionShape, direction)` in Vanilla
+    /// `Direction.values()` order: down, up, north, south, west, east.
+    pub collision_full_face: [bool; 6],
     pub fire_flammable: bool,
     pub triggers_dried_ghast_ambient_sound: bool,
     pub enchantment_power_provider: bool,
@@ -1457,12 +1461,18 @@ impl WorldStore {
         let full_face_sturdy = self
             .block_full_face_sturdy_faces(&block)
             .unwrap_or([false; 6]);
+        let collision_full_face = shape.map_or([false; 6], |shape| {
+            VANILLA_PROTOCOL_DIRECTIONS
+                .map(|direction| shape.has_full_face(block_direction(direction)))
+        });
+        let support_facts = vanilla_block_state_support_facts(block.block_state_id);
         Some(EnvironmentAnimateBlockSample {
             fluid: block.fluid,
             block_is_air: block_name_is_air(block_name),
-            solid_render: vanilla_block_state_support_facts(block.block_state_id)
-                .is_some_and(|facts| facts.solid_render()),
+            can_occlude: support_facts.is_some_and(|facts| facts.can_occlude()),
+            solid_render: support_facts.is_some_and(|facts| facts.solid_render()),
             full_face_sturdy,
+            collision_full_face,
             fire_flammable: block_name_is_fire_flammable(block_name),
             triggers_dried_ghast_ambient_sound: block_name_triggers_dried_ghast_ambient_sound(
                 block_name,
@@ -6503,8 +6513,10 @@ mod tests {
             Some(EnvironmentAnimateBlockSample {
                 fluid: None,
                 block_is_air: true,
+                can_occlude: false,
                 solid_render: false,
                 full_face_sturdy: [false; 6],
+                collision_full_face: [false; 6],
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
                 enchantment_power_provider: false,
@@ -6521,8 +6533,10 @@ mod tests {
             Some(EnvironmentAnimateBlockSample {
                 fluid: None,
                 block_is_air: false,
+                can_occlude: true,
                 solid_render: true,
                 full_face_sturdy: [true; 6],
+                collision_full_face: [true; 6],
                 fire_flammable: false,
                 triggers_dried_ghast_ambient_sound: false,
                 enchantment_power_provider: false,
@@ -6548,8 +6562,13 @@ mod tests {
             .environment_animate_block_sample(pos)
             .expect("loaded top slab");
         assert!(!top_slab.solid_render);
+        assert!(top_slab.can_occlude);
         assert_eq!(
             top_slab.full_face_sturdy,
+            [false, true, false, false, false, false]
+        );
+        assert_eq!(
+            top_slab.collision_full_face,
             [false, true, false, false, false, false]
         );
         assert_eq!(
@@ -6570,6 +6589,7 @@ mod tests {
             .environment_animate_block_sample(pos)
             .expect("loaded glass");
         assert!(glass.impermeable);
+        assert!(!glass.can_occlude);
         assert!(!glass.solid_render);
 
         let oak_planks_id = vanilla_block_state_id("minecraft:oak_planks", []);

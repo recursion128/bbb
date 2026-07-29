@@ -19,11 +19,11 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=5",
-                "0\t0\t0\t0\t0",
-                "1\t0\t1\t0\t0",
-                "2\t7\t0\t1\t1",
-                "3\t7\t1\t1\t0",
-                "4\t0\t0\t0\t1",
+                "0\t0\t1\t0\t0\t0",
+                "1\t0\t1\t1\t0\t0",
+                "2\t7\t0\t0\t1\t1",
+                "3\t7\t1\t1\t1\t0",
+                "4\t0\t0\t0\t0\t1",
             ]
         )
 
@@ -31,6 +31,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
             GENERATOR.parse_facts(source, 5),
             (
                 (0, 0, 7, 7, 0),
+                (True, True, False, True, False),
                 (False, True, False, True, False),
                 (False, False, True, True, False),
                 (False, False, True, False, True),
@@ -40,6 +41,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
     def test_render_rust_uses_a_first_seen_palette_and_u8_state_indices(self):
         rendered = GENERATOR.render_rust(
             (0, 0xFFFF_FFFF, 0, 7),
+            (True, True, False, False),
             (False, True, False, True),
             (False, True, True, False),
             (False, False, True, True),
@@ -51,18 +53,21 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         self.assertIn("    0xffffffff,", rendered)
         self.assertIn("    0x00000007,", rendered)
         self.assertIn("    0, 1, 0, 2,", rendered)
+        self.assertIn("VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS", rendered)
+        self.assertIn("    0x0000000000000003,", rendered)
         self.assertIn("VANILLA_BLOCK_STATE_SOLID_RENDER_BITS", rendered)
         self.assertIn("    0x000000000000000a,", rendered)
         self.assertIn("VANILLA_BLOCK_STATE_LIQUID_BITS", rendered)
         self.assertIn("    0x000000000000000c,", rendered)
         self.assertIn("VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS", rendered)
         self.assertIn("    0x0000000000000006,", rendered)
-        self.assertEqual(rendered.count("#[rustfmt::skip]"), 5)
+        self.assertEqual(rendered.count("#[rustfmt::skip]"), 6)
 
     def test_render_rust_rejects_a_palette_that_does_not_fit_u8(self):
         with self.assertRaisesRegex(ValueError, "does not fit in u8"):
             GENERATOR.render_rust(
                 tuple(range(257)),
+                (False,) * 257,
                 (False,) * 257,
                 (False,) * 257,
                 (False,) * 257,
@@ -72,8 +77,8 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=2",
-                "1\t1\t0\t0\t0",
-                "0\t0\t0\t0\t0",
+                "1\t1\t0\t0\t0\t0",
+                "0\t0\t0\t0\t0\t0",
             ]
         )
 
@@ -84,7 +89,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t4294967296\t0\t0\t0",
+                "0\t4294967296\t0\t0\t0\t0",
             ]
         )
 
@@ -95,7 +100,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t0\ttrue\t0\t0",
+                "0\t0\t0\ttrue\t0\t0",
             ]
         )
 
@@ -106,7 +111,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t0\t0\t0\tliquid",
+                "0\t0\t0\t0\t0\tliquid",
             ]
         )
 
@@ -117,7 +122,7 @@ class GenerateBlockStateSupportFactsTests(unittest.TestCase):
         source = "\n".join(
             [
                 "version=26.1 count=1",
-                "0\t0\t0\tconductor\t0",
+                "0\t0\t0\t0\tconductor\t0",
             ]
         )
 

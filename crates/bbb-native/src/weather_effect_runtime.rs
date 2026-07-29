@@ -173,6 +173,7 @@ impl WeatherEffectRuntime {
                 ],
                 velocity: [0.0; 3],
                 always_show: false,
+                color_source: None,
             });
         }
 

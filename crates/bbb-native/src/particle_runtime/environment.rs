@@ -22,9 +22,13 @@ use bbb_world::{
 use super::{
     argb_particle_color, falling_dust_color_for_block_state_id,
     particle_item_option_state_for_stack, particle_provider_accepts_spawn, random_between,
-    rgb_particle_color_u32, EnvironmentParticleSpawn, LevelParticleSpawnContext,
-    ParticleBiomeSampler, ParticleCommandResolver, ParticleOptionRenderState,
-    SimpleParticleTemplate,
+    rgb_particle_color_u32, EnvironmentParticleColorSource, EnvironmentParticleSpawn,
+    LevelParticleSpawnContext, ParticleBiomeSampler, ParticleCommandResolver,
+    ParticleOptionRenderState, SimpleParticleTemplate,
+};
+use crate::{
+    biome_tint::{build_biome_blend, is_foliage_tinted_block},
+    terrain_runtime::BlockRenderPosition,
 };
 
 struct PreparedEnvironmentParticle {
@@ -43,13 +47,17 @@ impl ParticleCommandResolver {
     ) -> ParticleSpawnBatch {
         let mut batch = ParticleSpawnBatch::default();
         for spawn in spawns {
-            let prepared = match self.prepare_environment_particle(&spawn.particle) {
+            let mut prepared = match self.prepare_environment_particle(&spawn.particle) {
                 Ok(prepared) => prepared,
                 Err(diagnostic) => {
                     super::append_particle_batch(&mut batch, diagnostic);
                     continue;
                 }
             };
+            if let Some(color_source) = spawn.color_source {
+                prepared.option_state.color =
+                    Some(self.environment_particle_color(color_source, biome_sampler));
+            }
             batch.missing_sprite_count += prepared.template.missing_sprite_count;
             let position = Vec3d {
                 x: spawn.position[0],
@@ -82,6 +90,44 @@ impl ParticleCommandResolver {
             ));
         }
         batch
+    }
+
+    fn environment_particle_color(
+        &self,
+        source: EnvironmentParticleColorSource,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
+    ) -> [f32; 4] {
+        match source {
+            EnvironmentParticleColorSource::ClientLeaf {
+                block_pos,
+                block_resource_id,
+            } => {
+                let center = BlockRenderPosition {
+                    x: block_pos.x,
+                    y: block_pos.y,
+                    z: block_pos.z,
+                };
+                let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
+                let blend = if is_foliage_tinted_block(block_resource_id) {
+                    biome_sampler.map(|sampler| {
+                        build_biome_blend(center, |pos| {
+                            sampler.biome_id_at(BlockPos {
+                                x: pos.x,
+                                y: pos.y,
+                                z: pos.z,
+                            })
+                        })
+                    })
+                } else {
+                    None
+                };
+                self.terrain_particle_tint_catalog.client_leaf_tint_color(
+                    block_resource_id,
+                    biome_id,
+                    blend.as_ref(),
+                )
+            }
+        }
     }
 
     pub(super) fn environment_particle_batch(
@@ -174,6 +220,23 @@ pub(crate) fn simple_client_particle_options(resource_id: &str) -> ClientParticl
             value: bbb_protocol::NbtSummaryValue::String(resource_id.to_string()),
         }],
         option: ClientParticleOptionValue::Empty,
+    }
+}
+
+pub(crate) fn color_client_particle_options(resource_id: &str, argb: u32) -> ClientParticleOptions {
+    ClientParticleOptions {
+        resource_id: resource_id.to_string(),
+        fields: vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "type".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String(resource_id.to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "color".to_string(),
+                value: bbb_protocol::NbtSummaryValue::Int(argb as i32),
+            },
+        ],
+        option: ClientParticleOptionValue::Color { argb },
     }
 }
 

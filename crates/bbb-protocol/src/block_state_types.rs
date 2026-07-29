@@ -17,9 +17,9 @@ use placement_defaults_26_1::{
     VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
 use support_facts_26_1::{
-    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS,
-    VANILLA_BLOCK_STATE_SOLID_RENDER_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
-    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+    VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_LIQUID_BITS,
+    VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
 };
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
@@ -115,8 +115,9 @@ impl VanillaBlockSupportType {
     }
 }
 
-/// Runtime-generated support, collision, solid-render, redstone-conductor,
-/// and legacy liquid facts for one built-in Vanilla 26.1 block state.
+/// Runtime-generated support, collision, can-occlude, solid-render,
+/// redstone-conductor, and legacy liquid facts for one built-in Vanilla 26.1
+/// block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -124,6 +125,7 @@ impl VanillaBlockSupportType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaBlockStateSupportFacts {
     facts: u32,
+    can_occlude: bool,
     solid_render: bool,
     redstone_conductor: bool,
     liquid: bool,
@@ -140,6 +142,10 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn solid_render(self) -> bool {
         self.solid_render
+    }
+
+    pub const fn can_occlude(self) -> bool {
+        self.can_occlude
     }
 
     pub const fn redstone_conductor(self) -> bool {
@@ -174,6 +180,9 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
     let palette_index = usize::from(*VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES.get(id)?);
     Some(VanillaBlockStateSupportFacts {
         facts: *VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.get(palette_index)?,
+        can_occlude: VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
         solid_render: VANILLA_BLOCK_STATE_SOLID_RENDER_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
@@ -398,6 +407,10 @@ mod tests {
             .iter()
             .all(|index| usize::from(*index) < VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE.len()));
         assert_eq!(
+            VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
             VANILLA_BLOCK_STATE_SOLID_RENDER_BITS.len(),
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
@@ -413,6 +426,7 @@ mod tests {
         let air = vanilla_block_state_support_facts(state_id("minecraft:air")).unwrap();
         assert!(!air.legacy_solid());
         assert!(!air.dynamic_shape());
+        assert!(!air.can_occlude());
         assert!(!air.solid_render());
         assert!(!air.redstone_conductor());
         assert!(!air.liquid());
@@ -425,9 +439,15 @@ mod tests {
 
         let stone = vanilla_block_state_support_facts(state_id("minecraft:stone")).unwrap();
         assert!(stone.legacy_solid());
+        assert!(stone.can_occlude());
         assert!(stone.solid_render());
         assert!(stone.redstone_conductor());
         assert!(!stone.liquid());
+        assert!(
+            !vanilla_block_state_support_facts(state_id("minecraft:glass"))
+                .unwrap()
+                .can_occlude()
+        );
         assert!(
             !vanilla_block_state_support_facts(state_id("minecraft:glass"))
                 .unwrap()

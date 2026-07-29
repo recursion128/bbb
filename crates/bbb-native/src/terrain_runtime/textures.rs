@@ -1461,6 +1461,23 @@ fn biome_profile_from_projection(
 }
 
 impl TerrainParticleTintCatalog {
+    pub(crate) fn client_leaf_tint_color(
+        &self,
+        block_name: &str,
+        biome_id: Option<i32>,
+        blend: Option<&BiomeBlend>,
+    ) -> [f32; 4] {
+        let tint = match block_name {
+            "minecraft:spruce_leaves" => TerrainTint::from_rgb_u8(0x61, 0x99, 0x61),
+            "minecraft:birch_leaves" => TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55),
+            name if is_foliage_tinted_block(name) => {
+                self.tint_context().foliage_tint(biome_id, blend)
+            }
+            _ => TerrainTint::WHITE,
+        };
+        terrain_tint_particle_rgb(tint)
+    }
+
     pub(crate) fn terrain_particle_tint_color_for_block_state(
         &self,
         block_state_id: i32,

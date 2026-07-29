@@ -18,13 +18,16 @@ from block_membership_catalog_extractor import (
     constructor_types_extending,
     fire_flammable_blocks,
     invisible_render_shape_constructor_types,
+    leaf_animate_particle_profiles,
     no_collision_blocks,
     no_terrain_particle_blocks,
+    tinted_leaves_particle_constant,
 )
 from block_registry_catalog_extractor import (
     extract_block_id_constants,
     extract_block_registry_catalog,
 )
+from core_registry_catalog_extractor import particle_type_entries
 from vanilla_java_source import parse_source
 from vanilla_tag_source import load_tag_resources
 
@@ -40,6 +43,7 @@ BLOCK_ENTITY_TYPES_SOURCE = Path(
 )
 BLOCK_TAG_SOURCE_DIR = Path("data/minecraft/tags/block")
 BLOCK_CLASS_SOURCE_DIR = Path("net/minecraft/world/level/block")
+PARTICLE_TYPES_SOURCE = Path("net/minecraft/core/particles/ParticleTypes.java")
 
 BLOCK_TAG_CATALOGS = (
     ("VANILLA_IMPERMEABLE_BLOCKS", "minecraft:impermeable", 19),
@@ -219,6 +223,11 @@ def generate(source_root: Path) -> str:
         "net.minecraft.world.level.block.LeavesBlock",
         4,
     )
+    foliage_tinted_leaves_types = constructor_types_extending(
+        block_class_sources,
+        "net.minecraft.world.level.block.TintedParticleLeavesBlock",
+        2,
+    )
     sapling_types = constructor_types_extending(
         block_class_sources,
         "net.minecraft.world.level.block.SaplingBlock",
@@ -255,11 +264,34 @@ def generate(source_root: Path) -> str:
     friction_entries = block_friction_overrides(source, block_id_constants)
     speed_factor_entries = block_speed_factor_overrides(source, block_id_constants)
     flammable_entries = fire_flammable_blocks(fire_source, block_resource_paths)
+    leaf_entries = constructor_family_blocks(
+        source, leaves_types, 11, block_id_constants
+    )
+    particle_source = parse_source(
+        PARTICLE_TYPES_SOURCE.as_posix(),
+        (source_root / PARTICLE_TYPES_SOURCE).read_bytes(),
+    )
+    particle_resource_ids = {
+        entry.constant_name: entry.resource_id
+        for entry in particle_type_entries(particle_source)
+    }
+    leaf_particle_profiles = leaf_animate_particle_profiles(
+        source,
+        leaf_entries,
+        leaves_types,
+        foliage_tinted_leaves_types,
+        particle_resource_ids,
+        tinted_leaves_particle_constant(block_class_sources),
+    )
     constructor_catalogs = [
         (
             name,
-            constructor_family_blocks(
-                source, constructor_types, expected_count, block_id_constants
+            (
+                leaf_entries
+                if name == "VANILLA_LEAVES_BLOCKS"
+                else constructor_family_blocks(
+                    source, constructor_types, expected_count, block_id_constants
+                )
             ),
         )
         for name, constructor_types, expected_count in (
@@ -348,6 +380,25 @@ def generate(source_root: Path) -> str:
         ),
         "];",
         "",
+        "pub(super) const VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES: &[super::LeafAnimateParticleProfile] = &[",
+        *(
+            "    super::LeafAnimateParticleProfile::new("
+            f'"{entry.resource_id}", {entry.chance!r}_f32.to_bits(), '
+            f'"{entry.particle_resource_id}", '
+            + (
+                "super::LeafParticleTint::ClientLeaf"
+                if entry.foliage_tinted
+                else (
+                    f"super::LeafParticleTint::FixedArgb(0x{entry.color_argb:08x})"
+                    if entry.color_argb is not None
+                    else "super::LeafParticleTint::None"
+                )
+            )
+            + "),"
+            for entry in leaf_particle_profiles
+        ),
+        "];",
+        "",
     ]
     for name, values in constructor_catalogs:
         lines.extend(
@@ -383,6 +434,7 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_FIRE_FLAMMABLE_BLOCKS.len(), 207);",
             "        assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);",
             "        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);",
+            "        assert_eq!(VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES.len(), 11);",
             '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
             '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
@@ -453,6 +505,7 @@ def generate(source_root: Path) -> str:
             "                for line in production.lines().filter(|line| line.contains(\"const \" ) || line.contains(\"static \")) {",
             "                    for name in [",
             '                        "VANILLA_BLOCK_FRICTION_OVERRIDES",',
+            '                        "VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES",',
             *(f'                        "{name}",' for name in catalog_names),
             "                    ] {",
             "                        if line.contains(name) { violations.push(format!(\"{}: parallel block membership declaration `{}`\", display, line.trim())); }",

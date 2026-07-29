@@ -291,4 +291,16 @@ impl WorldStore {
             .is_some_and(crate::WorldLevelInfo::can_have_weather)
             && self.weather.thunder_level * self.weather.rain_level > 0.9
     }
+
+    /// Vanilla `Level.isRainingAt`, using synced rain, sky light,
+    /// `MOTION_BLOCKING`, and biome precipitation facts.
+    pub fn is_raining_at(&self, pos: crate::BlockPos) -> bool {
+        crate::client::EntityBlockEffectWorld::new(
+            self.dimension,
+            &self.registries,
+            &self.chunks,
+            self.entity_block_effect_weather(),
+        )
+        .is_raining_at(pos)
+    }
 }

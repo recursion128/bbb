@@ -18,11 +18,11 @@ use generated_26_1::{
     VANILLA_FLOOR_TORCH_BLOCKS, VANILLA_FLOWER_POT_BLOCKS,
     VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS, VANILLA_HANGING_SIGN_BLOCKS,
     VANILLA_IMPERMEABLE_BLOCKS, VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
-    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAVES_BLOCKS,
-    VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS, VANILLA_NO_COLLISION_BLOCKS,
-    VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS, VANILLA_PALE_OAK_LOG_BLOCKS,
-    VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS, VANILLA_RAIL_BLOCKS,
-    VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+    VANILLA_IRON_BARS_CLASS_BLOCKS, VANILLA_LANTERN_BLOCKS, VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES,
+    VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS,
+    VANILLA_NO_COLLISION_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS,
+    VANILLA_PALE_OAK_LOG_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
+    VANILLA_RAIL_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
     VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
     VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS,
     VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
@@ -65,6 +65,43 @@ pub enum TerrainMaterialClass {
 pub enum TerrainFluidKind {
     Water,
     Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LeafParticleTint {
+    None,
+    FixedArgb(u32),
+    /// Vanilla `ClientLevel.getClientLeafTintColor`, including the fixed
+    /// spruce/birch sources and biome-blended foliage sources.
+    ClientLeaf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LeafAnimateParticleProfile {
+    pub block_resource_id: &'static str,
+    leaf_particle_chance_bits: u32,
+    pub particle_resource_id: &'static str,
+    pub tint: LeafParticleTint,
+}
+
+impl LeafAnimateParticleProfile {
+    pub const fn new(
+        block_resource_id: &'static str,
+        leaf_particle_chance_bits: u32,
+        particle_resource_id: &'static str,
+        tint: LeafParticleTint,
+    ) -> Self {
+        Self {
+            block_resource_id,
+            leaf_particle_chance_bits,
+            particle_resource_id,
+            tint,
+        }
+    }
+
+    pub const fn leaf_particle_chance(self) -> f32 {
+        f32::from_bits(self.leaf_particle_chance_bits)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -451,6 +488,13 @@ pub fn block_name_is_half_transparent(name: &str) -> bool {
 
 pub fn block_name_is_leaves(name: &str) -> bool {
     VANILLA_LEAVES_BLOCKS.contains(&name)
+}
+
+pub fn leaf_animate_particle_profile(name: &str) -> Option<LeafAnimateParticleProfile> {
+    VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES
+        .iter()
+        .copied()
+        .find(|profile| profile.block_resource_id == name)
 }
 
 pub fn block_name_is_door(name: &str) -> bool {
@@ -1087,6 +1131,42 @@ mod tests {
             classify_terrain_skip_rendering(None, &BTreeMap::new()),
             TerrainSkipRendering::NONE
         );
+    }
+
+    #[test]
+    fn leaf_animate_profiles_preserve_vanilla_particle_families() {
+        assert_eq!(
+            VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES
+                .iter()
+                .map(|profile| profile.block_resource_id)
+                .collect::<Vec<_>>(),
+            VANILLA_LEAVES_BLOCKS
+        );
+        let oak = leaf_animate_particle_profile("minecraft:oak_leaves").unwrap();
+        assert_eq!(oak.leaf_particle_chance(), 0.01);
+        assert_eq!(oak.particle_resource_id, "minecraft:tinted_leaves");
+        assert_eq!(oak.tint, LeafParticleTint::ClientLeaf);
+
+        let cherry = leaf_animate_particle_profile("minecraft:cherry_leaves").unwrap();
+        assert_eq!(cherry.leaf_particle_chance(), 0.1);
+        assert_eq!(cherry.particle_resource_id, "minecraft:cherry_leaves");
+        assert_eq!(cherry.tint, LeafParticleTint::None);
+
+        let pale_oak = leaf_animate_particle_profile("minecraft:pale_oak_leaves").unwrap();
+        assert_eq!(pale_oak.leaf_particle_chance(), 0.02);
+        assert_eq!(pale_oak.particle_resource_id, "minecraft:pale_oak_leaves");
+        assert_eq!(pale_oak.tint, LeafParticleTint::None);
+
+        for block_name in [
+            "minecraft:azalea_leaves",
+            "minecraft:flowering_azalea_leaves",
+        ] {
+            let profile = leaf_animate_particle_profile(block_name).unwrap();
+            assert_eq!(profile.leaf_particle_chance(), 0.01);
+            assert_eq!(profile.particle_resource_id, "minecraft:tinted_leaves");
+            assert_eq!(profile.tint, LeafParticleTint::FixedArgb(0xff70_922d));
+        }
+        assert_eq!(leaf_animate_particle_profile("example:oak_leaves"), None);
     }
 
     #[test]

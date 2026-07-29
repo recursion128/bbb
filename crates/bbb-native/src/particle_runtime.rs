@@ -222,6 +222,16 @@ pub(crate) struct EnvironmentParticleSpawn {
     pub(crate) position: [f64; 3],
     pub(crate) velocity: [f64; 3],
     pub(crate) always_show: bool,
+    /// Client-only late tint source; never part of packet/NBT particle options.
+    pub(crate) color_source: Option<EnvironmentParticleColorSource>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EnvironmentParticleColorSource {
+    ClientLeaf {
+        block_pos: WorldBlockPos,
+        block_resource_id: &'static str,
+    },
 }
 
 pub(crate) trait ParticleBiomeSampler {
@@ -1533,7 +1543,9 @@ mod block_map_color;
 mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
-pub(crate) use environment::{particle_utils_axis_sample, simple_client_particle_options};
+pub(crate) use environment::{
+    color_client_particle_options, particle_utils_axis_sample, simple_client_particle_options,
+};
 mod explosion;
 mod ids;
 mod redstone;

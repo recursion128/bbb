@@ -490,6 +490,75 @@ pub(super) const VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES: &[(&str, u32)] = &[
     ("minecraft:honey_block", 0.4_f32.to_bits()),
 ];
 
+pub(super) const VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES: &[super::LeafAnimateParticleProfile] = &[
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:oak_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:spruce_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:birch_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:jungle_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:acacia_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:cherry_leaves",
+        0.1_f32.to_bits(),
+        "minecraft:cherry_leaves",
+        super::LeafParticleTint::None,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:dark_oak_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:pale_oak_leaves",
+        0.02_f32.to_bits(),
+        "minecraft:pale_oak_leaves",
+        super::LeafParticleTint::None,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:mangrove_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::ClientLeaf,
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:azalea_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::FixedArgb(0xff70922d),
+    ),
+    super::LeafAnimateParticleProfile::new(
+        "minecraft:flowering_azalea_leaves",
+        0.01_f32.to_bits(),
+        "minecraft:tinted_leaves",
+        super::LeafParticleTint::FixedArgb(0xff70922d),
+    ),
+];
+
 pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
     &["minecraft:powder_snow"];
 
@@ -1411,6 +1480,7 @@ mod tests {
         assert_eq!(VANILLA_FIRE_FLAMMABLE_BLOCKS.len(), 207);
         assert_eq!(VANILLA_BLOCK_FRICTION_OVERRIDES.len(), 5);
         assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);
+        assert_eq!(VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES.len(), 11);
         assert_eq!(
             VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
             &["minecraft:powder_snow"]
@@ -1515,6 +1585,7 @@ mod tests {
                 {
                     for name in [
                         "VANILLA_BLOCK_FRICTION_OVERRIDES",
+                        "VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES",
                         "VANILLA_NO_TERRAIN_PARTICLE_BLOCKS",
                         "VANILLA_NO_COLLISION_BLOCKS",
                         "VANILLA_AIR_BLOCKS",

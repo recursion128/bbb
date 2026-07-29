@@ -8,22 +8,24 @@ use bbb_protocol::{
     packets::{SoundSource, Vec3d as ProtocolVec3d},
 };
 use bbb_world::{
-    block_name_is_candle, block_name_is_candle_cake, block_name_is_pale_oak_log, BlockPos,
-    ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
-    LocalPlayerPoseState, SoundEventState, TerrainFluidKind, TerrainFluidState, WorldStore,
+    block_name_is_candle, block_name_is_candle_cake, block_name_is_pale_oak_log,
+    leaf_animate_particle_profile, BlockPos, ClientSoundEventHolder, EnvironmentBiomeSampling,
+    LeafAnimateParticleProfile, LeafParticleTint, LevelEventSoundRandomState, LocalPlayerPoseState,
+    SoundEventState, TerrainFluidKind, TerrainFluidState, WorldStore,
 };
 
 use crate::{
     audio_runtime::AudioEventSink,
     environment_audio_runtime::sound_holder_state,
     particle_runtime::{
-        candle_wick_offsets, dust_client_particle_options,
+        candle_wick_offsets, color_client_particle_options, dust_client_particle_options,
         dust_color_transition_client_particle_options, particle_utils_axis_sample,
         pointed_dripstone_drip_context, pointed_dripstone_particle_position,
         redstone_ore_particle_positions, redstone_ore_solid_render_faces,
-        simple_client_particle_options, EnvironmentParticleSpawn, LevelParticleSpawnContext,
-        ParticleBiomeSampler, ParticleEventSink, ELECTRIC_SPARK_AXIS_RADIUS,
-        REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR, SCULK_PARTICLE_COLOR,
+        simple_client_particle_options, EnvironmentParticleColorSource, EnvironmentParticleSpawn,
+        LevelParticleSpawnContext, ParticleBiomeSampler, ParticleEventSink,
+        ELECTRIC_SPARK_AXIS_RADIUS, REDSTONE_EFFECT_DIRECTION_STEPS, REDSTONE_PARTICLE_COLOR,
+        SCULK_PARTICLE_COLOR,
     },
     simulation::effects::ParticleBatchSink,
 };
@@ -498,7 +500,11 @@ impl EnvironmentAnimateRuntime {
             "minecraft:ender_chest" => {
                 append_ender_chest_animate_effects(pos, animate_random, spawns);
             }
-            _ => {}
+            _ => {
+                if let Some(profile) = leaf_animate_particle_profile(block_name) {
+                    append_leaves_animate_effects(world, pos, profile, animate_random, spawns);
+                }
+            }
         }
 
         if let Some(fluid) = block.fluid {
@@ -906,6 +912,7 @@ fn append_bubble_column_animate_effects(
             position: [x + 0.5, y + 0.8, z],
             velocity: [0.0; 3],
             always_show: true,
+            color_source: None,
         });
         SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT
     } else {
@@ -914,6 +921,7 @@ fn append_bubble_column_animate_effects(
             position: [x + 0.5, y, z + 0.5],
             velocity: [0.0, 0.04, 0.0],
             always_show: true,
+            color_source: None,
         });
         spawns.push(EnvironmentParticleSpawn {
             particle: simple_client_particle_options(PARTICLE_BUBBLE_COLUMN_UP),
@@ -924,6 +932,7 @@ fn append_bubble_column_animate_effects(
             ],
             velocity: [0.0, 0.04, 0.0],
             always_show: true,
+            color_source: None,
         });
         SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT
     };
@@ -970,6 +979,7 @@ fn append_water_fluid_animate_effects(
             ],
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
     [None; 2]
@@ -997,6 +1007,7 @@ fn append_lava_fluid_animate_effects(
             position,
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
         sounds[next_sound] = Some((
             SOUND_EVENT_LAVA_POP,
@@ -1104,6 +1115,7 @@ fn append_fluid_drip_particle(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1134,6 +1146,7 @@ fn append_furnace_animate_effects(
             position: [center[0], center[1] + 1.1, center[2]],
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
         return sound;
     }
@@ -1158,6 +1171,7 @@ fn append_furnace_animate_effects(
         position,
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
     if kind == FurnaceAnimateKind::Furnace {
         spawns.push(EnvironmentParticleSpawn {
@@ -1165,6 +1179,7 @@ fn append_furnace_animate_effects(
             position,
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
     sound
@@ -1199,6 +1214,7 @@ fn append_campfire_animate_effects(
                     f64::from(random.next_float() / 2.0),
                 ],
                 always_show: false,
+                color_source: None,
             });
         }
     }
@@ -1238,6 +1254,7 @@ fn append_fire_animate_effects(
                 ],
                 velocity: [0.0; 3],
                 always_show: false,
+                color_source: None,
             });
         }
         return sound;
@@ -1316,6 +1333,7 @@ fn append_fire_animate_effects(
                 position,
                 velocity: [0.0; 3],
                 always_show: false,
+                color_source: None,
             });
         }
     }
@@ -1344,6 +1362,7 @@ fn append_respawn_anchor_animate_effects(
         ],
         velocity: [0.0, f64::from(random.next_float()) * 0.04, 0.0],
         always_show: false,
+        color_source: None,
     });
     play_sound
 }
@@ -1391,6 +1410,7 @@ fn append_nether_portal_animate_effects(
             position,
             velocity,
             always_show: false,
+            color_source: None,
         });
     }
     pitch
@@ -1421,6 +1441,7 @@ fn append_dried_ghast_animate_effects(
                 ],
                 velocity: [0.0, f64::from(random.next_float()), 0.0],
                 always_show: false,
+                color_source: None,
             });
         }
         return sound;
@@ -1441,6 +1462,7 @@ fn append_dried_ghast_animate_effects(
             position: center,
             velocity: [0.0, 0.02, 0.0],
             always_show: false,
+            color_source: None,
         });
     }
     sound
@@ -1476,6 +1498,7 @@ fn append_pointed_dripstone_animate_effect(
         position: pointed_dripstone_particle_position(pos),
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1546,6 +1569,7 @@ fn append_beehive_animate_effect(
             ],
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -1565,6 +1589,7 @@ fn append_spore_blossom_animate_effects(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 
     for _ in 0..14 {
@@ -1585,6 +1610,7 @@ fn append_spore_blossom_animate_effects(
             ],
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -1635,6 +1661,7 @@ fn append_enchanting_table_animate_effects(
                 f64::from(offset_z as f32 + random.next_float()) - 0.5,
             ],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -1680,6 +1707,7 @@ fn append_end_rod_animate_effect(
             random.next_gaussian() * 0.005,
         ],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1720,6 +1748,7 @@ fn append_candle_animate_effects(
                 position,
                 velocity: [0.0; 3],
                 always_show: false,
+                color_source: None,
             });
             if chance < 0.17 {
                 sounds.push((
@@ -1734,6 +1763,7 @@ fn append_candle_animate_effects(
             position,
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
     sounds
@@ -1779,6 +1809,7 @@ fn append_lightning_rod_animate_effects(
             position: [position.x, position.y, position.z],
             velocity: [velocity.x, velocity.y, velocity.z],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -1806,8 +1837,82 @@ fn append_ender_chest_animate_effects(
             position,
             velocity,
             always_show: false,
+            color_source: None,
         });
     }
+}
+
+fn append_leaves_animate_effects(
+    world: &WorldStore,
+    pos: BlockPos,
+    profile: LeafAnimateParticleProfile,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    let below = BlockPos {
+        y: pos.y.saturating_sub(1),
+        ..pos
+    };
+    let below_sample = world.environment_animate_block_sample(below);
+
+    if world.is_raining_at(BlockPos {
+        y: pos.y.saturating_add(1),
+        ..pos
+    }) && random.next_int_bound(15) == 1
+        && below_sample.is_some_and(|sample| !sample.can_occlude || !sample.full_face_sturdy[1])
+    {
+        append_particle_below(
+            pos,
+            simple_client_particle_options(PARTICLE_DRIPPING_WATER),
+            None,
+            random,
+            spawns,
+        );
+    }
+
+    if random.next_float() >= profile.leaf_particle_chance()
+        || below_sample.is_none_or(|sample| sample.collision_full_face[1])
+    {
+        return;
+    }
+    let (particle, color_source) = match profile.tint {
+        LeafParticleTint::None => (
+            simple_client_particle_options(profile.particle_resource_id),
+            None,
+        ),
+        LeafParticleTint::FixedArgb(argb) => (
+            color_client_particle_options(profile.particle_resource_id, argb),
+            None,
+        ),
+        LeafParticleTint::ClientLeaf => (
+            color_client_particle_options(profile.particle_resource_id, u32::MAX),
+            Some(EnvironmentParticleColorSource::ClientLeaf {
+                block_pos: pos,
+                block_resource_id: profile.block_resource_id,
+            }),
+        ),
+    };
+    append_particle_below(pos, particle, color_source, random, spawns);
+}
+
+fn append_particle_below(
+    pos: BlockPos,
+    particle: bbb_world::ClientParticleOptions,
+    color_source: Option<EnvironmentParticleColorSource>,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    spawns.push(EnvironmentParticleSpawn {
+        particle,
+        position: [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) - 0.05,
+            f64::from(pos.z) + random.next_double(),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source,
+    });
 }
 
 fn block_state_direction(facing: &str) -> Option<[i32; 3]> {
@@ -1856,6 +1961,7 @@ fn append_wet_sponge_animate_effect(
         position: [x, y, z],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1882,6 +1988,7 @@ fn append_crying_obsidian_animate_effect(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1954,6 +2061,7 @@ fn append_redstone_torch_animate_effect(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -1998,6 +2106,7 @@ fn append_repeater_animate_effect(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -2096,6 +2205,7 @@ fn append_redstone_wire_particle_along_line(
         ],
         velocity: [0.0; 3],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -2129,6 +2239,7 @@ fn append_redstone_ore_animate_effects(
             position,
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -2169,6 +2280,7 @@ fn append_sculk_sensor_animate_effect(
         ],
         velocity: [0.0, f64::from(random.next_float()) * 0.04, 0.0],
         always_show: false,
+        color_source: None,
     });
 }
 
@@ -2189,6 +2301,7 @@ fn append_ambient_particle_spawns(
                 ],
                 velocity: [0.0; 3],
                 always_show: false,
+                color_source: None,
             });
         }
     }
@@ -2215,6 +2328,7 @@ fn append_firefly_spawn(
             ],
             velocity: [0.0; 3],
             always_show: false,
+            color_source: None,
         });
     }
 }
@@ -2339,6 +2453,7 @@ mod tests {
         VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
         VANILLA_CLIENT_GAME_EVENT_THUNDER_LEVEL_CHANGE_ID,
     };
+    use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
     use bbb_protocol::packets::{
         BlockUpdate, ChunkBiomeData, ChunkPos as ProtocolChunkPos, ChunksBiomes,
         CommonPlayerSpawnInfo, GameEvent, PlayLogin, PlayTime,
@@ -4674,6 +4789,194 @@ mod tests {
     }
 
     #[test]
+    fn leaves_animate_effects_preserve_rain_leaf_gates_options_and_random_order() {
+        let pos = BlockPos {
+            x: 8,
+            y: WorldDimension::default().min_y + WorldDimension::default().height - 1,
+            z: 8,
+        };
+        let mut world = raining_world_for_leaf(pos);
+        let success_seed = (0..1_000_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                random.next_int_bound(15) == 1 && {
+                    let _ = random.next_double();
+                    let _ = random.next_double();
+                    random.next_float() < 0.01
+                }
+            })
+            .expect("deterministic rain and oak-leaf success seed");
+        let oak = leaf_animate_particle_profile("minecraft:oak_leaves").unwrap();
+        let mut actual = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut expected = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut spawns = Vec::new();
+
+        append_leaves_animate_effects(&world, pos, oak, &mut actual, &mut spawns);
+
+        assert_eq!(expected.next_int_bound(15), 1);
+        let expected_water_position = [
+            f64::from(pos.x) + expected.next_double(),
+            f64::from(pos.y) - 0.05,
+            f64::from(pos.z) + expected.next_double(),
+        ];
+        assert!(expected.next_float() < oak.leaf_particle_chance());
+        let expected_leaf_position = [
+            f64::from(pos.x) + expected.next_double(),
+            f64::from(pos.y) - 0.05,
+            f64::from(pos.z) + expected.next_double(),
+        ];
+        assert_eq!(spawns.len(), 2);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_DRIPPING_WATER);
+        assert_eq!(spawns[0].position, expected_water_position);
+        assert_eq!(spawns[0].color_source, None);
+        assert_eq!(spawns[1].particle.resource_id, "minecraft:tinted_leaves");
+        assert_eq!(
+            spawns[1].particle.option,
+            bbb_world::ClientParticleOptionValue::Color { argb: u32::MAX }
+        );
+        assert_eq!(spawns[1].position, expected_leaf_position);
+        assert_eq!(
+            spawns[1].color_source,
+            Some(EnvironmentParticleColorSource::ClientLeaf {
+                block_pos: pos,
+                block_resource_id: "minecraft:oak_leaves",
+            })
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+
+        set_block(
+            &mut world,
+            BlockPos {
+                y: pos.y - 1,
+                ..pos
+            },
+            block_state_id("minecraft:glass", &[]),
+        );
+        let mut glass_actual = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut glass_expected = LevelEventSoundRandomState::with_seed(success_seed);
+        spawns.clear();
+        append_leaves_animate_effects(&world, pos, oak, &mut glass_actual, &mut spawns);
+        assert_eq!(glass_expected.next_int_bound(15), 1);
+        let _ = glass_expected.next_double();
+        let _ = glass_expected.next_double();
+        let _ = glass_expected.next_float();
+        assert_eq!(spawns.len(), 1);
+        assert_eq!(spawns[0].particle.resource_id, PARTICLE_DRIPPING_WATER);
+        assert_eq!(glass_actual.next_long(), glass_expected.next_long());
+
+        set_block(
+            &mut world,
+            BlockPos {
+                y: pos.y - 1,
+                ..pos
+            },
+            block_state_id("minecraft:stone", &[]),
+        );
+        let mut stone_actual = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut stone_expected = LevelEventSoundRandomState::with_seed(success_seed);
+        spawns.clear();
+        append_leaves_animate_effects(&world, pos, oak, &mut stone_actual, &mut spawns);
+        assert_eq!(stone_expected.next_int_bound(15), 1);
+        let _ = stone_expected.next_float();
+        assert!(spawns.is_empty());
+        assert_eq!(stone_actual.next_long(), stone_expected.next_long());
+    }
+
+    #[test]
+    fn leaf_particles_preserve_untinted_and_fixed_color_profiles() {
+        let pos = BlockPos { x: 8, y: 32, z: 8 };
+        let world = world_with_ambient_particles();
+        let success_seed = (0..10_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.01)
+            .expect("deterministic leaf chance seed");
+
+        for (block_name, resource_id, option) in [
+            (
+                "minecraft:cherry_leaves",
+                "minecraft:cherry_leaves",
+                bbb_world::ClientParticleOptionValue::Empty,
+            ),
+            (
+                "minecraft:azalea_leaves",
+                "minecraft:tinted_leaves",
+                bbb_world::ClientParticleOptionValue::Color { argb: 0xff70_922d },
+            ),
+        ] {
+            let profile = leaf_animate_particle_profile(block_name).unwrap();
+            let mut actual = LevelEventSoundRandomState::with_seed(success_seed);
+            let mut expected = LevelEventSoundRandomState::with_seed(success_seed);
+            let mut spawns = Vec::new();
+
+            append_leaves_animate_effects(&world, pos, profile, &mut actual, &mut spawns);
+
+            assert!(expected.next_float() < profile.leaf_particle_chance());
+            let expected_position = [
+                f64::from(pos.x) + expected.next_double(),
+                f64::from(pos.y) - 0.05,
+                f64::from(pos.z) + expected.next_double(),
+            ];
+            let [spawn] = spawns.as_slice() else {
+                panic!("{block_name} should emit one leaf particle");
+            };
+            assert_eq!(spawn.particle.resource_id, resource_id);
+            assert_eq!(spawn.particle.option, option);
+            assert_eq!(spawn.position, expected_position);
+            assert_eq!(spawn.color_source, None);
+            assert_eq!(actual.next_long(), expected.next_long());
+        }
+    }
+
+    #[test]
+    fn environment_dispatches_leaf_particles_from_animate_random() {
+        let mut sampled_level_random = LevelEventSoundRandomState::default();
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let mut world = world_with_ambient_particles();
+        set_block(
+            &mut world,
+            pos,
+            block_state_id(
+                "minecraft:cherry_leaves",
+                &[
+                    ("distance", "7"),
+                    ("persistent", "false"),
+                    ("waterlogged", "false"),
+                ],
+            ),
+        );
+        let success_seed = (0..10_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_float() < 0.1)
+            .expect("deterministic cherry leaf chance seed");
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut actual = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut expected = LevelEventSoundRandomState::with_seed(success_seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            &mut actual,
+            &mut audio,
+            &mut spawns,
+        );
+
+        assert!(expected.next_float() < 0.1);
+        let _ = expected.next_double();
+        let _ = expected.next_double();
+        assert_eq!(
+            spawns
+                .iter()
+                .filter(|spawn| spawn.particle.resource_id == "minecraft:cherry_leaves")
+                .count(),
+            1
+        );
+        assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
     fn lightning_rod_animate_effects_preserve_weather_surface_axis_and_level_random_order() {
         let pos = BlockPos { x: 8, y: 32, z: 8 };
         let world = thundering_world_with_surface(pos, pos.y + 1, 199);
@@ -6009,6 +6312,28 @@ mod tests {
             param: 1.0,
         });
         assert!(world.is_thundering());
+        world
+    }
+
+    fn raining_world_for_leaf(pos: BlockPos) -> WorldStore {
+        let mut world = world_with_ambient_particles();
+        let mut chunk = chunk_with_biome(world.dimension(), 0, 0);
+        chunk.heightmaps.push(heightmap_with_first_available(
+            world.dimension(),
+            VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
+            pos.x.rem_euclid(16) as u8,
+            pos.z.rem_euclid(16) as u8,
+            pos.y + 1,
+        ));
+        world.insert_decoded_chunk(chunk);
+        world.apply_game_event(GameEvent {
+            event_id: VANILLA_CLIENT_GAME_EVENT_RAIN_LEVEL_CHANGE_ID,
+            param: 1.0,
+        });
+        assert!(world.is_raining_at(BlockPos {
+            y: pos.y + 1,
+            ..pos
+        }));
         world
     }
 
