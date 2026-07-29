@@ -3,10 +3,10 @@ pub use crate::client::audio::{
     advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, ClientAudioState, JukeboxLevelEventAction,
     JukeboxLevelEventState, JukeboxSongState, LevelEventSoundRandomState,
-    LocalInteractionSoundEffect, LocalPlayerUnderwaterAudioTickState,
-    LocalPlayerUnderwaterAudioTransition, LocalSoundEventState, SoundEntityEventState,
-    SoundEventState, SoundHolderState, SoundSeedRandomState, StopSoundEventState,
-    TickableEntitySoundState, WorldBlockSoundProfile,
+    LocalInteractionSoundEffect, LocalPlayerAmbientAudioTickState,
+    LocalPlayerBubbleColumnAudioTransition, LocalPlayerUnderwaterAudioTransition,
+    LocalSoundEventState, SoundEntityEventState, SoundEventState, SoundHolderState,
+    SoundSeedRandomState, StopSoundEventState, TickableEntitySoundState, WorldBlockSoundProfile,
 };
 pub use crate::client::book::{
     BookEditScreenState, BookEditSubmission, BookScreenState, BookSignScreenState,

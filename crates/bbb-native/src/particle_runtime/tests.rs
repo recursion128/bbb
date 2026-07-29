@@ -7337,6 +7337,8 @@ fn environment_particle_bridge_preserves_diagnostics_and_rejects_mismatched_type
                 option: ClientParticleOptionValue::Empty,
             },
             position: [1.0, 64.0, 0.0],
+            velocity: [0.0, 0.04, 0.0],
+            always_show: true,
         },
         environment_particle_spawn("minecraft:enchanted_hit", Vec::new()),
         environment_particle_spawn(
@@ -7361,6 +7363,13 @@ fn environment_particle_bridge_preserves_diagnostics_and_rejects_mismatched_type
         .commands
         .iter()
         .all(|command| command.particle_id == "minecraft:cloud"));
+    let bridged = batch
+        .commands
+        .iter()
+        .find(|command| command.position == [1.0, 64.0, 0.0])
+        .unwrap();
+    assert_eq!(bridged.velocity, [0.0, 0.04, 0.0]);
+    assert!(bridged.always_show);
     assert_eq!(batch.missing_definition_count, 1);
     assert_eq!(batch.unsupported_particle_option_count, 1);
     assert_eq!(batch.unknown_particle_type_count, 1);
@@ -7648,6 +7657,8 @@ fn environment_particle_spawn(
             option: ClientParticleOptionValue::Empty,
         },
         position: [0.0, 64.0, 0.0],
+        velocity: [0.0; 3],
+        always_show: false,
     }
 }
 
@@ -7665,6 +7676,8 @@ fn typed_environment_particle_spawn(
             option,
         },
         position: [0.0, 64.0, 0.0],
+        velocity: [0.0; 3],
+        always_show: false,
     }
 }
 

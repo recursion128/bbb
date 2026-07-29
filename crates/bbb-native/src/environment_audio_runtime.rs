@@ -3,7 +3,7 @@ use bbb_protocol::packets::{SoundSource, Vec3d as ProtocolVec3d};
 use bbb_world::{
     AmbientLoopSoundState, BlockPos, ClientAmbientMood, ClientAmbientSounds,
     ClientSoundEventHolder, EnvironmentBiomeSampling, LevelEventSoundRandomState,
-    LocalPlayerPoseState, LocalPlayerUnderwaterAudioTickState,
+    LocalPlayerAmbientAudioTickState, LocalPlayerBubbleColumnAudioTransition, LocalPlayerPoseState,
     LocalPlayerUnderwaterAudioTransition, LocalSoundEventState, SoundEventState, SoundHolderState,
     TerrainLight, WorldStore,
 };
@@ -20,8 +20,10 @@ const UNDERWATER_ADDITION_SOUND: &str = "minecraft:ambient.underwater.loop.addit
 const UNDERWATER_RARE_ADDITION_SOUND: &str = "minecraft:ambient.underwater.loop.additions.rare";
 const UNDERWATER_ULTRA_RARE_ADDITION_SOUND: &str =
     "minecraft:ambient.underwater.loop.additions.ultra_rare";
+const BUBBLE_COLUMN_UPWARDS_INSIDE_SOUND: &str = "minecraft:block.bubble_column.upwards_inside";
+const BUBBLE_COLUMN_WHIRLPOOL_INSIDE_SOUND: &str = "minecraft:block.bubble_column.whirlpool_inside";
 
-/// Non-serializable owner of Vanilla `BiomeAmbientSoundsHandler` state.
+/// Non-serializable owner of Vanilla LocalPlayer ambient-sound handler state.
 #[derive(Debug, Default)]
 pub(crate) struct EnvironmentAudioRuntime {
     level_identity: Option<(u64, u64)>,
@@ -70,17 +72,17 @@ impl EnvironmentAudioRuntime {
             audio.sync_ambient_loops(&[]);
         }
 
-        let mut underwater_ticks = world.take_pending_local_player_underwater_audio_ticks();
-        for _ in underwater_ticks.len() as u32..local_player_ticks {
-            world.advance_local_player_underwater_audio_tick();
+        let mut ambient_ticks = world.take_pending_local_player_ambient_audio_ticks();
+        for _ in ambient_ticks.len() as u32..local_player_ticks {
+            world.advance_local_player_ambient_audio_tick();
         }
-        underwater_ticks.extend(world.take_pending_local_player_underwater_audio_ticks());
+        ambient_ticks.extend(world.take_pending_local_player_ambient_audio_ticks());
 
-        for underwater_tick in underwater_ticks {
+        for ambient_tick in ambient_ticks {
             let Some(player) = world.local_player_pose() else {
                 continue;
             };
-            self.tick(world, player, underwater_tick, audio);
+            self.tick(world, player, ambient_tick, audio);
         }
     }
 
@@ -88,11 +90,12 @@ impl EnvironmentAudioRuntime {
         &mut self,
         world: &mut WorldStore,
         player: LocalPlayerPoseState,
-        underwater_tick: LocalPlayerUnderwaterAudioTickState,
+        ambient_tick: LocalPlayerAmbientAudioTickState,
         audio: &mut dyn AudioEventSink,
     ) {
         self.loop_sounds.retain(|sound| !sound.stopped);
-        self.apply_underwater_tick(world, underwater_tick, audio);
+        self.apply_underwater_tick(world, ambient_tick, audio);
+        self.apply_bubble_column_tick(world, ambient_tick, audio);
         let ambient = world
             .sampled_client_environment_attributes_at(
                 [player.position.x, player.position.y, player.position.z],
@@ -114,16 +117,16 @@ impl EnvironmentAudioRuntime {
                 audio,
             );
         }
-        self.advance_loop_sounds(underwater_tick.underwater, audio);
+        self.advance_loop_sounds(ambient_tick.underwater, audio);
     }
 
     fn apply_underwater_tick(
         &mut self,
         world: &mut WorldStore,
-        tick: LocalPlayerUnderwaterAudioTickState,
+        tick: LocalPlayerAmbientAudioTickState,
         audio: &mut dyn AudioEventSink,
     ) {
-        match tick.transition {
+        match tick.underwater_transition {
             Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed }) => {
                 let sound_seed = self.random.next_long();
                 let sound = world.record_positioned_sound(positioned_ambient_sound(
@@ -164,6 +167,33 @@ impl EnvironmentAudioRuntime {
                 audio.play_local_sound(&state);
             }
         }
+    }
+
+    fn apply_bubble_column_tick(
+        &mut self,
+        world: &mut WorldStore,
+        tick: LocalPlayerAmbientAudioTickState,
+        audio: &mut dyn AudioEventSink,
+    ) {
+        let sound_id = match tick.bubble_column_transition {
+            Some(LocalPlayerBubbleColumnAudioTransition::Upwards) => {
+                BUBBLE_COLUMN_UPWARDS_INSIDE_SOUND
+            }
+            Some(LocalPlayerBubbleColumnAudioTransition::Whirlpool) => {
+                BUBBLE_COLUMN_WHIRLPOOL_INSIDE_SOUND
+            }
+            None => return,
+        };
+        let seed = self.random.next_long();
+        let sound = world.record_positioned_sound(positioned_sound(
+            sound_id,
+            SoundSource::Players,
+            tick.bubble_column_position,
+            1.0,
+            1.0,
+            seed,
+        ));
+        audio.play_positioned_sound(&sound);
     }
 
     fn select_loop_sound(
@@ -407,12 +437,23 @@ pub(crate) fn sound_holder_state(
 }
 
 fn positioned_ambient_sound(sound_id: &str, position: ProtocolVec3d, seed: i64) -> SoundEventState {
+    positioned_sound(sound_id, SoundSource::Ambient, position, 1.0, 1.0, seed)
+}
+
+fn positioned_sound(
+    sound_id: &str,
+    source: SoundSource,
+    position: ProtocolVec3d,
+    volume: f32,
+    pitch: f32,
+    seed: i64,
+) -> SoundEventState {
     SoundEventState {
         sound: builtin_sound_holder(sound_id),
-        source: SoundSource::Ambient.as_str().to_string(),
+        source: source.as_str().to_string(),
         position,
-        volume: 1.0,
-        pitch: 1.0,
+        volume,
+        pitch,
         seed,
         distance_delay: false,
     }
@@ -609,10 +650,14 @@ mod tests {
 
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: true,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed: 12 }),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                    loop_seed: 12,
+                }),
+                bubble_column_transition: None,
             },
             &mut audio,
         );
@@ -639,10 +684,12 @@ mod tests {
         let exit_seed = expected_level_random.next_long();
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: false,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Exit),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Exit),
+                bubble_column_transition: None,
             },
             &mut audio,
         );
@@ -676,10 +723,14 @@ mod tests {
 
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: true,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed: 2 }),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                    loop_seed: 2,
+                }),
+                bubble_column_transition: None,
             },
             &mut audio,
         );
@@ -688,20 +739,26 @@ mod tests {
         }
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: false,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Exit),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Exit),
+                bubble_column_transition: None,
             },
             &mut audio,
         );
         runtime.advance_loop_sounds(false, &mut audio);
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: true,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed: 5 }),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                    loop_seed: 5,
+                }),
+                bubble_column_transition: None,
             },
             &mut audio,
         );
@@ -732,10 +789,12 @@ mod tests {
 
             runtime.apply_underwater_tick(
                 &mut world,
-                LocalPlayerUnderwaterAudioTickState {
+                LocalPlayerAmbientAudioTickState {
                     position: ProtocolVec3d::default(),
+                    bubble_column_position: ProtocolVec3d::default(),
                     underwater: true,
-                    transition: None,
+                    underwater_transition: None,
+                    bubble_column_transition: None,
                 },
                 &mut audio,
             );
@@ -755,7 +814,52 @@ mod tests {
     }
 
     #[test]
-    fn underwater_handler_consumes_level_random_before_biome_handler() {
+    fn bubble_column_audio_maps_entry_kind_to_player_positioned_sound() {
+        let mut runtime = EnvironmentAudioRuntime::default();
+        let mut expected_random = LevelEventSoundRandomState::default();
+        let mut world = WorldStore::default();
+        let mut audio = RecordingAudio::default();
+        let position = ProtocolVec3d {
+            x: 4.0,
+            y: 5.0,
+            z: 6.0,
+        };
+
+        for (transition, expected_sound) in [
+            (
+                LocalPlayerBubbleColumnAudioTransition::Upwards,
+                BUBBLE_COLUMN_UPWARDS_INSIDE_SOUND,
+            ),
+            (
+                LocalPlayerBubbleColumnAudioTransition::Whirlpool,
+                BUBBLE_COLUMN_WHIRLPOOL_INSIDE_SOUND,
+            ),
+        ] {
+            runtime.apply_bubble_column_tick(
+                &mut world,
+                LocalPlayerAmbientAudioTickState {
+                    position,
+                    bubble_column_position: position,
+                    underwater: false,
+                    underwater_transition: None,
+                    bubble_column_transition: Some(transition),
+                },
+                &mut audio,
+            );
+            let sound = audio.positioned.last().unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(expected_sound));
+            assert_eq!(sound.source, "player");
+            assert_eq!(sound.position, position);
+            assert_eq!(sound.volume, 1.0);
+            assert_eq!(sound.pitch, 1.0);
+            assert_eq!(sound.seed, expected_random.next_long());
+            assert!(!sound.distance_delay);
+        }
+        assert_eq!(world.last_sound(), audio.positioned.last());
+    }
+
+    #[test]
+    fn ambient_handlers_consume_level_random_in_vanilla_order() {
         let ambient = ClientAmbientSounds {
             loop_sound: None,
             mood: None,
@@ -770,21 +874,36 @@ mod tests {
         };
         let mut expected = LevelEventSoundRandomState::with_seed(0);
         let _ = expected.next_float();
+        let bubble_seed = expected.next_long();
         let _ = expected.next_double();
         let mut world = WorldStore::default();
         let mut audio = RecordingAudio::default();
 
         runtime.apply_underwater_tick(
             &mut world,
-            LocalPlayerUnderwaterAudioTickState {
+            LocalPlayerAmbientAudioTickState {
                 position: ProtocolVec3d::default(),
+                bubble_column_position: ProtocolVec3d::default(),
                 underwater: true,
-                transition: None,
+                underwater_transition: None,
+                bubble_column_transition: None,
+            },
+            &mut audio,
+        );
+        runtime.apply_bubble_column_tick(
+            &mut world,
+            LocalPlayerAmbientAudioTickState {
+                position: ProtocolVec3d::default(),
+                bubble_column_position: ProtocolVec3d::default(),
+                underwater: true,
+                underwater_transition: None,
+                bubble_column_transition: Some(LocalPlayerBubbleColumnAudioTransition::Upwards),
             },
             &mut audio,
         );
         runtime.play_additions(&ambient, &mut world, &mut audio);
 
+        assert_eq!(audio.positioned[0].seed, bubble_seed);
         assert_eq!(runtime.random.next_long(), expected.next_long());
         assert!(audio.local.is_empty());
     }

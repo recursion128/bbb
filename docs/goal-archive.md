@@ -707,3 +707,6 @@
 - **2026-07-28（本地玩家水下环境音工程闭环）**：移动前眼部水体 transition、
   旁观者门禁、enter/exit、40-tick loop fade 与三档随机 additions 已按
   `LocalPlayer` / `UnderwaterAmbientSound*` 顺序贯通 world 和 native audio。
+- **2026-07-28（气泡柱客户端效果工程闭环）**：移动后收缩 AABB 进入检测、
+  上升/漩涡 inside 与 ambient 音效、always-visible 粒子速度及水源 animate
+  随机序已按 `BubbleColumnAmbientSoundHandler` / `BubbleColumnBlock` 贯通。

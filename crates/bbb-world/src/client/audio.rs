@@ -20,6 +20,7 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::client::inventory::LocalInteractionSoundAction;
+use crate::client::local_player_fluid::local_player_bubble_column_drag_down;
 use crate::entities::{
     is_vanilla_minecart_type, vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
@@ -131,7 +132,7 @@ const DEFAULT_LEVEL_EVENT_SOUND_SEED: i64 = 0;
 /// fixed seed keeps `WorldStore` serializable and deterministic.
 const SOUND_SEED_RANDOM_INITIAL_SEED: i64 = 0x5EED_50_1D_A0D_10;
 const MAX_PENDING_LOCAL_INTERACTION_SOUND_ACTIONS: usize = 8;
-const MAX_PENDING_LOCAL_PLAYER_UNDERWATER_AUDIO_TICKS: usize = 16;
+const MAX_PENDING_LOCAL_PLAYER_AMBIENT_AUDIO_TICKS: usize = 16;
 
 const fn default_true() -> bool {
     true
@@ -278,13 +279,20 @@ pub struct ClientAudioState {
     /// queue because it exists solely to drive LocalPlayer ambient sounds.
     #[serde(default)]
     pub(crate) local_player_was_underwater: bool,
+    /// Vanilla `BubbleColumnAmbientSoundHandler` edge state.
+    #[serde(default)]
+    pub(crate) local_player_was_in_bubble_column: bool,
+    /// The handler suppresses a bubble-column entry sound on its first tick.
+    #[serde(default)]
+    pub(crate) local_player_ambient_audio_started: bool,
     #[serde(default)]
     pub(crate) active_tickable_entity_sounds: BTreeMap<i32, ActiveTickableEntitySound>,
     #[serde(skip)]
     pub(crate) pending_local_interaction_sound_actions: VecDeque<LocalInteractionSoundAction>,
     #[serde(skip)]
-    pub(crate) pending_local_player_underwater_audio_ticks:
-        VecDeque<LocalPlayerUnderwaterAudioTickState>,
+    pub(crate) pending_local_player_ambient_audio_ticks: VecDeque<LocalPlayerAmbientAudioTickState>,
+    #[serde(skip)]
+    pub(crate) local_player_ambient_audio_tick_pending_completion: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -335,16 +343,26 @@ pub enum LocalInteractionSoundEffect {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct LocalPlayerUnderwaterAudioTickState {
+pub struct LocalPlayerAmbientAudioTickState {
+    /// Position where `Player.updateIsUnderwater` ran before movement.
     pub position: ProtocolVec3d,
+    /// Position observed by ambient handlers after movement.
+    pub bubble_column_position: ProtocolVec3d,
     pub underwater: bool,
-    pub transition: Option<LocalPlayerUnderwaterAudioTransition>,
+    pub underwater_transition: Option<LocalPlayerUnderwaterAudioTransition>,
+    pub bubble_column_transition: Option<LocalPlayerBubbleColumnAudioTransition>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalPlayerUnderwaterAudioTransition {
     Enter { loop_seed: i64 },
     Exit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalPlayerBubbleColumnAudioTransition {
+    Upwards,
+    Whirlpool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -411,7 +429,13 @@ impl WorldStore {
     /// Advances Vanilla `Player.updateIsUnderwater` at the pre-movement point
     /// of one LocalPlayer tick and records the ordered audio observation for
     /// the native ambient-sound handlers.
-    pub fn advance_local_player_underwater_audio_tick(&mut self) -> bool {
+    pub fn begin_local_player_ambient_audio_tick(&mut self) -> bool {
+        if self
+            .client_audio
+            .local_player_ambient_audio_tick_pending_completion
+        {
+            self.complete_local_player_ambient_audio_tick();
+        }
         let Some(pose) = self.local_player.pose else {
             return false;
         };
@@ -419,49 +443,106 @@ impl WorldStore {
         let was_underwater = self.client_audio.local_player_was_underwater;
         self.client_audio.local_player_was_underwater = underwater;
 
-        let transition = if self.local_player_is_spectator() || underwater == was_underwater {
-            None
-        } else if underwater {
-            Some(LocalPlayerUnderwaterAudioTransition::Enter {
-                loop_seed: self.next_sound_seed(),
-            })
-        } else {
-            Some(LocalPlayerUnderwaterAudioTransition::Exit)
-        };
+        let underwater_transition =
+            if self.local_player_is_spectator() || underwater == was_underwater {
+                None
+            } else if underwater {
+                Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                    loop_seed: self.next_sound_seed(),
+                })
+            } else {
+                Some(LocalPlayerUnderwaterAudioTransition::Exit)
+            };
 
         if self
             .client_audio
-            .pending_local_player_underwater_audio_ticks
+            .pending_local_player_ambient_audio_ticks
             .len()
-            >= MAX_PENDING_LOCAL_PLAYER_UNDERWATER_AUDIO_TICKS
+            >= MAX_PENDING_LOCAL_PLAYER_AMBIENT_AUDIO_TICKS
         {
             self.client_audio
-                .pending_local_player_underwater_audio_ticks
+                .pending_local_player_ambient_audio_ticks
                 .pop_front();
         }
         self.client_audio
-            .pending_local_player_underwater_audio_ticks
-            .push_back(LocalPlayerUnderwaterAudioTickState {
+            .pending_local_player_ambient_audio_ticks
+            .push_back(LocalPlayerAmbientAudioTickState {
                 position: pose.position,
+                bubble_column_position: pose.position,
                 underwater,
-                transition,
+                underwater_transition,
+                bubble_column_transition: None,
             });
+        self.client_audio
+            .local_player_ambient_audio_tick_pending_completion = true;
         true
     }
 
-    pub fn take_pending_local_player_underwater_audio_ticks(
-        &mut self,
-    ) -> Vec<LocalPlayerUnderwaterAudioTickState> {
+    /// Completes the post-movement ambient-handler pass for the current tick.
+    pub fn complete_local_player_ambient_audio_tick(&mut self) -> bool {
+        if !self
+            .client_audio
+            .local_player_ambient_audio_tick_pending_completion
+        {
+            return false;
+        }
         self.client_audio
-            .pending_local_player_underwater_audio_ticks
+            .local_player_ambient_audio_tick_pending_completion = false;
+        let Some(pose) = self.local_player.pose else {
+            return false;
+        };
+        let bubble_column = local_player_bubble_column_drag_down(self, pose);
+        let was_in_bubble_column = self.client_audio.local_player_was_in_bubble_column;
+        let first_tick = !self.client_audio.local_player_ambient_audio_started;
+        self.client_audio.local_player_was_in_bubble_column = bubble_column.is_some();
+        self.client_audio.local_player_ambient_audio_started = true;
+        let bubble_column_transition =
+            if was_in_bubble_column || first_tick || self.local_player_is_spectator() {
+                None
+            } else {
+                bubble_column.map(|drag_down| {
+                    if drag_down {
+                        LocalPlayerBubbleColumnAudioTransition::Whirlpool
+                    } else {
+                        LocalPlayerBubbleColumnAudioTransition::Upwards
+                    }
+                })
+            };
+        let Some(tick) = self
+            .client_audio
+            .pending_local_player_ambient_audio_ticks
+            .back_mut()
+        else {
+            return false;
+        };
+        tick.bubble_column_position = pose.position;
+        tick.bubble_column_transition = bubble_column_transition;
+        true
+    }
+
+    /// Advances both phases when no local movement step separates them.
+    pub fn advance_local_player_ambient_audio_tick(&mut self) -> bool {
+        self.begin_local_player_ambient_audio_tick()
+            && self.complete_local_player_ambient_audio_tick()
+    }
+
+    pub fn take_pending_local_player_ambient_audio_ticks(
+        &mut self,
+    ) -> Vec<LocalPlayerAmbientAudioTickState> {
+        self.client_audio
+            .pending_local_player_ambient_audio_ticks
             .drain(..)
             .collect()
     }
 
-    pub(crate) fn reset_local_player_underwater_audio(&mut self) {
+    pub(crate) fn reset_local_player_ambient_audio(&mut self) {
         self.client_audio.local_player_was_underwater = false;
+        self.client_audio.local_player_was_in_bubble_column = false;
+        self.client_audio.local_player_ambient_audio_started = false;
         self.client_audio
-            .pending_local_player_underwater_audio_ticks
+            .local_player_ambient_audio_tick_pending_completion = false;
+        self.client_audio
+            .pending_local_player_ambient_audio_ticks
             .clear();
     }
 

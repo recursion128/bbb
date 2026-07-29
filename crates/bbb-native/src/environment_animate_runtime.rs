@@ -27,9 +27,16 @@ const FIREFLY_SPAWN_CHANCE: f64 = 0.7;
 const FIREFLY_HORIZONTAL_RANGE: f64 = 10.0;
 const FIREFLY_VERTICAL_RANGE: f64 = 5.0;
 const CREAKING_SOUND_CHANCE_BOUND: i32 = 16;
+const BUBBLE_COLUMN_SOUND_CHANCE_BOUND: i32 = 200;
 const SOUND_EVENT_FIREFLY_BUSH_IDLE: &str = "minecraft:block.firefly_bush.idle";
 const SOUND_EVENT_CREAKING_HEART_IDLE: &str = "minecraft:block.creaking_heart.idle";
+const SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT: &str =
+    "minecraft:block.bubble_column.upwards_ambient";
+const SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT: &str =
+    "minecraft:block.bubble_column.whirlpool_ambient";
 const PARTICLE_FIREFLY: &str = "minecraft:firefly";
+const PARTICLE_CURRENT_DOWN: &str = "minecraft:current_down";
+const PARTICLE_BUBBLE_COLUMN_UP: &str = "minecraft:bubble_column_up";
 
 /// Non-serializable owner of Vanilla `ClientLevel.animateTick` random cursors.
 #[derive(Debug)]
@@ -170,6 +177,25 @@ impl EnvironmentAnimateRuntime {
                     audio,
                 );
             }
+            "minecraft:bubble_column" => {
+                self.animate_bubble_column(
+                    world,
+                    pos,
+                    block
+                        .block_properties
+                        .get("drag")
+                        .map(String::as_str)
+                        .is_none_or(|value| value == "true"),
+                    animate_random,
+                    audio,
+                    spawns,
+                );
+                append_source_water_animate_effects(animate_random, pos, spawns);
+                // Bubble-column fluid is a non-falling water source. After
+                // Fluid.animateTick, ClientLevel tests its dripping-water
+                // particle with the shared level random.
+                let _ = self.level_random.next_int_bound(10);
+            }
             _ => {}
         }
 
@@ -218,6 +244,8 @@ impl EnvironmentAnimateRuntime {
                         f64::from(pos.y) + 0.5,
                         f64::from(pos.z) + 0.5,
                     ],
+                    1.0,
+                    1.0,
                     seed,
                 ));
             }
@@ -253,10 +281,107 @@ impl EnvironmentAnimateRuntime {
                 SOUND_EVENT_CREAKING_HEART_IDLE,
                 SoundSource::Blocks,
                 [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)],
+                1.0,
+                1.0,
                 seed,
             ));
         }
     }
+
+    fn animate_bubble_column(
+        &mut self,
+        world: &WorldStore,
+        pos: BlockPos,
+        drag_down: bool,
+        animate_random: &mut LevelEventSoundRandomState,
+        audio: &mut Option<&mut dyn AudioEventSink>,
+        spawns: &mut Vec<EnvironmentParticleSpawn>,
+    ) {
+        let Some((sound_id, volume, pitch)) =
+            append_bubble_column_animate_effects(pos, drag_down, animate_random, spawns)
+        else {
+            return;
+        };
+        let seed = self.level_random.next_long();
+        if let Some(audio) = audio.as_deref_mut() {
+            audio.play_positioned_sound(&local_block_sound(
+                world,
+                sound_id,
+                SoundSource::Blocks,
+                block_position(pos),
+                volume,
+                pitch,
+                seed,
+            ));
+        }
+    }
+}
+
+fn append_bubble_column_animate_effects(
+    pos: BlockPos,
+    drag_down: bool,
+    random: &mut LevelEventSoundRandomState,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) -> Option<(&'static str, f32, f32)> {
+    let x = f64::from(pos.x);
+    let y = f64::from(pos.y);
+    let z = f64::from(pos.z);
+    let sound_id = if drag_down {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_CURRENT_DOWN),
+            position: [x + 0.5, y + 0.8, z],
+            velocity: [0.0; 3],
+            always_show: true,
+        });
+        SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT
+    } else {
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_BUBBLE_COLUMN_UP),
+            position: [x + 0.5, y, z + 0.5],
+            velocity: [0.0, 0.04, 0.0],
+            always_show: true,
+        });
+        spawns.push(EnvironmentParticleSpawn {
+            particle: simple_client_particle_options(PARTICLE_BUBBLE_COLUMN_UP),
+            position: [
+                x + f64::from(random.next_float()),
+                y + f64::from(random.next_float()),
+                z + f64::from(random.next_float()),
+            ],
+            velocity: [0.0, 0.04, 0.0],
+            always_show: true,
+        });
+        SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT
+    };
+
+    if random.next_int_bound(BUBBLE_COLUMN_SOUND_CHANCE_BOUND) != 0 {
+        return None;
+    }
+    Some((
+        sound_id,
+        0.2 + random.next_float() * 0.2,
+        0.9 + random.next_float() * 0.15,
+    ))
+}
+
+fn append_source_water_animate_effects(
+    random: &mut LevelEventSoundRandomState,
+    pos: BlockPos,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    if random.next_int_bound(10) != 0 {
+        return;
+    }
+    spawns.push(EnvironmentParticleSpawn {
+        particle: simple_client_particle_options("minecraft:underwater"),
+        position: [
+            f64::from(pos.x) + random.next_double(),
+            f64::from(pos.y) + random.next_double(),
+            f64::from(pos.z) + random.next_double(),
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+    });
 }
 
 fn append_ambient_particle_spawns(
@@ -274,6 +399,8 @@ fn append_ambient_particle_spawns(
                     f64::from(pos.y) + random.next_double(),
                     f64::from(pos.z) + random.next_double(),
                 ],
+                velocity: [0.0; 3],
+                always_show: false,
             });
         }
     }
@@ -298,6 +425,8 @@ fn append_firefly_spawn(
                 f64::from(pos.z) + random.next_double() * FIREFLY_HORIZONTAL_RANGE
                     - FIREFLY_HORIZONTAL_RANGE / 2.0,
             ],
+            velocity: [0.0; 3],
+            always_show: false,
         });
     }
 }
@@ -369,6 +498,8 @@ fn local_block_sound(
     resource_id: &str,
     source: SoundSource,
     position: [f64; 3],
+    volume: f32,
+    pitch: f32,
     seed: i64,
 ) -> SoundEventState {
     SoundEventState {
@@ -384,8 +515,8 @@ fn local_block_sound(
             y: position[1],
             z: position[2],
         },
-        volume: 1.0,
-        pitch: 1.0,
+        volume,
+        pitch,
         seed,
         distance_delay: false,
     }
@@ -479,6 +610,8 @@ mod tests {
             SOUND_EVENT_FIREFLY_BUSH_IDLE,
             SoundSource::Ambient,
             [1.5, 2.5, 3.5],
+            1.0,
+            1.0,
             42,
         );
         let creaking = local_block_sound(
@@ -486,7 +619,18 @@ mod tests {
             SOUND_EVENT_CREAKING_HEART_IDLE,
             SoundSource::Blocks,
             [1.0, 2.0, 3.0],
+            1.0,
+            1.0,
             84,
+        );
+        let bubble = local_block_sound(
+            &world,
+            SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT,
+            SoundSource::Blocks,
+            [4.0, 5.0, 6.0],
+            0.3,
+            0.95,
+            96,
         );
 
         assert_eq!(
@@ -509,6 +653,10 @@ mod tests {
         );
         assert_eq!(creaking.source, "block");
         assert_eq!(creaking.seed, 84);
+        assert_eq!(bubble.source, "block");
+        assert_eq!(bubble.volume, 0.3);
+        assert_eq!(bubble.pitch, 0.95);
+        assert_eq!(bubble.seed, 96);
     }
 
     #[test]
@@ -576,6 +724,141 @@ mod tests {
             expected_positions
         );
         assert_eq!(actual.next_long(), expected.next_long());
+    }
+
+    #[test]
+    fn bubble_column_animate_effects_preserve_vanilla_particles_and_random_order() {
+        let pos = BlockPos {
+            x: -4,
+            y: 12,
+            z: 30,
+        };
+        let drag_seed = (0..100_000)
+            .find(|seed| {
+                LevelEventSoundRandomState::with_seed(*seed)
+                    .next_int_bound(BUBBLE_COLUMN_SOUND_CHANCE_BOUND)
+                    == 0
+            })
+            .expect("deterministic whirlpool ambient sound seed");
+        let mut drag_random = LevelEventSoundRandomState::with_seed(drag_seed);
+        let mut drag_spawns = Vec::new();
+        let drag_sound =
+            append_bubble_column_animate_effects(pos, true, &mut drag_random, &mut drag_spawns)
+                .unwrap();
+        let mut expected_drag = LevelEventSoundRandomState::with_seed(drag_seed);
+        assert_eq!(
+            expected_drag.next_int_bound(BUBBLE_COLUMN_SOUND_CHANCE_BOUND),
+            0
+        );
+        let expected_drag_volume = 0.2 + expected_drag.next_float() * 0.2;
+        let expected_drag_pitch = 0.9 + expected_drag.next_float() * 0.15;
+        assert_eq!(
+            drag_sound,
+            (
+                SOUND_EVENT_BUBBLE_COLUMN_WHIRLPOOL_AMBIENT,
+                expected_drag_volume,
+                expected_drag_pitch,
+            )
+        );
+        assert_eq!(drag_spawns.len(), 1);
+        assert_eq!(drag_spawns[0].particle.resource_id, PARTICLE_CURRENT_DOWN);
+        assert_eq!(drag_spawns[0].position, [-3.5, 12.8, 30.0]);
+        assert_eq!(drag_spawns[0].velocity, [0.0; 3]);
+        assert!(drag_spawns[0].always_show);
+        assert_eq!(drag_random.next_long(), expected_drag.next_long());
+
+        let upward_seed = (0..100_000)
+            .find(|seed| {
+                let mut random = LevelEventSoundRandomState::with_seed(*seed);
+                for _ in 0..3 {
+                    let _ = random.next_float();
+                }
+                random.next_int_bound(BUBBLE_COLUMN_SOUND_CHANCE_BOUND) == 0
+            })
+            .expect("deterministic upward ambient sound seed");
+        let mut upward_random = LevelEventSoundRandomState::with_seed(upward_seed);
+        let mut upward_spawns = Vec::new();
+        let upward_sound = append_bubble_column_animate_effects(
+            pos,
+            false,
+            &mut upward_random,
+            &mut upward_spawns,
+        )
+        .unwrap();
+        let mut expected_upward = LevelEventSoundRandomState::with_seed(upward_seed);
+        let random_position = [
+            -4.0 + f64::from(expected_upward.next_float()),
+            12.0 + f64::from(expected_upward.next_float()),
+            30.0 + f64::from(expected_upward.next_float()),
+        ];
+        assert_eq!(
+            expected_upward.next_int_bound(BUBBLE_COLUMN_SOUND_CHANCE_BOUND),
+            0
+        );
+        let expected_upward_volume = 0.2 + expected_upward.next_float() * 0.2;
+        let expected_upward_pitch = 0.9 + expected_upward.next_float() * 0.15;
+        assert_eq!(
+            upward_sound,
+            (
+                SOUND_EVENT_BUBBLE_COLUMN_UPWARDS_AMBIENT,
+                expected_upward_volume,
+                expected_upward_pitch,
+            )
+        );
+        assert_eq!(upward_spawns.len(), 2);
+        assert_eq!(upward_spawns[0].position, [-3.5, 12.0, 30.5],);
+        assert_eq!(upward_spawns[1].position, random_position);
+        assert!(upward_spawns.iter().all(|spawn| {
+            spawn.particle.resource_id == PARTICLE_BUBBLE_COLUMN_UP
+                && spawn.velocity == [0.0, 0.04, 0.0]
+                && spawn.always_show
+        }));
+        assert_eq!(upward_random.next_long(), expected_upward.next_long());
+
+        let water_seed = (0..100_000)
+            .find(|seed| LevelEventSoundRandomState::with_seed(*seed).next_int_bound(10) == 0)
+            .expect("deterministic underwater particle seed");
+        let mut water_random = LevelEventSoundRandomState::with_seed(water_seed);
+        let mut water_spawns = Vec::new();
+        append_source_water_animate_effects(&mut water_random, pos, &mut water_spawns);
+        let mut expected_water = LevelEventSoundRandomState::with_seed(water_seed);
+        assert_eq!(expected_water.next_int_bound(10), 0);
+        assert_eq!(water_spawns.len(), 1);
+        assert_eq!(water_spawns[0].particle.resource_id, "minecraft:underwater");
+        assert_eq!(
+            water_spawns[0].position,
+            [
+                -4.0 + expected_water.next_double(),
+                12.0 + expected_water.next_double(),
+                30.0 + expected_water.next_double(),
+            ]
+        );
+        assert_eq!(water_spawns[0].velocity, [0.0; 3]);
+        assert!(!water_spawns[0].always_show);
+        assert_eq!(water_random.next_long(), expected_water.next_long());
+
+        let mut runtime = EnvironmentAnimateRuntime {
+            level_random: LevelEventSoundRandomState::with_seed(42),
+            ..EnvironmentAnimateRuntime::default()
+        };
+        let mut expected_level_random = LevelEventSoundRandomState::with_seed(42);
+        let _ = expected_level_random.next_long();
+        let mut sound_random = LevelEventSoundRandomState::with_seed(drag_seed);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+        runtime.animate_bubble_column(
+            &WorldStore::default(),
+            pos,
+            true,
+            &mut sound_random,
+            &mut audio,
+            &mut spawns,
+        );
+        assert_eq!(
+            runtime.level_random.next_long(),
+            expected_level_random.next_long(),
+            "playLocalSound consumes the shared level seed even without an audio sink"
+        );
     }
 
     #[test]

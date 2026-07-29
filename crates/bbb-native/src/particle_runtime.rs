@@ -220,6 +220,8 @@ pub(crate) trait ParticleEventSink {
 pub(crate) struct EnvironmentParticleSpawn {
     pub(crate) particle: ClientParticleOptions,
     pub(crate) position: [f64; 3],
+    pub(crate) velocity: [f64; 3],
+    pub(crate) always_show: bool,
 }
 
 pub(crate) trait ParticleBiomeSampler {

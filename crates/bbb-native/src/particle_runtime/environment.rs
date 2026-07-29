@@ -53,9 +53,14 @@ impl ParticleCommandResolver {
                 y: spawn.position[1],
                 z: spawn.position[2],
             };
+            let velocity = Vec3d {
+                x: spawn.velocity[0],
+                y: spawn.velocity[1],
+                z: spawn.velocity[2],
+            };
             if !self.should_spawn_level_particle(
                 prepared.template.particle_type.override_limiter,
-                false,
+                spawn.always_show,
                 position,
                 context.camera_position,
             ) || !particle_provider_accepts_spawn(
@@ -67,7 +72,8 @@ impl ParticleCommandResolver {
             batch.commands.push(self.environment_particle_command(
                 &prepared,
                 position,
-                Vec3d::default(),
+                velocity,
+                spawn.always_show,
                 biome_sampler,
                 item_runtime,
             ));
@@ -98,6 +104,7 @@ impl ParticleCommandResolver {
                 &prepared,
                 position,
                 Vec3d::default(),
+                false,
                 biome_sampler,
                 item_runtime,
             ));
@@ -136,6 +143,7 @@ impl ParticleCommandResolver {
         prepared: &PreparedEnvironmentParticle,
         position: Vec3d,
         velocity: Vec3d,
+        always_show: bool,
         biome_sampler: Option<&dyn ParticleBiomeSampler>,
         item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnCommand {
@@ -145,7 +153,7 @@ impl ParticleCommandResolver {
             position,
             velocity,
             prepared.template.particle_type.override_limiter,
-            false,
+            always_show,
             0,
             prepared.initial_delay_ticks,
             prepared.option_state.clone(),

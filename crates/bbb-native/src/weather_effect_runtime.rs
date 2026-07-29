@@ -171,6 +171,8 @@ impl WeatherEffectRuntime {
                     sample_position[1] + surface.max_surface_height(),
                     sample_position[2],
                 ],
+                velocity: [0.0; 3],
+                always_show: false,
             });
         }
 

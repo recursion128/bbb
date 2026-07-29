@@ -666,7 +666,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_underwater_audio_transition_loop_and_addition_commands() {
+    fn resolves_underwater_and_bubble_column_environment_audio_commands() {
         let assets_dir = unique_assets_dir("underwater-ambient");
         let catalog = test_catalog(
             &assets_dir,
@@ -676,7 +676,11 @@ mod tests {
               "ambient.underwater.loop": {"sounds": ["ambient/underwater/loop"]},
               "ambient.underwater.loop.additions": {"sounds": ["ambient/underwater/addition"]},
               "ambient.underwater.loop.additions.rare": {"sounds": ["ambient/underwater/addition_rare"]},
-              "ambient.underwater.loop.additions.ultra_rare": {"sounds": ["ambient/underwater/addition_ultra_rare"]}
+              "ambient.underwater.loop.additions.ultra_rare": {"sounds": ["ambient/underwater/addition_ultra_rare"]},
+              "block.bubble_column.upwards_inside": {"sounds": ["block/bubble_column/upwards_inside"]},
+              "block.bubble_column.whirlpool_inside": {"sounds": ["block/bubble_column/whirlpool_inside"]},
+              "block.bubble_column.upwards_ambient": {"sounds": ["block/bubble_column/upwards_ambient"]},
+              "block.bubble_column.whirlpool_ambient": {"sounds": ["block/bubble_column/whirlpool_ambient"]}
             }"#,
         );
         let registry = SoundEventRegistry::default();
@@ -742,6 +746,46 @@ mod tests {
             .unwrap();
         assert_eq!(command.sound.event_id, "minecraft:ambient.underwater.loop");
         assert_near(command.channel_gain, 0.5);
+
+        for (sound_id, source, category) in [
+            (
+                "minecraft:block.bubble_column.upwards_inside",
+                "player",
+                AudioCategory::Players,
+            ),
+            (
+                "minecraft:block.bubble_column.whirlpool_inside",
+                "player",
+                AudioCategory::Players,
+            ),
+            (
+                "minecraft:block.bubble_column.upwards_ambient",
+                "block",
+                AudioCategory::Blocks,
+            ),
+            (
+                "minecraft:block.bubble_column.whirlpool_ambient",
+                "block",
+                AudioCategory::Blocks,
+            ),
+        ] {
+            let command = resolver
+                .play_positioned_sound(&SoundEventState {
+                    sound: direct_holder(sound_id),
+                    source: source.to_string(),
+                    position: Vec3d::default(),
+                    volume: 0.3,
+                    pitch: 0.95,
+                    seed: 4,
+                    distance_delay: false,
+                })
+                .unwrap();
+            let AudioCommand::PlayPositionedSound(command) = command else {
+                panic!("expected positioned bubble-column sound");
+            };
+            assert_eq!(command.category, category);
+            assert_eq!(command.sound.event_id, sound_id);
+        }
     }
 
     #[test]

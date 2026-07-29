@@ -9,6 +9,8 @@ use crate::{
 const FLUID_INTERACTION_BOX_DEFLATE: f64 = 0.001;
 const FLUID_DOWNWARD_FLOW_WEIGHT: f64 = 6.0;
 const FLUID_FALLING_HEIGHT_OFFSET: f64 = 8.0 / 9.0;
+const BUBBLE_COLUMN_SAMPLE_VERTICAL_INFLATE: f64 = -0.4;
+const BUBBLE_COLUMN_SAMPLE_DEFLATE: f64 = 1.0e-6;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct EntityFluidContactState {
@@ -89,6 +91,51 @@ pub(super) fn local_player_eye_in_water(world: &WorldStore) -> bool {
         .local_player()
         .pose
         .is_some_and(|pose| local_player_fluid_contact(world, pose).eye_in_water)
+}
+
+/// Samples `BubbleColumnAmbientSoundHandler`'s contracted player AABB.
+///
+/// Vanilla returns an empty stream when any chunk spanning the bounds is not
+/// loaded, then selects the first bubble-column state in BlockPos x/y/z order.
+pub(super) fn local_player_bubble_column_drag_down(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+) -> Option<bool> {
+    let bounds = LocalPlayerBounds::for_pose(pose);
+    let inflated_min_y = bounds.min_y() - BUBBLE_COLUMN_SAMPLE_VERTICAL_INFLATE;
+    let inflated_max_y = bounds.max_y() + BUBBLE_COLUMN_SAMPLE_VERTICAL_INFLATE;
+    let min_x = block_floor(bounds.min_x() + BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let max_x = block_floor(bounds.max_x() - BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let min_y = block_floor(inflated_min_y.min(inflated_max_y) + BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let max_y = block_floor(inflated_min_y.max(inflated_max_y) - BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let min_z = block_floor(bounds.min_z() + BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let max_z = block_floor(bounds.max_z() - BUBBLE_COLUMN_SAMPLE_DEFLATE);
+    let dimension = world.dimension();
+    let dimension_max_y = dimension.min_y.saturating_add(dimension.height);
+
+    let mut first_bubble_column = None;
+    for z in min_z..=max_z {
+        for y in min_y..=max_y {
+            for x in min_x..=max_x {
+                if y < dimension.min_y || y >= dimension_max_y {
+                    continue;
+                }
+                let block = world.probe_block(BlockPos { x, y, z })?;
+                if first_bubble_column.is_none()
+                    && block.block_name.as_deref() == Some("minecraft:bubble_column")
+                {
+                    first_bubble_column = Some(
+                        block
+                            .block_properties
+                            .get("drag")
+                            .map(String::as_str)
+                            .is_none_or(|value| value == "true"),
+                    );
+                }
+            }
+        }
+    }
+    first_bubble_column
 }
 
 pub(super) fn local_player_bounds_contains_any_fluid(
@@ -393,8 +440,9 @@ mod tests {
     use bbb_protocol::game_types::{VANILLA_GAME_TYPE_SPECTATOR_ID, VANILLA_GAME_TYPE_SURVIVAL_ID};
 
     use crate::{
-        ChunkColumn, ChunkSection, ChunkState, LightData, LocalPlayerUnderwaterAudioTransition,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        ChunkColumn, ChunkSection, ChunkState, LightData, LocalPlayerBubbleColumnAudioTransition,
+        LocalPlayerUnderwaterAudioTransition, PaletteDomain, PaletteKind, PalettedContainerData,
+        WorldDimension,
     };
 
     const STONE_BLOCK_STATE_ID: i32 = 1;
@@ -515,7 +563,7 @@ mod tests {
     }
 
     #[test]
-    fn local_player_underwater_audio_ticks_record_vanilla_transitions_and_seed_order() {
+    fn local_player_ambient_audio_ticks_record_underwater_transitions_and_seed_order() {
         let mut world = empty_world();
         let position = vec3(0.5, 0.0, 0.5);
         world.set_local_player_pose(LocalPlayerPoseState {
@@ -523,13 +571,15 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
 
-        assert!(world.advance_local_player_underwater_audio_tick());
+        assert!(world.advance_local_player_ambient_audio_tick());
         assert_eq!(
-            world.take_pending_local_player_underwater_audio_ticks(),
-            vec![crate::LocalPlayerUnderwaterAudioTickState {
+            world.take_pending_local_player_ambient_audio_ticks(),
+            vec![crate::LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: false,
-                transition: None,
+                underwater_transition: None,
+                bubble_column_transition: None,
             }]
         );
 
@@ -540,19 +590,23 @@ mod tests {
         );
         let mut expected_random = world.clone();
         let loop_seed = expected_random.next_sound_seed();
-        assert!(world.advance_local_player_underwater_audio_tick());
+        assert!(world.advance_local_player_ambient_audio_tick());
         assert_eq!(
-            world.take_pending_local_player_underwater_audio_ticks(),
-            vec![crate::LocalPlayerUnderwaterAudioTickState {
+            world.take_pending_local_player_ambient_audio_ticks(),
+            vec![crate::LocalPlayerAmbientAudioTickState {
                 position,
+                bubble_column_position: position,
                 underwater: true,
-                transition: Some(LocalPlayerUnderwaterAudioTransition::Enter { loop_seed }),
+                underwater_transition: Some(LocalPlayerUnderwaterAudioTransition::Enter {
+                    loop_seed,
+                }),
+                bubble_column_transition: None,
             }]
         );
 
-        assert!(world.advance_local_player_underwater_audio_tick());
+        assert!(world.advance_local_player_ambient_audio_tick());
         assert_eq!(
-            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            world.take_pending_local_player_ambient_audio_ticks()[0].underwater_transition,
             None
         );
 
@@ -561,9 +615,9 @@ mod tests {
             BlockPos { x: 0, y: 1, z: 0 },
             crate::vanilla_air_block_state_id(),
         );
-        assert!(world.advance_local_player_underwater_audio_tick());
+        assert!(world.advance_local_player_ambient_audio_tick());
         assert_eq!(
-            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            world.take_pending_local_player_ambient_audio_ticks()[0].underwater_transition,
             Some(LocalPlayerUnderwaterAudioTransition::Exit)
         );
         assert_eq!(
@@ -574,7 +628,7 @@ mod tests {
     }
 
     #[test]
-    fn local_player_underwater_audio_spectator_updates_state_without_transition_sounds() {
+    fn local_player_ambient_audio_spectator_updates_underwater_state_without_transition_sounds() {
         let mut world = empty_world();
         world.set_local_player_pose(LocalPlayerPoseState {
             position: vec3(0.5, 0.0, 0.5),
@@ -587,15 +641,15 @@ mod tests {
         );
         world.gameplay.game_type = VANILLA_GAME_TYPE_SPECTATOR_ID;
 
-        world.advance_local_player_underwater_audio_tick();
-        let spectator_enter = world.take_pending_local_player_underwater_audio_ticks();
+        world.advance_local_player_ambient_audio_tick();
+        let spectator_enter = world.take_pending_local_player_ambient_audio_ticks();
         assert!(spectator_enter[0].underwater);
-        assert_eq!(spectator_enter[0].transition, None);
+        assert_eq!(spectator_enter[0].underwater_transition, None);
 
         world.gameplay.game_type = VANILLA_GAME_TYPE_SURVIVAL_ID;
-        world.advance_local_player_underwater_audio_tick();
+        world.advance_local_player_ambient_audio_tick();
         assert_eq!(
-            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            world.take_pending_local_player_ambient_audio_ticks()[0].underwater_transition,
             None,
             "leaving spectator mode while still underwater is not a fresh enter edge"
         );
@@ -605,11 +659,150 @@ mod tests {
             BlockPos { x: 0, y: 1, z: 0 },
             crate::vanilla_air_block_state_id(),
         );
-        world.advance_local_player_underwater_audio_tick();
+        world.advance_local_player_ambient_audio_tick();
         assert!(matches!(
-            world.take_pending_local_player_underwater_audio_ticks()[0].transition,
+            world.take_pending_local_player_ambient_audio_ticks()[0].underwater_transition,
             Some(LocalPlayerUnderwaterAudioTransition::Exit)
         ));
+    }
+
+    #[test]
+    fn bubble_column_audio_suppresses_first_tick_then_reports_entry_kind() {
+        let mut world = empty_world();
+        let position = vec3(0.5, 0.0, 0.5);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position,
+            ..LocalPlayerPoseState::default()
+        });
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            bubble_column_block_state_id(true),
+        );
+
+        world.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            world.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            None,
+            "Vanilla suppresses a bubble-column entry sound on the handler's first tick"
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            crate::vanilla_air_block_state_id(),
+        );
+        world.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            world.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            None
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            bubble_column_block_state_id(false),
+        );
+        world.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            world.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            Some(LocalPlayerBubbleColumnAudioTransition::Upwards)
+        );
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            crate::vanilla_air_block_state_id(),
+        );
+        world.advance_local_player_ambient_audio_tick();
+        world.take_pending_local_player_ambient_audio_ticks();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            bubble_column_block_state_id(true),
+        );
+        world.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            world.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            Some(LocalPlayerBubbleColumnAudioTransition::Whirlpool)
+        );
+    }
+
+    #[test]
+    fn bubble_column_audio_updates_spectator_edge_and_requires_all_spanning_chunks_loaded() {
+        let mut spectator = empty_world();
+        spectator.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+        spectator.advance_local_player_ambient_audio_tick();
+        spectator.take_pending_local_player_ambient_audio_ticks();
+        spectator.gameplay.game_type = VANILLA_GAME_TYPE_SPECTATOR_ID;
+        set_block(
+            &mut spectator,
+            BlockPos { x: 0, y: 0, z: 0 },
+            bubble_column_block_state_id(false),
+        );
+        spectator.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            spectator.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            None
+        );
+        spectator.gameplay.game_type = VANILLA_GAME_TYPE_SURVIVAL_ID;
+        spectator.advance_local_player_ambient_audio_tick();
+        assert_eq!(
+            spectator.take_pending_local_player_ambient_audio_ticks()[0].bubble_column_transition,
+            None,
+            "leaving spectator mode inside the same column is not a fresh edge"
+        );
+
+        let mut boundary = empty_world();
+        let pose = LocalPlayerPoseState {
+            position: vec3(15.9, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        };
+        boundary.set_local_player_pose(pose);
+        set_block(
+            &mut boundary,
+            BlockPos { x: 15, y: 0, z: 0 },
+            bubble_column_block_state_id(true),
+        );
+        assert_eq!(
+            local_player_bubble_column_drag_down(&boundary, pose),
+            None,
+            "getBlockStatesIfLoaded returns empty when the contracted AABB spans an unloaded chunk"
+        );
+    }
+
+    #[test]
+    fn bubble_column_audio_samples_after_the_local_movement_phase() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(2.5, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+        world.advance_local_player_ambient_audio_tick();
+        world.take_pending_local_player_ambient_audio_ticks();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            bubble_column_block_state_id(false),
+        );
+
+        assert!(world.begin_local_player_ambient_audio_tick());
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+        assert!(world.complete_local_player_ambient_audio_tick());
+
+        let tick = world.take_pending_local_player_ambient_audio_ticks()[0];
+        assert_eq!(tick.position, vec3(2.5, 0.0, 0.5));
+        assert_eq!(tick.bubble_column_position, vec3(0.5, 0.0, 0.5));
+        assert_eq!(
+            tick.bubble_column_transition,
+            Some(LocalPlayerBubbleColumnAudioTransition::Upwards)
+        );
     }
 
     #[test]
@@ -830,6 +1023,15 @@ mod tests {
                 block_state_id,
             })
         );
+    }
+
+    fn bubble_column_block_state_id(drag_down: bool) -> i32 {
+        let properties =
+            std::collections::BTreeMap::from([("drag".to_string(), drag_down.to_string())]);
+        crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties("minecraft:bubble_column", &properties)
+            .expect("Vanilla bubble-column block state exists")
+            .id
     }
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
