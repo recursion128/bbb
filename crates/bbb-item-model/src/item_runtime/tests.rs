@@ -7,6 +7,7 @@ use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_GRAY_ID,
     VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_WHITE_ID,
 };
+use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SLOWNESS_ID,
     VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAKNESS_ID,
@@ -11731,6 +11732,81 @@ fn native_item_runtime_resolves_component_select_values() {
         uv("component_damage_type_fallback")
     );
 
+    // Descriptor-backed cases retain full object/list values and float bit
+    // identity instead of collapsing them through the former scalar enum.
+    assert_eq!(
+        selected(
+            13,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID
+                ],
+                custom_model_data_floats: vec![0.25, 1.5].into(),
+                custom_model_data_flags: vec![true, false],
+                custom_model_data_strings: vec!["first".to_string(), "second".to_string()],
+                custom_model_data_colors: vec![0x12_34_56],
+                ..DataComponentPatchSummary::default()
+            }
+        ),
+        uv("component_custom_model_data_match")
+    );
+    assert_eq!(
+        selected(
+            13,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID
+                ],
+                custom_model_data_floats: vec![0.25, 1.5].into(),
+                custom_model_data_flags: vec![true, false],
+                custom_model_data_strings: vec!["first".to_string(), "different".to_string()],
+                custom_model_data_colors: vec![0x12_34_56],
+                ..DataComponentPatchSummary::default()
+            }
+        ),
+        uv("component_custom_model_data_fallback")
+    );
+    assert_eq!(
+        selected(
+            13,
+            DataComponentPatchSummary {
+                removed_type_ids: vec![
+                    component_id::VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID
+                ],
+                ..DataComponentPatchSummary::default()
+            }
+        ),
+        uv("component_custom_model_data_fallback")
+    );
+    assert_eq!(
+        selected(
+            14,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    component_id::VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID
+                ],
+                minimum_attack_charge_bits: Some(0.125_f32.to_bits()),
+                ..DataComponentPatchSummary::default()
+            }
+        ),
+        uv("component_minimum_attack_charge_match")
+    );
+
+    let lore = bbb_world::decode_persistent_component_select_value(
+        component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        &serde_json::json!([
+            {"text": "Styled", "bold": true},
+            "Plain"
+        ]),
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(selected(15, lore), uv("component_lore_match"));
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -17608,6 +17684,9 @@ fn write_component_select_fixture(root: &Path) {
         "item_name_component_selector",
         "block_item_name_component_selector",
         "damage_type_component_selector",
+        "custom_model_data_component_selector",
+        "minimum_attack_charge_component_selector",
+        "lore_component_selector",
     ];
     write_item_registry_fixture(root, &item_ids);
     let mut catalog = item_registry_override_value(&item_ids);
@@ -17923,6 +18002,69 @@ fn write_component_select_fixture(root: &Path) {
                 }
             }"#,
     );
+    write_json(
+        &assets
+            .join("items")
+            .join("custom_model_data_component_selector.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:custom_model_data",
+                    "cases": [
+                        {
+                            "when": {
+                                "floats": [0.25, 1.5],
+                                "flags": [true, false],
+                                "strings": ["first", "second"],
+                                "colors": [1193046]
+                            },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_custom_model_data_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_custom_model_data_fallback" }
+                }
+            }"#,
+    );
+    write_json(
+        &assets
+            .join("items")
+            .join("minimum_attack_charge_component_selector.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:minimum_attack_charge",
+                    "cases": [
+                        {
+                            "when": 0.125,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_minimum_attack_charge_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_minimum_attack_charge_fallback" }
+                }
+            }"#,
+    );
+    write_json(
+        &assets.join("items").join("lore_component_selector.json"),
+        r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:lore",
+                    "cases": [
+                        {
+                            "when": [
+                                { "text": "Styled", "bold": true },
+                                "Plain"
+                            ],
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_lore_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_lore_fallback" }
+                }
+            }"#,
+    );
     for (model_id, color) in [
         ("component_rarity_common", [80, 80, 80, 255]),
         ("component_rarity_rare", [80, 180, 220, 255]),
@@ -17960,6 +18102,15 @@ fn write_component_select_fixture(root: &Path) {
         ("component_damage_type_spear", [170, 105, 45, 255]),
         ("component_damage_type_custom", [45, 170, 105, 255]),
         ("component_damage_type_fallback", [55, 45, 70, 255]),
+        ("component_custom_model_data_match", [120, 65, 205, 255]),
+        ("component_custom_model_data_fallback", [45, 35, 70, 255]),
+        ("component_minimum_attack_charge_match", [205, 145, 65, 255]),
+        (
+            "component_minimum_attack_charge_fallback",
+            [70, 45, 35, 255],
+        ),
+        ("component_lore_match", [65, 205, 145, 255]),
+        ("component_lore_fallback", [35, 70, 45, 255]),
     ] {
         write_flat_item_model_and_texture(&assets, model_id, &color);
     }

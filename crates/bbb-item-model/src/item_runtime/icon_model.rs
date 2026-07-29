@@ -12,6 +12,7 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
 };
 use bbb_protocol::data_component_types as component_id;
+use bbb_protocol::data_component_types::vanilla_data_component_type_for_resource_id;
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
 use bbb_protocol::item_types::{
     VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
@@ -26,7 +27,7 @@ use bbb_protocol::packets::{
 };
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_render_types::VillagerModelType;
-use bbb_world::VanillaTrimPatternIdentity;
+use bbb_world::{RegistrySet, VanillaTrimPatternIdentity};
 use chrono::{
     Datelike, Duration, FixedOffset, Local, NaiveDate, Offset, TimeZone, Timelike, Utc, Weekday,
 };
@@ -1013,164 +1014,483 @@ pub(super) enum SelectProperty {
     BlockState { property: String },
     /// `minecraft:custom_model_data` — `CustomModelDataProperty.getString`.
     CustomModelDataString { index: usize },
-    /// `minecraft:component` — `ComponentContents.get`, currently for decoded
-    /// scalar / enum components.
+    /// `minecraft:component` — `ComponentContents.get`, dispatched through
+    /// the selected persistent `DataComponentType` codec.
     Component { component: ComponentSelectProperty },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ComponentSelectProperty {
-    MaxStackSize,
-    MaxDamage,
-    Damage,
-    ItemModel,
-    ItemName,
-    Rarity,
-    CustomName,
-    EnchantmentGlintOverride,
-    MapId,
-    DyedColor,
-    MapColor,
-    DamageType,
+pub(super) struct ComponentSelectProperty {
+    type_id: i32,
+    resource_id: &'static str,
 }
 
 impl ComponentSelectProperty {
     fn for_component(component: &str) -> Option<Self> {
-        match component {
-            "minecraft:max_stack_size" => Some(Self::MaxStackSize),
-            "minecraft:max_damage" => Some(Self::MaxDamage),
-            "minecraft:damage" => Some(Self::Damage),
-            "minecraft:item_model" => Some(Self::ItemModel),
-            "minecraft:item_name" => Some(Self::ItemName),
-            "minecraft:rarity" => Some(Self::Rarity),
-            "minecraft:custom_name" => Some(Self::CustomName),
-            "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
-            "minecraft:map_id" => Some(Self::MapId),
-            "minecraft:dyed_color" => Some(Self::DyedColor),
-            "minecraft:map_color" => Some(Self::MapColor),
-            "minecraft:damage_type" => Some(Self::DamageType),
-            _ => None,
+        let component = vanilla_data_component_type_for_resource_id(component)?;
+        component.persistent.then_some(Self {
+            type_id: component.type_id,
+            resource_id: component.resource_id,
+        })
+    }
+
+    fn is_explicitly_added(self, patch: &DataComponentPatchSummary) -> bool {
+        patch.added_type_ids.contains(&self.type_id)
+    }
+
+    fn is_removed(self, patch: &DataComponentPatchSummary) -> bool {
+        patch.removed_type_ids.contains(&self.type_id)
+    }
+
+    fn matches(self, candidate: &ComponentSelectCaseValue, ctx: IconResolveContext<'_>) -> bool {
+        if self.type_id == component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID
+            && ctx.component_patch.is_none_or(|patch| {
+                !patch.removed_type_ids.contains(&self.type_id)
+                    && patch.damage_type_id.is_none()
+                    && !patch.added_type_ids.contains(&self.type_id)
+            })
+            && compact_component_select_when_values(&candidate.raw)
+                .into_iter()
+                .any(|value| value.as_str() == ctx.default_damage_type)
+        {
+            return true;
         }
-    }
-
-    fn component_id(self) -> i32 {
-        match self {
-            Self::MaxStackSize => component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
-            Self::MaxDamage => component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
-            Self::Damage => component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
-            Self::ItemModel => component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
-            Self::ItemName => component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-            Self::Rarity => component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-            Self::CustomName => component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-            Self::EnchantmentGlintOverride => {
-                component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID
-            }
-            Self::MapId => component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-            Self::DyedColor => component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID,
-            Self::MapColor => component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-            Self::DamageType => component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+        let Some(actual) = self.value_from_stack(ctx) else {
+            return false;
+        };
+        let expected = if ctx.registries.is_some() {
+            decode_component_select_when(self.type_id, &candidate.raw, ctx.registries)
+        } else {
+            candidate.static_values.as_ref().cloned()
         }
+        .unwrap_or_default();
+        expected
+            .iter()
+            .any(|expected| component_select_values_equal(self.type_id, &actual, expected))
+            || self
+                .context_free_holder_case_values(&candidate.raw, ctx)
+                .iter()
+                .any(|expected| component_select_values_equal(self.type_id, &actual, expected))
     }
 
-    fn value(self, ctx: IconResolveContext<'_>) -> Option<SelectCaseValue> {
-        self.value_from_stack(
-            ctx.component_patch,
-            ctx.default_max_stack_size,
-            ctx.default_max_damage,
-            ctx.default_item_model_id,
-            ctx.default_item_name_translation_key,
-            ctx.default_damage_type,
-            ctx.damage_type_keys,
-        )
-    }
-
-    fn value_from_stack(
-        self,
-        component_patch: Option<&DataComponentPatchSummary>,
-        default_max_stack_size: Option<i32>,
-        default_max_damage: Option<i32>,
-        default_item_model_id: &str,
-        default_item_name_translation_key: &str,
-        default_damage_type: Option<&str>,
-        damage_type_keys: Option<&[String]>,
-    ) -> Option<SelectCaseValue> {
-        if component_patch
-            .is_some_and(|patch| patch.removed_type_ids.contains(&self.component_id()))
+    fn value_from_stack(self, ctx: IconResolveContext<'_>) -> Option<DataComponentPatchSummary> {
+        if ctx
+            .component_patch
+            .is_some_and(|patch| self.is_removed(patch))
         {
             return None;
         }
 
-        match self {
-            Self::MaxStackSize => Some(SelectCaseValue::I32(effective_item_max_stack_size(
-                component_patch,
-                default_max_stack_size,
-            ))),
-            Self::MaxDamage => component_patch
-                .and_then(|patch| patch.max_damage)
-                .or(default_max_damage)
-                .map(SelectCaseValue::I32),
-            Self::Damage => component_patch
-                .and_then(|patch| patch.damage)
-                .or_else(|| default_max_damage.map(|_| 0))
-                .map(SelectCaseValue::I32),
-            Self::ItemModel => Some(SelectCaseValue::String(
-                component_patch
-                    .and_then(|patch| patch.item_model.as_deref())
-                    .unwrap_or(default_item_model_id)
-                    .to_string(),
-            )),
-            Self::ItemName => {
-                if let Some(name) = component_patch.and_then(|patch| patch.item_name.as_deref()) {
-                    Some(SelectCaseValue::String(name.to_string()))
+        let mut value = ctx.component_patch.cloned().unwrap_or_default();
+        let explicitly_added = ctx
+            .component_patch
+            .is_some_and(|patch| self.is_explicitly_added(patch));
+        match self.type_id {
+            component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => {
+                value.max_stack_size = Some(effective_item_max_stack_size(
+                    ctx.component_patch,
+                    ctx.default_max_stack_size,
+                ));
+            }
+            component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => {
+                value.max_damage = value.max_damage.or(ctx.default_max_damage);
+                value.max_damage?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => {
+                value.damage = value.damage.or_else(|| ctx.default_max_damage.map(|_| 0));
+                value.damage?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => {
+                value
+                    .item_model
+                    .get_or_insert_with(|| ctx.default_item_model_id.to_string());
+            }
+            component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+                if value.item_name.is_none() {
+                    let component = serde_json::json!({
+                        "translate": ctx.default_item_name_translation_key
+                    });
+                    value = bbb_world::decode_persistent_component_select_value(
+                        self.type_id,
+                        &component,
+                        None,
+                    )
+                    .ok()
+                    .flatten()?;
                 } else {
-                    Some(SelectCaseValue::TranslatableComponentKey(
-                        default_item_name_translation_key.to_string(),
-                    ))
+                    ensure_plain_component_projection(
+                        &mut value.item_name,
+                        &mut value.item_name_styled,
+                        &mut value.item_name_nbt,
+                    );
                 }
             }
-            Self::Rarity => Some(SelectCaseValue::String(
-                component_patch
-                    .and_then(|patch| patch.rarity)
-                    .unwrap_or(ItemRaritySummary::Common)
-                    .as_str()
-                    .to_string(),
-            )),
-            Self::CustomName => component_patch
-                .and_then(|patch| patch.custom_name.as_deref())
-                .map(|name| SelectCaseValue::String(name.to_string())),
-            Self::EnchantmentGlintOverride => component_patch
-                .and_then(|patch| patch.enchantment_glint_override)
-                .map(SelectCaseValue::Bool),
-            Self::MapId => component_patch
-                .and_then(|patch| patch.map_id)
-                .map(SelectCaseValue::I32),
-            Self::DyedColor => component_patch
-                .and_then(|patch| patch.dyed_color)
-                .map(SelectCaseValue::I32),
-            Self::MapColor => component_patch
-                .and_then(|patch| patch.map_color)
-                .map(SelectCaseValue::I32),
-            Self::DamageType => {
-                if let Some(patch) = component_patch {
-                    if let Some(holder_id) = patch.damage_type_id {
-                        return usize::try_from(holder_id)
-                            .ok()
-                            .and_then(|holder_id| damage_type_keys?.get(holder_id))
-                            .cloned()
-                            .map(SelectCaseValue::String);
-                    }
-                    if patch
-                        .added_type_ids
-                        .contains(&component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID)
-                    {
-                        return None;
-                    }
+            component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => {
+                value.rarity.get_or_insert(ItemRaritySummary::Common);
+            }
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
+                value.custom_name.as_ref()?;
+                ensure_plain_component_projection(
+                    &mut value.custom_name,
+                    &mut value.custom_name_styled,
+                    &mut value.custom_name_nbt,
+                );
+            }
+            component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => {
+                value.enchantment_glint_override?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
+                value.map_id?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => {
+                value.dyed_color?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID => {
+                value.map_color?;
+            }
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID => {
+                if value.damage_type_id.is_none() {
+                    let resource_id = ctx.default_damage_type?;
+                    value.damage_type_id = ctx
+                        .registries
+                        .and_then(|registries| {
+                            registries
+                                .holder_id_by_resource_id("minecraft:damage_type", resource_id)
+                        })
+                        .or_else(|| {
+                            ctx.damage_type_keys.and_then(|keys| {
+                                keys.iter()
+                                    .position(|key| key == resource_id)
+                                    .and_then(|index| i32::try_from(index).ok())
+                            })
+                        });
                 }
-                default_damage_type
-                    .map(str::to_string)
-                    .map(SelectCaseValue::String)
+                value.damage_type_id?;
+            }
+            _ if !explicitly_added => return None,
+            _ => {}
+        }
+        Some(value)
+    }
+
+    fn context_free_holder_case_values(
+        self,
+        candidate: &Value,
+        ctx: IconResolveContext<'_>,
+    ) -> Vec<DataComponentPatchSummary> {
+        if self.type_id != component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID {
+            return Vec::new();
+        }
+        compact_component_select_when_values(candidate)
+            .into_iter()
+            .filter_map(Value::as_str)
+            .filter_map(|resource_id| {
+                let holder_id = ctx
+                    .damage_type_keys?
+                    .iter()
+                    .position(|key| key == resource_id)
+                    .and_then(|index| i32::try_from(index).ok())?;
+                Some(DataComponentPatchSummary {
+                    damage_type_id: Some(holder_id),
+                    ..DataComponentPatchSummary::default()
+                })
+            })
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ComponentSelectCaseValue {
+    raw: Value,
+    static_values: Option<Vec<DataComponentPatchSummary>>,
+}
+
+fn decode_component_select_when(
+    type_id: i32,
+    raw: &Value,
+    registries: Option<&RegistrySet>,
+) -> Option<Vec<DataComponentPatchSummary>> {
+    let alternatives = compact_component_select_when_values(raw)
+        .into_iter()
+        .map(|value| {
+            bbb_world::decode_persistent_component_select_value(type_id, value, registries)
+                .ok()
+                .flatten()
+        })
+        .collect::<Option<Vec<_>>>();
+    alternatives.or_else(|| {
+        bbb_world::decode_persistent_component_select_value(type_id, raw, registries)
+            .ok()
+            .flatten()
+            .map(|value| vec![value])
+    })
+}
+
+fn compact_component_select_when_values(raw: &Value) -> Vec<&Value> {
+    match raw {
+        Value::Array(values) if !values.is_empty() => values.iter().collect(),
+        Value::Array(_) => Vec::new(),
+        value => vec![value],
+    }
+}
+
+fn component_select_values_equal(
+    type_id: i32,
+    actual: &DataComponentPatchSummary,
+    expected: &DataComponentPatchSummary,
+) -> bool {
+    match type_id {
+        component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => component_nbt_values_equal(
+            actual.custom_name_nbt.as_ref(),
+            expected.custom_name_nbt.as_ref(),
+        ),
+        component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => component_nbt_values_equal(
+            actual.item_name_nbt.as_ref(),
+            expected.item_name_nbt.as_ref(),
+        ),
+        component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID => {
+            actual.lore_nbt.len() == expected.lore_nbt.len()
+                && actual
+                    .lore_nbt
+                    .iter()
+                    .zip(&expected.lore_nbt)
+                    .all(|(actual, expected)| {
+                        bbb_protocol::component_codec_values_equal(actual, expected)
+                            .unwrap_or(false)
+                    })
+        }
+        _ => {
+            let Ok(actual) =
+                bbb_protocol::data_component_types::encode_data_component_value_summary(
+                    type_id, actual,
+                )
+            else {
+                return false;
+            };
+            let Ok(expected) =
+                bbb_protocol::data_component_types::encode_data_component_value_summary(
+                    type_id, expected,
+                )
+            else {
+                return false;
+            };
+            actual == expected
+        }
+    }
+}
+
+fn component_nbt_values_equal(
+    actual: Option<&NbtSummaryValue>,
+    expected: Option<&NbtSummaryValue>,
+) -> bool {
+    match (actual, expected) {
+        (Some(actual), Some(expected)) => {
+            bbb_protocol::component_codec_values_equal(actual, expected).unwrap_or(false)
+        }
+        _ => false,
+    }
+}
+
+fn ensure_plain_component_projection(
+    text: &mut Option<String>,
+    styled: &mut Option<Vec<bbb_protocol::StyledTextRun>>,
+    nbt: &mut Option<NbtSummaryValue>,
+) {
+    let Some(text) = text.as_ref() else {
+        return;
+    };
+    if nbt.is_none() {
+        *nbt = Some(NbtSummaryValue::String(text.clone()));
+    }
+    if styled.is_none() {
+        *styled = nbt
+            .as_ref()
+            .map(bbb_protocol::styled_component_runs_from_nbt_value);
+    }
+}
+
+fn legacy_scalar_exact_component(type_id: i32) -> bool {
+    matches!(
+        type_id,
+        component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID
+            | component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID
+    )
+}
+
+fn legacy_scalar_exact_component_value(
+    type_id: i32,
+    component_patch: &DataComponentPatchSummary,
+    default_max_stack_size: Option<i32>,
+    default_max_damage: Option<i32>,
+    default_item_model_id: &str,
+) -> Option<SelectCaseValue> {
+    if component_patch.removed_type_ids.contains(&type_id) {
+        return None;
+    }
+    match type_id {
+        component_id::VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID => Some(SelectCaseValue::I32(
+            effective_item_max_stack_size(Some(component_patch), default_max_stack_size),
+        )),
+        component_id::VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID => component_patch
+            .max_damage
+            .or(default_max_damage)
+            .map(SelectCaseValue::I32),
+        component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID => component_patch
+            .damage
+            .or_else(|| default_max_damage.map(|_| 0))
+            .map(SelectCaseValue::I32),
+        component_id::VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID => Some(SelectCaseValue::String(
+            component_patch
+                .item_model
+                .as_deref()
+                .unwrap_or(default_item_model_id)
+                .to_string(),
+        )),
+        component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID => Some(SelectCaseValue::String(
+            component_patch
+                .rarity
+                .unwrap_or(ItemRaritySummary::Common)
+                .as_str()
+                .to_string(),
+        )),
+        component_id::VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID => component_patch
+            .enchantment_glint_override
+            .map(SelectCaseValue::Bool),
+        component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID => {
+            component_patch.map_id.map(SelectCaseValue::I32)
+        }
+        component_id::VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID => {
+            component_patch.dyed_color.map(SelectCaseValue::I32)
+        }
+        component_id::VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID => {
+            component_patch.map_color.map(SelectCaseValue::I32)
+        }
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod component_select_tests {
+    use super::*;
+
+    #[test]
+    fn component_select_property_covers_every_persistent_descriptor_and_removal() {
+        for descriptor in bbb_protocol::data_component_types::vanilla_data_component_descriptors() {
+            let property = ComponentSelectProperty::for_component(descriptor.resource_id());
+            if descriptor.is_persistent() {
+                let property = property.unwrap_or_else(|| {
+                    panic!(
+                        "persistent component select property {} is missing",
+                        descriptor.resource_id()
+                    )
+                });
+                assert_eq!(property.type_id, descriptor.type_id());
+                assert_eq!(property.resource_id, descriptor.resource_id());
+
+                let added = DataComponentPatchSummary {
+                    added_type_ids: vec![descriptor.type_id()],
+                    ..DataComponentPatchSummary::default()
+                };
+                assert!(property.is_explicitly_added(&added));
+                assert!(!property.is_removed(&added));
+
+                let removed = DataComponentPatchSummary {
+                    removed_type_ids: vec![descriptor.type_id()],
+                    ..DataComponentPatchSummary::default()
+                };
+                assert!(!property.is_explicitly_added(&removed));
+                assert!(property.is_removed(&removed));
+            } else {
+                assert!(
+                    property.is_none(),
+                    "transient component {} must not be selectable",
+                    descriptor.resource_id()
+                );
             }
         }
+    }
+
+    #[test]
+    fn component_select_values_preserve_nested_components_and_registry_holders() {
+        let shorthand = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            &serde_json::json!("Hello"),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        let object = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            &serde_json::json!({"text": "Hello"}),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        let styled = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            &serde_json::json!({"text": "Hello", "bold": true}),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            &shorthand,
+            &object,
+        ));
+        assert!(!component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            &shorthand,
+            &styled,
+        ));
+
+        let lore_shorthand = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+            &serde_json::json!(["Hello"]),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        let lore_object = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+            &serde_json::json!([{"text": "Hello"}]),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+            &lore_shorthand,
+            &lore_object,
+        ));
+
+        let registries = RegistrySet::vanilla_26_1();
+        let holder_id = registries
+            .holder_id_by_resource_id("minecraft:damage_type", "minecraft:generic")
+            .unwrap();
+        let holder = bbb_world::decode_persistent_component_select_value(
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+            &serde_json::json!("minecraft:generic"),
+            Some(&registries),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(holder.damage_type_id, Some(holder_id));
+        assert!(component_select_values_equal(
+            component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+            &DataComponentPatchSummary {
+                damage_type_id: Some(holder_id),
+                ..DataComponentPatchSummary::default()
+            },
+            &holder,
+        ));
     }
 }
 
@@ -1255,7 +1575,7 @@ pub(super) enum SelectCaseValue {
     String(String),
     I32(i32),
     Bool(bool),
-    TranslatableComponentKey(String),
+    Component(ComponentSelectCaseValue),
 }
 
 impl SelectCaseValue {
@@ -1276,8 +1596,13 @@ impl SelectCaseValue {
 /// Collects the typed `when` values of a select case (vanilla `when` may be a
 /// single value or a list).
 fn select_case_when_values(property: &SelectProperty, case: &SelectCase) -> Vec<SelectCaseValue> {
-    case.when
-        .iter()
+    if matches!(property, SelectProperty::Component { .. }) {
+        return select_case_value_for_property(property, &case.when)
+            .into_iter()
+            .collect();
+    }
+    compact_component_select_when_values(&case.when)
+        .into_iter()
         .filter_map(|value| select_case_value_for_property(property, value))
         .collect()
 }
@@ -1287,17 +1612,13 @@ fn select_case_value_for_property(
     value: &Value,
 ) -> Option<SelectCaseValue> {
     match property {
-        SelectProperty::Component {
-            component: ComponentSelectProperty::CustomName,
-        } => simple_component_text(value).map(|text| SelectCaseValue::String(text.to_string())),
-        SelectProperty::Component {
-            component: ComponentSelectProperty::ItemName,
-        } => simple_component_text(value)
-            .map(|text| SelectCaseValue::String(text.to_string()))
-            .or_else(|| {
-                simple_component_translate_key(value)
-                    .map(|key| SelectCaseValue::TranslatableComponentKey(key.to_string()))
-            }),
+        SelectProperty::Component { component } => {
+            bbb_protocol::json_value_to_nbt_summary(value).ok()?;
+            Some(SelectCaseValue::Component(ComponentSelectCaseValue {
+                raw: value.clone(),
+                static_values: decode_component_select_when(component.type_id, value, None),
+            }))
+        }
         _ => SelectCaseValue::from_json(value),
     }
 }
@@ -1457,6 +1778,9 @@ pub(super) enum ResolvedItemIconModelLayer {
 #[derive(Clone, Copy)]
 pub(super) struct IconResolveContext<'a> {
     pub component_patch: Option<&'a DataComponentPatchSummary>,
+    /// Active level registry owner used to swap placeholder-backed component
+    /// select cases into the current holder generation.
+    pub registries: Option<&'a RegistrySet>,
     /// Component types supplied by the item's registry prototype. Vanilla
     /// applies the stack patch over this prototype before evaluating item
     /// model component conditions.
@@ -1631,7 +1955,7 @@ fn select_property_value(
             .component_patch
             .and_then(|patch| patch.custom_model_data_strings.get(*index))
             .map(|value| SelectCaseValue::String(value.clone())),
-        SelectProperty::Component { component } => component.value(ctx),
+        SelectProperty::Component { .. } => None,
     }
 }
 
@@ -2550,6 +2874,22 @@ impl ItemIconModel {
                 cases,
                 fallback,
             } => {
+                if let SelectProperty::Component { component } = property {
+                    return Some(
+                        cases
+                            .iter()
+                            .find(|(when, _)| {
+                                when.iter().any(|candidate| {
+                                    let SelectCaseValue::Component(candidate) = candidate else {
+                                        return false;
+                                    };
+                                    component.matches(candidate, ctx)
+                                })
+                            })
+                            .map(|(_, model)| model.as_ref())
+                            .unwrap_or(fallback),
+                    );
+                }
                 let selected_when = select_property_value(property, ctx);
                 Some(
                     cases
@@ -3843,13 +4183,6 @@ fn simple_component_text(value: &Value) -> Option<&str> {
     }
 }
 
-fn simple_component_translate_key(value: &Value) -> Option<&str> {
-    match value {
-        Value::Object(value) if value.len() == 1 => value.get("translate").and_then(Value::as_str),
-        _ => None,
-    }
-}
-
 pub(super) fn default_item_name_translation_key(resource_id: &str) -> String {
     let (namespace, path) = resource_id
         .split_once(':')
@@ -3931,10 +4264,11 @@ fn item_exact_components_are_supported(value: &Value) -> bool {
 }
 
 fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool {
-    ComponentSelectProperty::for_component(component)
-        .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
-        || (matches!(component, "minecraft:custom_name" | "minecraft:item_name")
-            && simple_component_text(expected).is_some())
+    ComponentSelectProperty::for_component(component).is_some_and(|component| {
+        legacy_scalar_exact_component(component.type_id)
+            && SelectCaseValue::from_json(expected).is_some()
+    }) || (matches!(component, "minecraft:custom_name" | "minecraft:item_name")
+        && simple_component_text(expected).is_some())
         || (component == "minecraft:lore" && simple_component_text_list(expected).is_some())
         || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
         || (component == "minecraft:custom_data"
@@ -5347,18 +5681,18 @@ fn item_exact_component_matches(
             && actual == Some(expected);
     }
 
-    if let Some(component) = ComponentSelectProperty::for_component(component) {
+    if let Some(component) = ComponentSelectProperty::for_component(component)
+        .filter(|component| legacy_scalar_exact_component(component.type_id))
+    {
         let Some(expected) = SelectCaseValue::from_json(expected) else {
             return false;
         };
-        return component.value_from_stack(
-            Some(&item.component_patch),
+        return legacy_scalar_exact_component_value(
+            component.type_id,
+            &item.component_patch,
             default_max_stack_size,
             default_max_damage,
             resource_id,
-            &default_item_name_translation_key(resource_id),
-            None,
-            None,
         ) == Some(expected);
     }
 

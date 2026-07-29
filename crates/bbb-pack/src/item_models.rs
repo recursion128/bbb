@@ -887,7 +887,10 @@ pub struct RangeDispatchEntry {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SelectCase {
-    pub when: Vec<Value>,
+    /// Raw `when` codec input. It cannot be flattened here: for properties
+    /// whose value codec is itself a list, a JSON array may be one value or
+    /// the compact list of several values.
+    pub when: Value,
     pub model: Box<ItemModelDefinition>,
 }
 
@@ -974,8 +977,12 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
             let case = case
                 .as_object()
                 .ok_or_else(|| anyhow::anyhow!("select case must be an object"))?;
+            let when = required_value(case, "when")?;
+            if matches!(when, Value::Array(values) if values.is_empty()) {
+                bail!("item model compact value list must not be empty");
+            }
             Ok(SelectCase {
-                when: compact_value_list(required_value(case, "when")?)?,
+                when: when.clone(),
                 model: Box::new(parse_item_model_definition(required_value(case, "model")?)?),
             })
         })
@@ -1356,17 +1363,6 @@ fn required_array<'a>(object: &'a Map<String, Value>, field: &str) -> Result<&'a
     required_value(object, field)?
         .as_array()
         .ok_or_else(|| anyhow::anyhow!("item model field {field:?} must be an array"))
-}
-
-fn compact_value_list(value: &Value) -> Result<Vec<Value>> {
-    if let Some(values) = value.as_array() {
-        if values.is_empty() {
-            bail!("item model compact value list must not be empty");
-        }
-        Ok(values.clone())
-    } else {
-        Ok(vec![value.clone()])
-    }
 }
 
 fn optional_f32(object: &Map<String, Value>, field: &str, default: f32) -> Result<f32> {
@@ -2992,7 +2988,7 @@ mod tests {
         );
         assert_eq!(block_state_property.as_deref(), Some("honey_level"));
         assert_eq!(cases.len(), 1);
-        assert_eq!(cases[0].when, vec![Value::String("5".to_string())]);
+        assert_eq!(cases[0].when, Value::String("5".to_string()));
         assert_eq!(
             catalog.model_references("beehive").unwrap(),
             vec![
