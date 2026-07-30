@@ -218,11 +218,11 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
-- **Heart damage/heal blink flash.** Needs the untracked
-  `player.invulnerableTime` (no client-side sync) and the wall-clock
-  `displayHealth` / `lastHealthTime` hold, neither reproducible
-  deterministically. `HudPlayerHealth` always draws `blinking = false`; sprite
-  names are already complete for when it lands.
+- **Heart damage/heal blink flash.** Active engineering contract:
+  `docs/heart-health-blink-presentation-design.md`. The existing DamageEvent
+  presentation state already tracks and client-ticks `invulnerableTime`; the
+  remaining work is the native monotonic-clock `displayHealth` hold and exact
+  renderer blink strata.
 - **Air bubble-pop sound** (`playAirBubblePoppedSound`, `Gui.java:930-937`).
   Route the air-decrease edge through the native audio sink.
 - **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
