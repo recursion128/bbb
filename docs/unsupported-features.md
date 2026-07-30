@@ -216,10 +216,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   decoded duration is diagnostic and its 26.1 client handler is empty.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
-- `SmithingMenu`: generic held-item / non-skull head-item projection for the
-  armor stand preview, cycling empty-slot icons, tooltips.
-  Active engineering contract: `docs/smithing-screen-presentation-design.md`.
-
 ## HUD and debug overlay
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`

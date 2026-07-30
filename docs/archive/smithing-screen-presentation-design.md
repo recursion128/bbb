@@ -1,6 +1,6 @@
 # Smithing Screen Presentation Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-29.
 
 ## Goal and completion
 
@@ -156,6 +156,7 @@ Authoritative local sources are
    checks, review the integrated diff, and run the full gate.
 
 The pre-start full gate passed at
-`aa2b79e0da1e934a190b92849c443018a9c780af`. The clean contract commit and the
-buildable stage-1 commit are safe stops. Any focused or gate failure is fixed
-forward before another slice; history is not rewritten.
+`aa2b79e0da1e934a190b92849c443018a9c780af`. The contract, screen-local, and
+resident-PIP stages are the clean commits `5f9199e01`, `1d7a769da`, and
+`ecdbe0dca`. Any focused or gate failure is fixed forward before another
+slice; history is not rewritten.

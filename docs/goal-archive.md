@@ -821,3 +821,7 @@
 - **2026-07-29（实体附着方块 outline-only 工程闭环）**：雪傀儡南瓜与哞菇蘑菇
   的 blocks-atlas alpha 遮罩、精确实体轮廓色、独立常驻 lane 及共享 outline
   target/post-chain 已贯通，合同见 `docs/archive/entity-block-outline-design.md`。
+- **2026-07-29（锻造台屏幕呈现工程闭环）**：三槽 Vanilla 空位图标轮播、引导/
+  错误 tooltip 与盔甲架手持/头戴结果物品现共享隔离 PIP 和 resident item
+  owner，并有手/头几何及 GPU 像素证据；合同见
+  `docs/archive/smithing-screen-presentation-design.md`。
