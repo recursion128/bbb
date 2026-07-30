@@ -247,13 +247,10 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   disables depth writes; bbb's shared translucent pipeline keeps them on.
   Add the dedicated no-depth-write state without changing equal-depth
   `LessEqual` layering.
-- **Sign glowing 8-way outline glyph pass.** Glowing text renders full-bright
-  without outlines.
-- **Sign underline/strikethrough effect bars.** They need a white pixel outside
-  the single font-atlas draw.
-- **Sign obfuscated glyph cycling.** The face currently draws literal glyphs.
-- **Sign POLYGON_OFFSET font display mode**, currently approximated by the fixed
-  `TEXT_OFFSET` z gap.
+- [**Sign text rendering parity engineering
+  slice**](sign-text-rendering-parity-design.md): glowing 8-way outline glyphs,
+  underline/strikethrough effect bars, obfuscated glyph cycling, and the
+  `POLYGON_OFFSET` font display mode.
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;
   derive the date at the native presentation boundary without introducing
   wall-clock state into serializable `bbb-world`.
