@@ -279,8 +279,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   `FrogRenderer.extractRenderState` does not project it, `FrogRenderState` has
   no target field, and `FrogModel.setupAnim` drives the tongue solely from the
   copied tongue `AnimationState`.
-- **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
-  from synced `DATA_VARIANT_ID` by bootstrap order.
 - **Rabbit `IDLE_HEAD_TILT` keyframe** is `not-needed`: vanilla starts it from
   the entity's client-local `random.nextInt(40) + 180` timeout, so a remote
   client's particular phase is not reconstructable and bbb must not fabricate
