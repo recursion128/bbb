@@ -25,7 +25,8 @@ use bbb_protocol::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
         VanillaCanSurviveOverride, VANILLA_BLOCK_AIR_ID, VANILLA_BLOCK_BEDROCK_ID,
-        VANILLA_BLOCK_END_PORTAL_FRAME_ID, VANILLA_BLOCK_LODESTONE_ID, VANILLA_BLOCK_OBSIDIAN_ID,
+        VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID, VANILLA_BLOCK_END_PORTAL_FRAME_ID,
+        VANILLA_BLOCK_LODESTONE_ID, VANILLA_BLOCK_OBSIDIAN_ID,
     },
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -186,7 +187,8 @@ fn vanilla_abstract_horse_food_effect(item_id: i32) -> Option<VanillaAbstractHor
 }
 
 fn copper_golem_poses() -> Option<&'static [String]> {
-    vanilla_block_property_values("minecraft:copper_golem_statue", "copper_golem_pose")
+    let block = vanilla_block_type(VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID)?;
+    vanilla_block_property_values(block.resource_id, "copper_golem_pose")
 }
 
 fn copper_golem_pose_ordinal(pose: &str) -> Option<i32> {
