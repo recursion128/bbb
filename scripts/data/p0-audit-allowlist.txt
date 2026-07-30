@@ -91,6 +91,10 @@
 # goal.md explicitly classifies tests as non-P0 evidence/fixtures.
 ^crates/.*/tests[.]rs$	residual|fallback|unsupported
 ^crates/.*/tests/.*[.]rs$	residual|fallback|unsupported
+# The generated DyeColor inline test names Vanilla's zero/default ByIdMap
+# fallback to prove the shared ordinal catalog preserves it; production lookup
+# remains typed and the line is regression evidence, not a runtime owner gap.
+^crates/bbb-render-types/src/dye_colors[.]rs$	dye_colors_preserve_vanilla_ids_names_colors_and_zero_fallback
 # Command-dispatcher inline tests use “fallback” only for the explicit
 # server-owned completion branch and the lower-precedence argument fixture.
 ^crates/bbb-world/src/commands[.]rs$	client_server_fallback_and_item_component_completion_match_parser_owners
