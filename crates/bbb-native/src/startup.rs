@@ -421,6 +421,7 @@ pub(crate) struct NetworkHandles {
 
 pub(crate) fn init_tracing() {
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 }
@@ -915,6 +916,12 @@ mod tests {
         );
         assert_eq!(value["target_os"], std::env::consts::OS);
         assert_eq!(value["target_arch"], std::env::consts::ARCH);
+    }
+
+    #[test]
+    fn tracing_keeps_machine_readable_cli_stdout_clean() {
+        let source = include_str!("startup.rs");
+        assert!(source.contains(".with_writer(std::io::stderr)"));
     }
 
     #[test]
