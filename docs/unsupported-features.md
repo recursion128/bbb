@@ -253,7 +253,8 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
-  resolved vanilla spear ids.
+  resolved vanilla spear ids. Active engineering contract:
+  `docs/swing-animation-prototype-default-design.md`.
 - **Frog tongue prey-targeting is `not-needed`.**
   `DATA_TONGUE_TARGET_ID` is consumed by frog/AI behavior only. Vanilla
   `FrogRenderer.extractRenderState` does not project it, `FrogRenderState` has
