@@ -1,6 +1,6 @@
 # Beacon Screen Presentation Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -141,6 +141,9 @@ The pre-start full gate passed at
 engineering checkpoint. A playable gate is required only if input or container
 command routing changes; this presentation-only slice otherwise uses existing
 interaction tests plus deterministic GPU readback.
+
+The contract, native projection, and renderer proof stages are the clean commits
+`11f603dc4`, `80bbea574`, and `a53da0363`.
 
 ## Failure localization and safe stops
 

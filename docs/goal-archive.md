@@ -829,3 +829,7 @@
   铁傀儡、末影人、矿车、TNT 与铜傀儡的普通 block-feature 提交现复用同一
   resident owner 写入 outline target，并有主表面/后处理 GPU 像素证据；合同见
   `docs/archive/entity-block-outline-copy-design.md`。
+- **2026-07-30（信标屏幕呈现工程闭环）**：四态能力/动作按钮、选择与升级、
+  两条居中标签、资源包本地化 tooltip 及五个示例支付物品已按 Vanilla strata
+  贯通 native HUD，并有 typed sprite、resident item 命令顺序与离屏像素证据；
+  合同见 `docs/archive/beacon-screen-presentation-design.md`。

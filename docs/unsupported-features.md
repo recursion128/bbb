@@ -214,9 +214,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   26.1 client handler is empty.
 - A combat-mode runtime transition for PlayerCombatEnd is `not-needed`: its
   decoded duration is diagnostic and its 26.1 client handler is empty.
-- `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
-  hover state, labels, and tooltips. Active engineering contract:
-  `docs/beacon-screen-presentation-design.md`.
 ## HUD and debug overlay
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
