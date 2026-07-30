@@ -268,7 +268,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 - **Fine-grained/coalesced GPU render-state split.** The backend folds compatible
   submissions into atlas buckets; split the remaining coalesced render-type
   state, dynamic `LightTexture` / darkness-adjusted gamma, and diffuse visual
-  parity without changing the CPU submission graph.
+  parity without changing the CPU submission graph. Active engineering
+  contract: `docs/entity-render-state-split-design.md`.
 - **Standalone mip/sampler generalization**, full vanilla mip generation, and
   standalone texture sampler parity.
 
