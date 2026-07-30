@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "scenario": "vanilla-26.1-external-multiplayer",
+  "vanilla_version": "26.1",
+  "seed": "bbb-lifecycle-soak-26.1",
+  "iterations": 3,
+  "per_iteration_timeout_seconds": 420,
+  "total_timeout_seconds": 1500,
+  "termination_modes": [
+    "quit",
+    "kick",
+    "quit"
+  ],
+  "fault_plan": {
+    "force_no_audio_device": true,
+    "actions": [
+      {
+        "after_millis": 250,
+        "action": "resize",
+        "width": 960,
+        "height": 540
+      },
+      {
+        "after_millis": 500,
+        "action": "minimize"
+      },
+      {
+        "after_millis": 750,
+        "action": "restore"
+      },
+      {
+        "after_millis": 1000,
+        "action": "surface_lost"
+      },
+      {
+        "after_millis": 1100,
+        "action": "surface_outdated"
+      },
+      {
+        "after_millis": 1200,
+        "action": "surface_timeout"
+      },
+      {
+        "after_millis": 1400,
+        "action": "resize",
+        "width": 1280,
+        "height": 720
+      }
+    ]
+  },
+  "terminal_gauges": {
+    "world.resource_packs_tracked": 0,
+    "renderer.terrain_mesh_queue_depth": 0,
+    "renderer.dynamic_texture_cache_pending": 0,
+    "renderer.dynamic_texture_worker_result_bytes": 0,
+    "renderer.pending_particle_spawns": 0,
+    "audio.sound_static_channels_used": 0,
+    "audio.sound_streaming_channels_used": 0,
+    "net.simulation_output_backlog_current": 1
+  },
+  "process_spread_limits": {
+    "rss_bytes": 134217728,
+    "file_descriptors": 8,
+    "threads": 4
+  }
+}

@@ -356,6 +356,9 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
 
 状态：`active`，但不是开放愿景队列；ready 工作只对应账本
 “P4 lifecycle, soak, and supported-platform release gates”的 active items。
+当前 lifecycle/fault 工程契约见
+`docs/lifecycle-soak-gate-design.md`；它必须组合真实 live playable 路径和
+feature-gated 故障注入，fixture 重放不能充当 soak。
 
 已有维护证据：
 
