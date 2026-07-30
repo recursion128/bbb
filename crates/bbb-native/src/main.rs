@@ -6,6 +6,7 @@ use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{KeyCode, PhysicalKey},
+    raw_window_handle::{HasDisplayHandle, RawDisplayHandle},
     window::{CursorGrabMode, CursorIcon, Window},
 };
 
@@ -129,9 +130,9 @@ use sky_assets::load_sky_textures;
 use sound_subtitle_runtime::SoundSubtitleRuntime;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
-    load_known_packs_manager, load_pack_roots, parse_args, run_probe_if_requested,
-    run_status_if_requested, services_block_list_client_from_args, spawn_frame_tick,
-    start_control_api, start_network_if_requested, NetworkHandles,
+    load_known_packs_manager, load_pack_roots, parse_args, run_build_info_if_requested,
+    run_probe_if_requested, run_status_if_requested, services_block_list_client_from_args,
+    spawn_frame_tick, start_control_api, start_network_if_requested, NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 use win_screen_resources::WinScreenResources;
@@ -422,6 +423,9 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
 fn main() -> Result<()> {
     init_tracing();
     let args = parse_args();
+    if run_build_info_if_requested(&args)? {
+        return Ok(());
+    }
     #[cfg(feature = "lifecycle-soak")]
     let mut lifecycle_soak = lifecycle_soak::LifecycleSoakRuntime::from_env()?;
     let runtime = tokio::runtime::Runtime::new()?;
@@ -670,6 +674,21 @@ fn main() -> Result<()> {
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
+    let window_backend = match window.display_handle()?.as_raw() {
+        RawDisplayHandle::Wayland(_) => "wayland",
+        RawDisplayHandle::Xlib(_) | RawDisplayHandle::Xcb(_) => "x11",
+        _ => "other",
+    };
+    let window_size = window.inner_size();
+    tracing::info!(
+        target_os = std::env::consts::OS,
+        target_arch = std::env::consts::ARCH,
+        window_backend = %window_backend,
+        scale_factor = window.scale_factor(),
+        width = window_size.width,
+        height = window_size.height,
+        "native platform window created"
+    );
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
     input.set_client_text_filtering_enabled(args.client_text_filtering);

@@ -56,6 +56,8 @@ pub(crate) struct Args {
     #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
     pub(crate) status_server: Option<String>,
     #[arg(long)]
+    pub(crate) build_info: bool,
+    #[arg(long)]
     pub(crate) probe_server: bool,
     #[arg(long, default_value_t = 0)]
     pub(crate) probe_after_first_chunk_packets: usize,
@@ -425,6 +427,43 @@ pub(crate) fn init_tracing() {
 
 pub(crate) fn parse_args() -> Args {
     Args::parse()
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct BuildInfo {
+    schema: u32,
+    client: &'static str,
+    client_version: &'static str,
+    minecraft_version: &'static str,
+    protocol_version: i32,
+    resource_pack_format: String,
+    data_pack_format: String,
+    target_os: &'static str,
+    target_arch: &'static str,
+}
+
+impl BuildInfo {
+    fn current() -> Self {
+        Self {
+            schema: 1,
+            client: "bbb-native",
+            client_version: env!("CARGO_PKG_VERSION"),
+            minecraft_version: bbb_protocol::MC_VERSION,
+            protocol_version: bbb_protocol::PROTOCOL_VERSION,
+            resource_pack_format: bbb_protocol::MC_RESOURCE_PACK_FORMAT.to_vanilla_string(),
+            data_pack_format: bbb_protocol::MC_DATA_PACK_FORMAT.to_vanilla_string(),
+            target_os: std::env::consts::OS,
+            target_arch: std::env::consts::ARCH,
+        }
+    }
+}
+
+pub(crate) fn run_build_info_if_requested(args: &Args) -> Result<bool> {
+    if !args.build_info {
+        return Ok(false);
+    }
+    println!("{}", serde_json::to_string_pretty(&BuildInfo::current())?);
+    Ok(true)
 }
 
 pub(crate) fn run_status_if_requested(runtime: &Runtime, args: &Args) -> Result<bool> {
@@ -853,6 +892,29 @@ mod tests {
             "--probe-server",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn build_info_is_machine_readable_and_uses_protocol_constants() {
+        let args = Args::try_parse_from(["bbb-native", "--build-info"]).unwrap();
+        assert!(args.build_info);
+
+        let value = serde_json::to_value(BuildInfo::current()).unwrap();
+        assert_eq!(value["schema"], 1);
+        assert_eq!(value["client"], "bbb-native");
+        assert_eq!(value["client_version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(value["minecraft_version"], bbb_protocol::MC_VERSION);
+        assert_eq!(value["protocol_version"], bbb_protocol::PROTOCOL_VERSION);
+        assert_eq!(
+            value["resource_pack_format"],
+            bbb_protocol::MC_RESOURCE_PACK_FORMAT.to_vanilla_string()
+        );
+        assert_eq!(
+            value["data_pack_format"],
+            bbb_protocol::MC_DATA_PACK_FORMAT.to_vanilla_string()
+        );
+        assert_eq!(value["target_os"], std::env::consts::OS);
+        assert_eq!(value["target_arch"], std::env::consts::ARCH);
     }
 
     #[test]

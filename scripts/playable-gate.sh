@@ -194,6 +194,7 @@ transfer_server_log="$artifact_dir/transfer-server.log"
 client_log="$artifact_dir/client.log"
 status_json="$artifact_dir/status.json"
 status_raw_json="$artifact_dir/status-raw.json"
+probe_json="$artifact_dir/probe.json"
 evidence_json="$artifact_dir/evidence.json"
 termination_json="$artifact_dir/termination.json"
 server_command="$artifact_dir/server-command.fifo"
@@ -409,6 +410,26 @@ then
   exit 1
 fi
 
+if ! timeout "$timeout_seconds" \
+  "$client_bin" \
+    --server "127.0.0.1:$server_port" \
+    --username bbb-playableprobe \
+    --probe-server \
+    </dev/null >"$probe_json" 2>>"$client_log"
+then
+  echo "playable gate failed: bbb-native headless Login/Configuration/Play probe failed" >&2
+  echo "playable gate evidence: headless probe JSON: $probe_json" >&2
+  echo "playable gate evidence: packet/session timeline: $client_log" >&2
+  echo "playable gate evidence: server log: $server_log" >&2
+  exit 1
+fi
+if ! run_python validate-probe --input "$probe_json"; then
+  echo "playable gate evidence: headless probe JSON: $probe_json" >&2
+  echo "playable gate evidence: packet/session timeline: $client_log" >&2
+  echo "playable gate evidence: server log: $server_log" >&2
+  exit 1
+fi
+
 echo "playable gate: launching bbb-native with bbb-control on 127.0.0.1:$control_port"
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
   setsid "$client_bin" \
@@ -488,6 +509,7 @@ fi
 echo "playable gate: live smoke passed"
 echo "playable gate: live vanilla 26.1 session passed"
 echo "playable gate evidence: packet/session timeline: $client_log"
+echo "playable gate evidence: headless probe: $probe_json"
 echo "playable gate evidence: world snapshot: $evidence_json"
 echo "playable gate evidence: server log: $server_log"
 echo "playable gate evidence: transfer server log: $transfer_server_log"

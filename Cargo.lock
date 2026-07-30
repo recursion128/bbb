@@ -438,6 +438,7 @@ dependencies = [
  "pollster",
  "regex",
  "serde",
+ "tracing",
  "wgpu",
  "winit",
 ]

@@ -1182,6 +1182,13 @@ impl Renderer {
             })
             .await
             .ok_or_else(|| anyhow!("no suitable GPU adapter"))?;
+        let adapter_info = adapter.get_info();
+        tracing::info!(
+            adapter_name = %adapter_info.name,
+            adapter_backend = %adapter_info.backend.to_str(),
+            adapter_device_type = ?adapter_info.device_type,
+            "renderer platform adapter selected"
+        );
 
         let required_features = optional_gpu_timing_features(adapter.features());
         let (device, queue) = adapter

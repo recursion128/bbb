@@ -374,6 +374,7 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
   指标趋势与 clean exit；`last-lifecycle-soak`/归档 report 是 maintenance
   证据，fixture 重放不能替代该 gate。
 
-剩余验收只有声明支持的 Linux 发布矩阵。非 Linux 发布验证按账本条件 deferred。
-该 active 关闭或转成有依据的 deferred 后，路线改为 `maintenance`；若届时
-active=0，再走工作流第 4 步的机械终止判据。
+剩余验收只有声明支持的 Linux 发布矩阵；其唯一支持行、evidence tier、runner
+边界和机械 gate 合同见 `docs/linux-platform-acceptance.md`。非 Linux 发布验证
+按账本条件 deferred。该 active 通过真实 release/live gate 后删除并把路线改为
+`maintenance`；若届时 active=0，再走工作流第 4 步的机械终止判据。

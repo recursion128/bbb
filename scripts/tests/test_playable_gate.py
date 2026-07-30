@@ -66,6 +66,36 @@ class PlayableGateEvidenceTests(unittest.TestCase):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
 
+class PlayableGateHeadlessProbeTests(unittest.TestCase):
+    def probe(self):
+        return {
+            "reached_state": "Play",
+            "compression_threshold": 256,
+            "packets_seen": 12,
+            "unsupported_packets": 0,
+            "registries_seen": 4,
+            "world_apply_errors": [],
+            "first_chunk_summary": {
+                "state": "Decoded",
+                "sections": 24,
+            },
+        }
+
+    def test_valid_headless_probe_passes(self):
+        playable_gate.validate_headless_probe(self.probe())
+
+    def test_probe_requires_decoded_chunk_and_clean_apply_diagnostics(self):
+        probe = self.probe()
+        probe["first_chunk_summary"]["state"] = "Raw"
+        with self.assertRaisesRegex(playable_gate.GateFailure, "must be Decoded"):
+            playable_gate.validate_headless_probe(probe)
+
+        probe = self.probe()
+        probe["world_apply_errors"] = ["bad chunk"]
+        with self.assertRaisesRegex(playable_gate.GateFailure, "not empty"):
+            playable_gate.validate_headless_probe(probe)
+
+
 class PlayableGateMovementTests(unittest.TestCase):
     def setUp(self):
         fixture_path = (

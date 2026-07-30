@@ -251,6 +251,39 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_lifecycle(evidence.get("lifecycle"), client_locale)
 
 
+def validate_headless_probe(probe: dict[str, Any]) -> None:
+    """Require a real Login -> Configuration -> Play probe and decoded chunk."""
+
+    if probe.get("reached_state") != "Play":
+        raise GateFailure(
+            f"headless probe must reach Play, got {probe.get('reached_state')!r}"
+        )
+    threshold = probe.get("compression_threshold")
+    if not isinstance(threshold, int) or isinstance(threshold, bool) or threshold < 0:
+        raise GateFailure("headless probe must record negotiated compression")
+    _positive_int(probe.get("packets_seen"), "headless_probe.packets_seen")
+    _positive_int(probe.get("registries_seen"), "headless_probe.registries_seen")
+    if probe.get("unsupported_packets") != 0:
+        raise GateFailure(
+            "headless probe produced unsupported packets: "
+            f"{probe.get('unsupported_packets')!r}"
+        )
+    if probe.get("world_apply_errors") != []:
+        raise GateFailure(
+            "headless probe world apply diagnostics are not empty: "
+            f"{probe.get('world_apply_errors')!r}"
+        )
+    first_chunk = _object(
+        probe.get("first_chunk_summary"), "headless_probe.first_chunk_summary"
+    )
+    if first_chunk.get("state") != "Decoded":
+        raise GateFailure(
+            "headless probe first chunk must be Decoded, "
+            f"got {first_chunk.get('state')!r}"
+        )
+    _positive_int(first_chunk.get("sections"), "headless_probe.first_chunk_summary.sections")
+
+
 BLOCK_INTERACTION_COMMAND_DELTAS = (
     "pick_item_commands_delta",
     "player_action_commands_delta",
@@ -3599,6 +3632,11 @@ def _build_parser() -> argparse.ArgumentParser:
     status.add_argument("--protocol-source", type=Path, required=True)
     status.add_argument("--output", type=Path, required=True)
 
+    probe = subparsers.add_parser(
+        "validate-probe", help="validate bbb-native headless live probe JSON"
+    )
+    probe.add_argument("--input", type=Path, required=True)
+
     collect = subparsers.add_parser("collect-live", help="capture bbb-control live evidence")
     collect.add_argument("--control", required=True)
     collect.add_argument("--status", type=Path, required=True)
@@ -3669,6 +3707,9 @@ def main(argv: list[str] | None = None) -> int:
             protocol = _parse_protocol_version(args.protocol_source)
             result = normalize_status_capture(_load_json(args.input), protocol)
             args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+        elif args.command == "validate-probe":
+            validate_headless_probe(_load_json(args.input))
+            print("playable gate: headless Login/Configuration/Play probe passed")
         elif args.command == "collect-live":
             collect_live(args)
         elif args.command == "terminate-live":
