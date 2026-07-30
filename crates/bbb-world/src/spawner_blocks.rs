@@ -173,6 +173,22 @@ impl WorldStore {
         &self.spawner_blocks
     }
 
+    pub(crate) fn spawner_client_effect_positions(&self) -> Vec<BlockPos> {
+        let local_player_position = self.local_player_pose().map(|pose| pose.position);
+        self.spawner_blocks
+            .iter()
+            .filter(|state| {
+                state.entity_id.is_some()
+                    && spawner_has_nearby_player(
+                        state.pos,
+                        state.required_player_range,
+                        local_player_position,
+                    )
+            })
+            .map(|state| state.pos)
+            .collect()
+    }
+
     pub fn spawner_display_entity_source_states(
         &self,
         partial_tick: f32,

@@ -8,6 +8,11 @@ pub use crate::bed_blocks::{
 pub use crate::bell_blocks::{
     is_bell_block_name, BellModelSourceState, BellShakeDirectionKind, BellShakeState,
 };
+pub use crate::block_entity_client_effects::{
+    BlockEntityClientEffectSource, CampfireClientEffectSource, ConduitClientEffectSource,
+    ConduitDestroyTargetState, TrialSpawnerClientEffectSource, TrialSpawnerClientState,
+    VaultBlockState, VaultClientEffectSource,
+};
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,
@@ -18,11 +23,12 @@ pub use crate::chest_lids::{
 };
 pub use crate::chunks::{
     decode_level_chunk_with_light, BannerPatternHolderState, BannerPatternLayerState,
-    BannerPatternsState, BlockEntityRecord, ChunkBiomeSampler, ChunkColumn, ChunkHeightmapSampler,
-    ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,
-    HeightmapData, LightData, NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue,
-    PalettedContainerData, SignBlockEntityTextState, SignTextDyeColor, SignTextSideState,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    BannerPatternsState, BlockEntityRecord, CampfireBlockEntityData, ChunkBiomeSampler,
+    ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection, ChunkState,
+    ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
+    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
+    SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use crate::conduit_blocks::{
     is_conduit_block_name, ConduitBlockState, ConduitModelSourceState,

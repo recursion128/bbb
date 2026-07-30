@@ -91,6 +91,10 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vault_shared_data: Option<VaultSharedDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub campfire: Option<CampfireBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conduit_destroy_target: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub banner_patterns: Option<BannerPatternsState>,
@@ -127,6 +131,8 @@ impl BlockEntityRecord {
             nbt: None,
             sign_text: None,
             vault_shared_data: None,
+            campfire: None,
+            conduit_destroy_target: None,
             decorated_pot_sherds: None,
             banner_patterns: None,
             end_gateway: None,
@@ -141,6 +147,14 @@ impl BlockEntityRecord {
             skull_profile: None,
         }
     }
+}
+
+/// Vanilla `CampfireBlockEntity.particleTick` only inspects whether each of
+/// the four cooking slots is empty. The full registry-coupled `ItemStack`
+/// remains outside this narrow client-effect projection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CampfireBlockEntityData {
+    pub occupied_slots: [bool; 4],
 }
 
 /// The end gateway block entity fields read by `TheEndGatewayRenderer`:
@@ -367,6 +381,8 @@ impl SignTextDyeColor {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VaultSharedDataState {
+    #[serde(default)]
+    pub has_display_item: bool,
     pub connected_players: Vec<Uuid>,
     pub connected_particles_range: f64,
 }

@@ -1,4 +1,5 @@
 mod banner_patterns;
+mod client_effects;
 mod decode;
 mod end_gateway;
 mod heightmap;
@@ -14,6 +15,7 @@ mod store;
 mod vault;
 
 pub(crate) use banner_patterns::decode_banner_patterns;
+pub(crate) use client_effects::{decode_campfire_block_entity_data, decode_conduit_destroy_target};
 pub use decode::decode_level_chunk_with_light;
 pub(crate) use decode::{
     decode_biome_sections, decode_block_entity_data_record, decode_nbt_payload_summary,
@@ -33,10 +35,10 @@ pub(crate) use spawner::decode_spawner_block_entity_data;
 pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{
     BannerPatternHolderState, BannerPatternLayerState, BannerPatternsState, BlockEntityRecord,
-    ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState,
-    DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState,
-    SignTextDyeColor, SignTextSideState, SpawnerBlockEntityData, VaultConnectionParticleState,
-    VaultConnectionParticleTargetState, VaultSharedDataState,
+    CampfireBlockEntityData, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
+    ChunkViewState, DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary,
+    SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, SpawnerBlockEntityData,
+    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
 pub(crate) use vault::decode_vault_shared_data;

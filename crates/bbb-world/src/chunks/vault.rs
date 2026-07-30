@@ -3,6 +3,7 @@ use uuid::Uuid;
 use crate::Result;
 
 use super::{
+    client_effects::nbt_item_stack_is_nonempty,
     nbt::{decode_nbt_root, find_entry, NbtValue},
     state::VaultSharedDataState,
 };
@@ -20,15 +21,24 @@ pub(crate) fn decode_vault_shared_data(raw_nbt: &[u8]) -> Result<Option<VaultSha
         return Ok(None);
     };
 
+    let has_display_item = decode_display_item_presence(shared_data);
     let connected_players = decode_connected_players(shared_data);
     let connected_particles_range = match find_entry(shared_data, "connected_particles_range") {
         Some(NbtValue::Double(value)) if value.is_finite() => *value,
         _ => VANILLA_VAULT_DEFAULT_CONNECTED_PARTICLES_RANGE,
     };
     Ok(Some(VaultSharedDataState {
+        has_display_item,
         connected_players,
         connected_particles_range,
     }))
+}
+
+fn decode_display_item_presence(entries: &[(String, NbtValue)]) -> bool {
+    let Some(NbtValue::Compound(display_item)) = find_entry(entries, "display_item") else {
+        return false;
+    };
+    nbt_item_stack_is_nonempty(display_item)
 }
 
 fn decode_connected_players(entries: &[(String, NbtValue)]) -> Vec<Uuid> {

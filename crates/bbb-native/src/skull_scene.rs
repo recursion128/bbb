@@ -273,6 +273,8 @@ mod tests {
             nbt: None,
             sign_text: None,
             vault_shared_data: None,
+            campfire: None,
+            conduit_destroy_target: None,
             decorated_pot_sherds: None,
             banner_patterns: None,
             end_gateway: None,

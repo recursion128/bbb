@@ -4,8 +4,9 @@ use bbb_protocol::packets::{
 };
 use bbb_protocol::{
     block_entity_types::{
-        VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID, VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID, VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_BANNER_ID, VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_COMPARATOR_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_CONDUIT_ID, VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
         VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID, VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
         VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
         VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
@@ -251,6 +252,16 @@ fn decode_block_entity_record(
     } else {
         None
     };
+    let campfire = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID {
+        crate::chunks::decode_campfire_block_entity_data(&raw_nbt)?
+    } else {
+        None
+    };
+    let conduit_destroy_target = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_CONDUIT_ID {
+        crate::chunks::decode_conduit_destroy_target(&raw_nbt)?
+    } else {
+        None
+    };
     let decorated_pot_sherds = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID
     {
         crate::chunks::decode_decorated_pot_sherds(&raw_nbt)?
@@ -331,6 +342,8 @@ fn decode_block_entity_record(
         nbt,
         sign_text,
         vault_shared_data,
+        campfire,
+        conduit_destroy_target,
         decorated_pot_sherds,
         banner_patterns,
         end_gateway,

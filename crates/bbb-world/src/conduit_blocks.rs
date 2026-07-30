@@ -18,13 +18,15 @@ const CONDUIT_MIN_ACTIVE_SIZE: usize = 16;
 const CONDUIT_MIN_HUNTING_SIZE: usize = 42;
 
 /// One conduit block entity's client-side ticker state.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConduitBlockState {
     pub pos: BlockPos,
     pub tick_count: i32,
     pub active_rotation: f32,
     pub is_active: bool,
     pub is_hunting: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effect_blocks: Vec<BlockPos>,
 }
 
 impl ConduitBlockState {
@@ -35,6 +37,7 @@ impl ConduitBlockState {
             active_rotation: 0.0,
             is_active: false,
             is_hunting: false,
+            effect_blocks: Vec::new(),
         }
     }
 }
@@ -89,9 +92,9 @@ impl WorldStore {
                 for state in &mut states {
                     state.tick_count = state.tick_count.saturating_add(1);
                     if game_time.rem_euclid(CONDUIT_SHAPE_REFRESH_RATE) == 0 {
-                        let effect_blocks = self.conduit_effect_block_count(state.pos);
-                        state.is_active = effect_blocks >= CONDUIT_MIN_ACTIVE_SIZE;
-                        state.is_hunting = effect_blocks >= CONDUIT_MIN_HUNTING_SIZE;
+                        state.effect_blocks = self.conduit_effect_blocks(state.pos);
+                        state.is_active = state.effect_blocks.len() >= CONDUIT_MIN_ACTIVE_SIZE;
+                        state.is_hunting = state.effect_blocks.len() >= CONDUIT_MIN_HUNTING_SIZE;
                     }
                     if state.is_active {
                         state.active_rotation += 1.0;
@@ -156,7 +159,7 @@ impl WorldStore {
                     .conduit_blocks
                     .iter()
                     .find(|state| state.pos == pos)
-                    .copied()
+                    .cloned()
                     .unwrap_or_else(|| ConduitBlockState::new(pos));
                 let active_partial_tick = if conduit.is_active { partial_tick } else { 0.0 };
                 states.push(ConduitModelSourceState {
@@ -208,18 +211,18 @@ impl WorldStore {
         positions
     }
 
-    fn conduit_effect_block_count(&self, pos: BlockPos) -> usize {
+    fn conduit_effect_blocks(&self, pos: BlockPos) -> Vec<BlockPos> {
         for ox in -1..=1 {
             for oy in -1..=1 {
                 for oz in -1..=1 {
                     if !self.is_water_at(offset_pos(pos, ox, oy, oz)) {
-                        return 0;
+                        return Vec::new();
                     }
                 }
             }
         }
 
-        let mut effect_blocks = 0;
+        let mut effect_blocks = Vec::new();
         for ox in -2_i32..=2 {
             for oy in -2_i32..=2 {
                 for oz in -2_i32..=2 {
@@ -240,7 +243,7 @@ impl WorldStore {
                         .as_deref()
                         .is_some_and(is_valid_conduit_frame_block_name)
                     {
-                        effect_blocks += 1;
+                        effect_blocks.push(test_pos);
                     }
                 }
             }
@@ -446,6 +449,7 @@ mod tests {
                 active_rotation: 1.0,
                 is_active: true,
                 is_hunting: true,
+                effect_blocks: world.conduit_effect_blocks(pos),
             }]
         );
         let source = world.conduit_model_source_states(0.5)[0];
