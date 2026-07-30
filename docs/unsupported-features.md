@@ -55,6 +55,34 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   provisioned, and report any losing scene by measured owner instead of
   reducing visible work.
 
+## P4 lifecycle, soak, and supported-platform release gates
+
+Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
+
+- A checked-in deterministic lifecycle/fault soak gate is still missing. It
+  must own a fixed scenario manifest and duration/iteration budget; repeatedly
+  exercise connect, movement/chunk/entity/particle churn, resource reload,
+  disconnect/kick and clean shutdown; inject the supported no-audio-device,
+  resize/minimize and surface lost/outdated paths; and fail with archived
+  seed/fixture/counter evidence on monotonically growing retained memory,
+  handles, queues, stale resource/session generations or workers that do not
+  terminate. Existing focused shutdown, panic-propagation, backpressure and
+  surface-reconfigure tests are prerequisites, not a substitute for the
+  end-to-end repeated gate.
+- A declared Linux x86_64 release/platform acceptance matrix is still missing.
+  It must name the supported window/GPU backend rows and record clean build,
+  fixture/live playable, CLI version/protocol/pack-format diagnostics,
+  startup/shutdown, resize/DPI/fullscreen/focus, keyboard/mouse/clipboard/IME,
+  no-audio-device and headless-probe results with reproducible commands and
+  artifact locations. Historical build/performance measurements alone do not
+  declare a supported release row.
+- macOS and Windows release validation is `deferred`: the repository has
+  platform-specific URI/config paths and historical macOS build measurements,
+  but no maintained host/runner with winit, wgpu, audio and input fixtures for
+  either release row. Reopen when such a runner is provisioned and can execute
+  the same declared platform matrix; do not infer support from cross-compilation
+  or unit-only `cfg` coverage.
+
 ## Native input, movement, interaction, inventory, and command flows
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
@@ -78,6 +106,17 @@ Living-entity render state:
   `ArmorStandRenderer.extractRenderState` copies all six synced `Rotations`
   getters directly without partial-tick interpolation. Only `yRot` uses
   `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
+
+## Renderer environment and camera media
+
+Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+
+- Fire-resistance lava fog is `deferred`: Vanilla 26.1
+  `LavaFogEnvironment.setupFog` widens the range only when the active camera is
+  actually in `FogType.LAVA` and its living entity has
+  `MobEffects.FIRE_RESISTANCE`. Reopen when the camera environment owns a real
+  lava fog medium; an effect-only approximation would incorrectly alter
+  atmospheric and water fog.
 
 ## HUD overlay and screen render surfaces
 
@@ -343,8 +382,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   hidden/self-visible/glowing invisible states.
 - **`CapeLayer` for invisible players.** Vanilla explicitly gates it on
   `!state.isInvisible`.
-- **Separate glow-squid emissive overlay/texture.** 26.1 has none; the glow is
-  purely a block-light override.
+- **Separate glow-squid emissive overlay/texture.** Vanilla 26.1
+  `GlowSquidRenderer.getBlockLightLevel` implements the glow solely as a block
+  light override and registers no emissive layer or second texture.
 - **Exact guardian client RNG seed.** Vanilla seeds the per-spawn entity RNG
   outside the protocol. bbb uses one deterministic UUID/type-derived Java-LCG
   cursor for the constructor tail phase and subsequent spike/bubble/flop draws;
@@ -366,10 +406,6 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 - **Exact golden pixel parity to vanilla screenshots.** No golden PNG or
   full-frame hash: driver and float jitter make it unreliable.
-- **Fire-resistance lava fog — deferred.** Vanilla widens lava fog only when the
-  active camera is actually in lava and has Fire Resistance. Restart when the
-  camera environment owns a real lava fog medium; an effect-only approximation
-  would incorrectly alter atmospheric and water fog.
 - **Item-pipeline overlay-texture (`Sampler1`) sampling.** Vanilla's
   `ITEM_SNIPPET` does not bind `Sampler1`; `core/item` samples only the item
   atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` never call
@@ -382,8 +418,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Banner item / shield pattern path** (`Sheets.SHIELD_PATTERN_BASE`,
   `BannerRenderer.submitSpecial`). Item-model scope, not the block-entity
   renderer.
-- **Shulker box open/close sound and interaction blocking.** Gameplay-side, not
-  the block-entity renderer.
+- **Shulker box open/close sound and interaction blocking.** Vanilla
+  `ShulkerBoxBlock.useItemOn` and `ShulkerBoxBlockEntity.startOpen` own gameplay
+  admission and sound; `ShulkerBoxRenderer` only consumes render state.
 - **Bell resonation particle/glow chain** (`resonationTicks`, raider search).
   Gameplay-side, belongs with the raid features.
 
@@ -547,7 +584,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   that alter block registration or state definitions remain outside the vanilla
   client target.
 - **Accepting malformed or unsupported custom resource-pack declarations.**
-  Loaders reject them intentionally.
+  Vanilla resource loaders parse with `StrictJsonParser` plus typed codecs and
+  reject invalid declarations; bbb likewise fails the selected generation
+  instead of inventing fallback schema.
 
 ---
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_root=${BBB_DOCS_LINT_REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
 goal="$repo_root/goal.md"
 archive="$repo_root/docs/goal-archive.md"
 feature_ledger="$repo_root/docs/unsupported-features.md"
@@ -54,36 +54,46 @@ if legacy_deferred=$(rg -n --no-heading --color never \
   failed=1
 fi
 
-deferred_without_reopen=$(
+# workflow-v9 (2026-07-30): every deferred decision is owned by Todo, every
+# deferred decision has one mechanical restart condition, and every Not-needed
+# decision keeps an auditable Vanilla/source anchor. Audit complete Markdown
+# items rather than only their first line.
+feature_item_issues=$(
   awk '
+    function has_deferred_marker(text) {
+      return tolower(text) ~ /(^|[^[:alnum:]_-])deferred([^[:alnum:]_-]|$)/
+    }
     function flush_item() {
-      if (item ~ /`deferred`/ && item !~ /Reopen when /) {
-        print item_line ":" item
+      if (item_section == "not needed" && has_deferred_marker(item)) {
+        print "misplaced\t" item_line ":" item
+      }
+      if (has_deferred_marker(item) && item !~ /Reopen when /) {
+        print "reopen\t" item_line ":" item
+      }
+      if (item_section == "not needed" && item !~ /[Vv]anilla/ && item !~ /`/) {
+        print "evidence\t" item_line ":" item
       }
       item = ""
       item_line = 0
-    }
-    /^# Todo$/ {
-      flush_item()
-      in_todo = 1
-      next
+      item_section = ""
     }
     /^# / {
       flush_item()
-      in_todo = 0
+      section = tolower(substr($0, 3))
       next
     }
-    in_todo && /^- / {
+    (section == "todo" || section == "not needed") && /^- / {
       flush_item()
       item = $0
       item_line = NR
+      item_section = section
       next
     }
-    in_todo && item != "" && /^  / {
+    item != "" && /^  / {
       item = item " " $0
       next
     }
-    in_todo && item != "" && NF {
+    item != "" && NF {
       flush_item()
     }
     END {
@@ -91,9 +101,124 @@ deferred_without_reopen=$(
     }
   ' "$feature_ledger"
 )
+misplaced_deferred=$(printf '%s\n' "$feature_item_issues" | sed -n 's/^misplaced	//p')
+if [ -n "$misplaced_deferred" ]; then
+  echo "feature ledger lint: deferred items must stay under their owning # Todo domain, not # Not needed:" >&2
+  echo "$misplaced_deferred" >&2
+  failed=1
+fi
+
+deferred_without_reopen=$(printf '%s\n' "$feature_item_issues" | sed -n 's/^reopen	//p')
 if [ -n "$deferred_without_reopen" ]; then
-  echo "feature ledger lint: deferred Todo items need an explicit 'Reopen when ...' condition:" >&2
+  echo "feature ledger lint: deferred items need an explicit 'Reopen when ...' condition:" >&2
   echo "$deferred_without_reopen" >&2
+  failed=1
+fi
+
+not_needed_without_evidence=$(printf '%s\n' "$feature_item_issues" | sed -n 's/^evidence	//p')
+if [ -n "$not_needed_without_evidence" ]; then
+  echo "feature ledger lint: # Not needed items need a Vanilla statement or source-code anchor:" >&2
+  echo "$not_needed_without_evidence" >&2
+  failed=1
+fi
+
+# The synchronized custom block/entity task was a concrete roadmap/ledger
+# contradiction: Vanilla 26.1 does not synchronize either registry. Reject only
+# the old numbered-task shape so explanatory maintenance prose remains legal.
+if stale_custom_identity=$(rg -n --no-heading --color never \
+  '^[[:space:]]*([-*]|[0-9]+\.) .*\*\*(同步 registry 到 custom presentation|[Ss]ynchronized custom block/entity identity)' \
+  "$goal"); then
+  echo "goal.md lint: synchronized custom block/entity identity cannot be an open roadmap task:" >&2
+  echo "$stale_custom_identity" >&2
+  failed=1
+fi
+
+# Route statuses are the only roadmap-side machine state. When the Todo ledger
+# has no active items, an active route would recreate an invisible queue; when
+# active items exist, at least one route must own them.
+roadmap_statuses=$(
+  awk '
+    /<!-- roadmap-status:start -->/ {
+      inside = 1
+      next
+    }
+    /<!-- roadmap-status:end -->/ {
+      inside = 0
+      next
+    }
+    inside && NF {
+      print
+    }
+  ' "$goal"
+)
+
+for route in \
+  p1-playable \
+  p1-generated-facts \
+  p2-non-entity \
+  p2-hud \
+  p3-resources \
+  p4-delivery
+do
+  route_count=$(printf '%s\n' "$roadmap_statuses" |
+    grep -Ec "^- $route: (active|maintenance|closed|deferred)$" || true)
+  if [ "$route_count" -ne 1 ]; then
+    echo "goal.md lint: roadmap status needs exactly one '$route: active|maintenance|closed|deferred' entry" >&2
+    failed=1
+  fi
+done
+
+invalid_roadmap_statuses=$(printf '%s\n' "$roadmap_statuses" |
+  grep -Ev '^- (p1-playable|p1-generated-facts|p2-non-entity|p2-hud|p3-resources|p4-delivery): (active|maintenance|closed|deferred)$' || true)
+if [ -n "$invalid_roadmap_statuses" ]; then
+  echo "goal.md lint: malformed or unknown roadmap status entries:" >&2
+  echo "$invalid_roadmap_statuses" >&2
+  failed=1
+fi
+
+active_todo_items=$(
+  awk '
+    function has_deferred_marker(text) {
+      return tolower(text) ~ /(^|[^[:alnum:]_-])deferred([^[:alnum:]_-]|$)/
+    }
+    function flush_item() {
+      lower = tolower(item)
+      if (section == "todo" && item != "" &&
+          !has_deferred_marker(item) && lower !~ /`not-needed`/) {
+        active += 1
+      }
+      item = ""
+    }
+    /^# / {
+      flush_item()
+      section = tolower(substr($0, 3))
+      next
+    }
+    section == "todo" && /^- / {
+      flush_item()
+      item = $0
+      next
+    }
+    item != "" && /^  / {
+      item = item " " $0
+      next
+    }
+    item != "" && NF {
+      flush_item()
+    }
+    END {
+      flush_item()
+      print active + 0
+    }
+  ' "$feature_ledger"
+)
+active_roadmap_routes=$(printf '%s\n' "$roadmap_statuses" |
+  grep -Ec ': active$' || true)
+if [ "$active_todo_items" -eq 0 ] && [ "$active_roadmap_routes" -ne 0 ]; then
+  echo "goal.md lint: active Todo is zero, so roadmap statuses cannot retain an active queue" >&2
+  failed=1
+elif [ "$active_todo_items" -ne 0 ] && [ "$active_roadmap_routes" -eq 0 ]; then
+  echo "goal.md lint: active Todo items exist but no roadmap route owns them" >&2
   failed=1
 fi
 
@@ -127,4 +252,4 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
-echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, owned deferred gaps, design docs referenced, no completed coverage prose"
+echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, route/ledger states consistent, owned deferred/not-needed decisions, design docs referenced, no completed coverage prose"

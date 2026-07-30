@@ -8,6 +8,11 @@
 除有 vanilla 依据的 `not-needed` 或附明确重启判据的 `deferred` 外，其余协议、状态、
 交互、资源、音画与平台差异都必须进入可验收队列，不能只收敛 renderer 表面差异。
 
+这里的完成范围是**外部多人原生客户端**：用户提供启动参数与可用的 session/token
+材料后，客户端连接外部服务器并完成上述行为。Microsoft/Mojang token 获取、
+`IntegratedServer`/单人世界、游戏内配置 UI 与 Mojang telemetry 不属于 declared
+scope；它们是明确 non-goals，不因进入维护态而自动转成 TODO。
+
 ## 本文件维护规则
 
 - 本文件只保留：工作流、硬性约束与结构不变量、未完成项、优先级、完成标准。
@@ -20,11 +25,12 @@
   对应条目，本文件只指向它。
 - 随 slice 变化的快照数据（audit 计数、coverage 计数等）不写入本文件；只
   记录动作与判据。
-- `docs/unsupported-features.md` 是纯 TODO list，不存任何完成史；其每个一级
-  TODO 域必须映射到本文件一个开放 queue、结转项或带 vanilla 依据的
-  `not-needed`；新增 ledger 域时在同一 slice 更新路由。
+- `docs/unsupported-features.md` 是 active/deferred/not-needed 事实账本，不存
+  任何完成史；每个 active 项必须映射到下方一个 `active` 路线，deferred 项只在
+  `Reopen when ...` 满足后恢复为 active，not-needed 项必须保留 vanilla 依据。
+  新增 ledger 域时在同一 slice 更新路由状态。
 - 本文件与开发流程本身是持续优化对象：流程摩擦在日常 slice 中随手记录，
-  改进按工作流第 8 步以专门 slice 落地，不在功能 slice 中顺手改流程。
+  改进按工作流第 9 步以专门 slice 落地，不在功能 slice 中顺手改流程。
 - 行数上限与完成史散文由 `scripts/docs-lint.sh` 机械 enforce。
 
 ## 硬性约束
@@ -101,11 +107,11 @@
 - 大文件布局：particle_runtime / particles / item_models 为 facade + 域
   子模块 + 外置 tests.rs；新增代码进对应子模块，不得回填 facade 或新开巨型
   内联测试块。
-- `docs/unsupported-features.md` 是纯 TODO list：只列还要做什么，slice 落地
-  即删对应 todo，不写“已完成”。两种非待办状态：`deferred`（留在所属
-  Todo 域、附 `Reopen when ...` 重启判据）与 `not-needed`（附 vanilla
-  判据），删除即视为可重开，故不得删；顶层 Deferred 区域由门禁禁止，避免
-  状态面板静默漏项。
+- `docs/unsupported-features.md` 是无完成史的事实账本：active 项落地即删，
+  不写“已完成”。两种保留决策：`deferred`（留在所属 Todo 域、附
+  `Reopen when ...` 重启判据）与 `not-needed`（附 vanilla 判据），删除即视为
+  可重开，故不得删；顶层 Deferred 区域及 Not needed 下的 deferred 条目由门禁
+  禁止，避免状态面板静默漏项。
 
 ## 提交前门禁
 
@@ -132,8 +138,9 @@ unused/dead-code lint。
 
 ## Slice 工作流（每轮）
 
-选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0 clean 时不得停下
-等待确认，也不因历史 ledger 文字重开 P0。
+有 ready 工作时选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0
+clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready 工作时必须走下方
+机械维护态分支，不能用临时 grep 或宽泛路线愿景制造候选。
 
 ### Slice 形态与 ready 契约
 
@@ -152,21 +159,33 @@ unused/dead-code lint。
 ### 每轮步骤
 
 1. **收尾**：确认工作树干净；已验证未提交的 slice 先提交。
-2. **audit**：`scripts/audit-p0.sh`；exit 0 且 `.git/bbb/` 的 last-gated 与
-   last-playable-* stamp（gate/playable-gate 通过时自动写入）无回退迹象 ⇒ 无新
-   P0；milestone 关闭后 live playable stamp 不得落后于该 milestone。exit 1 时
-   人工归类新增命中，有明确非 P0 依据的附注释写入 allowlist。不与历史计数对比。
+2. **audit**：运行 `scripts/audit-p0.sh` 与 `scripts/coverage-status.py`；exit 0
+   且 `.git/bbb/` 的 last-gated 与 last-playable-* stamp（gate/playable-gate
+   通过时自动写入）无回退迹象 ⇒ 无新 P0。milestone 关闭后 live playable stamp
+   不得落后于该 milestone。audit exit 1 时人工归类新增命中，有明确非 P0 依据的
+   附注释写入 allowlist；不与历史计数对比。
 3. **P0 分支**：命中重开条件 → P0 regression slice 只修 blocker；未命中 →
-   立即进入候选选择，不等待确认。
-4. **Hardest-ready 选择**：先跑 `scripts/coverage-status.py` 取 active TODO
-   item 面板（显式 `deferred` / `not-needed` 与 invariant 不进入候选），与
-   P1～P4 路线图开放项合并建候选集（原子与工程形态并列），在完整语义工程
-   层面按五项评估难度：架构/协议/状态机风险、跨边界集成范围、vanilla/wire
-   不确定性、验证复杂度、失败影响与定位难度。默认选最难的 ready 工程；只有真实 blocker 或集成契约无法冻结
-   时，才选择能解锁它的最难且 ready 的有界前置 slice。难度相当时依次看：
-   解锁更多后续目标、更接近可玩交付闭环、下节裁决顺序。进度更新只需简记
-   最终选择与一句难度依据、被排除的最强候选及其真实 blocker。
-5. **实现循环**（原子 slice 或工程阶段）：
+   立即审计路线状态与 deferred 重启条件，不等待确认。
+4. **ready / 静默态裁决**：
+   - 只把 coverage 面板的 active item 与已满足 `Reopen when ...`、并在同一
+     slice 先改回 active 的 deferred 放进候选集。P1～P4 只声明 owner/status，
+     不是第二份待办队列。
+   - active 为 0 时逐项确认：P0 clean；每条路线为 `maintenance`/`closed`，或
+     只剩重启条件未满足的 `deferred`；`HEAD` 等于 `.git/bbb/last-gated`；适用的
+     fixture/live playable stamp 是 `HEAD` 祖先且没有新 milestone 要求重跑。
+   - 上述条件全部满足 ⇒ 输出 P0、coverage、路线状态、full-gate commit 与
+     playable stamp 证据，进入“目标维护态 / declared multiplayer-client 当前
+     范围完成”并停止。不得从手工 grep、宽泛 P4 愿景或持续审计口号临时制造
+     无界微型 slice。
+   - 任一 P4 目标仍真实未关闭却没有账本项 ⇒ 先把它具体化为少量、带 owner、
+     验收判据与适用重启条件的 active/deferred 项；在此之前不得进入完成态。
+5. **Hardest-ready 选择**：对候选集中的原子/工程形态，在完整语义工程层面按
+   五项评估难度：架构/协议/状态机风险、跨边界集成范围、vanilla/wire 不确定性、
+   验证复杂度、失败影响与定位难度。默认选最难的 ready 工程；只有真实 blocker
+   或集成契约无法冻结时，才选择能解锁它的最难且 ready 的有界前置 slice。
+   难度相当时依次看：解锁更多后续目标、更接近可玩交付闭环、下节路线 owner。
+   进度更新只需简记最终选择与一句难度依据、被排除的最强候选及其真实 blocker。
+6. **实现循环**（原子 slice 或工程阶段）：
    1. 先 grep 当前实现，确认缺口真实存在（历史上多次“账本以为缺失但代码
       已实现”）；
    2. 定位 vanilla 26.1 源码依据（常量/公式/顺序）；已批量提取过的先查
@@ -178,7 +197,7 @@ unused/dead-code lint。
       提交必须可构建、可审查，失败一律 fix-forward，不重写历史。
    工程 slice 的进度更新报告当前阶段、已完成提交、focused test 结果和下一
    checkpoint。
-6. **Checkpoint 批次与门禁位置**：
+7. **Checkpoint 批次与门禁位置**：
    - 普通批次：连续 2～4 个语义相关、风险可局部界定的低风险原子 slice，
      各自完成提交前检查与干净提交，批次 tip 跑一次
      `scripts/cargo-dev.sh gate`。累计第 4 个提交、切换语义领域，或交付/
@@ -198,10 +217,11 @@ unused/dead-code lint。
      （gate-log.tsv 含各步耗时），batch-gate 无参数时默认以它为 `<good>`；
      进度更新与交付报告批次内提交、focused test 结果与 gate 结果。交付/合并
      的 HEAD 必须已通过完整 gate。
-7. **路线图维护**：P1～P4 记录依赖、里程碑、完成标准与裁决顺序，不是默认
-   串行消化队列。新发现工作在账本立条目并参与下一轮候选；结转项只在重启
-   判据满足后恢复为 ready 候选。
-8. **流程维护（持续优化 goal.md 与开发流程）**：
+8. **路线图维护**：P1～P4 记录 owner、状态、完成/维护证据，不是默认串行
+   消化队列。新发现工作先在账本立 active 项并把对应路线改为 `active`；结转项
+   只在重启判据满足、账本状态更新后恢复为 ready。路线与账本状态由
+   `scripts/docs-lint.sh` 交叉检查。
+9. **流程维护（持续优化 goal.md 与开发流程）**：
    - 触发判据（日常 slice 中观察到即记录，不当场改流程）：每 slice 固定
      开销上升（gate 步时、文档/叙述负担）；规则被误读、互相矛盾或反复
      解释；同类失误重复出现；文档超限、指向失效或积累完成史；出现能缩短
@@ -252,172 +272,95 @@ effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域�
 
 ## 客户端差异优先级
 
-本节只列开放路线图。P1～P4 保留为依赖/里程碑说明与 hardest-ready 难度相当时的
-裁决依据，不要求按章节顺序串行消化。protocol/session、RegistryAccess typed
-foundation、entity matrix、playable session lifecycle 四个
-foundation milestone 均已闭环（见 goal-archive 索引；RegistryAccess 消费长尾
-整队列随之闭环，权威来源规则转入上方结构不变量维护），后续裁决顺序调整为：
+路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在
+`docs/unsupported-features.md`。`scripts/docs-lint.sh` 要求下列 marker 完整，并在
+active TODO 为 0 时拒绝仍声明 active 路线。
 
-1. P2 非实体 closeout；
-2. P2 屏幕/HUD；
-3. P3 资源；
-4. P4 健壮性/性能/平台。
+<!-- roadmap-status:start -->
+- p1-playable: maintenance
+- p1-generated-facts: maintenance
+- p2-non-entity: maintenance
+- p2-hud: maintenance
+- p3-resources: maintenance
+- p4-delivery: active
+<!-- roadmap-status:end -->
 
-（playable 基础游玩交互与扩展失败证据两阶段均已闭环，见下节；playable 门禁
-转入维护态：新交互场景随对应垂直 slice 扩展，不再单列队列。）
-
-关闭 milestone 后照常运行适用的 playable-gate；暴露的依赖进入下一轮候选，
+有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
+裁决。关闭 milestone 后照常运行适用的 playable-gate，暴露的真实缺口先入账本，
 不得借机扩大当前 slice。
-
-### 结转项（blocked / defer，不进 ready 候选集）
-
-重启判据见对应账本条目；条件满足前不列入候选集，也不因 ledger 文字重开。
-
-- entity-in-UI preview 的 `item_layers` GPU 绘制（原 P1-4）：defer，需 native
-  侧 baked hand/head item model 元数据。
-- font unihex（原 P1-3 font 五连剩余）：defer，需 consumed assets 提供
-  unifont 源。
 
 ### P1：可玩 Session 端到端门禁
 
-用真实 vanilla 26.1 offline-mode server 和可复现 fixture 验证跨 crate 集成，
-不让 focused unit tests 掩盖 protocol→net→world→native→renderer/audio 的连接级
-断裂。命令入口 `scripts/playable-gate.sh`；lifecycle 工程合同见
-`docs/playable-session-lifecycle-design.md`。session lifecycle（death/respawn、
-Overworld↔Nether、resource-pack push/pop、Play→Configuration→Play、双 server
-Transfer）与基础游玩交互（movement、破坏/放置、实体攻击、容器
-开箱/quick-move/关箱、chat round-trip、hotbar 切槽、声音/粒子推送、
-deterministic screenshot、inventory 背包操作）均已闭环。失败证据同样闭环
-（evidence schema 10）：任何失败按 server_start / network / canonical_apply /
-runtime_side_effect / presentation 五档分类并标注失败场景，附失败时刻同代
-renderer/audio/net/world counters、pending 写探针双采样和最终 screenshot
-（control 不可达时逐级降级，不掩盖原始失败）。阶段队列已清空；新交互场景随
-对应垂直 slice 扩展本门禁，不再单列。
+状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
+证据由 `scripts/playable-gate.sh` 和
+`docs/playable-session-lifecycle-design.md` 持续维护；archive 的 lifecycle、
+interaction 与 failure-evidence milestone 是关闭依据。新垂直 slice 若改变可玩
+行为，必须扩展适用场景并按 checkpoint 规则刷新 stamp；门禁回退按 P0 处理。
 
-持续架构优化（随 slice 顺带落地，不单独排队）：rust 类型状态/newtype 收紧
-协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制任务零阻塞 await、
-`watch`/arc-swap 快照、JoinSet 任务生命周期；hecs 把 per-tick 实体动画/物理
-收敛为 ECS 查询批处理，作为 dual-path 实体迁移统一落点。线上语义 vanilla
-一致（P0 红线），focused tests + live gate 为回归判据。
+### P1：可机械推导的 vanilla 事实
 
-完成标准：fixture smoke 可在 clean checkout 标准测试环境运行；live
-`playable-gate` 一条命令完成上述场景并稳定回收；合法 session 无 panic、hang、
-required unknown packet 或状态泄漏；每个核心用户动作同时有 server 结果、world
-状态和适用呈现断言；大 milestone 关闭前必须通过该门禁。
-
-### P1：消除可机械推导的 vanilla 手工维护（收尾审计）
-
-生成器基建与主体 catalog 已落地。生成器只在维护时读取
-`~/Work/mc-code/sources/26.1/` 或明确输入；生成物必须提交，普通 build/test
-不读取工作区外源码。开放审计方向：
-
-1. **资源与 tag 派生表**：继续审计手写 block/item/entity membership；有精确
-   vanilla tag 的直接从 tag 派生，没有的只在 class/property/registry source
-   fact 能证明等价时生成，禁止名称启发式或近似 tag 扩大集合。block terrain
-   render layer 由 baked material/sprite 实际 transparency 动态决定，缺失
-   贴图用明确 opaque missing-sprite fallback。
-2. **跨 crate 去重与反向门禁**：审计残余重复 registry/ordinal/UI 静态
-   membership 表和生产裸 id；消费者改用 typed catalog API，并加机械扫描或
-   结构测试阻止第二事实源重现。生成物内的反向门禁必须由同一 generator
-   模板输出，禁止手改生成物。
-
-完成标准：修改生成输入而未更新生成物会在门禁失败；clean checkout 无本地
-vanilla 源码也能构建测试；版本升级时注册顺序变化表现为集中可审查的生成
-diff；生产代码不再出现已纳入 catalog 的平行资源表、裸 registry id 或手抄
-ordinal。
+状态：`maintenance`。生成物提交、普通 build/test 不读取工作区外源码、共享
+Tree-sitter frontend 与反向 source guard 是持续不变量。只有以下触发之一出现时
+才开有界 slice：结构门禁命中具体第二事实源；目标版本升级产生权威 source diff；
+生成输入/模板变化；或代码 review 指出一个可定位的重复 registry/ordinal/tag/
+membership owner。没有具体文件、事实源与验收测试的手工 grep 不能在 active=0
+时生成审计 slice。
 
 ### P2：非实体客户端行为 closeout
 
-给 entity matrix、screen/HUD 和 resource 队列之外的客户端行为一个明确关闭
-路径，覆盖账本中 protocol 已解码但尚未完整呈现的 level/chunk/block entity、
-input/movement/interaction、inventory/gameplay、particle/level event、audio
-与跨域 side effect。按用户可观察 vertical slice 推进，不按 crate 各做半条链。
-
-1. **ledger 路由**：维护 unsupported 一级域→goal queue 的双向清单；已由其它
-   队列负责的条目只引用；其余进入 world、interaction、effects 三个 owner，
-   新增 orphan heading 令结构测试失败。
-2. **world 与 block entity**：补齐 dimension/time/weather/chunk/light/biome/
-   block state、block event/entity、map/scoreboard/recipe/advancement 等
-   canonical state 与可观察呈现，重点关闭 sign/banner/chest/shulker/spawner/
-   bell/vault 等窄缺口和清理生命周期。
-3. **input、movement 与 interaction**：覆盖 local player movement/collision/
-   fluid/portal、crosshair/pick、attack/use/destroy/place、vehicle、
-   inventory/container prediction 与 server acknowledgement；服务端权威结果
-   不伪造，本地 prediction 与 rollback 有明确边界。
-4. **particle、level event 与 audio**：从 packet/world event 经唯一 effects
-   sink 到 resolver/runtime/render submission，覆盖 provider options、
-   block/item context、entity following、category/attenuation、delayed/stop
-   与 missing asset diagnostics；随机链保持 online/probe/fixture 确定性一致。
-5. **垂直关闭门禁**：slice 完成时同时断言 protocol summary、canonical
-   state、runtime command/counter 与适用 screenshot/audio resolver 结果；只
-   完成 decode、只加 counter 或只画 fallback 不得删除账本条目。
-
-完成标准：账本每个非实体条目都有唯一 queue owner；目标客户端适用条目完成或
-仅剩有依据的 `not-applicable`/`deferred`；playable-gate 覆盖基础 movement/
-interaction/inventory/world effects；不存在已 decode 但任一段无主的 required
-packet 行为。
+状态：`maintenance`。packet/registry/item/entity coverage 均无 open row，
+unsupported 的非实体域无 active item；world/block-entity、movement/interaction、
+inventory、particle/level-event、audio 与跨域 side-effect 的关闭证据见 archive
+对应 milestone 及 playable gate。后续只由新 active ledger item、coverage row
+回退或 P0 触发重开；vertical slice 仍须贯通 protocol summary、canonical state、
+runtime effect/counter 与适用 presentation。
 
 ### P2：屏幕、HUD、字体与截图
 
-开放项见账本 "HUD overlay and screen render surfaces" 节；整体低优先；
-F3+I entity save payload 由 entity matrix 唯一拥有。
-
-完成标准：不做临时配置 UI，启动配置从命令行进入；上述开放项及账本归属本
-队列的条目全部完成或有窄 deferred/not-needed 依据；视觉结果有 deterministic
-screenshot/pixel readback，无法自动化的留可复现 vanilla 对比步骤与截图证据。
+状态：`maintenance`。账本对应域没有 active item；screen/HUD/font/debug 与
+deterministic screenshot/pixel evidence 的关闭索引见 archive。entity preview
+`item_layers` 与 unihex 仍按各自 `Reopen when ...` 留在 Todo 域但不进 ready。
+启动配置继续只走 CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 ### P3：动态资源 presentation breadth
 
-selected pack、server push/pop、原子 reload generation 和 profile/skin/cape/
-elytra 动态纹理 owner 已落地；owner/失效合同以
-`docs/resource-pack-lifecycle-design.md` 为准；coalesced ResourceTexture
-per-entry sampler 工程合同见
-`docs/archive/coalesced-resource-texture-sampling-design.md`。剩余工作不得
-重建平行 pack stack、cache 状态机或 selectable old/new reload path。
+状态：`maintenance`。selected/startup/server pack、push/pop、原子 immutable
+resource generation、profile/map/variant/painting/pattern/trim 动态资源与诊断
+owner 已由 `docs/resource-pack-lifecycle-design.md`、资源预算合同、archive 和
+playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred。
 
-1. **non-profile 动态纹理**：后续真实远端 producer 复用既有 bounded
-   pending/ready/failed owner。
-2. **同步 registry 到 custom presentation**：server/datapack 的 custom
-   block/entity identity 接现有 model/texture loader 与 exact fallback；不用
-   bootstrap ordinal、名称猜测或第二套 schema 代替 session RegistryAccess。
-3. **诊断与集成证据**：missing/invalid/unsupported resource 有精确
-   resource-id/fallback 观测；live playable 增加 deterministic
-   screenshot/audio 变化证明 presentation 随 push→apply→pop 切换。
+- 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
+  immutable resource generation。
+- 只有 Vanilla 26.1 实际通过
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 同步、且有客户端 presentation
+  consumer 的 registry 才支持自定义条目。该集合不含 `BLOCK` 或 `ENTITY_TYPE`；
+  账本将 synchronized custom block/entity identity 保留为 `not-needed`。
+- 新 consumer 必须复用现有 generation、RegistryAccess resolver、bounded
+  pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
+  schema、pack stack 或 cache owner。
 
-完成标准：新增 consumer 全部加入同一 immutable resource generation 和有界
-动态纹理 surface；无 stale handle 或跨 session id reuse；custom presentation
-有 semantic test，服务器 pack 的可见/可听变化有 deterministic live 证据。
+当前无 ready P3 工作；只有账本 deferred 重启条件满足或发现具体 active producer
+时才重开。
 
 ### P4：健壮性、运行时性能与平台交付
 
-目标客户端必须能长期连接不可信服务器、加载不可信资源并在支持平台稳定运行。
-优化不得改变 canonical 语义或删 diagnostics/fallback 换指标；性能基线只用
-可复现场景和稳定统计。simulation/render 性能工程的开放边界与对比合同以
-`docs/simulation-render-performance-design.md` 为准；具体缺口在账本 runtime
-performance 条目维护。
+状态：`active`，但不是开放愿景队列；ready 工作只对应账本
+“P4 lifecycle, soak, and supported-platform release gates”的 active items。
 
-1. **输入与资源安全**：packet frame/compression、NBT/component、JSON/model/
-   font、image/audio/ZIP 的 size/depth/count/ratio/time 限制、路径规范化与
-   fuzz/property tests；malformed input 返回有上下文错误，不 panic、越界或
-   预分配攻击者声明的容量。
-2. **队列、异步与生命周期**：net event、chunk/mesh upload、resource
-   download/decode、profile/texture、audio/particle 的 backpressure、cancel、
-   generation 与 shutdown；disconnect/reload/window close 能终止 worker。
-3. **性能预算**：代表性 view distance 场景的 frame CPU/GPU、chunk decode/
-   mesh/upload、entity extraction/render、memory/cache 与 network baseline；
-   优化走 profiling 证据，设宽容 regression budget；构建性能遵循
-   `docs/cargo-build-performance.md`。
-4. **soak 与故障恢复**：长时间 movement/chunk churn/entity/particle/resource
-   reload soak，覆盖断网、kick、音频设备失败、resize/minimize、GPU surface
-   丢失与 clean shutdown；检查内存/handle/queue 单调增长与 stale session。
-5. **平台与发布面**：明确支持的 OS/GPU/backend/窗口输入矩阵，验证 DPI/
-   fullscreen/focus、keyboard/mouse/clipboard/IME、无音频设备和 headless
-   probe；启动配置只走 CLI，提供版本/协议/pack-format、日志、诊断快照。
-6. **分层门禁**：快速 workspace gate 保持现有内容；fuzz corpus、benchmark、
-   live playable 与 soak 进入可单独执行的 milestone/CI gate，失败产物可归档
-   且命令、seed、fixture 可复现。
+已有维护证据：
 
-完成标准：合法 session/resource 不因防御限制误拒绝，恶意输入在明确预算内
-失败；代表性场景无无界增长，性能回退可量化定位；故障不污染下一 session；
-声明支持的平台通过 clean build、fixture playable smoke 和启动/关闭生命周期
-测试。
+- packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
+  原子回滚和诊断由协议测试、`docs/resource-input-safety-design.md`、
+  `docs/resource-data-audio-budget-design.md` 及 full gate 维护；
+- simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
+  shutdown/join 与 panic propagation 由
+  `docs/simulation-render-thread-design.md` 和 focused tests 维护；
+- repo-native before/after 与 runtime observation 已有稳定基线；只有同载官方
+  Java 对比按账本条件 deferred，不能伪造胜负结论；
+- surface lost/outdated reconfigure、timeout skip、resize 与 clean shutdown
+  已有实现/测试，但尚未被独立长期 gate 组合验收。
+
+剩余验收只有：独立可复现的 lifecycle/fault soak gate，以及声明支持的 Linux
+发布矩阵。非 Linux 发布验证按账本条件 deferred。两项 active 全部关闭或转成有
+依据的 deferred 后，路线改为 `maintenance`；若届时 active=0，再走工作流第 4
+步的机械终止判据。

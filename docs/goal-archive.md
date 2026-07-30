@@ -880,3 +880,6 @@
 - **2026-07-30（DyeColor/sheep presentation 单一所有权闭环）**：DyeColor
   ordinal、名称、diffuse color 与 `ColorLerper.Type.SHEEP` 参数现由
   `bbb-render-types` 生成并供 protocol/renderer 共用，羊颜色表与 enum 副本移除。
+- **2026-07-30（工作流 v9：路线状态与终止条件）**：P2 非实体/HUD 与 P3 资源
+  收敛为 maintenance，ready 只来自 active 账本或已满足重启条件的 deferred；
+  零 ready 需 P0/stamp/full-gate/路线全满足，P4 剩余 soak 与 Linux 发布矩阵已入账。

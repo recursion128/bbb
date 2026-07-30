@@ -85,5 +85,6 @@ accepted/staged generations share a 1 GiB ceiling, and the remote dynamic owner
 retains at most 256 MiB of ready decoded pixels with bounded worker/delivery
 handoff. These are logical decoded-pixel bounds, not whole-process RSS: decoder
 scratch, derived renderer/GPU owners and driver-deferred release remain outside
-the counters. JSON/model/font collections and audio decode budgets remain
-separate open input-safety work.
+the counters. JSON/model/font collections and audio decode budgets are closed
+by [`resource-data-audio-budget-design.md`](resource-data-audio-budget-design.md)
+and remain maintenance invariants rather than a second open queue.
