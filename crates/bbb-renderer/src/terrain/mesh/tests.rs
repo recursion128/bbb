@@ -1397,7 +1397,7 @@ fn mesh_vertices_carry_face_tint() {
 }
 
 #[test]
-fn cube_vertices_carry_vanilla_default_cardinal_shade() {
+fn terrain_diffuse_vertices_carry_vanilla_default_cardinal_shade() {
     let snapshot = single_block_snapshot(0, 0, 1, 0, 2);
 
     let mesh = build_opaque_chunk_mesh(&snapshot);
@@ -1411,7 +1411,7 @@ fn cube_vertices_carry_vanilla_default_cardinal_shade() {
 }
 
 #[test]
-fn nether_dimension_uses_vanilla_nether_cardinal_shade() {
+fn terrain_diffuse_uses_vanilla_nether_cardinal_shade() {
     // Vanilla `CardinalLighting.NETHER = (0.9, 0.9, 0.8, 0.8, 0.6, 0.6)`: only the
     // down/up faces differ from `DEFAULT` (down 0.5 -> 0.9, up 1.0 -> 0.9); the
     // north/south/west/east side shades are identical to `DEFAULT`.

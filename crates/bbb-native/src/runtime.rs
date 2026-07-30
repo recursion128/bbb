@@ -2363,7 +2363,6 @@ fn dimension_lightmap_environment(
     attributes: bbb_world::ClientEnvironmentAttributes,
 ) -> LightmapEnvironment {
     let mut environment = LightmapEnvironment::default();
-    environment.ambient_light = level.ambient_light();
     match vanilla_lightmap_dimension_kind(level) {
         VanillaLightmapDimensionKind::Nether => {
             environment.sky_factor = 0.0;

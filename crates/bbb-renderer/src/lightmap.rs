@@ -12,8 +12,6 @@ struct LightmapInfo {
     DarknessScale: f32,
     BossOverlayWorldDarkeningFactor: f32,
     BrightnessFactor: f32,
-    AmbientLight: f32,
-    _padding0: f32,
     BlockLightTint: vec4<f32>,
     SkyLightColor: vec4<f32>,
     AmbientColor: vec4<f32>,
@@ -44,8 +42,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
 }
 
 fn getBrightness(level: f32) -> f32 {
-    let curved = level / (4.0 - 3.0 * level);
-    return mix(curved, 1.0, lightmapInfo.AmbientLight);
+    return level / (4.0 - 3.0 * level);
 }
 
 fn notGamma(color: vec3<f32>) -> vec3<f32> {
@@ -107,8 +104,7 @@ struct LightmapUniform {
     darkness_scale: f32,
     boss_overlay_world_darkening_factor: f32,
     brightness_factor: f32,
-    ambient_light: f32,
-    _padding0: f32,
+    _padding0: [f32; 2],
     block_light_tint: [f32; 4],
     sky_light_color: [f32; 4],
     ambient_color: [f32; 4],
@@ -125,8 +121,7 @@ impl LightmapUniform {
             darkness_scale: environment.darkness_scale,
             boss_overlay_world_darkening_factor: environment.boss_overlay_world_darkening,
             brightness_factor: environment.brightness_factor,
-            ambient_light: environment.ambient_light,
-            _padding0: 0.0,
+            _padding0: [0.0; 2],
             block_light_tint: rgb_to_vec4(environment.block_light_tint),
             sky_light_color: rgb_to_vec4(environment.sky_light_color),
             ambient_color: rgb_to_vec4(environment.ambient_color),
@@ -306,6 +301,8 @@ fn rgb_to_vec4(rgb: [f32; 3]) -> [f32; 4] {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::mpsc;
+
     use super::{LightmapUniform, LIGHTMAP_FORMAT, LIGHTMAP_SHADER, LIGHTMAP_TEXTURE_SIZE};
     use crate::camera::LightmapEnvironment;
 
@@ -318,12 +315,12 @@ mod tests {
 
     #[test]
     fn lightmap_uniform_matches_vanilla_lightmap_info_layout() {
-        // Seven scalar factors plus padding, followed by four std140 vec3 colors.
+        // Vanilla LightmapInfo has six scalar factors, eight bytes of std140
+        // alignment padding, then four vec3 colors.
         assert_eq!(std::mem::size_of::<LightmapUniform>(), 96);
         let uniform = LightmapUniform::from_environment(LightmapEnvironment {
             sky_factor: 0.25,
             block_factor: 1.5,
-            ambient_light: 0.2,
             night_vision_factor: 0.75,
             darkness_scale: 0.125,
             boss_overlay_world_darkening: 0.5,
@@ -340,7 +337,7 @@ mod tests {
         assert_eq!(uniform.darkness_scale, 0.125);
         assert_eq!(uniform.boss_overlay_world_darkening_factor, 0.5);
         assert_eq!(uniform.brightness_factor, 0.875);
-        assert_eq!(uniform.ambient_light, 0.2);
+        assert_eq!(uniform._padding0, [0.0; 2]);
         assert_eq!(uniform.block_light_tint, [0.1, 0.2, 0.3, 0.0]);
         assert_eq!(uniform.sky_light_color, [0.4, 0.5, 0.6, 0.0]);
         assert_eq!(uniform.ambient_color, [0.7, 0.8, 0.9, 0.0]);
@@ -352,7 +349,7 @@ mod tests {
         assert!(LIGHTMAP_SHADER.contains("floor(input.tex_coord.x * 16.0) / 15.0"));
         assert!(LIGHTMAP_SHADER.contains("floor(input.tex_coord.y * 16.0) / 15.0"));
         assert!(LIGHTMAP_SHADER.contains("level / (4.0 - 3.0 * level)"));
-        assert!(LIGHTMAP_SHADER.contains("mix(curved, 1.0, lightmapInfo.AmbientLight)"));
+        assert!(!LIGHTMAP_SHADER.contains("AmbientLight"));
         assert!(LIGHTMAP_SHADER
             .contains("lightmapInfo.NightVisionColor.rgb * lightmapInfo.NightVisionFactor"));
         assert!(LIGHTMAP_SHADER.contains("mix(\n        lightmapInfo.BlockLightTint.rgb"));
@@ -362,5 +359,175 @@ mod tests {
         assert!(
             LIGHTMAP_SHADER.contains("mix(clamped, notGammaColor, lightmapInfo.BrightnessFactor)")
         );
+
+        let ambient = LIGHTMAP_SHADER
+            .find("var color = max(lightmapInfo.AmbientColor.rgb, nightVisionColor)")
+            .unwrap();
+        let sky = LIGHTMAP_SHADER
+            .find("color += lightmapInfo.SkyLightColor.rgb * sky_brightness")
+            .unwrap();
+        let block = LIGHTMAP_SHADER
+            .find("color += blockLightColor * block_brightness")
+            .unwrap();
+        let boss = LIGHTMAP_SHADER
+            .find("lightmapInfo.BossOverlayWorldDarkeningFactor")
+            .unwrap();
+        let darkness = LIGHTMAP_SHADER
+            .find("color -= vec3<f32>(lightmapInfo.DarknessScale)")
+            .unwrap();
+        let clamp = LIGHTMAP_SHADER.find("let clamped = clamp(color").unwrap();
+        let gamma = LIGHTMAP_SHADER
+            .find("let notGammaColor = notGamma(clamped)")
+            .unwrap();
+        let brightness = LIGHTMAP_SHADER
+            .find("mix(clamped, notGammaColor, lightmapInfo.BrightnessFactor)")
+            .unwrap();
+        assert!(
+            ambient < sky
+                && sky < block
+                && block < boss
+                && boss < darkness
+                && darkness < clamp
+                && clamp < gamma
+                && gamma < brightness
+        );
+    }
+
+    #[test]
+    fn lightmap_gpu_matches_vanilla_formula() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            eprintln!("skipping lightmap GPU test without a compatible adapter");
+            return;
+        };
+        let environment = LightmapEnvironment {
+            sky_factor: 0.65,
+            block_factor: 1.25,
+            night_vision_factor: 0.3,
+            darkness_scale: 0.08,
+            boss_overlay_world_darkening: 0.4,
+            brightness_factor: 0.55,
+            block_light_tint: [1.0, 0.35, 0.1],
+            sky_light_color: [0.2, 0.45, 0.9],
+            ambient_color: [0.06, 0.04, 0.02],
+            night_vision_color: [0.35, 0.8, 0.25],
+            level_lighting: crate::camera::LevelLighting::Default,
+        };
+
+        let pixels = render_lightmap_pixels(&mut renderer, environment);
+        for sky in 0..LIGHTMAP_TEXTURE_SIZE {
+            for block in 0..LIGHTMAP_TEXTURE_SIZE {
+                let expected = vanilla_lightmap_pixel(environment, block, sky);
+                let offset = ((sky * LIGHTMAP_TEXTURE_SIZE + block) * 4) as usize;
+                for channel in 0..4 {
+                    assert!(
+                        pixels[offset + channel].abs_diff(expected[channel]) <= 1,
+                        "lightmap ({block}, {sky}) channel {channel}: actual {}, expected {}",
+                        pixels[offset + channel],
+                        expected[channel]
+                    );
+                }
+            }
+        }
+    }
+
+    fn render_lightmap_pixels(
+        renderer: &mut crate::Renderer,
+        environment: LightmapEnvironment,
+    ) -> Vec<u8> {
+        renderer.set_lightmap_environment(environment);
+        renderer.render_offscreen_frame().expect("offscreen frame");
+
+        let unpadded_bytes_per_row = LIGHTMAP_TEXTURE_SIZE * 4;
+        let padded_bytes_per_row = unpadded_bytes_per_row
+            .div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT)
+            * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-lightmap-test-readback"),
+            size: u64::from(padded_bytes_per_row * LIGHTMAP_TEXTURE_SIZE),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-lightmap-test-readback"),
+            });
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &renderer.lightmap._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: Some(LIGHTMAP_TEXTURE_SIZE),
+                },
+            },
+            wgpu::Extent3d {
+                width: LIGHTMAP_TEXTURE_SIZE,
+                height: LIGHTMAP_TEXTURE_SIZE,
+                depth_or_array_layers: 1,
+            },
+        );
+        renderer.queue.submit(Some(encoder.finish()));
+
+        let slice = buffer.slice(..);
+        let (tx, rx) = mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        renderer.device.poll(wgpu::Maintain::Wait);
+        rx.recv().unwrap().unwrap();
+        let mapped = slice.get_mapped_range();
+        let mut pixels =
+            Vec::with_capacity((unpadded_bytes_per_row * LIGHTMAP_TEXTURE_SIZE) as usize);
+        for row in mapped
+            .chunks(padded_bytes_per_row as usize)
+            .take(LIGHTMAP_TEXTURE_SIZE as usize)
+        {
+            pixels.extend_from_slice(&row[..unpadded_bytes_per_row as usize]);
+        }
+        pixels
+    }
+
+    fn vanilla_lightmap_pixel(environment: LightmapEnvironment, block: u32, sky: u32) -> [u8; 4] {
+        let block_level = block as f32 / 15.0;
+        let sky_level = sky as f32 / 15.0;
+        let block_brightness = vanilla_lightmap_brightness(block_level) * environment.block_factor;
+        let sky_brightness = vanilla_lightmap_brightness(sky_level) * environment.sky_factor;
+        let mut color = [0.0; 3];
+        for channel in 0..3 {
+            color[channel] = environment.ambient_color[channel]
+                .max(environment.night_vision_color[channel] * environment.night_vision_factor);
+            color[channel] += environment.sky_light_color[channel] * sky_brightness;
+            let parabolic = (2.0 * block_level - 1.0).powi(2);
+            let block_tint = environment.block_light_tint[channel]
+                + (1.0 - environment.block_light_tint[channel]) * 0.9 * parabolic;
+            color[channel] += block_tint * block_brightness;
+            color[channel] *=
+                1.0 - environment.boss_overlay_world_darkening * (1.0 - [0.7, 0.6, 0.6][channel]);
+            color[channel] = (color[channel] - environment.darkness_scale).clamp(0.0, 1.0);
+        }
+
+        let max_component = color.into_iter().fold(0.0_f32, f32::max);
+        let max_inverted = 1.0 - max_component;
+        let max_scaled = 1.0 - max_inverted.powi(4);
+        for channel in 0..3 {
+            let not_gamma = color[channel] * max_scaled / max_component;
+            color[channel] += (not_gamma - color[channel]) * environment.brightness_factor;
+        }
+        [unorm8(color[0]), unorm8(color[1]), unorm8(color[2]), 255]
+    }
+
+    fn vanilla_lightmap_brightness(level: f32) -> f32 {
+        level / (4.0 - 3.0 * level)
+    }
+
+    fn unorm8(value: f32) -> u8 {
+        (value.clamp(0.0, 1.0) * 255.0).round() as u8
     }
 }

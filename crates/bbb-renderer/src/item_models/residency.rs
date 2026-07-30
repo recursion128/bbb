@@ -2341,6 +2341,28 @@ mod tests {
     }
 
     #[test]
+    fn resident_item_model_diffuse_shaders_split_cull_and_no_cull_normals() {
+        assert!(ITEM_MODEL_RESIDENT_SHADER.contains(
+            "let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w)"
+        ));
+        assert!(!ITEM_MODEL_RESIDENT_SHADER.contains("@builtin(front_facing)"));
+
+        let no_cull = resident_per_face_shader();
+        assert!(no_cull.contains("@builtin(front_facing) front_facing: bool"));
+        assert!(no_cull.contains(
+            "let face_normal = select(-input.normal_diffuse.xyz, input.normal_diffuse.xyz, front_facing)"
+        ));
+        assert!(no_cull.contains(
+            "let diffuse = mix(1.0, diffuse_light(face_normal), input.normal_diffuse.w)"
+        ));
+        for shader in [ITEM_MODEL_RESIDENT_SHADER, no_cull.as_str()] {
+            assert!(shader.contains("let light0 = normalize(camera.minecraft_light0.xyz)"));
+            assert!(shader.contains("let light1 = normalize(camera.minecraft_light1.xyz)"));
+            assert!(shader.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
+        }
+    }
+
+    #[test]
     fn resident_item_model_outline_shader_matches_vanilla_blocks_atlas_outline() {
         assert!(ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("if (texel.a == 0.0)"));
         assert!(

@@ -1,6 +1,6 @@
 # Entity Render-State Split Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -35,14 +35,19 @@ The authoritative local sources are:
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/RenderPipelines.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/rendertype/RenderTypes.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/Lightmap.java`;
+- `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/LightmapRenderStateExtractor.java`;
+- `/home/zgy/Work/mc-code/sources/26.1/com/mojang/blaze3d/platform/Lighting.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/blockentity/BeaconRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/blockentity/TheEndGatewayRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/EndCrystalRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/EnderDragonRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/GuardianRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/layers/BreezeWindLayer.java`;
-- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.vsh`; and
-- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.fsh`.
+- `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/world/level/CardinalLighting.java`;
+- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.vsh`;
+- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.fsh`;
+- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/lightmap.fsh`; and
+- `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/include/light.glsl`.
 
 `ENTITY_SOLID` uses the entity shader, lightmap and overlay with back-face
 culling, opaque replacement, depth writes, and ordinary one-sided diffuse
@@ -70,10 +75,12 @@ culling, fog, and no entity lightmap/overlay/diffuse stage. The outer glow uses
 back-face culling, and the same shader inputs. The glow alpha is exactly
 `32/255`.
 
-`LightTexture` is a dynamic 16x16 RGBA8 texture. Its lightmap shader applies
-ambient and night-vision colors, sky/block factors, boss darkening, darkness
-subtraction, clamping, `notGamma`, and the user brightness factor in that
-order. Vanilla entity/item diffuse lighting uses the current `Lighting.Entry`
+`LightTexture` is a dynamic 16x16 RGBA8 texture. Its six-scalar `LightmapInfo`
+UBO and shader apply ambient and night-vision colors, sky/block factors, boss
+darkening, darkness subtraction, clamping, `notGamma`, and the user brightness
+factor in that order. `DimensionType.ambientLight` is not part of this 26.1
+shader path; it remains independently owned by shadows and vignette brightness.
+Vanilla entity/item diffuse lighting uses the current `Lighting.Entry`
 two-direction mix; no-cull entity pipelines with `PER_FACE_LIGHTING` invert
 the normal on back faces, while cull-on pipelines use the ordinary normal.
 

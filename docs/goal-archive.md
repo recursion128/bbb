@@ -849,3 +849,8 @@
   presentation owner 构造时一次快照，普通/陷阱箱于 12 月 24～26 日选择
   single/left/right 圣诞常驻材质，末影与铜箱保持原材质；合同见
   `docs/archive/christmas-chest-texture-design.md`。
+- **2026-07-30（实体 GPU render-state 拆分工程闭环）**：30 个 typed render
+  state 现有穷尽式 pipeline/bucket 归属，solid/cutout、四类束流/风及末地折跃门
+  core/glow 均按 Vanilla 分离；动态 Lightmap 六标量公式与 Lighting.Entry
+  漫反射有逐像素/数值回归，合同见
+  `docs/archive/entity-render-state-split-design.md`。

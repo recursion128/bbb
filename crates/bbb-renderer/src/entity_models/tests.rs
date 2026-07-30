@@ -1,4 +1,5 @@
 use super::*;
+use crate::camera::{CameraUniform, LevelLighting, LightmapEnvironment};
 use crate::entity_models::gpu::build_entity_model_texture_atlas_with_height_limit;
 use crate::terrain::TerrainUvRect;
 
@@ -1054,6 +1055,40 @@ fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER
         .contains("per_face_diffuse_light(input.normal, front_facing) * light_color"));
     assert!(ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(input.normal) * light_color"));
+}
+
+#[test]
+fn entity_diffuse_formula_matches_vanilla_numeric_samples_and_back_faces() {
+    let default = CameraUniform::identity().shader_lighting();
+    let nether = CameraUniform::identity()
+        .with_lightmap_environment(LightmapEnvironment {
+            level_lighting: LevelLighting::Nether,
+            ..LightmapEnvironment::default()
+        })
+        .shader_lighting();
+
+    assert_close(vanilla_diffuse(default, Vec3::Y), 1.0);
+    assert_close(vanilla_diffuse(default, Vec3::NEG_Y), 0.4);
+    assert_close(vanilla_diffuse(default, Vec3::X), 0.49701425);
+    assert_close(vanilla_diffuse(nether, Vec3::Y), 0.8850713);
+    assert_close(vanilla_diffuse(nether, Vec3::NEG_Y), 0.8850713);
+
+    let face_normal = Vec3::new(0.2, 0.8, 0.5).normalize();
+    assert_close(vanilla_diffuse(default, face_normal), 1.0);
+    assert_close(vanilla_diffuse(default, -face_normal), 0.4);
+}
+
+fn vanilla_diffuse(lights: ([f32; 3], [f32; 3]), normal: Vec3) -> f32 {
+    let light0 = Vec3::from_array(lights.0).normalize();
+    let light1 = Vec3::from_array(lights.1).normalize();
+    ((light0.dot(normal).max(0.0) + light1.dot(normal).max(0.0)) * 0.6 + 0.4).min(1.0)
+}
+
+fn assert_close(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 1.0e-6,
+        "actual {actual}, expected {expected}"
+    );
 }
 
 #[test]
