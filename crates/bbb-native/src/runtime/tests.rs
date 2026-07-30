@@ -15785,7 +15785,7 @@ fn hud_inventory_screen_projects_generic_container_layout() {
 }
 
 #[test]
-fn all_generated_open_screen_menu_types_project_native_labels() {
+fn all_generated_open_screen_menu_types_project_a_native_surface() {
     assert_eq!(VANILLA_MENU_TYPES.len(), 25);
     for menu_type in VANILLA_MENU_TYPES {
         let mut world = WorldStore::new();
@@ -15795,75 +15795,74 @@ fn all_generated_open_screen_menu_types_project_native_labels() {
             title: bbb_protocol::RichTextComponent::plain(menu_type.resource_id),
         });
 
+        if menu_type.id == VANILLA_MENU_TYPE_LECTERN_ID {
+            assert!(hud_inventory_screen(&world, None, None, 0.0).is_none());
+            let book = hud_book_screen(&ClientInputState::default(), &world, None)
+                .expect("lectern must project its dedicated BookViewScreen surface");
+            assert_eq!(book.mode, bbb_renderer::HudBookMode::Lectern);
+            assert_eq!(book.page_indicator, "Page 1 of 1");
+            continue;
+        }
+
         let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap_or_else(|| {
             panic!(
                 "generated menu {} ({}) has no native presentation",
                 menu_type.constant_name, menu_type.resource_id
             )
         });
-        if menu_type.id == VANILLA_MENU_TYPE_LECTERN_ID {
-            assert!(
-                screen
-                    .text_labels
-                    .iter()
-                    .all(|label| label.text != menu_type.resource_id && label.text != "Inventory"),
-                "lectern must retain BookViewScreen label behavior"
-            );
-        } else {
-            let title = &screen.text_labels[0];
-            let inventory = &screen.text_labels[1];
-            let (title_x, title_y, centered) = match menu_type.resource_id {
-                "minecraft:generic_3x3"
-                | "minecraft:crafter_3x3"
-                | "minecraft:blast_furnace"
-                | "minecraft:brewing_stand"
-                | "minecraft:furnace"
-                | "minecraft:smoker" => (-168, 6, true),
-                "minecraft:merchant" => (-69, 6, true),
-                "minecraft:anvil" => (60, 6, false),
-                "minecraft:crafting" => (29, 6, false),
-                "minecraft:loom" | "minecraft:cartography_table" => (8, 4, false),
-                "minecraft:smithing" => (44, 15, false),
-                "minecraft:stonecutter" => (8, 5, false),
-                _ => (8, 6, false),
-            };
-            assert_eq!(
-                (title.text.as_str(), title.x, title.y),
-                (menu_type.resource_id, title_x, title_y),
-                "generated menu {} title contract",
-                menu_type.constant_name
-            );
-            assert_eq!(title.tint, CONTAINER_LABEL_TEXT_COLOR);
-            assert!(!title.shadow);
-            assert_eq!(
-                title.scrolling.is_some(),
-                centered,
-                "generated menu {} centering contract",
-                menu_type.constant_name
-            );
-            assert_eq!(
-                (
-                    inventory.text.as_str(),
-                    inventory.x,
-                    inventory.y,
-                    inventory.tint,
-                    inventory.shadow,
-                ),
-                (
-                    "Inventory",
-                    if menu_type.id == VANILLA_MENU_TYPE_MERCHANT_ID {
-                        107
-                    } else {
-                        8
-                    },
-                    i32::try_from(screen.height).unwrap() - 94,
-                    CONTAINER_LABEL_TEXT_COLOR,
-                    false,
-                ),
-                "generated menu {} inventory-label contract",
-                menu_type.constant_name
-            );
-        }
+        let title = &screen.text_labels[0];
+        let inventory = &screen.text_labels[1];
+        let (title_x, title_y, centered) = match menu_type.resource_id {
+            "minecraft:generic_3x3"
+            | "minecraft:crafter_3x3"
+            | "minecraft:blast_furnace"
+            | "minecraft:brewing_stand"
+            | "minecraft:furnace"
+            | "minecraft:smoker" => (-168, 6, true),
+            "minecraft:merchant" => (-69, 6, true),
+            "minecraft:anvil" => (60, 6, false),
+            "minecraft:crafting" => (29, 6, false),
+            "minecraft:loom" | "minecraft:cartography_table" => (8, 4, false),
+            "minecraft:smithing" => (44, 15, false),
+            "minecraft:stonecutter" => (8, 5, false),
+            _ => (8, 6, false),
+        };
+        assert_eq!(
+            (title.text.as_str(), title.x, title.y),
+            (menu_type.resource_id, title_x, title_y),
+            "generated menu {} title contract",
+            menu_type.constant_name
+        );
+        assert_eq!(title.tint, CONTAINER_LABEL_TEXT_COLOR);
+        assert!(!title.shadow);
+        assert_eq!(
+            title.scrolling.is_some(),
+            centered,
+            "generated menu {} centering contract",
+            menu_type.constant_name
+        );
+        assert_eq!(
+            (
+                inventory.text.as_str(),
+                inventory.x,
+                inventory.y,
+                inventory.tint,
+                inventory.shadow,
+            ),
+            (
+                "Inventory",
+                if menu_type.id == VANILLA_MENU_TYPE_MERCHANT_ID {
+                    107
+                } else {
+                    8
+                },
+                i32::try_from(screen.height).unwrap() - 94,
+                CONTAINER_LABEL_TEXT_COLOR,
+                false,
+            ),
+            "generated menu {} inventory-label contract",
+            menu_type.constant_name
+        );
     }
 }
 
