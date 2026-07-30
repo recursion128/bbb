@@ -107,3 +107,12 @@ its own iteration, independent of the trend result.
 All commits are normal fix-forward commits. The current slice stops only at a
 clean gated checkpoint, a fully passing live soak, or a documented external
 environment blocker with all safely testable work committed.
+
+## Landed acceptance
+
+The checked-in gate passed three independent live Vanilla 26.1 iterations in
+quit/kick/quit order. `.git/bbb/last-lifecycle-soak`,
+`lifecycle-soak-log.tsv`, and `last-lifecycle-soak-report.json` retain the
+validated commit, artifact path, manifest digest, receipts, gauges, process
+metrics and trend result. Re-run the gate when this contract or one of its
+runtime owners changes; a fixture-only run cannot refresh that stamp.

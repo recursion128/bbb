@@ -883,3 +883,6 @@
 - **2026-07-30（工作流 v9：路线状态与终止条件）**：P2 非实体/HUD 与 P3 资源
   收敛为 maintenance，ready 只来自 active 账本或已满足重启条件的 deferred；
   零 ready 需 P0/stamp/full-gate/路线全满足，P4 剩余 soak 与 Linux 发布矩阵已入账。
+- **2026-07-30（lifecycle/fault soak 交付门禁）**：三轮真实 Vanilla 26.1
+  quit/kick/quit 会话现验收故障 receipts、终态 gauge、跨轮进程趋势与 clean exit；
+  合同与本地 report/stamp 见 `docs/lifecycle-soak-gate-design.md`。

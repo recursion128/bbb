@@ -59,16 +59,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
-- A checked-in deterministic lifecycle/fault soak gate is still missing. It
-  must own a fixed scenario manifest and duration/iteration budget; repeatedly
-  exercise connect, movement/chunk/entity/particle churn, resource reload,
-  disconnect/kick and clean shutdown; inject the supported no-audio-device,
-  resize/minimize and surface lost/outdated paths; and fail with archived
-  seed/fixture/counter evidence on monotonically growing retained memory,
-  handles, queues, stale resource/session generations or workers that do not
-  terminate. Existing focused shutdown, panic-propagation, backpressure and
-  surface-reconfigure tests are prerequisites, not a substitute for the
-  end-to-end repeated gate.
 - A declared Linux x86_64 release/platform acceptance matrix is still missing.
   It must name the supported window/GPU backend rows and record clean build,
   fixture/live playable, CLI version/protocol/pack-format diagnostics,

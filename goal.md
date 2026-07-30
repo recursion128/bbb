@@ -356,9 +356,7 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
 
 状态：`active`，但不是开放愿景队列；ready 工作只对应账本
 “P4 lifecycle, soak, and supported-platform release gates”的 active items。
-当前 lifecycle/fault 工程契约见
-`docs/lifecycle-soak-gate-design.md`；它必须组合真实 live playable 路径和
-feature-gated 故障注入，fixture 重放不能充当 soak。
+当前唯一 ready 项是声明支持的 Linux x86_64 发布矩阵。
 
 已有维护证据：
 
@@ -370,10 +368,12 @@ feature-gated 故障注入，fixture 重放不能充当 soak。
   `docs/simulation-render-thread-design.md` 和 focused tests 维护；
 - repo-native before/after 与 runtime observation 已有稳定基线；只有同载官方
   Java 对比按账本条件 deferred，不能伪造胜负结论；
-- surface lost/outdated reconfigure、timeout skip、resize 与 clean shutdown
-  已有实现/测试，但尚未被独立长期 gate 组合验收。
+- `scripts/lifecycle-soak-gate.sh` 依
+  `docs/lifecycle-soak-gate-design.md` 组合三轮真实 live playable、
+  quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
+  指标趋势与 clean exit；`last-lifecycle-soak`/归档 report 是 maintenance
+  证据，fixture 重放不能替代该 gate。
 
-剩余验收只有：独立可复现的 lifecycle/fault soak gate，以及声明支持的 Linux
-发布矩阵。非 Linux 发布验证按账本条件 deferred。两项 active 全部关闭或转成有
-依据的 deferred 后，路线改为 `maintenance`；若届时 active=0，再走工作流第 4
-步的机械终止判据。
+剩余验收只有声明支持的 Linux 发布矩阵。非 Linux 发布验证按账本条件 deferred。
+该 active 关闭或转成有依据的 deferred 后，路线改为 `maintenance`；若届时
+active=0，再走工作流第 4 步的机械终止判据。
