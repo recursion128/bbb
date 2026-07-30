@@ -96,7 +96,7 @@ fn component_select_level_backed_consumers_keep_world_projection_and_registry_ow
 }
 
 #[test]
-fn entity_block_models_use_the_block_feature_lane() {
+fn entity_block_models_use_distinct_block_feature_and_outline_lanes() {
     let source = include_str!("dropped.rs");
     let start = source
         .find("pub(crate) fn entity_block_models(")
@@ -109,8 +109,13 @@ fn entity_block_models_use_the_block_feature_lane() {
 
     assert_eq!(
         body.matches("ItemModelDrawTarget::BlockFeature").count(),
-        2,
-        "solid and translucent entity block attachments use the block lane"
+        1,
+        "ordinary entity block attachments select the block-feature lane once"
+    );
+    assert_eq!(
+        body.matches("ItemModelDrawTarget::EntityOutline").count(),
+        1,
+        "outline-only entity block attachments select the outline target once"
     );
     assert!(!body.contains("ItemModelDrawTarget::World"));
 }
@@ -735,15 +740,18 @@ fn entity_block_attachments_record_invisible_glowing_outline_only_layers() {
     let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
         .with_snow_golem_pumpkin(true)
         .with_invisible(true)
-        .with_appears_glowing(true);
+        .with_outline_color(0xff55_aa11);
     let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false)
         .with_invisible(true)
-        .with_appears_glowing(true);
+        .with_outline_color(0xff55_aa11);
 
     let attachments = entity_block_attachments(&[snow_golem, mooshroom], &world, None, 1.0);
 
     assert_eq!(attachments.len(), 4);
     assert!(attachments.iter().all(|attachment| attachment.outline_only));
+    assert!(attachments
+        .iter()
+        .all(|attachment| attachment.outline_color == 0xff55_aa11));
     assert_eq!(attachments[0].block_id.as_ref(), CARVED_PUMPKIN_BLOCK_ID);
     assert_eq!(
         attachments[0].properties,
@@ -756,6 +764,86 @@ fn entity_block_attachments_record_invisible_glowing_outline_only_layers() {
             mooshroom_mushroom_default_properties()
         );
     }
+}
+
+#[test]
+fn entity_block_models_retain_outline_only_solid_and_translucent_geometry() {
+    let world = WorldStore::new();
+    let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+        .with_snow_golem_pumpkin(true)
+        .with_invisible(true)
+        .with_outline_color(0xff55_aa11);
+    let terrain_textures = TerrainTextureState::default();
+    let mut quads = unit_block_quads();
+    let mut translucent = quads[0];
+    translucent.translucent = true;
+    quads.push(translucent);
+    terrain_textures.insert_block_item_quads_for_test(
+        CARVED_PUMPKIN_BLOCK_ID,
+        carved_pumpkin_default_properties(),
+        Arc::from(quads),
+    );
+
+    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+
+    assert_eq!(residency.assets.len(), 2);
+    assert_eq!(residency.instances.len(), 2);
+    assert!(residency
+        .instances
+        .iter()
+        .all(|instance| instance.target == ItemModelDrawTarget::EntityOutline));
+    assert!(residency
+        .instances
+        .iter()
+        .all(|instance| instance.phase == ItemModelDrawPhase::Outline));
+    assert!(residency.instances.iter().all(|instance| {
+        instance.tint
+            == [
+                0x55 as f32 / 255.0,
+                0xaa as f32 / 255.0,
+                0x11 as f32 / 255.0,
+                1.0,
+            ]
+    }));
+    assert_eq!(
+        residency
+            .instances
+            .iter()
+            .map(|instance| instance.geometry_class)
+            .collect::<BTreeSet<_>>(),
+        BTreeSet::from([
+            ItemModelGeometryClass::Solid,
+            ItemModelGeometryClass::Translucent,
+        ])
+    );
+    assert!(!residency
+        .instances
+        .iter()
+        .any(|instance| instance.target == ItemModelDrawTarget::BlockFeature));
+}
+
+#[test]
+fn entity_block_models_keep_visible_attachment_geometry_in_block_feature_lanes() {
+    let world = WorldStore::new();
+    let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+        .with_snow_golem_pumpkin(true)
+        .with_outline_color(0xff55_aa11);
+    let terrain_textures = TerrainTextureState::default();
+    terrain_textures.insert_block_item_quads_for_test(
+        CARVED_PUMPKIN_BLOCK_ID,
+        carved_pumpkin_default_properties(),
+        Arc::from(unit_block_quads()),
+    );
+
+    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+
+    assert_eq!(residency.instances.len(), 1);
+    assert_eq!(
+        residency.instances[0].target,
+        ItemModelDrawTarget::BlockFeature
+    );
+    assert_eq!(residency.instances[0].phase, ItemModelDrawPhase::Solid);
+    assert_eq!(residency.instances[0].tint, [1.0; 4]);
 }
 
 #[test]

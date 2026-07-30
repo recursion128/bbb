@@ -4039,6 +4039,9 @@ impl Renderer {
                 crate::item_models::ItemModelDrawPhase::EndGateway => {
                     &self.resident_item_model_end_gateway_pipeline
                 }
+                crate::item_models::ItemModelDrawPhase::Outline => {
+                    unreachable!("resident outline models use the dedicated entity-outline pass")
+                }
             };
             if active_phase != Some(draw.phase) {
                 pass.set_pipeline(pipeline);

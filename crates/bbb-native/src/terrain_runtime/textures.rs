@@ -210,6 +210,24 @@ impl TerrainTextureState {
         Self::from_layout_and_images(layout, &[], block_models, colormaps, biome_colors)
     }
 
+    #[cfg(test)]
+    pub(crate) fn insert_block_item_quads_for_test(
+        &self,
+        block_name: &str,
+        properties: BTreeMap<String, String>,
+        quads: Arc<[bbb_renderer::ItemModelQuad]>,
+    ) {
+        if properties.is_empty() {
+            self.block_item_default_quads
+                .borrow_mut()
+                .insert(block_name.to_string(), Some(quads));
+        } else {
+            self.block_item_property_quads
+                .borrow_mut()
+                .insert((block_name.to_string(), properties), Some(quads));
+        }
+    }
+
     fn from_layout_and_images(
         layout: &AtlasLayout,
         images: &[SpriteImage],

@@ -50,6 +50,7 @@ pub(super) struct EntityBlockAttachment {
     pub(super) transform: Mat4,
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
+    pub(super) outline_color: u32,
     pub(super) outline_only: bool,
     pub(super) moving_block: Option<MovingBlockRenderContext>,
 }
@@ -141,7 +142,7 @@ pub(crate) fn entity_block_models(
 
     let mut residency = ItemModelResidencyFrame::default();
     for attachment in attachments {
-        if attachment.outline_only {
+        if attachment.outline_only && attachment.outline_color == 0 {
             continue;
         }
         let base_variant = block_item_variant_identity(&attachment.properties);
@@ -176,6 +177,16 @@ pub(crate) fn entity_block_models(
                 0,
             );
             let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
+            let target = if attachment.outline_only {
+                ItemModelDrawTarget::EntityOutline
+            } else {
+                ItemModelDrawTarget::BlockFeature
+            };
+            let tint = if attachment.outline_only {
+                argb_outline_tint(attachment.outline_color)
+            } else {
+                [1.0; 4]
+            };
             if quads.iter().any(|quad| !quad.translucent) {
                 let first_instance = residency.instances.len();
                 push_resident_item_instances(
@@ -185,17 +196,21 @@ pub(crate) fn entity_block_models(
                     ItemModelGeometryClass::Solid,
                     source.clone(),
                     &[attachment.transform],
-                    [1.0; 4],
+                    tint,
                     attachment.light,
                     attachment.overlay,
                     ItemModelFoil::None,
-                    ItemModelDrawTarget::BlockFeature,
+                    target,
                 );
-                let phase = block_model_solid_phase(
-                    moving_block,
-                    attachment.block_id.as_ref(),
-                    terrain_textures,
-                );
+                let phase = if attachment.outline_only {
+                    ItemModelDrawPhase::Outline
+                } else {
+                    block_model_solid_phase(
+                        moving_block,
+                        attachment.block_id.as_ref(),
+                        terrain_textures,
+                    )
+                };
                 if phase != ItemModelDrawPhase::Solid {
                     for instance in &mut residency.instances[first_instance..] {
                         if instance.phase == ItemModelDrawPhase::Solid {
@@ -205,6 +220,7 @@ pub(crate) fn entity_block_models(
                 }
             }
             if quads.iter().any(|quad| quad.translucent) {
+                let first_instance = residency.instances.len();
                 push_resident_item_instances(
                     &mut residency,
                     identity,
@@ -212,16 +228,30 @@ pub(crate) fn entity_block_models(
                     ItemModelGeometryClass::Translucent,
                     source,
                     &[attachment.transform],
-                    [1.0; 4],
+                    tint,
                     attachment.light,
                     attachment.overlay,
                     ItemModelFoil::None,
-                    ItemModelDrawTarget::BlockFeature,
+                    target,
                 );
+                if attachment.outline_only {
+                    for instance in &mut residency.instances[first_instance..] {
+                        instance.phase = ItemModelDrawPhase::Outline;
+                    }
+                }
             }
         }
     }
     residency
+}
+
+fn argb_outline_tint(color: u32) -> [f32; 4] {
+    [
+        ((color >> 16) & 0xff) as f32 / 255.0,
+        ((color >> 8) & 0xff) as f32 / 255.0,
+        (color & 0xff) as f32 / 255.0,
+        ((color >> 24) & 0xff) as f32 / 255.0,
+    ]
 }
 
 pub(super) fn block_model_solid_phase(
@@ -292,6 +322,7 @@ pub(super) fn entity_block_attachments(
                 transform,
                 light: entity_render_state_shader_light(instance),
                 overlay: ITEM_MODEL_NO_OVERLAY,
+                outline_color: instance.render_state.outline_color,
                 outline_only: entity_block_attachment_outline_only(instance),
                 moving_block: None,
             });
@@ -303,6 +334,7 @@ pub(super) fn entity_block_attachments(
                 transform,
                 light: entity_render_state_shader_light(instance),
                 overlay: ITEM_MODEL_NO_OVERLAY,
+                outline_color: instance.render_state.outline_color,
                 outline_only: false,
                 moving_block: None,
             });
@@ -315,6 +347,7 @@ pub(super) fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     overlay: ITEM_MODEL_NO_OVERLAY,
+                    outline_color: instance.render_state.outline_color,
                     outline_only: false,
                     moving_block: None,
                 });
@@ -330,6 +363,7 @@ pub(super) fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     overlay: minecart_tnt_display_block_overlay(instance),
+                    outline_color: instance.render_state.outline_color,
                     outline_only: entity_block_attachment_outline_only(instance),
                     moving_block: None,
                 });
@@ -346,6 +380,7 @@ pub(super) fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     overlay: primed_tnt_block_overlay(fuse),
+                    outline_color: instance.render_state.outline_color,
                     outline_only: entity_block_attachment_outline_only(instance),
                     moving_block: None,
                 });
@@ -369,6 +404,7 @@ pub(super) fn entity_block_attachments(
                         transform,
                         light,
                         overlay: ITEM_MODEL_NO_OVERLAY,
+                        outline_color: 0,
                         outline_only: false,
                         moving_block: Some(moving_block),
                     });
@@ -383,6 +419,7 @@ pub(super) fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     overlay: ITEM_MODEL_NO_OVERLAY,
+                    outline_color: instance.render_state.outline_color,
                     outline_only: entity_block_attachment_outline_only(instance),
                     moving_block: None,
                 });
@@ -414,6 +451,7 @@ pub(super) fn entity_block_attachments(
             transform: Mat4::from_translation(Vec3::from_array(moving.translation)),
             light,
             overlay: ITEM_MODEL_NO_OVERLAY,
+            outline_color: 0,
             outline_only: false,
             moving_block: Some(moving_block),
         });
@@ -470,6 +508,7 @@ pub(super) fn copper_golem_antenna_block_attachment_from_stack(
         transform,
         light: entity_render_state_shader_light(instance),
         overlay: ITEM_MODEL_NO_OVERLAY,
+        outline_color: instance.render_state.outline_color,
         outline_only: false,
         moving_block: None,
     })
@@ -1423,7 +1462,8 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
                 | ItemModelDrawPhase::Pattern
                 | ItemModelDrawPhase::TranslucentNoCull
                 | ItemModelDrawPhase::EndPortal
-                | ItemModelDrawPhase::EndGateway,
+                | ItemModelDrawPhase::EndGateway
+                | ItemModelDrawPhase::Outline,
             ) => continue,
         };
         let mesh = match instance.phase {
@@ -1437,7 +1477,8 @@ pub(super) fn resident_item_test_meshes(frame: &ItemModelResidencyFrame) -> Resi
             | ItemModelDrawPhase::Pattern
             | ItemModelDrawPhase::TranslucentNoCull
             | ItemModelDrawPhase::EndPortal
-            | ItemModelDrawPhase::EndGateway => continue,
+            | ItemModelDrawPhase::EndGateway
+            | ItemModelDrawPhase::Outline => continue,
         };
         if !mesh.is_empty() {
             target.push(mesh);

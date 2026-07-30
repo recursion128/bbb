@@ -172,6 +172,9 @@ pub enum ItemModelDrawPhase {
     GlintTranslucent,
     EndPortal,
     EndGateway,
+    /// Vanilla `RenderTypes.outline(...)`: texture alpha is a mask for the
+    /// submitted outline color in the dedicated entity-outline target.
+    Outline,
 }
 
 /// Render target/lifetime lane. It is not part of static asset identity.
@@ -181,6 +184,9 @@ pub enum ItemModelDrawTarget {
     /// Vanilla `BlockFeatureRenderer` submission lane. These models share the
     /// world attachments but draw after every `ItemFeatureRenderer` phase.
     BlockFeature,
+    /// Vanilla `OutputTarget.OUTLINE_TARGET` for blocks-atlas entity
+    /// attachments submitted through `BlockModelRenderState.submitOnlyOutline`.
+    EntityOutline,
     Particle,
     FirstPerson,
     Gui,
@@ -1909,6 +1915,9 @@ impl Renderer {
                     identity = identity.with_portal_metadata();
                 }
                 let geometry_class = match part.phase {
+                    ItemModelDrawPhase::Outline => {
+                        bail!("special item geometry cannot target the entity-outline phase")
+                    }
                     ItemModelDrawPhase::Pattern
                     | ItemModelDrawPhase::Translucent
                     | ItemModelDrawPhase::TranslucentNoCull => ItemModelGeometryClass::Translucent,
@@ -2219,6 +2228,17 @@ mod tests {
             ItemModelDrawTarget::BlockFeature,
             ItemModelDrawTarget::World
         );
+    }
+
+    #[test]
+    fn entity_outline_target_and_phase_are_explicit_residency_metadata() {
+        assert!(!ItemModelDrawTarget::EntityOutline.is_gui());
+        assert_ne!(
+            ItemModelDrawTarget::EntityOutline,
+            ItemModelDrawTarget::BlockFeature
+        );
+        assert_ne!(ItemModelDrawPhase::Outline, ItemModelDrawPhase::Solid);
+        assert_ne!(ItemModelDrawPhase::Outline, ItemModelDrawPhase::Translucent);
     }
 
     #[test]
