@@ -218,7 +218,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
-- **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
 - **Client-only debug entries with no HUD line** are `not-needed`:
   LocalDifficulty, EntitySpawnCounts, and ChunkGenerationStats read an
   integrated local-server mirror (`ServerLevel`,

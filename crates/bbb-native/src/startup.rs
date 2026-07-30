@@ -14,8 +14,9 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
-    VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
+    VANILLA_MAX_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{PlayerReportEnvironment, TutorialStep};
 use clap::{ArgAction, Parser, ValueEnum};
@@ -194,6 +195,18 @@ pub(crate) struct Args {
     pub(crate) client_framerate_limit: u32,
     #[arg(long = "client-vsync", default_value_t = true, action = ArgAction::Set)]
     pub(crate) client_vsync: bool,
+    #[arg(
+        long = "text-background-opacity",
+        default_value_t = VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
+        value_parser = parse_text_background_opacity
+    )]
+    pub(crate) text_background_opacity: f32,
+    #[arg(
+        long = "background-for-chat-only",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) background_for_chat_only: bool,
     #[arg(
         long = "cutout-leaves",
         default_value_t = true,
@@ -625,6 +638,16 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
         return Err("client gamma must be between 0.0 and 1.0".to_string());
     }
     Ok(gamma)
+}
+
+fn parse_text_background_opacity(value: &str) -> std::result::Result<f32, String> {
+    let opacity = value
+        .parse::<f32>()
+        .map_err(|err| format!("text background opacity must be a number: {err}"))?;
+    if !opacity.is_finite() || !(0.0..=1.0).contains(&opacity) {
+        return Err("text background opacity must be finite and between 0.0 and 1.0".to_string());
+    }
+    Ok(opacity)
 }
 
 fn parse_notification_display_time(value: &str) -> std::result::Result<f32, String> {
@@ -1262,6 +1285,39 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--client-gamma", "0.75"]).unwrap();
         assert_eq!(args.client_gamma, 0.75);
+    }
+
+    #[test]
+    fn args_accept_vanilla_text_background_options() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            defaults.text_background_opacity,
+            VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY
+        );
+        assert!(defaults.background_for_chat_only);
+
+        let configured = Args::try_parse_from([
+            "bbb-native",
+            "--text-background-opacity",
+            "0.75",
+            "--background-for-chat-only",
+            "false",
+        ])
+        .unwrap();
+        assert_eq!(configured.text_background_opacity, 0.75);
+        assert!(!configured.background_for_chat_only);
+    }
+
+    #[test]
+    fn args_reject_text_background_opacity_outside_unit_range() {
+        for invalid in [
+            "--text-background-opacity=-0.1",
+            "--text-background-opacity=1.1",
+            "--text-background-opacity=NaN",
+        ] {
+            let error = Args::try_parse_from(["bbb-native", invalid]).unwrap_err();
+            assert!(error.to_string().contains("between 0.0 and 1.0"));
+        }
     }
 
     #[test]

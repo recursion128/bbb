@@ -539,6 +539,7 @@ fn push_runs<'a>(
             origin: (x as f32, y as f32),
             scale: 1.0,
             tint,
+            backdrop_opacity: 0.0,
         },
     );
 }

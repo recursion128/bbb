@@ -422,6 +422,7 @@ impl Renderer {
             origin: (x + 17.0 - width as f32, y),
             scale: 1.0,
             tint: [1.0, 1.0, 1.0, alpha],
+            backdrop_opacity: 0.0,
         };
         push_hud_screen_text_draw(
             vertices,
@@ -457,6 +458,11 @@ impl Renderer {
             ),
             scale: 1.0,
             tint: [1.0, 1.0, 1.0, alpha],
+            backdrop_opacity: if self.hud_background_for_chat_only {
+                0.0
+            } else {
+                self.hud_text_background_opacity
+            },
         };
         push_hud_screen_text_draw(
             vertices,
@@ -715,6 +721,54 @@ mod tests {
         assert!(
             icon[2] > icon[0] && icon[2] > icon[1],
             "close icon should overlay the selection in blue, got {icon:?}"
+        );
+    }
+
+    #[test]
+    fn hud_spectator_action_uses_accessibility_text_backdrop() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 180) else {
+            return;
+        };
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        let mut glyphs = bbb_render_types::HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            'a',
+            bbb_render_types::HudAsciiGlyph {
+                advance: 6,
+                width: 5,
+                height: 8,
+                ..bbb_render_types::HudAsciiGlyph::default()
+            },
+        );
+        renderer
+            .upload_hud_font_atlas(
+                1,
+                1,
+                &[255, 255, 255, 255],
+                bbb_render_types::HudFontGlyphBook::from(glyphs),
+            )
+            .expect("font atlas");
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Spectator(Some(HudSpectatorGui {
+            alpha: 1.0,
+            selected_slot: None,
+            prompt_runs: vec![HudStyledTextRun::plain("a")],
+            slots: std::array::from_fn(|_| None),
+        })));
+        renderer.set_hud_text_background_options(0.5, false);
+
+        let pixels = renderer.render_offscreen_frame().expect("spectator frame");
+        assert!(
+            pixels.pixel(155, 143)[2] < 230,
+            "spectator action padding must receive the global text backdrop"
+        );
+        assert!(
+            pixels.pixel(157, 145)[0] > 230,
+            "spectator action glyph must draw after its backdrop"
         );
     }
 

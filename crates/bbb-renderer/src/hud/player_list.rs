@@ -294,6 +294,7 @@ pub(super) fn push_hud_player_list<'a>(
                 origin: (x as f32, y as f32),
                 scale: 1.0,
                 tint,
+                backdrop_opacity: 0.0,
             },
         );
     };
@@ -650,6 +651,7 @@ fn push_hud_player_list_hearts<'a>(
                 origin: (((right + left - width) / 2) as f32, y as f32),
                 scale: 1.0,
                 tint,
+                backdrop_opacity: 0.0,
             },
         );
         return;

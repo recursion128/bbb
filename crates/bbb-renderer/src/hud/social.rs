@@ -1448,6 +1448,7 @@ fn push_italic_text<'a>(
             origin,
             scale: 1.0,
             tint,
+            backdrop_opacity: 0.0,
         },
     );
 }

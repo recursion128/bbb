@@ -279,6 +279,8 @@ pub struct Renderer {
     pub(super) camera_post_effect: CameraPostEffectGpu,
     pub(super) post_effect_graphs: Option<PostEffectGraphRuntime>,
     pub(super) menu_background_blurriness: f32,
+    pub(super) hud_text_background_opacity: f32,
+    pub(super) hud_background_for_chat_only: bool,
     pub(super) hide_gui: bool,
     pub(super) hud_screen_blur: bool,
     pub(super) screen_blur_bind_group_layout: wgpu::BindGroupLayout,
@@ -1784,6 +1786,8 @@ impl Renderer {
             menu_background_blurriness: sanitize_menu_background_blurriness(
                 VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
             ),
+            hud_text_background_opacity: crate::hud::VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
+            hud_background_for_chat_only: true,
             hide_gui: false,
             hud_screen_blur: false,
             screen_blur_bind_group_layout,
@@ -2582,6 +2586,22 @@ impl Renderer {
     /// A value below one disables `Screen.extractBlurredBackground`'s stratum marker.
     pub fn set_menu_background_blurriness(&mut self, blurriness: u8) {
         self.menu_background_blurriness = sanitize_menu_background_blurriness(blurriness);
+    }
+
+    /// Sets the startup-only equivalents of Vanilla's accessibility text
+    /// background options. Chat always uses the configured opacity; other
+    /// `textWithBackdrop` consumers use it only when chat-only mode is off.
+    pub fn set_hud_text_background_options(
+        &mut self,
+        opacity: f32,
+        background_for_chat_only: bool,
+    ) {
+        self.hud_text_background_opacity = if opacity.is_finite() {
+            opacity.clamp(0.0, 1.0)
+        } else {
+            crate::hud::VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY
+        };
+        self.hud_background_for_chat_only = background_for_chat_only;
     }
 
     /// Marks whether the projected screen inherited vanilla's non-in-game background.

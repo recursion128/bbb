@@ -689,6 +689,10 @@ fn main() -> Result<()> {
     ))?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_menu_background_blurriness(args.menu_background_blurriness);
+    renderer.set_hud_text_background_options(
+        args.text_background_opacity,
+        args.background_for_chat_only,
+    );
     if let Some(roots) = pack_roots.as_ref() {
         match bbb_pack::PostEffectCatalog::load(roots)
             .and_then(|catalog| renderer.reload_post_effect_graphs(&catalog))

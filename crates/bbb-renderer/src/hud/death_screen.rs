@@ -699,6 +699,7 @@ fn push_centered_runs<'a>(
             origin: (x, y),
             scale,
             tint: HUD_TINT_WHITE,
+            backdrop_opacity: 0.0,
         },
     );
 }
@@ -734,6 +735,7 @@ fn push_centered_component_runs<'a>(
             origin: (x, y),
             scale,
             tint: HUD_TINT_WHITE,
+            backdrop_opacity: 0.0,
         },
     );
 }

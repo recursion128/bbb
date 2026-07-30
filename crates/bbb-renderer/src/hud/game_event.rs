@@ -499,6 +499,7 @@ fn push_win_screen<'a>(
                     origin: (x, presented_y),
                     scale: 1.0,
                     tint: HUD_TINT_WHITE,
+                    backdrop_opacity: 0.0,
                 },
             );
         }
@@ -769,6 +770,7 @@ fn push_centered_lines<'a>(
                 ),
                 scale: 1.0,
                 tint,
+                backdrop_opacity: 0.0,
             },
         );
     }

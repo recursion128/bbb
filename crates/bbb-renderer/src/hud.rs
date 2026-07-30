@@ -147,6 +147,9 @@ macro_rules! standalone_hud_texture_upload {
 }
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
+/// Vanilla `Options.textBackgroundOpacity` default
+/// (`options.accessibility.text_background_opacity`).
+pub const VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY: f32 = 0.5;
 
 /// Nine-slice scaling metadata for a HUD sprite, mirroring vanilla `GuiSpriteScaling.NineSlice`
 /// (`assets/.../gui/sprites/**.png.mcmeta` → `gui.scaling`). `sprite_width`/`sprite_height` are the
@@ -7118,6 +7121,11 @@ impl Renderer {
         // title/subtitle after the hotbar decorations (Gui.java:215-217); open
         // screens render in a later pass, so their draws stay above these.
         if let Some(font_atlas) = self.hud_font_atlas.as_ref().filter(|_| !self.hide_gui) {
+            let text_backdrop_opacity = if self.hud_background_for_chat_only {
+                0.0
+            } else {
+                self.hud_text_background_opacity
+            };
             if let Some(sidebar) = &self.hud_scoreboard_sidebar {
                 scoreboard::push_hud_scoreboard_sidebar(
                     &mut vertices,
@@ -7137,6 +7145,7 @@ impl Renderer {
                     action_bar,
                     &self.hud_font_book,
                     surface_size,
+                    text_backdrop_opacity,
                 ));
             }
             if let Some(title) = &self.hud_title_text {
@@ -7144,6 +7153,7 @@ impl Renderer {
                     title,
                     &self.hud_font_book,
                     surface_size,
+                    text_backdrop_opacity,
                 ));
             }
             for draw in &screen_text_draws {
@@ -7172,6 +7182,7 @@ impl Renderer {
                 surface_size,
                 &self.hud_chat_lines,
                 &self.hud_chat_context,
+                self.hud_text_background_opacity,
             );
             if let Some(player_list) = &self.hud_player_list {
                 player_list::push_hud_player_list(
@@ -11064,6 +11075,7 @@ fn push_hud_pause_screen<'a>(
         origin: hud_pause_screen_title_origin(screen, glyphs, surface_size),
         scale: 1.0,
         tint: HUD_TINT_WHITE,
+        backdrop_opacity: 0.0,
     };
     push_hud_screen_text_draw(
         vertices,
@@ -14171,6 +14183,7 @@ fn push_hud_debug_options_search_box<'a>(
             origin: ((x + 4) as f32, (y + 6) as f32),
             scale: 1.0,
             tint: hud_argb_to_tint(0xFFE0E0E0),
+            backdrop_opacity: 0.0,
         };
         push_hud_screen_text_draw(
             vertices,
@@ -14466,6 +14479,7 @@ fn push_hud_debug_options_centered_wrapped_text<'a>(
             ),
             scale: 1.0,
             tint,
+            backdrop_opacity: 0.0,
         };
         push_hud_screen_text_draw(
             vertices,
@@ -14508,6 +14522,7 @@ fn push_hud_debug_options_centered_text_in_width<'a>(
         origin,
         scale: 1.0,
         tint,
+        backdrop_opacity: 0.0,
     };
     push_hud_screen_text_draw(
         vertices,
@@ -14542,6 +14557,7 @@ fn push_hud_debug_options_text<'a>(
         origin,
         scale: 1.0,
         tint,
+        backdrop_opacity: 0.0,
     };
     push_hud_screen_text_draw(
         vertices,
@@ -14577,6 +14593,7 @@ fn push_hud_debug_options_entry_name<'a>(
         origin,
         scale: 1.0,
         tint,
+        backdrop_opacity: 0.0,
     };
     push_hud_screen_text_draw(
         vertices,
@@ -15901,6 +15918,7 @@ struct HudScreenTextDraw<'a> {
     origin: (f32, f32),
     scale: f32,
     tint: [f32; 4],
+    backdrop_opacity: f32,
 }
 
 /// One action-bar/title draw whose runs retain exact Component font identity.
@@ -15910,6 +15928,7 @@ struct HudComponentScreenTextDraw<'a> {
     origin: (f32, f32),
     scale: f32,
     tint: [f32; 4],
+    backdrop_opacity: f32,
 }
 
 /// Vanilla `Gui.extractOverlayMessage` fade (Gui.java:312-316):
@@ -15991,12 +16010,12 @@ fn push_hud_chat<'a>(
     surface_size: PhysicalSize<u32>,
     lines: &[HudChatLine],
     context: &HudChatContext,
+    background_opacity: f32,
 ) {
     const MESSAGE_HEIGHT: i32 = 9;
     const MESSAGE_BASELINE_OFFSET: i32 = 8;
     const BOTTOM_MARGIN: i32 = 40;
     const TEXT_OPACITY: f32 = 1.0;
-    const BACKGROUND_OPACITY: f32 = 0.5;
     let glyphs = fonts.glyphs(None);
     let obfuscated_pool = fonts.obfuscated_pool(None);
     let chat_bottom = i32::try_from(surface_size.height)
@@ -16025,7 +16044,12 @@ fn push_hud_chat<'a>(
             bottom.saturating_sub(MESSAGE_HEIGHT),
             HUD_CHAT_MAX_WIDTH.saturating_add(8),
             MESSAGE_HEIGHT as u32,
-            [0.0, 0.0, 0.0, alpha * BACKGROUND_OPACITY],
+            [
+                0.0,
+                0.0,
+                0.0,
+                hud_argb_black_alpha(alpha * background_opacity),
+            ],
         );
     }
     if context.queued_messages > 0 {
@@ -16038,7 +16062,7 @@ fn push_hud_chat<'a>(
             chat_bottom,
             HUD_CHAT_MAX_WIDTH.saturating_add(6),
             MESSAGE_HEIGHT as u32,
-            [0.0, 0.0, 0.0, BACKGROUND_OPACITY],
+            [0.0, 0.0, 0.0, hud_argb_black_alpha(background_opacity)],
         );
     }
 
@@ -16076,6 +16100,7 @@ fn push_hud_chat<'a>(
                 origin: (4.0, bottom.saturating_sub(MESSAGE_BASELINE_OFFSET) as f32),
                 scale: 1.0,
                 tint: [1.0, 1.0, 1.0, alpha * TEXT_OPACITY],
+                backdrop_opacity: 0.0,
             },
         );
         if line.end_of_entry
@@ -16123,6 +16148,7 @@ fn push_hud_chat<'a>(
                     origin: (4.0, chat_bottom.saturating_add(1) as f32),
                     scale: 1.0,
                     tint: [1.0, 1.0, 1.0, 0.5 * TEXT_OPACITY],
+                    backdrop_opacity: 0.0,
                 },
             );
         }
@@ -16192,6 +16218,7 @@ fn hud_action_bar_text_draw<'a>(
     state: &'a HudActionBarText,
     fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
+    backdrop_opacity: f32,
 ) -> Option<HudComponentScreenTextDraw<'a>> {
     if state.remaining_ticks <= 0 {
         return None;
@@ -16212,6 +16239,7 @@ fn hud_action_bar_text_draw<'a>(
         origin: hud_overlay_message_text_origin(surface_size, width),
         scale: 1.0,
         tint: [red, green, blue, alpha as f32 / 255.0],
+        backdrop_opacity,
     })
 }
 
@@ -16225,6 +16253,7 @@ fn hud_title_text_draws<'a>(
     state: &'a HudTitleText,
     fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
+    backdrop_opacity: f32,
 ) -> Vec<HudComponentScreenTextDraw<'a>> {
     let mut draws = Vec::new();
     if state.remaining_ticks <= 0 {
@@ -16241,6 +16270,7 @@ fn hud_title_text_draws<'a>(
         origin: hud_title_text_origin(surface_size, title_width),
         scale: HUD_TITLE_TEXT_SCALE,
         tint,
+        backdrop_opacity,
     });
     if !state.subtitle_runs.is_empty() {
         let subtitle_width = hud_component_runs_width(&state.subtitle_runs, fonts).unwrap_or(0);
@@ -16249,6 +16279,7 @@ fn hud_title_text_draws<'a>(
             origin: hud_subtitle_text_origin(surface_size, subtitle_width),
             scale: HUD_SUBTITLE_TEXT_SCALE,
             tint,
+            backdrop_opacity,
         });
     }
     draws
@@ -16321,6 +16352,7 @@ fn hud_boss_bar_draws<'a>(
                     origin: hud_boss_bar_name_origin(surface_size, y, name_width),
                     scale: 1.0,
                     tint: HUD_TINT_WHITE,
+                    backdrop_opacity: 0.0,
                 },
             }
         })
@@ -16430,11 +16462,69 @@ fn push_hud_experience_level_text<'a>(
     }
 }
 
+fn hud_argb_alpha_channel(alpha: f32) -> u32 {
+    if !alpha.is_finite() || alpha <= 0.0 {
+        0
+    } else {
+        (alpha.clamp(0.0, 1.0) * 255.0).floor() as u32
+    }
+}
+
+fn hud_argb_black_alpha(alpha: f32) -> f32 {
+    hud_argb_alpha_channel(alpha) as f32 / 255.0
+}
+
+fn hud_text_backdrop_alpha(opacity: f32, text_alpha: f32) -> f32 {
+    let background_alpha = hud_argb_alpha_channel(opacity);
+    let text_alpha = hud_argb_alpha_channel(text_alpha);
+    (background_alpha * text_alpha / 255) as f32 / 255.0
+}
+
+fn hud_text_backdrop_rect(origin: (f32, f32), text_width: u32, scale: f32) -> Option<HudRect> {
+    (scale.is_finite() && scale > 0.0).then(|| HudRect {
+        x: origin.0 - 2.0 * scale,
+        y: origin.1 - 2.0 * scale,
+        width: ((text_width.saturating_add(4) as f32) * scale).round() as u32,
+        height: (13.0 * scale).round() as u32,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_text_backdrop<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    origin: (f32, f32),
+    text_width: u32,
+    scale: f32,
+    opacity: f32,
+    text_alpha: f32,
+) {
+    let alpha = hud_text_backdrop_alpha(opacity, text_alpha);
+    let Some(rect) = hud_text_backdrop_rect(origin, text_width, scale) else {
+        return;
+    };
+    if alpha <= 0.0 {
+        return;
+    }
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        rect,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        [0.0, 0.0, 0.0, alpha],
+    );
+}
+
 /// Draws one resolved screen text line through the styled pipeline with the
 /// vanilla `textWithBackdrop` pass order (GuiGraphicsExtractor.java:293-301):
-/// the accessibility backdrop only draws when the text-background opacity
-/// option is non-zero (default 0 — skipped here), then the whole-line shadow
-/// pass, then the main colour.
+/// optional accessibility backdrop, whole-line shadow, then main colour.
 #[allow(clippy::too_many_arguments)]
 fn push_hud_screen_text_draw<'a>(
     vertices: &mut Vec<HudVertex>,
@@ -16447,6 +16537,17 @@ fn push_hud_screen_text_draw<'a>(
     surface_size: PhysicalSize<u32>,
     draw: &HudScreenTextDraw<'_>,
 ) {
+    push_hud_text_backdrop(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        draw.origin,
+        hud_font_runs_width(draw.runs, glyphs).unwrap_or_default(),
+        draw.scale,
+        draw.backdrop_opacity,
+        draw.tint[3],
+    );
     for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
         let geometry = hud_styled_text_pass_geometry(
             draw.runs,
@@ -16482,6 +16583,17 @@ fn push_hud_component_screen_text_draw<'a>(
     surface_size: PhysicalSize<u32>,
     draw: &HudComponentScreenTextDraw<'_>,
 ) {
+    push_hud_text_backdrop(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        draw.origin,
+        hud_component_runs_width(draw.runs, fonts).unwrap_or_default(),
+        draw.scale,
+        draw.backdrop_opacity,
+        draw.tint[3],
+    );
     for (shadow_offset, is_shadow) in [(1.0, true), (0.0, false)] {
         let geometry = hud_component_text_pass_geometry(
             draw.runs,
@@ -25824,7 +25936,7 @@ mod tests {
             partial_tick: 0.5,
             animate_color: false,
         };
-        let draw = hud_action_bar_text_draw(&state, &fonts, surface).expect("visible");
+        let draw = hud_action_bar_text_draw(&state, &fonts, surface, 0.0).expect("visible");
         // (guiWidth/2 - width/2, guiHeight - 68 - 4) = (160 - 6, 240 - 72).
         assert_eq!(draw.origin, (154.0, 168.0));
         assert_eq!(draw.scale, 1.0);
@@ -25838,7 +25950,7 @@ mod tests {
             ..state.clone()
         };
         assert_eq!(
-            hud_action_bar_text_draw(&fading, &fonts, surface)
+            hud_action_bar_text_draw(&fading, &fonts, surface, 0.0)
                 .expect("fading")
                 .tint,
             [1.0, 1.0, 1.0, 127.0 / 255.0]
@@ -25850,14 +25962,20 @@ mod tests {
             partial_tick: 0.999,
             ..state.clone()
         };
-        assert_eq!(hud_action_bar_text_draw(&nearly_out, &fonts, surface), None);
+        assert_eq!(
+            hud_action_bar_text_draw(&nearly_out, &fonts, surface, 0.0),
+            None
+        );
         // An expired timer never draws.
         let expired = HudActionBarText {
             remaining_ticks: 0,
             partial_tick: 0.0,
             ..state.clone()
         };
-        assert_eq!(hud_action_bar_text_draw(&expired, &fonts, surface), None);
+        assert_eq!(
+            hud_action_bar_text_draw(&expired, &fonts, surface, 0.0),
+            None
+        );
 
         // Jukebox rainbow: hue from remaining time, fade alpha kept.
         let rainbow = HudActionBarText {
@@ -25867,10 +25985,104 @@ mod tests {
             ..state.clone()
         };
         assert_eq!(
-            hud_action_bar_text_draw(&rainbow, &fonts, surface)
+            hud_action_bar_text_draw(&rainbow, &fonts, surface, 0.0)
                 .expect("rainbow")
                 .tint,
             [45.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0, 1.0]
+        );
+    }
+
+    #[test]
+    fn text_background_options_split_chat_from_text_with_backdrop_consumers() {
+        assert_eq!(hud_argb_black_alpha(0.5), 127.0 / 255.0);
+        assert_eq!(hud_argb_black_alpha(0.25), 63.0 / 255.0);
+        assert_eq!(hud_argb_black_alpha(f32::NAN), 0.0);
+        assert_eq!(hud_text_backdrop_alpha(0.5, 127.0 / 255.0), 63.0 / 255.0);
+        assert_eq!(hud_text_backdrop_alpha(1.0, 1.0), 1.0);
+        assert_eq!(hud_text_backdrop_alpha(f32::NAN, 1.0), 0.0);
+        assert_eq!(
+            hud_text_backdrop_rect((136.0, 80.0), 12, 4.0),
+            Some(HudRect {
+                x: 128.0,
+                y: 72.0,
+                width: 64,
+                height: 52,
+            })
+        );
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_font_atlas(
+                1,
+                1,
+                &[255, 255, 255, 255],
+                HudFontGlyphBook::from(styled_test_glyphs()),
+            )
+            .expect("font atlas");
+        renderer.set_hud_action_bar_text(Some(HudActionBarText {
+            runs: vec![HudComponentTextRun::plain("a")],
+            remaining_ticks: 60,
+            partial_tick: 0.0,
+            animate_color: false,
+        }));
+        renderer.set_hud_chat_messages(vec![HudChatMessage {
+            display_sequence: 1,
+            added_tick: 0,
+            runs: vec![HudComponentTextRun::plain("a")],
+            interactions: Vec::new(),
+            tag: None,
+        }]);
+        renderer.set_hud_chat_context(HudChatContext::default());
+
+        // Action-bar origin is (157, 168), so (155, 166) is its top-left
+        // 2px backdrop padding. Chat's first row begins at y=191; x=1 is
+        // outside its glyph but inside the line background.
+        let action_padding = (155, 166);
+        let chat_padding = (1, 191);
+
+        renderer.set_hud_text_background_options(0.0, false);
+        let disabled = renderer.render_offscreen_frame().expect("disabled frame");
+        assert_eq!(
+            disabled.pixel(action_padding.0, action_padding.1),
+            [0, 0, 255, 255]
+        );
+        assert_eq!(
+            disabled.pixel(chat_padding.0, chat_padding.1),
+            [0, 0, 255, 255]
+        );
+
+        renderer.set_hud_text_background_options(0.5, true);
+        let chat_only = renderer.render_offscreen_frame().expect("chat-only frame");
+        assert_eq!(
+            chat_only.pixel(action_padding.0, action_padding.1),
+            [0, 0, 255, 255]
+        );
+        assert!(
+            chat_only.pixel(chat_padding.0, chat_padding.1)[2] < 230,
+            "chat opacity must darken the chat row"
+        );
+
+        renderer.set_hud_text_background_options(0.5, false);
+        let everywhere = renderer.render_offscreen_frame().expect("everywhere frame");
+        assert!(
+            everywhere.pixel(action_padding.0, action_padding.1)[2] < 230,
+            "everywhere mode must darken textWithBackdrop padding"
+        );
+        assert!(
+            everywhere.pixel(157, 168)[0] > 230,
+            "the backdrop must submit before the action-bar glyph"
+        );
+        assert!(
+            everywhere.pixel(chat_padding.0, chat_padding.1)[2] < 230,
+            "chat background must remain enabled in everywhere mode"
         );
     }
 
@@ -25903,7 +26115,7 @@ mod tests {
             animate_color: false,
         };
         assert_eq!(
-            hud_action_bar_text_draw(&state, &fonts, PhysicalSize::new(320, 240))
+            hud_action_bar_text_draw(&state, &fonts, PhysicalSize::new(320, 240), 0.0)
                 .expect("visible")
                 .origin,
             (149.0, 168.0)
@@ -26276,16 +26488,18 @@ mod tests {
             fade_out: 20,
             partial_tick: 0.25,
         };
-        let draws = hud_title_text_draws(&state, &fonts, surface);
+        let draws = hud_title_text_draws(&state, &fonts, surface, 0.5);
         assert_eq!(draws.len(), 2);
         // Title: center (160, 120) + 4 * (-12/2, -10) = (136, 80).
         assert_eq!(draws[0].origin, (136.0, 80.0));
         assert_eq!(draws[0].scale, 4.0);
+        assert_eq!(draws[0].backdrop_opacity, 0.5);
         // Stay window -> full alpha.
         assert_eq!(draws[0].tint, [1.0, 1.0, 1.0, 1.0]);
         // Subtitle: center + 2 * (-6/2, 5) = (154, 130), same tint.
         assert_eq!(draws[1].origin, (154.0, 130.0));
         assert_eq!(draws[1].scale, 2.0);
+        assert_eq!(draws[1].backdrop_opacity, 0.5);
         assert_eq!(draws[1].tint, draws[0].tint);
 
         // No subtitle set -> only the title line.
@@ -26293,14 +26507,17 @@ mod tests {
             subtitle_runs: Vec::new(),
             ..state.clone()
         };
-        assert_eq!(hud_title_text_draws(&title_only, &fonts, surface).len(), 1);
+        assert_eq!(
+            hud_title_text_draws(&title_only, &fonts, surface, 0.0).len(),
+            1
+        );
 
         // Expired timer -> nothing.
         let expired = HudTitleText {
             remaining_ticks: 0,
             ..state.clone()
         };
-        assert!(hud_title_text_draws(&expired, &fonts, surface).is_empty());
+        assert!(hud_title_text_draws(&expired, &fonts, surface, 0.0).is_empty());
 
         // The very first frame after SetTitleText (t == fadeIn+stay+fadeOut at
         // partial 0) computes fade-in alpha 0 and is dropped, like vanilla.
@@ -26309,7 +26526,7 @@ mod tests {
             partial_tick: 0.0,
             ..state.clone()
         };
-        assert!(hud_title_text_draws(&first_frame, &fonts, surface).is_empty());
+        assert!(hud_title_text_draws(&first_frame, &fonts, surface, 0.0).is_empty());
     }
 
     #[test]
@@ -26331,7 +26548,7 @@ mod tests {
             partial_tick: 0.0,
         };
 
-        let draws = hud_title_text_draws(&state, &fonts, PhysicalSize::new(320, 240));
+        let draws = hud_title_text_draws(&state, &fonts, PhysicalSize::new(320, 240), 0.0);
         assert_eq!(draws.len(), 2);
         // Custom width 10: center + 4 * (-10/2, -10).
         assert_eq!(draws[0].origin, (140.0, 80.0));
