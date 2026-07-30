@@ -4374,6 +4374,22 @@ fn entity_model_instances_project_humanoid_mob_held_spear_arm_pose() {
     };
 
     let mut world = WorldStore::new();
+    world.set_default_item_swing_animations(std::collections::BTreeMap::from([
+        (
+            WOODEN_SPEAR_ID,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            },
+        ),
+        (
+            IRON_SPEAR_ID,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 19,
+            },
+        ),
+    ]));
     world.apply_add_entity(protocol_add_entity(
         246,
         VANILLA_ENTITY_TYPE_SKELETON_ID,
