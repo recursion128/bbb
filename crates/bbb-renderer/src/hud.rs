@@ -28456,6 +28456,244 @@ mod tests {
         }
     }
 
+    fn hud_inventory_beacon_test_renderer() -> Option<Renderer> {
+        const WIDTH: u32 = 230;
+        const HEIGHT: u32 = 219;
+
+        let mut renderer = Renderer::new_offscreen(WIDTH, HEIGHT)?;
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.25,
+            a: 1.0,
+        });
+        renderer.update_camera();
+        renderer
+            .upload_hud_beacon_background(1, 1, &[0, 0, 0, 0])
+            .expect("transparent Beacon background");
+        renderer
+            .upload_hud_beacon_button_disabled(1, 1, &[255, 0, 0, 255])
+            .expect("disabled Beacon button");
+        renderer
+            .upload_hud_beacon_button_selected(1, 1, &[0, 255, 0, 255])
+            .expect("selected Beacon button");
+        renderer
+            .upload_hud_beacon_button_highlighted(1, 1, &[255, 255, 0, 255])
+            .expect("highlighted Beacon button");
+        renderer
+            .upload_hud_beacon_button(1, 1, &[255, 0, 255, 255])
+            .expect("normal Beacon button");
+        renderer
+            .upload_hud_beacon_confirm(1, 1, &[0, 255, 255, 255])
+            .expect("Beacon confirm icon");
+        renderer
+            .upload_hud_beacon_cancel(1, 1, &[255, 255, 255, 255])
+            .expect("Beacon cancel icon");
+        let speed = [0, 255, 255, 255];
+        let strength = [255, 255, 255, 255];
+        renderer
+            .upload_hud_mob_effect_sprites(&[(1, 1, 1, &speed), (5, 1, 1, &strength)])
+            .expect("Beacon effect icons");
+
+        let item_colors = [
+            [255, 0, 0, 255],
+            [0, 255, 0, 255],
+            [0, 255, 255, 255],
+            [255, 0, 255, 255],
+            [255, 255, 255, 255],
+        ];
+        let item_atlas = item_colors.into_iter().flatten().collect::<Vec<_>>();
+        renderer
+            .upload_hud_item_atlas(5, 1, &item_atlas)
+            .expect("Beacon payment item atlas");
+
+        let background_layer = |texture: HudInventoryBackgroundTexture, x, y, width, height| {
+            HudInventoryBackgroundLayer {
+                texture,
+                x,
+                y,
+                width,
+                height,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            }
+        };
+        let floating_items = [(20, 109), (41, 109), (63, 109), (86, 109), (108, 109)]
+            .into_iter()
+            .enumerate()
+            .map(|(index, (x, y))| HudInventoryItem {
+                x,
+                y,
+                scale: 1.0,
+                scale_y: 1.0,
+                icon: HudItemIcon::single(HudUvRect {
+                    min: [index as f32 / 5.0, 0.0],
+                    max: [(index + 1) as f32 / 5.0, 1.0],
+                }),
+                scissor: None,
+                draw_decorations: false,
+                block_model: None,
+            })
+            .collect();
+        renderer.set_hud_inventory_screen(Some(HudInventoryScreen {
+            width: WIDTH,
+            height: HEIGHT,
+            background_layers: vec![
+                background_layer(HudInventoryBackgroundTexture::Beacon, 0, 0, WIDTH, HEIGHT),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconButtonDisabled,
+                    53,
+                    22,
+                    22,
+                    22,
+                ),
+                background_layer(HudInventoryBackgroundTexture::MobEffect(1), 55, 24, 18, 18),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconButtonSelected,
+                    65,
+                    72,
+                    22,
+                    22,
+                ),
+                background_layer(HudInventoryBackgroundTexture::MobEffect(5), 67, 74, 18, 18),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconButtonHighlighted,
+                    164,
+                    107,
+                    22,
+                    22,
+                ),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconConfirm,
+                    166,
+                    109,
+                    18,
+                    18,
+                ),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconButton,
+                    190,
+                    107,
+                    22,
+                    22,
+                ),
+                background_layer(
+                    HudInventoryBackgroundTexture::BeaconCancel,
+                    192,
+                    109,
+                    18,
+                    18,
+                ),
+            ],
+            foreground_layers: Vec::new(),
+            fill_layers: Vec::new(),
+            slots: Vec::new(),
+            floating_items,
+            foreground_items: Vec::new(),
+            ghost_items: Vec::new(),
+            entity_previews: Vec::new(),
+            map_previews: Vec::new(),
+            banner_pattern_previews: Vec::new(),
+            text_labels: Vec::new(),
+            scroll_area: None,
+            preedit_overlay: None,
+            hovered_slot_id: None,
+            tooltip: None,
+        }));
+        Some(renderer)
+    }
+
+    #[test]
+    fn hud_inventory_beacon_draw_commands_preserve_button_icon_and_item_strata() {
+        let Some(renderer) = hud_inventory_beacon_test_renderer() else {
+            return;
+        };
+        let expected = vec![
+            std::ptr::from_ref(renderer.hud_beacon_background.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_button_disabled.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_mob_effect_sprites.get(&1).unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_button_selected.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_mob_effect_sprites.get(&5).unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_button_highlighted.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_confirm.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_button.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_beacon_cancel.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap()),
+            std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap()),
+        ];
+        let draws = renderer.collect_hud_draws();
+        let actual = draws
+            .commands
+            .iter()
+            .filter_map(|command| match command {
+                HudDrawCommand::Sprite { sprite, .. } => Some(std::ptr::from_ref(*sprite)),
+                _ => None,
+            })
+            .filter(|sprite| expected.contains(sprite))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, expected);
+        assert_eq!(
+            actual
+                .iter()
+                .filter(|sprite| {
+                    **sprite == std::ptr::from_ref(renderer.hud_item_atlas.as_ref().unwrap())
+                })
+                .count(),
+            5
+        );
+    }
+
+    #[test]
+    fn hud_inventory_beacon_offscreen_consumes_button_states_icons_and_payment_items() {
+        let Some(mut renderer) = hud_inventory_beacon_test_renderer() else {
+            return;
+        };
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("Beacon inventory frame");
+        for (position, expected) in [
+            ((53, 22), [255, 0, 0]),
+            ((65, 72), [0, 255, 0]),
+            ((164, 107), [255, 255, 0]),
+            ((190, 107), [255, 0, 255]),
+            ((63, 32), [0, 255, 255]),
+            ((75, 82), [255, 255, 255]),
+            ((174, 117), [0, 255, 255]),
+            ((200, 117), [255, 255, 255]),
+        ] {
+            let pixel = pixels.pixel(position.0, position.1);
+            for channel in 0..3 {
+                assert!(
+                    pixel[channel].abs_diff(expected[channel]) < 16,
+                    "Beacon pixel at {position:?} should be {expected:?}, got {pixel:?}"
+                );
+            }
+        }
+
+        for ((x, y), expected) in [
+            ((28, 117), [255, 0, 0]),
+            ((49, 117), [0, 255, 0]),
+            ((71, 117), [0, 255, 255]),
+            ((94, 117), [255, 0, 255]),
+            ((116, 117), [255, 255, 255]),
+        ] {
+            let pixel = pixels.pixel(x, y);
+            for channel in 0..3 {
+                assert!(
+                    pixel[channel].abs_diff(expected[channel]) < 24,
+                    "Beacon payment pixel at ({x},{y}) should be {expected:?}, got {pixel:?}"
+                );
+            }
+        }
+    }
+
     fn test_hud_mob_effect(
         effect_id: i32,
         beneficial: bool,
