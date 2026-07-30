@@ -61,6 +61,7 @@ pub mod interaction_hands;
 pub mod item_component_coverage;
 pub mod item_component_value_types;
 pub mod item_types;
+pub mod jukebox_song_types;
 pub mod menu_types;
 pub mod mob_effect_types;
 pub mod number_format_types;

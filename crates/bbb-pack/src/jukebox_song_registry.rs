@@ -1,14 +1,8 @@
+use bbb_protocol::jukebox_song_types::{
+    vanilla_26_1_jukebox_song_by_holder_id, vanilla_26_1_jukebox_song_by_song_id,
+    vanilla_26_1_jukebox_song_by_sound_event_id, VANILLA_26_1_JUKEBOX_SONGS,
+};
 use serde::{Deserialize, Serialize};
-
-mod generated_26_1;
-
-use generated_26_1::VANILLA_26_1_JUKEBOX_SONGS;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct VanillaJukeboxSong {
-    song_id: &'static str,
-    sound_event_id: &'static str,
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JukeboxSongRegistry {
@@ -132,10 +126,7 @@ impl JukeboxSongRegistry {
     }
 
     pub fn vanilla_26_1_song_id(registry_id: i32) -> Option<&'static str> {
-        let index = usize::try_from(registry_id).ok()?;
-        VANILLA_26_1_JUKEBOX_SONGS
-            .get(index)
-            .map(|entry| entry.song_id)
+        vanilla_26_1_jukebox_song_by_holder_id(registry_id).map(|entry| entry.song_id)
     }
 
     pub fn vanilla_26_1_sound_event_id(song_id: &str) -> Option<&'static str> {
@@ -144,17 +135,11 @@ impl JukeboxSongRegistry {
 }
 
 fn vanilla_26_1_song_id_for_sound_event(sound_event_id: &str) -> Option<&'static str> {
-    VANILLA_26_1_JUKEBOX_SONGS
-        .iter()
-        .find(|entry| entry.sound_event_id == sound_event_id)
-        .map(|entry| entry.song_id)
+    vanilla_26_1_jukebox_song_by_sound_event_id(sound_event_id).map(|entry| entry.song_id)
 }
 
 fn vanilla_26_1_song_sound_event(song_id: &str) -> Option<&'static str> {
-    VANILLA_26_1_JUKEBOX_SONGS
-        .iter()
-        .find(|entry| entry.song_id == song_id)
-        .map(|entry| entry.sound_event_id)
+    vanilla_26_1_jukebox_song_by_song_id(song_id).map(|entry| entry.sound_event_id)
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ from vanilla_java_source import parse_source
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = (
-    REPO_ROOT / "crates/bbb-pack/src/jukebox_song_registry/generated_26_1.rs"
+    REPO_ROOT / "crates/bbb-protocol/src/jukebox_song_types.rs"
 )
 JUKEBOX_SONGS_SOURCE = Path("net/minecraft/world/item/JukeboxSongs.java")
 SOUND_EVENTS_SOURCE = Path("net/minecraft/sounds/SoundEvents.java")
@@ -48,20 +48,115 @@ def generate(source_root: Path) -> str:
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-jukebox-song-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-jukebox-song-catalog.py --check",
         "",
-        "use super::VanillaJukeboxSong;",
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+        "pub struct VanillaJukeboxSong {",
+        "    pub protocol_id: i32,",
+        "    pub constant_name: &'static str,",
+        "    pub song_id: &'static str,",
+        "    pub sound_event_id: &'static str,",
+        "}",
         "",
-        "pub(super) const VANILLA_26_1_JUKEBOX_SONGS: &[VanillaJukeboxSong] = &[",
+        "impl VanillaJukeboxSong {",
+        "    pub fn description_translation_key(self) -> String {",
+        '        let (namespace, path) = self.song_id.split_once(":").unwrap();',
+        '        format!("jukebox_song.{namespace}.{}", path.replace("/", "."))',
+        "    }",
+        "}",
+        "",
+        "pub const VANILLA_26_1_JUKEBOX_SONGS: &[VanillaJukeboxSong] = &[",
     ]
-    for entry in entries:
+    for protocol_id, entry in enumerate(entries):
         lines.extend(
             (
                 "    VanillaJukeboxSong {",
+                f"        protocol_id: {protocol_id},",
+                f"        constant_name: {rust_string(entry.constant_name)},",
                 f"        song_id: {rust_string(entry.resource_id)},",
                 f"        sound_event_id: {rust_string(entry.sound_event_id)},",
                 "    },",
             )
         )
-    lines.extend(("];", ""))
+    lines.extend(
+        (
+            "];",
+            "",
+            "pub fn vanilla_26_1_jukebox_song_by_holder_id(",
+            "    holder_id: i32,",
+            ") -> Option<&'static VanillaJukeboxSong> {",
+            "    let index = usize::try_from(holder_id).ok()?;",
+            "    VANILLA_26_1_JUKEBOX_SONGS.get(index)",
+            "}",
+            "",
+            "pub fn vanilla_26_1_jukebox_song_by_song_id(song_id: &str) "
+            "-> Option<&'static VanillaJukeboxSong> {",
+            "    VANILLA_26_1_JUKEBOX_SONGS",
+            "        .iter()",
+            "        .find(|entry| entry.song_id == song_id)",
+            "}",
+            "",
+            "pub fn vanilla_26_1_jukebox_song_by_sound_event_id(",
+            "    sound_event_id: &str,",
+            ") -> Option<&'static VanillaJukeboxSong> {",
+            "    VANILLA_26_1_JUKEBOX_SONGS",
+            "        .iter()",
+            "        .find(|entry| entry.sound_event_id == sound_event_id)",
+            "}",
+            "",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    use std::collections::HashSet;",
+            "",
+            "    use super::*;",
+            "",
+            "    #[test]",
+            "    fn generated_catalog_is_complete_ordered_and_bidirectionally_unique() {",
+            "        assert_eq!(VANILLA_26_1_JUKEBOX_SONGS.len(), 21);",
+            "        assert_eq!(",
+            "            VANILLA_26_1_JUKEBOX_SONGS",
+            "                .iter()",
+            "                .map(|entry| entry.song_id)",
+            "                .collect::<HashSet<_>>()",
+            "                .len(),",
+            "            21",
+            "        );",
+            "        assert_eq!(",
+            "            VANILLA_26_1_JUKEBOX_SONGS",
+            "                .iter()",
+            "                .map(|entry| entry.sound_event_id)",
+            "                .collect::<HashSet<_>>()",
+            "                .len(),",
+            "            21",
+            "        );",
+            "        for (index, entry) in VANILLA_26_1_JUKEBOX_SONGS.iter().enumerate() {",
+            "            assert_eq!(entry.protocol_id, index as i32);",
+            "            assert_eq!(",
+            "                vanilla_26_1_jukebox_song_by_holder_id(index as i32),",
+            "                Some(entry)",
+            "            );",
+            "            assert_eq!(",
+            "                vanilla_26_1_jukebox_song_by_song_id(entry.song_id),",
+            "                Some(entry)",
+            "            );",
+            "            assert_eq!(",
+            "                vanilla_26_1_jukebox_song_by_sound_event_id(entry.sound_event_id),",
+            "                Some(entry)",
+            "            );",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn description_keys_follow_vanilla_make_description_id() {",
+            "        assert_eq!(",
+            "            vanilla_26_1_jukebox_song_by_song_id(\"minecraft:cat\")",
+            "                .unwrap()",
+            "                .description_translation_key(),",
+            "            \"jukebox_song.minecraft.cat\"",
+            "        );",
+            "    }",
+            "}",
+            "",
+        )
+    )
     return "\n".join(lines)
 
 
