@@ -27,6 +27,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     identifier_constant_paths,
     map_decoration_entries,
     model_and_texture_variant_entries,
+    overworld_day_timeline_entry,
     painting_variant_entries,
     potion_entries,
     sound_variant_entries,
@@ -40,6 +41,119 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    @staticmethod
+    def overworld_day_timeline_fixture() -> bytes:
+        return b"""
+package fixture;
+interface Timelines {
+  ResourceKey<Timeline> OVERWORLD_DAY = key("day");
+  int NIGHT_SKY_LIGHT_COLOR = ARGB.colorFromFloat(1.0F, 0.48F, 0.48F, 1.0F);
+  static void bootstrap(BootstrapContext<Timeline> context) {
+    context.register(
+        OVERWORLD_DAY,
+        Timeline.builder(clock)
+            .setPeriodTicks(24000)
+            .addModifierTrack(
+                EnvironmentAttributes.FOG_COLOR,
+                ColorModifier.MULTIPLY_RGB,
+                track -> track.addKeyframe(0, -1))
+            .addModifierTrack(
+                EnvironmentAttributes.SKY_COLOR,
+                ColorModifier.MULTIPLY_RGB,
+                track -> track.addKeyframe(1, -16777216))
+            .addModifierTrack(
+                EnvironmentAttributes.SKY_LIGHT_COLOR,
+                ColorModifier.MULTIPLY_RGB,
+                track -> track.addKeyframe(2, NIGHT_SKY_LIGHT_COLOR))
+            .addModifierTrack(
+                EnvironmentAttributes.SKY_LIGHT_FACTOR,
+                FloatModifier.MULTIPLY,
+                track -> track.addKeyframe(3, 1.0F).addKeyframe(4, 0.25F))
+            .addModifierTrack(
+                EnvironmentAttributes.SKY_LIGHT_LEVEL,
+                FloatModifier.MULTIPLY,
+                track -> track.addKeyframe(5, 0.5F))
+            .addTrack(
+                EnvironmentAttributes.SUNRISE_SUNSET_COLOR,
+                track -> track.addKeyframe(6, 123))
+            .addModifierTrack(
+                EnvironmentAttributes.STAR_BRIGHTNESS,
+                FloatModifier.MAXIMUM,
+                track -> track.addKeyframe(7, 0.125F))
+            .addModifierTrack(
+                EnvironmentAttributes.CLOUD_COLOR,
+                ColorModifier.MULTIPLY_ARGB,
+                track -> track.addKeyframe(8, -456))
+            .build());
+  }
+}
+"""
+
+    def test_overworld_day_timeline_extracts_visual_tracks_and_float_bits(self) -> None:
+        source = parse_source(
+            "fixture/Timelines.java",
+            self.overworld_day_timeline_fixture(),
+        )
+
+        entry = overworld_day_timeline_entry(source)
+
+        self.assertEqual(entry.period_ticks, 24_000)
+        self.assertEqual(entry.night_sky_light_color, -8_750_337)
+        self.assertEqual(
+            [track.attribute_name for track in entry.tracks],
+            [
+                "FOG_COLOR",
+                "SKY_COLOR",
+                "SKY_LIGHT_COLOR",
+                "SKY_LIGHT_FACTOR",
+                "SKY_LIGHT_LEVEL",
+                "SUNRISE_SUNSET_COLOR",
+                "STAR_BRIGHTNESS",
+                "CLOUD_COLOR",
+            ],
+        )
+        self.assertEqual(
+            [
+                keyframe.encoded_value
+                for keyframe in entry.tracks[3].keyframes
+            ],
+            [0x3F80_0000, 0x3E80_0000],
+        )
+        self.assertEqual(entry.tracks[2].keyframes[0].encoded_value, -8_750_337)
+
+    def test_overworld_day_timeline_rejects_changed_modifier_contract(self) -> None:
+        source = parse_source(
+            "fixture/Timelines.java",
+            self.overworld_day_timeline_fixture().replace(
+                b"FloatModifier.MAXIMUM",
+                b"FloatModifier.MULTIPLY",
+            ),
+        )
+
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "STAR_BRIGHTNESS modifier changed",
+        ):
+            overworld_day_timeline_entry(source)
+
+    def test_overworld_day_timeline_rejects_non_default_visual_easing(self) -> None:
+        source = parse_source(
+            "fixture/Timelines.java",
+            self.overworld_day_timeline_fixture().replace(
+                b"track -> track.addKeyframe(7, 0.125F)",
+                (
+                    b"track -> track.setEasing(EasingType.CONSTANT)"
+                    b".addKeyframe(7, 0.125F)"
+                ),
+            ),
+        )
+
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError,
+            "visual track no longer uses default easing",
+        ):
+            overworld_day_timeline_entry(source)
+
     def test_wood_type_entries_follow_registered_constructor_names(self) -> None:
         source = parse_source(
             "fixture/WoodType.java",

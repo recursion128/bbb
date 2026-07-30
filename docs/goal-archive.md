@@ -871,3 +871,6 @@
 - **2026-07-30（固定 registry fallback 身份生成化闭环）**：`Fluids` 静态注册与
   `ChatType.bootstrap` 顺序现由同一 Tree-sitter 生成链产出 typed identity；
   fluid state、tag fallback 与 chat decoration consumer 不再维护平行 ordinal 表。
+- **2026-07-30（内建 Overworld day timeline 生成化闭环）**：`Timelines.bootstrap`
+  的 period、8 条 native 视觉 track 与 68 个 keyframe 现由 Tree-sitter 生成；
+  lightmap、sky、cloud 与 fog fallback 不再在 `runtime.rs` 手抄同一组时序事实。

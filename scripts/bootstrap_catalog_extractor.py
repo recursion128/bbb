@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import math
+import struct
 from dataclasses import dataclass
 
 from vanilla_java_source import (
@@ -134,6 +136,27 @@ class MapDecorationEntry:
     resource_id: str
     asset_id: str
     show_on_item_frame: bool
+
+
+@dataclass(frozen=True)
+class TimelineKeyframeEntry:
+    ticks: int
+    encoded_value: int
+
+
+@dataclass(frozen=True)
+class TimelineTrackEntry:
+    attribute_name: str
+    modifier: str
+    value_kind: str
+    keyframes: tuple[TimelineKeyframeEntry, ...]
+
+
+@dataclass(frozen=True)
+class OverworldDayTimelineEntry:
+    period_ticks: int
+    tracks: tuple[TimelineTrackEntry, ...]
+    night_sky_light_color: int
 
 
 def enchantment_tooltip_order(
@@ -1348,6 +1371,230 @@ def static_register_entries(
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate resource id")
     return entries
+
+
+_OVERWORLD_DAY_VISUAL_TRACKS = (
+    ("FOG_COLOR", "ColorModifier.MULTIPLY_RGB", "i32"),
+    ("SKY_COLOR", "ColorModifier.MULTIPLY_RGB", "i32"),
+    ("SKY_LIGHT_COLOR", "ColorModifier.MULTIPLY_RGB", "i32"),
+    ("SKY_LIGHT_FACTOR", "FloatModifier.MULTIPLY", "f32"),
+    ("SKY_LIGHT_LEVEL", "FloatModifier.MULTIPLY", "f32"),
+    ("SUNRISE_SUNSET_COLOR", "override", "i32"),
+    ("STAR_BRIGHTNESS", "FloatModifier.MAXIMUM", "f32"),
+    ("CLOUD_COLOR", "ColorModifier.MULTIPLY_ARGB", "i32"),
+)
+
+
+def _signed_decimal_integer(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type == "unary_expression":
+        children = expression.node.named_children
+        spelling = expression.canonical
+        if len(children) != 1 or not spelling or spelling[0] not in "+-":
+            _fail(source, expression, "expected a signed decimal integer literal")
+        value = _signed_decimal_integer(source, source.expression(children[0]))
+        return -value if spelling[0] == "-" else value
+    if expression.node.type != "decimal_integer_literal":
+        _fail(source, expression, "expected a decimal integer literal")
+    try:
+        return int(source.text(expression.node).replace("_", ""))
+    except ValueError:
+        _fail(source, expression, "invalid decimal integer literal")
+
+
+def _java_float32_bits(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_floating_point_literal":
+        _fail(source, expression, "timeline float keyframe is not a literal")
+    spelling = source.text(expression.node).replace("_", "")
+    if not spelling.endswith(("F", "f")):
+        _fail(source, expression, "timeline float keyframe must use Java float precision")
+    try:
+        value = float(spelling[:-1])
+        packed = struct.pack(">f", value)
+    except (OverflowError, ValueError):
+        _fail(source, expression, "invalid timeline float keyframe")
+    if not math.isfinite(value):
+        _fail(source, expression, "timeline float keyframe must be finite")
+    return struct.unpack(">I", packed)[0]
+
+
+def _float32(value: float) -> float:
+    return struct.unpack(">f", struct.pack(">f", value))[0]
+
+
+def _timeline_i32_value(
+    source: JavaSource,
+    expression: JavaExpression,
+    fields: dict[str, JavaField],
+    resolving: set[str],
+) -> int:
+    if expression.node.type in {"decimal_integer_literal", "unary_expression"}:
+        value = _signed_decimal_integer(source, expression)
+    elif expression.node.type == "identifier":
+        name = expression.canonical
+        field = fields.get(name)
+        if field is None or field.initializer is None:
+            _fail(source, expression, f"unknown timeline integer constant {name}")
+        if name in resolving:
+            _fail(source, expression, f"cyclic timeline integer constant {name}")
+        resolving.add(name)
+        value = _timeline_i32_value(source, field.initializer, fields, resolving)
+        resolving.remove(name)
+    elif expression.node.type == "method_invocation":
+        name, arguments = _invocation(source, expression, {"colorFromFloat"})
+        qualifier = expression.node.child_by_field_name("object")
+        if (
+            name != "colorFromFloat"
+            or qualifier is None
+            or source.expression(qualifier).canonical != "ARGB"
+            or len(arguments) != 4
+        ):
+            _fail(source, expression, "unsupported timeline integer initializer")
+        channels = []
+        for argument in arguments:
+            bits = _java_float32_bits(source, argument)
+            channel = struct.unpack(">f", struct.pack(">I", bits))[0]
+            channels.append(math.floor(_float32(_float32(channel) * _float32(255.0))))
+        unsigned = (
+            (channels[0] & 0xFF) << 24
+            | (channels[1] & 0xFF) << 16
+            | (channels[2] & 0xFF) << 8
+            | channels[3] & 0xFF
+        )
+        value = unsigned if unsigned < 0x8000_0000 else unsigned - 0x1_0000_0000
+    else:
+        _fail(source, expression, "unsupported timeline integer value")
+    if not -(1 << 31) <= value < (1 << 31):
+        _fail(source, expression, "timeline integer value exceeds i32")
+    return value
+
+
+def overworld_day_timeline_entry(source: JavaSource) -> OverworldDayTimelineEntry:
+    bootstrap = _bootstrap_method(source)
+    context_name = _bootstrap_context_name(source, bootstrap)
+    registrations = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == context_name
+        and len(call.arguments) == 2
+        and call.arguments[0].canonical == "OVERWORLD_DAY"
+        and bootstrap.body is not None
+        and bootstrap.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= bootstrap.body.end_byte
+    ]
+    if len(registrations) != 1:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one OVERWORLD_DAY registration"
+        )
+    timeline = registrations[0].arguments[1]
+    contained_calls = [
+        call
+        for call in source.calls
+        if timeline.span.start_byte <= call.span.start_byte
+        and call.span.end_byte <= timeline.span.end_byte
+    ]
+    period_calls = [call for call in contained_calls if call.name == "setPeriodTicks"]
+    if len(period_calls) != 1 or len(period_calls[0].arguments) != 1:
+        _fail(source, timeline, "OVERWORLD_DAY must set exactly one period")
+    period_ticks = _signed_decimal_integer(source, period_calls[0].arguments[0])
+    if period_ticks <= 0:
+        _fail(source, period_calls[0].arguments[0], "timeline period must be positive")
+
+    expected_by_attribute = {
+        attribute: (modifier, value_kind)
+        for attribute, modifier, value_kind in _OVERWORLD_DAY_VISUAL_TRACKS
+    }
+    track_calls = [
+        call
+        for call in contained_calls
+        if call.name in {"addTrack", "addModifierTrack"}
+        and call.arguments
+        and call.arguments[0].canonical.startswith("EnvironmentAttributes.")
+        and call.arguments[0].canonical.rsplit(".", 1)[-1] in expected_by_attribute
+    ]
+    track_calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+    actual_order = [
+        call.arguments[0].canonical.rsplit(".", 1)[-1] for call in track_calls
+    ]
+    expected_order = [attribute for attribute, _, _ in _OVERWORLD_DAY_VISUAL_TRACKS]
+    if actual_order != expected_order:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: OVERWORLD_DAY visual track order mismatch: "
+            f"expected={expected_order}, actual={actual_order}"
+        )
+
+    fields = {field.name: field for field in source.fields}
+    tracks: list[TimelineTrackEntry] = []
+    for call, attribute_name in zip(track_calls, actual_order):
+        expected_modifier, value_kind = expected_by_attribute[attribute_name]
+        if call.name == "addTrack":
+            if len(call.arguments) != 2:
+                _fail(source, source.expression(call.node), "unsupported timeline track call")
+            modifier = "override"
+            lambda_expression = call.arguments[1]
+        else:
+            if len(call.arguments) != 3:
+                _fail(source, source.expression(call.node), "unsupported modifier track call")
+            modifier = call.arguments[1].canonical
+            lambda_expression = call.arguments[2]
+        if modifier != expected_modifier:
+            _fail(
+                source,
+                source.expression(call.node),
+                f"{attribute_name} modifier changed from {expected_modifier} to {modifier}",
+            )
+        if lambda_expression.node.type != "lambda_expression":
+            _fail(source, lambda_expression, "timeline track builder is not a lambda")
+        lambda_calls = [
+            candidate
+            for candidate in source.calls
+            if lambda_expression.span.start_byte <= candidate.span.start_byte
+            and candidate.span.end_byte <= lambda_expression.span.end_byte
+        ]
+        if any(candidate.name != "addKeyframe" for candidate in lambda_calls):
+            _fail(source, lambda_expression, "timeline visual track no longer uses default easing")
+        keyframe_calls = sorted(
+            lambda_calls, key=lambda candidate: (candidate.span.start_byte, candidate.span.end_byte)
+        )
+        keyframes: list[TimelineKeyframeEntry] = []
+        for keyframe in keyframe_calls:
+            if len(keyframe.arguments) != 2:
+                _fail(source, source.expression(keyframe.node), "unsupported keyframe call")
+            ticks = _signed_decimal_integer(source, keyframe.arguments[0])
+            if ticks < 0:
+                _fail(source, keyframe.arguments[0], "timeline keyframe tick must be non-negative")
+            if value_kind == "i32":
+                encoded_value = _timeline_i32_value(
+                    source, keyframe.arguments[1], fields, set()
+                )
+            else:
+                encoded_value = _java_float32_bits(source, keyframe.arguments[1])
+            keyframes.append(TimelineKeyframeEntry(ticks, encoded_value))
+        if not keyframes:
+            _fail(source, lambda_expression, "timeline visual track has no keyframes")
+        tracks.append(
+            TimelineTrackEntry(
+                attribute_name,
+                modifier,
+                value_kind,
+                tuple(keyframes),
+            )
+        )
+
+    night_sky_light = fields.get("NIGHT_SKY_LIGHT_COLOR")
+    if night_sky_light is None or night_sky_light.initializer is None:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: NIGHT_SKY_LIGHT_COLOR is missing"
+        )
+    night_sky_light_color = _timeline_i32_value(
+        source, night_sky_light.initializer, fields, set()
+    )
+    return OverworldDayTimelineEntry(
+        period_ticks,
+        tuple(tracks),
+        night_sky_light_color,
+    )
 
 
 def wood_type_entries(

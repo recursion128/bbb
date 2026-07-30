@@ -17,6 +17,50 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class BootstrapCatalogGeneratorTests(unittest.TestCase):
+    def test_overworld_day_renderer_emits_typed_tracks_and_reverse_guard(self) -> None:
+        configurations = [
+            ("FOG_COLOR", "ColorModifier.MULTIPLY_RGB", "i32", -1),
+            ("SKY_COLOR", "ColorModifier.MULTIPLY_RGB", "i32", -2),
+            ("SKY_LIGHT_COLOR", "ColorModifier.MULTIPLY_RGB", "i32", -3),
+            ("SKY_LIGHT_FACTOR", "FloatModifier.MULTIPLY", "f32", 0x3F80_0000),
+            ("SKY_LIGHT_LEVEL", "FloatModifier.MULTIPLY", "f32", 0x3E80_0000),
+            ("SUNRISE_SUNSET_COLOR", "override", "i32", 4),
+            ("STAR_BRIGHTNESS", "FloatModifier.MAXIMUM", "f32", 0x3F00_0000),
+            ("CLOUD_COLOR", "ColorModifier.MULTIPLY_ARGB", "i32", -5),
+        ]
+        rendered = GENERATOR.render_overworld_day_timeline(
+            GENERATOR.OverworldDayTimelineEntry(
+                24_000,
+                tuple(
+                    GENERATOR.TimelineTrackEntry(
+                        attribute,
+                        modifier,
+                        value_kind,
+                        (GENERATOR.TimelineKeyframeEntry(index, value),),
+                    )
+                    for index, (attribute, modifier, value_kind, value) in enumerate(
+                        configurations
+                    )
+                ),
+                -8_750_337,
+            )
+        )
+
+        self.assertIn(
+            "pub(super) const VANILLA_OVERWORLD_DAY_PERIOD_TICKS: i64 = 24000",
+            rendered,
+        )
+        self.assertIn(
+            "pub(super) const VANILLA_OVERWORLD_SKY_LIGHT_FACTOR_KEYFRAMES",
+            rendered,
+        )
+        self.assertIn("f32::from_bits(0x3f800000)", rendered)
+        self.assertIn(
+            "production_sources_do_not_redeclare_overworld_day_visual_tracks",
+            rendered,
+        )
+        self.assertIn('"VANILLA_LIGHTMAP_DAY_PERIOD_TICKS"', rendered)
+
     def test_registry_data_renderer_emits_typed_fixed_registry_identities(self) -> None:
         rendered = GENERATOR.render_registry_data_types(
             [],
