@@ -233,8 +233,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
-- **Chest christmas Dec 24-26 texture swap.** Active engineering contract:
-  `docs/christmas-chest-texture-design.md`.
 - **Trial-spawner display-state behavior and custom `SpawnData` entity NBT
   variants** are `deferred`: Vanilla creates the cached display entity through
   `EntityType.loadEntityRecursive`, while bbb has no inbound synthetic-entity

@@ -1,6 +1,6 @@
 # Christmas Chest Texture Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -97,6 +97,9 @@ The pre-start full gate passed at
 `bc477d08914576aa56186f1f3e27d827ace7eee7`. The final full gate is the
 engineering checkpoint. No playable gate is required because this slice
 changes no packet, input-command, world-mutation, or control-command boundary.
+
+The contract, renderer material residency, and native date/precedence stages
+are the clean commits `1ca434190`, `11b9c1b60`, and `9d7f53bbf`.
 
 ## Failure localization and safe stops
 

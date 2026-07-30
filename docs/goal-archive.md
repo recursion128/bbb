@@ -845,3 +845,7 @@
   world effective ItemStack 与第一/第三人称现贯通完整 `NONE/WHACK/STAB`
   类型和持续时间，不再从 spear/kinetic 身份推断；合同见
   `docs/archive/swing-animation-prototype-default-design.md`。
+- **2026-07-30（圣诞箱子材质工程闭环）**：本地日期在原生 block-entity
+  presentation owner 构造时一次快照，普通/陷阱箱于 12 月 24～26 日选择
+  single/left/right 圣诞常驻材质，末影与铜箱保持原材质；合同见
+  `docs/archive/christmas-chest-texture-design.md`。
