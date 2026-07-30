@@ -868,3 +868,6 @@
 - **2026-07-30（方块实体客户端 tick 效果工程闭环）**：营火、普通/试炼刷怪笼、
   潮涌核心与宝库的 typed world 投影现共用 level random 游标提交粒子/本地音频；
   合同见 `docs/archive/block-entity-client-effects-closeout-design.md`。
+- **2026-07-30（固定 registry fallback 身份生成化闭环）**：`Fluids` 静态注册与
+  `ChatType.bootstrap` 顺序现由同一 Tree-sitter 生成链产出 typed identity；
+  fluid state、tag fallback 与 chat decoration consumer 不再维护平行 ordinal 表。

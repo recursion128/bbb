@@ -714,6 +714,29 @@ public class Variants {
             [("SECOND", "minecraft:second"), ("FIRST", "minecraft:first")],
         )
 
+    def test_direct_context_bootstrap_order_is_cross_checked_against_keys(self) -> None:
+        source = parse_source(
+            "fixture/ChatTypes.java",
+            b"""
+package fixture;
+public class ChatTypes {
+  public static final ResourceKey<ChatType> CHAT = create("chat");
+  public static final ResourceKey<ChatType> EMOTE = create("emote");
+  static void bootstrap(BootstrapContext<ChatType> context) {
+    context.register(EMOTE, new ChatType());
+    context.register(CHAT, new ChatType());
+  }
+}
+""",
+        )
+        entries = bootstrap_resource_key_entries(
+            source, "ChatType", {"create"}, 2
+        )
+        self.assertEqual(
+            [(entry.constant_name, entry.resource_id) for entry in entries],
+            [("EMOTE", "minecraft:emote"), ("CHAT", "minecraft:chat")],
+        )
+
     def test_nested_enum_constructor_string_resolves_without_text_parser(self) -> None:
         source = parse_source(
             "fixture/Sounds.java",
@@ -745,6 +768,35 @@ public class Potions {
         self.assertEqual(
             [entry.resource_id for entry in entries],
             ["minecraft:water", "minecraft:long"],
+        )
+
+    def test_static_register_fields_accept_multiple_exact_value_types(self) -> None:
+        source = parse_source(
+            "fixture/Fluids.java",
+            b"""
+package fixture;
+public class Fluids {
+  static final Fluid EMPTY = register("empty", new EmptyFluid());
+  static final FlowingFluid FLOWING_WATER =
+      register("flowing_water", new WaterFluid.Flowing());
+  static final FluidState IGNORED = state("ignored");
+  static final FlowingFluid WATER = register("water", new WaterFluid.Source());
+}
+""",
+        )
+        entries = static_register_entries(
+            source, ("Fluid", "FlowingFluid"), 3
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.resource_id)
+                for entry in entries
+            ],
+            [
+                ("EMPTY", "minecraft:empty"),
+                ("FLOWING_WATER", "minecraft:flowing_water"),
+                ("WATER", "minecraft:water"),
+            ],
         )
 
     def test_potion_effects_come_from_typed_constructor_arguments(self) -> None:

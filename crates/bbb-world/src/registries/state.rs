@@ -23,6 +23,7 @@ use bbb_protocol::particle_types::{
     vanilla_particle_type, vanilla_particle_type_id_for_resource_id,
 };
 use bbb_protocol::potion_types::{vanilla_potion, vanilla_potion_for_resource_id};
+use bbb_protocol::registry_data_types::{VanillaChatTypeIdentity, VanillaFluidIdentity};
 use bbb_protocol::sound_event_types::{
     vanilla_sound_event_registry_id, vanilla_sound_event_resource_id,
 };
@@ -79,17 +80,6 @@ use super::{
     BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
     RegistryElementDecodeError,
 };
-
-// Vanilla 26.1 `Fluids` registers these built-in holders in declaration order.
-// Fluid tags are synchronized against this fixed registry even though the
-// configuration phase does not send a `RegistryData` payload for it.
-const VANILLA_FLUID_RESOURCE_IDS: [&str; 5] = [
-    "minecraft:empty",
-    "minecraft:flowing_water",
-    "minecraft:water",
-    "minecraft:flowing_lava",
-    "minecraft:lava",
-];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistrySet {
@@ -545,12 +535,14 @@ impl RegistrySet {
     fn vanilla_fallback_resource_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
         match registry {
             "minecraft:attribute" => Some(vanilla_attribute_type(holder_id)?.resource_id),
-            "minecraft:chat_type" => super::chat_types::vanilla_chat_type_resource_id(holder_id),
+            "minecraft:chat_type" => {
+                Some(VanillaChatTypeIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
-            "minecraft:fluid" => VANILLA_FLUID_RESOURCE_IDS
-                .get(usize::try_from(holder_id).ok()?)
-                .copied(),
+            "minecraft:fluid" => {
+                Some(VanillaFluidIdentity::for_vanilla_registry_id(holder_id)?.resource_id())
+            }
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
             "minecraft:damage_type" => Some(vanilla_damage_type(holder_id)?.resource_id),
             "minecraft:game_event" => {
@@ -622,15 +614,16 @@ impl RegistrySet {
         }
         match registry {
             "minecraft:attribute" => Some(vanilla_attribute_type_for_resource_id(resource_id)?.id),
-            "minecraft:chat_type" => super::chat_types::vanilla_chat_type_holder_id(resource_id),
+            "minecraft:chat_type" => {
+                Some(VanillaChatTypeIdentity::for_resource_id(resource_id)?.vanilla_registry_id())
+            }
             "minecraft:item" => {
                 Some(bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)?.id)
             }
             "minecraft:block" => self.block_states.block_registry_id_by_name(resource_id),
-            "minecraft:fluid" => VANILLA_FLUID_RESOURCE_IDS
-                .iter()
-                .position(|candidate| *candidate == resource_id)
-                .and_then(|holder_id| i32::try_from(holder_id).ok()),
+            "minecraft:fluid" => {
+                Some(VanillaFluidIdentity::for_resource_id(resource_id)?.vanilla_registry_id())
+            }
             "minecraft:entity_type" => Some(
                 bbb_protocol::entity_types::vanilla_entity_type_for_resource_id(resource_id)?.id,
             ),

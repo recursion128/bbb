@@ -320,16 +320,24 @@ def bootstrap_resource_key_entries(
         call
         for call in source.calls
         if call.name in registration_names
-        and call.qualifier is None
+        and (
+            call.qualifier is None
+            or call.qualifier.canonical == context_name
+        )
         and method.body.start_byte <= call.span.start_byte
         and call.span.end_byte <= method.body.end_byte
     ]
     calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
     registered: list[str] = []
     for call in calls:
-        if len(call.arguments) < 2 or call.arguments[0].canonical != context_name:
-            _fail(source, source.expression(call.node), "unsupported bootstrap register call")
-        key = call.arguments[1]
+        if call.qualifier is None:
+            if len(call.arguments) < 2 or call.arguments[0].canonical != context_name:
+                _fail(source, source.expression(call.node), "unsupported bootstrap register call")
+            key = call.arguments[1]
+        else:
+            if len(call.arguments) < 2:
+                _fail(source, source.expression(call.node), "unsupported bootstrap register call")
+            key = call.arguments[0]
         if key.node.type != "identifier":
             _fail(source, key, "bootstrap resource key is not an identifier")
         registered.append(key.canonical)
@@ -1308,13 +1316,19 @@ def identifier_constant_paths(source: JavaSource) -> dict[str, str]:
 
 def static_register_entries(
     source: JavaSource,
-    field_type: str,
+    field_type: str | tuple[str, ...],
     expected_count: int,
 ) -> list[BootstrapEntry]:
+    def matches_field_type(field: JavaField) -> bool:
+        spelling = field.type_spelling.replace(" ", "")
+        if isinstance(field_type, str):
+            return spelling.startswith(field_type)
+        return spelling in field_type
+
     fields = [
         field
         for field in source.fields
-        if field.type_spelling.replace(" ", "").startswith(field_type)
+        if matches_field_type(field)
     ]
     entries: list[BootstrapEntry] = []
     for field in fields:

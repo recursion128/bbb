@@ -4,6 +4,7 @@ use bbb_protocol::{
     chat_formattings::vanilla_chat_formatting_color_by_name,
     component_style_from_nbt_value,
     packets::{ChatTypeDecorationSummary, ChatTypeHolder},
+    registry_data_types::VanillaChatTypeIdentity,
     ComponentStyle, NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
@@ -11,15 +12,6 @@ use serde::{Deserialize, Serialize};
 use super::{FrozenRegistryAccess, RegistryEntrySource, RegistryResolutionError};
 
 pub const CHAT_TYPE_REGISTRY: &str = "minecraft:chat_type";
-const VANILLA_CHAT_TYPE_RESOURCE_IDS: [&str; 7] = [
-    "minecraft:chat",
-    "minecraft:say_command",
-    "minecraft:msg_command_incoming",
-    "minecraft:msg_command_outgoing",
-    "minecraft:team_msg_command_incoming",
-    "minecraft:team_msg_command_outgoing",
-    "minecraft:emote_command",
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -177,6 +169,10 @@ fn decode_decoration(entries: &[NbtSummaryEntry]) -> Option<ChatTypeDecoration> 
 
 fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDecoration)> {
     use ChatTypeDecorationParameter::{Content, Sender, Target};
+    use VanillaChatTypeIdentity::{
+        Chat, EmoteCommand, MsgCommandIncoming, MsgCommandOutgoing, SayCommand,
+        TeamMsgCommandIncoming, TeamMsgCommandOutgoing,
+    };
 
     let plain = ComponentStyle::default();
     let direct_message = ComponentStyle {
@@ -184,16 +180,16 @@ fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDeco
         color: vanilla_chat_formatting_color_by_name("gray"),
         ..ComponentStyle::default()
     };
-    let resolved = match holder_id {
-        0 => (
+    let resolved = match VanillaChatTypeIdentity::for_vanilla_registry_id(holder_id)? {
+        Chat => (
             decoration("chat.type.text", &[Sender, Content], plain.clone()),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        1 => (
+        SayCommand => (
             decoration("chat.type.announcement", &[Sender, Content], plain.clone()),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        2 => (
+        MsgCommandIncoming => (
             decoration(
                 "commands.message.display.incoming",
                 &[Sender, Content],
@@ -201,7 +197,7 @@ fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDeco
             ),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        3 => (
+        MsgCommandOutgoing => (
             decoration(
                 "commands.message.display.outgoing",
                 &[Target, Content],
@@ -209,7 +205,7 @@ fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDeco
             ),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        4 => (
+        TeamMsgCommandIncoming => (
             decoration(
                 "chat.type.team.text",
                 &[Target, Sender, Content],
@@ -217,7 +213,7 @@ fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDeco
             ),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        5 => (
+        TeamMsgCommandOutgoing => (
             decoration(
                 "chat.type.team.sent",
                 &[Target, Sender, Content],
@@ -225,26 +221,12 @@ fn vanilla_chat_type(holder_id: i32) -> Option<(ChatTypeDecoration, ChatTypeDeco
             ),
             decoration("chat.type.text.narrate", &[Sender, Content], plain),
         ),
-        6 => (
+        EmoteCommand => (
             decoration("chat.type.emote", &[Sender, Content], plain.clone()),
             decoration("chat.type.emote", &[Sender, Content], plain),
         ),
-        _ => return None,
     };
     Some(resolved)
-}
-
-pub(super) fn vanilla_chat_type_resource_id(holder_id: i32) -> Option<&'static str> {
-    VANILLA_CHAT_TYPE_RESOURCE_IDS
-        .get(usize::try_from(holder_id).ok()?)
-        .copied()
-}
-
-pub(super) fn vanilla_chat_type_holder_id(resource_id: &str) -> Option<i32> {
-    VANILLA_CHAT_TYPE_RESOURCE_IDS
-        .iter()
-        .position(|candidate| *candidate == resource_id)
-        .and_then(|holder_id| i32::try_from(holder_id).ok())
 }
 
 fn decoration(

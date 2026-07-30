@@ -2,7 +2,7 @@ use super::{
     above, LocalBlockUseContext, LocalInteractionParticleAction, LocalInteractionResult,
     LocalInteractionSoundAction, LocalInteractionSuccess, LocalTargetUsePrediction,
 };
-use crate::{TerrainFluidKind, WorldStore};
+use crate::WorldStore;
 use bbb_protocol::{
     block_entity_types::{
         VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_CHISELED_BOOKSHELF_ID,
@@ -774,15 +774,7 @@ impl WorldStore {
 
     fn local_block_fluid_is_in_tag(&self, pos: crate::BlockPos, tag: &str) -> Option<bool> {
         let block = self.probe_block(pos)?;
-        let fluid_resource_id = match block.fluid {
-            None => "minecraft:empty",
-            Some(fluid) => match (fluid.kind, fluid.amount == 8 && !fluid.falling) {
-                (TerrainFluidKind::Water, true) => "minecraft:water",
-                (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
-                (TerrainFluidKind::Lava, true) => "minecraft:lava",
-                (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
-            },
-        };
+        let fluid_resource_id = crate::terrain::vanilla_fluid_identity(block.fluid).resource_id();
         let holder_id =
             self.registry_holder_id_by_resource_id("minecraft:fluid", fluid_resource_id)?;
         self.registry_holder_ids_for_tag("minecraft:fluid", tag)

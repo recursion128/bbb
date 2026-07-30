@@ -17,6 +17,34 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class BootstrapCatalogGeneratorTests(unittest.TestCase):
+    def test_registry_data_renderer_emits_typed_fixed_registry_identities(self) -> None:
+        rendered = GENERATOR.render_registry_data_types(
+            [],
+            [],
+            [],
+            [],
+            [
+                GENERATOR.BootstrapEntry("EMPTY", "minecraft:empty"),
+                GENERATOR.BootstrapEntry("WATER", "minecraft:water"),
+            ],
+            [
+                GENERATOR.BootstrapEntry("CHAT", "minecraft:chat"),
+                GENERATOR.BootstrapEntry("EMOTE_COMMAND", "minecraft:emote_command"),
+            ],
+        )
+
+        self.assertIn("pub enum VanillaFluidIdentity", rendered)
+        self.assertIn("VanillaFluidIdentity::Water, \"minecraft:water\"", rendered)
+        self.assertIn("pub enum VanillaChatTypeIdentity", rendered)
+        self.assertIn(
+            "VanillaChatTypeIdentity::EmoteCommand, \"minecraft:emote_command\"",
+            rendered,
+        )
+        self.assertIn(
+            "production_sources_do_not_redeclare_fixed_registry_identities",
+            rendered,
+        )
+
     def test_sign_wood_renderer_emits_catalog_queries_and_native_guard(self) -> None:
         rendered = GENERATOR.render_sign_wood_types(
             [
@@ -203,6 +231,7 @@ class BootstrapCatalogGeneratorTests(unittest.TestCase):
             [banner], {banner.asset_id: (67, 69)}
         )
         self.assertIn("size: [67, 69]", rendered_banner)
+        self.assertIn("pub(crate) fn banner_pattern_texture_ref", rendered_banner)
 
         cat = GENERATOR.CatVariantEntry(
             "TABBY",

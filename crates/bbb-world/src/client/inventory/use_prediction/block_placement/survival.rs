@@ -18,7 +18,7 @@ use super::{
     context::{opposite, relative},
     scaffolding, surface,
 };
-use crate::{block_name_is_air, BlockPos, BlockProbe, TerrainFluidKind};
+use crate::{block_name_is_air, BlockPos, BlockProbe};
 
 #[derive(Debug, Clone, Copy)]
 enum BlockCanSurviveRule {
@@ -729,15 +729,7 @@ impl WorldStore {
     }
 
     fn placement_fluid_is_in_tag(&self, block: &BlockProbe, tag: &str) -> Option<bool> {
-        let fluid_resource_id = match block.fluid {
-            None => "minecraft:empty",
-            Some(fluid) => match (fluid.kind, fluid.amount == 8 && !fluid.falling) {
-                (TerrainFluidKind::Water, true) => "minecraft:water",
-                (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
-                (TerrainFluidKind::Lava, true) => "minecraft:lava",
-                (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
-            },
-        };
+        let fluid_resource_id = crate::terrain::vanilla_fluid_identity(block.fluid).resource_id();
         let holder_id =
             self.registry_holder_id_by_resource_id("minecraft:fluid", fluid_resource_id)?;
         self.registry_holder_ids_for_tag("minecraft:fluid", tag)

@@ -283,15 +283,7 @@ impl WorldStore {
                 VanillaItemUseOverride::PlaceOnWaterBlockItem,
             ));
         };
-        let fluid_resource_id = match below.fluid {
-            None => "minecraft:empty",
-            Some(fluid) => match (fluid.kind, fluid.amount == 8 && !fluid.falling) {
-                (TerrainFluidKind::Water, true) => "minecraft:water",
-                (TerrainFluidKind::Water, false) => "minecraft:flowing_water",
-                (TerrainFluidKind::Lava, true) => "minecraft:lava",
-                (TerrainFluidKind::Lava, false) => "minecraft:flowing_lava",
-            },
-        };
+        let fluid_resource_id = crate::terrain::vanilla_fluid_identity(below.fluid).resource_id();
         let Some(fluid_holder_id) =
             self.registry_holder_id_by_resource_id("minecraft:fluid", fluid_resource_id)
         else {

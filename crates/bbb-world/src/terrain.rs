@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use bbb_protocol::registry_data_types::VanillaFluidIdentity;
 use serde::{Deserialize, Serialize};
 
 use crate::{BlockPos, ChunkPos, PaletteKind};
@@ -150,6 +151,23 @@ impl TerrainFluidState {
 
     pub fn own_height(self) -> f64 {
         f64::from(self.amount) / 9.0
+    }
+}
+
+/// Projects the canonical client terrain fluid state to Vanilla's fixed
+/// built-in fluid registry identity. This terrain projection represents a
+/// source as amount 8 without the falling flag; every other represented
+/// water/lava state uses its flowing holder.
+pub(crate) fn vanilla_fluid_identity(fluid: Option<TerrainFluidState>) -> VanillaFluidIdentity {
+    let Some(fluid) = fluid else {
+        return VanillaFluidIdentity::Empty;
+    };
+    let source = fluid.amount == 8 && !fluid.falling;
+    match (fluid.kind, source) {
+        (TerrainFluidKind::Water, true) => VanillaFluidIdentity::Water,
+        (TerrainFluidKind::Water, false) => VanillaFluidIdentity::FlowingWater,
+        (TerrainFluidKind::Lava, true) => VanillaFluidIdentity::Lava,
+        (TerrainFluidKind::Lava, false) => VanillaFluidIdentity::FlowingLava,
     }
 }
 
@@ -1396,6 +1414,39 @@ mod tests {
                 terrain_fluid_state(Some(name), &BTreeMap::new()),
                 Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
             );
+        }
+    }
+
+    #[test]
+    fn fluid_state_projects_one_generated_registry_identity() {
+        assert_eq!(vanilla_fluid_identity(None), VanillaFluidIdentity::Empty);
+        for (state, expected) in [
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 8, false),
+                VanillaFluidIdentity::Water,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 7, false),
+                VanillaFluidIdentity::FlowingWater,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Water, 8, true),
+                VanillaFluidIdentity::FlowingWater,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 8, false),
+                VanillaFluidIdentity::Lava,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 1, false),
+                VanillaFluidIdentity::FlowingLava,
+            ),
+            (
+                TerrainFluidState::new(TerrainFluidKind::Lava, 8, true),
+                VanillaFluidIdentity::FlowingLava,
+            ),
+        ] {
+            assert_eq!(vanilla_fluid_identity(Some(state)), expected);
         }
     }
 
