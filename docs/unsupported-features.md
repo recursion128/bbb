@@ -268,10 +268,12 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.
-- **GPU outline presentation for `submitOnlyOutline` entity-attached block-model
-  layers** (snow-golem carved pumpkin, mooshroom mushroom). Outline-only
-  attachment metadata is recorded and ordinary block-quad baking is suppressed.
-  Active engineering contract: `docs/entity-block-outline-design.md`.
+- **GPU outline copies for ordinary `BlockModelRenderState.submit(...,
+  outlineColor)` entity-attached block-model layers.** The completed
+  `submitOnlyOutline` lane covers hidden glowing attachments, but ordinary
+  block-feature submissions still omit the additional outline-target copy for
+  visible glowing snow-golem/mooshroom layers and the iron-golem, enderman,
+  minecart, TNT, and copper-golem block-model families.
 - **Frog tongue prey-targeting** (`DATA_TONGUE_TARGET_ID`). Not part of the model
   animation.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves

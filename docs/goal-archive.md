@@ -818,3 +818,6 @@
 - **2026-07-29（标牌文字渲染精度工程闭环）**：发光文字八向轮廓、严格相机/
   瞄准门禁、逐帧等宽混淆字、下划线/删除线白材质及正文 polygon-offset 深度状态
   已贯通，合同见 `docs/archive/sign-text-rendering-parity-design.md`。
+- **2026-07-29（实体附着方块 outline-only 工程闭环）**：雪傀儡南瓜与哞菇蘑菇
+  的 blocks-atlas alpha 遮罩、精确实体轮廓色、独立常驻 lane 及共享 outline
+  target/post-chain 已贯通，合同见 `docs/archive/entity-block-outline-design.md`。

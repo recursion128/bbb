@@ -1,6 +1,6 @@
 # Entity-Attached Block Outline Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-29.
 
 ## Goal and completion
 
