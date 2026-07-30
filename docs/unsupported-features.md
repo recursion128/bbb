@@ -218,8 +218,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
-- **Air bubble-pop sound** (`playAirBubblePoppedSound`, `Gui.java:930-937`).
-  Route the air-decrease edge through the native audio sink.
 - **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
 - **Jukebox now-playing path** (`Gui.setNowPlaying`, the only `animate_color=true`
   producer). The flag is already carried end to end.

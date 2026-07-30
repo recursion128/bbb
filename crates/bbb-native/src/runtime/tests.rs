@@ -297,6 +297,58 @@ fn hud_heart_health_frame_uses_ten_tick_heal_and_invulnerability_gate() {
 }
 
 #[test]
+fn hud_air_bubble_pop_sound_matches_vanilla_dedup_reset_and_gain_formulas() {
+    let mut runtime = HudRenderRuntime::default();
+    let popping = HudAirSupply {
+        air: 61,
+        max_air: 300,
+        eye_in_water: true,
+        tick_count: 0,
+    };
+
+    assert_eq!(
+        runtime.air_bubble_pop_sound(popping, true),
+        Some(HudAirBubblePopSound {
+            volume: 1.0,
+            pitch: 1.3,
+        })
+    );
+    assert_eq!(runtime.air_bubble_pop_sound(popping, true), None);
+
+    // Vanilla does not enter `extractAirBubbles` when the HUD/player-health
+    // branch is skipped or when a full on-land row is hidden, so neither
+    // case resets `lastBubblePopSoundPlayed`.
+    let surfaced = HudAirSupply {
+        eye_in_water: false,
+        ..popping
+    };
+    assert_eq!(runtime.air_bubble_pop_sound(surfaced, false), None);
+    assert_eq!(runtime.air_bubble_pop_sound(popping, true), None);
+    assert_eq!(
+        runtime.air_bubble_pop_sound(
+            HudAirSupply {
+                air: 300,
+                ..surfaced
+            },
+            true,
+        ),
+        None
+    );
+    assert_eq!(runtime.air_bubble_pop_sound(popping, true), None);
+
+    // A visible, refilling row on land enters the extraction and resets the
+    // debounce; the same underwater bursting frame may then sound again.
+    assert_eq!(runtime.air_bubble_pop_sound(surfaced, true), None);
+    assert_eq!(
+        runtime.air_bubble_pop_sound(popping, true),
+        Some(HudAirBubblePopSound {
+            volume: 1.0,
+            pitch: 1.3,
+        })
+    );
+}
+
+#[test]
 fn hud_spyglass_scope_matches_vanilla_frame_interpolation_and_visibility() {
     let mut state = HudRenderRuntime::default();
 

@@ -32,12 +32,13 @@ use bbb_protocol::{
     ComponentStyle, RichTextComponent, StyledTextRun, MC_VERSION,
 };
 use bbb_renderer::{
-    hud_command_block_editor_layout, hud_jigsaw_block_editor_layout,
-    hud_minecart_command_block_editor_layout, hud_structure_block_editor_layout,
-    hud_test_block_editor_layout, hud_test_instance_block_editor_layout, sign_text_base_color,
-    BlockDestroyOverlay, BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment,
-    CloudFrame, ConduitModelPart, DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine,
-    DebugTextBillboard, EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
+    hud_air_supply_pop, hud_air_supply_visible, hud_command_block_editor_layout,
+    hud_jigsaw_block_editor_layout, hud_minecart_command_block_editor_layout,
+    hud_structure_block_editor_layout, hud_test_block_editor_layout,
+    hud_test_instance_block_editor_layout, sign_text_base_color, BlockDestroyOverlay,
+    BlockEntityCrumbling, CameraPose, ClearColor, CloudEnvironment, CloudFrame, ConduitModelPart,
+    DebugCuboidFace, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
+    EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
     HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
@@ -762,6 +763,7 @@ pub(crate) struct HudRenderRuntime {
     vignette: vignette::VignetteRuntime,
     scope_scale: f32,
     player_health: HudPlayerHealthPresentation,
+    last_bubble_pop_sound_played: i32,
     smithing_screen: smithing_screen::SmithingScreenRuntime,
 }
 
@@ -777,6 +779,12 @@ struct HudPlayerHealthPresentation {
 struct HudPlayerHealthFrame {
     display_health: i32,
     blinking: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct HudAirBubblePopSound {
+    volume: f32,
+    pitch: f32,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -966,6 +974,29 @@ impl HudRenderRuntime {
             display_health: self.player_health.display_health,
             blinking,
         }
+    }
+
+    fn air_bubble_pop_sound(
+        &mut self,
+        state: HudAirSupply,
+        extracted: bool,
+    ) -> Option<HudAirBubblePopSound> {
+        if !extracted || !hud_air_supply_visible(state) {
+            return None;
+        }
+        if !state.eye_in_water {
+            self.last_bubble_pop_sound_played = 0;
+            return None;
+        }
+        let pop = hud_air_supply_pop(state)?;
+        if self.last_bubble_pop_sound_played == pop.bubble {
+            return None;
+        }
+        self.last_bubble_pop_sound_played = pop.bubble;
+        Some(HudAirBubblePopSound {
+            volume: 0.5 + 0.1 * (pop.empty_bubbles - 2).max(0) as f32,
+            pitch: 1.0 + 0.1 * (pop.empty_bubbles - 4).max(0) as f32,
+        })
     }
 
     fn win_screen_realtime_delta_ticks(
@@ -3300,12 +3331,28 @@ pub(crate) fn update_renderer_from_publication(
     // `DATA_AIR_SUPPLY_ID` int, the fixed 300-tick `getMaxAirSupply()`, the
     // `isEyeInFluid(WATER)` gate, and the client tick for the all-empty
     // wobble; the renderer applies the `isUnderWater || air < max` visibility.
-    let hud_air = Some(HudAirSupply {
+    let hud_air_state = HudAirSupply {
         air: world.local_player_air_supply(),
         max_air: world.local_player_max_air_supply(),
         eye_in_water: world.local_player_eye_in_water(),
         tick_count: publication.client_tick_index,
-    });
+    };
+    if let Some(position) = world.local_player_pose().map(|pose| pose.position) {
+        if let Some(sound) = hud_render_runtime.air_bubble_pop_sound(
+            hud_air_state,
+            !input.hide_gui() && game_mode_can_hurt_player,
+        ) {
+            mailbox.enqueue(
+                crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
+                    level_generation: world.client_level_generation(),
+                    position,
+                    volume: sound.volume,
+                    pitch: sound.pitch,
+                },
+            );
+        }
+    }
+    let hud_air = Some(hud_air_state);
     // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the local
     // player's living vehicle health + MAX_HEALTH attribute; the renderer
     // derives the heart count (`getVehicleMaxHearts`) and replaces the food

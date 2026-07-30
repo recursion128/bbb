@@ -1003,10 +1003,16 @@ pub(super) enum HudAirBubbleIcon {
     Empty,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct HudAirBubblePop {
+    pub(crate) bubble: i32,
+    pub(crate) empty_bubbles: i32,
+}
+
 /// Vanilla `Gui.extractAirBubbles`'s visibility gate (Gui.java:888-891):
 /// the row draws only while the eye is in water or the clamped air supply is
 /// below the max (`isUnderWater || currentAirSupplyTicks < maxAirSupplyTicks`).
-pub(super) fn hud_air_bubbles_visible(air: i32, max_air: i32, eye_in_water: bool) -> bool {
+pub(crate) fn hud_air_bubbles_visible(air: i32, max_air: i32, eye_in_water: bool) -> bool {
     eye_in_water || air.clamp(0, max_air) < max_air
 }
 
@@ -1015,6 +1021,45 @@ pub(super) fn hud_air_bubbles_visible(air: i32, max_air: i32, eye_in_water: bool
 /// float-ceil `Mth.ceil` (negative intermediates round up to 0).
 fn current_air_supply_bubble(current_air: i32, max_air: i32, tick_offset: i32) -> i32 {
     (((current_air + tick_offset) * 10) as f32 / max_air as f32).ceil() as i32
+}
+
+#[derive(Debug, Clone, Copy)]
+struct HudAirBubbleLayout {
+    full_bubbles: i32,
+    popping_bubble: i32,
+    empty_bubbles: i32,
+}
+
+fn hud_air_bubble_layout(air: i32, max_air: i32, eye_in_water: bool) -> HudAirBubbleLayout {
+    let current_air = air.clamp(0, max_air);
+    let empty_delay = if current_air != 0 && eye_in_water {
+        1
+    } else {
+        0
+    };
+    HudAirBubbleLayout {
+        full_bubbles: current_air_supply_bubble(current_air, max_air, -2),
+        popping_bubble: current_air_supply_bubble(current_air, max_air, 0),
+        empty_bubbles: HUD_AIR_BUBBLES_PER_ROW as i32
+            - current_air_supply_bubble(current_air, max_air, empty_delay),
+    }
+}
+
+/// The one popping bubble extracted by vanilla for this air-supply frame,
+/// together with the empty-bubble count used by `playAirBubblePoppedSound`.
+pub(crate) fn hud_air_bubble_pop(
+    air: i32,
+    max_air: i32,
+    eye_in_water: bool,
+) -> Option<HudAirBubblePop> {
+    if !eye_in_water {
+        return None;
+    }
+    let layout = hud_air_bubble_layout(air, max_air, eye_in_water);
+    (layout.full_bubbles != layout.popping_bubble).then(|| HudAirBubblePop {
+        bubble: layout.popping_bubble,
+        empty_bubbles: layout.empty_bubbles,
+    })
 }
 
 /// The 10 air-bubble slots for one frame, mirroring `Gui.extractAirBubbles`
@@ -1033,26 +1078,17 @@ pub(super) fn hud_air_bubble_icons(
     max_air: i32,
     eye_in_water: bool,
 ) -> [Option<HudAirBubbleIcon>; HUD_AIR_BUBBLES_PER_ROW as usize] {
-    let current_air = air.clamp(0, max_air);
-    let full_bubbles = current_air_supply_bubble(current_air, max_air, -2);
-    let popping_position = current_air_supply_bubble(current_air, max_air, 0);
-    let empty_delay = if current_air != 0 && eye_in_water {
-        1
-    } else {
-        0
-    };
-    let empty_bubbles = HUD_AIR_BUBBLES_PER_ROW as i32
-        - current_air_supply_bubble(current_air, max_air, empty_delay);
-    let is_popping = full_bubbles != popping_position;
+    let layout = hud_air_bubble_layout(air, max_air, eye_in_water);
+    let is_popping = layout.full_bubbles != layout.popping_bubble;
 
     let mut icons = [None; HUD_AIR_BUBBLES_PER_ROW as usize];
     for (index, icon) in icons.iter_mut().enumerate() {
         let bubble = index as i32 + 1;
-        *icon = if bubble <= full_bubbles {
+        *icon = if bubble <= layout.full_bubbles {
             Some(HudAirBubbleIcon::Full)
-        } else if is_popping && bubble == popping_position && eye_in_water {
+        } else if is_popping && bubble == layout.popping_bubble && eye_in_water {
             Some(HudAirBubbleIcon::Popping)
-        } else if bubble > HUD_AIR_BUBBLES_PER_ROW as i32 - empty_bubbles {
+        } else if bubble > HUD_AIR_BUBBLES_PER_ROW as i32 - layout.empty_bubbles {
             Some(HudAirBubbleIcon::Empty)
         } else {
             None
@@ -2828,6 +2864,20 @@ mod tests {
         assert_eq!(hud_air_bubble_icons(0, 300, true), [Some(Empty); 10]);
         // Negative (drowning-damage) supplies clamp to 0 first.
         assert_eq!(hud_air_bubble_icons(-10, 300, true), [Some(Empty); 10]);
+    }
+
+    #[test]
+    fn hud_air_bubble_pop_exposes_the_sound_inputs_from_the_same_formulas() {
+        assert_eq!(
+            hud_air_bubble_pop(61, 300, true),
+            Some(HudAirBubblePop {
+                bubble: 3,
+                empty_bubbles: 7,
+            })
+        );
+        assert_eq!(hud_air_bubble_pop(60, 300, true), None);
+        assert_eq!(hud_air_bubble_pop(61, 300, false), None);
+        assert_eq!(hud_air_bubble_pop(-10, 300, true), None);
     }
 
     #[test]

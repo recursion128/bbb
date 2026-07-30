@@ -79,9 +79,9 @@ use self::layout::{
     absolute_hud_rect, air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
     experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
-    hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
-    hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
-    hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
+    hud_air_bubble_pop as air_bubble_pop, hud_air_bubble_wobble_offsets, hud_air_bubbles_visible,
+    hud_armor_fill, hud_boss_bar_fill_uv, hud_boss_bar_name_origin, hud_boss_bar_progress_width,
+    hud_boss_bar_rows, hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
     hud_experience_level_text_origin, hud_food_fill, hud_food_jitter_offsets,
     hud_health_row_geometry, hud_inventory_text_label_origin,
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
@@ -1272,6 +1272,28 @@ pub struct HudAirSupply {
     pub eye_in_water: bool,
     /// Client tick counter (vanilla `Gui.tickCount`) gating the empty-row wobble.
     pub tick_count: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudAirBubblePop {
+    /// Vanilla's one-based `airBubble` loop index.
+    pub bubble: i32,
+    /// `emptyAirBubbles`, used by the sound volume and pitch formulas.
+    pub empty_bubbles: i32,
+}
+
+/// Returns whether vanilla extracts the air row for this frame.
+pub fn hud_air_supply_visible(state: HudAirSupply) -> bool {
+    hud_air_bubbles_visible(state.air, state.max_air, state.eye_in_water)
+}
+
+/// Returns the popping bubble and its sound inputs from the same formulas used
+/// by the air-bubble renderer.
+pub fn hud_air_supply_pop(state: HudAirSupply) -> Option<HudAirBubblePop> {
+    air_bubble_pop(state.air, state.max_air, state.eye_in_water).map(|pop| HudAirBubblePop {
+        bubble: pop.bubble,
+        empty_bubbles: pop.empty_bubbles,
+    })
 }
 
 /// One frame's vehicle-health inputs (vanilla `Gui.extractVehicleHealth` /

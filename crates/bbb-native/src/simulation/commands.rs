@@ -8,6 +8,7 @@ use std::{
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
+use bbb_protocol::packets::Vec3d;
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudFontGlyphMap,
     HudGameEventHitTarget, HudPlayerReportingHitTarget, HudSocialInteractionsHitTarget,
@@ -71,6 +72,12 @@ pub(crate) enum SimulationCommand {
     GameEventScreenRenderDelta {
         generation: u64,
         delta_ticks: f32,
+    },
+    HudAirBubblePopSound {
+        level_generation: u64,
+        position: Vec3d,
+        volume: f32,
+        pitch: f32,
     },
     CursorLeft,
     ImePreedit {

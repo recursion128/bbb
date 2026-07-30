@@ -92,8 +92,8 @@ pub use crate::entity_models::{
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{
-    hud_book_layout, hud_game_rules_confirmation_buttons, hud_game_rules_layout,
-    hud_player_reporting_layout,
+    hud_air_supply_pop, hud_air_supply_visible, hud_book_layout,
+    hud_game_rules_confirmation_buttons, hud_game_rules_layout, hud_player_reporting_layout,
 };
 pub use crate::hud::{
     hud_command_block_editor_layout, hud_creative_inventory_background_layers,
@@ -104,11 +104,11 @@ pub use crate::hud::{
     hud_structure_block_editor_layout, hud_test_block_editor_layout,
     hud_test_instance_block_editor_layout, hud_wrap_styled_text, HudActionBarText,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
-    HudAdvancementTabSprite, HudAdvancementToast, HudAdvancementWidgetFrameSprite, HudAirSupply,
-    HudAsciiGlyph, HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode, HudBookScreen,
-    HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext, HudChatHitTarget,
-    HudChatHitTargetKind, HudChatInteraction, HudChatMessage, HudChatTag, HudChatTagKind,
-    HudCodeOfConductRect, HudCodeOfConductScreen, HudCommandBlockEditorKind,
+    HudAdvancementTabSprite, HudAdvancementToast, HudAdvancementWidgetFrameSprite, HudAirBubblePop,
+    HudAirSupply, HudAsciiGlyph, HudBookHitTarget, HudBookInteraction, HudBookLayout, HudBookMode,
+    HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
+    HudChatHitTarget, HudChatHitTargetKind, HudChatInteraction, HudChatMessage, HudChatTag,
+    HudChatTagKind, HudCodeOfConductRect, HudCodeOfConductScreen, HudCommandBlockEditorKind,
     HudCommandBlockEditorLayout, HudCommandBlockEditorRect, HudCommandBlockEditorScreen,
     HudCommandSuggestionEntry, HudCommandSuggestionTooltip, HudCommandSuggestions,
     HudCommandSuggestionsLayout, HudComponentTextRun, HudContextualBar,

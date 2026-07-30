@@ -62,6 +62,7 @@ const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
+const HUD_BUBBLE_POP_SOUND_EVENT: &str = "minecraft:ui.hud.bubble_pop";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
 const GUARDIAN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.guardian.attack";
 const SNIFFER_DIGGING_SOUND_EVENT: &str = "minecraft:entity.sniffer.digging";
@@ -2751,6 +2752,27 @@ impl WorldStore {
         state
     }
 
+    /// Vanilla `Gui.playAirBubblePoppedSound` calls
+    /// `LocalPlayer.playSound`, which emits an immediate positioned sound at
+    /// the player's feet through `ClientLevel.playLocalSound`.
+    pub fn hud_air_bubble_pop_sound(
+        &mut self,
+        position: ProtocolVec3d,
+        volume: f32,
+        pitch: f32,
+    ) -> SoundEventState {
+        let seed = self.next_sound_seed();
+        self.record_positioned_sound(SoundEventState {
+            sound: direct_sound_holder(HUD_BUBBLE_POP_SOUND_EVENT),
+            source: SoundSource::Players.as_str().to_string(),
+            position,
+            volume,
+            pitch,
+            seed,
+            distance_delay: false,
+        })
+    }
+
     pub(crate) fn record_explosion_sound(
         &mut self,
         explosion: &crate::ExplosionEventState,
@@ -5128,6 +5150,28 @@ mod tests {
         let recorded = store.record_positioned_sound(sound);
 
         assert_eq!(store.last_sound(), Some(&recorded));
+        assert_eq!(store.counters().sound_packets, 0);
+    }
+
+    #[test]
+    fn hud_air_bubble_pop_sound_is_player_positioned_and_advances_the_sound_seed() {
+        let mut store = WorldStore::new();
+        let position = vec3(1.25, 64.0, -3.5);
+
+        let first = store.hud_air_bubble_pop_sound(position, 1.0, 1.3);
+        let second = store.hud_air_bubble_pop_sound(position, 0.5, 1.0);
+
+        assert_eq!(
+            first.sound.location.as_deref(),
+            Some("minecraft:ui.hud.bubble_pop")
+        );
+        assert_eq!(first.source, "player");
+        assert_eq!(first.position, position);
+        assert_close(first.volume, 1.0);
+        assert_close(first.pitch, 1.3);
+        assert!(!first.distance_delay);
+        assert_ne!(first.seed, second.seed);
+        assert_eq!(store.last_sound(), Some(&second));
         assert_eq!(store.counters().sound_packets, 0);
     }
 

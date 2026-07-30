@@ -282,6 +282,21 @@ impl SimulationInputRuntime {
                     i32::try_from(self.surface_size.height).unwrap_or(i32::MAX),
                 );
             }
+            SimulationCommand::HudAirBubblePopSound {
+                level_generation,
+                position,
+                volume,
+                pitch,
+            } => {
+                apply_hud_air_bubble_pop_sound(
+                    context.world,
+                    context.audio_events,
+                    level_generation,
+                    position,
+                    volume,
+                    pitch,
+                );
+            }
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
                 self.code_of_conduct_overlay.handle_cursor_left();
@@ -2067,6 +2082,23 @@ fn simulation_command_profile_kind(command: &SimulationCommand) -> SimulationCom
     }
 }
 
+fn apply_hud_air_bubble_pop_sound(
+    world: &mut WorldStore,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    level_generation: u64,
+    position: bbb_protocol::packets::Vec3d,
+    volume: f32,
+    pitch: f32,
+) {
+    if world.client_level_generation() != level_generation {
+        return;
+    }
+    let state = world.hud_air_bubble_pop_sound(position, volume, pitch);
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.play_positioned_sound(&state);
+    }
+}
+
 fn debug_profiling_commands(
     requests: Vec<DebugProfilingToggleRequest>,
 ) -> Vec<DebugProfilingCommand> {
@@ -2544,6 +2576,43 @@ mod tests {
 
         runtime.terrain_readiness = Some((8, false));
         assert!(!runtime.player_section_ready(8));
+    }
+
+    #[test]
+    fn hud_air_bubble_pop_command_rejects_stale_level_generations() {
+        let mut world = WorldStore::new();
+        let position = bbb_protocol::packets::Vec3d {
+            x: 1.25,
+            y: 64.0,
+            z: -3.5,
+        };
+        let mut audio_events = None;
+        let level_generation = world.client_level_generation();
+
+        apply_hud_air_bubble_pop_sound(
+            &mut world,
+            &mut audio_events,
+            level_generation.saturating_add(1),
+            position,
+            1.0,
+            1.3,
+        );
+        assert!(world.last_sound().is_none());
+
+        apply_hud_air_bubble_pop_sound(
+            &mut world,
+            &mut audio_events,
+            level_generation,
+            position,
+            1.0,
+            1.3,
+        );
+        let sound = world.last_sound().expect("current-generation HUD sound");
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:ui.hud.bubble_pop")
+        );
+        assert_eq!(sound.position, position);
     }
 
     #[test]
