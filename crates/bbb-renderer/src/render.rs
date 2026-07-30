@@ -1560,14 +1560,7 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
-            && (self.entity_model_outline_mesh.is_some()
-                || self.entity_model_outline_cull_mesh.is_some());
-        if has_entity_outline_meshes {
-            let atlas = self
-                .entity_model_texture_atlas
-                .as_ref()
-                .expect("outline meshes require the static entity atlas");
+        if self.has_entity_outline_content() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1589,24 +1582,44 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
-            if let Some(mesh) = &self.entity_model_outline_mesh {
-                pass.set_pipeline(&self.entity_model_outline_pipeline);
-                stats.pipeline_switches += 1;
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                stats.entity_model_draw_calls += 1;
+            if let Some(atlas) = &self.entity_model_texture_atlas {
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                if let Some(mesh) = &self.entity_model_outline_mesh {
+                    pass.set_pipeline(&self.entity_model_outline_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    stats.entity_model_draw_calls += 1;
+                }
+                if let Some(mesh) = &self.entity_model_outline_cull_mesh {
+                    pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    stats.entity_model_draw_calls += 1;
+                }
             }
-            if let Some(mesh) = &self.entity_model_outline_cull_mesh {
-                pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
-                stats.pipeline_switches += 1;
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                stats.entity_model_draw_calls += 1;
-            }
+            self.draw_resident_item_models(
+                &mut pass,
+                crate::item_models::ItemModelDrawTarget::EntityOutline,
+                &[crate::item_models::ItemModelDrawPhase::Outline],
+                Some(&[crate::item_models::ItemModelAtlasKind::Blocks]),
+                stats,
+            );
         }
+    }
+
+    fn has_entity_outline_content(&self) -> bool {
+        let has_textured_meshes = self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_outline_mesh.is_some()
+                || self.entity_model_outline_cull_mesh.is_some());
+        has_textured_meshes
+            || self.item_model_residency.draws().iter().any(|draw| {
+                draw.target == crate::item_models::ItemModelDrawTarget::EntityOutline
+                    && draw.phase == crate::item_models::ItemModelDrawPhase::Outline
+            })
     }
 
     fn translucent_target_pass(
@@ -2152,10 +2165,7 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) -> Result<()> {
-        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
-            && (self.entity_model_outline_mesh.is_some()
-                || self.entity_model_outline_cull_mesh.is_some());
-        if has_entity_outline_meshes {
+        if self.has_entity_outline_content() {
             if let Some(post_effect_graphs) = &self.post_effect_graphs {
                 let draw_calls = post_effect_graphs.execute_color_graph(
                     &self.device,
@@ -4040,7 +4050,7 @@ impl Renderer {
                     &self.resident_item_model_end_gateway_pipeline
                 }
                 crate::item_models::ItemModelDrawPhase::Outline => {
-                    unreachable!("resident outline models use the dedicated entity-outline pass")
+                    &self.resident_item_model_outline_pipeline
                 }
             };
             if active_phase != Some(draw.phase) {
@@ -4137,6 +4147,7 @@ impl Renderer {
                     draw.phase,
                     crate::item_models::ItemModelDrawPhase::EndPortal
                         | crate::item_models::ItemModelDrawPhase::EndGateway
+                        | crate::item_models::ItemModelDrawPhase::Outline
                 ) {
                     pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 }
@@ -5140,7 +5151,7 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests {
-    use super::{TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+    use super::{Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
 
     /// The frame's step sequence in submission order. `render()` calls exactly
     /// these methods in exactly this order, and `render_steps_are_defined_in_frame_
@@ -7966,5 +7977,62 @@ mod tests {
                 && weather < combine,
             "outline target write stays in the main pass while the post-chain runs before vanilla cloud/weather/transparency passes"
         );
+    }
+
+    #[test]
+    fn resident_item_model_entity_outline_draw_activates_the_shared_target() {
+        use crate::item_models::{
+            ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
+            ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+            ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelQuad,
+            ItemModelResidencyFrame,
+        };
+        use std::sync::Arc;
+
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let identity = ItemModelAssetIdentity::new("minecraft:carved_pumpkin", "facing=north", 0);
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame {
+                assets: vec![ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: ItemModelAtlasKind::Blocks,
+                    geometry_class: ItemModelGeometryClass::Solid,
+                    source: ItemModelAssetSource::Quads(Arc::from([ItemModelQuad {
+                        corners: [
+                            [0.0, 0.0, 0.0],
+                            [16.0, 0.0, 0.0],
+                            [16.0, 16.0, 0.0],
+                            [0.0, 16.0, 0.0],
+                        ],
+                        uvs: [[0.0, 0.0]; 4],
+                        tint: [1.0; 4],
+                        normal: [0.0, 0.0, 1.0],
+                        shade: 1.0,
+                        translucent: false,
+                    }])),
+                }],
+                instances: vec![ItemModelInstanceRequest {
+                    identity,
+                    atlas: ItemModelAtlasKind::Blocks,
+                    geometry_class: ItemModelGeometryClass::Solid,
+                    transform: glam::Mat4::IDENTITY,
+                    tint: [0.2, 0.4, 0.8, 1.0],
+                    light: [0.0; 2],
+                    overlay: [0.0; 2],
+                    foil: ItemModelFoil::None,
+                    target: ItemModelDrawTarget::EntityOutline,
+                    phase: ItemModelDrawPhase::Outline,
+                    submit_order: 0,
+                    scissor: None,
+                }],
+                special_items: Vec::new(),
+            })
+            .unwrap();
+
+        assert!(renderer.entity_model_texture_atlas.is_none());
+        assert!(renderer.entity_model_outline_mesh.is_none());
+        assert!(renderer.has_entity_outline_content());
     }
 }

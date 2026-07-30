@@ -85,8 +85,8 @@ use crate::{
         create_resident_item_model_cutout_z_offset_pipeline,
         create_resident_item_model_end_gateway_pipeline,
         create_resident_item_model_end_portal_pipeline, create_resident_item_model_glint_pipeline,
-        create_resident_item_model_pattern_pipeline, create_resident_item_model_pipeline,
-        create_resident_item_model_solid_no_cutout_pipeline,
+        create_resident_item_model_outline_pipeline, create_resident_item_model_pattern_pipeline,
+        create_resident_item_model_pipeline, create_resident_item_model_solid_no_cutout_pipeline,
         create_resident_item_model_translucent_no_cull_pipeline,
         create_resident_item_model_translucent_pipeline,
         create_resident_item_model_z_offset_forward_pipeline, DisplayTextSurface,
@@ -377,6 +377,7 @@ pub struct Renderer {
     pub(super) resident_item_model_glint_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_end_portal_pipeline: wgpu::RenderPipeline,
     pub(super) resident_item_model_end_gateway_pipeline: wgpu::RenderPipeline,
+    pub(super) resident_item_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) hud_item_glint_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) translucent_debug_line_pipeline: wgpu::RenderPipeline,
@@ -1544,6 +1545,11 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
             );
+        let resident_item_model_outline_pipeline = create_resident_item_model_outline_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+        );
         let hud_item_glint_pipeline = create_hud_item_glint_pipeline(
             &device,
             format,
@@ -1858,6 +1864,7 @@ impl Renderer {
             resident_item_model_glint_pipeline,
             resident_item_model_end_portal_pipeline,
             resident_item_model_end_gateway_pipeline,
+            resident_item_model_outline_pipeline,
             hud_item_glint_pipeline,
             selection_pipeline,
             translucent_debug_line_pipeline,

@@ -1145,6 +1145,53 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+// Vanilla `core/rendertype_outline`: the blocks-atlas alpha is only a mask;
+// the outline color comes from `OutlineBufferSource.EntityOutlineGenerator`.
+const ITEM_MODEL_RESIDENT_OUTLINE_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var item_atlas: texture_2d<f32>;
+@group(0) @binding(2) var item_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(5) model_0: vec4<f32>,
+    @location(6) model_1: vec4<f32>,
+    @location(7) model_2: vec4<f32>,
+    @location(8) model_3: vec4<f32>,
+    @location(12) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
+    out.position = camera.view_proj * model * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(item_atlas, item_sampler, input.uv);
+    if (texel.a == 0.0) {
+        discard;
+    }
+    return vec4<f32>(input.tint.rgb, 1.0);
+}
+"#;
+
 fn resident_z_offset_forward_shader() -> String {
     ITEM_MODEL_RESIDENT_SHADER
         .replace(
@@ -1281,6 +1328,31 @@ pub(crate) fn create_resident_item_model_pipeline(
         "bbb-item-model-resident-pipeline",
         wgpu::BlendState::REPLACE,
     )
+}
+
+pub(crate) fn create_resident_item_model_outline_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-item-model-resident-outline-pipeline")
+        .shader(
+            "bbb-item-model-resident-outline-shader",
+            ITEM_MODEL_RESIDENT_OUTLINE_SHADER,
+        )
+        .layout(
+            "bbb-item-model-resident-outline-pipeline-layout",
+            &[bind_group_layout],
+        )
+        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+        .color_target(format, ITEM_MODEL_RESIDENT_OUTLINE_BLEND)
+        .cull_mode(ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_WRITE_ENABLED,
+            ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 pub(crate) fn create_resident_item_model_solid_no_cutout_pipeline(
@@ -1676,6 +1748,12 @@ fn create_resident_item_model_pipeline_with_blend(
         true,
     )
 }
+
+const ITEM_MODEL_RESIDENT_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
+const ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE: Option<wgpu::Face> = None;
+const ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_WRITE_ENABLED: bool = true;
+const ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_COMPARE: wgpu::CompareFunction =
+    wgpu::CompareFunction::LessEqual;
 
 #[allow(clippy::too_many_arguments)]
 fn create_resident_item_model_pipeline_with_state(
@@ -2231,7 +2309,7 @@ mod tests {
     }
 
     #[test]
-    fn entity_outline_target_and_phase_are_explicit_residency_metadata() {
+    fn resident_item_model_entity_outline_target_and_phase_are_explicit_metadata() {
         assert!(!ItemModelDrawTarget::EntityOutline.is_gui());
         assert_ne!(
             ItemModelDrawTarget::EntityOutline,
@@ -2246,6 +2324,28 @@ mod tests {
         let shader = resident_no_alpha_cutout_shader();
         assert!(!shader.contains("discard"));
         assert!(shader.contains("textureSample(item_atlas, item_sampler, input.uv)"));
+    }
+
+    #[test]
+    fn resident_item_model_outline_shader_matches_vanilla_blocks_atlas_outline() {
+        assert!(ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("if (texel.a == 0.0)"));
+        assert!(
+            ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("return vec4<f32>(input.tint.rgb, 1.0)")
+        );
+        assert!(!ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("lightmap"));
+        assert!(!ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("overlay"));
+        assert!(!ITEM_MODEL_RESIDENT_OUTLINE_SHADER.contains("fog"));
+    }
+
+    #[test]
+    fn resident_item_model_outline_pipeline_matches_vanilla_outline_no_cull_state() {
+        assert_eq!(ITEM_MODEL_RESIDENT_OUTLINE_BLEND, None);
+        assert_eq!(ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE, None);
+        assert!(ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
     }
 
     fn quad(translucent: bool) -> ItemModelQuad {
