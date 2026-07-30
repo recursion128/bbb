@@ -83,26 +83,14 @@ fn sheep_wool_layer_parts_match_vanilla_26_1_fur_layer() {
 
 #[test]
 fn sheep_wool_color_table_matches_vanilla_color_lerper() {
-    let cases: [(u8, SheepWoolColor, [u8; 3]); 16] = [
-        (0, SheepWoolColor::White, [230, 230, 230]),
-        (1, SheepWoolColor::Orange, [186, 96, 21]),
-        (2, SheepWoolColor::Magenta, [149, 58, 141]),
-        (3, SheepWoolColor::LightBlue, [43, 134, 163]),
-        (4, SheepWoolColor::Yellow, [190, 162, 45]),
-        (5, SheepWoolColor::Lime, [96, 149, 23]),
-        (6, SheepWoolColor::Pink, [182, 104, 127]),
-        (7, SheepWoolColor::Gray, [53, 59, 61]),
-        (8, SheepWoolColor::LightGray, [117, 117, 113]),
-        (9, SheepWoolColor::Cyan, [16, 117, 117]),
-        (10, SheepWoolColor::Purple, [102, 37, 138]),
-        (11, SheepWoolColor::Blue, [45, 51, 127]),
-        (12, SheepWoolColor::Brown, [98, 63, 37]),
-        (13, SheepWoolColor::Green, [70, 93, 16]),
-        (14, SheepWoolColor::Red, [132, 34, 28]),
-        (15, SheepWoolColor::Black, [21, 21, 24]),
-    ];
-
-    for (id, color, [red, green, blue]) in cases {
+    for entry in bbb_render_types::VANILLA_DYE_COLORS {
+        let color = entry.color;
+        let id = color.vanilla_id();
+        let [red, green, blue] = [
+            ((entry.sheep_wool_color >> 16) & 0xff) as u8,
+            ((entry.sheep_wool_color >> 8) & 0xff) as u8,
+            (entry.sheep_wool_color & 0xff) as u8,
+        ];
         assert_eq!(SheepWoolColor::from_vanilla_id(id), color);
         assert_eq!(color.vanilla_id(), id);
         assert_eq!(
@@ -113,6 +101,42 @@ fn sheep_wool_color_table_matches_vanilla_color_lerper() {
                 f32::from(blue) / 255.0,
                 1.0
             ]
+        );
+
+        let model_key = |baby, sheared| {
+            EntityModelKind::Sheep {
+                baby,
+                sheared,
+                wool_color: color,
+                jeb: false,
+                age_ticks: 0.0,
+            }
+            .model_key()
+        };
+        let name = entry.serialized_name;
+        assert_eq!(
+            model_key(false, false),
+            if color == SheepWoolColor::White {
+                "sheep".to_owned()
+            } else {
+                format!("sheep_{name}")
+            }
+        );
+        assert_eq!(
+            model_key(true, false),
+            if color == SheepWoolColor::White {
+                "sheep_baby".to_owned()
+            } else {
+                format!("sheep_baby_{name}")
+            }
+        );
+        assert_eq!(
+            model_key(false, true),
+            if color == SheepWoolColor::White {
+                "sheep_sheared".to_owned()
+            } else {
+                format!("sheep_{name}_sheared")
+            }
         );
     }
     assert_eq!(SheepWoolColor::from_vanilla_id(99), SheepWoolColor::White);

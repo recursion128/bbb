@@ -877,3 +877,6 @@
 - **2026-07-30（entity selector option catalog 生成化闭环）**：
   `EntitySelectorOptions.bootStrap` 的 21 项注册顺序与 `canUse` 状态分类现由
   command Tree-sitter 生成链产出，公开 catalog 不再手抄名称与适用性 kind。
+- **2026-07-30（DyeColor/sheep presentation 单一所有权闭环）**：DyeColor
+  ordinal、名称、diffuse color 与 `ColorLerper.Type.SHEEP` 参数现由
+  `bbb-render-types` 生成并供 protocol/renderer 共用，羊颜色表与 enum 副本移除。

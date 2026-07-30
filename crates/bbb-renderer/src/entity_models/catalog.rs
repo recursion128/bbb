@@ -31,6 +31,7 @@ pub use bbb_render_types::{
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
     EntityDynamicTexture, EntityEquipmentAssetId, EntityEquipmentLayerTexture,
     EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
+    VanillaDyeColor as SheepWoolColor,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -1812,26 +1813,6 @@ impl PandaModelVariant {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SheepWoolColor {
-    White,
-    Orange,
-    Magenta,
-    LightBlue,
-    Yellow,
-    Lime,
-    Pink,
-    Gray,
-    LightGray,
-    Cyan,
-    Purple,
-    Blue,
-    Brown,
-    Green,
-    Red,
-    Black,
-}
-
 impl LlamaVariant {
     pub fn from_vanilla_id(id: i32) -> Self {
         match id.clamp(0, 3) {
@@ -1839,51 +1820,6 @@ impl LlamaVariant {
             1 => Self::White,
             2 => Self::Brown,
             _ => Self::Gray,
-        }
-    }
-}
-
-impl SheepWoolColor {
-    pub fn from_vanilla_id(id: u8) -> Self {
-        match id {
-            0 => Self::White,
-            1 => Self::Orange,
-            2 => Self::Magenta,
-            3 => Self::LightBlue,
-            4 => Self::Yellow,
-            5 => Self::Lime,
-            6 => Self::Pink,
-            7 => Self::Gray,
-            8 => Self::LightGray,
-            9 => Self::Cyan,
-            10 => Self::Purple,
-            11 => Self::Blue,
-            12 => Self::Brown,
-            13 => Self::Green,
-            14 => Self::Red,
-            15 => Self::Black,
-            _ => Self::White,
-        }
-    }
-
-    pub fn vanilla_id(self) -> u8 {
-        match self {
-            Self::White => 0,
-            Self::Orange => 1,
-            Self::Magenta => 2,
-            Self::LightBlue => 3,
-            Self::Yellow => 4,
-            Self::Lime => 5,
-            Self::Pink => 6,
-            Self::Gray => 7,
-            Self::LightGray => 8,
-            Self::Cyan => 9,
-            Self::Purple => 10,
-            Self::Blue => 11,
-            Self::Brown => 12,
-            Self::Green => 13,
-            Self::Red => 14,
-            Self::Black => 15,
         }
     }
 }

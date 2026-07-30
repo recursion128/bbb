@@ -4,6 +4,7 @@
 
 mod banner_pattern_types;
 pub mod cat_variants;
+mod dye_colors;
 mod entity_textures;
 mod hud_glyphs;
 mod map_backgrounds;
@@ -19,6 +20,10 @@ pub mod wolf_variants;
 pub mod zombie_nautilus_variants;
 
 pub use banner_pattern_types::BannerPatternKind;
+pub use dye_colors::{
+    VanillaDyeColor, VanillaDyeColorEntry, VANILLA_DYE_COLORS, VANILLA_DYE_COLOR_COUNT,
+    VANILLA_SHEEP_COLOR_DURATION_TICKS,
+};
 pub use entity_textures::{
     EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,

@@ -53,6 +53,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     resource_pack_response_action_entries,
     recipe_wire_type_entries,
     remote_debug_sample_type_entries,
+    sheep_color_lerper_entry,
     sound_source_entries,
     slot_display_type_entries,
     stat_catalog_entries,
@@ -1705,6 +1706,51 @@ public interface ConsumeEffect {
                 llama,
                 axolotl,
             )
+
+    def test_sheep_color_lerper_extracts_duration_brightness_and_white_override(
+        self,
+    ) -> None:
+        source = parse_source(
+            "fixture/ColorLerper.java",
+            b"""
+package fixture;
+class ColorLerper {
+  private static int getModifiedColor(DyeColor color, float brightness) {
+    if (color == DyeColor.WHITE) {
+      return -1644826;
+    }
+    int src = color.getTextureDiffuseColor();
+    return ARGB.color(
+        255,
+        Mth.floor(ARGB.red(src) * brightness),
+        Mth.floor(ARGB.green(src) * brightness),
+        Mth.floor(ARGB.blue(src) * brightness));
+  }
+  enum Type {
+    SHEEP(25, DyeColor.values(), 0.75F),
+    MUSIC_NOTE(30, MUSIC_NOTE_COLORS, 1.25F);
+    Type(int duration, DyeColor[] colors, float brightness) {}
+  }
+}
+""",
+        )
+        entry = sheep_color_lerper_entry(source)
+        self.assertEqual(entry.color_duration, 25)
+        self.assertEqual(entry.brightness, 0.75)
+        self.assertEqual(entry.white_argb, -1644826)
+
+        changed = parse_source(
+            "fixture/ColorLerper.java",
+            source.source.replace(
+                b"Mth.floor(ARGB.blue(src) * brightness)",
+                b"Mth.ceil(ARGB.blue(src) * brightness)",
+            ),
+        )
+        with self.assertRaisesRegex(
+            GameplayIdExtractionError,
+            "brightness formula changed",
+        ):
+            sheep_color_lerper_entry(changed)
 
     def test_attribute_modifier_types_preserve_ids_names_codecs_and_zero_fallback(self) -> None:
         modifier = parse_source(

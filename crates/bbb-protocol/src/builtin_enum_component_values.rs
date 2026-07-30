@@ -3,6 +3,8 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-gameplay-id-catalog.py --check
 
+use bbb_render_types::{VanillaDyeColor, VANILLA_DYE_COLORS, VANILLA_DYE_COLOR_COUNT};
+
 use crate::data_component_types::{
     VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_BASE_COLOR_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID, VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
@@ -70,105 +72,47 @@ impl BuiltinEnumValueTypeDescriptor {
     }
 }
 
-pub const VANILLA_DYE_COLOR_WHITE_ID: i32 = 0;
-pub const VANILLA_DYE_COLOR_ORANGE_ID: i32 = 1;
-pub const VANILLA_DYE_COLOR_MAGENTA_ID: i32 = 2;
-pub const VANILLA_DYE_COLOR_LIGHT_BLUE_ID: i32 = 3;
-pub const VANILLA_DYE_COLOR_YELLOW_ID: i32 = 4;
-pub const VANILLA_DYE_COLOR_LIME_ID: i32 = 5;
-pub const VANILLA_DYE_COLOR_PINK_ID: i32 = 6;
-pub const VANILLA_DYE_COLOR_GRAY_ID: i32 = 7;
-pub const VANILLA_DYE_COLOR_LIGHT_GRAY_ID: i32 = 8;
-pub const VANILLA_DYE_COLOR_CYAN_ID: i32 = 9;
-pub const VANILLA_DYE_COLOR_PURPLE_ID: i32 = 10;
-pub const VANILLA_DYE_COLOR_BLUE_ID: i32 = 11;
-pub const VANILLA_DYE_COLOR_BROWN_ID: i32 = 12;
-pub const VANILLA_DYE_COLOR_GREEN_ID: i32 = 13;
-pub const VANILLA_DYE_COLOR_RED_ID: i32 = 14;
-pub const VANILLA_DYE_COLOR_BLACK_ID: i32 = 15;
+pub const VANILLA_DYE_COLOR_WHITE_ID: i32 = VanillaDyeColor::White.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_ORANGE_ID: i32 = VanillaDyeColor::Orange.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_MAGENTA_ID: i32 = VanillaDyeColor::Magenta.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_LIGHT_BLUE_ID: i32 = VanillaDyeColor::LightBlue.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_YELLOW_ID: i32 = VanillaDyeColor::Yellow.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_LIME_ID: i32 = VanillaDyeColor::Lime.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_PINK_ID: i32 = VanillaDyeColor::Pink.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_GRAY_ID: i32 = VanillaDyeColor::Gray.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_LIGHT_GRAY_ID: i32 = VanillaDyeColor::LightGray.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_CYAN_ID: i32 = VanillaDyeColor::Cyan.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_PURPLE_ID: i32 = VanillaDyeColor::Purple.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_BLUE_ID: i32 = VanillaDyeColor::Blue.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_BROWN_ID: i32 = VanillaDyeColor::Brown.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_GREEN_ID: i32 = VanillaDyeColor::Green.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_RED_ID: i32 = VanillaDyeColor::Red.vanilla_id() as i32;
+pub const VANILLA_DYE_COLOR_BLACK_ID: i32 = VanillaDyeColor::Black.vanilla_id() as i32;
 
-pub const VANILLA_DYE_COLOR_VALUES: &[BuiltinEnumValueEntry] = &[
-    BuiltinEnumValueEntry {
-        id: 0,
-        constant_name: "WHITE",
-        serialized_name: "white",
-    },
-    BuiltinEnumValueEntry {
-        id: 1,
-        constant_name: "ORANGE",
-        serialized_name: "orange",
-    },
-    BuiltinEnumValueEntry {
-        id: 2,
-        constant_name: "MAGENTA",
-        serialized_name: "magenta",
-    },
-    BuiltinEnumValueEntry {
-        id: 3,
-        constant_name: "LIGHT_BLUE",
-        serialized_name: "light_blue",
-    },
-    BuiltinEnumValueEntry {
-        id: 4,
-        constant_name: "YELLOW",
-        serialized_name: "yellow",
-    },
-    BuiltinEnumValueEntry {
-        id: 5,
-        constant_name: "LIME",
-        serialized_name: "lime",
-    },
-    BuiltinEnumValueEntry {
-        id: 6,
-        constant_name: "PINK",
-        serialized_name: "pink",
-    },
-    BuiltinEnumValueEntry {
-        id: 7,
-        constant_name: "GRAY",
-        serialized_name: "gray",
-    },
-    BuiltinEnumValueEntry {
-        id: 8,
-        constant_name: "LIGHT_GRAY",
-        serialized_name: "light_gray",
-    },
-    BuiltinEnumValueEntry {
-        id: 9,
-        constant_name: "CYAN",
-        serialized_name: "cyan",
-    },
-    BuiltinEnumValueEntry {
-        id: 10,
-        constant_name: "PURPLE",
-        serialized_name: "purple",
-    },
-    BuiltinEnumValueEntry {
-        id: 11,
-        constant_name: "BLUE",
-        serialized_name: "blue",
-    },
-    BuiltinEnumValueEntry {
-        id: 12,
-        constant_name: "BROWN",
-        serialized_name: "brown",
-    },
-    BuiltinEnumValueEntry {
-        id: 13,
-        constant_name: "GREEN",
-        serialized_name: "green",
-    },
-    BuiltinEnumValueEntry {
-        id: 14,
-        constant_name: "RED",
-        serialized_name: "red",
-    },
-    BuiltinEnumValueEntry {
-        id: 15,
-        constant_name: "BLACK",
-        serialized_name: "black",
-    },
-];
+const EMPTY_DYE_COLOR_VALUE: BuiltinEnumValueEntry = BuiltinEnumValueEntry {
+    id: 0,
+    constant_name: "",
+    serialized_name: "",
+};
+
+const fn project_dye_color_values() -> [BuiltinEnumValueEntry; VANILLA_DYE_COLOR_COUNT] {
+    let mut output = [EMPTY_DYE_COLOR_VALUE; VANILLA_DYE_COLOR_COUNT];
+    let mut index = 0;
+    while index < VANILLA_DYE_COLOR_COUNT {
+        let entry = VANILLA_DYE_COLORS[index];
+        output[index] = BuiltinEnumValueEntry {
+            id: entry.color.vanilla_id() as i32,
+            constant_name: entry.constant_name,
+            serialized_name: entry.serialized_name,
+        };
+        index += 1;
+    }
+    output
+}
+
+const GENERATED_VANILLA_DYE_COLOR_VALUES: [BuiltinEnumValueEntry; VANILLA_DYE_COLOR_COUNT] =
+    project_dye_color_values();
+pub const VANILLA_DYE_COLOR_VALUES: &[BuiltinEnumValueEntry] = &GENERATED_VANILLA_DYE_COLOR_VALUES;
 
 pub const VANILLA_DYE_COLOR_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
     BuiltinEnumValueTypeDescriptor {
@@ -178,10 +122,20 @@ pub const VANILLA_DYE_COLOR_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_DYE_COLOR_VALUES,
     };
 
-pub const VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS: &[u32] = &[
-    0xF9FFFE, 0xF9801D, 0xC74EBD, 0x3AB3DA, 0xFED83D, 0x80C71F, 0xF38BAA, 0x474F52, 0x9D9D97,
-    0x169C9C, 0x8932B8, 0x3C44AA, 0x835432, 0x5E7C16, 0xB02E26, 0x1D1D21,
-];
+const fn project_dye_color_texture_diffuse_colors() -> [u32; VANILLA_DYE_COLOR_COUNT] {
+    let mut output = [0; VANILLA_DYE_COLOR_COUNT];
+    let mut index = 0;
+    while index < VANILLA_DYE_COLOR_COUNT {
+        output[index] = VANILLA_DYE_COLORS[index].texture_diffuse_color;
+        index += 1;
+    }
+    output
+}
+
+const GENERATED_VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS: [u32; VANILLA_DYE_COLOR_COUNT] =
+    project_dye_color_texture_diffuse_colors();
+pub const VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS: &[u32] =
+    &GENERATED_VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS;
 
 pub const VANILLA_FOX_VARIANT_RED_ID: i32 = 0;
 pub const VANILLA_FOX_VARIANT_SNOW_ID: i32 = 1;

@@ -396,6 +396,13 @@ class BuiltinEnumComponentEntry:
 
 
 @dataclass(frozen=True)
+class SheepColorLerperEntry:
+    color_duration: int
+    brightness: float
+    white_argb: int
+
+
+@dataclass(frozen=True)
 class TropicalFishPatternEntry:
     constant_name: str
     serialized_name: str
@@ -2599,6 +2606,209 @@ def item_component_value_type_entries(
     return item_uses, swings, rarities, map_values, firework_shapes
 
 
+def _builtin_enum_value_type_entry(
+    source: JavaSource,
+    constant_name: str,
+    expected_names: list[str],
+    id_argument: int,
+    name_argument: int,
+    nested_enum: str | None = None,
+    sparse_default: str | None = None,
+    texture_diffuse_argument: int | None = None,
+) -> BuiltinEnumValueTypeEntry:
+    enum_type = (
+        _nested_enum_type(source, nested_enum)
+        if nested_enum is not None
+        else source.types[0]
+    )
+    constants = (
+        _nested_enum_constants(source, nested_enum, constant_name)
+        if nested_enum is not None
+        else _enum_constants(source)
+    )
+    values = []
+    texture_diffuse_colors = []
+    for name, arguments in constants:
+        required_arguments = max(
+            id_argument,
+            name_argument,
+            texture_diffuse_argument if texture_diffuse_argument is not None else 0,
+        ) + 1
+        if len(arguments) < required_arguments:
+            expression = arguments[0] if arguments else source.expression(enum_type.node)
+            _fail(source, expression, f"{constant_name} {name} lacks id/name arguments")
+        values.append(
+            NamedComponentValueEntry(
+                name,
+                _integer(source, arguments[id_argument]),
+                _string(source, arguments[name_argument]),
+            )
+        )
+        if texture_diffuse_argument is not None:
+            texture_diffuse_color = _integer(
+                source, arguments[texture_diffuse_argument]
+            )
+            if not 0 <= texture_diffuse_color <= 0xFF_FFFF:
+                _fail(
+                    source,
+                    arguments[texture_diffuse_argument],
+                    f"{constant_name} {name} texture diffuse color is not RGB",
+                )
+            texture_diffuse_colors.append(texture_diffuse_color)
+    if [value.constant_name for value in values] != expected_names:
+        raise GameplayIdExtractionError(
+            f"{constant_name} values differ from expected declaration order"
+        )
+    _validate(values, constant_name, "value_id")
+    _validate(values, constant_name, "serialized_name")
+
+    if sparse_default is None:
+        strategy = _continuous_out_of_bounds_strategy_from_fields(
+            source, source.fields_for(enum_type), constant_name
+        )
+        if strategy not in {"ZERO", "CLAMP", "WRAP"}:
+            raise GameplayIdExtractionError(
+                f"unsupported {constant_name} id strategy {strategy}"
+            )
+        if [value.value_id for value in values] != list(range(len(values))):
+            raise GameplayIdExtractionError(
+                f"{constant_name} ids are not contiguous declaration order"
+            )
+        default_id = values[0].value_id
+    else:
+        by_id = [
+            field
+            for field in source.fields_for(enum_type)
+            if field.name == "BY_ID" and field.initializer is not None
+        ]
+        defaults = [
+            field
+            for field in source.fields_for(enum_type)
+            if field.name == "DEFAULT" and field.initializer is not None
+        ]
+        if len(by_id) != 1 or len(defaults) != 1:
+            raise GameplayIdExtractionError(
+                f"{source.relative_path}: expected initialized {constant_name} BY_ID and DEFAULT"
+            )
+        initializer = by_id[0].initializer
+        name = initializer.node.child_by_field_name("name")
+        arguments = initializer.node.child_by_field_name("arguments")
+        if (
+            initializer.node.type != "method_invocation"
+            or name is None
+            or source.text(name) != "sparse"
+            or arguments is None
+            or len(arguments.named_children) != 3
+            or source.expression(arguments.named_children[-1]).canonical != "DEFAULT"
+            or defaults[0].initializer.canonical != sparse_default
+        ):
+            _fail(source, initializer, f"{constant_name} must use sparse DEFAULT lookup")
+        strategy = "SPARSE"
+        default_id = next(
+            value.value_id
+            for value in values
+            if value.constant_name == sparse_default
+        )
+    return BuiltinEnumValueTypeEntry(
+        constant_name,
+        strategy,
+        default_id,
+        tuple(values),
+        tuple(texture_diffuse_colors)
+        if texture_diffuse_argument is not None
+        else None,
+    )
+
+
+def dye_color_value_type_entry(source: JavaSource) -> BuiltinEnumValueTypeEntry:
+    return _builtin_enum_value_type_entry(
+        source,
+        "DYE_COLOR",
+        [
+            "WHITE",
+            "ORANGE",
+            "MAGENTA",
+            "LIGHT_BLUE",
+            "YELLOW",
+            "LIME",
+            "PINK",
+            "GRAY",
+            "LIGHT_GRAY",
+            "CYAN",
+            "PURPLE",
+            "BLUE",
+            "BROWN",
+            "GREEN",
+            "RED",
+            "BLACK",
+        ],
+        0,
+        1,
+        texture_diffuse_argument=2,
+    )
+
+
+def sheep_color_lerper_entry(source: JavaSource) -> SheepColorLerperEntry:
+    constants = _nested_enum_constants(source, "Type", "color lerper type")
+    sheep = [arguments for name, arguments in constants if name == "SHEEP"]
+    if len(sheep) != 1 or len(sheep[0]) != 3:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one three-argument Type.SHEEP constant"
+        )
+    arguments = sheep[0]
+    if arguments[1].canonical != "DyeColor.values ()":
+        _fail(source, arguments[1], "Type.SHEEP color source is not DyeColor.values()")
+    if arguments[2].node.type != "decimal_floating_point_literal":
+        _fail(source, arguments[2], "Type.SHEEP brightness is not a float literal")
+    try:
+        brightness = float(
+            arguments[2].canonical.replace("_", "").removesuffix("F").removesuffix("f")
+        )
+    except ValueError:
+        _fail(source, arguments[2], "Type.SHEEP brightness is not a float literal")
+    if not math.isfinite(brightness) or brightness <= 0.0:
+        _fail(source, arguments[2], "Type.SHEEP brightness must be positive and finite")
+
+    methods = [method for method in source.methods if method.name == "getModifiedColor"]
+    if len(methods) != 1 or methods[0].body is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one getModifiedColor method"
+        )
+    method = methods[0]
+    if_nodes = [node for node in descendants(method.node) if node.type == "if_statement"]
+    return_nodes = [
+        node for node in descendants(method.node) if node.type == "return_statement"
+    ]
+    if len(if_nodes) != 1 or len(return_nodes) != 2:
+        _fail(source, source.expression(method.node), "getModifiedColor shape changed")
+    condition = if_nodes[0].child_by_field_name("condition")
+    if (
+        condition is None
+        or source.expression(condition).canonical != "(color == DyeColor.WHITE)"
+        or len(return_nodes[0].named_children) != 1
+        or len(return_nodes[1].named_children) != 1
+    ):
+        _fail(source, source.expression(method.node), "getModifiedColor white branch changed")
+    white_argb = _signed_integer(
+        source, source.expression(return_nodes[0].named_children[0])
+    )
+    modified = source.expression(return_nodes[1].named_children[0])
+    if modified.canonical != (
+        "ARGB.color (255, Mth.floor (ARGB.red (src) * brightness), "
+        "Mth.floor (ARGB.green (src) * brightness), "
+        "Mth.floor (ARGB.blue (src) * brightness))"
+    ):
+        _fail(source, modified, "getModifiedColor brightness formula changed")
+    color_duration = _integer(source, arguments[0])
+    if color_duration <= 0:
+        _fail(source, arguments[0], "Type.SHEEP color duration must be positive")
+    return SheepColorLerperEntry(
+        color_duration=color_duration,
+        brightness=brightness,
+        white_argb=white_argb,
+    )
+
+
 def builtin_enum_component_value_entries(
     data_components_source: JavaSource,
     dye_color_source: JavaSource,
@@ -2611,137 +2821,20 @@ def builtin_enum_component_value_entries(
     llama_source: JavaSource,
     axolotl_source: JavaSource,
 ) -> tuple[list[BuiltinEnumValueTypeEntry], list[BuiltinEnumComponentEntry]]:
-    def extract(
-        source: JavaSource,
-        constant_name: str,
-        expected_names: list[str],
-        id_argument: int,
-        name_argument: int,
-        nested_enum: str | None = None,
-        sparse_default: str | None = None,
-        texture_diffuse_argument: int | None = None,
-    ) -> BuiltinEnumValueTypeEntry:
-        enum_type = (
-            _nested_enum_type(source, nested_enum)
-            if nested_enum is not None
-            else source.types[0]
-        )
-        constants = (
-            _nested_enum_constants(source, nested_enum, constant_name)
-            if nested_enum is not None
-            else _enum_constants(source)
-        )
-        values = []
-        texture_diffuse_colors = []
-        for name, arguments in constants:
-            required_arguments = max(
-                id_argument,
-                name_argument,
-                texture_diffuse_argument
-                if texture_diffuse_argument is not None
-                else 0,
-            ) + 1
-            if len(arguments) < required_arguments:
-                expression = arguments[0] if arguments else source.expression(enum_type.node)
-                _fail(source, expression, f"{constant_name} {name} lacks id/name arguments")
-            values.append(
-                NamedComponentValueEntry(
-                    name,
-                    _integer(source, arguments[id_argument]),
-                    _string(source, arguments[name_argument]),
-                )
-            )
-            if texture_diffuse_argument is not None:
-                texture_diffuse_color = _integer(
-                    source, arguments[texture_diffuse_argument]
-                )
-                if not 0 <= texture_diffuse_color <= 0xFF_FFFF:
-                    _fail(
-                        source,
-                        arguments[texture_diffuse_argument],
-                        f"{constant_name} {name} texture diffuse color is not RGB",
-                    )
-                texture_diffuse_colors.append(texture_diffuse_color)
-        if [value.constant_name for value in values] != expected_names:
-            raise GameplayIdExtractionError(
-                f"{constant_name} values differ from expected declaration order"
-            )
-        _validate(values, constant_name, "value_id")
-        _validate(values, constant_name, "serialized_name")
-
-        if sparse_default is None:
-            strategy = _continuous_out_of_bounds_strategy_from_fields(
-                source, source.fields_for(enum_type), constant_name
-            )
-            if strategy not in {"ZERO", "CLAMP", "WRAP"}:
-                raise GameplayIdExtractionError(
-                    f"unsupported {constant_name} id strategy {strategy}"
-                )
-            if [value.value_id for value in values] != list(range(len(values))):
-                raise GameplayIdExtractionError(
-                    f"{constant_name} ids are not contiguous declaration order"
-                )
-            default_id = values[0].value_id
-        else:
-            by_id = [
-                field
-                for field in source.fields_for(enum_type)
-                if field.name == "BY_ID" and field.initializer is not None
-            ]
-            defaults = [
-                field
-                for field in source.fields_for(enum_type)
-                if field.name == "DEFAULT" and field.initializer is not None
-            ]
-            if len(by_id) != 1 or len(defaults) != 1:
-                raise GameplayIdExtractionError(
-                    f"{source.relative_path}: expected initialized {constant_name} BY_ID and DEFAULT"
-                )
-            initializer = by_id[0].initializer
-            name = initializer.node.child_by_field_name("name")
-            arguments = initializer.node.child_by_field_name("arguments")
-            if (
-                initializer.node.type != "method_invocation"
-                or name is None
-                or source.text(name) != "sparse"
-                or arguments is None
-                or len(arguments.named_children) != 3
-                or source.expression(arguments.named_children[-1]).canonical != "DEFAULT"
-                or defaults[0].initializer.canonical != sparse_default
-            ):
-                _fail(source, initializer, f"{constant_name} must use sparse DEFAULT lookup")
-            strategy = "SPARSE"
-            default_id = next(
-                value.value_id
-                for value in values
-                if value.constant_name == sparse_default
-            )
-        return BuiltinEnumValueTypeEntry(
-            constant_name,
-            strategy,
-            default_id,
-            tuple(values),
-            tuple(texture_diffuse_colors)
-            if texture_diffuse_argument is not None
-            else None,
-        )
-
     value_types = [
-        extract(
-            dye_color_source,
-            "DYE_COLOR",
-            [
-                "WHITE", "ORANGE", "MAGENTA", "LIGHT_BLUE", "YELLOW", "LIME",
-                "PINK", "GRAY", "LIGHT_GRAY", "CYAN", "PURPLE", "BLUE", "BROWN",
-                "GREEN", "RED", "BLACK",
-            ],
-            0,
-            1,
-            texture_diffuse_argument=2,
+        dye_color_value_type_entry(dye_color_source),
+        _builtin_enum_value_type_entry(
+            fox_source, "FOX_VARIANT", ["RED", "SNOW"], 0, 1, "Variant"
         ),
-        extract(fox_source, "FOX_VARIANT", ["RED", "SNOW"], 0, 1, "Variant"),
-        extract(salmon_source, "SALMON_VARIANT", ["SMALL", "MEDIUM", "LARGE"], 1, 0, "Variant"),
-        extract(
+        _builtin_enum_value_type_entry(
+            salmon_source,
+            "SALMON_VARIANT",
+            ["SMALL", "MEDIUM", "LARGE"],
+            1,
+            0,
+            "Variant",
+        ),
+        _builtin_enum_value_type_entry(
             parrot_source,
             "PARROT_VARIANT",
             ["RED_BLUE", "BLUE", "GREEN", "YELLOW_BLUE", "GRAY"],
@@ -2749,8 +2842,15 @@ def builtin_enum_component_value_entries(
             1,
             "Variant",
         ),
-        extract(mushroom_cow_source, "MOOSHROOM_VARIANT", ["RED", "BROWN"], 1, 0, "Variant"),
-        extract(
+        _builtin_enum_value_type_entry(
+            mushroom_cow_source,
+            "MOOSHROOM_VARIANT",
+            ["RED", "BROWN"],
+            1,
+            0,
+            "Variant",
+        ),
+        _builtin_enum_value_type_entry(
             rabbit_source,
             "RABBIT_VARIANT",
             ["BROWN", "WHITE", "BLACK", "WHITE_SPLOTCHED", "GOLD", "SALT", "EVIL"],
@@ -2759,15 +2859,22 @@ def builtin_enum_component_value_entries(
             "Variant",
             "BROWN",
         ),
-        extract(
+        _builtin_enum_value_type_entry(
             horse_variant_source,
             "HORSE_VARIANT",
             ["WHITE", "CREAMY", "CHESTNUT", "BROWN", "BLACK", "GRAY", "DARK_BROWN"],
             0,
             1,
         ),
-        extract(llama_source, "LLAMA_VARIANT", ["CREAMY", "WHITE", "BROWN", "GRAY"], 0, 1, "Variant"),
-        extract(
+        _builtin_enum_value_type_entry(
+            llama_source,
+            "LLAMA_VARIANT",
+            ["CREAMY", "WHITE", "BROWN", "GRAY"],
+            0,
+            1,
+            "Variant",
+        ),
+        _builtin_enum_value_type_entry(
             axolotl_source,
             "AXOLOTL_VARIANT",
             ["LUCY", "WILD", "GOLD", "CYAN", "BLUE"],

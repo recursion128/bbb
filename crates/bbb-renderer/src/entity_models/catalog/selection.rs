@@ -1002,25 +1002,6 @@ const SHEEP_SHEARED_COLOR_MODEL_KEYS: [&str; 16] = [
     "sheep_black_sheared",
 ];
 
-const SHEEP_WOOL_LAYER_COLOR_BYTES: [[u8; 3]; 16] = [
-    [230, 230, 230],
-    [186, 96, 21],
-    [149, 58, 141],
-    [43, 134, 163],
-    [190, 162, 45],
-    [96, 149, 23],
-    [182, 104, 127],
-    [53, 59, 61],
-    [117, 117, 113],
-    [16, 117, 117],
-    [102, 37, 138],
-    [45, 51, 127],
-    [98, 63, 37],
-    [70, 93, 16],
-    [132, 34, 28],
-    [21, 21, 24],
-];
-
 fn sheep_model_key(
     baby: bool,
     sheared: bool,
@@ -1046,8 +1027,7 @@ fn sheep_model_key(
 }
 
 pub(in crate::entity_models) fn sheep_wool_layer_color(wool_color: SheepWoolColor) -> [f32; 4] {
-    let [red, green, blue] = SHEEP_WOOL_LAYER_COLOR_BYTES[wool_color.vanilla_id() as usize];
-    sheep_wool_layer_color_from_bytes([red, green, blue])
+    sheep_wool_layer_color_from_bytes(sheep_wool_layer_color_bytes(wool_color))
 }
 
 pub(in crate::entity_models) fn sheep_wool_render_color(
@@ -1063,20 +1043,29 @@ pub(in crate::entity_models) fn sheep_wool_render_color(
 }
 
 pub(in crate::entity_models) fn sheep_jeb_wool_layer_color(age_ticks: f32) -> [f32; 4] {
-    const SHEEP_COLOR_DURATION_TICKS: i32 = 25;
     let tick = age_ticks.max(0.0);
     let tick_floor = tick.floor() as i32;
-    let color_step = tick_floor / SHEEP_COLOR_DURATION_TICKS;
-    let color_count = SHEEP_WOOL_LAYER_COLOR_BYTES.len() as i32;
+    let color_step = tick_floor / bbb_render_types::VANILLA_SHEEP_COLOR_DURATION_TICKS;
+    let color_count = bbb_render_types::VANILLA_DYE_COLOR_COUNT as i32;
     let from = color_step.rem_euclid(color_count) as usize;
     let to = (color_step + 1).rem_euclid(color_count) as usize;
-    let alpha = ((tick_floor % SHEEP_COLOR_DURATION_TICKS) as f32 + tick.fract())
-        / SHEEP_COLOR_DURATION_TICKS as f32;
+    let alpha = ((tick_floor % bbb_render_types::VANILLA_SHEEP_COLOR_DURATION_TICKS) as f32
+        + tick.fract())
+        / bbb_render_types::VANILLA_SHEEP_COLOR_DURATION_TICKS as f32;
     sheep_wool_layer_color_from_bytes(sheep_lerp_color_bytes(
-        SHEEP_WOOL_LAYER_COLOR_BYTES[from],
-        SHEEP_WOOL_LAYER_COLOR_BYTES[to],
+        sheep_wool_layer_color_bytes(SheepWoolColor::from_vanilla_id(from as i32)),
+        sheep_wool_layer_color_bytes(SheepWoolColor::from_vanilla_id(to as i32)),
         alpha,
     ))
+}
+
+fn sheep_wool_layer_color_bytes(wool_color: SheepWoolColor) -> [u8; 3] {
+    let color = wool_color.entry().sheep_wool_color;
+    [
+        ((color >> 16) & 0xff) as u8,
+        ((color >> 8) & 0xff) as u8,
+        (color & 0xff) as u8,
+    ]
 }
 
 fn sheep_wool_layer_color_from_bytes([red, green, blue]: [u8; 3]) -> [f32; 4] {
