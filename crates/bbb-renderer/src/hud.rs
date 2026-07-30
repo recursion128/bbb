@@ -6647,15 +6647,18 @@ impl Renderer {
             }
         }
 
-        // Vanilla `Gui.extractHearts` (Gui.java:820-873, blink deferred): the
-        // ordered container / absorption / fill sprites for the player's
-        // health + absorption, stacked into `numHealthRows` and carrying the
-        // regen lift and low-health shake (`hud_player_heart_instances`).
+        // Vanilla `Gui.extractHearts` (Gui.java:820-873): ordered blinking
+        // container / non-blinking absorption / blinking old-health /
+        // non-blinking current-health sprites, with row stacking, regen lift,
+        // and low-health shake resolved by `hud_player_heart_instances`.
         if let Some(health) = self.hud_player_health.filter(|_| !self.hide_gui) {
             for instance in hud_player_heart_instances(surface_size, health) {
-                if let Some(sprite) =
-                    self.hud_heart_sprite(instance.kind, health.hardcore, instance.half, false)
-                {
+                if let Some(sprite) = self.hud_heart_sprite(
+                    instance.kind,
+                    health.hardcore,
+                    instance.half,
+                    instance.blinking,
+                ) {
                     push_hud_draw(
                         &mut vertices,
                         &mut commands,
@@ -23059,6 +23062,120 @@ mod tests {
         assert!(
             px[1] > 128 && px[0] < 128,
             "a poisoned heart should draw the green poisoned fill, got {px:?}"
+        );
+    }
+
+    #[test]
+    fn player_heart_damage_blink_offscreen_frame_consumes_ordered_sprite_variants() {
+        use crate::camera::ClearColor;
+
+        const WIDTH: u32 = 320;
+        const HEIGHT: u32 = 240;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            // No GPU / software adapter on this machine — skip rather than fail.
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+
+        let solid = |color: [u8; 4]| (0..81).flat_map(|_| color).collect::<Vec<_>>();
+        renderer
+            .upload_hud_heart_sprite(
+                HudHeartKind::Container,
+                false,
+                false,
+                true,
+                9,
+                9,
+                &solid([255, 255, 0, 255]),
+            )
+            .expect("blinking container");
+        renderer
+            .upload_hud_heart_sprite(
+                HudHeartKind::Normal,
+                false,
+                false,
+                true,
+                9,
+                9,
+                &solid([0, 255, 0, 255]),
+            )
+            .expect("blinking full");
+        renderer
+            .upload_hud_heart_sprite(
+                HudHeartKind::Normal,
+                false,
+                true,
+                true,
+                9,
+                9,
+                &solid([0, 255, 0, 255]),
+            )
+            .expect("blinking half");
+        renderer
+            .upload_hud_heart_sprite(
+                HudHeartKind::Normal,
+                false,
+                false,
+                false,
+                9,
+                9,
+                &solid([255, 0, 0, 255]),
+            )
+            .expect("current full");
+
+        renderer.set_hud_player_health(Some(HudPlayerHealth {
+            health: 18.0,
+            display_health: 19,
+            blinking: true,
+            max_health: 20.0,
+            absorption: 0.0,
+            heart_type: HudHeartKind::Normal,
+            hardcore: false,
+            regen: false,
+            tick_count: 0,
+        }));
+        let pixels = renderer.render_offscreen_frame().expect("damage blink");
+        let y = HEIGHT - 39 + 4;
+        let x_left = WIDTH / 2 - 91;
+
+        // Container index 9 has only the lost old half-heart, so the blinking
+        // green fill remains visible above the blinking container.
+        let lost = pixels.pixel(x_left + 9 * 8 + 4, y);
+        assert!(
+            lost[1] > 128 && lost[0] < 128,
+            "lost health should retain the blinking old fill, got {lost:?}"
+        );
+        // Index 8 has both old and current fills; Vanilla submits the current
+        // non-blinking red fill last.
+        let retained = pixels.pixel(x_left + 8 * 8 + 4, y);
+        assert!(
+            retained[0] > 128 && retained[1] < 128,
+            "current health should cover the blinking old fill, got {retained:?}"
+        );
+
+        // Absorption keeps low-health shake disabled without covering the
+        // ordinary empty slot, exposing the blinking yellow container sprite.
+        renderer.set_hud_player_health(Some(HudPlayerHealth {
+            health: 0.0,
+            display_health: 0,
+            blinking: true,
+            absorption: 5.0,
+            ..renderer.hud_player_health.expect("damage health")
+        }));
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("blinking container");
+        let container = pixels.pixel(x_left + 4, y);
+        assert!(
+            container[0] > 128 && container[1] > 128 && container[2] < 128,
+            "empty health should expose the blinking container, got {container:?}"
         );
     }
 

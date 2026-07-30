@@ -439,6 +439,7 @@ pub(super) fn gui_item_slot_placement(rect: HudRect) -> Mat4 {
 pub(super) struct HudHeartInstance {
     pub kind: HudHeartKind,
     pub half: bool,
+    pub blinking: bool,
     pub x: f32,
     pub y: f32,
 }
@@ -457,12 +458,13 @@ impl HudHeartInstance {
 
 /// Vanilla `Gui.extractPlayerHealth` health-row geometry from the raw player
 /// state (Gui.java:746,768,770-771): resolves `currentHealth = ceil(health)`
-/// and `maxHealth = max(attr, currentHealth)` (blink deferred, so `oldHealth ==
-/// currentHealth`), then `numHealthRows = ceil((maxHealth + ceil(absorption)) /
-/// 2 / 10)` and `healthRowHeight = max(10 - (numHealthRows - 2), 3)`.
+/// and `maxHealth = max(attr, displayHealth, currentHealth)`, then
+/// `numHealthRows = ceil((maxHealth + ceil(absorption)) / 2 / 10)` and
+/// `healthRowHeight = max(10 - (numHealthRows - 2), 3)`.
 pub(super) fn hud_health_row_geometry(health: HudPlayerHealth) -> (u32, i32) {
     let current_health = health.health.ceil().max(0.0);
-    let max_health = health.max_health.max(current_health);
+    let display_health = health.display_health.max(0) as f32;
+    let max_health = health.max_health.max(display_health).max(current_health);
     hud_health_rows(max_health, health.absorption)
 }
 
@@ -479,16 +481,14 @@ pub(super) fn hud_health_rows(max_health: f32, absorption: f32) -> (u32, i32) {
     (num_rows.max(0) as u32, row_height)
 }
 
-/// Vanilla `Gui.extractHearts` (Gui.java:820-873) with blink omitted (blink is
-/// deferred: it needs the untracked `invulnerableTime` and wall-clock
-/// `displayHealth`). Walks containers from `healthContainerCount +
-/// absorptionContainerCount - 1` down to `0` (the vanilla descending loop),
-/// emitting for each: the `Container` background, then the absorbing overlay
-/// (`Withered` keeps its own sprite, else `Absorbing`) while its half is inside
-/// the absorption amount, then the base fill while its half is inside
-/// `currentHealth`. `xLeft = guiWidth/2 - 91`, `yLineBase = guiHeight - 39`;
-/// rows stack up by `healthRowHeight`. The Regeneration wave lifts one health
-/// heart (`containerIndex == tickCount % ceil(maxHealth + 5)`) by 2px, and at
+/// Vanilla `Gui.extractHearts` (Gui.java:820-873). Walks containers from
+/// `healthContainerCount + absorptionContainerCount - 1` down to `0` (the
+/// vanilla descending loop), emitting for each: the container with the frame
+/// blink bit, a non-blinking absorption overlay, the blinking displayed-health
+/// fill when active, then the non-blinking current-health fill.
+/// `xLeft = guiWidth/2 - 91`, `yLineBase = guiHeight - 39`; rows stack up by
+/// `healthRowHeight`. The Regeneration wave lifts one health heart
+/// (`containerIndex == tickCount % ceil(maxHealth + 5)`) by 2px, and at
 /// `currentHealth + absorption <= 4` every heart shakes by `nextInt(2)` from a
 /// `tickCount * 312871`-seeded LCG (vanilla reseeds the identical
 /// `LegacyRandomSource` at Gui.java:764, so this reproduces its sequence
@@ -503,8 +503,12 @@ pub(super) fn hud_player_heart_instances(
     let y_line_base = surface_height - 39.0;
 
     let current_health = health.health.ceil().max(0.0) as i32;
+    let display_health = health.display_health.max(0);
     let absorption = health.absorption.ceil().max(0.0) as i32;
-    let max_health = health.max_health.max(current_health as f32);
+    let max_health = health
+        .max_health
+        .max(display_health as f32)
+        .max(current_health as f32);
     let (_, health_row_height) = hud_health_rows(max_health, health.absorption);
 
     let health_container_count = (max_health / 2.0).ceil().max(0.0) as i32;
@@ -544,6 +548,7 @@ pub(super) fn hud_player_heart_instances(
         instances.push(HudHeartInstance {
             kind: HudHeartKind::Container,
             half: false,
+            blinking: health.blinking,
             x: xo,
             y: yo,
         });
@@ -560,16 +565,28 @@ pub(super) fn hud_player_heart_instances(
                 instances.push(HudHeartInstance {
                     kind,
                     half: absorption_halves + 1 == absorption,
+                    blinking: false,
                     x: xo,
                     y: yo,
                 });
             }
         }
 
+        if health.blinking && halves < display_health {
+            instances.push(HudHeartInstance {
+                kind: health.heart_type,
+                half: halves + 1 == display_health,
+                blinking: true,
+                x: xo,
+                y: yo,
+            });
+        }
+
         if halves < current_health {
             instances.push(HudHeartInstance {
                 kind: health.heart_type,
                 half: halves + 1 == current_health,
+                blinking: false,
                 x: xo,
                 y: yo,
             });
@@ -1912,12 +1929,13 @@ mod tests {
         assert_eq!((left.x, left.y), (549.0, 681.0));
         assert_eq!((right.x, right.y), (621.0, 681.0));
         assert!(containers.iter().all(|i| i.y == 681.0 && !i.half));
+        assert!(containers.iter().all(|i| !i.blinking));
 
         let fills = fill_hearts(&instances);
         assert_eq!(fills.len(), 10);
         assert!(fills
             .iter()
-            .all(|i| i.kind == HudHeartKind::Normal && !i.half));
+            .all(|i| i.kind == HudHeartKind::Normal && !i.half && !i.blinking));
     }
 
     #[test]
@@ -2007,6 +2025,74 @@ mod tests {
                 .count(),
             13
         );
+    }
+
+    #[test]
+    fn hud_player_heart_instances_order_damage_and_heal_blink_strata() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let x_left = 549.0;
+
+        let mut damaged = player_health(18.0);
+        damaged.display_health = 19;
+        damaged.blinking = true;
+        let instances = hud_player_heart_instances(surface_size, damaged);
+        let lost_slot: Vec<_> = instances
+            .iter()
+            .copied()
+            .filter(|instance| instance.x == x_left + 9.0 * HUD_HEART_SPACING)
+            .collect();
+        assert_eq!(lost_slot.len(), 2);
+        assert_eq!(lost_slot[0].kind, HudHeartKind::Container);
+        assert!(lost_slot[0].blinking && !lost_slot[0].half);
+        assert_eq!(lost_slot[1].kind, HudHeartKind::Normal);
+        assert!(lost_slot[1].blinking && lost_slot[1].half);
+
+        let overlapping_slot: Vec<_> = instances
+            .iter()
+            .copied()
+            .filter(|instance| instance.x == x_left + 8.0 * HUD_HEART_SPACING)
+            .collect();
+        assert_eq!(overlapping_slot.len(), 3);
+        assert!(overlapping_slot[0].blinking);
+        assert!(overlapping_slot[1].blinking);
+        assert!(!overlapping_slot[2].blinking);
+
+        let mut healed = player_health(20.0);
+        healed.display_health = 17;
+        healed.blinking = true;
+        let healed_slot: Vec<_> = hud_player_heart_instances(surface_size, healed)
+            .into_iter()
+            .filter(|instance| instance.x == x_left + 8.0 * HUD_HEART_SPACING)
+            .collect();
+        assert_eq!(healed_slot.len(), 3);
+        assert_eq!(
+            healed_slot
+                .iter()
+                .map(|instance| (instance.kind, instance.half, instance.blinking))
+                .collect::<Vec<_>>(),
+            vec![
+                (HudHeartKind::Container, false, true),
+                (HudHeartKind::Normal, true, true),
+                (HudHeartKind::Normal, false, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn hud_player_heart_instances_never_blink_absorption_fills() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let mut health = player_health(20.0);
+        health.absorption = 2.0;
+        health.blinking = true;
+        let instances = hud_player_heart_instances(surface_size, health);
+        let absorbing = instances
+            .iter()
+            .find(|instance| instance.kind == HudHeartKind::Absorbing)
+            .expect("absorption fill");
+        assert!(!absorbing.blinking);
+        assert!(container_hearts(&instances)
+            .iter()
+            .all(|instance| instance.blinking));
     }
 
     #[test]
@@ -2620,6 +2706,14 @@ mod tests {
         let mut health = player_health(30.0);
         health.max_health = 20.0; // ceil(30) forces maxHealth up to 30
         assert_eq!(hud_health_row_geometry(health), (2, 10));
+
+        health.health = 20.0;
+        health.display_health = 40;
+        assert_eq!(
+            hud_health_row_geometry(health),
+            (2, 10),
+            "held displayHealth also expands Vanilla maxHealth"
+        );
     }
 
     #[test]
