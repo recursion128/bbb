@@ -1,6 +1,6 @@
 # Sign Text Rendering Parity Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-29.
 
 ## Goal and completion
 

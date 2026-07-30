@@ -815,3 +815,6 @@
 - **2026-07-29（声音字幕覆盖层工程闭环）**：根音效字幕键、实际播放/延迟释放
   时序、首次范围与位置刷新、听距/方向/寿命/亮度及屏幕 strata 已贯通原生音频、
   HUD 字体和确定性 GPU 像素，合同见 `docs/archive/sound-caption-overlay-design.md`。
+- **2026-07-29（标牌文字渲染精度工程闭环）**：发光文字八向轮廓、严格相机/
+  瞄准门禁、逐帧等宽混淆字、下划线/删除线白材质及正文 polygon-offset 深度状态
+  已贯通，合同见 `docs/archive/sign-text-rendering-parity-design.md`。
