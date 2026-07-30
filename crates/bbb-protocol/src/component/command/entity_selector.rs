@@ -5,6 +5,10 @@ use crate::{
     packets::normalize_resource_location,
 };
 
+mod generated_26_1;
+
+pub use generated_26_1::VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandEntitySelectorOptionKind {
     Name,
@@ -22,93 +26,6 @@ pub struct CommandEntitySelectorOption {
     pub name: &'static str,
     pub kind: CommandEntitySelectorOptionKind,
 }
-
-pub const VANILLA_COMMAND_ENTITY_SELECTOR_OPTIONS: &[CommandEntitySelectorOption] = &[
-    CommandEntitySelectorOption {
-        name: "name",
-        kind: CommandEntitySelectorOptionKind::Name,
-    },
-    CommandEntitySelectorOption {
-        name: "distance",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "level",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "x",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "y",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "z",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "dx",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "dy",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "dz",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "x_rotation",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "y_rotation",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "limit",
-        kind: CommandEntitySelectorOptionKind::Limit,
-    },
-    CommandEntitySelectorOption {
-        name: "sort",
-        kind: CommandEntitySelectorOptionKind::Sort,
-    },
-    CommandEntitySelectorOption {
-        name: "gamemode",
-        kind: CommandEntitySelectorOptionKind::Gamemode,
-    },
-    CommandEntitySelectorOption {
-        name: "team",
-        kind: CommandEntitySelectorOptionKind::Team,
-    },
-    CommandEntitySelectorOption {
-        name: "type",
-        kind: CommandEntitySelectorOptionKind::Type,
-    },
-    CommandEntitySelectorOption {
-        name: "tag",
-        kind: CommandEntitySelectorOptionKind::Repeatable,
-    },
-    CommandEntitySelectorOption {
-        name: "nbt",
-        kind: CommandEntitySelectorOptionKind::Repeatable,
-    },
-    CommandEntitySelectorOption {
-        name: "scores",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "advancements",
-        kind: CommandEntitySelectorOptionKind::Once,
-    },
-    CommandEntitySelectorOption {
-        name: "predicate",
-        kind: CommandEntitySelectorOptionKind::Repeatable,
-    },
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntitySelectorPrefix {

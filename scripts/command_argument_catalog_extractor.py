@@ -1,4 +1,4 @@
-"""Tree-sitter-backed extraction for command argument type registrations."""
+"""Tree-sitter-backed extraction for command argument and selector catalogs."""
 
 from __future__ import annotations
 
@@ -26,6 +26,12 @@ class CommandArgumentEntry:
 class CommandSlotEntry:
     name: str
     single: bool
+
+
+@dataclass(frozen=True)
+class CommandEntitySelectorOptionEntry:
+    name: str
+    kind: str
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -82,6 +88,92 @@ def command_argument_entries(
     if len(resources) != len(set(resources)):
         raise CommandArgumentCatalogExtractionError(
             f"{source.relative_path}: duplicate command argument resource id"
+        )
+    return entries
+
+
+def _entity_selector_option_kind(
+    source: JavaSource, predicate: JavaExpression
+) -> str:
+    if predicate.node.type != "lambda_expression":
+        _fail(source, predicate, "entity selector canUse predicate is not a lambda")
+    parameter = predicate.node.child_by_field_name("parameters")
+    body = predicate.node.child_by_field_name("body")
+    if parameter is None or parameter.type != "identifier" or body is None:
+        _fail(source, predicate, "unsupported entity selector canUse lambda shape")
+    owner = source.text(parameter)
+    canonical = source.expression(body).canonical
+    kind_by_predicate = {
+        f"! {owner}.hasNameEquals ()": "Name",
+        f"{owner}.getDistance () == null": "Once",
+        f"{owner}.getLevel () == null": "Once",
+        f"{owner}.getX () == null": "Once",
+        f"{owner}.getY () == null": "Once",
+        f"{owner}.getZ () == null": "Once",
+        f"{owner}.getDeltaX () == null": "Once",
+        f"{owner}.getDeltaY () == null": "Once",
+        f"{owner}.getDeltaZ () == null": "Once",
+        f"{owner}.getRotX () == null": "Once",
+        f"{owner}.getRotY () == null": "Once",
+        f"! {owner}.isCurrentEntity () && ! {owner}.isLimited ()": "Limit",
+        f"! {owner}.isCurrentEntity () && ! {owner}.isSorted ()": "Sort",
+        f"! {owner}.hasGamemodeEquals ()": "Gamemode",
+        f"! {owner}.hasTeamEquals ()": "Team",
+        f"! {owner}.isTypeLimited ()": "Type",
+        "true": "Repeatable",
+        f"! {owner}.hasScores ()": "Once",
+        f"! {owner}.hasAdvancements ()": "Once",
+    }
+    kind = kind_by_predicate.get(canonical)
+    if kind is None:
+        _fail(
+            source,
+            source.expression(body),
+            f"unsupported entity selector canUse predicate {canonical!r}",
+        )
+    return kind
+
+
+def command_entity_selector_option_entries(
+    source: JavaSource, expected_count: int = 21
+) -> list[CommandEntitySelectorOptionEntry]:
+    methods = [method for method in source.methods if method.name == "bootStrap"]
+    if len(methods) != 1 or methods[0].body is None:
+        raise CommandArgumentCatalogExtractionError(
+            f"{source.relative_path}: expected exactly one bootStrap method with a body"
+        )
+    method = methods[0]
+    calls = [
+        call
+        for call in source.calls
+        if call.name == "register"
+        and call.qualifier is None
+        and method.body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= method.body.end_byte
+    ]
+    calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
+
+    entries: list[CommandEntitySelectorOptionEntry] = []
+    for call in calls:
+        expression = source.expression(call.node)
+        if len(call.arguments) != 4:
+            _fail(source, expression, "unsupported entity selector register call")
+        entries.append(
+            CommandEntitySelectorOptionEntry(
+                name=_string(source, call.arguments[0], "entity selector option name"),
+                kind=_entity_selector_option_kind(source, call.arguments[2]),
+            )
+        )
+
+    if len(entries) != expected_count:
+        raise CommandArgumentCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} entity selector options, "
+            f"extracted {len(entries)}"
+        )
+    names = [entry.name for entry in entries]
+    if len(names) != len(set(names)):
+        raise CommandArgumentCatalogExtractionError(
+            f"{source.relative_path}: duplicate entity selector option name"
         )
     return entries
 

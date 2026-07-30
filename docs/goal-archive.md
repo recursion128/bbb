@@ -874,3 +874,6 @@
 - **2026-07-30（内建 Overworld day timeline 生成化闭环）**：`Timelines.bootstrap`
   的 period、8 条 native 视觉 track 与 68 个 keyframe 现由 Tree-sitter 生成；
   lightmap、sky、cloud 与 fog fallback 不再在 `runtime.rs` 手抄同一组时序事实。
+- **2026-07-30（entity selector option catalog 生成化闭环）**：
+  `EntitySelectorOptions.bootStrap` 的 21 项注册顺序与 `canUse` 状态分类现由
+  command Tree-sitter 生成链产出，公开 catalog 不再手抄名称与适用性 kind。
