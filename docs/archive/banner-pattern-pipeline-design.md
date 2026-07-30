@@ -1,6 +1,6 @@
 # Banner Pattern Pipeline Engineering Contract
 
-Status: active from 2026-07-30.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -107,6 +107,9 @@ The pre-start full gate passed at
 pipeline and central render dispatch, the final full gate is the engineering
 checkpoint. No playable gate is required because protocol, world mutation,
 input, and control-command paths do not change.
+
+The contract and integrated renderer stages are the clean commits
+`94aeed8e3` and `08ef35980`.
 
 ## Failure localization and safe stops
 

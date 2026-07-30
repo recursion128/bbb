@@ -837,3 +837,7 @@
   单调时钟旧血量保持、20/10 tick 受伤/治疗相位及容器/旧值/当前值精确 strata
   已贯通 native HUD，并有确定性状态机、布局顺序与 GPU 像素证据；合同见
   `docs/archive/heart-health-blink-presentation-design.md`。
+- **2026-07-30（旗帜图案专用渲染管线工程闭环）**：静态与运行时图案现保留
+  typed sorted range，并在 world 与 Loom PIP 共享精确 translucent、背面剔除、
+  `LessEqual`、无 overlay/cutout/深度写状态；合同见
+  `docs/archive/banner-pattern-pipeline-design.md`。
