@@ -274,8 +274,11 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   block-feature submissions still omit the additional outline-target copy for
   visible glowing snow-golem/mooshroom layers and the iron-golem, enderman,
   minecart, TNT, and copper-golem block-model families.
-- **Frog tongue prey-targeting** (`DATA_TONGUE_TARGET_ID`). Not part of the model
-  animation.
+- **Frog tongue prey-targeting is `not-needed`.**
+  `DATA_TONGUE_TARGET_ID` is consumed by frog/AI behavior only. Vanilla
+  `FrogRenderer.extractRenderState` does not project it, `FrogRenderState` has
+  no target field, and `FrogModel.setupAnim` drives the tongue solely from the
+  copied tongue `AnimationState`.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
   from synced `DATA_VARIANT_ID` by bootstrap order.
 - **Rabbit `IDLE_HEAD_TILT` keyframe** is `not-needed`: vanilla starts it from
