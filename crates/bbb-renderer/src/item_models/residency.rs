@@ -185,7 +185,8 @@ pub enum ItemModelDrawTarget {
     /// world attachments but draw after every `ItemFeatureRenderer` phase.
     BlockFeature,
     /// Vanilla `OutputTarget.OUTLINE_TARGET` for blocks-atlas entity
-    /// attachments submitted through `BlockModelRenderState.submitOnlyOutline`.
+    /// attachments submitted through `BlockModelRenderState.submitOnlyOutline`
+    /// or copied from an ordinary affects-outline `submit`.
     EntityOutline,
     Particle,
     FirstPerson,
@@ -2894,6 +2895,34 @@ mod tests {
             renderer.resident_item_model_instance_orders_for_test(),
             vec![0, 1]
         );
+    }
+
+    #[test]
+    fn resident_item_model_main_and_entity_outline_instances_share_one_owner() {
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let mut frame = block_frame(Mat4::IDENTITY);
+        frame.instances[0].target = ItemModelDrawTarget::BlockFeature;
+        let mut outline = frame.instances[0].clone();
+        outline.tint = [0.2, 0.4, 0.8, 1.0];
+        outline.target = ItemModelDrawTarget::EntityOutline;
+        outline.phase = ItemModelDrawPhase::Outline;
+        outline.submit_order = 1;
+        frame.instances.push(outline);
+
+        renderer.set_item_model_residency_frame(frame).unwrap();
+
+        assert_eq!(renderer.counters().item_gpu_owners_created, 1);
+        assert_eq!(renderer.counters().item_model_residency_builds, 1);
+        assert_eq!(renderer.item_model_residency.draws().len(), 2);
+        let main = &renderer.item_model_residency.draws()[0];
+        let outline = &renderer.item_model_residency.draws()[1];
+        assert_eq!(main.asset, outline.asset);
+        assert_eq!(main.target, ItemModelDrawTarget::BlockFeature);
+        assert_eq!(main.phase, ItemModelDrawPhase::Solid);
+        assert_eq!(outline.target, ItemModelDrawTarget::EntityOutline);
+        assert_eq!(outline.phase, ItemModelDrawPhase::Outline);
     }
 
     #[test]

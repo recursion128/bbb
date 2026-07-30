@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::mpsc,
+    sync::{mpsc, Arc},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -9,6 +9,11 @@ use bbb_pack::{PackRoots, PostEffectCatalog};
 use winit::dpi::PhysicalSize;
 
 use super::*;
+use crate::item_models::{
+    ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource, ItemModelAtlasKind,
+    ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil, ItemModelGeometryClass,
+    ItemModelInstanceRequest, ItemModelQuad, ItemModelResidencyFrame,
+};
 use crate::{
     cow_entity_texture_refs, ClearColor, EntityModelInstance, EntityModelTextureImage,
     HudInventoryScreen, Renderer,
@@ -514,6 +519,99 @@ fn selected_generation_drives_live_entity_outline_graph_before_composite() {
     assert!(
         corner[0] > 240 && corner[1] < 8 && corner[2] < 8,
         "selected red outline graph must fill the outline target before composition, got {corner:?}"
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn resident_item_model_main_and_entity_outline_copy_reach_both_gpu_targets() {
+    let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
+        return;
+    };
+    let root = unique_temp_dir("resident-block-main-outline");
+    write_live_catalog_with_overrides(&root, &[("entity_outline", [1.0, 0.0, 0.0, 1.0])]);
+    let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
+    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer.set_clear_color(ClearColor {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    });
+    renderer
+        .update_terrain_texture_atlas(&[255, 255, 255, 255])
+        .unwrap();
+    renderer.update_camera();
+
+    let identity = ItemModelAssetIdentity::new("minecraft:stone", "plain", 0);
+    let asset = ItemModelAssetRequest {
+        identity: identity.clone(),
+        atlas: ItemModelAtlasKind::Blocks,
+        geometry_class: ItemModelGeometryClass::Solid,
+        source: ItemModelAssetSource::Quads(Arc::from([ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 0.0],
+                [16.0, 0.0, 0.0],
+                [16.0, 16.0, 0.0],
+                [0.0, 16.0, 0.0],
+            ],
+            uvs: [[0.0, 0.0]; 4],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        }])),
+    };
+    let main = ItemModelInstanceRequest {
+        identity,
+        atlas: ItemModelAtlasKind::Blocks,
+        geometry_class: ItemModelGeometryClass::Solid,
+        transform: glam::Mat4::IDENTITY,
+        tint: [0.0, 1.0, 0.0, 1.0],
+        light: [1.0; 2],
+        overlay: [0.0, 10.0],
+        foil: ItemModelFoil::None,
+        target: ItemModelDrawTarget::BlockFeature,
+        phase: ItemModelDrawPhase::Solid,
+        submit_order: 0,
+        scissor: None,
+    };
+    renderer
+        .set_item_model_residency_frame(ItemModelResidencyFrame {
+            assets: vec![asset.clone()],
+            instances: vec![main.clone()],
+            special_items: Vec::new(),
+        })
+        .unwrap();
+
+    let main_pixels = renderer.render_offscreen_frame().unwrap();
+    assert!(
+        main_pixels.rgba.chunks_exact(4).any(|pixel| {
+            pixel[1] > 96
+                && u16::from(pixel[1]) > u16::from(pixel[0]) + 32
+                && u16::from(pixel[1]) > u16::from(pixel[2]) + 32
+        }),
+        "the ordinary BlockFeature instance must produce green main-target pixels"
+    );
+
+    let mut outline = main.clone();
+    outline.tint = [1.0, 0.0, 0.0, 1.0];
+    outline.target = ItemModelDrawTarget::EntityOutline;
+    outline.phase = ItemModelDrawPhase::Outline;
+    outline.submit_order = 1;
+    renderer
+        .set_item_model_residency_frame(ItemModelResidencyFrame {
+            assets: vec![asset],
+            instances: vec![main, outline],
+            special_items: Vec::new(),
+        })
+        .unwrap();
+
+    let outlined = renderer.render_offscreen_frame().unwrap();
+    let corner = outlined.pixel(2, 2);
+    assert!(
+        corner[0] > 240 && corner[1] < 8 && corner[2] < 8,
+        "the resident outline copy must activate and feed the selected red entity-outline graph, got {corner:?}"
     );
     std::fs::remove_dir_all(root).unwrap();
 }
