@@ -76,5 +76,153 @@ class LifecycleSoakManifestTests(unittest.TestCase):
             lifecycle_soak.validate_manifest(manifest)
 
 
+class LifecycleSoakEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    def evidence(self):
+        return {
+            "mode": "live",
+            "vanilla_version": "26.1",
+            "lifecycle": {
+                "stage": "complete",
+                "resource_pack": {
+                    "active_resource_generation": 2,
+                    "after_pop_resource_generation": 3,
+                },
+                "transfer": {"registry_revision_after": {"session": 2}},
+            },
+        }
+
+    def termination(self, mode="quit"):
+        renderer = {
+            name: minimum
+            for name, minimum in lifecycle_soak.EXPECTED_FAULT_RECEIPTS.items()
+        }
+        snapshot = {
+            "world": {"resource_packs_tracked": 0},
+            "renderer": {
+                **renderer,
+                "terrain_mesh_queue_depth": 0,
+                "dynamic_texture_cache_pending": 0,
+                "dynamic_texture_worker_result_bytes": 0,
+                "pending_particle_spawns": 0,
+            },
+            "audio": {
+                "enabled": False,
+                "disabled_reason": "lifecycle-soak injected no audio device",
+                "sound_static_channels_used": 0,
+                "sound_streaming_channels_used": 0,
+            },
+            "net": {"simulation_output_backlog_current": 1},
+        }
+        return {
+            "mode": mode,
+            "kick_disconnected": mode == "kick",
+            "quiescent_snapshot": snapshot,
+            "process_metrics": {
+                "rss_bytes": 100_000_000,
+                "file_descriptors": 30,
+                "threads": 10,
+            },
+            "exit_status": 0,
+            "process_absent": True,
+        }
+
+    def test_passing_iteration_retains_receipts_gauges_and_generations(self):
+        result = lifecycle_soak.validate_iteration(
+            self.manifest, 1, self.evidence(), self.termination()
+        )
+
+        self.assertEqual(result["termination_mode"], "quit")
+        self.assertEqual(result["resource_generations"], {"active": 2, "after_pop": 3})
+        self.assertEqual(result["transfer_session"], 2)
+        self.assertEqual(result["terminal_gauges"]["world.resource_packs_tracked"], 0)
+
+    def test_missing_fault_receipt_fails(self):
+        termination = self.termination()
+        termination["quiescent_snapshot"]["renderer"]["surface_timeouts"] = 0
+
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "surface_timeouts must be >= 1"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 1, self.evidence(), termination
+            )
+
+    def test_non_quiescent_gauge_fails(self):
+        termination = self.termination()
+        termination["quiescent_snapshot"]["renderer"][
+            "terrain_mesh_queue_depth"
+        ] = 1
+
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "terrain_mesh_queue_depth=1 exceeds 0"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 1, self.evidence(), termination
+            )
+
+    def test_nonzero_or_surviving_process_fails(self):
+        termination = self.termination()
+        termination["exit_status"] = 9
+        with self.assertRaisesRegex(lifecycle_soak.SoakFailure, "exit status is 9"):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 1, self.evidence(), termination
+            )
+
+        termination["exit_status"] = 0
+        termination["process_absent"] = False
+        with self.assertRaisesRegex(lifecycle_soak.SoakFailure, "survived shutdown"):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 1, self.evidence(), termination
+            )
+
+    def test_kick_iteration_requires_disconnect_receipt(self):
+        termination = self.termination("kick")
+        termination["kick_disconnected"] = False
+
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "kick did not reach disconnected"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 2, self.evidence(), termination
+            )
+
+    def test_process_trend_fails_only_beyond_checked_in_spread(self):
+        iterations = []
+        for rss in (1, 10, 10 + 134_217_729):
+            iterations.append(
+                {
+                    "process_metrics": {
+                        "rss_bytes": rss,
+                        "file_descriptors": 30,
+                        "threads": 10,
+                    }
+                }
+            )
+
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "rss_bytes grows monotonically"
+        ):
+            lifecycle_soak.validate_process_trends(self.manifest, iterations)
+
+        iterations[-1]["process_metrics"]["rss_bytes"] = 9
+        result = lifecycle_soak.validate_process_trends(self.manifest, iterations)
+        self.assertFalse(result["rss_bytes"]["strictly_rising"])
+
+
+class LifecycleSoakScriptContractTests(unittest.TestCase):
+    def test_wrapper_builds_feature_binary_and_records_only_passing_report(self):
+        source = (
+            REPO_ROOT / "scripts" / "lifecycle-soak-gate.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("--features lifecycle-soak", source)
+        self.assertIn("scripts/playable-gate.sh", source)
+        self.assertIn("last-lifecycle-soak-report.json", source)
+        self.assertLess(source.index('"$python_runner" python "$helper" run'), source.index("record_gate_stamp"))
+
+
 if __name__ == "__main__":
     unittest.main()

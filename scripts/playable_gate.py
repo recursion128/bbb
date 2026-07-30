@@ -955,6 +955,153 @@ def _capture_control_snapshot(address: tuple[str, int]) -> dict[str, Any]:
     }
 
 
+def _dotted_snapshot_value(snapshot: dict[str, Any], path: str) -> Any:
+    value: Any = snapshot
+    for component in path.split("."):
+        if not isinstance(value, dict) or component not in value:
+            raise GateFailure(f"terminal snapshot is missing {path}")
+        value = value[component]
+    return value
+
+
+def _terminal_gauges(manifest_path: Path) -> dict[str, int]:
+    manifest = _load_json(manifest_path)
+    gauges = _object(manifest.get("terminal_gauges"), "manifest.terminal_gauges")
+    if not gauges:
+        raise GateFailure("manifest.terminal_gauges must not be empty")
+    result: dict[str, int] = {}
+    for path, ceiling in gauges.items():
+        if (
+            not isinstance(path, str)
+            or not path
+            or not isinstance(ceiling, int)
+            or isinstance(ceiling, bool)
+            or ceiling < 0
+        ):
+            raise GateFailure(
+                "manifest.terminal_gauges must map dotted paths to "
+                "non-negative integer ceilings"
+            )
+        result[path] = ceiling
+    return result
+
+
+def validate_terminal_snapshot(
+    snapshot: dict[str, Any], gauges: dict[str, int]
+) -> dict[str, int]:
+    observed: dict[str, int] = {}
+    for path, ceiling in gauges.items():
+        value = _dotted_snapshot_value(snapshot, path)
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise GateFailure(f"terminal gauge {path} must be an integer, got {value!r}")
+        if value > ceiling:
+            raise GateFailure(
+                f"terminal gauge {path} is {value}, above ceiling {ceiling}"
+            )
+        observed[path] = value
+    return observed
+
+
+def _process_metrics(pid: int) -> dict[str, int]:
+    status_path = Path(f"/proc/{pid}/status")
+    try:
+        status = status_path.read_text(encoding="utf-8")
+        file_descriptors = len(list(Path(f"/proc/{pid}/fd").iterdir()))
+    except OSError as error:
+        raise GateFailure(f"cannot capture process metrics for pid {pid}: {error}") from error
+    fields: dict[str, str] = {}
+    for line in status.splitlines():
+        key, separator, value = line.partition(":")
+        if separator:
+            fields[key] = value.strip()
+    rss = fields.get("VmRSS", "").split()
+    threads = fields.get("Threads", "").split()
+    if len(rss) != 2 or rss[1] != "kB" or not rss[0].isdigit():
+        raise GateFailure(f"process {pid} has no readable VmRSS")
+    if len(threads) != 1 or not threads[0].isdigit():
+        raise GateFailure(f"process {pid} has no readable Threads count")
+    return {
+        "rss_bytes": int(rss[0]) * 1024,
+        "file_descriptors": file_descriptors,
+        "threads": int(threads[0]),
+    }
+
+
+def terminate_live(args: argparse.Namespace) -> None:
+    host, raw_port = args.control.rsplit(":", 1)
+    address = (host, int(raw_port))
+    gauges = _terminal_gauges(args.manifest)
+    result: dict[str, Any] = {
+        "schema": 1,
+        "mode": args.mode,
+        "client_pid": args.client_pid,
+        "kick_disconnected": False,
+        "quiescent_snapshot": None,
+        "terminal_gauges": None,
+        "process_metrics": None,
+        "app_quit_response": None,
+        "exit_status": None,
+        "process_absent": False,
+    }
+    try:
+        deadline = time.monotonic() + args.timeout
+        if args.mode == "kick":
+            _server_console_command(
+                args.transfer_server_command,
+                "kick bbb-playablegate bbb lifecycle soak kick",
+            )
+            disconnected = _await_value(
+                deadline,
+                "official-server kick disconnect",
+                lambda: _control_request(address, "net.counters"),
+                lambda value: isinstance(value, dict)
+                and value.get("connected") is False,
+            )
+            result["kick_disconnected"] = disconnected.get("connected") is False
+
+        last_error: Exception | None = None
+        while time.monotonic() < deadline:
+            try:
+                snapshot = _capture_control_snapshot(address)
+                observed = validate_terminal_snapshot(snapshot, gauges)
+                result["quiescent_snapshot"] = snapshot
+                result["terminal_gauges"] = observed
+                break
+            except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+                last_error = error
+            time.sleep(0.1)
+        else:
+            raise GateFailure(
+                "timed out waiting for terminal gauges"
+                + (f": {last_error}" if last_error is not None else "")
+            )
+
+        result["process_metrics"] = _process_metrics(args.client_pid)
+        result["app_quit_response"] = _control_request(address, "app.quit")
+    except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+        result["failure"] = str(error)
+        args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+        raise
+    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+
+
+def finalize_termination(args: argparse.Namespace) -> None:
+    evidence = _load_json(args.evidence)
+    evidence["exit_status"] = args.exit_status
+    evidence["process_absent"] = not Path(f"/proc/{args.client_pid}").exists()
+    evidence.pop("failure", None)
+    failure = None
+    if args.exit_status != 0:
+        failure = f"client exited with status {args.exit_status}"
+    elif evidence["process_absent"] is not True:
+        failure = f"client process {args.client_pid} still exists after wait"
+    if failure is not None:
+        evidence["failure"] = failure
+    args.evidence.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+    if failure is not None:
+        raise GateFailure(failure)
+
+
 def _press_key(address: tuple[str, int], key: str, pressed: bool) -> None:
     _control_request(address, "input.key", {"key": key, "pressed": pressed})
 
@@ -3468,6 +3615,24 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--server-pack-id", required=True)
     collect.add_argument("--client-locale", choices=("en_us", "ar_sa"), required=True)
 
+    terminate = subparsers.add_parser(
+        "terminate-live", help="capture quiescence and request ordered client shutdown"
+    )
+    terminate.add_argument("--control", required=True)
+    terminate.add_argument("--mode", choices=("quit", "kick"), required=True)
+    terminate.add_argument("--manifest", type=Path, required=True)
+    terminate.add_argument("--transfer-server-command", type=Path, required=True)
+    terminate.add_argument("--client-pid", type=int, required=True)
+    terminate.add_argument("--timeout", type=float, required=True)
+    terminate.add_argument("--output", type=Path, required=True)
+
+    finalize = subparsers.add_parser(
+        "finalize-termination", help="record and validate the reaped client result"
+    )
+    finalize.add_argument("--evidence", type=Path, required=True)
+    finalize.add_argument("--client-pid", type=int, required=True)
+    finalize.add_argument("--exit-status", type=int, required=True)
+
     operator = subparsers.add_parser(
         "write-operator", help="write the deterministic offline operator profile"
     )
@@ -3506,6 +3671,16 @@ def main(argv: list[str] | None = None) -> int:
             args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
         elif args.command == "collect-live":
             collect_live(args)
+        elif args.command == "terminate-live":
+            if args.client_pid <= 0:
+                raise GateFailure("--client-pid must be positive")
+            if args.timeout <= 0:
+                raise GateFailure("--timeout must be positive")
+            terminate_live(args)
+        elif args.command == "finalize-termination":
+            if args.client_pid <= 0:
+                raise GateFailure("--client-pid must be positive")
+            finalize_termination(args)
         elif args.command == "write-operator":
             print(write_operator_file(args.output, args.username))
         elif args.command == "write-server-pack":

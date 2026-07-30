@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +38,16 @@ EXPECTED_TERMINAL_GAUGES = {
     "net.simulation_output_backlog_current",
 }
 EXPECTED_PROCESS_LIMITS = {"rss_bytes", "file_descriptors", "threads"}
+EXPECTED_FAULT_RECEIPTS = {
+    "window_resize_requests": 2,
+    "window_minimize_requests": 1,
+    "window_restore_requests": 1,
+    "surface_lost": 1,
+    "surface_outdated": 1,
+    "surface_timeouts": 1,
+    "surface_reconfigurations": 2,
+    "surface_frames_skipped": 3,
+}
 
 
 def _object(value: Any, path: str) -> dict[str, Any]:
@@ -154,11 +168,314 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         _positive_int(limit, f"manifest.process_spread_limits.{name}")
 
 
+def _nested_value(value: dict[str, Any], path: str) -> Any:
+    current: Any = value
+    for component in path.split("."):
+        if not isinstance(current, dict) or component not in current:
+            raise SoakFailure(f"evidence is missing {path}")
+        current = current[component]
+    return current
+
+
+def validate_iteration(
+    manifest: dict[str, Any],
+    iteration: int,
+    evidence: dict[str, Any],
+    termination: dict[str, Any],
+) -> dict[str, Any]:
+    if evidence.get("mode") != "live" or evidence.get("vanilla_version") != "26.1":
+        raise SoakFailure(f"iteration {iteration}: playable evidence is not live 26.1")
+    if evidence.get("failure") is not None:
+        raise SoakFailure(
+            f"iteration {iteration}: playable evidence failed: {evidence['failure']}"
+        )
+    lifecycle = _object(evidence.get("lifecycle"), f"iteration {iteration}.lifecycle")
+    if lifecycle.get("stage") != "complete":
+        raise SoakFailure(f"iteration {iteration}: playable lifecycle did not complete")
+
+    expected_mode = manifest["termination_modes"][iteration - 1]
+    if termination.get("mode") != expected_mode:
+        raise SoakFailure(
+            f"iteration {iteration}: termination mode {termination.get('mode')!r} "
+            f"does not match {expected_mode!r}"
+        )
+    if expected_mode == "kick" and termination.get("kick_disconnected") is not True:
+        raise SoakFailure(f"iteration {iteration}: kick did not reach disconnected state")
+    if termination.get("exit_status") != 0:
+        raise SoakFailure(
+            f"iteration {iteration}: client exit status is "
+            f"{termination.get('exit_status')!r}"
+        )
+    if termination.get("process_absent") is not True:
+        raise SoakFailure(f"iteration {iteration}: client process survived shutdown")
+    if termination.get("failure") is not None:
+        raise SoakFailure(
+            f"iteration {iteration}: termination failed: {termination['failure']}"
+        )
+
+    snapshot = _object(
+        termination.get("quiescent_snapshot"),
+        f"iteration {iteration}.quiescent_snapshot",
+    )
+    audio = _object(snapshot.get("audio"), f"iteration {iteration}.audio")
+    if audio.get("enabled") is not False or audio.get("disabled_reason") != (
+        "lifecycle-soak injected no audio device"
+    ):
+        raise SoakFailure(
+            f"iteration {iteration}: deterministic no-audio receipt is missing"
+        )
+    renderer = _object(snapshot.get("renderer"), f"iteration {iteration}.renderer")
+    fault_receipts: dict[str, int] = {}
+    for name, minimum in EXPECTED_FAULT_RECEIPTS.items():
+        value = renderer.get(name)
+        if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+            raise SoakFailure(
+                f"iteration {iteration}: renderer receipt {name} must be >= "
+                f"{minimum}, got {value!r}"
+            )
+        fault_receipts[name] = value
+
+    gauges: dict[str, int] = {}
+    for path, ceiling in manifest["terminal_gauges"].items():
+        value = _nested_value(snapshot, path)
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise SoakFailure(
+                f"iteration {iteration}: terminal gauge {path} is not an integer"
+            )
+        if value > ceiling:
+            raise SoakFailure(
+                f"iteration {iteration}: terminal gauge {path}={value} "
+                f"exceeds {ceiling}"
+            )
+        gauges[path] = value
+
+    process_metrics = _object(
+        termination.get("process_metrics"),
+        f"iteration {iteration}.process_metrics",
+    )
+    metrics: dict[str, int] = {}
+    for name in EXPECTED_PROCESS_LIMITS:
+        metrics[name] = _positive_int(
+            process_metrics.get(name),
+            f"iteration {iteration}.process_metrics.{name}",
+        )
+
+    resource_pack = _object(
+        lifecycle.get("resource_pack"), f"iteration {iteration}.resource_pack"
+    )
+    transfer = _object(
+        lifecycle.get("transfer"), f"iteration {iteration}.transfer"
+    )
+    return {
+        "iteration": iteration,
+        "termination_mode": expected_mode,
+        "fault_receipts": fault_receipts,
+        "terminal_gauges": gauges,
+        "process_metrics": metrics,
+        "resource_generations": {
+            "active": _positive_int(
+                resource_pack.get("active_resource_generation"),
+                f"iteration {iteration}.resource_pack.active_resource_generation",
+            ),
+            "after_pop": _positive_int(
+                resource_pack.get("after_pop_resource_generation"),
+                f"iteration {iteration}.resource_pack.after_pop_resource_generation",
+            ),
+        },
+        "transfer_session": _positive_int(
+            _nested_value(transfer, "registry_revision_after.session"),
+            f"iteration {iteration}.transfer.registry_revision_after.session",
+        ),
+    }
+
+
+def validate_process_trends(
+    manifest: dict[str, Any], iterations: list[dict[str, Any]]
+) -> dict[str, Any]:
+    if len(iterations) != manifest["iterations"]:
+        raise SoakFailure(
+            f"expected {manifest['iterations']} iteration reports, got {len(iterations)}"
+        )
+    result: dict[str, Any] = {}
+    for name, limit in manifest["process_spread_limits"].items():
+        samples = [entry["process_metrics"][name] for entry in iterations]
+        post_warmup = samples[1:]
+        spread = max(post_warmup) - min(post_warmup)
+        strictly_rising = all(
+            later > earlier
+            for earlier, later in zip(post_warmup, post_warmup[1:])
+        )
+        result[name] = {
+            "samples": samples,
+            "post_warmup_spread": spread,
+            "limit": limit,
+            "strictly_rising": strictly_rising,
+        }
+        if strictly_rising and spread > limit:
+            raise SoakFailure(
+                f"{name} grows monotonically after warm-up with spread "
+                f"{spread}, above limit {limit}"
+            )
+    return result
+
+
+def _git(repo_root: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, Any]:
+    repo_root = args.repo_root.resolve()
+    artifact_dir = args.artifact_dir.resolve()
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    head = _git(repo_root, "rev-parse", "HEAD")
+    if _git(repo_root, "status", "--porcelain"):
+        raise SoakFailure("lifecycle soak requires a clean worktree")
+    manifest_digest = hashlib.sha256(args.manifest.read_bytes()).hexdigest()
+    started_at = time.monotonic()
+    report: dict[str, Any] = {
+        "schema": 1,
+        "status": "running",
+        "head": head,
+        "manifest": str(args.manifest.resolve()),
+        "manifest_sha256": manifest_digest,
+        "seed": manifest["seed"],
+        "iteration_budget": manifest["iterations"],
+        "per_iteration_timeout_seconds": manifest["per_iteration_timeout_seconds"],
+        "total_timeout_seconds": manifest["total_timeout_seconds"],
+        "iterations": [],
+        "process_trends": None,
+        "artifact_dir": str(artifact_dir),
+    }
+    report_path = artifact_dir / "report.json"
+
+    try:
+        for index, mode in enumerate(manifest["termination_modes"], start=1):
+            elapsed = time.monotonic() - started_at
+            remaining = manifest["total_timeout_seconds"] - elapsed
+            if remaining <= 0:
+                raise SoakFailure("total lifecycle-soak timeout expired")
+            iteration_dir = artifact_dir / f"iteration-{index:03d}"
+            iteration_dir.mkdir(parents=True, exist_ok=True)
+            gate_log = iteration_dir / "gate.log"
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "BBB_PLAYABLE_CLIENT_BIN": str(args.client_bin.resolve()),
+                    "BBB_PLAYABLE_ARTIFACT_DIR": str(iteration_dir),
+                    "BBB_PLAYABLE_TIMEOUT_SECONDS": str(
+                        manifest["per_iteration_timeout_seconds"]
+                    ),
+                    "BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": "60",
+                    "BBB_PLAYABLE_TERMINATION_MODE": mode,
+                    "BBB_LIFECYCLE_SOAK_MANIFEST": str(args.manifest.resolve()),
+                }
+            )
+            command = [str(args.playable_gate.resolve()), "live"]
+            print(
+                f"lifecycle soak: iteration {index}/{manifest['iterations']} "
+                f"({mode}) artifacts: {iteration_dir}",
+                flush=True,
+            )
+            iteration_started = time.monotonic()
+            try:
+                with gate_log.open("w", encoding="utf-8") as log:
+                    completed = subprocess.run(
+                        command,
+                        cwd=repo_root,
+                        env=environment,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        timeout=min(
+                            float(manifest["per_iteration_timeout_seconds"]),
+                            remaining,
+                        ),
+                        check=False,
+                        text=True,
+                    )
+            except subprocess.TimeoutExpired as error:
+                raise SoakFailure(
+                    f"iteration {index} timed out; see {gate_log}"
+                ) from error
+            if completed.returncode != 0:
+                raise SoakFailure(
+                    f"iteration {index} playable gate exited "
+                    f"{completed.returncode}; see {gate_log}"
+                )
+
+            evidence_path = iteration_dir / "evidence.json"
+            termination_path = iteration_dir / "termination.json"
+            try:
+                evidence = load_manifest(evidence_path)
+                termination = load_manifest(termination_path)
+            except SoakFailure as error:
+                raise SoakFailure(f"iteration {index}: {error}") from error
+            iteration_report = validate_iteration(
+                manifest, index, evidence, termination
+            )
+            iteration_report.update(
+                {
+                    "duration_seconds": round(
+                        time.monotonic() - iteration_started, 3
+                    ),
+                    "artifact_dir": str(iteration_dir),
+                    "playable_evidence": str(evidence_path),
+                    "termination_evidence": str(termination_path),
+                    "gate_log": str(gate_log),
+                }
+            )
+            report["iterations"].append(iteration_report)
+            report_path.write_text(
+                json.dumps(report, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            print(f"lifecycle soak: iteration {index} passed", flush=True)
+
+        if _git(repo_root, "rev-parse", "HEAD") != head:
+            raise SoakFailure("HEAD changed during lifecycle soak")
+        if _git(repo_root, "status", "--porcelain"):
+            raise SoakFailure("worktree changed during lifecycle soak")
+        report["process_trends"] = validate_process_trends(
+            manifest, report["iterations"]
+        )
+        report["duration_seconds"] = round(time.monotonic() - started_at, 3)
+        report["status"] = "passed"
+    except (OSError, subprocess.SubprocessError, SoakFailure) as error:
+        report["duration_seconds"] = round(time.monotonic() - started_at, 3)
+        report["status"] = "failed"
+        report["failure"] = str(error)
+        report_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        if isinstance(error, SoakFailure):
+            raise
+        raise SoakFailure(str(error)) from error
+    report_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return report
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
     validate = subcommands.add_parser("validate-manifest")
     validate.add_argument("--manifest", type=Path, required=True)
+    run = subcommands.add_parser("run")
+    run.add_argument("--manifest", type=Path, required=True)
+    run.add_argument("--repo-root", type=Path, required=True)
+    run.add_argument("--artifact-dir", type=Path, required=True)
+    run.add_argument("--client-bin", type=Path, required=True)
+    run.add_argument("--playable-gate", type=Path, required=True)
     return parser.parse_args(argv)
 
 
@@ -167,6 +484,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         manifest = load_manifest(args.manifest)
         validate_manifest(manifest)
+        if args.command == "run":
+            report = run_soak(args, manifest)
+            print(
+                "lifecycle soak passed: "
+                f"{len(report['iterations'])} iterations, "
+                f"{report['duration_seconds']}s, report: "
+                f"{Path(report['artifact_dir']) / 'report.json'}"
+            )
+            return 0
     except SoakFailure as error:
         print(f"lifecycle soak failed: {error}", file=sys.stderr)
         return 1

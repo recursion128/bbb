@@ -29,6 +29,8 @@ Live environment:
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
   BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS  Server-ready timeout; default 120
   BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default) or ar_sa
+  BBB_PLAYABLE_TERMINATION_MODE  Optional validation-only clean quit or server kick
+  BBB_LIFECYCLE_SOAK_MANIFEST    Required manifest when termination mode is set
 
 The live path uses the bbb-native --server/--connect-server/--control CLI and
 the narrow `bbb-native --status-server <addr>` JSON CLI (which must delegate to
@@ -140,9 +142,18 @@ fi
 timeout_seconds=${BBB_PLAYABLE_TIMEOUT_SECONDS:-120}
 ready_timeout_seconds=${BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS:-120}
 client_locale=${BBB_PLAYABLE_CLIENT_LOCALE:-en_us}
+termination_mode=${BBB_PLAYABLE_TERMINATION_MODE:-}
+termination_manifest=${BBB_LIFECYCLE_SOAK_MANIFEST:-}
+termination_timeout_seconds=${BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS:-60}
 case "$timeout_seconds:$ready_timeout_seconds" in
   *[!0-9:]*|:*|*:|0:*|*:0)
     echo "playable gate: timeout values must be positive integer seconds" >&2
+    exit 2
+    ;;
+esac
+case "$termination_timeout_seconds" in
+  ''|*[!0-9]*|0)
+    echo "playable gate: termination timeout must be positive integer seconds" >&2
     exit 2
     ;;
 esac
@@ -150,6 +161,19 @@ case "$client_locale" in
   en_us|ar_sa) ;;
   *)
     echo "playable gate: BBB_PLAYABLE_CLIENT_LOCALE must be en_us or ar_sa" >&2
+    exit 2
+    ;;
+esac
+case "$termination_mode" in
+  "") ;;
+  quit|kick)
+    if [ -z "$termination_manifest" ] || [ ! -f "$termination_manifest" ]; then
+      echo "playable gate: termination mode requires BBB_LIFECYCLE_SOAK_MANIFEST" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    echo "playable gate: BBB_PLAYABLE_TERMINATION_MODE must be quit or kick" >&2
     exit 2
     ;;
 esac
@@ -171,7 +195,9 @@ client_log="$artifact_dir/client.log"
 status_json="$artifact_dir/status.json"
 status_raw_json="$artifact_dir/status-raw.json"
 evidence_json="$artifact_dir/evidence.json"
+termination_json="$artifact_dir/termination.json"
 server_command="$artifact_dir/server-command.fifo"
+transfer_server_command="$artifact_dir/transfer-server-command.fifo"
 server_pack_dir="$artifact_dir/server-pack-http"
 server_pack_zip="$server_pack_dir/lifecycle-pack.zip"
 server_pack_cache="$artifact_dir/server-pack-cache"
@@ -207,11 +233,12 @@ profile_id=$(run_python write-operator \
   --output "$server_dir/ops.json" \
   --username bbb-playablegate)
 server_pack_sha1=$(run_python write-server-pack --output "$server_pack_zip")
-mkfifo "$server_command"
+mkfifo "$server_command" "$transfer_server_command"
 # Keep one read/write descriptor alive for the whole server lifetime. Opening a
 # FIFO only on the server's read side would block startup before the collector
 # has a chance to write the reconfiguration command.
 exec 3<>"$server_command"
+exec 4<>"$transfer_server_command"
 if [ "$server_port" = "$control_port" ] ||
   [ "$server_port" = "$transfer_server_port" ] ||
   [ "$control_port" = "$transfer_server_port" ]
@@ -333,7 +360,7 @@ echo "playable gate: starting vanilla 26.1 transfer target on 127.0.0.1:$transfe
 (
   cd "$transfer_server_dir"
   exec setsid "$java_bin" -Xms512M -Xmx1G -jar "$server_jar" nogui
-) </dev/null >"$transfer_server_log" 2>&1 &
+) <"$transfer_server_command" >"$transfer_server_log" 2>&1 &
 transfer_server_pid=$!
 
 # DedicatedServer.java logs this stable marker after initialization completes:
@@ -423,11 +450,49 @@ fi
 run_python assert \
   --evidence "$evidence_json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs"
+if [ -n "$termination_mode" ]; then
+  run_python terminate-live \
+    --control "127.0.0.1:$control_port" \
+    --mode "$termination_mode" \
+    --manifest "$termination_manifest" \
+    --transfer-server-command "$transfer_server_command" \
+    --client-pid "$client_pid" \
+    --timeout "$termination_timeout_seconds" \
+    --output "$termination_json"
+
+  terminated_client_pid=$client_pid
+  termination_deadline=$(( $(date +%s) + termination_timeout_seconds ))
+  while kill -0 "$terminated_client_pid" 2>/dev/null; do
+    client_state=$(ps -o stat= -p "$terminated_client_pid" 2>/dev/null || true)
+    case "$client_state" in
+      Z*|"") break ;;
+    esac
+    if [ "$(date +%s)" -ge "$termination_deadline" ]; then
+      echo "playable gate failed: client did not exit after app.quit" >&2
+      echo "playable gate evidence: termination: $termination_json" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+  if wait "$terminated_client_pid"; then
+    client_exit_status=0
+  else
+    client_exit_status=$?
+  fi
+  client_pid=
+  run_python finalize-termination \
+    --evidence "$termination_json" \
+    --client-pid "$terminated_client_pid" \
+    --exit-status "$client_exit_status"
+fi
 echo "playable gate: live smoke passed"
 echo "playable gate: live vanilla 26.1 session passed"
 echo "playable gate evidence: packet/session timeline: $client_log"
 echo "playable gate evidence: world snapshot: $evidence_json"
 echo "playable gate evidence: server log: $server_log"
 echo "playable gate evidence: transfer server log: $transfer_server_log"
+if [ -n "$termination_mode" ]; then
+  echo "playable gate evidence: termination: $termination_json"
+fi
 (cd "$repo_root" && record_gate_stamp playable-log.tsv last-playable-live \
   live "evidence:$evidence_json")

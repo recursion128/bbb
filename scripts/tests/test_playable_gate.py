@@ -952,6 +952,64 @@ class PlayableGateStatusTests(unittest.TestCase):
             playable_gate.normalize_status_capture(capture, protocol)
 
 
+class PlayableGateTerminationTests(unittest.TestCase):
+    def test_terminal_snapshot_returns_exact_observations(self):
+        snapshot = {
+            "world": {"resource_packs_tracked": 0},
+            "net": {"simulation_output_backlog_current": 1},
+        }
+
+        observed = playable_gate.validate_terminal_snapshot(
+            snapshot,
+            {
+                "world.resource_packs_tracked": 0,
+                "net.simulation_output_backlog_current": 1,
+            },
+        )
+
+        self.assertEqual(
+            observed,
+            {
+                "world.resource_packs_tracked": 0,
+                "net.simulation_output_backlog_current": 1,
+            },
+        )
+
+    def test_terminal_snapshot_rejects_missing_or_over_ceiling_gauge(self):
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "missing renderer.terrain_mesh_queue_depth"
+        ):
+            playable_gate.validate_terminal_snapshot(
+                {"renderer": {}}, {"renderer.terrain_mesh_queue_depth": 0}
+            )
+        with self.assertRaisesRegex(playable_gate.GateFailure, "above ceiling 0"):
+            playable_gate.validate_terminal_snapshot(
+                {"renderer": {"terrain_mesh_queue_depth": 1}},
+                {"renderer.terrain_mesh_queue_depth": 0},
+            )
+
+    def test_finalize_termination_requires_zero_exit_and_absent_process(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "termination.json"
+            path.write_text(
+                json.dumps({"schema": 1, "exit_status": None}),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                evidence=path,
+                client_pid=999_999_999,
+                exit_status=7,
+            )
+
+            with self.assertRaisesRegex(
+                playable_gate.GateFailure, "exited with status 7"
+            ):
+                playable_gate.finalize_termination(args)
+            evidence = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(evidence["exit_status"], 7)
+            self.assertTrue(evidence["process_absent"])
+
+
 class PlayableGateScriptContractTests(unittest.TestCase):
     def test_live_success_reports_both_required_markers(self):
         source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
