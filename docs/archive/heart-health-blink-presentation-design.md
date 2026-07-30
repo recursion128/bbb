@@ -1,6 +1,6 @@
 # Heart Health Blink Presentation Engineering Contract
 
-Status: active from 2026-07-29.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -133,6 +133,9 @@ The pre-start full gate passed at
 `b9de99e8bf00565b42b93cab443a7d1f184f8e5e`. The final full gate is the
 engineering checkpoint. No playable gate is required because this slice
 changes no input, world mutation, packet, or control-command path.
+
+The contract, native presentation, and renderer consumption stages are the
+clean commits `dee161b56`, `c3515debf`, and `0a219d143`.
 
 ## Failure localization and safe stops
 
