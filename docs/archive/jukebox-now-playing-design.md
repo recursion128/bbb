@@ -1,4 +1,4 @@
-# Jukebox now-playing presentation engineering contract
+# Jukebox now-playing presentation engineering contract (archived)
 
 ## Goal and completion
 
@@ -15,9 +15,10 @@ The engineering effort is complete when:
 - level event 1010 follows the synchronized session holder order whenever that
   registry exists, including custom ordering, custom sounds, and exact rich
   descriptions;
-- clean/offline worlds use the generated Vanilla bootstrap order, while an
-  unknown holder or unresolved synchronized entry produces no start, overlay,
-  or narration side effect;
+- clean/offline worlds use the generated Vanilla bootstrap order; synchronized
+  data-less built-in stubs resolve only by their resource identity, while an
+  unknown holder or unresolved custom entry produces no start, overlay, or
+  narration side effect;
 - an accepted start stops the sound already tracked at that block position,
   starts the selected song at the block center, sets the action bar for 60
   ticks with animated color, and enqueues `SystemNow` narration using the same
@@ -41,7 +42,8 @@ The engineering effort is complete when:
   precedence.
 - New in-game configuration UI or narrator settings.
 - Falling back to Vanilla holder ordinals after a server has synchronized a
-  jukebox-song registry for the session.
+  jukebox-song registry for the session. A recognized data-less built-in stub
+  may use its resource identity, never its synchronized ordinal.
 
 ## Ownership and frozen integration surface
 
@@ -68,7 +70,8 @@ server-supplied entries. A single level-event resolver returns one complete
 presentation:
 
 1. if the session has a synchronized `minecraft:jukebox_song` registry, resolve
-   only through that holder order and typed entry;
+   only through that holder order and typed entry; a data-less built-in stub
+   may delegate to the shared catalog by its exact resource id;
 2. otherwise resolve the holder through the shared Vanilla catalog and derive
    the built-in translatable description component.
 

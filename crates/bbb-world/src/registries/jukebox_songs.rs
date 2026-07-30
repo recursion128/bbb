@@ -1,5 +1,8 @@
 use bbb_protocol::{
-    jukebox_song_types::vanilla_26_1_jukebox_song_by_holder_id,
+    jukebox_song_types::{
+        vanilla_26_1_jukebox_song_by_holder_id, vanilla_26_1_jukebox_song_by_song_id,
+        VanillaJukeboxSong,
+    },
     styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
     NbtSummaryEntry, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
@@ -85,39 +88,37 @@ impl WorldStore {
             .frozen_registry_access()
             .has_server_contents(JUKEBOX_SONG_REGISTRY)
         {
-            let Some(presentation) = self.synchronized_jukebox_song_presentation(holder_id)? else {
+            if let Some(presentation) = self.synchronized_jukebox_song_presentation(holder_id)? {
+                let description =
+                    RichTextComponent::try_from_component_nbt(presentation.description_nbt)
+                        .map_err(|reason| JukeboxSongProjectionError {
+                            resource_id: self
+                                .registry_resource_id_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id)
+                                .unwrap_or("<unknown>")
+                                .to_string(),
+                            field: "description".to_string(),
+                            reason,
+                        })?;
+                return Ok(Some(JukeboxSongLevelEventPresentation {
+                    sound_event: presentation.sound_event,
+                    description,
+                }));
+            }
+            let Some(entry) = self.registry_entry_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id)
+            else {
                 return Ok(None);
             };
-            let description = RichTextComponent::try_from_component_nbt(
-                presentation.description_nbt,
-            )
-            .map_err(|reason| JukeboxSongProjectionError {
-                resource_id: self
-                    .registry_resource_id_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id)
-                    .unwrap_or("<unknown>")
-                    .to_string(),
-                field: "description".to_string(),
-                reason,
-            })?;
-            return Ok(Some(JukeboxSongLevelEventPresentation {
-                sound_event: presentation.sound_event,
-                description,
-            }));
+            if entry.has_data {
+                return Ok(None);
+            }
+            return Ok(vanilla_26_1_jukebox_song_by_song_id(&entry.id)
+                .map(vanilla_level_event_presentation));
         }
 
         let Some(song) = vanilla_26_1_jukebox_song_by_holder_id(holder_id) else {
             return Ok(None);
         };
-        let description = RichTextComponent::try_from_component_nbt(translatable_component(
-            song.description_translation_key(),
-        ))
-        .expect("generated jukebox description translation is a valid Component");
-        Ok(Some(JukeboxSongLevelEventPresentation {
-            sound_event: JukeboxSoundEvent::Reference {
-                resource_id: song.sound_event_id.to_string(),
-            },
-            description,
-        }))
+        Ok(Some(vanilla_level_event_presentation(song)))
     }
 
     /// Projects a synchronized song through the current session holder order.
@@ -146,6 +147,21 @@ impl WorldStore {
                 field: failure.field.to_string(),
                 reason: failure.reason,
             })
+    }
+}
+
+fn vanilla_level_event_presentation(
+    song: &VanillaJukeboxSong,
+) -> JukeboxSongLevelEventPresentation {
+    let description = RichTextComponent::try_from_component_nbt(translatable_component(
+        song.description_translation_key(),
+    ))
+    .expect("generated jukebox description translation is a valid Component");
+    JukeboxSongLevelEventPresentation {
+        sound_event: JukeboxSoundEvent::Reference {
+            resource_id: song.sound_event_id.to_string(),
+        },
+        description,
     }
 }
 
@@ -396,7 +412,11 @@ mod tests {
             0,
             vec![RegistryPacketEntry::stub("minecraft:cat")],
         );
-        assert_eq!(store.jukebox_song_level_event_presentation(0), Ok(None));
+        let stub = store
+            .jukebox_song_level_event_presentation(0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(stub.sound_event.resource_id(), "minecraft:music_disc.cat");
         assert_eq!(store.jukebox_song_level_event_presentation(1), Ok(None));
     }
 

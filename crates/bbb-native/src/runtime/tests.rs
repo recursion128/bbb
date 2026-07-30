@@ -3445,6 +3445,52 @@ fn hud_action_bar_and_title_projection_matches_world_state() {
 }
 
 #[test]
+fn jukebox_now_playing_localizes_for_animated_action_bar_and_system_now_narration() {
+    let root = unique_runtime_temp_dir("jukebox-now-playing-language");
+    write_runtime_bow_item_assets(&root);
+    write_runtime_json(
+        &runtime_assets_dir(&root).join("lang").join("en_us.json"),
+        r#"{
+            "record.nowPlaying": "Now Playing: %s",
+            "jukebox_song.minecraft.cat": "C418 - cat"
+        }"#,
+    );
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+
+    world.apply_level_event(bbb_protocol::packets::LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
+        data: 1,
+        global: false,
+    });
+
+    let action_bar = hud_action_bar_text_from_world(&world, Some(&item_runtime), 0.25)
+        .expect("jukebox action bar projected");
+    assert_eq!(
+        action_bar
+            .runs
+            .iter()
+            .map(|run| run.visual.text.as_str())
+            .collect::<String>(),
+        "Now Playing: C418 - cat"
+    );
+    assert_eq!(action_bar.remaining_ticks, 60);
+    assert_eq!(action_bar.partial_tick, 0.25);
+    assert!(action_bar.animate_color);
+
+    let narrations = world.take_pending_chat_narrations();
+    assert_eq!(narrations.len(), 1);
+    assert_eq!(narrations[0].kind, bbb_world::ChatNarrationKind::SystemNow);
+    assert_eq!(
+        chat_narration_text(&narrations[0], Some(&item_runtime)),
+        "Now Playing: C418 - cat"
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_action_bar_and_title_projection_localizes_style_and_font_without_interactions() {
     let component =
         bbb_protocol::RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![

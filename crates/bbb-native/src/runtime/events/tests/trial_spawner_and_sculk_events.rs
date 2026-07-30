@@ -1064,7 +1064,7 @@ fn jukebox_level_events_update_world_audio_state() {
     tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1010,
         pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
-        data: 27,
+        data: 12,
         global: false,
     })))
     .unwrap();
@@ -1090,6 +1090,8 @@ fn jukebox_level_events_update_world_audio_state() {
     assert_eq!(event.pos, BlockPos { x: -4, y: 70, z: 9 });
     assert_eq!(event.song_registry_id, None);
     assert!(event.stopped_existing);
+    assert!(world.action_bar().unwrap().animate_color);
+    assert_eq!(world.take_pending_chat_narrations().len(), 1);
     assert_eq!(world.counters().level_events_received, 2);
     assert_eq!(world.counters().level_events_tracked, 2);
 }
@@ -1133,6 +1135,9 @@ fn jukebox_level_events_emit_runtime_audio_commands() {
     assert_eq!(play.jukebox_pos, [4, 64, -7]);
     assert_close(play.packet_volume, 4.0);
     assert_close(play.packet_pitch, 1.0);
+    let action_bar = world.action_bar().unwrap();
+    assert_eq!(action_bar.display_ticks, 60);
+    assert!(action_bar.animate_color);
 
     let AudioCommand::StopJukeboxSong(stop) = &audio.commands[1] else {
         panic!("expected jukebox stop command, got {:?}", audio.commands[1]);
@@ -1215,6 +1220,42 @@ fn jukebox_song_registry_data_updates_audio_resolution() {
     assert_eq!(play.sound.sound_name, "minecraft:records/tears");
     assert_eq!(play.fixed_range, None);
     assert_eq!(play.jukebox_pos, [4, 5, 6]);
+    let narrations = world.take_pending_chat_narrations();
+    assert_eq!(narrations.len(), 2);
+    assert_eq!(narrations[0].kind, bbb_world::ChatNarrationKind::SystemNow);
+    assert_eq!(
+        narrations[0].content_component,
+        Some(bbb_protocol::NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: bbb_protocol::NbtSummaryValue::String("record.nowPlaying".to_string(),),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "with".to_string(),
+                value: bbb_protocol::NbtSummaryValue::List(vec![
+                    bbb_protocol::NbtSummaryValue::Compound(vec![
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "bold".to_string(),
+                            value: bbb_protocol::NbtSummaryValue::Long(1),
+                        },
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "color".to_string(),
+                            value: bbb_protocol::NbtSummaryValue::String("gold".to_string()),
+                        },
+                        bbb_protocol::NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: bbb_protocol::NbtSummaryValue::String("Custom song".to_string(),),
+                        },
+                    ]),
+                ]),
+            },
+        ]))
+    );
+    assert_eq!(narrations[1].kind, bbb_world::ChatNarrationKind::SystemNow);
+    assert_eq!(
+        narrations[1].content_component.as_ref(),
+        Some(world.action_bar().unwrap().content.component())
+    );
 }
 
 fn jukebox_song_nbt(
@@ -1231,7 +1272,14 @@ fn jukebox_song_nbt(
         write_test_nbt_float_field(&mut out, "range", fixed_range);
     }
     out.push(0);
-    write_test_nbt_string_field(&mut out, "description", description);
+    out.push(10);
+    write_test_nbt_string(&mut out, "description");
+    write_test_nbt_string_field(&mut out, "text", description);
+    write_test_nbt_string_field(&mut out, "color", "gold");
+    out.push(1);
+    write_test_nbt_string(&mut out, "bold");
+    out.push(1);
+    out.push(0);
     write_test_nbt_float_field(&mut out, "length_in_seconds", length_in_seconds);
     out.push(3);
     write_test_nbt_string(&mut out, "comparator_output");

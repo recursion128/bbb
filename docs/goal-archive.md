@@ -862,3 +862,6 @@
   与本地 profile body/cape/elytra 的 blur/clamp 现贯通同一动态实体图集；
   level-zero bounded texel sampling 保留四种组合且隔离相邻入口，合同见
   `docs/archive/coalesced-resource-texture-sampling-design.md`。
+- **2026-07-30（唱片 now-playing 工程闭环）**：共享生成目录、同步 holder/
+  stub 资源身份、定位音频、60 tick 动画 action bar 与 rich `SystemNow` 旁白已
+  贯通；合同见 `docs/archive/jukebox-now-playing-design.md`。
