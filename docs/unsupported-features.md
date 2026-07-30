@@ -251,7 +251,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 ### Model and animation details
 
-- **Remaining mob-specific armor models.**
 - **Frog tongue prey-targeting is `not-needed`.**
   `DATA_TONGUE_TARGET_ID` is consumed by frog/AI behavior only. Vanilla
   `FrogRenderer.extractRenderState` does not project it, `FrogRenderState` has
