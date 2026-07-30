@@ -1,6 +1,6 @@
 # Swing Animation Prototype Default Engineering Contract
 
-Status: active from 2026-07-30.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -119,6 +119,10 @@ The pre-start full gate passed at
 `35722e575925f94091c5dcf5842bdba31ded75b3`. The final full gate is the
 engineering checkpoint. No playable gate is required because the slice
 changes no packet, input-command, world-mutation, or control-command boundary.
+
+The contract, typed catalog/runtime projection, and effective world/native
+consumer stages are the clean commits `b2e19b868`, `1aeac2e42`, and
+`a5237afb3`.
 
 ## Failure localization and safe stops
 

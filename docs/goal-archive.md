@@ -841,3 +841,7 @@
   typed sorted range，并在 world 与 Loom PIP 共享精确 translucent、背面剔除、
   `LessEqual`、无 overlay/cutout/深度写状态；合同见
   `docs/archive/banner-pattern-pipeline-design.md`。
+- **2026-07-30（物品原型 SWING_ANIMATION 工程闭环）**：生成目录、覆盖资源、
+  world effective ItemStack 与第一/第三人称现贯通完整 `NONE/WHACK/STAB`
+  类型和持续时间，不再从 spear/kinetic 身份推断；合同见
+  `docs/archive/swing-animation-prototype-default-design.md`。
