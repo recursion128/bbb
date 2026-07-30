@@ -2,10 +2,7 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
-};
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -438,9 +435,12 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         }
         return true;
     }
-    if !input.focused || inventory_screen_layout_for_surface(world, surface_size).is_none() {
+    if !input.focused {
         return false;
     }
+    let Some(layout) = inventory_screen_layout_for_surface(world, surface_size) else {
+        return false;
+    };
     input.inventory_cursor_position =
         inventory_screen_cursor_position(world, cursor_position, surface_size);
     let button_num = match button {
@@ -449,6 +449,23 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
         MouseButton::Middle => 2,
         _ => return true,
     };
+
+    if layout.background == InventoryScreenBackground::Lectern {
+        if matches!(state, ElementState::Pressed) && button_num == 0 {
+            maybe_queue_lectern_button_click(
+                world,
+                counters,
+                net_commands,
+                cursor_position,
+                surface_size,
+            );
+        }
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
 
     if matches!(state, ElementState::Released) {
         if narrow_recipe_book_consumes_container_click(world, surface_size) {
@@ -573,21 +590,6 @@ pub(crate) fn handle_inventory_mouse_input_with_item_runtime(
     if button_num == 0
         && maybe_queue_recipe_book_toggle_click(
             input,
-            world,
-            counters,
-            net_commands,
-            cursor_position,
-            surface_size,
-        )
-    {
-        input.inventory_last_click_slot = None;
-        input.inventory_last_click_button_num = None;
-        input.inventory_last_click_at = None;
-        local_inventory_clear_quick_craft(input);
-        return true;
-    }
-    if button_num == 0
-        && maybe_queue_lectern_button_click(
             world,
             counters,
             net_commands,
@@ -1117,13 +1119,22 @@ fn maybe_queue_lectern_button_click(
     match target {
         LecternClickTarget::Done => queue_container_close_command(counters, world, net_commands),
         LecternClickTarget::MenuButton(button_id) => {
-            let Some(container_id) = world.apply_local_container_button_click(button_id) else {
-                return false;
-            };
-            queue_container_button_click_command(counters, net_commands, container_id, button_id);
-            true
+            queue_lectern_button_click(world, counters, net_commands, button_id)
         }
     }
+}
+
+pub(crate) fn queue_lectern_button_click(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button_id: i32,
+) -> bool {
+    let Some(container_id) = world.apply_local_container_button_click(button_id) else {
+        return false;
+    };
+    queue_container_button_click_command(counters, net_commands, container_id, button_id);
+    true
 }
 
 fn maybe_queue_beacon_button_click(
@@ -2542,6 +2553,10 @@ fn inventory_screen_cursor_position(
 ) -> Option<(i32, i32)> {
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;
     let cursor = cursor_position?;
+    if layout.background == InventoryScreenBackground::Lectern {
+        return (cursor.x.is_finite() && cursor.y.is_finite())
+            .then(|| (cursor.x.floor() as i32, cursor.y.floor() as i32));
+    }
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
@@ -3147,14 +3162,15 @@ fn lectern_button_at_position(
     if layout.background != InventoryScreenBackground::Lectern {
         return None;
     }
+    let lectern = world.lectern_book_view()?;
     let cursor = cursor_position?;
-    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let (origin_x, origin_y) = lectern_screen_origin(surface_size);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
     if y >= f64::from(LECTERN_MENU_BUTTON_Y)
         && y < f64::from(LECTERN_MENU_BUTTON_Y + LECTERN_MENU_BUTTON_HEIGHT)
     {
-        if local_player_may_build(world) {
+        if lectern.may_build {
             if x >= f64::from(LECTERN_MENU_DONE_BUTTON_X)
                 && x < f64::from(LECTERN_MENU_DONE_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
             {
@@ -3177,7 +3193,8 @@ fn lectern_button_at_position(
     {
         return None;
     }
-    let (current_page, page_count) = lectern_page_state(world)?;
+    let current_page = lectern.current_page;
+    let page_count = lectern.pages.len();
     if current_page > 0
         && x >= f64::from(LECTERN_PAGE_BACK_BUTTON_X)
         && x < f64::from(LECTERN_PAGE_BACK_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
@@ -3191,46 +3208,6 @@ fn lectern_button_at_position(
         return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_NEXT_PAGE));
     }
     None
-}
-
-fn local_player_may_build(world: &WorldStore) -> bool {
-    !world.local_player_is_adventure() && !world.local_player_is_spectator()
-}
-
-fn lectern_page_state(world: &WorldStore) -> Option<(usize, usize)> {
-    let container = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .filter(|container| container.menu_type_id == Some(VANILLA_MENU_TYPE_LECTERN_ID))?;
-    let book = container
-        .slots
-        .iter()
-        .find(|slot| slot.slot == 0)
-        .map(|slot| &slot.item)?;
-    let page_count = if world.item_stack_has_effective_component(
-        book,
-        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
-    ) {
-        book.component_patch
-            .written_book
-            .as_ref()
-            .map(|book| book.pages.len())
-            .unwrap_or_default()
-    } else if world.item_stack_has_effective_component(
-        book,
-        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
-    ) {
-        book.component_patch.writable_book_pages.len()
-    } else {
-        0
-    };
-    let current_page = world
-        .open_container_data_value(0)
-        .map(i32::from)
-        .unwrap_or_default()
-        .clamp(0, page_count.saturating_sub(1) as i32) as usize;
-    Some((current_page, page_count))
 }
 
 fn beacon_button_at_position(
@@ -3622,6 +3599,13 @@ fn inventory_screen_origin(
     (
         (f64::from(surface_size.width.max(1)) - f64::from(layout.width)) * 0.5,
         (f64::from(surface_size.height.max(1)) - f64::from(layout.height)) * 0.5,
+    )
+}
+
+fn lectern_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) {
+    (
+        (f64::from(surface_size.width.max(1)) - f64::from(LECTERN_SCREEN_WIDTH)) * 0.5,
+        2.0,
     )
 }
 

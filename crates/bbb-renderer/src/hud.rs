@@ -2141,9 +2141,6 @@ pub enum HudInventoryBackgroundTexture {
     MountLlamaArmorSlot,
     MountNautilusArmorSlot,
     MountChestSlots,
-    Book,
-    PageBackward,
-    PageForward,
     ShulkerBox,
     Stonecutter,
     StonecutterScroller,
@@ -8202,9 +8199,6 @@ impl Renderer {
                 self.hud_mount_nautilus_armor_slot.as_ref()
             }
             HudInventoryBackgroundTexture::MountChestSlots => self.hud_mount_chest_slots.as_ref(),
-            HudInventoryBackgroundTexture::Book => self.hud_book_background.as_ref(),
-            HudInventoryBackgroundTexture::PageBackward => self.hud_page_backward.as_ref(),
-            HudInventoryBackgroundTexture::PageForward => self.hud_page_forward.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
             HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),
             HudInventoryBackgroundTexture::StonecutterScroller => {

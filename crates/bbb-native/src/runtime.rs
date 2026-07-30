@@ -456,14 +456,6 @@ const ENCHANTING_TABLE_NAME_TEXT_COLOR: [f32; 4] = [104.0 / 255.0, 94.0 / 255.0,
 const ENCHANTING_TABLE_NAME_TEXT_DISABLED_COLOR: [f32; 4] =
     [52.0 / 255.0, 47.0 / 255.0, 37.0 / 255.0, 1.0];
 const ENCHANTING_TABLE_NAME_TEXT_HIGHLIGHTED_COLOR: [f32; 4] = [1.0, 1.0, 128.0 / 255.0, 1.0];
-const BOOK_PAGE_INDICATOR_X_RIGHT: i32 = 148;
-const BOOK_PAGE_INDICATOR_Y: i32 = 16;
-const BOOK_PAGE_TEXT_X: i32 = 36;
-const BOOK_PAGE_TEXT_Y: i32 = 30;
-const BOOK_PAGE_TEXT_WIDTH: u32 = 114;
-const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
-const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
-const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const CONTAINER_LABEL_TEXT_COLOR: [f32; 4] = rgba32(-12_566_464);
 const CONTAINER_LABEL_WIDTH: u32 = 512;
 const CONTAINER_CENTERED_LABEL_WIDTH: u32 = 512;
@@ -10010,6 +10002,9 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     }
 
     let layout = inventory_screen_layout_for_surface(world, surface_size)?;
+    if layout.background == InventoryScreenBackground::Lectern {
+        return None;
+    }
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
     } else {
@@ -13804,7 +13799,7 @@ fn hud_inventory_text_labels(
                 enchantment_options.map_or(&[], |options| options.as_slice()),
             ));
         }
-        InventoryScreenBackground::Lectern => labels.extend(lectern_book_text_labels(world)),
+        InventoryScreenBackground::Lectern => {}
         _ => {}
     }
     labels
@@ -14034,117 +14029,6 @@ fn push_component_text_run(runs: &mut Vec<StyledTextRun>, text: &str, style: &Co
             style: style.clone(),
         });
     }
-}
-
-fn lectern_book_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
-    let pages = lectern_book_pages(world);
-    let current_page = lectern_current_page(world, pages.len());
-    book_page_text_labels(&pages, current_page)
-}
-
-fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInventoryTextLabel> {
-    let page_count = pages.len();
-    let current_page = current_page.min(page_count.saturating_sub(1));
-    let mut labels = Vec::new();
-
-    let page_indicator = format!("Page {} of {}", current_page + 1, page_count.max(1));
-    if let Some(width) = hud_ascii_approx_text_width(&page_indicator) {
-        if let Ok(width_i32) = i32::try_from(width) {
-            labels.push(HudInventoryTextLabel {
-                x: BOOK_PAGE_INDICATOR_X_RIGHT - width_i32,
-                y: BOOK_PAGE_INDICATOR_Y,
-                width,
-                text: page_indicator,
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                font: None,
-                runs: Vec::new(),
-            });
-        }
-    }
-
-    if let Some(page) = pages.get(current_page) {
-        for (line_index, line) in lectern_book_page_lines(page).into_iter().enumerate() {
-            let Some(text) = line else {
-                continue;
-            };
-            labels.push(HudInventoryTextLabel {
-                x: BOOK_PAGE_TEXT_X,
-                y: BOOK_PAGE_TEXT_Y + line_index as i32 * BOOK_PAGE_LINE_HEIGHT,
-                width: BOOK_PAGE_TEXT_WIDTH,
-                text,
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                font: None,
-                runs: Vec::new(),
-            });
-        }
-    }
-
-    labels
-}
-
-fn lectern_book_pages(world: &WorldStore) -> Vec<String> {
-    let Some(book) = open_container_slot_item(world, 0) else {
-        return Vec::new();
-    };
-    if let Some(written) = &book.component_patch.written_book {
-        return written.pages.clone();
-    }
-    book.component_patch.writable_book_pages.clone()
-}
-
-fn lectern_current_page(world: &WorldStore, page_count: usize) -> usize {
-    if page_count == 0 {
-        return 0;
-    }
-    let page = world
-        .open_container_data_value(0)
-        .map(i32::from)
-        .unwrap_or_default();
-    usize::try_from(page.clamp(0, page_count.saturating_sub(1) as i32)).unwrap_or_default()
-}
-
-fn lectern_book_page_lines(page: &str) -> Vec<Option<String>> {
-    let max_lines =
-        usize::try_from(BOOK_PAGE_TEXT_HEIGHT / BOOK_PAGE_LINE_HEIGHT as u32).unwrap_or_default();
-    let mut lines = Vec::new();
-    for paragraph in page.split('\n') {
-        if lines.len() >= max_lines {
-            break;
-        }
-        if paragraph.is_empty() {
-            lines.push(None);
-            continue;
-        }
-        let mut current = String::new();
-        let mut width = 0u32;
-        for ch in paragraph.chars().filter(|ch| !ch.is_control()) {
-            let advance = hud_ascii_approx_char_width(ch);
-            if !current.is_empty() && width.saturating_add(advance) > BOOK_PAGE_TEXT_WIDTH {
-                lines.push(Some(current.trim_end().to_string()));
-                if lines.len() >= max_lines {
-                    current.clear();
-                    break;
-                }
-                current.clear();
-                width = 0;
-            }
-            current.push(ch);
-            width = width.saturating_add(advance);
-        }
-        if lines.len() < max_lines && !current.is_empty() {
-            lines.push(Some(current.trim_end().to_string()));
-        }
-    }
-    lines.truncate(max_lines);
-    lines
 }
 
 fn enchanting_table_text_labels(
@@ -15707,35 +15591,7 @@ fn hud_inventory_background_layers(
             layers
         }
         InventoryScreenBackground::Lectern => {
-            vec![
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::Book,
-                    0,
-                    0,
-                    192,
-                    192,
-                    [0.0, 0.0],
-                    [192.0 / 256.0, 192.0 / 256.0],
-                ),
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::PageBackward,
-                    43,
-                    157,
-                    23,
-                    13,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::PageForward,
-                    116,
-                    157,
-                    23,
-                    13,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-            ]
+            unreachable!("lectern presentation is owned by HudBookScreen")
         }
         InventoryScreenBackground::Loom => {
             vec![hud_inventory_background_layer(

@@ -647,7 +647,7 @@ pub(crate) fn queue_chat_message_command(
     }
 }
 
-pub(super) fn queue_container_close_command(
+pub(crate) fn queue_container_close_command(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,

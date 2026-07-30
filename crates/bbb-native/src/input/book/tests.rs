@@ -1,8 +1,10 @@
 use bbb_net::NetCommand;
 use bbb_protocol::{
     item_types::{VANILLA_ITEM_WRITABLE_BOOK_ID, VANILLA_ITEM_WRITTEN_BOOK_ID},
+    menu_types::VANILLA_MENU_TYPE_LECTERN_ID,
     packets::{
-        InteractionHand, ItemStackSummary, SetPlayerInventory as ProtocolSetPlayerInventory,
+        ContainerSetContent, ContainerSetData, InteractionHand, ItemStackSummary, OpenScreen,
+        SetPlayerInventory as ProtocolSetPlayerInventory,
     },
 };
 use bbb_world::LocalPlayerPoseState;
@@ -224,6 +226,86 @@ fn book_screen_failed_unsigned_queue_retains_editor_and_local_inventory() {
             .writable_book_pages,
         ["original"]
     );
+}
+
+#[test]
+fn lectern_page_keys_queue_buttons_without_mutating_server_page_and_escape_closes() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
+        title: bbb_protocol::RichTextComponent::plain("Lectern"),
+    });
+    let mut item = ItemStackSummary {
+        item_id: Some(VANILLA_ITEM_WRITABLE_BOOK_ID),
+        count: 1,
+        component_patch: Default::default(),
+    };
+    item.component_patch.writable_book_pages =
+        vec!["one".to_string(), "two".to_string(), "three".to_string()];
+    assert!(world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 1,
+        items: vec![item],
+        carried_item: ItemStackSummary::empty(),
+    }));
+    assert!(world.apply_container_set_data(ContainerSetData {
+        container_id: 7,
+        id: 0,
+        value: 1,
+    }));
+
+    let mut clipboard = None;
+    assert!(input.handle_book_screen_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::PageUp,
+        true,
+        &FallbackTextMeasurer,
+        &mut clipboard,
+    ));
+    assert_eq!(world.lectern_book_view().unwrap().current_page, 1);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::ContainerButtonClick(packet))
+            if packet.container_id == 7 && packet.button_id == 1
+    ));
+
+    assert!(input.handle_book_screen_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::PageDown,
+        true,
+        &FallbackTextMeasurer,
+        &mut clipboard,
+    ));
+    assert_eq!(world.lectern_book_view().unwrap().current_page, 1);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::ContainerButtonClick(packet))
+            if packet.container_id == 7 && packet.button_id == 2
+    ));
+
+    assert!(input.handle_book_screen_key(
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Escape,
+        true,
+        &FallbackTextMeasurer,
+        &mut clipboard,
+    ));
+    assert!(world.lectern_book_view().is_none());
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::ContainerClose(packet)) if packet.container_id == 7
+    ));
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{HudAsciiGlyph, HudRichTooltipLine};
+use crate::{ClearColor, HudAsciiGlyph, HudRichTooltipLine, Renderer};
 
 fn glyphs_for(text: &str) -> HudFontGlyphMap {
     let mut glyphs = HudFontGlyphMap::new();
@@ -22,6 +22,7 @@ fn view_screen(text: &str) -> HudBookScreen {
         page_count: 1,
         resource_generation: 9,
         resources_loaded: true,
+        text_filtering_enabled: false,
         advanced_item_tooltips: false,
         mode: HudBookMode::View,
         runs: vec![HudComponentTextRun::plain(text)],
@@ -46,6 +47,8 @@ fn view_screen(text: &str) -> HudBookScreen {
         author: String::new(),
         warning: String::new(),
         done: "Done".to_string(),
+        take_book: "Take Book".to_string(),
+        may_build: false,
         sign: "Sign".to_string(),
         finalize: "Finalize".to_string(),
         cancel: "Cancel".to_string(),
@@ -82,10 +85,12 @@ fn book_screen_hit_uses_wrapped_source_interaction_and_revision_token() {
     assert_eq!(
         hit,
         Some(HudBookHitTarget {
+            mode: HudBookMode::View,
             generation: 7,
             page: 0,
             resource_generation: 9,
             resources_loaded: true,
+            text_filtering_enabled: false,
             source_run_index: 0,
         })
     );
@@ -216,6 +221,134 @@ fn hud_book_edit_sanitization_forces_the_default_font() {
 
     let sanitized = sanitize_hud_book_screen(screen).unwrap();
     assert_eq!(sanitized.runs[0].font, None);
+}
+
+#[test]
+fn hud_book_lectern_keeps_custom_font_and_revision_safe_hit_mode() {
+    let mut screen = view_screen("abc");
+    screen.mode = HudBookMode::Lectern;
+    screen.runs[0].font = Some("example:book".to_string());
+    let screen = sanitize_hud_book_screen(screen).unwrap();
+    assert_eq!(screen.runs[0].font.as_deref(), Some("example:book"));
+
+    let fonts = HudFontGlyphBook::from(glyphs_for("abc"));
+    let layout = hud_book_layout(PhysicalSize::new(320, 240));
+    let target = hud_book_hit_target_at(
+        &screen,
+        &fonts,
+        PhysicalSize::new(320, 240),
+        (
+            f64::from(layout.origin_x + HUD_BOOK_TEXT_X + 1),
+            f64::from(layout.origin_y + HUD_BOOK_TEXT_Y + 1),
+        ),
+    )
+    .unwrap();
+    assert_eq!(target.mode, HudBookMode::Lectern);
+    assert_eq!(target.generation, screen.generation);
+}
+
+#[test]
+fn hud_book_lectern_controls_match_page_and_may_build_state() {
+    let layout = hud_book_layout(PhysicalSize::new(320, 240));
+    let mut screen = view_screen("page");
+    screen.mode = HudBookMode::Lectern;
+    screen.page_count = 3;
+    screen.page = 1;
+    screen.may_build = true;
+
+    assert_eq!(page_button_visibility(&screen), (true, true));
+    assert_eq!(
+        book_menu_buttons(&screen, layout),
+        vec![
+            (layout.origin_x - 4, 98, "Done", true),
+            (layout.origin_x + 98, 98, "Take Book", true),
+        ]
+    );
+
+    screen.may_build = false;
+    assert_eq!(
+        book_menu_buttons(&screen, layout),
+        vec![(layout.origin_x - 4, 200, "Done", true)]
+    );
+    screen.page = 0;
+    screen.page_count = 1;
+    assert_eq!(page_button_visibility(&screen), (false, false));
+}
+
+#[test]
+fn hud_book_lectern_renders_deterministic_background_hover_and_footer_pixels() {
+    let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+        eprintln!("skipping offscreen renderer test without a compatible adapter");
+        return;
+    };
+    renderer.set_clear_color(ClearColor {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    });
+    renderer
+        .upload_hud_book_background(256, 256, &[255, 0, 0, 255].repeat(256 * 256))
+        .unwrap();
+    renderer
+        .upload_hud_page_backward(23, 13, &[0, 255, 0, 255].repeat(23 * 13))
+        .unwrap();
+    renderer
+        .upload_hud_page_backward_highlighted(23, 13, &[255, 255, 0, 255].repeat(23 * 13))
+        .unwrap();
+    renderer
+        .upload_hud_page_forward(23, 13, &[0, 255, 0, 255].repeat(23 * 13))
+        .unwrap();
+    renderer
+        .upload_hud_page_forward_highlighted(23, 13, &[0, 0, 255, 255].repeat(23 * 13))
+        .unwrap();
+    renderer
+        .upload_hud_font_atlas(
+            1,
+            1,
+            &[255, 255, 255, 255],
+            glyphs_for("Page 2 of 3DoneTake Bookpage"),
+        )
+        .unwrap();
+
+    let layout = hud_book_layout(PhysicalSize::new(320, 240));
+    let mut screen = view_screen("page");
+    screen.mode = HudBookMode::Lectern;
+    screen.page = 1;
+    screen.page_count = 3;
+    screen.page_indicator = "Page 2 of 3".to_string();
+    screen.may_build = true;
+    screen.cursor_position = Some((
+        layout.origin_x + HUD_BOOK_PAGE_FORWARD_X,
+        layout.origin_y + HUD_BOOK_PAGE_BUTTON_Y,
+    ));
+    renderer.set_hud_book_screen(Some(screen.clone()));
+
+    let first = renderer.render_offscreen_frame().unwrap();
+    assert_eq!(first.pixel(70, 10), [255, 0, 0, 255]);
+    assert_eq!(
+        first.pixel(
+            u32::try_from(layout.origin_x + HUD_BOOK_PAGE_BACK_X + 1).unwrap(),
+            u32::try_from(layout.origin_y + HUD_BOOK_PAGE_BUTTON_Y + 1).unwrap(),
+        ),
+        [0, 255, 0, 255]
+    );
+    assert_eq!(
+        first.pixel(
+            u32::try_from(layout.origin_x + HUD_BOOK_PAGE_FORWARD_X + 1).unwrap(),
+            u32::try_from(layout.origin_y + HUD_BOOK_PAGE_BUTTON_Y + 1).unwrap(),
+        ),
+        [0, 0, 255, 255]
+    );
+    assert_eq!(first.pixel(160, 205), [0, 0, 0, 255]);
+    assert_ne!(first.pixel(170, 205), [0, 0, 0, 255]);
+    let repeated = renderer.render_offscreen_frame().unwrap();
+    assert_eq!(first.rgba, repeated.rgba);
+
+    screen.may_build = false;
+    renderer.set_hud_book_screen(Some(screen));
+    let full_width = renderer.render_offscreen_frame().unwrap();
+    assert_ne!(full_width.pixel(160, 205), [0, 0, 0, 255]);
 }
 
 #[test]

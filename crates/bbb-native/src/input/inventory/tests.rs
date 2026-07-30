@@ -1931,20 +1931,30 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         Some(InventoryClickTarget::Outside)
     );
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 160.0)), size),
         Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_PREV_PAGE))
     );
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 422.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 160.0)), size),
         Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_NEXT_PAGE))
     );
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(560.0, 464.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(560.0, 197.0)), size),
         Some(LecternClickTarget::Done)
     );
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 464.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 197.0)), size),
         Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK))
+    );
+    assert_eq!(
+        inventory_screen_cursor_position(&world, Some(PhysicalPosition::new(661.0, 160.0)), size),
+        Some((661, 160)),
+        "HudBookScreen hover coordinates stay surface-relative"
+    );
+    assert_eq!(
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
+        None,
+        "the former vertically centered hit position is stale"
     );
 
     world.apply_container_set_data(ContainerSetData {
@@ -1953,7 +1963,7 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         value: 0,
     });
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 160.0)), size),
         None
     );
     world.apply_container_set_data(ContainerSetData {
@@ -1962,7 +1972,7 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         value: 2,
     });
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 422.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 160.0)), size),
         None
     );
 
@@ -1971,7 +1981,7 @@ fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         param: VANILLA_GAME_TYPE_ADVENTURE_ID as f32,
     });
     assert_eq!(
-        lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 464.0)), size),
+        lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 197.0)), size),
         Some(LecternClickTarget::Done),
         "adventure uses BookViewScreen's single full-width Done button"
     );
@@ -3456,6 +3466,19 @@ fn lectern_page_button_click_queues_container_button_command() {
         Some(PhysicalPosition::new(661.0, 422.0)),
         PhysicalSize::new(1280, 720),
     ));
+    assert_eq!(counters.container_button_click_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(661.0, 160.0)),
+        PhysicalSize::new(1280, 720),
+    ));
 
     assert_eq!(counters.container_button_click_commands_queued, 1);
     assert_eq!(counters.container_click_commands_queued, 0);
@@ -3490,7 +3513,7 @@ fn lectern_done_button_queues_container_close_request() {
         &commands,
         MouseButton::Left,
         ElementState::Pressed,
-        Some(PhysicalPosition::new(560.0, 464.0)),
+        Some(PhysicalPosition::new(560.0, 197.0)),
         PhysicalSize::new(1280, 720),
     ));
 
@@ -3524,7 +3547,7 @@ fn lectern_take_book_button_queues_container_button_command() {
         &commands,
         MouseButton::Left,
         ElementState::Pressed,
-        Some(PhysicalPosition::new(660.0, 464.0)),
+        Some(PhysicalPosition::new(660.0, 197.0)),
         PhysicalSize::new(1280, 720),
     ));
 

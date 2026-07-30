@@ -12,7 +12,7 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
-    HudBookHitTarget, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
+    HudBookHitTarget, HudBookMode, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
     HudFontGlyphMap, HudGameEventHitTarget, HudPlayerReportingHitTarget,
     HudSocialInteractionsHitTarget,
 };
@@ -44,7 +44,7 @@ use crate::{
         handle_key_input_with_item_runtime,
         handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
         handle_mouse_wheel, handle_text_input_with_item_runtime, inventory_screen_layout,
-        queue_chat_command, queue_debug_recreate_server_query_request,
+        queue_chat_command, queue_debug_recreate_server_query_request, queue_lectern_button_click,
         recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
         reporting::PlayerReportingPlatformRequest, social::SocialInteractionsPlatformRequest,
         CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
@@ -1637,6 +1637,12 @@ impl SimulationInputRuntime {
             }
             return;
         }
+        if context.world.lectern_book_view().is_some()
+            && matches!((button, state), (MouseButton::Left, ElementState::Pressed))
+            && self.apply_book_hit_target(book_target, context)
+        {
+            return;
+        }
         if context.world.advancements_screen_is_open() {
             self.request_cursor_capture(false, context.platform);
             handle_advancements_screen_mouse_input(
@@ -1769,21 +1775,15 @@ impl SimulationInputRuntime {
         ) else {
             return false;
         };
-        match event {
-            ComponentClickEvent::ChangePage { page } => {
-                let page = usize::try_from(page.saturating_sub(1).max(0)).unwrap_or_default();
-                context.world.set_current_book_page(page);
-                true
-            }
-            event => run_component_click_event(
-                event,
-                context.input,
-                context.world,
-                context.net_counters,
-                context.net_commands,
-                context.platform,
-            ),
-        }
+        apply_book_component_click_event(
+            target.mode,
+            event,
+            context.input,
+            context.world,
+            context.net_counters,
+            context.net_commands,
+            context.platform,
+        )
     }
 
     fn apply_mouse_wheel(
@@ -2192,6 +2192,54 @@ fn chat_hit_target_is_current(
         && target.resource_generation
             == item_runtime.map_or(0, NativeItemRuntime::resource_generation)
         && target.resources_loaded == item_runtime.is_some()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_book_component_click_event(
+    mode: HudBookMode,
+    event: ComponentClickEvent,
+    input: &mut crate::input::ClientInputState,
+    world: &mut WorldStore,
+    net_counters: &mut bbb_control::NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    platform: &mut PlatformEffectCollector<'_>,
+) -> bool {
+    match (mode, event) {
+        (HudBookMode::View, ComponentClickEvent::ChangePage { page }) => {
+            let page = usize::try_from(page.saturating_sub(1).max(0)).unwrap_or_default();
+            world.set_current_book_page(page);
+            true
+        }
+        (HudBookMode::Lectern, ComponentClickEvent::ChangePage { page }) => {
+            let target_page = page.saturating_sub(1);
+            let Some(lectern) = world.lectern_book_view() else {
+                return false;
+            };
+            if target_page != i32::try_from(lectern.current_page).unwrap_or(i32::MAX) {
+                queue_lectern_button_click(
+                    world,
+                    net_counters,
+                    net_commands,
+                    100_i32.saturating_add(target_page),
+                );
+            }
+            true
+        }
+        (HudBookMode::Lectern, ComponentClickEvent::RunCommand { command }) => {
+            crate::input::queue_container_close_command(net_counters, world, net_commands);
+            run_component_click_event(
+                ComponentClickEvent::RunCommand { command },
+                input,
+                world,
+                net_counters,
+                net_commands,
+                platform,
+            )
+        }
+        (_, event) => {
+            run_component_click_event(event, input, world, net_counters, net_commands, platform)
+        }
+    }
 }
 
 fn run_component_click_event(
@@ -2618,5 +2666,88 @@ mod tests {
         );
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(counters.custom_click_action_commands_queued, 1);
+    }
+
+    #[test]
+    fn lectern_component_click_keeps_page_server_owned_and_closes_before_command() {
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_LECTERN_ID,
+            title: bbb_protocol::RichTextComponent::plain("Lectern"),
+        });
+        let mut book = bbb_protocol::packets::ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        book.component_patch.written_book =
+            Some(bbb_protocol::packets::WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                title_filter: None,
+                author: "Alex".to_string(),
+                generation: 0,
+                pages: vec!["one".to_string(), "two".to_string(), "three".to_string()],
+                page_filters: vec![None, None, None],
+                resolved: true,
+            });
+        assert!(
+            world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+                container_id: 7,
+                state_id: 1,
+                items: vec![book],
+                carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+            })
+        );
+
+        let mut counters = bbb_control::NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let effects = crate::simulation::effects::RenderEffectCollector::new(
+            1,
+            bbb_control::AudioCounters::default(),
+        );
+        let mut platform = effects.platform();
+
+        assert!(apply_book_component_click_event(
+            HudBookMode::Lectern,
+            ComponentClickEvent::ChangePage { page: 3 },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        assert_eq!(world.lectern_book_view().unwrap().current_page, 0);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::ContainerButtonClick(packet))
+                if packet.container_id == 7 && packet.button_id == 102
+        ));
+
+        assert!(apply_book_component_click_event(
+            HudBookMode::Lectern,
+            ComponentClickEvent::RunCommand {
+                command: "/seed".to_string(),
+            },
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            &mut platform,
+        ));
+        assert!(world.lectern_book_view().is_none());
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::ContainerClose(packet)) if packet.container_id == 7
+        ));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::ChatCommand(command)) if command.command == "seed"
+        ));
+        assert!(rx.try_recv().is_err());
+        drop(platform);
+        let _batch = effects.finish(None);
     }
 }

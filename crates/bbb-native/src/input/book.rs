@@ -12,8 +12,8 @@ use winit::{
 };
 
 use super::{
-    queue_edit_book_command, text_edit, ClientInputState, CommandSuggestionTextMeasurer,
-    DebugClipboard,
+    commands::queue_container_close_command, queue_edit_book_command, queue_lectern_button_click,
+    text_edit, ClientInputState, CommandSuggestionTextMeasurer, DebugClipboard,
 };
 
 pub(crate) const BOOK_SCREEN_WIDTH: i32 = 192;
@@ -132,7 +132,27 @@ impl ClientInputState {
     ) -> bool {
         if world.current_book().is_none() {
             self.book_input = None;
-            return false;
+            let Some(lectern) = world.lectern_book_view() else {
+                return false;
+            };
+            if !pressed {
+                return true;
+            }
+            match code {
+                KeyCode::Escape | KeyCode::KeyE => {
+                    queue_container_close_command(counters, world, net_commands);
+                }
+                KeyCode::PageUp if lectern.current_page > 0 => {
+                    queue_lectern_button_click(world, counters, net_commands, 1);
+                }
+                KeyCode::PageDown
+                    if lectern.current_page.saturating_add(1) < lectern.pages.len() =>
+                {
+                    queue_lectern_button_click(world, counters, net_commands, 2);
+                }
+                _ => {}
+            }
+            return true;
         }
         self.sync_book_screen(world);
         if !pressed {

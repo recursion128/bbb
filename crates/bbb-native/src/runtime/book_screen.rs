@@ -18,48 +18,59 @@ pub(super) fn hud_book_screen(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<HudBookScreen> {
-    let book = world.current_book()?;
+    let text_filtering_enabled = input.client_text_filtering_enabled();
+    let Some(book) = world.current_book() else {
+        let lectern = world.lectern_book_view()?;
+        let page_count = lectern.pages.len().max(1);
+        let page = lectern.current_page.min(page_count.saturating_sub(1));
+        let component = lectern
+            .pages
+            .get(page)
+            .map(|page| page.component_for_filter(text_filtering_enabled));
+        let source_runs = book_component_runs(component, item_runtime);
+        let (runs, interactions) = project_component_runs(world, item_runtime, &source_runs);
+        return Some(
+            projection_common(
+                input,
+                item_runtime,
+                lectern.revision,
+                page,
+                page_count,
+                text_filtering_enabled,
+                lectern.may_build,
+            )
+            .finish(
+                HudBookMode::Lectern,
+                runs,
+                interactions,
+                0,
+                0,
+                false,
+                String::new(),
+                String::new(),
+                String::new(),
+                false,
+            ),
+        );
+    };
     let page_count = book.page_count().max(1);
     let page = book.current_page().min(page_count.saturating_sub(1));
-    let cursor_position = input.inventory_cursor_position();
-    let resource_generation = item_runtime.map_or(0, NativeItemRuntime::resource_generation);
-    let resources_loaded = item_runtime.is_some();
-    let page_indicator = localized_with_args(
+    let common = projection_common(
+        input,
         item_runtime,
-        "book.pageIndicator",
-        "Page %1$s of %2$s",
-        &[&(page + 1).to_string(), &page_count.to_string()],
-    );
-    let common = BookProjectionCommon {
-        generation: book.generation(),
+        book.generation(),
         page,
         page_count,
-        resource_generation,
-        resources_loaded,
-        advanced_item_tooltips: input.debug_advanced_item_tooltips(),
-        cursor_position,
-        page_indicator,
-        done: localized_or_fallback(item_runtime, "gui.done", "Done"),
-        sign: localized_or_fallback(item_runtime, "book.signButton", "Sign"),
-        finalize: localized_or_fallback(item_runtime, "book.finalizeButton", "Sign and Close"),
-        cancel: localized_or_fallback(item_runtime, "gui.cancel", "Cancel"),
-    };
+        text_filtering_enabled,
+        false,
+    );
     Some(match book {
         BookScreenState::View(screen) => {
             let component = screen
                 .pages
                 .get(page)
-                .map(|page| page.component_for_filter(input.client_text_filtering_enabled()));
-            let source_runs = component.map_or_else(Vec::new, |component| {
-                localized_component_runs(
-                    component,
-                    &ComponentStyle {
-                        color: Some(BOOK_TEXT_COLOR),
-                        ..ComponentStyle::default()
-                    },
-                    item_runtime,
-                )
-            });
+                .map(|page| page.component_for_filter(text_filtering_enabled));
+            let source_runs = book_component_runs(component, item_runtime);
             let (runs, interactions) = project_component_runs(world, item_runtime, &source_runs);
             common.finish(
                 HudBookMode::View,
@@ -132,33 +143,101 @@ pub(crate) fn hud_book_component_click_event(
     item_runtime: Option<&NativeItemRuntime>,
     target: HudBookHitTarget,
 ) -> Option<ComponentClickEvent> {
-    let BookScreenState::View(screen) = world.current_book()? else {
-        return None;
-    };
-    if target.generation != screen.generation
-        || target.page != screen.current_page
-        || target.resource_generation
-            != item_runtime.map_or(0, NativeItemRuntime::resource_generation)
+    if target.resource_generation != item_runtime.map_or(0, NativeItemRuntime::resource_generation)
         || target.resources_loaded != item_runtime.is_some()
+        || target.text_filtering_enabled != input.client_text_filtering_enabled()
     {
         return None;
     }
-    let component = screen
-        .pages
-        .get(screen.current_page)?
-        .component_for_filter(input.client_text_filtering_enabled());
-    localized_component_runs(
-        component,
-        &ComponentStyle {
-            color: Some(BOOK_TEXT_COLOR),
-            ..ComponentStyle::default()
-        },
-        item_runtime,
-    )
-    .get(usize::from(target.source_run_index))?
-    .style
-    .click_event
-    .clone()
+    let source_runs = match target.mode {
+        HudBookMode::View => {
+            let BookScreenState::View(screen) = world.current_book()? else {
+                return None;
+            };
+            if target.generation != screen.generation || target.page != screen.current_page {
+                return None;
+            }
+            book_component_runs(
+                Some(
+                    screen
+                        .pages
+                        .get(screen.current_page)?
+                        .component_for_filter(target.text_filtering_enabled),
+                ),
+                item_runtime,
+            )
+        }
+        HudBookMode::Lectern => {
+            let lectern = world.lectern_book_view()?;
+            if target.generation != lectern.revision || target.page != lectern.current_page {
+                return None;
+            }
+            book_component_runs(
+                Some(
+                    lectern
+                        .pages
+                        .get(lectern.current_page)?
+                        .component_for_filter(target.text_filtering_enabled),
+                ),
+                item_runtime,
+            )
+        }
+        HudBookMode::Edit | HudBookMode::Sign => return None,
+    };
+    source_runs
+        .get(usize::from(target.source_run_index))?
+        .style
+        .click_event
+        .clone()
+}
+
+fn book_component_runs(
+    component: Option<&bbb_protocol::RichTextComponent>,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Vec<StyledTextRun> {
+    component.map_or_else(Vec::new, |component| {
+        localized_component_runs(
+            component,
+            &ComponentStyle {
+                color: Some(BOOK_TEXT_COLOR),
+                ..ComponentStyle::default()
+            },
+            item_runtime,
+        )
+    })
+}
+
+fn projection_common(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+    generation: u64,
+    page: usize,
+    page_count: usize,
+    text_filtering_enabled: bool,
+    may_build: bool,
+) -> BookProjectionCommon {
+    BookProjectionCommon {
+        generation,
+        page,
+        page_count,
+        resource_generation: item_runtime.map_or(0, NativeItemRuntime::resource_generation),
+        resources_loaded: item_runtime.is_some(),
+        text_filtering_enabled,
+        advanced_item_tooltips: input.debug_advanced_item_tooltips(),
+        cursor_position: input.inventory_cursor_position(),
+        page_indicator: localized_with_args(
+            item_runtime,
+            "book.pageIndicator",
+            "Page %1$s of %2$s",
+            &[&(page + 1).to_string(), &page_count.to_string()],
+        ),
+        done: localized_or_fallback(item_runtime, "gui.done", "Done"),
+        take_book: localized_or_fallback(item_runtime, "lectern.take_book", "Take Book"),
+        may_build,
+        sign: localized_or_fallback(item_runtime, "book.signButton", "Sign"),
+        finalize: localized_or_fallback(item_runtime, "book.finalizeButton", "Sign and Close"),
+        cancel: localized_or_fallback(item_runtime, "gui.cancel", "Cancel"),
+    }
 }
 
 struct BookProjectionCommon {
@@ -167,10 +246,13 @@ struct BookProjectionCommon {
     page_count: usize,
     resource_generation: u64,
     resources_loaded: bool,
+    text_filtering_enabled: bool,
     advanced_item_tooltips: bool,
     cursor_position: Option<(i32, i32)>,
     page_indicator: String,
     done: String,
+    take_book: String,
+    may_build: bool,
     sign: String,
     finalize: String,
     cancel: String,
@@ -197,6 +279,7 @@ impl BookProjectionCommon {
             page_count: self.page_count,
             resource_generation: self.resource_generation,
             resources_loaded: self.resources_loaded,
+            text_filtering_enabled: self.text_filtering_enabled,
             advanced_item_tooltips: self.advanced_item_tooltips,
             mode,
             runs,
@@ -210,6 +293,8 @@ impl BookProjectionCommon {
             author,
             warning,
             done: self.done,
+            take_book: self.take_book,
+            may_build: self.may_build,
             sign: self.sign,
             finalize: self.finalize,
             cancel: self.cancel,
@@ -299,9 +384,10 @@ fn localized_with_args(
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
+        menu_types::VANILLA_MENU_TYPE_LECTERN_ID,
         packets::{
-            InteractionHand, ItemStackSummary, OpenBook, SetPlayerInventory,
-            WrittenBookContentSummary,
+            ContainerSetContent, ContainerSetData, InteractionHand, ItemStackSummary, OpenBook,
+            OpenScreen, SetPlayerInventory, WrittenBookContentSummary,
         },
         NbtSummaryEntry, NbtSummaryValue, RichTextComponent,
     };
@@ -382,6 +468,95 @@ mod tests {
     }
 
     #[test]
+    fn lectern_projection_preserves_rich_filtering_and_rejects_stale_targets() {
+        let raw = NbtSummaryValue::Compound(vec![
+            entry("text", NbtSummaryValue::String("raw".to_string())),
+            entry("bold", NbtSummaryValue::Byte(1)),
+            entry("font", NbtSummaryValue::String("example:book".to_string())),
+            entry(
+                "click_event",
+                NbtSummaryValue::Compound(vec![
+                    entry("action", NbtSummaryValue::String("change_page".to_string())),
+                    entry("page", NbtSummaryValue::Int(2)),
+                ]),
+            ),
+        ]);
+        let mut item = ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        item.component_patch.written_book = Some(WrittenBookContentSummary {
+            title: "Guide".to_string(),
+            title_filter: None,
+            author: "Alex".to_string(),
+            generation: 0,
+            pages: vec!["raw".to_string(), "second".to_string()],
+            page_filters: vec![Some("filtered".to_string()), None],
+            resolved: true,
+        });
+        item.component_patch.written_book_pages_nbt = vec![
+            Some(raw),
+            Some(NbtSummaryValue::String("second".to_string())),
+        ];
+        item.component_patch.written_book_page_filters_nbt =
+            vec![Some(NbtSummaryValue::String("filtered".to_string())), None];
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
+            title: RichTextComponent::plain("Lectern"),
+        });
+        assert!(world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 1,
+            items: vec![item],
+            carried_item: ItemStackSummary::empty(),
+        }));
+
+        let mut input = ClientInputState::default();
+        let screen = hud_book_screen(&input, &world, None).unwrap();
+        assert_eq!(screen.mode, HudBookMode::Lectern);
+        assert_eq!(screen.runs[0].visual.text, "raw");
+        assert!(screen.runs[0].visual.style.bold);
+        assert_eq!(screen.runs[0].font.as_deref(), Some("example:book"));
+        assert!(screen.may_build);
+        let target = HudBookHitTarget {
+            mode: screen.mode,
+            generation: screen.generation,
+            page: screen.page,
+            resource_generation: screen.resource_generation,
+            resources_loaded: screen.resources_loaded,
+            text_filtering_enabled: screen.text_filtering_enabled,
+            source_run_index: 0,
+        };
+        assert_eq!(
+            hud_book_component_click_event(&world, &input, None, target),
+            Some(ComponentClickEvent::ChangePage { page: 2 })
+        );
+
+        input.set_client_text_filtering_enabled(true);
+        assert_eq!(
+            hud_book_component_click_event(&world, &input, None, target),
+            None
+        );
+        let filtered = hud_book_screen(&input, &world, None).unwrap();
+        assert_eq!(filtered.runs[0].visual.text, "filtered");
+        assert!(filtered.interactions.is_empty());
+
+        input.set_client_text_filtering_enabled(false);
+        assert!(world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 0,
+        }));
+        assert_eq!(
+            hud_book_component_click_event(&world, &input, None, target),
+            None
+        );
+    }
+
+    #[test]
     fn click_event_revalidates_generation_page_and_source_run() {
         let page = NbtSummaryValue::Compound(vec![
             entry("text", NbtSummaryValue::String("next".to_string())),
@@ -400,10 +575,12 @@ mod tests {
         let input = ClientInputState::default();
         let screen = hud_book_screen(&input, &world, None).unwrap();
         let target = HudBookHitTarget {
+            mode: HudBookMode::View,
             generation: screen.generation,
             page: 0,
             resource_generation: 0,
             resources_loaded: false,
+            text_filtering_enabled: false,
             source_run_index: 0,
         };
         assert_eq!(

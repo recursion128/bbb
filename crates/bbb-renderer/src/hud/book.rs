@@ -44,6 +44,7 @@ const HUD_BOOK_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudBookMode {
     View,
+    Lectern,
     Edit,
     Sign,
 }
@@ -55,6 +56,7 @@ pub struct HudBookScreen {
     pub page_count: usize,
     pub resource_generation: u64,
     pub resources_loaded: bool,
+    pub text_filtering_enabled: bool,
     pub advanced_item_tooltips: bool,
     pub mode: HudBookMode,
     pub runs: Vec<HudComponentTextRun>,
@@ -68,6 +70,8 @@ pub struct HudBookScreen {
     pub author: String,
     pub warning: String,
     pub done: String,
+    pub take_book: String,
+    pub may_build: bool,
     pub sign: String,
     pub finalize: String,
     pub cancel: String,
@@ -85,10 +89,12 @@ pub struct HudBookInteraction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HudBookHitTarget {
+    pub mode: HudBookMode,
     pub generation: u64,
     pub page: usize,
     pub resource_generation: u64,
     pub resources_loaded: bool,
+    pub text_filtering_enabled: bool,
     pub source_run_index: u16,
 }
 
@@ -118,7 +124,7 @@ pub(super) fn sanitize_hud_book_screen(mut screen: HudBookScreen) -> Option<HudB
         .collect::<String>();
     let mut budget = 4_096usize;
     screen.runs = sanitize_hud_component_runs(source_runs, &fallback, &mut budget, true);
-    if screen.mode != HudBookMode::View {
+    if !matches!(screen.mode, HudBookMode::View | HudBookMode::Lectern) {
         for run in &mut screen.runs {
             run.font = None;
         }
@@ -149,6 +155,7 @@ pub(super) fn sanitize_hud_book_screen(mut screen: HudBookScreen) -> Option<HudB
     screen.author = sanitize_hud_text_preserving_empty(screen.author, 128);
     screen.warning = sanitize_hud_text_preserving_empty(screen.warning, 256);
     screen.done = sanitize_hud_text_preserving_empty(screen.done, 128);
+    screen.take_book = sanitize_hud_text_preserving_empty(screen.take_book, 128);
     screen.sign = sanitize_hud_text_preserving_empty(screen.sign, 128);
     screen.finalize = sanitize_hud_text_preserving_empty(screen.finalize, 128);
     screen.cancel = sanitize_hud_text_preserving_empty(screen.cancel, 128);
@@ -166,10 +173,12 @@ pub(super) fn hud_book_hit_target_at(
         return None;
     }
     Some(HudBookHitTarget {
+        mode: screen.mode,
         generation: screen.generation,
         page: screen.page,
         resource_generation: screen.resource_generation,
         resources_loaded: screen.resources_loaded,
+        text_filtering_enabled: screen.text_filtering_enabled,
         source_run_index: interaction.source_run_index,
     })
 }
@@ -180,7 +189,10 @@ fn book_interaction_at<'a>(
     surface_size: PhysicalSize<u32>,
     position: (f64, f64),
 ) -> Option<&'a HudBookInteraction> {
-    if screen.mode != HudBookMode::View || !position.0.is_finite() || !position.1.is_finite() {
+    if !matches!(screen.mode, HudBookMode::View | HudBookMode::Lectern)
+        || !position.0.is_finite()
+        || !position.1.is_finite()
+    {
         return None;
     }
     let layout = hud_book_layout(surface_size);
@@ -282,7 +294,7 @@ pub(super) fn push_hud_book_screen<'a>(
         page_forward_highlighted,
     );
     match screen.mode {
-        HudBookMode::View => push_view_page(
+        HudBookMode::View | HudBookMode::Lectern => push_view_page(
             vertices,
             commands,
             white_pixel,
@@ -785,7 +797,8 @@ fn push_page_buttons<'a>(
     page_forward: Option<&'a HudSpriteGpu>,
     page_forward_highlighted: Option<&'a HudSpriteGpu>,
 ) {
-    if screen.page > 0 {
+    let (show_back, show_forward) = page_button_visibility(screen);
+    if show_back {
         let hovered = page_button_hovered(screen.cursor_position, layout, HUD_BOOK_PAGE_BACK_X);
         if let Some(sprite) = hovered
             .then_some(page_backward_highlighted)
@@ -811,8 +824,6 @@ fn push_page_buttons<'a>(
             );
         }
     }
-    let show_forward =
-        screen.mode == HudBookMode::Edit || screen.page.saturating_add(1) < screen.page_count;
     if show_forward {
         let hovered = page_button_hovered(screen.cursor_position, layout, HUD_BOOK_PAGE_FORWARD_X);
         if let Some(sprite) = hovered
@@ -841,6 +852,13 @@ fn push_page_buttons<'a>(
     }
 }
 
+fn page_button_visibility(screen: &HudBookScreen) -> (bool, bool) {
+    (
+        screen.page > 0,
+        screen.mode == HudBookMode::Edit || screen.page.saturating_add(1) < screen.page_count,
+    )
+}
+
 fn page_button_hovered(cursor: Option<(i32, i32)>, layout: HudBookLayout, relative_x: i32) -> bool {
     cursor.is_some_and(|(x, y)| {
         (layout.origin_x + relative_x..layout.origin_x + relative_x + HUD_BOOK_PAGE_BUTTON_WIDTH)
@@ -866,8 +884,51 @@ fn push_buttons<'a>(
 ) {
     let cursor = screen.cursor_position;
     let y = layout.origin_y + HUD_BOOK_MENU_Y;
-    let buttons = match screen.mode {
+    let buttons = book_menu_buttons(screen, layout);
+    for (x, width, label, enabled) in buttons {
+        let hovered = cursor.is_some_and(|(cursor_x, cursor_y)| {
+            (x..x + width).contains(&cursor_x) && (y..y + HUD_BOOK_MENU_HEIGHT).contains(&cursor_y)
+        });
+        push_hud_pause_button(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            (x, y, width, HUD_BOOK_MENU_HEIGHT),
+            label,
+            hovered,
+            enabled,
+        );
+    }
+}
+
+fn book_menu_buttons(screen: &HudBookScreen, layout: HudBookLayout) -> Vec<(i32, i32, &str, bool)> {
+    match screen.mode {
         HudBookMode::View => vec![(
+            layout.origin_x + HUD_BOOK_MENU_LEFT_X,
+            HUD_BOOK_MENU_FULL_WIDTH,
+            screen.done.as_str(),
+            true,
+        )],
+        HudBookMode::Lectern if screen.may_build => vec![
+            (
+                layout.origin_x + HUD_BOOK_MENU_LEFT_X,
+                HUD_BOOK_MENU_HALF_WIDTH,
+                screen.done.as_str(),
+                true,
+            ),
+            (
+                layout.origin_x + HUD_BOOK_MENU_RIGHT_X,
+                HUD_BOOK_MENU_HALF_WIDTH,
+                screen.take_book.as_str(),
+                true,
+            ),
+        ],
+        HudBookMode::Lectern => vec![(
             layout.origin_x + HUD_BOOK_MENU_LEFT_X,
             HUD_BOOK_MENU_FULL_WIDTH,
             screen.done.as_str(),
@@ -901,25 +962,6 @@ fn push_buttons<'a>(
                 true,
             ),
         ],
-    };
-    for (x, width, label, enabled) in buttons {
-        let hovered = cursor.is_some_and(|(cursor_x, cursor_y)| {
-            (x..x + width).contains(&cursor_x) && (y..y + HUD_BOOK_MENU_HEIGHT).contains(&cursor_y)
-        });
-        push_hud_pause_button(
-            vertices,
-            commands,
-            white_pixel,
-            font_atlas,
-            glyphs,
-            obfuscated_pool,
-            frame_index,
-            surface_size,
-            (x, y, width, HUD_BOOK_MENU_HEIGHT),
-            label,
-            hovered,
-            enabled,
-        );
     }
 }
 

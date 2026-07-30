@@ -20098,7 +20098,7 @@ fn hud_inventory_screen_uses_mount_llama_armor_slot_placeholder() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_lectern_book_layout() {
+fn dedicated_hud_book_screen_replaces_empty_lectern_inventory_projection() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
@@ -20106,47 +20106,18 @@ fn hud_inventory_screen_projects_lectern_book_layout() {
         title: bbb_protocol::RichTextComponent::plain("Lectern"),
     });
 
-    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
-
-    assert_eq!(screen.width, 192);
-    assert_eq!(screen.height, 192);
-    assert!(screen.slots.is_empty());
-    assert_eq!(
-        screen.background_layers,
-        vec![
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::Book,
-                0,
-                0,
-                192,
-                192,
-                [0.0, 0.0],
-                [192.0 / 256.0, 192.0 / 256.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::PageBackward,
-                43,
-                157,
-                23,
-                13,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-            hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::PageForward,
-                116,
-                157,
-                23,
-                13,
-                [0.0, 0.0],
-                [1.0, 1.0],
-            ),
-        ]
-    );
+    assert!(hud_inventory_screen(&world, None, None, 0.0).is_none());
+    let screen = hud_book_screen(&ClientInputState::default(), &world, None).unwrap();
+    assert_eq!(screen.mode, bbb_renderer::HudBookMode::Lectern);
+    assert_eq!(screen.page, 0);
+    assert_eq!(screen.page_count, 1);
+    assert_eq!(screen.page_indicator, "Page 1 of 1");
+    assert!(screen.runs.is_empty());
+    assert!(screen.may_build);
 }
 
 #[test]
-fn hud_inventory_screen_projects_lectern_current_page_text() {
+fn dedicated_hud_book_screen_projects_lectern_current_page_text() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
@@ -20178,52 +20149,14 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
         value: 1,
     });
 
-    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+    let screen = hud_book_screen(&ClientInputState::default(), &world, None).unwrap();
 
-    assert_eq!(
-        screen.text_labels,
-        vec![
-            HudInventoryTextLabel {
-                x: 88,
-                y: BOOK_PAGE_INDICATOR_Y,
-                width: 60,
-                text: "Page 2 of 2".to_string(),
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                font: None,
-                runs: Vec::new(),
-            },
-            HudInventoryTextLabel {
-                x: BOOK_PAGE_TEXT_X,
-                y: BOOK_PAGE_TEXT_Y,
-                width: BOOK_PAGE_TEXT_WIDTH,
-                text: "Second page".to_string(),
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                font: None,
-                runs: Vec::new(),
-            },
-            HudInventoryTextLabel {
-                x: BOOK_PAGE_TEXT_X,
-                y: BOOK_PAGE_TEXT_Y + BOOK_PAGE_LINE_HEIGHT,
-                width: BOOK_PAGE_TEXT_WIDTH,
-                text: "Line two".to_string(),
-                tint: BOOK_TEXT_COLOR,
-                background: None,
-                input: None,
-                scrolling: None,
-                shadow: false,
-                font: None,
-                runs: Vec::new(),
-            },
-        ]
-    );
+    assert_eq!(screen.mode, bbb_renderer::HudBookMode::Lectern);
+    assert_eq!(screen.page, 1);
+    assert_eq!(screen.page_count, 2);
+    assert_eq!(screen.page_indicator, "Page 2 of 2");
+    assert_eq!(screen.runs.len(), 1);
+    assert_eq!(screen.runs[0].visual.text, "Second page\nLine two");
 }
 
 #[test]
