@@ -5175,6 +5175,44 @@ mod tests {
     ];
 
     #[test]
+    fn sign_text_draws_normal_outline_before_polygon_offset_primary_and_effects() {
+        let source = include_str!("render.rs");
+        let start = source
+            .find("let sign_text = self.collect_sign_text_geometry();")
+            .expect("sign text collection");
+        let end = source[start..]
+            .find("// Background-free TextDisplay")
+            .map(|offset| start + offset)
+            .expect("end of sign text draw block");
+        let body = &source[start..end];
+        let outline = body.find("&sign_text.outline").expect("outline batch");
+        let normal_pipeline = body
+            .find("&self.display_text_background_pipeline")
+            .expect("normal text depth pipeline");
+        let primary = body.find("&sign_text.primary").expect("primary batch");
+        let primary_pipeline = body[primary..]
+            .find("&self.display_text_pipeline")
+            .map(|offset| primary + offset)
+            .expect("primary polygon-offset pipeline");
+        let effects = body.find("&sign_text.effects").expect("effect batch");
+        let effect_material = body
+            .find("&atlas.effect_bind_group")
+            .expect("white effect material");
+        let effect_pipeline = body[effects..]
+            .find("&self.display_text_pipeline")
+            .map(|offset| effects + offset)
+            .expect("effect polygon-offset pipeline");
+        assert!(
+            outline < normal_pipeline
+                && normal_pipeline < primary
+                && primary < primary_pipeline
+                && primary_pipeline < effects
+                && effects < effect_material
+                && effect_material < effect_pipeline
+        );
+    }
+
+    #[test]
     fn render_steps_are_defined_in_frame_execution_order() {
         let source = include_str!("render.rs");
         let render_start = source

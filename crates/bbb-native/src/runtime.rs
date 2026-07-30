@@ -211,7 +211,9 @@ use crate::{
     remote_debug::remote_debug_gizmos,
     resource_pack_runtime::ServerResourcePackRuntime,
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
-    sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
+    sign_scene::{
+        sign_model_attachment, sign_model_wood, sign_scene_from_world, sign_text_outline_context,
+    },
     simulation::{
         effects::ParticleBatchSink, publication::SimulationPublication, SimulationRenderContext,
     },
@@ -3714,6 +3716,11 @@ pub(crate) fn update_renderer_from_publication(
         input.camera_type(),
         camera_eye_height_ticks,
     );
+    let sign_text_outline_context = sign_text_outline_context(
+        camera_entity_pose,
+        input.camera_type().is_first_person(),
+        world.local_player_is_scoping(),
+    );
     let first_person_camera_pose = input
         .camera_type()
         .is_first_person()
@@ -4426,6 +4433,7 @@ pub(crate) fn update_renderer_from_publication(
             item_frame_map_text_surfaces,
             sign_text_surfaces,
             visible_sign_text_positions,
+            sign_text_outline_context,
             display_text_surfaces,
             entity_name_tag_surfaces,
             entity_flame_surfaces,

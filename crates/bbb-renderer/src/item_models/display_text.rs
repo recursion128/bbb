@@ -25,6 +25,11 @@ const DISPLAY_TEXT_FLAG_ALIGN_LEFT: u8 = 8;
 const DISPLAY_TEXT_FLAG_ALIGN_RIGHT: u8 = 16;
 const DISPLAY_TEXT_REPLACEMENT_GLYPH: char = '?';
 const DISPLAY_TEXT_UNTEXTURED_UV: [f32; 2] = [-1.0, -1.0];
+const TEXT_POLYGON_OFFSET_DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
+    constant: -10,
+    slope_scale: -1.0,
+    clamp: 0.0,
+};
 
 /// One flattened world-text run. Entity names and TextDisplay share this
 /// vocabulary so a retained Component font selects its own glyph map without
@@ -837,11 +842,7 @@ pub(crate) fn create_display_text_pipeline(
     lightmap_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let mut depth = depth_stencil_state(DEPTH_FORMAT, true, wgpu::CompareFunction::LessEqual);
-    depth.bias = wgpu::DepthBiasState {
-        constant: -10,
-        slope_scale: -1.0,
-        clamp: 0.0,
-    };
+    depth.bias = TEXT_POLYGON_OFFSET_DEPTH_BIAS;
     display_text_pipeline(
         device,
         format,
@@ -1187,6 +1188,9 @@ mod tests {
         assert!(!DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("apply_fog"));
         assert!(DISPLAY_TEXT_SHADER.contains("if color.a < 0.1 { discard; }"));
         assert!(DISPLAY_TEXT_SEE_THROUGH_SHADER.contains("if color.a < 0.1 { discard; }"));
+        assert_eq!(TEXT_POLYGON_OFFSET_DEPTH_BIAS.constant, -10);
+        assert_eq!(TEXT_POLYGON_OFFSET_DEPTH_BIAS.slope_scale, -1.0);
+        assert_eq!(TEXT_POLYGON_OFFSET_DEPTH_BIAS.clamp, 0.0);
     }
 
     #[test]

@@ -45,6 +45,8 @@ const HANGING_SIGN_TEXT_RENDER_SCALE: f32 = 0.014_062_5;
 /// Vanilla `AbstractSignRenderer.BLACK_TEXT_OUTLINE_COLOR` (`-988212` ==
 /// `0xFFF0EBCC`), the cream color a glowing black face darkens to.
 const BLACK_GLOWING_SIGN_DARK_RGB: u32 = 0x00F0_EBCC;
+/// Vanilla `AbstractSignRenderer.OUTLINE_RENDER_DISTANCE` (`16²`).
+const SIGN_TEXT_OUTLINE_DISTANCE_SQUARED: f32 = 256.0;
 /// Vanilla `Font` missing-codepoint degradation (unihex deferred), matching
 /// the map-label path's replacement glyph.
 const SIGN_TEXT_REPLACEMENT_GLYPH: char = '?';
@@ -60,9 +62,20 @@ pub struct SignTextSubmission {
     /// Per-run style colors override it per vanilla
     /// `StringRenderOutput.getTextColor`.
     pub color: u32,
+    /// Vanilla `getDarkColor(signText)`, used as the glowing outline color.
+    pub outline_color: u32,
     pub has_glowing_text: bool,
     pub light: [f32; 2],
     pub transform: Mat4,
+}
+
+/// Per-frame camera facts used by Vanilla's sign glowing-outline predicate.
+/// The position is the interpolated camera entity position, not a detached
+/// third-person camera or eye position.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SignTextOutlineContext {
+    pub camera_entity_position: Option<[f32; 3]>,
+    pub first_person_scoping: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -335,6 +348,7 @@ pub fn bake_sign_text_surface(
             attachment,
             front,
             color: base_color,
+            outline_color: sign_text_dark_color(dye_text_color, has_glowing_text),
             has_glowing_text,
             light,
             transform,
@@ -415,11 +429,52 @@ fn append_sign_effect(
     );
 }
 
+fn sign_slot_glyph(
+    slot: SignTextGlyphSlot,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    random: &mut HudObfuscatedRandom,
+) -> HudAsciiGlyph {
+    if slot.style.obfuscated && slot.ch != ' ' {
+        obfuscated_pool
+            .random_glyph(slot.glyph.advance, random)
+            .unwrap_or(slot.glyph)
+    } else {
+        slot.glyph
+    }
+}
+
+fn sign_text_draws_outline(surface: &SignTextSurface, context: SignTextOutlineContext) -> bool {
+    if !surface.submission.has_glowing_text {
+        return false;
+    }
+    // Vanilla always outlines glowing black text, independent of camera.
+    if surface.submission.color == 0 || context.first_person_scoping {
+        return true;
+    }
+    let Some(camera) = context
+        .camera_entity_position
+        .filter(|position| position.iter().all(|coordinate| coordinate.is_finite()))
+    else {
+        return false;
+    };
+    let block_center = surface
+        .submission
+        .position
+        .map(|coordinate| coordinate.floor() + 0.5);
+    camera
+        .into_iter()
+        .zip(block_center)
+        .map(|(camera, center)| (camera - center).powi(2))
+        .sum::<f32>()
+        < SIGN_TEXT_OUTLINE_DISTANCE_SQUARED
+}
+
 pub(crate) fn merge_sign_text_surfaces(
     surfaces: &[SignTextSurface],
     visible_positions: &[[i32; 3]],
     obfuscated_pool: &HudObfuscatedGlyphPool,
     obfuscated_seed: u64,
+    outline_context: SignTextOutlineContext,
 ) -> SignTextGeometry {
     let mut geometry = SignTextGeometry::default();
     let mut random = HudObfuscatedRandom::with_seed(obfuscated_seed);
@@ -428,15 +483,38 @@ pub(crate) fn merge_sign_text_surfaces(
             .binary_search(&sign_text_block_position(surface))
             .is_ok()
     }) {
+        let draw_outline = sign_text_draws_outline(surface, outline_context);
+        let outline_color = rgb_to_color(surface.submission.outline_color);
         for line in &surface.lines {
+            if draw_outline {
+                // `Font.drawInBatch8xOutline`: nested x/y order, excluding the
+                // centre. Each pass performs its own obfuscated glyph lookup.
+                for xo in -1..=1 {
+                    for yo in -1..=1 {
+                        if xo == 0 && yo == 0 {
+                            continue;
+                        }
+                        for &slot in line {
+                            let glyph = sign_slot_glyph(slot, obfuscated_pool, &mut random);
+                            let outlined = SignTextGlyphSlot {
+                                x: slot.x + xo as f32,
+                                y: slot.y + yo as f32,
+                                color: outline_color,
+                                ..slot
+                            };
+                            append_sign_glyph(
+                                &mut geometry.outline,
+                                outlined,
+                                glyph,
+                                surface.submission.transform,
+                                surface.submission.light,
+                            );
+                        }
+                    }
+                }
+            }
             for &slot in line {
-                let glyph = if slot.style.obfuscated && slot.ch != ' ' {
-                    obfuscated_pool
-                        .random_glyph(slot.glyph.advance, &mut random)
-                        .unwrap_or(slot.glyph)
-                } else {
-                    slot.glyph
-                };
+                let glyph = sign_slot_glyph(slot, obfuscated_pool, &mut random);
                 append_sign_glyph(
                     &mut geometry.primary,
                     slot,
@@ -498,6 +576,16 @@ impl Renderer {
         self.visible_sign_text_positions = positions;
     }
 
+    pub fn set_sign_text_outline_context(&mut self, mut context: SignTextOutlineContext) {
+        if context
+            .camera_entity_position
+            .is_some_and(|position| position.iter().any(|coordinate| !coordinate.is_finite()))
+        {
+            context.camera_entity_position = None;
+        }
+        self.sign_text_outline_context = context;
+    }
+
     pub(crate) fn collect_sign_text_geometry(&self) -> SignTextGeometry {
         if self.item_frame_map_text_font_atlas.is_none() {
             return SignTextGeometry::default();
@@ -507,6 +595,7 @@ impl Renderer {
             &self.visible_sign_text_positions,
             &self.hud_obfuscated_glyph_pool,
             self.counters.frame_index,
+            self.sign_text_outline_context,
         )
     }
 }
@@ -574,11 +663,21 @@ mod tests {
         glyphs: &HudFontGlyphMap,
         seed: u64,
     ) -> SignTextGeometry {
+        surface_geometry_with_context(surface, glyphs, seed, SignTextOutlineContext::default())
+    }
+
+    fn surface_geometry_with_context(
+        surface: &SignTextSurface,
+        glyphs: &HudFontGlyphMap,
+        seed: u64,
+        context: SignTextOutlineContext,
+    ) -> SignTextGeometry {
         merge_sign_text_surfaces(
             std::slice::from_ref(surface),
             &[sign_text_block_position(surface)],
             &HudObfuscatedGlyphPool::from_glyph_map(glyphs),
             seed,
+            context,
         )
     }
 
@@ -980,6 +1079,191 @@ mod tests {
     }
 
     #[test]
+    fn glowing_outline_uses_strict_camera_range_scoping_and_black_override() {
+        let glyphs = test_glyphs();
+        let lines = [plain_runs("a"), Vec::new(), Vec::new(), Vec::new()];
+        let red = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0xFF_00_00,
+            true,
+            [1.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let boundary = surface_geometry_with_context(
+            &red,
+            &glyphs,
+            0,
+            SignTextOutlineContext {
+                camera_entity_position: Some([16.5, 0.5, 0.5]),
+                first_person_scoping: false,
+            },
+        );
+        assert!(
+            boundary.outline.is_empty(),
+            "distance is strictly below 16²"
+        );
+        let near = surface_geometry_with_context(
+            &red,
+            &glyphs,
+            0,
+            SignTextOutlineContext {
+                camera_entity_position: Some([16.49, 0.5, 0.5]),
+                first_person_scoping: false,
+            },
+        );
+        assert_eq!(near.outline.vertex_count(), 8 * 4);
+        assert!(near.outline.vertices.iter().all(|vertex| {
+            vertex.color == [0x66 as f32 / 255.0, 0.0, 0.0, 1.0] && vertex.light == [1.0, 1.0]
+        }));
+        let scoped = surface_geometry_with_context(
+            &red,
+            &glyphs,
+            0,
+            SignTextOutlineContext {
+                camera_entity_position: None,
+                first_person_scoping: true,
+            },
+        );
+        assert_eq!(scoped.outline.vertex_count(), 8 * 4);
+
+        let black = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0,
+            true,
+            [1.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let black = surface_geometry(&black, &glyphs, 0);
+        assert_eq!(black.outline.vertex_count(), 8 * 4);
+        assert!(black.outline.vertices.iter().all(|vertex| {
+            vertex.color
+                == [
+                    0xF0 as f32 / 255.0,
+                    0xEB as f32 / 255.0,
+                    0xCC as f32 / 255.0,
+                    1.0,
+                ]
+        }));
+
+        let non_glowing = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0,
+            false,
+            [0.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let non_glowing = surface_geometry_with_context(
+            &non_glowing,
+            &glyphs,
+            0,
+            SignTextOutlineContext {
+                camera_entity_position: Some([0.5, 0.5, 0.5]),
+                first_person_scoping: true,
+            },
+        );
+        assert!(non_glowing.outline.is_empty());
+    }
+
+    #[test]
+    fn glowing_outline_offsets_and_obfuscated_lookups_follow_vanilla_order() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('a', 0.1), ('b', 0.2), ('c', 0.3), ('?', 0.4)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        let surface = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &[
+                vec![HudStyledTextRun {
+                    text: "a".to_string(),
+                    style: HudTextStyle {
+                        obfuscated: true,
+                        ..Default::default()
+                    },
+                    color: None,
+                }],
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            ],
+            0,
+            true,
+            [1.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let seed = 7;
+        let geometry = surface_geometry(&surface, &glyphs, seed);
+        let inverse = surface.submission.transform.inverse();
+        let outline_tops = geometry
+            .outline
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| {
+                inverse
+                    .transform_point3(Vec3::from_array(vertices[0].position))
+                    .to_array()
+            })
+            .collect::<Vec<_>>();
+        let expected_tops = [
+            [-4.0, -21.0, 0.0],
+            [-4.0, -20.0, 0.0],
+            [-4.0, -19.0, 0.0],
+            [-3.0, -21.0, 0.0],
+            [-3.0, -19.0, 0.0],
+            [-2.0, -21.0, 0.0],
+            [-2.0, -20.0, 0.0],
+            [-2.0, -19.0, 0.0],
+        ];
+        for (actual, expected) in outline_tops.into_iter().zip(expected_tops) {
+            assert_vec3_close(Vec3::from_array(actual), Vec3::from_array(expected));
+        }
+
+        let pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
+        let mut random = HudObfuscatedRandom::with_seed(seed);
+        let expected_uvs = (0..9)
+            .map(|_| pool.random_glyph(6, &mut random).unwrap().uv.min[0])
+            .collect::<Vec<_>>();
+        let actual_uvs = geometry
+            .outline
+            .vertices
+            .chunks_exact(4)
+            .chain(geometry.primary.vertices.chunks_exact(4))
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        assert_eq!(actual_uvs, expected_uvs);
+    }
+
+    #[test]
     fn bake_returns_none_for_empty_or_spaces_only_faces() {
         let glyphs = test_glyphs();
         let empty: [Vec<HudStyledTextRun>; 4] = Default::default();
@@ -1072,11 +1356,23 @@ mod tests {
         .unwrap();
 
         let pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
-        let geometry = merge_sign_text_surfaces(&[hidden.clone()], &[], &pool, 0);
+        let geometry = merge_sign_text_surfaces(
+            &[hidden.clone()],
+            &[],
+            &pool,
+            0,
+            SignTextOutlineContext::default(),
+        );
         assert!(geometry.primary.vertices.is_empty());
         assert!(geometry.primary.indices.is_empty());
 
-        let geometry = merge_sign_text_surfaces(&[hidden, visible], &[[4, 5, 6]], &pool, 0);
+        let geometry = merge_sign_text_surfaces(
+            &[hidden, visible],
+            &[[4, 5, 6]],
+            &pool,
+            0,
+            SignTextOutlineContext::default(),
+        );
         assert_eq!(geometry.primary.indices.len(), 6);
         assert!(geometry
             .primary

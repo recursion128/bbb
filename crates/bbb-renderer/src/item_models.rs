@@ -86,7 +86,7 @@ pub use residency::{
 pub use sign_text::{
     bake_sign_text_surface, sign_line_runs_width, sign_max_text_line_width, sign_text_base_color,
     sign_text_dark_color, sign_text_line_height, sign_text_scaled_rgb, sign_text_transformation,
-    truncate_sign_line_runs_to_width, SignTextSubmission, SignTextSurface,
+    truncate_sign_line_runs_to_width, SignTextOutlineContext, SignTextSubmission, SignTextSurface,
     HANGING_SIGN_MAX_TEXT_LINE_WIDTH, HANGING_SIGN_TEXT_LINE_HEIGHT, SIGN_MAX_TEXT_LINE_WIDTH,
     SIGN_TEXT_LINE_HEIGHT,
 };

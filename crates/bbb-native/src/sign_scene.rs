@@ -11,8 +11,9 @@
 
 use bbb_item_model::NativeItemRuntime;
 use bbb_renderer::{
-    bake_sign_text_surface, EntityModelInstance, HudFontGlyphMap, HudStyledTextRun, HudTextStyle,
-    SignModelAttachment, SignModelWood, SignTextSurface, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    bake_sign_text_surface, CameraPose, EntityModelInstance, HudFontGlyphMap, HudStyledTextRun,
+    HudTextStyle, SignModelAttachment, SignModelWood, SignTextOutlineContext, SignTextSurface,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{
     BlockPos, SignModelAttachment as WorldSignModelAttachment, SignTextSideState,
@@ -26,6 +27,17 @@ const SIGN_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 pub(crate) struct SignSceneModels {
     pub(crate) instances: Vec<EntityModelInstance>,
     pub(crate) text_surfaces: Vec<SignTextSurface>,
+}
+
+pub(crate) fn sign_text_outline_context(
+    camera_entity_pose: Option<CameraPose>,
+    first_person: bool,
+    local_player_scoping: bool,
+) -> SignTextOutlineContext {
+    SignTextOutlineContext {
+        camera_entity_position: camera_entity_pose.map(|pose| pose.position),
+        first_person_scoping: first_person && local_player_scoping,
+    }
 }
 
 /// Projects every sign-family block in the loaded chunks into a sign model
@@ -448,6 +460,34 @@ mod tests {
         assert_eq!(
             sign_light_coords(TerrainLight { sky: 7, block: 9 }),
             9 << 4 | 7 << 20
+        );
+    }
+
+    #[test]
+    fn sign_outline_context_uses_undetached_entity_position_and_first_person_scoping() {
+        let pose = CameraPose {
+            position: [1.0, 2.0, 3.0],
+            y_rot: 45.0,
+            x_rot: -10.0,
+            eye_height: 1.62,
+        };
+        assert_eq!(
+            sign_text_outline_context(Some(pose), true, true),
+            SignTextOutlineContext {
+                camera_entity_position: Some([1.0, 2.0, 3.0]),
+                first_person_scoping: true,
+            }
+        );
+        assert_eq!(
+            sign_text_outline_context(Some(pose), false, true),
+            SignTextOutlineContext {
+                camera_entity_position: Some([1.0, 2.0, 3.0]),
+                first_person_scoping: false,
+            }
+        );
+        assert_eq!(
+            sign_text_outline_context(None, true, false),
+            SignTextOutlineContext::default()
         );
     }
 }
