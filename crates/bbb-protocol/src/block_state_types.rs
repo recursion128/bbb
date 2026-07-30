@@ -1,9 +1,6 @@
 //! Fixed Vanilla 26.1 block-state registry wire identities.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::OnceLock,
-};
+use std::{collections::BTreeMap, sync::OnceLock};
 
 use serde::Deserialize;
 
@@ -38,7 +35,9 @@ pub const VANILLA_BLOCK_STATES_26_1_JSON: &str = include_str!("../data/block_sta
 /// `Block.BLOCK_STATE_REGISTRY.size()` for Vanilla 26.1.
 pub const VANILLA_BLOCK_STATE_COUNT: i32 = 29_873;
 
-static VANILLA_BLOCK_PROPERTIES: OnceLock<BTreeMap<String, BTreeSet<String>>> = OnceLock::new();
+type VanillaBlockPropertyCatalog = BTreeMap<String, BTreeMap<String, Vec<String>>>;
+
+static VANILLA_BLOCK_PROPERTIES: OnceLock<VanillaBlockPropertyCatalog> = OnceLock::new();
 
 pub fn vanilla_block_state_id(id: i32) -> Option<i32> {
     (0..VANILLA_BLOCK_STATE_COUNT).contains(&id).then_some(id)
@@ -275,10 +274,22 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
 pub fn vanilla_block_has_property(block: &str, property: &str) -> bool {
     vanilla_block_properties()
         .get(block)
-        .is_some_and(|properties| properties.contains(property))
+        .is_some_and(|properties| properties.contains_key(property))
 }
 
-fn vanilla_block_properties() -> &'static BTreeMap<String, BTreeSet<String>> {
+/// Returns the built-in block property's Vanilla 26.1 value order.
+///
+/// The checked-in global-state report enumerates every property value in its
+/// `StateDefinition` order. Repeated values from the cartesian state product
+/// are collapsed while preserving their first occurrence.
+pub fn vanilla_block_property_values(block: &str, property: &str) -> Option<&'static [String]> {
+    vanilla_block_properties()
+        .get(block)?
+        .get(property)
+        .map(Vec::as_slice)
+}
+
+fn vanilla_block_properties() -> &'static VanillaBlockPropertyCatalog {
     VANILLA_BLOCK_PROPERTIES.get_or_init(|| {
         let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON)
             .expect("embedded vanilla 26.1 block state registry is valid JSON");
@@ -287,14 +298,19 @@ fn vanilla_block_properties() -> &'static BTreeMap<String, BTreeSet<String>> {
             crate::MC_VERSION,
             "embedded block state registry version must match protocol target"
         );
-        let mut blocks = BTreeMap::<String, BTreeSet<String>>::new();
+        let mut blocks = VanillaBlockPropertyCatalog::new();
         for (expected_id, state) in report.states.into_iter().enumerate() {
             assert_eq!(
                 state.id, expected_id as i32,
                 "embedded block state registry must be contiguous"
             );
             let properties = blocks.entry(state.name).or_default();
-            properties.extend(state.properties.into_keys());
+            for (property, value) in state.properties {
+                let values = properties.entry(property).or_default();
+                if !values.contains(&value) {
+                    values.push(value);
+                }
+            }
         }
         blocks
     })
@@ -316,6 +332,8 @@ struct BlockStateEntry {
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::BTreeSet, fs, path::Path};
+
     use super::*;
 
     #[test]
@@ -732,8 +750,67 @@ mod tests {
         assert!(!vanilla_block_has_property("minecraft:stone", "axis"));
         assert!(!vanilla_block_has_property("minecraft:missing", "axis"));
         assert_eq!(
+            vanilla_block_property_values("minecraft:copper_golem_statue", "copper_golem_pose")
+                .unwrap(),
+            ["standing", "sitting", "running", "star"]
+        );
+        assert_eq!(
+            vanilla_block_property_values(
+                "minecraft:waxed_oxidized_copper_golem_statue",
+                "copper_golem_pose"
+            )
+            .unwrap(),
+            ["standing", "sitting", "running", "star"]
+        );
+        assert_eq!(
+            vanilla_block_property_values("minecraft:stone", "axis"),
+            None
+        );
+        assert_eq!(
+            vanilla_block_property_values("minecraft:missing", "axis"),
+            None
+        );
+        assert_eq!(
             vanilla_block_properties().len(),
             crate::block_types::VANILLA_BLOCK_TYPES.len()
+        );
+    }
+
+    #[test]
+    fn production_consumers_do_not_restore_copper_golem_pose_tables() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs")
+                    || path.to_string_lossy().contains("/tests/")
+                    || path.file_name().and_then(|value| value.to_str()) == Some("tests.rs")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
+                let compact: String = production
+                    .chars()
+                    .filter(|character| !character.is_whitespace())
+                    .collect();
+                if compact.contains("VANILLA_COPPER_GOLEM_POSES")
+                    || compact.contains("[\"standing\",\"sitting\",\"running\",\"star\"]")
+                {
+                    violations.push(path.display().to_string());
+                }
+            }
+        }
+
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        visit(crates, &mut violations);
+        assert!(
+            violations.is_empty(),
+            "parallel copper-golem pose tables: {violations:?}"
         );
     }
 }

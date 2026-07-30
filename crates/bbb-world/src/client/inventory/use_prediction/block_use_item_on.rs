@@ -872,9 +872,13 @@ fn item_stack_is_sign_applicator(item_id: Option<i32>) -> Option<bool> {
 }
 
 fn next_copper_golem_pose(pose: &str) -> Option<&'static str> {
+    let poses = super::copper_golem_poses()?;
+    if poses.is_empty() {
+        return None;
+    }
     let ordinal = super::copper_golem_pose_ordinal(pose)?;
-    let next = usize::try_from((ordinal + 1) % 4).ok()?;
-    super::VANILLA_COPPER_GOLEM_POSES.get(next).copied()
+    let next = usize::try_from(ordinal).ok()?.checked_add(1)? % poses.len();
+    poses.get(next).map(String::as_str)
 }
 
 fn boolean_property(properties: &BTreeMap<String, String>, property: &str) -> Option<bool> {

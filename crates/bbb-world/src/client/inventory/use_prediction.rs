@@ -20,6 +20,7 @@ use crate::{
 };
 use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+    block_state_types::vanilla_block_property_values,
     block_types::{
         vanilla_block_type, vanilla_block_type_for_resource_id, BlockTypeCatalogEntry,
         VanillaBlockUseItemOnOverride, VanillaBlockUseWithoutItemOverride,
@@ -140,7 +141,6 @@ const VANILLA_ZOMBIE_HORSE_FOOD_TAG: &str = "minecraft:zombie_horse_food";
 const VANILLA_CAN_WEAR_HORSE_ARMOR_TAG: &str = "minecraft:can_wear_horse_armor";
 const VANILLA_CANNOT_BE_AGE_LOCKED_TAG: &str = "minecraft:cannot_be_age_locked";
 const MAX_PENDING_LOCAL_INTERACTION_PARTICLE_ACTIONS: usize = 64;
-const VANILLA_COPPER_GOLEM_POSES: [&str; 4] = ["standing", "sitting", "running", "star"];
 
 fn generated_entity_interact_owner_is_classified(owner: &str) -> bool {
     matches!(
@@ -185,10 +185,14 @@ fn vanilla_abstract_horse_food_effect(item_id: i32) -> Option<VanillaAbstractHor
     Some(VanillaAbstractHorseFoodEffect { heal, age_up })
 }
 
+fn copper_golem_poses() -> Option<&'static [String]> {
+    vanilla_block_property_values("minecraft:copper_golem_statue", "copper_golem_pose")
+}
+
 fn copper_golem_pose_ordinal(pose: &str) -> Option<i32> {
-    VANILLA_COPPER_GOLEM_POSES
+    copper_golem_poses()?
         .iter()
-        .position(|candidate| *candidate == pose)
+        .position(|candidate| candidate == pose)
         .and_then(|index| i32::try_from(index).ok())
 }
 

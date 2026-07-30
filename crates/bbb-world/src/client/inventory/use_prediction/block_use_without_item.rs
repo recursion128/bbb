@@ -3090,7 +3090,7 @@ mod tests {
             "minecraft:waxed_copper_golem_statue",
             [
                 ("facing", "north"),
-                ("copper_golem_pose", "standing"),
+                ("copper_golem_pose", "star"),
                 ("waterlogged", "false"),
             ],
             VANILLA_GAME_TYPE_SURVIVAL_ID as i8,
@@ -3111,7 +3111,7 @@ mod tests {
         );
         assert_eq!(
             block_property(&statue, "copper_golem_pose").as_deref(),
-            Some("sitting")
+            Some("standing")
         );
 
         statue.apply_update_tags(UpdateTags {
@@ -3137,7 +3137,7 @@ mod tests {
         );
         assert_eq!(
             block_property(&statue, "copper_golem_pose").as_deref(),
-            Some("sitting")
+            Some("standing")
         );
     }
 
