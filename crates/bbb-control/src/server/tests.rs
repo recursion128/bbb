@@ -3145,7 +3145,7 @@ fn client_audio_reads_canonical_world_state() {
         store.apply_level_event(LevelEvent {
             event_type: 1010,
             pos: bbb_protocol::packets::BlockPos { x: 4, y: 65, z: -7 },
-            data: 27,
+            data: 12,
             global: false,
         });
         store.apply_stop_sound(StopSound {
@@ -3176,10 +3176,10 @@ fn client_audio_reads_canonical_world_state() {
     );
     assert_eq!(audio["last_local_sound"]["source"], "ambient");
     assert_eq!(audio["last_local_sound"]["volume"], 0.25);
-    assert_eq!(audio["playing_jukebox_songs"][0]["song_registry_id"], 27);
+    assert_eq!(audio["playing_jukebox_songs"][0]["song_registry_id"], 12);
     assert_eq!(audio["playing_jukebox_songs"][0]["pos"]["x"], 4);
     assert_eq!(audio["last_jukebox_event"]["action"], "start");
-    assert_eq!(audio["last_jukebox_event"]["song_registry_id"], 27);
+    assert_eq!(audio["last_jukebox_event"]["song_registry_id"], 12);
     assert_eq!(audio["last_stop_sound"]["source"], "music");
     assert_eq!(audio["last_stop_sound"]["name"], "minecraft:music.menu");
 }

@@ -4163,7 +4163,7 @@ mod tests {
             .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
                 event_type: 1010,
                 pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
-                data: 27,
+                data: 12,
                 global: false,
             }))
             .await
@@ -4175,10 +4175,10 @@ mod tests {
         assert_eq!(report.world.playing_jukebox_songs().len(), 1);
         let song = report.world.playing_jukebox_songs()[0];
         assert_eq!(song.pos, BlockPos { x: 3, y: 4, z: 5 });
-        assert_eq!(song.song_registry_id, 27);
+        assert_eq!(song.song_registry_id, 12);
         let event = report.world.last_jukebox_event().unwrap();
         assert_eq!(event.action, bbb_world::JukeboxLevelEventAction::Start);
-        assert_eq!(event.song_registry_id, Some(27));
+        assert_eq!(event.song_registry_id, Some(12));
     }
 
     #[tokio::test]
