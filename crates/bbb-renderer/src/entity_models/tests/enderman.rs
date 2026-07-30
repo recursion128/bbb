@@ -908,13 +908,14 @@ fn enderman_texture_images() -> Vec<EntityModelTextureImage> {
         .iter()
         .copied()
         .enumerate()
-        .map(|(index, texture)| EntityModelTextureImage {
-            texture,
-            size: texture.size,
-            rgba: vec![
-                u8::try_from(index).unwrap();
-                usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap()
-            ],
+        .map(|(index, texture)| {
+            EntityModelTextureImage::new(
+                texture,
+                vec![
+                    u8::try_from(index).unwrap();
+                    usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap()
+                ],
+            )
         })
         .collect()
 }

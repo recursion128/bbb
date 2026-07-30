@@ -854,3 +854,7 @@
   core/glow 均按 Vanilla 分离；动态 Lightmap 六标量公式与 Lighting.Entry
   漫反射有逐像素/数值回归，合同见
   `docs/archive/entity-render-state-split-design.md`。
+- **2026-07-30（独立纹理采样工程闭环）**：selected-pack blur/clamp 元数据现
+  贯通全部既有 standalone GPU owner，单 mip sampler 统一钉住 LOD 0；item 与
+  armor glint 已拆为独立世界/PIP 资源并有确定性像素证据，合同见
+  `docs/archive/standalone-texture-sampling-design.md`。

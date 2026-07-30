@@ -687,7 +687,17 @@ impl Renderer {
                 sampler,
             )
         });
-        let glint_bind_group = self.item_glint_texture.as_ref().map(|glint| {
+        let item_glint_bind_group = self.item_glint_texture.as_ref().map(|glint| {
+            let (view, sampler) = glint.view_and_sampler();
+            atlas_camera_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                &target.camera_buffer,
+                view,
+                sampler,
+            )
+        });
+        let armor_glint_bind_group = self.armor_glint_texture.as_ref().map(|glint| {
             let (view, sampler) = glint.view_and_sampler();
             atlas_camera_bind_group(
                 &self.device,
@@ -839,13 +849,21 @@ impl Renderer {
                             unreachable!("scroll buffers uploaded above");
                         };
                         let draw = &geometry.scroll_draws[draw_index];
-                        if draw.armor {
+                        let bind_group = if draw.armor {
                             pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
+                            match &armor_glint_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
                         } else {
                             pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
-                        }
+                            match &item_glint_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
+                        };
                         pipeline_switches += 1;
-                        pass.set_bind_group(0, static_bind_group, &[]);
+                        pass.set_bind_group(0, bind_group, &[]);
                         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                         pass.draw_indexed(
@@ -867,7 +885,7 @@ impl Renderer {
             static_bind_group.as_ref(),
             dynamic_skin_bind_group.as_ref(),
             dynamic_texture_bind_group.as_ref(),
-            glint_bind_group.as_ref(),
+            item_glint_bind_group.as_ref(),
         );
         pipeline_switches = pipeline_switches.saturating_add(item_pipeline_switches);
         (entity_draw_calls, item_draw_calls, pipeline_switches)
@@ -1453,6 +1471,41 @@ mod tests {
             ensure_source
                 .contains("Some(target) if target.width == width && target.height == height"),
             "matching-size targets are reused, not recreated"
+        );
+    }
+
+    #[test]
+    fn entity_preview_glint_ranges_bind_distinct_item_and_armor_owners() {
+        let source = include_str!("gui_preview.rs");
+        assert!(
+            source.contains(
+                "let item_glint_bind_group = self.item_glint_texture.as_ref().map(|glint|"
+            ) && source.contains(
+                "let armor_glint_bind_group = self.armor_glint_texture.as_ref().map(|glint|"
+            ),
+            "PIP builds target-camera bind groups from both dedicated glint owners"
+        );
+        let ordered_draw = source
+            .find("match *ordered_draw")
+            .expect("PIP ordered draw dispatch");
+        let scroll = source[ordered_draw..]
+            .find("HudEntityPreviewPipDrawOrder::Scroll(draw_index)")
+            .map(|index| ordered_draw + index)
+            .expect("PIP glint draw branch");
+        let draw_items = source[scroll..]
+            .find("let (item_draw_calls, item_pipeline_switches)")
+            .map(|index| scroll + index)
+            .expect("PIP item draw phase follows entity glints");
+        let glint_draw = &source[scroll..draw_items];
+        assert!(
+            glint_draw.contains("match &armor_glint_bind_group")
+                && glint_draw.contains("match &item_glint_bind_group")
+                && glint_draw.contains("pass.set_bind_group(0, bind_group, &[])"),
+            "typed armor/entity glint ranges select their matching PIP bind group"
+        );
+        assert!(
+            !glint_draw.contains("pass.set_bind_group(0, static_bind_group, &[])"),
+            "PIP glints no longer sample the shared entity atlas"
         );
     }
 }

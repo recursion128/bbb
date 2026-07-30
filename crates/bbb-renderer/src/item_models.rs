@@ -22,7 +22,8 @@ use crate::{
     gpu::DEPTH_FORMAT,
     pipeline_builder::{depth_stencil_state, RenderPipelineBuilder},
     sheeted_decal::sheeted_decal_uv,
-    Renderer,
+    texture_sampling::standalone_sampler_descriptor,
+    Renderer, StandaloneTextureSampling,
 };
 
 mod display_text;
@@ -250,7 +251,7 @@ pub(crate) struct LegacyItemModelUploadObservation {
     pub(crate) index_bytes: u64,
 }
 
-pub(crate) struct ItemGlintTextureGpu {
+pub(crate) struct GlintTextureGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
@@ -259,7 +260,7 @@ pub(crate) struct ItemGlintTextureGpu {
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
-impl ItemGlintTextureGpu {
+impl GlintTextureGpu {
     pub(crate) fn view_and_sampler(&self) -> (&wgpu::TextureView, &wgpu::Sampler) {
         (&self._view, &self._sampler)
     }
@@ -763,7 +764,24 @@ impl Renderer {
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
-        self.item_glint_texture = Some(create_item_glint_texture_gpu(
+        self.upload_item_glint_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::default(),
+        )
+    }
+
+    /// Uploads the item/entity glint owner with selected-pack standalone
+    /// sampling metadata.
+    pub fn upload_item_glint_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
+        self.item_glint_texture = Some(create_glint_texture_gpu(
             &self.device,
             &self.queue,
             &self.terrain_bind_group_layout,
@@ -773,6 +791,49 @@ impl Renderer {
             width,
             height,
             rgba,
+            sampling,
+            "item",
+        )?);
+        Ok(())
+    }
+
+    /// Uploads vanilla `textures/misc/enchanted_glint_armor.png` for
+    /// `armorEntityGlint` draws.
+    pub fn upload_armor_glint_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.upload_armor_glint_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::default(),
+        )
+    }
+
+    /// Uploads the armor glint owner with selected-pack standalone sampling
+    /// metadata.
+    pub fn upload_armor_glint_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
+        self.armor_glint_texture = Some(create_glint_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            &self.hud3d_camera_buffer,
+            &self.gui_item_camera_buffer,
+            width,
+            height,
+            rgba,
+            sampling,
+            "armor",
         )?);
         Ok(())
     }
@@ -1387,7 +1448,7 @@ fn create_item_model_pipeline_with_blend(
         .build()
 }
 
-fn create_item_glint_texture_gpu(
+fn create_glint_texture_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
@@ -1397,10 +1458,13 @@ fn create_item_glint_texture_gpu(
     width: u32,
     height: u32,
     rgba: &[u8],
-) -> Result<ItemGlintTextureGpu> {
-    validate_item_glint_texture_rgba(width, height, rgba)?;
+    sampling: StandaloneTextureSampling,
+    kind: &'static str,
+) -> Result<GlintTextureGpu> {
+    validate_glint_texture_rgba(width, height, rgba)?;
+    let texture_label = format!("bbb-{kind}-glint-texture");
     let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("bbb-item-glint-texture"),
+        label: Some(&texture_label),
         size: wgpu::Extent3d {
             width,
             height,
@@ -1433,41 +1497,36 @@ fn create_item_glint_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-item-glint-sampler"),
-        address_mode_u: wgpu::AddressMode::Repeat,
-        address_mode_v: wgpu::AddressMode::Repeat,
-        address_mode_w: wgpu::AddressMode::Repeat,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
-    let main_bind_group = create_item_glint_bind_group(
+    let sampler_label = format!("bbb-{kind}-glint-sampler");
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(&sampler_label, sampling));
+    let main_label = format!("bbb-{kind}-glint-main-bind-group");
+    let main_bind_group = create_glint_bind_group(
         device,
         layout,
         main_camera_buffer,
         &view,
         &sampler,
-        "bbb-item-glint-main-bind-group",
+        &main_label,
     );
-    let gui_bind_group = create_item_glint_bind_group(
+    let gui_label = format!("bbb-{kind}-glint-gui-bind-group");
+    let gui_bind_group = create_glint_bind_group(
         device,
         layout,
         gui_camera_buffer,
         &view,
         &sampler,
-        "bbb-item-glint-gui-bind-group",
+        &gui_label,
     );
-    let hud3d_bind_group = create_item_glint_bind_group(
+    let hud3d_label = format!("bbb-{kind}-glint-hud3d-bind-group");
+    let hud3d_bind_group = create_glint_bind_group(
         device,
         layout,
         hud3d_camera_buffer,
         &view,
         &sampler,
-        "bbb-item-glint-hud3d-bind-group",
+        &hud3d_label,
     );
-    Ok(ItemGlintTextureGpu {
+    Ok(GlintTextureGpu {
         _texture: texture,
         _view: view,
         _sampler: sampler,
@@ -1477,13 +1536,13 @@ fn create_item_glint_texture_gpu(
     })
 }
 
-fn create_item_glint_bind_group(
+fn create_glint_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
     camera_buffer: &wgpu::Buffer,
     view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
-    label: &'static str,
+    label: &str,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some(label),
@@ -1505,14 +1564,14 @@ fn create_item_glint_bind_group(
     })
 }
 
-fn validate_item_glint_texture_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+fn validate_glint_texture_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
     if width == 0 || height == 0 {
-        bail!("item glint texture dimensions must be non-zero");
+        bail!("glint texture dimensions must be non-zero");
     }
     let expected = width as usize * height as usize * 4;
     if rgba.len() != expected {
         bail!(
-            "item glint texture rgba length {} does not match {}x{}",
+            "glint texture rgba length {} does not match {}x{}",
             rgba.len(),
             width,
             height
@@ -1808,6 +1867,184 @@ mod tests {
         assert!(ITEM_MODEL_GLINT_SHADER.contains("if color.a < 0.1"));
         assert!(!ITEM_MODEL_GLINT_SHADER.contains("lightmap_texture"));
         assert!(!ITEM_MODEL_GLINT_SHADER.contains("input.color"));
+    }
+
+    #[test]
+    fn glint_owners_keep_distinct_images_and_sampling_filters() {
+        use crate::gpu::{create_camera_buffer, create_terrain_bind_group_layout};
+
+        const SAMPLE_SHADER: &str = r#"
+@group(0) @binding(1)
+var glint_texture: texture_2d<f32>;
+@group(0) @binding(2)
+var glint_sampler: sampler;
+
+@vertex
+fn vs_main(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
+    var position = vec2<f32>(-1.0, -1.0);
+    if index == 1u {
+        position = vec2<f32>(3.0, -1.0);
+    } else if index == 2u {
+        position = vec2<f32>(-1.0, 3.0);
+    }
+    return vec4<f32>(position, 0.0, 1.0);
+}
+
+@fragment
+fn fs_main() -> @location(0) vec4<f32> {
+    return textureSample(glint_texture, glint_sampler, vec2<f32>(0.5, 0.5));
+}
+"#;
+        const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+        const PADDED_BYTES_PER_ROW: u32 = 256;
+
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let Some(adapter) =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::LowPower,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            }))
+        else {
+            return;
+        };
+        let Ok((device, queue)) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-glint-owner-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        )) else {
+            return;
+        };
+        let layout = create_terrain_bind_group_layout(&device);
+        let camera = create_camera_buffer(&device);
+        let item = create_glint_texture_gpu(
+            &device,
+            &queue,
+            &layout,
+            &camera,
+            &camera,
+            &camera,
+            2,
+            1,
+            &[255, 0, 0, 255, 0, 0, 255, 255],
+            StandaloneTextureSampling::new(true, false),
+            "test-item",
+        )
+        .expect("linear item glint");
+        let armor = create_glint_texture_gpu(
+            &device,
+            &queue,
+            &layout,
+            &camera,
+            &camera,
+            &camera,
+            2,
+            1,
+            &[0, 255, 0, 255, 255, 255, 0, 255],
+            StandaloneTextureSampling::new(false, false),
+            "test-armor",
+        )
+        .expect("nearest armor glint");
+        let pipeline = RenderPipelineBuilder::new(&device, "bbb-glint-owner-test-pipeline")
+            .shader("bbb-glint-owner-test-shader", SAMPLE_SHADER)
+            .layout("bbb-glint-owner-test-layout", &[&layout])
+            .color_target(FORMAT, None)
+            .build();
+
+        let render = |bind_group: &wgpu::BindGroup| {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("bbb-glint-owner-test-output"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let readback = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("bbb-glint-owner-test-readback"),
+                size: u64::from(PADDED_BYTES_PER_ROW),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            let mut encoder =
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-glint-owner-test-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&pipeline);
+                pass.set_bind_group(0, bind_group, &[]);
+                pass.draw(0..3, 0..1);
+            }
+            encoder.copy_texture_to_buffer(
+                wgpu::ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyBuffer {
+                    buffer: &readback,
+                    layout: wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(PADDED_BYTES_PER_ROW),
+                        rows_per_image: Some(1),
+                    },
+                },
+                wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+            );
+            queue.submit(std::iter::once(encoder.finish()));
+            let slice = readback.slice(..);
+            slice.map_async(wgpu::MapMode::Read, |_| {});
+            device.poll(wgpu::Maintain::Wait);
+            let data = slice.get_mapped_range();
+            let pixel = [data[0], data[1], data[2], data[3]];
+            drop(data);
+            readback.unmap();
+            pixel
+        };
+
+        let item_pixel = render(&item.main_bind_group);
+        let armor_pixel = render(&armor.main_bind_group);
+        assert!(
+            item_pixel[0] > 80 && item_pixel[2] > 80 && item_pixel[1] < 10,
+            "linear red/blue item sample must blend both endpoints: {item_pixel:?}"
+        );
+        assert!(
+            armor_pixel[1] > 240
+                && armor_pixel[2] < 10
+                && (armor_pixel[0] < 10 || armor_pixel[0] > 240),
+            "nearest green/yellow armor sample must select one endpoint: {armor_pixel:?}"
+        );
+        assert_ne!(item_pixel, armor_pixel);
     }
 
     #[test]

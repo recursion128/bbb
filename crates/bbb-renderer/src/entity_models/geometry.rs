@@ -216,9 +216,11 @@ pub(super) fn append_dissolve_textured_mesh(
 
 /// Appends a normal textured render (`textured`, carrying atlas-absolute UVs) to the scrolling-overlay
 /// mesh, converting each vertex: the atlas UV is inverted back to a local `0..1` UV within `rect`, the
-/// per-instance `offset` is added, and `rect` is carried so the shader `fract`-wraps the scrolled local
-/// UV back into the atlas sub-rect (reproducing the vanilla texture-matrix scroll over a `GL_REPEAT`
-/// texture). Indices are re-based onto `scroll`'s current vertex count.
+/// per-instance `offset` is added, and `rect` is carried so atlas-backed shaders can
+/// `fract`-wrap the scrolled local UV back into the atlas sub-rect (reproducing the
+/// vanilla texture-matrix scroll over a `GL_REPEAT` texture). Dedicated glint
+/// shaders use the same local UV but deliberately ignore the retained rect.
+/// Indices are re-based onto `scroll`'s current vertex count.
 pub(super) fn append_scrolled_textured_mesh(
     scroll: &mut EntityModelScrollMesh,
     textured: &EntityModelTexturedMesh,

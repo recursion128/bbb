@@ -1978,10 +1978,10 @@ const GLINT_ANGLE: f32 = 0.1745329252;
 var<uniform> camera: Camera;
 
 @group(0) @binding(1)
-var entity_texture_atlas: texture_2d<f32>;
+var glint_texture: texture_2d<f32>;
 
 @group(0) @binding(2)
-var entity_sampler: sampler;
+var glint_sampler: sampler;
 
 struct VertexIn {{
     @location(0) position: vec3<f32>,
@@ -1996,10 +1996,8 @@ struct VertexIn {{
 struct VertexOut {{
     @builtin(position) position: vec4<f32>,
     @location(0) local_uv: vec2<f32>,
-    @location(1) uv_rect_min: vec2<f32>,
-    @location(2) uv_rect_size: vec2<f32>,
-    @location(3) spherical_distance: f32,
-    @location(4) cylindrical_distance: f32,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
 }};
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {{
@@ -2035,8 +2033,6 @@ fn vs_main(input: VertexIn) -> VertexOut {{
     var out: VertexOut;
     out.position = {view_proj} * vec4<f32>(input.position, 1.0);
     out.local_uv = glint_uv(input.local_uv);
-    out.uv_rect_min = input.uv_rect_min;
-    out.uv_rect_size = input.uv_rect_size;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -2045,8 +2041,7 @@ fn vs_main(input: VertexIn) -> VertexOut {{
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {{
-    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
-    let color = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    let color = textureSample(glint_texture, glint_sampler, fract(input.local_uv));
     if color.a < 0.1 {{
         discard;
     }}
@@ -5462,7 +5457,9 @@ mod tests {
         assert!(
             armor_glint.contains("camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0)")
         );
-        assert!(entity_glint.contains("fract(input.local_uv)"));
+        assert!(entity_glint
+            .contains("textureSample(glint_texture, glint_sampler, fract(input.local_uv))"));
+        assert!(!entity_glint.contains("atlas_uv"));
         assert!(entity_glint.contains("if color.a < 0.1"));
         assert!(!entity_glint.contains("lightmap_texture"));
         assert!(!entity_glint.contains("sample_lightmap"));

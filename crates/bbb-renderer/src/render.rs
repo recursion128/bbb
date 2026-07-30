@@ -627,13 +627,13 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 stats.entity_model_draw_calls += 1;
             }
-            if let (Some(mesh), Some(atlas)) = (
+            if let (Some(mesh), Some(glint)) = (
                 &self.entity_model_armor_entity_glint_mesh,
-                &self.entity_model_texture_atlas,
+                &self.armor_glint_texture,
             ) {
                 pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
                 stats.pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(0, &glint.main_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -691,13 +691,13 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 stats.entity_model_draw_calls += 1;
             }
-            if let (Some(mesh), Some(atlas)) = (
+            if let (Some(mesh), Some(glint)) = (
                 &self.entity_model_entity_glint_mesh,
-                &self.entity_model_texture_atlas,
+                &self.item_glint_texture,
             ) {
                 pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
                 stats.pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(0, &glint.main_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -7489,6 +7489,18 @@ mod tests {
                 && !source[entity_glint..entity_glint_draw]
                     .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
             "vanilla glint pipeline does not bind LightTexture"
+        );
+        assert!(
+            source[main_pass..armor_glint].contains("&self.armor_glint_texture")
+                && source[armor_glint..armor_glint_draw]
+                    .contains("pass.set_bind_group(0, &glint.main_bind_group, &[])"),
+            "armorEntityGlint binds its dedicated armor texture owner"
+        );
+        assert!(
+            source[armor_glint_draw..entity_glint].contains("&self.item_glint_texture")
+                && source[entity_glint..entity_glint_draw]
+                    .contains("pass.set_bind_group(0, &glint.main_bind_group, &[])"),
+            "entityGlint binds its dedicated item texture owner"
         );
     }
 

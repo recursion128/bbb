@@ -2,6 +2,7 @@ mod selection;
 
 use std::sync::Arc;
 
+use bbb_render_types::StandaloneTextureSampling;
 use glam::Mat4;
 
 use super::{
@@ -1900,6 +1901,10 @@ pub struct EntityModelTextureImage {
     /// Physical pack-image resolution; distinct from the model's logical UV
     /// extent in `texture.size`.
     pub size: [u32; 2],
+    /// Selected-pack sampling metadata retained for standalone consumers such
+    /// as the item and armor glint owners. The shared entity atlas deliberately
+    /// keeps its own fixed sampler.
+    pub sampling: StandaloneTextureSampling,
     pub rgba: Vec<u8>,
 }
 
@@ -1957,6 +1962,7 @@ impl EntityModelTextureImage {
         Self {
             size: texture.size,
             texture,
+            sampling: StandaloneTextureSampling::default(),
             rgba,
         }
     }
@@ -1969,6 +1975,21 @@ impl EntityModelTextureImage {
         Self {
             texture,
             size,
+            sampling: StandaloneTextureSampling::default(),
+            rgba,
+        }
+    }
+
+    pub fn with_physical_size_and_sampling(
+        texture: EntityModelTextureRef,
+        size: [u32; 2],
+        rgba: Vec<u8>,
+        sampling: StandaloneTextureSampling,
+    ) -> Self {
+        Self {
+            texture,
+            size,
+            sampling,
             rgba,
         }
     }

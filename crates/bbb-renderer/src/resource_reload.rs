@@ -109,6 +109,7 @@ impl Renderer {
         take_owner!(item_particle_translucent_sprites);
         take_owner!(item_entity_atlas);
         take_owner!(item_glint_texture);
+        take_owner!(armor_glint_texture);
         take_owner!(item_frame_map_text_font_atlas);
         take_owner!(first_person_map_background_atlas);
         take_owner!(item_frame_map_atlas);
@@ -489,6 +490,25 @@ mod tests {
         HudChatMessage, HudComponentTextRun, HudCrosshairAttackIndicator, HudFontGlyphBook,
         HudFontGlyphMap, HudVignette, ParticleSpriteUv, ParticleUvRect, Renderer,
     };
+
+    #[test]
+    fn reload_checkpoint_captures_both_glint_texture_owners() {
+        let source = include_str!("resource_reload.rs");
+        let item = source
+            .find("take_owner!(item_glint_texture)")
+            .expect("item glint reload owner");
+        let armor = source
+            .find("take_owner!(armor_glint_texture)")
+            .expect("armor glint reload owner");
+        let next = source[armor + "take_owner!(armor_glint_texture)".len()..]
+            .find("take_owner!(")
+            .map(|index| armor + "take_owner!(armor_glint_texture)".len() + index)
+            .expect("next reload owner");
+        assert!(
+            item < armor && armor < next,
+            "item and armor glint owners are captured together"
+        );
+    }
 
     #[test]
     fn injected_failure_after_each_reload_stage_restores_exact_accepted_owners() {

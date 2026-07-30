@@ -371,8 +371,7 @@ screenshot/pixel readback，无法自动化的留可复现 vanilla 对比步骤�
 selected pack、server push/pop、原子 reload generation 和 profile/skin/cape/
 elytra 动态纹理 owner 已落地；owner/失效合同以
 `docs/resource-pack-lifecycle-design.md` 为准。剩余工作不得重建平行 pack
-stack、cache 状态机或 selectable old/new reload path。独立纹理采样工程合同见
-`docs/standalone-texture-sampling-design.md`。
+stack、cache 状态机或 selectable old/new reload path。
 
 1. **non-profile 动态纹理**：后续真实远端 producer 复用既有 bounded
    pending/ready/failed owner。

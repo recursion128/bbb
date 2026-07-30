@@ -71,10 +71,22 @@ pub(crate) fn try_load_entity_model_textures(
         .iter()
         .find(|image| image.texture.path == "textures/misc/enchanted_glint_item.png")
     {
-        renderer.upload_item_glint_texture(
-            glint.texture.size[0],
-            glint.texture.size[1],
+        renderer.upload_item_glint_texture_with_sampling(
+            glint.size[0],
+            glint.size[1],
             &glint.rgba,
+            glint.sampling,
+        )?;
+    }
+    if let Some(glint) = images
+        .iter()
+        .find(|image| image.texture.path == "textures/misc/enchanted_glint_armor.png")
+    {
+        renderer.upload_armor_glint_texture_with_sampling(
+            glint.size[0],
+            glint.size[1],
+            &glint.rgba,
+            glint.sampling,
         )?;
     }
     tracing::info!(
@@ -349,10 +361,11 @@ fn load_entity_model_texture_image(
     if image.width == 0 || image.height == 0 {
         bail!("entity texture {} has zero-sized dimensions", texture.path);
     }
-    Ok(EntityModelTextureImage::with_physical_size(
+    Ok(EntityModelTextureImage::with_physical_size_and_sampling(
         texture,
         [image.width, image.height],
         image.rgba,
+        StandaloneTextureSampling::new(image.texture_metadata.blur, image.texture_metadata.clamp),
     ))
 }
 
@@ -382,6 +395,19 @@ mod tests {
             let texture_path = sources.join("assets").join("minecraft").join(texture.path);
             std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             write_png(&texture_path, texture.size[0], texture.size[1]);
+            if texture.path == "textures/misc/enchanted_glint_item.png" {
+                std::fs::write(
+                    texture_path.with_file_name("enchanted_glint_item.png.mcmeta"),
+                    br#"{"texture":{"blur":true}}"#,
+                )
+                .unwrap();
+            } else if texture.path == "textures/misc/enchanted_glint_armor.png" {
+                std::fs::write(
+                    texture_path.with_file_name("enchanted_glint_armor.png.mcmeta"),
+                    br#"{"texture":{"clamp":true}}"#,
+                )
+                .unwrap();
+            }
         }
         let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
@@ -395,6 +421,22 @@ mod tests {
                 usize::try_from(image.size[0] * image.size[1] * 4).unwrap()
             );
         }
+        let item_glint = images
+            .iter()
+            .find(|image| image.texture.path == "textures/misc/enchanted_glint_item.png")
+            .unwrap();
+        assert_eq!(
+            item_glint.sampling,
+            StandaloneTextureSampling::new(true, false)
+        );
+        let armor_glint = images
+            .iter()
+            .find(|image| image.texture.path == "textures/misc/enchanted_glint_armor.png")
+            .unwrap();
+        assert_eq!(
+            armor_glint.sampling,
+            StandaloneTextureSampling::new(false, true)
+        );
 
         std::fs::remove_dir_all(temp).unwrap();
     }
