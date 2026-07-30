@@ -973,7 +973,7 @@ fn item_stack_swing_animation_resolves_typed_prototype_patch_and_removal_precede
 }
 
 #[test]
-fn entity_model_sources_apply_mob_effect_swing_animation_duration_modifiers() {
+fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
