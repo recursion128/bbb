@@ -390,6 +390,119 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
 }
 "#;
 
+/// Vanilla `RenderPipelines.BANNER_PATTERN`: entity texture + tint, ordinary
+/// cardinal lighting, lightmap and fog, with no alpha cutout and no overlay.
+pub(super) const ENTITY_MODEL_BANNER_PATTERN_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
+    @location(5) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+    @location(2) light: vec2<f32>,
+    @location(3) normal: vec3<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn linear_fog_value(value: f32, start: f32, end: f32) -> f32 {
+    if (value <= start) {
+        return 0.0;
+    }
+    if (value >= end) {
+        return 1.0;
+    }
+    return (value - start) / (end - start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    out.light = input.light;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    let light_color = sample_lightmap(input.light);
+    return apply_fog(
+        vec4<f32>(texel.rgb * diffuse_light(input.normal) * light_color, texel.a),
+        input.spherical_distance,
+        input.cylindrical_distance,
+    );
+}
+"#;
+
 // Vanilla `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` (`entity.fsh` with the `DISSOLVE` +
 // `PER_FACE_LIGHTING` + `ALPHA_CUTOUT 0.1` defines): the dying ender dragon body. Identical to
 // `ENTITY_MODEL_TEXTURED_SHADER` except for the DISSOLVE branch, which samples the dissolve mask from
@@ -2295,6 +2408,32 @@ pub(crate) fn create_entity_model_translucent_pipeline(
     )
 }
 
+pub(crate) fn create_entity_model_banner_pattern_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-entity-model-banner-pattern-pipeline")
+        .shader(
+            "bbb-entity-model-banner-pattern-shader",
+            ENTITY_MODEL_BANNER_PATTERN_SHADER,
+        )
+        .layout(
+            "bbb-entity-model-banner-pattern-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_textured_vertex_layout()])
+        .color_target(format, ENTITY_MODEL_BANNER_PATTERN_BLEND)
+        .cull_mode(ENTITY_MODEL_BANNER_PATTERN_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ENTITY_MODEL_BANNER_PATTERN_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BANNER_PATTERN_DEPTH_COMPARE,
+        ))
+        .build()
+}
+
 pub(crate) fn create_entity_model_translucent_cull_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2355,6 +2494,12 @@ const ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED: bool = true;
 const ENTITY_MODEL_TEXTURED_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const ENTITY_MODEL_SURFACE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_SURFACE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+pub(super) const ENTITY_MODEL_BANNER_PATTERN_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+pub(super) const ENTITY_MODEL_BANNER_PATTERN_DEPTH_WRITE_ENABLED: bool = false;
+pub(super) const ENTITY_MODEL_BANNER_PATTERN_DEPTH_COMPARE: wgpu::CompareFunction =
+    wgpu::CompareFunction::LessEqual;
+pub(super) const ENTITY_MODEL_BANNER_PATTERN_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const ENTITY_MODEL_OUTLINE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_OUTLINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 /// Vanilla `RenderPipelines.BREEZE_WIND`: translucent blend, default depth, and cull off.

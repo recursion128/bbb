@@ -189,10 +189,7 @@ fn banner_layer_passes_match_vanilla_renderer() {
     for (index, (texture_path, tint)) in expectations.iter().enumerate() {
         let pass = &passes[index + 2];
         assert_eq!(pass.kind, EntityModelLayerKind::BannerPattern);
-        assert_eq!(
-            pass.render_type,
-            EntityModelLayerRenderType::EntityTranslucent
-        );
+        assert_eq!(pass.render_type, EntityModelLayerRenderType::BannerPattern);
         assert_eq!(pass.model_layer, MODEL_LAYER_STANDING_BANNER_FLAG);
         assert_eq!(pass.texture.path, *texture_path);
         assert_eq!(
@@ -288,6 +285,7 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     let instance = banner_instance([3.0, 4.0, 5.0], 0.0, false, EntityDyeColor::Lime, layers)
         .with_banner_flag_phase(0.25)
         .with_block_entity_crumbling(Some(test_block_entity_crumbling([3.0, 4.0, 5.0])))
+        .with_has_red_overlay(true)
         .with_light_coords((4_u32 << 4) | (12_u32 << 20));
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     // Four submissions: frame + flag over `banner_base`, then the base-color mask and the one
@@ -302,17 +300,20 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     let base_mask = meshes.submissions[2];
     assert_eq!(
         base_mask.render_type,
-        EntityModelLayerRenderType::EntityTranslucent
+        EntityModelLayerRenderType::BannerPattern
     );
     assert_eq!(base_mask.texture, BANNER_PATTERN_BASE_TEXTURE_REF);
     assert_eq!(base_mask.tint, EntityDyeColor::Lime.texture_diffuse_color());
+    assert_eq!(base_mask.overlay, ENTITY_VERTEX_NO_OVERLAY);
     let pattern = meshes.submissions[3];
     assert_eq!(
         pattern.render_type,
-        EntityModelLayerRenderType::EntityTranslucent
+        EntityModelLayerRenderType::BannerPattern
     );
     assert_eq!(pattern.texture.path, "textures/entity/banner/creeper.png");
     assert_eq!(pattern.tint, EntityDyeColor::Black.texture_diffuse_color());
+    assert_eq!(pattern.overlay, ENTITY_VERTEX_NO_OVERLAY);
+    assert_ne!(flag.overlay, ENTITY_VERTEX_NO_OVERLAY);
     for submission in &meshes.submissions {
         assert_eq!(submission.transform, banner_model_root_transform(instance));
         assert_eq!(submission.light, instance.render_state.shader_light());
@@ -327,8 +328,8 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     assert_eq!(meshes.translucent.indices.len(), 72);
     assert!(meshes.cutout.vertices.is_empty());
     // `BannerRenderer` passes the overlay to frame + flag, but vanilla's dedicated
-    // `bannerPattern` render type does not affect crumbling. Pattern geometry must therefore not
-    // be duplicated even though its local bucket maps to generic entity translucent rendering.
+    // `bannerPattern` render type neither samples overlay nor affects crumbling. Pattern geometry
+    // must therefore not be duplicated even though it shares the translucent vertex bucket.
     assert!(meshes.submissions[0].affects_crumbling);
     assert!(meshes.submissions[1].affects_crumbling);
     assert!(!meshes.submissions[2].affects_crumbling);
@@ -399,8 +400,16 @@ fn banner_runtime_pattern_uses_dynamic_atlas_without_replacing_static_layers() {
     };
     assert_eq!(base_draw.atlas, EntityModelTexturedDrawAtlas::Static);
     assert_eq!(
+        base_draw.render_type,
+        EntityModelLayerRenderType::BannerPattern
+    );
+    assert_eq!(
         pattern_draw.atlas,
         EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+    );
+    assert_eq!(
+        pattern_draw.render_type,
+        EntityModelLayerRenderType::BannerPattern
     );
     assert!(base_draw.insertion_index < pattern_draw.insertion_index);
 }

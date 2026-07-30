@@ -48,13 +48,13 @@ translucent masks from becoming depth occluders for later geometry.
   `banner_textured_layer_passes` assigns it to the base-color mask and every
   stored layer. No boolean depth override is attached to generic translucent
   submissions.
-- The CPU mesh owner gives static and runtime-atlas banner patterns distinct
-  typed buckets so their pipeline identity survives batching. Existing
-  submission order, sort keys, tint, transform, light, UV and atlas selection
-  remain unchanged.
+- The CPU mesh owner preserves static and runtime-atlas banner patterns as
+  distinct typed sorted ranges while reusing the compatible translucent vertex
+  buffers. Existing submission order, sort keys, tint, transform, light, UV
+  and atlas selection remain unchanged.
 - `bbb-renderer::Renderer` owns one dedicated banner-pattern pipeline and the
-  corresponding static/dynamic mesh residency. World translucent range
-  dispatch selects it solely from the typed render identity.
+  existing static/dynamic atlas residency. World translucent range dispatch
+  selects it solely from the typed render identity.
 - Isolated HUD entity previews gain a `BannerPattern` PIP pipeline lane and
   preserve the same cutout/glint/translucent ordering. Loom thumbnails that are
   ordinary 2D atlas quads remain on the HUD pipeline; only the flag-model
@@ -91,7 +91,7 @@ translucent masks from becoming depth occluders for later geometry.
 ## Serial stages and verification
 
 1. **Typed submission and residency.** Add the `BannerPattern` render identity,
-   static/runtime mesh buckets, exact no-overlay/crumbling/outline metadata,
+   static/runtime sorted ranges, exact no-overlay/crumbling/outline metadata,
    and world/PIP dispatch. Update banner submission and PIP ordering tests.
 2. **GPU state and proof.** Add the dedicated shader/pipeline with translucent
    blend, back cull, `LessEqual`, no depth write, no overlay and no alpha

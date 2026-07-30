@@ -267,6 +267,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             true,
         ),
         (
+            EntityModelLayerRenderType::BannerPattern,
+            "bannerPattern",
+            EntityModelLayerRenderBucket::Translucent,
+            false,
+            true,
+            true,
+        ),
+        (
             EntityModelLayerRenderType::EntityTranslucentEmissive,
             "entityTranslucentEmissive",
             EntityModelLayerRenderBucket::TranslucentEmissive,
@@ -1061,6 +1069,43 @@ fn entity_textured_cull_shader_uses_vanilla_single_face_lighting() {
     assert!(!ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("per_face_diffuse_light"));
     assert!(ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(input.normal)"));
     assert!(!ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(-normal)"));
+}
+
+#[test]
+fn banner_pattern_shader_and_pipeline_state_match_vanilla_26_1() {
+    // `RenderPipelines.BANNER_PATTERN` inherits the entity snippet without
+    // `ALPHA_CUTOUT` or `PER_FACE_LIGHTING`, defines `NO_OVERLAY`, enables
+    // translucent blending, keeps default back-face culling and LESS_EQUAL,
+    // and is the banner-specific entity pipeline whose depth write is false.
+    assert!(ENTITY_MODEL_BANNER_PATTERN_SHADER
+        .contains("textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint"));
+    assert!(ENTITY_MODEL_BANNER_PATTERN_SHADER.contains("diffuse_light(input.normal)"));
+    assert!(ENTITY_MODEL_BANNER_PATTERN_SHADER.contains("sample_lightmap(input.light)"));
+    assert!(ENTITY_MODEL_BANNER_PATTERN_SHADER.contains("return apply_fog("));
+    for absent in [
+        "discard",
+        "input.overlay",
+        "per_face_diffuse_light",
+        "@builtin(front_facing)",
+    ] {
+        assert!(
+            !ENTITY_MODEL_BANNER_PATTERN_SHADER.contains(absent),
+            "bannerPattern shader must omit {absent}"
+        );
+    }
+    assert_eq!(
+        ENTITY_MODEL_BANNER_PATTERN_BLEND,
+        Some(wgpu::BlendState::ALPHA_BLENDING)
+    );
+    assert!(!ENTITY_MODEL_BANNER_PATTERN_DEPTH_WRITE_ENABLED);
+    assert_eq!(
+        ENTITY_MODEL_BANNER_PATTERN_DEPTH_COMPARE,
+        wgpu::CompareFunction::LessEqual
+    );
+    assert_eq!(
+        ENTITY_MODEL_BANNER_PATTERN_CULL_MODE,
+        Some(wgpu::Face::Back)
+    );
 }
 
 #[test]

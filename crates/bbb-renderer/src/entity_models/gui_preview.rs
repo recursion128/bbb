@@ -59,6 +59,7 @@ pub(crate) enum HudEntityPreviewPipPipeline {
     ArmorTrim,
     ArmorTrimDecal,
     Translucent,
+    BannerPattern,
     ArmorTranslucent,
     TranslucentEmissive,
     Eyes,
@@ -260,6 +261,11 @@ fn bake_hud_entity_preview_pip_geometry_with_equipment(
         None,
     );
     let mut geometry = HudEntityPreviewPipGeometry::default();
+    let translucent_pipeline = if matches!(instance.kind, EntityModelKind::Banner { .. }) {
+        HudEntityPreviewPipPipeline::BannerPattern
+    } else {
+        HudEntityPreviewPipPipeline::Translucent
+    };
 
     use EntityModelTexturedDrawAtlas::{DynamicPlayerSkin, DynamicPlayerTexture, Static};
     use HudEntityPreviewPipPipeline::*;
@@ -326,16 +332,16 @@ fn bake_hud_entity_preview_pip_geometry_with_equipment(
     );
     geometry.append_scroll(false, meshes.entity_glint);
     // Translucent family, in draw_entity_translucent_features order.
-    geometry.append_textured(Translucent, Static, meshes.translucent);
+    geometry.append_textured(translucent_pipeline, Static, meshes.translucent);
     geometry.append_textured(ArmorTranslucent, Static, meshes.armor_translucent);
     geometry.append_textured(TranslucentEmissive, Static, meshes.translucent_emissive);
     geometry.append_textured(
-        Translucent,
+        translucent_pipeline,
         DynamicPlayerSkin,
         meshes.dynamic_player_skin_translucent,
     );
     geometry.append_textured(
-        Translucent,
+        translucent_pipeline,
         DynamicPlayerTexture,
         meshes.dynamic_player_texture_translucent,
     );
@@ -783,6 +789,9 @@ impl Renderer {
                             HudEntityPreviewPipPipeline::Translucent => {
                                 (&self.entity_model_translucent_pipeline, true)
                             }
+                            HudEntityPreviewPipPipeline::BannerPattern => {
+                                (&self.entity_model_banner_pattern_pipeline, true)
+                            }
                             HudEntityPreviewPipPipeline::ArmorTranslucent => {
                                 (&self.entity_model_armor_translucent_pipeline, true)
                             }
@@ -987,12 +996,15 @@ mod tests {
     use std::sync::Arc;
 
     use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
-    use super::super::model_layers::armor_stand_entity_texture_refs;
+    use super::super::model_layers::{armor_stand_entity_texture_refs, banner_entity_texture_refs};
     use super::super::{
         EntityArmorMaterial, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     use super::*;
-    use crate::{DynamicEntityTextureImage, EntityArmorTrim, EntityDynamicTexture};
+    use crate::{
+        BannerPatternLayer, BannerPatternTexture, DynamicEntityTextureImage, EntityArmorTrim,
+        EntityDyeColor, EntityDynamicTexture,
+    };
 
     #[test]
     fn smithing_entity_preview_pip_draws_the_exact_resident_item_target() {
@@ -1232,6 +1244,53 @@ mod tests {
             .all(|draw| draw.atlas == EntityModelTexturedDrawAtlas::Static));
         assert!(geometry.scroll_draws.is_empty());
         assert!(geometry.colored_indices.is_empty());
+    }
+
+    #[test]
+    fn bake_routes_static_and_runtime_banner_patterns_through_banner_pattern_pipeline() {
+        let images: Vec<EntityModelTextureImage> = banner_entity_texture_refs()
+            .iter()
+            .map(|texture| {
+                let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                EntityModelTextureImage::new(*texture, vec![0xff; len])
+            })
+            .collect();
+        let atlas = build_entity_model_texture_atlas(&images)
+            .expect("banner atlas")
+            .0;
+        let runtime_texture = EntityDynamicTexture { handle: 82_001 };
+        let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+            handle: runtime_texture.handle,
+            size: [64, 64],
+            rgba: vec![0xff; 64 * 64 * 4],
+        }])
+        .expect("runtime banner-pattern atlas")
+        .0;
+        let mut layers = [None; 16];
+        layers[0] = Some(BannerPatternLayer {
+            texture: BannerPatternTexture::Runtime(runtime_texture),
+            color: EntityDyeColor::Blue,
+        });
+        let instance = EntityModelInstance::banner_flag(-1, EntityDyeColor::White, layers);
+
+        let geometry =
+            bake_hud_entity_preview_pip_geometry(&instance, &atlas, None, Some(&dynamic_atlas));
+        let banner_draws = geometry
+            .textured_draws
+            .iter()
+            .filter(|draw| draw.pipeline == HudEntityPreviewPipPipeline::BannerPattern)
+            .collect::<Vec<_>>();
+
+        assert_eq!(banner_draws.len(), 2, "base mask + runtime pattern");
+        assert_eq!(banner_draws[0].atlas, EntityModelTexturedDrawAtlas::Static);
+        assert_eq!(
+            banner_draws[1].atlas,
+            EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+        );
+        assert!(!geometry
+            .textured_draws
+            .iter()
+            .any(|draw| draw.pipeline == HudEntityPreviewPipPipeline::Translucent));
     }
 
     #[test]

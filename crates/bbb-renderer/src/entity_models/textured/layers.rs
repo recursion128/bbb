@@ -215,6 +215,8 @@ pub(crate) enum EntityModelLayerRenderType {
     EntityCutoutZOffset,
     /// Vanilla `RenderTypes.entityTranslucent(texture)`.
     EntityTranslucent,
+    /// Vanilla `RenderTypes.bannerPattern(texture)`.
+    BannerPattern,
     /// Vanilla `RenderTypes.entityTranslucentEmissive(texture, affectsOutline)`.
     EntityTranslucentEmissive,
     /// Vanilla `RenderTypes.entityTranslucentCullItemTarget(texture)`, used by
@@ -283,7 +285,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 28] = [
+    pub(in crate::entity_models) const ALL: [Self; 29] = [
         Self::EntitySolid,
         Self::EntitySolidZOffsetForward,
         Self::ArmorCutoutNoCull,
@@ -295,6 +297,7 @@ impl EntityModelLayerRenderType {
         Self::EntityCutoutCull,
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
+        Self::BannerPattern,
         Self::EntityTranslucentEmissive,
         Self::EntityTranslucentCullItemTarget,
         Self::Outline,
@@ -325,7 +328,7 @@ impl EntityModelLayerRenderType {
             Self::EntitySolidZOffsetForward => EntityModelLayerRenderBucket::SolidZOffsetForward,
             Self::EntityCutoutDissolve => EntityModelLayerRenderBucket::Dissolve,
             Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::CutoutZOffset,
-            Self::ArmorTranslucent | Self::EntityTranslucent => {
+            Self::ArmorTranslucent | Self::EntityTranslucent | Self::BannerPattern => {
                 EntityModelLayerRenderBucket::Translucent
             }
             Self::EntityTranslucentEmissive => EntityModelLayerRenderBucket::TranslucentEmissive,
@@ -367,8 +370,6 @@ impl EntityModelLayerRenderType {
     }
 
     /// Vanilla `RenderSetup.affectsCrumbling` for the represented render type.
-    /// Per-submission exceptions such as `bannerPattern` are applied when the
-    /// layer pass is converted into submission metadata.
     pub(in crate::entity_models) const fn affects_crumbling(self) -> bool {
         matches!(
             self,
@@ -393,6 +394,7 @@ impl EntityModelLayerRenderType {
             self,
             Self::ArmorTranslucent
                 | Self::EntityTranslucent
+                | Self::BannerPattern
                 | Self::EntityTranslucentEmissive
                 | Self::EntityTranslucentCullItemTarget
                 | Self::EntityGlint
@@ -412,6 +414,7 @@ impl EntityModelLayerRenderType {
             Self::EntitySolid
                 | Self::EntitySolidZOffsetForward
                 | Self::EntityCutoutCull
+                | Self::BannerPattern
                 | Self::EntityTranslucentCullItemTarget
         )
     }
@@ -434,6 +437,7 @@ impl EntityModelLayerRenderType {
             Self::EntityCutoutCull => "entityCutoutCull",
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
+            Self::BannerPattern => "bannerPattern",
             Self::EntityTranslucentEmissive => "entityTranslucentEmissive",
             Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
             Self::Outline => "outline",
@@ -1989,10 +1993,8 @@ pub(in crate::entity_models) fn decorated_pot_textured_layer_passes(
 /// base color first, then each `BannerPatternLayers.Layer`'s sheet tinted by
 /// `layer.color().getTextureDiffuseColor()`, clamped at `MAX_PATTERNS = 16`. bbb keeps one
 /// banner model per instance, so the frame/flag/pattern split rides retained-parts passes over
-/// the same posed tree; the pattern passes ride the translucent bucket (vanilla
-/// `RenderPipelines.BANNER_PATTERN` is `TRANSLUCENT` blend over the already-drawn flag depth —
-/// bbb's translucent pipeline keeps depth writes on, equal-depth `LessEqual` layering is
-/// unaffected).
+/// the same posed tree; the pattern passes retain the dedicated `bannerPattern`
+/// render identity while sharing the compatible translucent vertex bucket.
 pub(in crate::entity_models) fn banner_textured_layer_passes(
     wall: bool,
     flag_only: bool,
@@ -2041,7 +2043,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
         // color.
         EntityModelLayerPass {
             kind: EntityModelLayerKind::BannerPattern,
-            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            render_type: EntityModelLayerRenderType::BannerPattern,
             model_layer: flag_layer,
             texture: BANNER_PATTERN_BASE_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(BANNER_FLAG_PARTS),
@@ -2053,7 +2055,7 @@ pub(in crate::entity_models) fn banner_textured_layer_passes(
     for (index, layer) in layers.iter().flatten().enumerate() {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::BannerPattern,
-            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            render_type: EntityModelLayerRenderType::BannerPattern,
             model_layer: flag_layer,
             texture: match layer.texture {
                 BannerPatternTexture::Builtin(pattern) => banner_pattern_texture_ref(pattern),

@@ -4677,11 +4677,15 @@ impl Renderer {
             draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive;
         let uses_armor_translucent_pipeline =
             draw.render_type == EntityModelLayerRenderType::ArmorTranslucent;
+        let uses_banner_pattern_pipeline =
+            draw.render_type == EntityModelLayerRenderType::BannerPattern;
         let uses_eyes_pipeline = draw.render_type == EntityModelLayerRenderType::Eyes;
         if uses_translucent_emissive_pipeline {
             pass.set_pipeline(&self.entity_model_translucent_emissive_pipeline);
         } else if uses_armor_translucent_pipeline {
             pass.set_pipeline(&self.entity_model_armor_translucent_pipeline);
+        } else if uses_banner_pattern_pipeline {
+            pass.set_pipeline(&self.entity_model_banner_pattern_pipeline);
         } else if uses_eyes_pipeline {
             pass.set_pipeline(&self.entity_model_eyes_pipeline);
         } else if draw.surface_cull {
@@ -4705,6 +4709,26 @@ impl Renderer {
         draw: EntityModelTexturedDrawRange,
         item_entity_target: bool,
     ) -> Option<(&'a EntityModelTexturedMeshGpu, &'a wgpu::BindGroup)> {
+        if draw.render_type == EntityModelLayerRenderType::BannerPattern {
+            if item_entity_target || !draw.surface_cull {
+                return None;
+            }
+            return match draw.atlas {
+                EntityModelTexturedDrawAtlas::Static => Some((
+                    self.entity_model_translucent_mesh.as_ref()?,
+                    &self.entity_model_texture_atlas.as_ref()?.bind_group,
+                )),
+                EntityModelTexturedDrawAtlas::DynamicPlayerTexture => Some((
+                    self.entity_dynamic_player_texture_translucent_mesh
+                        .as_ref()?,
+                    &self
+                        .entity_dynamic_player_texture_atlas
+                        .as_ref()?
+                        .bind_group,
+                )),
+                EntityModelTexturedDrawAtlas::DynamicPlayerSkin => None,
+            };
+        }
         if draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive {
             if item_entity_target
                 || draw.atlas != EntityModelTexturedDrawAtlas::Static
@@ -7046,6 +7070,38 @@ mod tests {
                 && source[main_helper..tests_mod]
                     .contains("self.entity_model_translucent_emissive_pipeline"),
             "fallback unsorted translucent features also draw entityTranslucentEmissive"
+        );
+    }
+
+    #[test]
+    fn banner_pattern_sorted_ranges_use_no_depth_write_pipeline_and_shared_buffers() {
+        let source = include_str!("render.rs");
+        let range_helper = source
+            .find("fn draw_entity_textured_range")
+            .expect("textured range draw helper is present");
+        let resources_helper = source
+            .find("fn entity_textured_range_resources")
+            .expect("textured range resource helper is present");
+        let main_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("main translucent feature helper is present");
+
+        let dispatch = &source[range_helper..resources_helper];
+        assert!(
+            dispatch.contains("EntityModelLayerRenderType::BannerPattern")
+                && dispatch.contains("self.entity_model_banner_pattern_pipeline"),
+            "sorted bannerPattern ranges select their dedicated pipeline"
+        );
+        let resources = &source[resources_helper..main_helper];
+        assert!(
+            resources.contains("EntityModelLayerRenderType::BannerPattern")
+                && resources.contains("self.entity_model_translucent_mesh")
+                && resources.contains("self.entity_dynamic_player_texture_translucent_mesh"),
+            "static and runtime bannerPattern ranges reuse compatible translucent GPU buffers"
+        );
+        assert!(
+            resources.contains("EntityModelTexturedDrawAtlas::DynamicPlayerSkin => None"),
+            "bannerPattern cannot silently route through the unrelated player-skin atlas"
         );
     }
 

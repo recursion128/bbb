@@ -2947,13 +2947,7 @@ fn textured_layer_submission(
         pass.order,
         pass.submit_sequence,
     )
-    // `BannerRenderer.submitPatterns` passes the block-entity crumbling value,
-    // but `RenderTypes.bannerPattern` does not set `affectsCrumbling`. bbb uses
-    // the generic translucent bucket for that pipeline, so retain the narrower
-    // per-submission flag here.
-    .with_affects_crumbling(
-        render_type.affects_crumbling() && pass.kind != EntityModelLayerKind::BannerPattern,
-    );
+    .with_affects_crumbling(render_type.affects_crumbling());
     if pass.render_type == EntityModelLayerRenderType::EntityCutoutDissolve {
         submit
             .with_overlay(ENTITY_VERTEX_NO_OVERLAY)
@@ -3011,6 +3005,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
     matches!(
         pass.kind,
         EntityModelLayerKind::ArrowBase
+            | EntityModelLayerKind::BannerPattern
             | EntityModelLayerKind::BoatBase
             | EntityModelLayerKind::BoatWaterMask
             | EntityModelLayerKind::BreezeEyes
