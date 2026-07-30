@@ -279,8 +279,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - **Broader collision-clipping parity** for special contexts beyond the covered
   `WakeParticle` case.
 - **Player-coupled particle emitters** beyond the currently covered scoped cases.
-- **Idle/tick block-entity client effects** beyond packet-owned level events (the
-  vault event `3015` context remains the audit anchor).
 
 Routing invariant: terrain/item atlas rendering, block-entity client-effect
 presentation, and audio-device/runtime parity stay with their owning domains;

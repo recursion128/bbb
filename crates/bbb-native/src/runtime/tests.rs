@@ -7838,6 +7838,44 @@ fn weather_tick_effects_preserve_level_renderer_order_before_later_effect_drains
 }
 
 #[test]
+fn block_entity_client_effects_precede_animate_tick_and_particle_engine_advance() {
+    let source = include_str!("../runtime.rs");
+    let conduit_state = source
+        .find("world.advance_conduit_ticks(running_ticks);")
+        .expect("pump should advance conduit state");
+    let spawner_state = source
+        .find("world.advance_spawner_block_ticks(running_ticks);")
+        .expect("pump should advance ordinary-spawner state");
+    let vault_state = source
+        .find("world.advance_vault_block_ticks(running_ticks);")
+        .expect("pump should advance vault state");
+    let block_entity_effects = source
+        .find("environment_animate.advance_block_entity_effects_for_ticks(")
+        .expect("pump should submit block-entity client effects");
+    let animate_tick = source
+        .find("environment_animate.advance_for_ticks(")
+        .expect("pump should submit animate-tick effects");
+    let particle_tick = source
+        .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
+        .expect("pump should advance the particle engine");
+
+    for state_advance in [conduit_state, spawner_state, vault_state] {
+        assert!(
+            state_advance < block_entity_effects,
+            "block-entity client state must advance before its tick effects"
+        );
+    }
+    assert!(
+        block_entity_effects < animate_tick,
+        "ClientLevel.tickBlockEntities effects must precede ClientLevel.animateTick"
+    );
+    assert!(
+        animate_tick < particle_tick,
+        "new block and block-entity particles must enter before ParticleEngine.tick"
+    );
+}
+
+#[test]
 fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
     let source = include_str!("../runtime.rs");
     let input_advance = source

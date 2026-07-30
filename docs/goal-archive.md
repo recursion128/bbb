@@ -865,3 +865,6 @@
 - **2026-07-30（唱片 now-playing 工程闭环）**：共享生成目录、同步 holder/
   stub 资源身份、定位音频、60 tick 动画 action bar 与 rich `SystemNow` 旁白已
   贯通；合同见 `docs/archive/jukebox-now-playing-design.md`。
+- **2026-07-30（方块实体客户端 tick 效果工程闭环）**：营火、普通/试炼刷怪笼、
+  潮涌核心与宝库的 typed world 投影现共用 level random 游标提交粒子/本地音频；
+  合同见 `docs/archive/block-entity-client-effects-closeout-design.md`。
