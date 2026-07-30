@@ -1010,15 +1010,35 @@ impl Renderer {
         // Vanilla AbstractSignRenderer.submitSignText also goes through
         // order-zero submitText, so sign face text draws with the other
         // order-zero text before item and block features.
-        let (sign_text_vertices, sign_text_indices) = self.collect_sign_text_geometry();
-        if !sign_text_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
-                self.draw_item_model_geometry(
+        let sign_text = self.collect_sign_text_geometry();
+        if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+            for (mesh, bind_group, pipeline) in [
+                (
+                    &sign_text.outline,
+                    &atlas.bind_group,
+                    &self.display_text_background_pipeline,
+                ),
+                (
+                    &sign_text.primary,
+                    &atlas.bind_group,
+                    &self.display_text_pipeline,
+                ),
+                (
+                    &sign_text.effects,
+                    &atlas.effect_bind_group,
+                    &self.display_text_pipeline,
+                ),
+            ] {
+                if mesh.indices.is_empty() {
+                    continue;
+                }
+                self.draw_item_model_geometry_with_pipeline(
                     &mut *encoder,
                     main_view,
-                    &sign_text_vertices,
-                    &sign_text_indices,
-                    &atlas.bind_group,
+                    &mesh.vertices,
+                    &mesh.indices,
+                    bind_group,
+                    pipeline,
                 );
                 stats.pipeline_switches += 1;
                 stats.item_model_draw_calls += 1;

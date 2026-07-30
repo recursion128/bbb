@@ -12,12 +12,15 @@
 
 use glam::{Mat4, Vec3};
 
-use bbb_render_types::{visual_order, HudStyledTextRun};
+use bbb_render_types::{
+    visual_order, HudEffectRect, HudObfuscatedGlyphPool, HudObfuscatedRandom, HudStyledTextRun,
+    HudTextStyle,
+};
 
 use crate::entity_models::{sign_base_transformation, SignModelAttachment};
 use crate::{HudAsciiGlyph, HudFontGlyphMap, Renderer};
 
-use super::{ItemModelMesh, ItemModelVertex};
+use super::ItemModelMesh;
 
 /// Vanilla `SignBlockEntity.TEXT_LINE_HEIGHT` (`10`).
 pub const SIGN_TEXT_LINE_HEIGHT: i32 = 10;
@@ -46,8 +49,7 @@ const BLACK_GLOWING_SIGN_DARK_RGB: u32 = 0x00F0_EBCC;
 /// the map-label path's replacement glyph.
 const SIGN_TEXT_REPLACEMENT_GLYPH: char = '?';
 
-/// The per-face sign text submit metadata alongside the baked mesh; the
-/// glyph quads themselves live in [`SignTextSurface::mesh`].
+/// The per-face sign text submit metadata alongside the measured glyph slots.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SignTextSubmission {
     pub position: [f32; 3],
@@ -63,26 +65,46 @@ pub struct SignTextSubmission {
     pub transform: Mat4,
 }
 
-/// One sign face's baked text: world-space glyph quads sampling the
-/// `minecraft:font/default` atlas (the map-label font upload).
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct SignTextGlyphSlot {
+    ch: char,
+    glyph: HudAsciiGlyph,
+    x: f32,
+    y: f32,
+    style: HudTextStyle,
+    color: [f32; 4],
+    first_in_line: bool,
+}
+
+/// One sign face's immutable measured text. Stable block-entity extraction
+/// retains these original-glyph slots; the renderer resolves obfuscated
+/// bitmaps and emits world-space quads from them each frame.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SignTextSurface {
     pub submission: SignTextSubmission,
-    mesh: ItemModelMesh,
+    lines: [Vec<SignTextGlyphSlot>; 4],
+    logical_quad_count: usize,
 }
 
 impl SignTextSurface {
     pub fn is_empty(&self) -> bool {
-        self.mesh.is_empty()
+        self.logical_quad_count == 0
     }
 
     pub fn vertex_count(&self) -> usize {
-        self.mesh.vertices.len()
+        self.logical_quad_count.saturating_mul(4)
     }
 
     pub fn index_count(&self) -> usize {
-        self.mesh.indices.len()
+        self.logical_quad_count.saturating_mul(6)
     }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct SignTextGeometry {
+    pub(crate) outline: ItemModelMesh,
+    pub(crate) primary: ItemModelMesh,
+    pub(crate) effects: ItemModelMesh,
 }
 
 /// Vanilla `SignBlockEntity.getTextLineHeight` dispatch: hanging signs
@@ -237,7 +259,7 @@ fn visual_sign_line<'a>(
     visual_order(&logical, glyphs.default_right_to_left())
 }
 
-/// Bakes one sign face's text into world-space glyph quads, transcribing
+/// Measures one sign face's text into stable glyph slots, transcribing
 /// `AbstractSignRenderer.submitSignText`:
 /// - each line is width-truncated to `getMaxTextLineWidth()` and centred at
 ///   `x = -width / 2` (vanilla integer halving of `font.width`);
@@ -245,13 +267,9 @@ fn visual_sign_line<'a>(
 /// - the line color is the glowing raw dye color or the `getDarkColor`
 ///   darkened one; per-run style colors override it
 ///   (`StringRenderOutput.getTextColor`);
-/// - glyph quads (bold double-draw + italic shear via `styled_quads`, no
-///   drop shadow — vanilla submits with `dropShadow = false`) are transformed
-///   by the face's text transformation into world space.
-///
-/// The glowing outline 8-way redraw and the underline/strikethrough effect
-/// bars (drawn from a white sprite vanilla-side, unavailable in the font
-/// atlas draw) are deferred; obfuscated runs draw their original glyphs.
+/// - original glyphs, positions, styles, and colors are retained so the
+///   renderer can select obfuscated equal-advance glyphs and emit effect bars
+///   without invalidating the stable block-entity cache.
 #[allow(clippy::too_many_arguments)]
 pub fn bake_sign_text_surface(
     position: [f32; 3],
@@ -271,7 +289,8 @@ pub fn bake_sign_text_surface(
     let sign_midpoint = 4 * line_height / 2;
     let base_color = sign_text_base_color(dye_text_color, has_glowing_text);
 
-    let mut mesh = ItemModelMesh::new();
+    let mut prepared_lines: [Vec<SignTextGlyphSlot>; 4] = Default::default();
+    let mut logical_quad_count = 0usize;
     for (line_index, line) in lines.iter().enumerate() {
         let runs = truncate_sign_line_runs_to_width(line, max_width, glyphs);
         let visual = visual_sign_line(&runs, glyphs);
@@ -285,32 +304,29 @@ pub fn bake_sign_text_surface(
         // division before the float widening).
         let mut pen_x = (-(width as i32) / 2) as f32;
         let y = (line_index as i32 * line_height - sign_midpoint) as f32;
-        for (ch, run) in visual {
+        for (visual_index, (ch, run)) in visual.into_iter().enumerate() {
             let color = rgb_to_color(run.color.unwrap_or(base_color));
             let glyph = sign_text_glyph(ch, glyphs);
             if glyph.width > 0 && glyph.height > 0 {
-                for quad in glyph.styled_quads(pen_x, y, run.style, false) {
-                    // `styled_quads` corners are [TL, BL, BR, TR].
-                    let corners = quad
-                        .corners
-                        .map(|[x, y]| transform.transform_point3(Vec3::new(x, y, 0.0)).to_array());
-                    mesh.append_raw_textured_quad(
-                        corners,
-                        [
-                            [quad.uv.min[0], quad.uv.min[1]],
-                            [quad.uv.min[0], quad.uv.max[1]],
-                            [quad.uv.max[0], quad.uv.max[1]],
-                            [quad.uv.max[0], quad.uv.min[1]],
-                        ],
-                        color,
-                        light,
-                    );
-                }
+                logical_quad_count =
+                    logical_quad_count.saturating_add(1 + usize::from(run.style.bold));
             }
+            logical_quad_count = logical_quad_count
+                .saturating_add(usize::from(run.style.strikethrough))
+                .saturating_add(usize::from(run.style.underlined));
+            prepared_lines[line_index].push(SignTextGlyphSlot {
+                ch,
+                glyph,
+                x: pen_x,
+                y,
+                style: run.style,
+                color,
+                first_in_line: visual_index == 0,
+            });
             pen_x += glyph.styled_advance(run.style) as f32;
         }
     }
-    if mesh.is_empty() {
+    if logical_quad_count == 0 {
         return None;
     }
     Some(SignTextSurface {
@@ -323,7 +339,8 @@ pub fn bake_sign_text_surface(
             light,
             transform,
         },
-        mesh,
+        lines: prepared_lines,
+        logical_quad_count,
     })
 }
 
@@ -336,22 +353,118 @@ fn rgb_to_color(rgb: u32) -> [f32; 4] {
     ]
 }
 
+fn append_sign_glyph(
+    mesh: &mut ItemModelMesh,
+    slot: SignTextGlyphSlot,
+    glyph: HudAsciiGlyph,
+    transform: Mat4,
+    light: [f32; 2],
+) {
+    if glyph.width == 0 || glyph.height == 0 {
+        return;
+    }
+    for (quad_index, quad) in glyph
+        .styled_quads(slot.x, slot.y, slot.style, false)
+        .into_iter()
+        .enumerate()
+    {
+        // `BakedSheetGlyph.renderChar` moves the second bold draw forward by
+        // `Z_FIGHTER` (0.001) when text is not a flat GUI draw.
+        let z = if slot.style.bold && quad_index == 1 {
+            0.001
+        } else {
+            0.0
+        };
+        // `styled_quads` corners are [TL, BL, BR, TR].
+        let corners = quad
+            .corners
+            .map(|[x, y]| transform.transform_point3(Vec3::new(x, y, z)).to_array());
+        mesh.append_raw_textured_quad(
+            corners,
+            [
+                [quad.uv.min[0], quad.uv.min[1]],
+                [quad.uv.min[0], quad.uv.max[1]],
+                [quad.uv.max[0], quad.uv.max[1]],
+                [quad.uv.max[0], quad.uv.min[1]],
+            ],
+            slot.color,
+            light,
+        );
+    }
+}
+
+fn append_sign_effect(
+    mesh: &mut ItemModelMesh,
+    effect: HudEffectRect,
+    color: [f32; 4],
+    transform: Mat4,
+    light: [f32; 2],
+) {
+    let corners = [
+        [effect.x0, effect.y0],
+        [effect.x0, effect.y1],
+        [effect.x1, effect.y1],
+        [effect.x1, effect.y0],
+    ]
+    .map(|[x, y]| transform.transform_point3(Vec3::new(x, y, 0.01)).to_array());
+    mesh.append_raw_textured_quad(
+        corners,
+        [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]],
+        color,
+        light,
+    );
+}
+
 pub(crate) fn merge_sign_text_surfaces(
     surfaces: &[SignTextSurface],
     visible_positions: &[[i32; 3]],
-) -> (Vec<ItemModelVertex>, Vec<u32>) {
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+) -> SignTextGeometry {
+    let mut geometry = SignTextGeometry::default();
+    let mut random = HudObfuscatedRandom::with_seed(obfuscated_seed);
     for surface in surfaces.iter().filter(|surface| {
         visible_positions
             .binary_search(&sign_text_block_position(surface))
             .is_ok()
     }) {
-        let base = u32::try_from(vertices.len()).expect("sign text vertex count fits in u32");
-        vertices.extend(surface.mesh.vertices.iter().copied());
-        indices.extend(surface.mesh.indices.iter().map(|index| index + base));
+        for line in &surface.lines {
+            for &slot in line {
+                let glyph = if slot.style.obfuscated && slot.ch != ' ' {
+                    obfuscated_pool
+                        .random_glyph(slot.glyph.advance, &mut random)
+                        .unwrap_or(slot.glyph)
+                } else {
+                    slot.glyph
+                };
+                append_sign_glyph(
+                    &mut geometry.primary,
+                    slot,
+                    glyph,
+                    surface.submission.transform,
+                    surface.submission.light,
+                );
+            }
+            // `PreparedTextBuilder.visit`: glyphs precede effect rectangles.
+            // Effects use the original glyph's advance even when its bitmap was
+            // replaced by an obfuscated equal-advance glyph.
+            for &slot in line {
+                for effect in
+                    slot.glyph
+                        .styled_effect_rects(slot.x, slot.y, slot.style, slot.first_in_line)
+                {
+                    append_sign_effect(
+                        &mut geometry.effects,
+                        effect,
+                        slot.color,
+                        surface.submission.transform,
+                        surface.submission.light,
+                    );
+                }
+            }
+        }
     }
-    (vertices, indices)
+    geometry
 }
 
 fn sign_text_block_position(surface: &SignTextSurface) -> [i32; 3] {
@@ -385,11 +498,16 @@ impl Renderer {
         self.visible_sign_text_positions = positions;
     }
 
-    pub(crate) fn collect_sign_text_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+    pub(crate) fn collect_sign_text_geometry(&self) -> SignTextGeometry {
         if self.item_frame_map_text_font_atlas.is_none() {
-            return (Vec::new(), Vec::new());
+            return SignTextGeometry::default();
         }
-        merge_sign_text_surfaces(&self.sign_text_surfaces, &self.visible_sign_text_positions)
+        merge_sign_text_surfaces(
+            &self.sign_text_surfaces,
+            &self.visible_sign_text_positions,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+        )
     }
 }
 
@@ -449,6 +567,19 @@ mod tests {
             (actual - expected).length() < 1e-5,
             "expected {actual:?} ~= {expected:?}"
         );
+    }
+
+    fn surface_geometry(
+        surface: &SignTextSurface,
+        glyphs: &HudFontGlyphMap,
+        seed: u64,
+    ) -> SignTextGeometry {
+        merge_sign_text_surfaces(
+            std::slice::from_ref(surface),
+            &[sign_text_block_position(surface)],
+            &HudObfuscatedGlyphPool::from_glyph_map(glyphs),
+            seed,
+        )
     }
 
     #[test]
@@ -579,7 +710,8 @@ mod tests {
         // Line 0 ("ab", width 12): x starts at -12/2 = -6; line 0 sits at
         // y = 0*10 - 20 = -20 font px. World TL corner of the first glyph:
         // (0.5 - 6s, 0.83333334 + 20s, 0.5 + 0.046666667), s = 0.010416667.
-        let vertices = &surface.mesh.vertices;
+        let geometry = surface_geometry(&surface, &glyphs, 0);
+        let vertices = &geometry.primary.vertices;
         let expected = Vec3::new(
             0.5 - 6.0 * 0.010_416_667,
             0.833_333_34 + 20.0 * 0.010_416_667,
@@ -620,8 +752,9 @@ mod tests {
             &glyphs,
         )
         .unwrap();
-        let glyph_uvs = surface
-            .mesh
+        let geometry = surface_geometry(&surface, &glyphs, 0);
+        let glyph_uvs = geometry
+            .primary
             .vertices
             .chunks_exact(4)
             .map(|vertices| vertices[0].uv[0])
@@ -667,11 +800,183 @@ mod tests {
             0x33 as f32 / 255.0,
             1.0,
         ];
-        assert!(surface
-            .mesh
+        let geometry = surface_geometry(&surface, &glyphs, 0);
+        assert!(geometry
+            .primary
             .vertices
             .iter()
             .all(|vertex| vertex.color == expected));
+    }
+
+    #[test]
+    fn obfuscated_sign_text_cycles_equal_advance_glyphs_without_moving_layout() {
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, min_x) in [('a', 0.1), ('b', 0.2), ('c', 0.3), ('?', 0.4)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [min_x, 0.0],
+                        max: [min_x + 0.05, 0.5],
+                    },
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ascent: 7,
+                },
+            );
+        }
+        let lines = [
+            vec![HudStyledTextRun {
+                text: "aa".to_string(),
+                style: HudTextStyle {
+                    obfuscated: true,
+                    ..Default::default()
+                },
+                color: None,
+            }],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        ];
+        let surface = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &lines,
+            0xFF_FF_FF,
+            false,
+            [0.0, 1.0],
+            &glyphs,
+        )
+        .unwrap();
+        let first = surface_geometry(&surface, &glyphs, 0);
+        let first_uvs = first
+            .primary
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| vertices[0].uv[0])
+            .collect::<Vec<_>>();
+        let (changed_seed, changed) = (1..100)
+            .map(|seed| (seed, surface_geometry(&surface, &glyphs, seed)))
+            .find(|(_, geometry)| {
+                geometry
+                    .primary
+                    .vertices
+                    .chunks_exact(4)
+                    .map(|vertices| vertices[0].uv[0])
+                    .collect::<Vec<_>>()
+                    != first_uvs
+            })
+            .expect("a later deterministic frame seed changes the selected glyphs");
+        assert!(changed_seed > 0);
+        assert_eq!(first.primary.indices, changed.primary.indices);
+        assert_eq!(
+            first
+                .primary
+                .vertices
+                .chunks_exact(4)
+                .map(|vertices| vertices[0].position)
+                .collect::<Vec<_>>(),
+            changed
+                .primary
+                .vertices
+                .chunks_exact(4)
+                .map(|vertices| vertices[0].position)
+                .collect::<Vec<_>>(),
+            "equal-advance substitutes must not shift either glyph pen"
+        );
+        assert!(first_uvs.iter().all(|uv| [0.1, 0.2, 0.3, 0.4].contains(uv)));
+    }
+
+    #[test]
+    fn underline_and_strikethrough_emit_original_advance_white_material_quads() {
+        let glyphs = test_glyphs();
+        let style = HudTextStyle {
+            underlined: true,
+            strikethrough: true,
+            ..Default::default()
+        };
+        let surface = bake_sign_text_surface(
+            [0.0; 3],
+            SignModelAttachment::Standing,
+            0.0,
+            true,
+            &[
+                vec![HudStyledTextRun {
+                    text: "a ".to_string(),
+                    style,
+                    color: Some(0x12_34_56),
+                }],
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            ],
+            0,
+            false,
+            [0.25, 0.75],
+            &glyphs,
+        )
+        .unwrap();
+        let geometry = surface_geometry(&surface, &glyphs, 0);
+        assert_eq!(geometry.primary.vertex_count(), 4);
+        assert_eq!(geometry.effects.vertex_count(), 16);
+        assert_eq!(geometry.effects.index_count(), 24);
+        let inverse = surface.submission.transform.inverse();
+        let effect_font_corners: Vec<[[f32; 3]; 4]> = geometry
+            .effects
+            .vertices
+            .chunks_exact(4)
+            .map(|vertices| {
+                std::array::from_fn(|index| {
+                    inverse
+                        .transform_point3(Vec3::from_array(vertices[index].position))
+                        .to_array()
+                })
+            })
+            .collect::<Vec<_>>();
+        let expected = [
+            [
+                [-6.0, -16.5, 0.01],
+                [-6.0, -15.5, 0.01],
+                [1.0, -15.5, 0.01],
+                [1.0, -16.5, 0.01],
+            ],
+            [
+                [-6.0, -12.0, 0.01],
+                [-6.0, -11.0, 0.01],
+                [1.0, -11.0, 0.01],
+                [1.0, -12.0, 0.01],
+            ],
+            [
+                [1.0, -16.5, 0.01],
+                [1.0, -15.5, 0.01],
+                [5.0, -15.5, 0.01],
+                [5.0, -16.5, 0.01],
+            ],
+            [
+                [1.0, -12.0, 0.01],
+                [1.0, -11.0, 0.01],
+                [5.0, -11.0, 0.01],
+                [5.0, -12.0, 0.01],
+            ],
+        ];
+        for (actual, expected) in effect_font_corners.into_iter().zip(expected) {
+            for (actual, expected) in actual.into_iter().zip(expected) {
+                assert_vec3_close(Vec3::from_array(actual), Vec3::from_array(expected));
+            }
+        }
+        assert!(geometry.effects.vertices.iter().all(|vertex| {
+            vertex.color
+                == [
+                    0x12 as f32 / 255.0,
+                    0x34 as f32 / 255.0,
+                    0x56 as f32 / 255.0,
+                    1.0,
+                ]
+                && vertex.light == [0.25, 0.75]
+        }));
     }
 
     #[test]
@@ -731,7 +1036,8 @@ mod tests {
         assert_eq!(surface.vertex_count(), 40);
         // Line 0 of a hanging sign: y = 0*9 - 18 = -18 font px at scale
         // 0.0140625, from the hanging text origin y = 0.2955.
-        let tl = Vec3::from_array(surface.mesh.vertices[0].position);
+        let geometry = surface_geometry(&surface, &glyphs, 0);
+        let tl = Vec3::from_array(geometry.primary.vertices[0].position);
         let expected_y = (0.9375 - 0.3125 - 0.32) + 18.0 * 0.014_062_5;
         assert!((tl.y - expected_y).abs() < 1e-5);
     }
@@ -765,13 +1071,16 @@ mod tests {
         )
         .unwrap();
 
-        let (vertices, indices) = merge_sign_text_surfaces(&[hidden.clone()], &[]);
-        assert!(vertices.is_empty());
-        assert!(indices.is_empty());
+        let pool = HudObfuscatedGlyphPool::from_glyph_map(&glyphs);
+        let geometry = merge_sign_text_surfaces(&[hidden.clone()], &[], &pool, 0);
+        assert!(geometry.primary.vertices.is_empty());
+        assert!(geometry.primary.indices.is_empty());
 
-        let (vertices, indices) = merge_sign_text_surfaces(&[hidden, visible], &[[4, 5, 6]]);
-        assert_eq!(indices.len(), 6);
-        assert!(vertices
+        let geometry = merge_sign_text_surfaces(&[hidden, visible], &[[4, 5, 6]], &pool, 0);
+        assert_eq!(geometry.primary.indices.len(), 6);
+        assert!(geometry
+            .primary
+            .vertices
             .iter()
             .all(|vertex| (4.0..5.0).contains(&vertex.position[0])));
     }

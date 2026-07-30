@@ -403,8 +403,11 @@ pub(crate) struct ItemFrameMapDecorationAtlasGpu {
 pub(crate) struct ItemFrameMapTextFontAtlasGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
+    _effect_texture: wgpu::Texture,
+    _effect_view: wgpu::TextureView,
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) effect_bind_group: wgpu::BindGroup,
     pub(crate) hud3d_bind_group: wgpu::BindGroup,
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
@@ -2736,6 +2739,44 @@ fn create_item_frame_map_text_font_atlas_gpu(
         mipmap_filter: wgpu::FilterMode::Nearest,
         ..Default::default()
     });
+    // Vanilla's font provider exposes a dedicated opaque white `effect()`
+    // glyph for underline/strikethrough rectangles. Keep the equivalent 1x1
+    // material beside the shared font atlas instead of assuming a resource
+    // glyph contains an opaque white texel.
+    let effect_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-item-frame-map-text-effect-texture"),
+        size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &effect_texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &[255, 255, 255, 255],
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(4),
+            rows_per_image: Some(1),
+        },
+        wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+    );
+    let effect_view = effect_texture.create_view(&wgpu::TextureViewDescriptor::default());
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-item-frame-map-text-font-atlas-bind-group"),
         layout: bind_group_layout,
@@ -2747,6 +2788,24 @@ fn create_item_frame_map_text_font_atlas_gpu(
             wgpu::BindGroupEntry {
                 binding: 1,
                 resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+    let effect_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-text-effect-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&effect_view),
             },
             wgpu::BindGroupEntry {
                 binding: 2,
@@ -2793,8 +2852,11 @@ fn create_item_frame_map_text_font_atlas_gpu(
     Some(ItemFrameMapTextFontAtlasGpu {
         _texture: texture,
         _view: view,
+        _effect_texture: effect_texture,
+        _effect_view: effect_view,
         _sampler: sampler,
         bind_group,
+        effect_bind_group,
         hud3d_bind_group,
         gui_bind_group,
     })
