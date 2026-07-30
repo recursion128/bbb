@@ -112,11 +112,12 @@ Living-entity render state:
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 - Fire-resistance lava fog is `deferred`: Vanilla 26.1
-  `LavaFogEnvironment.setupFog` widens the range only when the active camera is
-  actually in `FogType.LAVA` and its living entity has
-  `MobEffects.FIRE_RESISTANCE`. Reopen when the camera environment owns a real
-  lava fog medium; an effect-only approximation would incorrectly alter
-  atmospheric and water fog.
+  `LavaFogEnvironment.isApplicable` selects only `FogType.LAVA`, and
+  `setupFog` widens the end to 5.0 only for a living camera entity with
+  `MobEffects.FIRE_RESISTANCE`. `Camera.getFluidInCamera` derives that fog type
+  by sampling real lava fluid across the camera near plane. Reopen when the
+  camera environment owns the sampled lava fog medium used by
+  `Camera.getFluidInCamera`; do not approximate it from the effect alone.
 
 ## HUD overlay and screen render surfaces
 
@@ -383,8 +384,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **`CapeLayer` for invisible players.** Vanilla explicitly gates it on
   `!state.isInvisible`.
 - **Separate glow-squid emissive overlay/texture.** Vanilla 26.1
-  `GlowSquidRenderer.getBlockLightLevel` implements the glow solely as a block
-  light override and registers no emissive layer or second texture.
+  `GlowSquidRenderer` only selects the adult/baby texture and overrides
+  `getBlockLightLevel`; it registers no independent emissive layer.
 - **Exact guardian client RNG seed.** Vanilla seeds the per-spawn entity RNG
   outside the protocol. bbb uses one deterministic UUID/type-derived Java-LCG
   cursor for the constructor tail phase and subsequent spike/bubble/flop draws;
@@ -419,8 +420,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `BannerRenderer.submitSpecial`). Item-model scope, not the block-entity
   renderer.
 - **Shulker box open/close sound and interaction blocking.** Vanilla
-  `ShulkerBoxBlock.useItemOn` and `ShulkerBoxBlockEntity.startOpen` own gameplay
-  admission and sound; `ShulkerBoxRenderer` only consumes render state.
+  `ShulkerBoxBlock.useWithoutItem` / `canOpen` own collision admission, while
+  `ShulkerBoxBlockEntity.startOpen` / `stopOpen` own the sounds;
+  `ShulkerBoxRenderer` only consumes render state.
 - **Bell resonation particle/glow chain** (`resonationTicks`, raider search).
   Gameplay-side, belongs with the raid features.
 

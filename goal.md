@@ -9,9 +9,14 @@
 交互、资源、音画与平台差异都必须进入可验收队列，不能只收敛 renderer 表面差异。
 
 这里的完成范围是**外部多人原生客户端**：用户提供启动参数与可用的 session/token
-材料后，客户端连接外部服务器并完成上述行为。Microsoft/Mojang token 获取、
-`IntegratedServer`/单人世界、游戏内配置 UI 与 Mojang telemetry 不属于 declared
-scope；它们是明确 non-goals，不因进入维护态而自动转成 TODO。
+材料后，客户端连接外部服务器并完成上述行为。Vanilla 26.1 `Main` 将
+`--accessToken` 作为必需参数并用它构造 `User`，所以 Microsoft/Mojang token
+获取不属于客户端入口责任；依赖 `Minecraft.getSingleplayerServer()` /
+`IntegratedServer` 的单人世界和 server-side debug 也不属于外部客户端。
+`WorldSessionTelemetryManager` 通过独立 event sender 发送 telemetry，不是多人
+协议 canonical state。Vanilla `OptionsScreen.removed` 确实调用 `options.save()`，
+但游戏内配置 UI 是本项目明确 non-goal，而不是“Vanilla 没有该行为”。这些
+non-goals 不因进入维护态而自动转成 TODO。
 
 ## 本文件维护规则
 
@@ -330,11 +335,16 @@ owner 已由 `docs/resource-pack-lifecycle-design.md`、资源预算合同、arc
 playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
-  immutable resource generation。
+  immutable resource generation；`BuiltInRegistries.BLOCK` / `ENTITY_TYPE`
+  是客户端内建 registry。
 - 只有 Vanilla 26.1 实际通过
   `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` 同步、且有客户端 presentation
-  consumer 的 registry 才支持自定义条目。该集合不含 `BLOCK` 或 `ENTITY_TYPE`；
-  账本将 synchronized custom block/entity identity 保留为 `not-needed`。
+  consumer 的 registry 才支持自定义条目；
+  `RegistryDataCollector.loadNewElementsAndTags` 将该精确列表传给网络 registry
+  loader。该集合不含 `BLOCK` 或 `ENTITY_TYPE`，账本将 synchronized custom
+  block/entity identity 保留为 `not-needed`。例如 `WolfVariant.NETWORK_CODEC`
+  的 `ClientAsset.ResourceTexture` 与 `PigVariant.NETWORK_CODEC` 的
+  model/texture payload 属于允许的 presentation 数据。
 - 新 consumer 必须复用现有 generation、RegistryAccess resolver、bounded
   pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
   schema、pack stack 或 cache owner。
