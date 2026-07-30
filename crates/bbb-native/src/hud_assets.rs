@@ -7,7 +7,8 @@ use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudGuiSpriteScaling,
     HudHeartKind, HudLocatorStyle, HudNineSliceScaling, HudPlayerListPingSprite,
-    HudStatsScrollbarSprite, HudStatsSprite, HudTutorialToastIcon, VIGNETTE_TEXTURE_PATH,
+    HudStatsScrollbarSprite, HudStatsSprite, HudTutorialToastIcon, StandaloneTextureSampling,
+    VIGNETTE_TEXTURE_PATH,
 };
 use bbb_world::vanilla_sign_wood_kinds;
 
@@ -18,6 +19,26 @@ use bbb_item_model::font::{
 use crate::sign_scene::sign_model_wood;
 
 const SPYGLASS_SCOPE_TEXTURE_PATH: &str = "textures/misc/spyglass_scope.png";
+
+macro_rules! upload_standalone_hud {
+    ($renderer:expr, $method:ident, $image:expr) => {
+        $renderer.$method(
+            $image.width,
+            $image.height,
+            &$image.rgba,
+            standalone_sampling($image),
+        )
+    };
+    ($renderer:expr, $method:ident, $key:expr, $image:expr) => {
+        $renderer.$method(
+            $key,
+            $image.width,
+            $image.height,
+            &$image.rgba,
+            standalone_sampling($image),
+        )
+    };
+}
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
     let Some(roots) = roots else {
@@ -35,52 +56,50 @@ pub(crate) fn try_load_hud_textures(
 ) -> Result<()> {
     let sprites = load_gui_sprites(roots)?;
     let vignette = load_vignette_image(roots)?;
-    renderer.upload_hud_vignette_texture(
+    renderer.upload_hud_vignette_texture_with_sampling(
         vignette.width,
         vignette.height,
         &vignette.rgba,
-        vignette.texture_metadata.blur,
-        vignette.texture_metadata.clamp,
+        standalone_sampling(&vignette),
     )?;
     let spyglass_scope = load_spyglass_scope_image(roots)?;
-    renderer.upload_hud_spyglass_scope(
-        spyglass_scope.width,
-        spyglass_scope.height,
-        &spyglass_scope.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_spyglass_scope_with_sampling,
+        &spyglass_scope
     )?;
     let win_logo = gui_texture(
         roots,
         "textures/gui/title/minecraft.png",
         "minecraft:textures/gui/title/minecraft",
     )?;
-    renderer.upload_hud_win_logo(win_logo.width, win_logo.height, &win_logo.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_win_logo_with_sampling, &win_logo)?;
     let win_easter_egg_logo = gui_texture(
         roots,
         "textures/gui/title/minceraft.png",
         "minecraft:textures/gui/title/minceraft",
     )?;
-    renderer.upload_hud_win_easter_egg_logo(
-        win_easter_egg_logo.width,
-        win_easter_egg_logo.height,
-        &win_easter_egg_logo.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_win_easter_egg_logo_with_sampling,
+        &win_easter_egg_logo
     )?;
     let win_edition = gui_texture(
         roots,
         "textures/gui/title/edition.png",
         "minecraft:textures/gui/title/edition",
     )?;
-    renderer.upload_hud_win_edition(win_edition.width, win_edition.height, &win_edition.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_win_edition_with_sampling, &win_edition)?;
     let credits_vignette = gui_texture(
         roots,
         "textures/misc/credits_vignette.png",
         "minecraft:textures/misc/credits_vignette",
     )?;
-    renderer.upload_hud_win_credits_vignette(
+    renderer.upload_hud_win_credits_vignette_with_sampling(
         credits_vignette.width,
         credits_vignette.height,
         &credits_vignette.rgba,
-        credits_vignette.texture_metadata.blur,
-        credits_vignette.texture_metadata.clamp,
+        standalone_sampling(&credits_vignette),
     )?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
@@ -165,36 +184,40 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/inventory.png",
         "minecraft:textures/gui/container/inventory",
     )?;
-    renderer.upload_hud_inventory_background(inventory.width, inventory.height, &inventory.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_inventory_background_with_sampling,
+        &inventory
+    )?;
     let creative_items = gui_texture(
         roots,
         "textures/gui/container/creative_inventory/tab_items.png",
         "minecraft:textures/gui/container/creative_inventory/tab_items",
     )?;
-    renderer.upload_hud_creative_items_background(
-        creative_items.width,
-        creative_items.height,
-        &creative_items.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_creative_items_background_with_sampling,
+        &creative_items
     )?;
     let creative_item_search = gui_texture(
         roots,
         "textures/gui/container/creative_inventory/tab_item_search.png",
         "minecraft:textures/gui/container/creative_inventory/tab_item_search",
     )?;
-    renderer.upload_hud_creative_item_search_background(
-        creative_item_search.width,
-        creative_item_search.height,
-        &creative_item_search.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_creative_item_search_background_with_sampling,
+        &creative_item_search
     )?;
     let creative_inventory = gui_texture(
         roots,
         "textures/gui/container/creative_inventory/tab_inventory.png",
         "minecraft:textures/gui/container/creative_inventory/tab_inventory",
     )?;
-    renderer.upload_hud_creative_inventory_background(
-        creative_inventory.width,
-        creative_inventory.height,
-        &creative_inventory.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_creative_inventory_background_with_sampling,
+        &creative_inventory
     )?;
     for disabled in [false, true] {
         let suffix = if disabled { "_disabled" } else { "" };
@@ -306,36 +329,40 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/generic_54.png",
         "minecraft:textures/gui/container/generic_54",
     )?;
-    renderer.upload_hud_generic_container_background(
-        generic_container.width,
-        generic_container.height,
-        &generic_container.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_generic_container_background_with_sampling,
+        &generic_container
     )?;
     let dispenser = gui_texture(
         roots,
         "textures/gui/container/dispenser.png",
         "minecraft:textures/gui/container/dispenser",
     )?;
-    renderer.upload_hud_dispenser_background(dispenser.width, dispenser.height, &dispenser.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_dispenser_background_with_sampling,
+        &dispenser
+    )?;
     let crafting_table = gui_texture(
         roots,
         "textures/gui/container/crafting_table.png",
         "minecraft:textures/gui/container/crafting_table",
     )?;
-    renderer.upload_hud_crafting_table_background(
-        crafting_table.width,
-        crafting_table.height,
-        &crafting_table.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_crafting_table_background_with_sampling,
+        &crafting_table
     )?;
     let advancements_window = gui_texture(
         roots,
         "textures/gui/advancements/window.png",
         "minecraft:textures/gui/advancements/window",
     )?;
-    renderer.upload_hud_advancements_window(
-        advancements_window.width,
-        advancements_window.height,
-        &advancements_window.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_advancements_window_with_sampling,
+        &advancements_window
     )?;
     for tab_sprite in HudAdvancementTabSprite::ALL {
         let sprite = hud_sprite(&sprites, tab_sprite.sprite_path())?;
@@ -356,11 +383,11 @@ pub(crate) fn try_load_hud_textures(
                 .texture_resource_id()
                 .expect("vanilla advancement background has a resource id"),
         )?;
-        renderer.upload_hud_advancement_background(
+        upload_standalone_hud!(
+            renderer,
+            upload_hud_advancement_background_with_sampling,
             background,
-            texture.width,
-            texture.height,
-            &texture.rgba,
+            &texture
         )?;
     }
     let missing_background = missing_texture_rgba(16, 16);
@@ -393,10 +420,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/recipe_book.png",
         "minecraft:textures/gui/recipe_book",
     )?;
-    renderer.upload_hud_recipe_book_background(
-        recipe_book.width,
-        recipe_book.height,
-        &recipe_book.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_recipe_book_background_with_sampling,
+        &recipe_book
     )?;
     let widget_text_field = hud_sprite(&sprites, "widget/text_field")?;
     renderer.upload_hud_widget_text_field(
@@ -550,10 +577,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/inworld_menu_background.png",
         "minecraft:textures/gui/inworld_menu_background",
     )?;
-    renderer.upload_hud_inworld_menu_background(
-        inworld_menu_background.width,
-        inworld_menu_background.height,
-        &inworld_menu_background.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_inworld_menu_background_with_sampling,
+        &inworld_menu_background
     )?;
     for stats_sprite in HudStatsSprite::ALL {
         let sprite = hud_sprite(&sprites, stats_sprite.sprite_path())?;
@@ -580,10 +607,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/gamemode_switcher.png",
         "minecraft:textures/gui/container/gamemode_switcher",
     )?;
-    renderer.upload_hud_debug_game_mode_switcher_background(
-        game_mode_switcher.width,
-        game_mode_switcher.height,
-        &game_mode_switcher.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_debug_game_mode_switcher_background_with_sampling,
+        &game_mode_switcher
     )?;
     let game_mode_switcher_slot = hud_sprite(&sprites, "gamemode_switcher/slot")?;
     renderer.upload_hud_debug_game_mode_switcher_slot(
@@ -793,10 +820,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/cartography_table.png",
         "minecraft:textures/gui/container/cartography_table",
     )?;
-    renderer.upload_hud_cartography_table_background(
-        cartography_table.width,
-        cartography_table.height,
-        &cartography_table.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_cartography_table_background_with_sampling,
+        &cartography_table
     )?;
     let cartography_table_error = hud_sprite(&sprites, "container/cartography_table/error")?;
     renderer.upload_hud_cartography_table_error(
@@ -835,7 +862,7 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/loom.png",
         "minecraft:textures/gui/container/loom",
     )?;
-    renderer.upload_hud_loom_background(loom.width, loom.height, &loom.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_loom_background_with_sampling, &loom)?;
     let loom_banner_slot = hud_sprite(&sprites, "container/slot/banner")?;
     renderer.upload_hud_loom_banner_slot(
         loom_banner_slot.width,
@@ -891,7 +918,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/crafter.png",
         "minecraft:textures/gui/container/crafter",
     )?;
-    renderer.upload_hud_crafter_background(crafter.width, crafter.height, &crafter.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_crafter_background_with_sampling,
+        &crafter
+    )?;
     let crafter_disabled_slot = hud_sprite(&sprites, "container/crafter/disabled_slot")?;
     renderer.upload_hud_crafter_disabled_slot(
         crafter_disabled_slot.width,
@@ -915,7 +946,7 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/anvil.png",
         "minecraft:textures/gui/container/anvil",
     )?;
-    renderer.upload_hud_anvil_background(anvil.width, anvil.height, &anvil.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_anvil_background_with_sampling, &anvil)?;
     let anvil_text_field = hud_sprite(&sprites, "container/anvil/text_field")?;
     renderer.upload_hud_anvil_text_field(
         anvil_text_field.width,
@@ -935,10 +966,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/enchanting_table.png",
         "minecraft:textures/gui/container/enchanting_table",
     )?;
-    renderer.upload_hud_enchanting_table_background(
-        enchanting_table.width,
-        enchanting_table.height,
-        &enchanting_table.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_enchanting_table_background_with_sampling,
+        &enchanting_table
     )?;
     let enchanting_table_lapis_slot = hud_sprite(&sprites, "container/slot/lapis_lazuli")?;
     renderer.upload_hud_enchanting_table_lapis_slot(
@@ -1015,7 +1046,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/beacon.png",
         "minecraft:textures/gui/container/beacon",
     )?;
-    renderer.upload_hud_beacon_background(beacon.width, beacon.height, &beacon.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_beacon_background_with_sampling,
+        &beacon
+    )?;
     let beacon_button_disabled = hud_sprite(&sprites, "container/beacon/button_disabled")?;
     renderer.upload_hud_beacon_button_disabled(
         beacon_button_disabled.width,
@@ -1113,7 +1148,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/furnace.png",
         "minecraft:textures/gui/container/furnace",
     )?;
-    renderer.upload_hud_furnace_background(furnace.width, furnace.height, &furnace.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_furnace_background_with_sampling,
+        &furnace
+    )?;
     let furnace_lit_progress = hud_sprite(&sprites, "container/furnace/lit_progress")?;
     renderer.upload_hud_furnace_lit_progress(
         furnace_lit_progress.width,
@@ -1131,10 +1170,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/blast_furnace.png",
         "minecraft:textures/gui/container/blast_furnace",
     )?;
-    renderer.upload_hud_blast_furnace_background(
-        blast_furnace.width,
-        blast_furnace.height,
-        &blast_furnace.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_blast_furnace_background_with_sampling,
+        &blast_furnace
     )?;
     let blast_furnace_lit_progress = hud_sprite(&sprites, "container/blast_furnace/lit_progress")?;
     renderer.upload_hud_blast_furnace_lit_progress(
@@ -1154,7 +1193,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/smoker.png",
         "minecraft:textures/gui/container/smoker",
     )?;
-    renderer.upload_hud_smoker_background(smoker.width, smoker.height, &smoker.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_smoker_background_with_sampling,
+        &smoker
+    )?;
     let smoker_lit_progress = hud_sprite(&sprites, "container/smoker/lit_progress")?;
     renderer.upload_hud_smoker_lit_progress(
         smoker_lit_progress.width,
@@ -1172,7 +1215,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/smithing.png",
         "minecraft:textures/gui/container/smithing",
     )?;
-    renderer.upload_hud_smithing_background(smithing.width, smithing.height, &smithing.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_smithing_background_with_sampling,
+        &smithing
+    )?;
     let smithing_error = hud_sprite(&sprites, "container/smithing/error")?;
     renderer.upload_hud_smithing_error(
         smithing_error.width,
@@ -1188,10 +1235,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/brewing_stand.png",
         "minecraft:textures/gui/container/brewing_stand",
     )?;
-    renderer.upload_hud_brewing_stand_background(
-        brewing_stand.width,
-        brewing_stand.height,
-        &brewing_stand.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_brewing_stand_background_with_sampling,
+        &brewing_stand
     )?;
     let brewing_stand_fuel_length = hud_sprite(&sprites, "container/brewing_stand/fuel_length")?;
     renderer.upload_hud_brewing_stand_fuel_length(
@@ -1217,10 +1264,10 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/grindstone.png",
         "minecraft:textures/gui/container/grindstone",
     )?;
-    renderer.upload_hud_grindstone_background(
-        grindstone.width,
-        grindstone.height,
-        &grindstone.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_grindstone_background_with_sampling,
+        &grindstone
     )?;
     let grindstone_error = hud_sprite(&sprites, "container/grindstone/error")?;
     renderer.upload_hud_grindstone_error(
@@ -1233,19 +1280,27 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/hopper.png",
         "minecraft:textures/gui/container/hopper",
     )?;
-    renderer.upload_hud_hopper_background(hopper.width, hopper.height, &hopper.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_hopper_background_with_sampling,
+        &hopper
+    )?;
     let horse = gui_texture(
         roots,
         "textures/gui/container/horse.png",
         "minecraft:textures/gui/container/horse",
     )?;
-    renderer.upload_hud_horse_background(horse.width, horse.height, &horse.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_horse_background_with_sampling, &horse)?;
     let nautilus = gui_texture(
         roots,
         "textures/gui/container/nautilus.png",
         "minecraft:textures/gui/container/nautilus",
     )?;
-    renderer.upload_hud_nautilus_background(nautilus.width, nautilus.height, &nautilus.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_nautilus_background_with_sampling,
+        &nautilus
+    )?;
     let mount_slot = hud_sprite(&sprites, "container/slot")?;
     renderer.upload_hud_mount_slot(mount_slot.width, mount_slot.height, &mount_slot.rgba)?;
     let mount_saddle_slot = hud_sprite(&sprites, "container/slot/saddle")?;
@@ -1284,7 +1339,7 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/book.png",
         "minecraft:textures/gui/book",
     )?;
-    renderer.upload_hud_book_background(book.width, book.height, &book.rgba)?;
+    upload_standalone_hud!(renderer, upload_hud_book_background_with_sampling, &book)?;
     let page_backward = hud_sprite(&sprites, "widget/page_backward")?;
     renderer.upload_hud_page_backward(
         page_backward.width,
@@ -1315,20 +1370,20 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/shulker_box.png",
         "minecraft:textures/gui/container/shulker_box",
     )?;
-    renderer.upload_hud_shulker_box_background(
-        shulker_box.width,
-        shulker_box.height,
-        &shulker_box.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_shulker_box_background_with_sampling,
+        &shulker_box
     )?;
     let stonecutter = gui_texture(
         roots,
         "textures/gui/container/stonecutter.png",
         "minecraft:textures/gui/container/stonecutter",
     )?;
-    renderer.upload_hud_stonecutter_background(
-        stonecutter.width,
-        stonecutter.height,
-        &stonecutter.rgba,
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_stonecutter_background_with_sampling,
+        &stonecutter
     )?;
     let stonecutter_scroller = hud_sprite(&sprites, "container/stonecutter/scroller")?;
     renderer.upload_hud_stonecutter_scroller(
@@ -1368,7 +1423,11 @@ pub(crate) fn try_load_hud_textures(
         "textures/gui/container/villager.png",
         "minecraft:textures/gui/container/villager",
     )?;
-    renderer.upload_hud_villager_background(villager.width, villager.height, &villager.rgba)?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_villager_background_with_sampling,
+        &villager
+    )?;
     let villager_out_of_stock = hud_sprite(&sprites, "container/villager/out_of_stock")?;
     renderer.upload_hud_villager_out_of_stock(
         villager_out_of_stock.width,
@@ -1715,11 +1774,11 @@ fn load_hanging_sign_backgrounds(
         let path = format!("textures/gui/hanging_signs/{name}.png");
         let id = format!("minecraft:textures/gui/hanging_signs/{name}");
         let texture = gui_texture(roots, &path, &id)?;
-        renderer.upload_hud_hanging_sign_background(
+        upload_standalone_hud!(
+            renderer,
+            upload_hud_hanging_sign_background_with_sampling,
             sign_model_wood(wood),
-            texture.width,
-            texture.height,
-            &texture.rgba,
+            &texture
         )?;
     }
     Ok(())
@@ -1847,6 +1906,10 @@ fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
         .get_resource(&location)
         .with_context(|| format!("missing GUI texture minecraft:{path}"))?;
     SpriteImage::from_png_file_with_resource_stack(id, resource.path, &resources)
+}
+
+fn standalone_sampling(image: &SpriteImage) -> StandaloneTextureSampling {
+    StandaloneTextureSampling::new(image.texture_metadata.blur, image.texture_metadata.clamp)
 }
 
 fn missing_texture_rgba(width: u32, height: u32) -> Vec<u8> {
@@ -2223,12 +2286,21 @@ mod tests {
         image::RgbaImage::from_pixel(16, 8, image::Rgba([17, 19, 23, 255]))
             .save(&texture_path)
             .unwrap();
+        std::fs::write(
+            texture_path.with_extension("png.mcmeta"),
+            r#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let image = load_spyglass_scope_image(&roots).unwrap();
 
         assert_eq!(image.id, "minecraft:textures/misc/spyglass_scope");
         assert_eq!((image.width, image.height), (16, 8));
+        assert_eq!(
+            standalone_sampling(&image),
+            StandaloneTextureSampling::new(true, true)
+        );
         assert_eq!(&image.rgba[..4], &[17, 19, 23, 255]);
         std::fs::remove_dir_all(temp).unwrap();
     }

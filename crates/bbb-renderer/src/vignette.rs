@@ -7,7 +7,10 @@
 use anyhow::{anyhow, bail, Result};
 use bytemuck::{Pod, Zeroable};
 
-use crate::{pipeline_builder::RenderPipelineBuilder, Renderer};
+use crate::{
+    pipeline_builder::RenderPipelineBuilder, texture_sampling::standalone_sampler_descriptor,
+    Renderer, StandaloneTextureSampling,
+};
 
 /// Vanilla `Gui.VIGNETTE_LOCATION`.
 pub const VIGNETTE_TEXTURE_PATH: &str = "textures/misc/vignette.png";
@@ -126,6 +129,23 @@ impl Renderer {
         blur: bool,
         clamp: bool,
     ) -> Result<()> {
+        self.upload_hud_vignette_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::new(blur, clamp),
+        )
+    }
+
+    /// Uploads the selected pack generation's
+    /// `textures/misc/vignette.png` with its decoded standalone sampling state.
+    pub fn upload_hud_vignette_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
         self.hud_vignette_texture = Some(create_vignette_texture_gpu(
             &self.device,
             &self.queue,
@@ -133,8 +153,7 @@ impl Renderer {
             width,
             height,
             rgba,
-            blur,
-            clamp,
+            sampling,
         )?);
         Ok(())
     }
@@ -149,6 +168,23 @@ impl Renderer {
         blur: bool,
         clamp: bool,
     ) -> Result<()> {
+        self.upload_hud_win_credits_vignette_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::new(blur, clamp),
+        )
+    }
+
+    /// Uploads the selected pack generation's
+    /// `textures/misc/credits_vignette.png` with its decoded standalone sampling state.
+    pub fn upload_hud_win_credits_vignette_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
         self.hud_win_credits_vignette = Some(create_vignette_texture_gpu(
             &self.device,
             &self.queue,
@@ -156,8 +192,7 @@ impl Renderer {
             width,
             height,
             rgba,
-            blur,
-            clamp,
+            sampling,
         )?);
         Ok(())
     }
@@ -216,8 +251,7 @@ fn create_vignette_texture_gpu(
     width: u32,
     height: u32,
     rgba: &[u8],
-    blur: bool,
-    clamp: bool,
+    sampling: StandaloneTextureSampling,
 ) -> Result<VignetteTextureGpu> {
     if width == 0 || height == 0 {
         bail!("vignette texture must have non-zero dimensions");
@@ -276,26 +310,10 @@ fn create_vignette_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let address_mode = if clamp {
-        wgpu::AddressMode::ClampToEdge
-    } else {
-        wgpu::AddressMode::Repeat
-    };
-    let filter_mode = if blur {
-        wgpu::FilterMode::Linear
-    } else {
-        wgpu::FilterMode::Nearest
-    };
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-vignette-sampler"),
-        address_mode_u: address_mode,
-        address_mode_v: address_mode,
-        address_mode_w: address_mode,
-        mag_filter: filter_mode,
-        min_filter: filter_mode,
-        mipmap_filter: filter_mode,
-        ..Default::default()
-    });
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        "bbb-vignette-sampler",
+        sampling,
+    ));
     let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("bbb-vignette-uniform"),
         size: std::mem::size_of::<VignetteUniform>() as u64,

@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
 use bbb_renderer::{
-    CelestialTextureImage, CelestialTextureKind, CloudTextureImage, WeatherTextureImage,
-    WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
+    CelestialTextureImage, CelestialTextureKind, CloudTextureImage, StandaloneTextureSampling,
+    WeatherTextureImage, WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
     WORLD_BORDER_FORCEFIELD_TEXTURE_PATH,
 };
 
@@ -102,7 +102,12 @@ fn try_load_end_sky_texture(
     roots: &PackRoots,
 ) -> Result<()> {
     let image = load_end_sky_image(roots)?;
-    renderer.upload_end_sky_texture(image.width, image.height, &image.rgba)?;
+    renderer.upload_end_sky_texture_with_sampling(
+        image.width,
+        image.height,
+        &image.rgba,
+        standalone_sampling(&image),
+    )?;
     tracing::info!("loaded vanilla End sky texture");
     Ok(())
 }
@@ -139,7 +144,12 @@ fn try_load_world_border_texture(
     roots: &PackRoots,
 ) -> Result<()> {
     let image = load_world_border_image(roots)?;
-    renderer.upload_world_border_texture(image.width, image.height, &image.rgba)?;
+    renderer.upload_world_border_texture_with_sampling(
+        image.width,
+        image.height,
+        &image.rgba,
+        standalone_sampling(&image),
+    )?;
     tracing::info!("loaded vanilla world border forcefield texture");
     Ok(())
 }
@@ -208,8 +218,13 @@ fn load_weather_image(
         kind,
         width: image.width,
         height: image.height,
+        sampling: standalone_sampling(&image),
         rgba: image.rgba,
     })
+}
+
+fn standalone_sampling(image: &SpriteImage) -> StandaloneTextureSampling {
+    StandaloneTextureSampling::new(image.texture_metadata.blur, image.texture_metadata.clamp)
 }
 
 /// Loads vanilla `textures/misc/forcefield.png`
@@ -332,6 +347,14 @@ mod tests {
             std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
             write_png(&texture_path, 4, 4);
         }
+        std::fs::write(
+            sources
+                .join("assets")
+                .join("minecraft")
+                .join(format!("{WEATHER_RAIN_TEXTURE_PATH}.mcmeta")),
+            br#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let images = load_weather_images(&roots).unwrap();
@@ -339,6 +362,11 @@ mod tests {
         assert_eq!(images.len(), 2);
         assert_eq!(images[0].kind, WeatherTextureKind::Rain);
         assert_eq!(images[1].kind, WeatherTextureKind::Snow);
+        assert_eq!(
+            images[0].sampling,
+            StandaloneTextureSampling::new(true, true)
+        );
+        assert_eq!(images[1].sampling, StandaloneTextureSampling::default());
         assert!(images
             .iter()
             .all(|image| (image.width, image.height, image.rgba.len()) == (4, 4, 4 * 4 * 4)));

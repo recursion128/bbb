@@ -2,7 +2,10 @@ use anyhow::{anyhow, bail, Result};
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
-use crate::pipeline_builder::RenderPipelineBuilder;
+use crate::{
+    pipeline_builder::RenderPipelineBuilder, texture_sampling::standalone_sampler_descriptor,
+    StandaloneTextureSampling,
+};
 
 const SKY_DISC_RADIUS: f32 = 512.0;
 const SKY_DISC_Y: f32 = 16.0;
@@ -1148,6 +1151,7 @@ pub(super) fn create_end_sky_texture_gpu(
     width: u32,
     height: u32,
     rgba: &[u8],
+    sampling: StandaloneTextureSampling,
 ) -> Result<EndSkyTextureGpu> {
     validate_end_sky_rgba(width, height, rgba)?;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -1184,16 +1188,10 @@ pub(super) fn create_end_sky_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-end-sky-sampler"),
-        address_mode_u: wgpu::AddressMode::Repeat,
-        address_mode_v: wgpu::AddressMode::Repeat,
-        address_mode_w: wgpu::AddressMode::Repeat,
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        "bbb-end-sky-sampler",
+        sampling,
+    ));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-end-sky-texture-bind-group"),
         layout,

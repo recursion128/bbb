@@ -4,9 +4,6 @@ use bbb_render_types::StandaloneTextureSampling;
 ///
 /// Standalone textures always have one mip level, so LOD is explicitly pinned
 /// to zero independently from the minification/magnification filter.
-// Stage 1 freezes and tests the mapping before the following stage migrates
-// every standalone owner to this helper.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn standalone_sampler_descriptor(
     label: &str,
     sampling: StandaloneTextureSampling,

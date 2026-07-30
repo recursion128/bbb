@@ -10,8 +10,10 @@
 
 use anyhow::{bail, Result};
 
-use crate::gpu::DEPTH_FORMAT;
-use crate::pipeline_builder::RenderPipelineBuilder;
+use crate::{
+    gpu::DEPTH_FORMAT, pipeline_builder::RenderPipelineBuilder,
+    texture_sampling::standalone_sampler_descriptor, StandaloneTextureSampling,
+};
 
 /// Vanilla `WorldBorderRenderer.FORCEFIELD_LOCATION`
 /// (`WorldBorderRenderer.java:34`).
@@ -218,11 +220,10 @@ pub(crate) struct WorldBorderTextureGpu {
     pub(crate) bind_group: wgpu::BindGroup,
 }
 
-/// Uploads `textures/misc/forcefield.png` bytes fed from the native side.
-/// Repeat addressing is required because the wall UVs tile 0.5 per block
-/// horizontally and `depthFar / (2 * depthFar)` vertically
-/// (`WorldBorderRenderer.java:62-84,135-136`); nearest filtering matches the
-/// vanilla texture's default (non-blurred) sampler.
+/// Uploads `textures/misc/forcefield.png` bytes and the selected pack
+/// generation's standalone sampling metadata fed from the native side. The
+/// vanilla asset defaults to repeat-nearest; pack metadata may override either
+/// axis/filter contract.
 pub(crate) fn create_world_border_texture_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -231,6 +232,7 @@ pub(crate) fn create_world_border_texture_gpu(
     width: u32,
     height: u32,
     rgba: &[u8],
+    sampling: StandaloneTextureSampling,
 ) -> Result<WorldBorderTextureGpu> {
     if width == 0 || height == 0 {
         bail!("world border texture must have non-zero dimensions");
@@ -277,16 +279,10 @@ pub(crate) fn create_world_border_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-world-border-forcefield-sampler"),
-        address_mode_u: wgpu::AddressMode::Repeat,
-        address_mode_v: wgpu::AddressMode::Repeat,
-        address_mode_w: wgpu::AddressMode::Repeat,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Linear,
-        ..Default::default()
-    });
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        "bbb-world-border-forcefield-sampler",
+        sampling,
+    ));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-world-border-forcefield-bind-group"),
         layout,

@@ -4,6 +4,8 @@ use anyhow::{anyhow, bail, Result};
 
 use crate::gpu::DEPTH_FORMAT;
 use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
+use crate::texture_sampling::standalone_sampler_descriptor;
+use crate::StandaloneTextureSampling;
 
 pub const WEATHER_RAIN_TEXTURE_PATH: &str = "textures/environment/rain.png";
 pub const WEATHER_SNOW_TEXTURE_PATH: &str = "textures/environment/snow.png";
@@ -35,6 +37,7 @@ pub struct WeatherTextureImage {
     pub kind: WeatherTextureKind,
     pub width: u32,
     pub height: u32,
+    pub sampling: StandaloneTextureSampling,
     pub rgba: Vec<u8>,
 }
 
@@ -472,19 +475,13 @@ pub(crate) fn create_weather_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some(match image.kind {
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        match image.kind {
             WeatherTextureKind::Rain => "bbb-weather-rain-sampler",
             WeatherTextureKind::Snow => "bbb-weather-snow-sampler",
-        }),
-        address_mode_u: wgpu::AddressMode::Repeat,
-        address_mode_v: wgpu::AddressMode::Repeat,
-        address_mode_w: wgpu::AddressMode::Repeat,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Linear,
-        ..Default::default()
-    });
+        },
+        image.sampling,
+    ));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some(match image.kind {
             WeatherTextureKind::Rain => "bbb-weather-rain-bind-group",
@@ -1137,6 +1134,7 @@ mod tests {
             kind: WeatherTextureKind::Rain,
             width: 2,
             height: 2,
+            sampling: StandaloneTextureSampling::default(),
             rgba: vec![255; 4],
         })
         .unwrap_err();

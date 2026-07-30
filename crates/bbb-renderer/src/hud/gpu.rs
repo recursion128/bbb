@@ -4,6 +4,7 @@ use anyhow::{anyhow, bail, Result};
 
 use super::HudVertex;
 use crate::pipeline_builder::RenderPipelineBuilder;
+use crate::{texture_sampling::standalone_sampler_descriptor, StandaloneTextureSampling};
 
 const HUD_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
@@ -219,14 +220,14 @@ pub(crate) fn create_hud_sprite_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<HudSpriteGpu> {
-    create_hud_sprite_gpu_with_address_mode(
+    create_hud_sprite_gpu_with_sampling(
         device,
         queue,
         layout,
         width,
         height,
         rgba,
-        wgpu::AddressMode::ClampToEdge,
+        StandaloneTextureSampling::new(false, true),
     )
 }
 
@@ -238,25 +239,37 @@ pub(crate) fn create_repeating_hud_sprite_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<HudSpriteGpu> {
-    create_hud_sprite_gpu_with_address_mode(
+    create_hud_sprite_gpu_with_sampling(
         device,
         queue,
         layout,
         width,
         height,
         rgba,
-        wgpu::AddressMode::Repeat,
+        StandaloneTextureSampling::default(),
     )
 }
 
-fn create_hud_sprite_gpu_with_address_mode(
+pub(crate) fn create_standalone_hud_sprite_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     layout: &wgpu::BindGroupLayout,
     width: u32,
     height: u32,
     rgba: &[u8],
-    address_mode: wgpu::AddressMode,
+    sampling: StandaloneTextureSampling,
+) -> Result<HudSpriteGpu> {
+    create_hud_sprite_gpu_with_sampling(device, queue, layout, width, height, rgba, sampling)
+}
+
+fn create_hud_sprite_gpu_with_sampling(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    sampling: StandaloneTextureSampling,
 ) -> Result<HudSpriteGpu> {
     validate_hud_sprite_rgba(width, height, rgba)?;
 
@@ -294,16 +307,10 @@ fn create_hud_sprite_gpu_with_address_mode(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-hud-sprite-sampler"),
-        address_mode_u: address_mode,
-        address_mode_v: address_mode,
-        address_mode_w: address_mode,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        "bbb-hud-sprite-sampler",
+        sampling,
+    ));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-hud-sprite-bind-group"),
         layout,

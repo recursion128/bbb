@@ -70,7 +70,8 @@ pub use self::game_rules::{
 };
 pub(super) use self::gpu::{
     create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
-    create_hud_sprite_gpu, create_repeating_hud_sprite_gpu, HudSpriteGpu,
+    create_hud_sprite_gpu, create_repeating_hud_sprite_gpu, create_standalone_hud_sprite_gpu,
+    HudSpriteGpu,
 };
 #[cfg(test)]
 use self::layout::hud_rect_bounds;
@@ -126,7 +127,24 @@ pub use bbb_render_types::{
     HudObfuscatedGlyphPool, HudStyledTextRun, HudTextStyle, HudUvRect, HUD_FONT_BASELINE,
 };
 
-use bbb_render_types::{visual_order, HudEffectRect, HudGlyphQuad, HudObfuscatedRandom};
+use bbb_render_types::{
+    visual_order, HudEffectRect, HudGlyphQuad, HudObfuscatedRandom, StandaloneTextureSampling,
+};
+
+macro_rules! standalone_hud_texture_upload {
+    ($method:ident => $field:ident) => {
+        pub fn $method(
+            &mut self,
+            width: u32,
+            height: u32,
+            rgba: &[u8],
+            sampling: StandaloneTextureSampling,
+        ) -> Result<()> {
+            self.$field = Some(self.upload_standalone_hud_sprite(width, height, rgba, sampling)?);
+            Ok(())
+        }
+    };
+}
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
 
@@ -6094,6 +6112,135 @@ impl Renderer {
         self.hud_debug_options_screen = None;
     }
 
+    standalone_hud_texture_upload!(
+        upload_hud_spyglass_scope_with_sampling => hud_spyglass_scope_texture
+    );
+    standalone_hud_texture_upload!(upload_hud_win_logo_with_sampling => hud_win_logo);
+    standalone_hud_texture_upload!(
+        upload_hud_win_easter_egg_logo_with_sampling => hud_win_easter_egg_logo
+    );
+    standalone_hud_texture_upload!(upload_hud_win_edition_with_sampling => hud_win_edition);
+    standalone_hud_texture_upload!(
+        upload_hud_inventory_background_with_sampling => hud_inventory_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_creative_items_background_with_sampling => hud_creative_items_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_creative_item_search_background_with_sampling =>
+            hud_creative_item_search_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_creative_inventory_background_with_sampling =>
+            hud_creative_inventory_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_generic_container_background_with_sampling => hud_generic_container_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_dispenser_background_with_sampling => hud_dispenser_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_crafting_table_background_with_sampling => hud_crafting_table_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_advancements_window_with_sampling => hud_advancements_window
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_recipe_book_background_with_sampling => hud_recipe_book_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_inworld_menu_background_with_sampling => hud_inworld_menu_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_debug_game_mode_switcher_background_with_sampling =>
+            hud_debug_game_mode_switcher_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_cartography_table_background_with_sampling =>
+            hud_cartography_table_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_loom_background_with_sampling => hud_loom_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_crafter_background_with_sampling => hud_crafter_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_anvil_background_with_sampling => hud_anvil_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_enchanting_table_background_with_sampling => hud_enchanting_table_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_beacon_background_with_sampling => hud_beacon_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_furnace_background_with_sampling => hud_furnace_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_blast_furnace_background_with_sampling => hud_blast_furnace_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_smoker_background_with_sampling => hud_smoker_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_smithing_background_with_sampling => hud_smithing_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_brewing_stand_background_with_sampling => hud_brewing_stand_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_grindstone_background_with_sampling => hud_grindstone_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_hopper_background_with_sampling => hud_hopper_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_horse_background_with_sampling => hud_horse_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_nautilus_background_with_sampling => hud_nautilus_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_book_background_with_sampling => hud_book_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_shulker_box_background_with_sampling => hud_shulker_box_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_stonecutter_background_with_sampling => hud_stonecutter_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_villager_background_with_sampling => hud_villager_background
+    );
+
+    pub fn upload_hud_advancement_background_with_sampling(
+        &mut self,
+        texture: HudAdvancementBackgroundTexture,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
+        self.hud_advancement_backgrounds[texture.as_index()] =
+            Some(self.upload_standalone_hud_sprite(width, height, rgba, sampling)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_hanging_sign_background_with_sampling(
+        &mut self,
+        wood: SignModelWood,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
+        self.hud_hanging_sign_backgrounds[sign_model_wood_index(wood)] =
+            Some(self.upload_standalone_hud_sprite(width, height, rgba, sampling)?);
+        Ok(())
+    }
+
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
         create_hud_sprite_gpu(
             &self.device,
@@ -6102,6 +6249,24 @@ impl Renderer {
             width,
             height,
             rgba,
+        )
+    }
+
+    fn upload_standalone_hud_sprite(
+        &self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<HudSpriteGpu> {
+        create_standalone_hud_sprite_gpu(
+            &self.device,
+            &self.queue,
+            &self.hud_bind_group_layout,
+            width,
+            height,
+            rgba,
+            sampling,
         )
     }
 

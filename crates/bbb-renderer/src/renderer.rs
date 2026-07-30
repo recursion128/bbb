@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use bbb_render_types::EntityDefaultPlayerSkin;
+use bbb_render_types::{EntityDefaultPlayerSkin, StandaloneTextureSampling};
 use glam::Mat4;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -3493,6 +3493,21 @@ impl Renderer {
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.upload_end_sky_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::default(),
+        )
+    }
+
+    pub fn upload_end_sky_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
         self.end_sky_texture = Some(create_end_sky_texture_gpu(
             &self.device,
             &self.queue,
@@ -3500,6 +3515,7 @@ impl Renderer {
             width,
             height,
             rgba,
+            sampling,
         )?);
         Ok(())
     }
@@ -3559,6 +3575,21 @@ impl Renderer {
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
+        self.upload_world_border_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::default(),
+        )
+    }
+
+    pub fn upload_world_border_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
         self.world_border_texture = Some(create_world_border_texture_gpu(
             &self.device,
             &self.queue,
@@ -3567,6 +3598,7 @@ impl Renderer {
             width,
             height,
             rgba,
+            sampling,
         )?);
         Ok(())
     }

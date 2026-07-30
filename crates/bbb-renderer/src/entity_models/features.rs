@@ -10,7 +10,10 @@ use glam::{Mat4, Vec3};
 
 use crate::item_models::{ItemModelMesh, ItemModelQuad, ItemModelVertex};
 use crate::terrain::TerrainUvRect;
-use crate::{CameraPose, Renderer};
+use crate::{
+    texture_sampling::standalone_sampler_descriptor, CameraPose, Renderer,
+    StandaloneTextureSampling,
+};
 
 use super::{entity_dispatch_render_offset, EntityModelInstance};
 
@@ -282,6 +285,7 @@ pub(crate) fn create_entity_shadow_texture_gpu(
     width: u32,
     height: u32,
     rgba: &[u8],
+    sampling: StandaloneTextureSampling,
 ) -> Result<EntityShadowTextureGpu> {
     ensure!(width > 0 && height > 0, "entity shadow texture is empty");
     ensure!(
@@ -322,16 +326,10 @@ pub(crate) fn create_entity_shadow_texture_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-entity-shadow-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = device.create_sampler(&standalone_sampler_descriptor(
+        "bbb-entity-shadow-sampler",
+        sampling,
+    ));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-entity-shadow-bind-group"),
         layout,
@@ -383,6 +381,21 @@ impl Renderer {
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
+        self.upload_entity_shadow_texture_with_sampling(
+            width,
+            height,
+            rgba,
+            StandaloneTextureSampling::new(false, true),
+        )
+    }
+
+    pub fn upload_entity_shadow_texture_with_sampling(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
         self.entity_shadow_texture = Some(create_entity_shadow_texture_gpu(
             &self.device,
             &self.queue,
@@ -391,6 +404,7 @@ impl Renderer {
             width,
             height,
             rgba,
+            sampling,
         )?);
         Ok(())
     }

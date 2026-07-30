@@ -8,7 +8,8 @@ use bbb_renderer::{
     entity_model_texture_refs, EntityEquipmentAsset, EntityEquipmentAssetCatalog,
     EntityEquipmentAssetLayer, EntityEquipmentAssetLayerTexture, EntityEquipmentDyeable,
     EntityEquipmentLayerType, EntityModelOwnedTextureImage, EntityModelOwnedTextureRef,
-    EntityModelTextureImage, EntityModelTextureRef, ENTITY_SHADOW_TEXTURE_PATH,
+    EntityModelTextureImage, EntityModelTextureRef, StandaloneTextureSampling,
+    ENTITY_SHADOW_TEXTURE_PATH,
 };
 
 use crate::item_models::special_item_pack_texture_descriptors;
@@ -60,7 +61,12 @@ pub(crate) fn try_load_entity_model_textures(
         &owned_images,
         &equipment_assets,
     )?;
-    renderer.upload_entity_shadow_texture(shadow.width, shadow.height, &shadow.rgba)?;
+    renderer.upload_entity_shadow_texture_with_sampling(
+        shadow.width,
+        shadow.height,
+        &shadow.rgba,
+        StandaloneTextureSampling::new(shadow.texture_metadata.blur, shadow.texture_metadata.clamp),
+    )?;
     if let Some(glint) = images
         .iter()
         .find(|image| image.texture.path == "textures/misc/enchanted_glint_item.png")
@@ -431,11 +437,18 @@ mod tests {
             .join(ENTITY_SHADOW_TEXTURE_PATH);
         std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
         write_png(&texture_path, 16, 8);
+        std::fs::write(
+            texture_path.with_file_name("shadow.png.mcmeta"),
+            br#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
 
         let image = load_entity_shadow_texture_image(&roots).unwrap();
 
         assert_eq!([image.width, image.height], [16, 8]);
+        assert!(image.texture_metadata.blur);
+        assert!(image.texture_metadata.clamp);
         assert_eq!(image.rgba.len(), 16 * 8 * 4);
         std::fs::remove_dir_all(temp).unwrap();
     }
