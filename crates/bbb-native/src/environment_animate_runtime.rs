@@ -1,3 +1,5 @@
+mod block_entity_effects;
+
 use std::collections::BTreeMap;
 
 use bbb_item_model::NativeItemRuntime;
@@ -189,12 +191,7 @@ impl EnvironmentAnimateRuntime {
         audio: &mut Option<&mut dyn AudioEventSink>,
         item_runtime: Option<&NativeItemRuntime>,
     ) {
-        let level_identity = (connection_generation, world.client_level_generation());
-        if self.level_identity != Some(level_identity) {
-            self.level_identity = Some(level_identity);
-            self.level_random = LevelEventSoundRandomState::with_seed(0);
-            self.animate_seed_random = LevelEventSoundRandomState::with_seed(1);
-        }
+        self.synchronize_level_identity(world, connection_generation);
 
         for _ in 0..running_level_ticks {
             let Some(player) = world.local_player_pose() else {
@@ -225,6 +222,16 @@ impl EnvironmentAnimateRuntime {
                 particle_batches.submit_particle_batch(batch);
             }
         }
+    }
+
+    fn synchronize_level_identity(&mut self, world: &WorldStore, connection_generation: u64) {
+        let level_identity = (connection_generation, world.client_level_generation());
+        if self.level_identity == Some(level_identity) {
+            return;
+        }
+        self.level_identity = Some(level_identity);
+        self.level_random = LevelEventSoundRandomState::with_seed(0);
+        self.animate_seed_random = LevelEventSoundRandomState::with_seed(1);
     }
 
     fn tick(
