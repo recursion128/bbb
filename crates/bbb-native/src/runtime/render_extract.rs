@@ -2836,6 +2836,7 @@ pub(crate) struct NonEntityRenderExtractionObservation {
 #[derive(Debug, Default)]
 pub(crate) struct NonEntityRenderExtractionScratch {
     observation: NonEntityRenderExtractionObservation,
+    christmas_chest_textures: crate::chest_scene::ChristmasChestTextures,
     stable_world: Option<Arc<WorldStore>>,
     stable_block_entities: Option<CachedStableBlockEntityProjection>,
     game_test_highlight_key: Option<(u64, u64)>,
@@ -2917,6 +2918,10 @@ struct CachedItemRegistryKeys {
 impl NonEntityRenderExtractionScratch {
     pub(crate) fn observation(&self) -> NonEntityRenderExtractionObservation {
         self.observation
+    }
+
+    pub(crate) fn christmas_chest_textures(&self) -> crate::chest_scene::ChristmasChestTextures {
+        self.christmas_chest_textures
     }
 
     /// Returns whether the exact immutable world owner was already applied to

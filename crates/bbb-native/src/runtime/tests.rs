@@ -7139,7 +7139,7 @@ fn hud_boss_bar_projection_covers_every_vanilla_color_and_overlay() {
 }
 
 #[test]
-fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
+fn renderer_frame_item_entity_and_chest_projections_extract_after_tick_advances() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source
         .find("advance_native_client_ticks(")
@@ -7180,6 +7180,9 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let chest_instances = source
         .find("entity_instances.extend(chest_model_instances_from_world_at_partial_tick(")
         .expect("pump should extract chest block-entity model instances");
+    let christmas_snapshot = source
+        .find("non_entity_render_extraction.christmas_chest_textures()")
+        .expect("render extraction should pass its immutable Christmas-date snapshot");
     let chest_lid_tick = source
         .find("world.advance_chest_lid_ticks(running_ticks);")
         .expect("pump should advance chest lid ticks");
@@ -7189,6 +7192,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     // no hands to bake).
     assert!(chest_lid_tick < chest_instances);
     assert!(held_models < chest_instances);
+    assert!(christmas_snapshot < chest_instances);
     // The bell shake ticker (`BellBlockEntity.clientTick`) likewise runs before
     // render extraction reads `ticks + partialTicks`; bed and bell instances
     // join the same stream after held-item baking.

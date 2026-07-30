@@ -15,12 +15,41 @@ use bbb_world::{
     ChestModelFacing as WorldChestModelFacing, ChestModelHalf as WorldChestModelHalf,
     ChestModelKind as WorldChestModelKind, ChestModelSourceState, TerrainLight, WorldStore,
 };
+use chrono::{Datelike, Local};
 
 /// Chest instances are projected from block states, not the entity list, so
 /// they carry a sentinel id no server entity can use (vanilla network entity
 /// ids are non-negative). The id only feeds per-entity animation seeds
 /// (`instance.entity_id`), which the chest model does not read.
 const CHEST_BLOCK_MODEL_ENTITY_ID: i32 = -1;
+
+/// Vanilla `ChestRenderer` snapshots `SpecialDates.isExtendedChristmas()` in
+/// its constructor. Keep the same immutable presentation-only value beside
+/// the render extraction owner instead of adding wall-clock state to the
+/// canonical world.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ChristmasChestTextures {
+    enabled: bool,
+}
+
+impl ChristmasChestTextures {
+    const fn from_month_day(month: u32, day: u32) -> Self {
+        Self {
+            enabled: month == 12 && day >= 24 && day <= 26,
+        }
+    }
+
+    const fn enabled(self) -> bool {
+        self.enabled
+    }
+}
+
+impl Default for ChristmasChestTextures {
+    fn default() -> Self {
+        let local_now = Local::now();
+        Self::from_month_day(local_now.month(), local_now.day())
+    }
+}
 
 /// Projects every chest-family block in the loaded chunks into a chest model
 /// instance: position at the block min corner, `-facing.toYRot()` yaw
@@ -30,15 +59,20 @@ const CHEST_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 pub(crate) fn chest_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     partial_tick: f32,
+    christmas_textures: ChristmasChestTextures,
 ) -> Vec<EntityModelInstance> {
     world
         .chest_model_source_states(partial_tick)
         .into_iter()
-        .map(|source| chest_model_instance(&source, world))
+        .map(|source| chest_model_instance(&source, world, christmas_textures))
         .collect()
 }
 
-fn chest_model_instance(source: &ChestModelSourceState, world: &WorldStore) -> EntityModelInstance {
+fn chest_model_instance(
+    source: &ChestModelSourceState,
+    world: &WorldStore,
+    christmas_textures: ChristmasChestTextures,
+) -> EntityModelInstance {
     let mut instance = EntityModelInstance::chest(
         CHEST_BLOCK_MODEL_ENTITY_ID,
         [
@@ -47,7 +81,7 @@ fn chest_model_instance(source: &ChestModelSourceState, world: &WorldStore) -> E
             source.pos.z as f32,
         ],
         chest_facing_y_rot(source.facing),
-        chest_model_texture(source.kind),
+        chest_model_texture(source.kind, christmas_textures),
         chest_model_half(source.half),
     )
     .with_chest_openness(source.openness);
@@ -81,7 +115,18 @@ fn chest_facing_y_rot(facing: WorldChestModelFacing) -> f32 {
     }
 }
 
-fn chest_model_texture(kind: WorldChestModelKind) -> ChestModelTexture {
+fn chest_model_texture(
+    kind: WorldChestModelKind,
+    christmas_textures: ChristmasChestTextures,
+) -> ChestModelTexture {
+    if christmas_textures.enabled()
+        && matches!(
+            kind,
+            WorldChestModelKind::Normal | WorldChestModelKind::Trapped
+        )
+    {
+        return ChestModelTexture::Christmas;
+    }
     match kind {
         WorldChestModelKind::Normal => ChestModelTexture::Normal,
         WorldChestModelKind::Trapped => ChestModelTexture::Trapped,
@@ -143,6 +188,11 @@ mod tests {
         });
         world
     }
+
+    const ORDINARY_CHEST_TEXTURES: ChristmasChestTextures =
+        ChristmasChestTextures::from_month_day(7, 29);
+    const CHRISTMAS_CHEST_TEXTURES: ChristmasChestTextures =
+        ChristmasChestTextures::from_month_day(12, 25);
 
     fn single_value_container(
         domain: PaletteDomain,
@@ -210,7 +260,8 @@ mod tests {
         send_chest_open_count(&mut world, pos, 1);
         world.advance_chest_lid_ticks(2);
 
-        let instances = chest_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let instances =
+            chest_model_instances_from_world_at_partial_tick(&world, 0.5, ORDINARY_CHEST_TEXTURES);
         assert_eq!(instances.len(), 1);
         let instance = &instances[0];
         assert_eq!(
@@ -263,7 +314,8 @@ mod tests {
         send_chest_open_count(&mut world, right_pos, 1);
         world.advance_chest_lid_ticks(1);
 
-        let instances = chest_model_instances_from_world_at_partial_tick(&world, 1.0);
+        let instances =
+            chest_model_instances_from_world_at_partial_tick(&world, 1.0, ORDINARY_CHEST_TEXTURES);
         assert_eq!(instances.len(), 2);
         let left = instances
             .iter()
@@ -313,7 +365,8 @@ mod tests {
             &[("facing", "west"), ("waterlogged", "false")],
         );
 
-        let instances = chest_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let instances =
+            chest_model_instances_from_world_at_partial_tick(&world, 0.0, ORDINARY_CHEST_TEXTURES);
         assert_eq!(instances.len(), 2);
         assert_eq!(
             instances[0].kind,
@@ -331,6 +384,60 @@ mod tests {
             }
         );
         assert_eq!(instances[1].render_state.body_rot, -90.0);
+    }
+
+    #[test]
+    fn christmas_date_boundaries_are_inclusive() {
+        for day in [24, 25, 26] {
+            assert!(ChristmasChestTextures::from_month_day(12, day).enabled());
+        }
+        for (month, day) in [(12, 23), (12, 27), (11, 25), (1, 1)] {
+            assert!(!ChristmasChestTextures::from_month_day(month, day).enabled());
+        }
+    }
+
+    #[test]
+    fn christmas_material_precedence_matches_vanilla() {
+        assert_eq!(
+            chest_model_texture(WorldChestModelKind::Normal, CHRISTMAS_CHEST_TEXTURES),
+            ChestModelTexture::Christmas
+        );
+        assert_eq!(
+            chest_model_texture(WorldChestModelKind::Trapped, CHRISTMAS_CHEST_TEXTURES),
+            ChestModelTexture::Christmas
+        );
+        assert_eq!(
+            chest_model_texture(WorldChestModelKind::Ender, CHRISTMAS_CHEST_TEXTURES),
+            ChestModelTexture::Ender
+        );
+        for (kind, expected) in [
+            (WorldChestModelKind::Copper, ChestModelTexture::Copper),
+            (
+                WorldChestModelKind::CopperExposed,
+                ChestModelTexture::CopperExposed,
+            ),
+            (
+                WorldChestModelKind::CopperWeathered,
+                ChestModelTexture::CopperWeathered,
+            ),
+            (
+                WorldChestModelKind::CopperOxidized,
+                ChestModelTexture::CopperOxidized,
+            ),
+        ] {
+            assert_eq!(
+                chest_model_texture(kind, CHRISTMAS_CHEST_TEXTURES),
+                expected
+            );
+        }
+        assert_eq!(
+            chest_model_texture(WorldChestModelKind::Normal, ORDINARY_CHEST_TEXTURES),
+            ChestModelTexture::Normal
+        );
+        assert_eq!(
+            chest_model_texture(WorldChestModelKind::Trapped, ORDINARY_CHEST_TEXTURES),
+            ChestModelTexture::Trapped
+        );
     }
 
     #[test]

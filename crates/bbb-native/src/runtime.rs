@@ -4060,6 +4060,7 @@ pub(crate) fn update_renderer_from_publication(
         [surface_size.width, surface_size.height],
         camera_fov.culling_degrees,
     );
+    let christmas_chest_textures = non_entity_render_extraction.christmas_chest_textures();
     let StableBlockEntityFrame {
         sign_instances,
         bed_instances,
@@ -4092,6 +4093,7 @@ pub(crate) fn update_renderer_from_publication(
     entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
+        christmas_chest_textures,
     ));
     // Sign block-entity models ride the same stream; their face text bakes
     // into world-space glyph quads drawn with the map-label font atlas.
