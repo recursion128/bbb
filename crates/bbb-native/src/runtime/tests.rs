@@ -15810,6 +15810,41 @@ fn all_generated_open_screen_menu_types_project_a_native_surface() {
                 menu_type.constant_name, menu_type.resource_id
             )
         });
+        if menu_type.id == VANILLA_MENU_TYPE_BEACON_ID {
+            assert_eq!(
+                screen
+                    .text_labels
+                    .iter()
+                    .map(|label| (
+                        label.text.as_str(),
+                        label.scrolling.unwrap().x,
+                        label.y,
+                        label.tint,
+                        label.shadow,
+                    ))
+                    .collect::<Vec<_>>(),
+                [
+                    (
+                        "Primary Power",
+                        BEACON_PRIMARY_LABEL_CENTER_X
+                            - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap() / 2,
+                        BEACON_LABEL_Y,
+                        BEACON_LABEL_TEXT_COLOR,
+                        false,
+                    ),
+                    (
+                        "Secondary Power",
+                        BEACON_SECONDARY_LABEL_CENTER_X
+                            - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap() / 2,
+                        BEACON_LABEL_Y,
+                        BEACON_LABEL_TEXT_COLOR,
+                        false,
+                    ),
+                ],
+                "generated Beacon menu label contract"
+            );
+            continue;
+        }
         let title = &screen.text_labels[0];
         let inventory = &screen.text_labels[1];
         let (title_x, title_y, centered) = match menu_type.resource_id {
