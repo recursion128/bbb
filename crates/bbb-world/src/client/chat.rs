@@ -6,7 +6,7 @@ use bbb_protocol::{
         FilterMaskKind as ProtocolFilterMaskKind, LastSeenMessagesUpdate,
         MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
     },
-    ComponentStyle, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    ComponentStyle, NbtSummaryEntry, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
 use serde::{Deserialize, Serialize};
@@ -391,7 +391,7 @@ impl WorldStore {
         content: String,
         styled_content: Vec<StyledTextRun>,
     ) {
-        self.push_pending_chat_narration(ChatNarrationKind::System, content, styled_content);
+        self.push_pending_chat_narration(ChatNarrationKind::System, content, styled_content, None);
     }
 
     pub(crate) fn push_interrupting_system_narration(
@@ -399,7 +399,24 @@ impl WorldStore {
         content: String,
         styled_content: Vec<StyledTextRun>,
     ) {
-        self.push_pending_chat_narration(ChatNarrationKind::SystemNow, content, styled_content);
+        self.push_pending_chat_narration(
+            ChatNarrationKind::SystemNow,
+            content,
+            styled_content,
+            None,
+        );
+    }
+
+    pub(crate) fn push_interrupting_system_component_narration(
+        &mut self,
+        component: &RichTextComponent,
+    ) {
+        self.push_pending_chat_narration(
+            ChatNarrationKind::SystemNow,
+            component.text().to_string(),
+            component.styled().to_vec(),
+            Some(component.component().clone()),
+        );
     }
 
     fn push_pending_chat_narration(
@@ -407,6 +424,7 @@ impl WorldStore {
         kind: ChatNarrationKind,
         content: String,
         styled_content: Vec<StyledTextRun>,
+        content_component: Option<NbtSummaryValue>,
     ) {
         let sequence = self.client_chat.delivery_revision.saturating_add(1);
         self.client_chat.delivery_revision = sequence;
@@ -417,7 +435,7 @@ impl WorldStore {
                 kind,
                 translation_key: None,
                 arguments: Vec::new(),
-                content_component: None,
+                content_component,
                 styled_content,
                 content,
             });

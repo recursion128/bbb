@@ -2531,6 +2531,10 @@ impl WorldStore {
         let pos = crate::protocol_block_pos(event.pos);
         let state = match event.event_type {
             JUKEBOX_PLAY_LEVEL_EVENT if event.data >= 0 => {
+                let presentation = self
+                    .jukebox_song_level_event_presentation(event.data)
+                    .ok()
+                    .flatten()?;
                 let stopped_existing =
                     remove_jukebox_song(&mut self.client_audio.playing_jukebox_songs, pos);
                 self.client_audio
@@ -2540,6 +2544,7 @@ impl WorldStore {
                         song_registry_id: event.data,
                     });
                 sort_jukebox_songs(&mut self.client_audio.playing_jukebox_songs);
+                self.set_jukebox_now_playing(presentation.description);
                 JukeboxLevelEventState {
                     action: JukeboxLevelEventAction::Start,
                     pos,
@@ -5462,6 +5467,18 @@ mod tests {
                 stopped_existing: false,
             })
         );
+        assert_eq!(store.action_bar().unwrap().display_ticks, 60);
+        assert!(store.action_bar().unwrap().animate_color);
+        let first_narrations = store.take_pending_chat_narrations();
+        assert_eq!(first_narrations.len(), 1);
+        assert_eq!(
+            first_narrations[0].kind,
+            crate::ChatNarrationKind::SystemNow
+        );
+        assert_eq!(
+            first_narrations[0].content_component.as_ref(),
+            Some(store.action_bar().unwrap().content.component())
+        );
 
         store.apply_level_event(LevelEvent {
             event_type: 1010,
@@ -5482,6 +5499,7 @@ mod tests {
             JukeboxLevelEventAction::Start
         );
         assert!(store.last_jukebox_event().unwrap().stopped_existing);
+        assert_eq!(store.take_pending_chat_narrations().len(), 1);
 
         store.apply_level_event(LevelEvent {
             event_type: 1011,
@@ -5500,6 +5518,42 @@ mod tests {
                 stopped_existing: true,
             })
         );
+        assert!(store.take_pending_chat_narrations().is_empty());
+    }
+
+    #[test]
+    fn unknown_jukebox_holder_does_not_replace_an_existing_song_or_overlay() {
+        let mut store = WorldStore::new();
+        let pos = ProtocolBlockPos { x: 4, y: 65, z: -7 };
+        store.apply_level_event(LevelEvent {
+            event_type: 1010,
+            pos,
+            data: 1,
+            global: false,
+        });
+        store.take_pending_chat_narrations();
+        let action_bar = store.action_bar().cloned();
+        let last_event = *store.last_jukebox_event().unwrap();
+
+        assert_eq!(
+            store.apply_level_event(LevelEvent {
+                event_type: 1010,
+                pos,
+                data: 27,
+                global: false,
+            }),
+            None
+        );
+        assert_eq!(
+            store.playing_jukebox_songs(),
+            &[JukeboxSongState {
+                pos: crate::BlockPos { x: 4, y: 65, z: -7 },
+                song_registry_id: 1,
+            }]
+        );
+        assert_eq!(store.last_jukebox_event(), Some(&last_event));
+        assert_eq!(store.action_bar(), action_bar.as_ref());
+        assert!(store.take_pending_chat_narrations().is_empty());
     }
 
     fn protocol_add_entity(id: i32) -> AddEntity {

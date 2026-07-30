@@ -1885,7 +1885,7 @@ mod tests {
         store.apply_level_event(ProtocolLevelEvent {
             event_type: 1010,
             pos: ProtocolBlockPos { x: 6, y: 7, z: 8 },
-            data: 27,
+            data: 12,
             global: false,
         });
         assert_eq!(store.playing_jukebox_songs().len(), 1);

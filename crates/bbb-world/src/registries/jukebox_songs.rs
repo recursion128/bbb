@@ -1,6 +1,7 @@
 use bbb_protocol::{
+    jukebox_song_types::vanilla_26_1_jukebox_song_by_holder_id,
     styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
-    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    NbtSummaryEntry, NbtSummaryValue, RichTextComponent, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +50,13 @@ pub struct JukeboxSongPresentation {
     pub comparator_output: i32,
 }
 
+/// The exact subset consumed by Vanilla `LevelEventHandler.playJukeboxSong`.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct JukeboxSongLevelEventPresentation {
+    pub sound_event: JukeboxSoundEvent,
+    pub description: RichTextComponent,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JukeboxSongProjectionError {
     pub resource_id: String,
@@ -67,6 +75,51 @@ impl std::fmt::Display for JukeboxSongProjectionError {
 }
 
 impl WorldStore {
+    /// Resolves level-event holder data without allowing a synchronized
+    /// session registry to fall back to the fixed Vanilla bootstrap ordinal.
+    pub(crate) fn jukebox_song_level_event_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<JukeboxSongLevelEventPresentation>, JukeboxSongProjectionError> {
+        if self
+            .frozen_registry_access()
+            .has_server_contents(JUKEBOX_SONG_REGISTRY)
+        {
+            let Some(presentation) = self.synchronized_jukebox_song_presentation(holder_id)? else {
+                return Ok(None);
+            };
+            let description = RichTextComponent::try_from_component_nbt(
+                presentation.description_nbt,
+            )
+            .map_err(|reason| JukeboxSongProjectionError {
+                resource_id: self
+                    .registry_resource_id_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id)
+                    .unwrap_or("<unknown>")
+                    .to_string(),
+                field: "description".to_string(),
+                reason,
+            })?;
+            return Ok(Some(JukeboxSongLevelEventPresentation {
+                sound_event: presentation.sound_event,
+                description,
+            }));
+        }
+
+        let Some(song) = vanilla_26_1_jukebox_song_by_holder_id(holder_id) else {
+            return Ok(None);
+        };
+        let description = RichTextComponent::try_from_component_nbt(translatable_component(
+            song.description_translation_key(),
+        ))
+        .expect("generated jukebox description translation is a valid Component");
+        Ok(Some(JukeboxSongLevelEventPresentation {
+            sound_event: JukeboxSoundEvent::Reference {
+                resource_id: song.sound_event_id.to_string(),
+            },
+            description,
+        }))
+    }
+
     /// Projects a synchronized song through the current session holder order.
     ///
     /// `None` means the server omitted the registry, the holder id is unknown,
@@ -94,6 +147,13 @@ impl WorldStore {
                 reason: failure.reason,
             })
     }
+}
+
+fn translatable_component(translation_key: String) -> NbtSummaryValue {
+    NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+        name: "translate".to_string(),
+        value: NbtSummaryValue::String(translation_key),
+    }])
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,6 +360,44 @@ mod tests {
                 .resource_id(),
             "minecraft:music_disc.cat"
         );
+        let level_event = store
+            .jukebox_song_level_event_presentation(0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            level_event.sound_event.resource_id(),
+            "example:music.custom"
+        );
+        assert_eq!(
+            level_event.description.component(),
+            &NbtSummaryValue::String("Custom".to_string())
+        );
+    }
+
+    #[test]
+    fn level_event_projection_uses_generated_fallback_only_without_server_contents() {
+        let mut store = WorldStore::new();
+        let fallback = store
+            .jukebox_song_level_event_presentation(1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            fallback.sound_event.resource_id(),
+            "minecraft:music_disc.cat"
+        );
+        assert_eq!(
+            fallback.description.component(),
+            &translatable_component("jukebox_song.minecraft.cat".to_string())
+        );
+        assert_eq!(store.jukebox_song_level_event_presentation(21), Ok(None));
+
+        store.record_registry_entries(
+            JUKEBOX_SONG_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::stub("minecraft:cat")],
+        );
+        assert_eq!(store.jukebox_song_level_event_presentation(0), Ok(None));
+        assert_eq!(store.jukebox_song_level_event_presentation(1), Ok(None));
     }
 
     #[test]

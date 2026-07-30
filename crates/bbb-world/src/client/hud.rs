@@ -458,6 +458,26 @@ impl WorldStore {
         });
     }
 
+    pub(crate) fn set_jukebox_now_playing(&mut self, description: RichTextComponent) {
+        let message = RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("record.nowPlaying".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "with".to_string(),
+                value: NbtSummaryValue::List(vec![description.component().clone()]),
+            },
+        ]))
+        .expect("jukebox now-playing wrapper is a valid Component");
+        self.client_hud.action_bar = Some(ActionBarState {
+            content: message.clone(),
+            display_ticks: 60,
+            animate_color: true,
+        });
+        self.push_interrupting_system_component_narration(&message);
+    }
+
     /// Vanilla `Gui.tick` (Gui.java:1152-1166, run from `Minecraft.tick` once
     /// per client tick): `overlayMessageTime` counts down while positive, and
     /// `titleTime` counts down while positive, clearing `title`/`subtitle`
@@ -995,6 +1015,47 @@ mod tests {
         let restored: WorldStore = serde_json::from_value(encoded).unwrap();
         assert_eq!(restored.action_bar(), store.action_bar());
         assert_eq!(restored.title(), store.title());
+    }
+
+    #[test]
+    fn jukebox_now_playing_wraps_one_exact_component_for_overlay_and_narration() {
+        let mut store = WorldStore::new();
+        let description = rich_overlay_component("Custom song");
+        let expected_component = NbtSummaryValue::Compound(vec![
+            bbb_protocol::NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String("record.nowPlaying".to_string()),
+            },
+            bbb_protocol::NbtSummaryEntry {
+                name: "with".to_string(),
+                value: NbtSummaryValue::List(vec![description.component().clone()]),
+            },
+        ]);
+
+        store.set_jukebox_now_playing(description);
+
+        let action_bar = store.action_bar().unwrap();
+        assert_eq!(action_bar.display_ticks, 60);
+        assert!(action_bar.animate_color);
+        assert_eq!(action_bar.content.component(), &expected_component);
+        assert_eq!(
+            action_bar
+                .content
+                .styled()
+                .last()
+                .unwrap()
+                .style
+                .font
+                .as_deref(),
+            Some("example:title")
+        );
+        let narrations = store.take_pending_chat_narrations();
+        assert_eq!(narrations.len(), 1);
+        assert_eq!(narrations[0].kind, crate::ChatNarrationKind::SystemNow);
+        assert_eq!(
+            narrations[0].content_component.as_ref(),
+            Some(&expected_component)
+        );
     }
 
     #[test]
