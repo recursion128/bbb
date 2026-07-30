@@ -234,9 +234,10 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 - **Banner pattern no-depth-write pipeline.** Vanilla's `bannerPattern` pipeline
-  disables depth writes; bbb's shared translucent pipeline keeps them on.
-  Add the dedicated no-depth-write state without changing equal-depth
-  `LessEqual` layering.
+  disables depth writes; active engineering contract:
+  `docs/banner-pattern-pipeline-design.md`. Split its exact back-cull,
+  no-overlay/no-cutout state from generic entity translucency while preserving
+  equal-depth `LessEqual` layer order.
 - **Chest christmas Dec 24-26 texture swap.** There is no wall-clock input;
   derive the date at the native presentation boundary without introducing
   wall-clock state into serializable `bbb-world`.
