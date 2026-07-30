@@ -198,6 +198,18 @@ fn chest_model_keys_and_texture_refs_match_vanilla_selection() {
         Some(CHEST_TRAPPED_TEXTURE_REF)
     );
     assert_eq!(
+        kind(ChestModelTexture::Christmas, ChestModelHalf::Single).vanilla_texture_ref(),
+        Some(CHEST_CHRISTMAS_TEXTURE_REF)
+    );
+    assert_eq!(
+        kind(ChestModelTexture::Christmas, ChestModelHalf::Left).vanilla_texture_ref(),
+        Some(CHEST_CHRISTMAS_LEFT_TEXTURE_REF)
+    );
+    assert_eq!(
+        kind(ChestModelTexture::Christmas, ChestModelHalf::Right).vanilla_texture_ref(),
+        Some(CHEST_CHRISTMAS_RIGHT_TEXTURE_REF)
+    );
+    assert_eq!(
         kind(ChestModelTexture::Ender, ChestModelHalf::Single).vanilla_texture_ref(),
         Some(CHEST_ENDER_TEXTURE_REF)
     );
@@ -221,7 +233,7 @@ fn chest_model_keys_and_texture_refs_match_vanilla_selection() {
         kind(ChestModelTexture::CopperOxidized, ChestModelHalf::Single).vanilla_texture_ref(),
         Some(CHEST_COPPER_OXIDIZED_TEXTURE_REF)
     );
-    assert_eq!(chest_entity_texture_refs().len(), 19);
+    assert_eq!(chest_entity_texture_refs().len(), 22);
     for texture in chest_entity_texture_refs() {
         assert!(entity_model_texture_refs().contains(texture));
         assert_eq!(texture.size, [64, 64]);
@@ -254,6 +266,14 @@ fn chest_layer_passes_match_vanilla_renderer() {
             .model_layer,
         MODEL_LAYER_CHEST_RIGHT
     );
+    let christmas =
+        chest_textured_layer_passes(ChestModelTexture::Christmas, ChestModelHalf::Right);
+    assert_eq!(christmas[0].texture, CHEST_CHRISTMAS_RIGHT_TEXTURE_REF);
+    assert_eq!(
+        christmas[0].render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert_eq!(christmas[0].model_layer, MODEL_LAYER_CHEST_RIGHT);
 }
 
 #[test]

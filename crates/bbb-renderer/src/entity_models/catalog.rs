@@ -1647,14 +1647,15 @@ pub enum ChestModelHalf {
     Right,
 }
 
-/// Vanilla `ChestRenderState.ChestMaterialType` (minus the date-gated `CHRISTMAS`, which bbb defers
-/// — no wall-clock input): the `Sheets.chooseSprite` texture family a chest renders with. Each
-/// non-ender family carries `entity/chest/<prefix>{,_left,_right}.png`; the ender chest is always
-/// single (`entity/chest/ender.png`).
+/// Vanilla `ChestRenderState.ChestMaterialType`: the `Sheets.chooseSprite` texture family a chest
+/// renders with. Each non-ender family carries `entity/chest/<prefix>{,_left,_right}.png`; the
+/// ender chest is always single (`entity/chest/ender.png`). Native presentation owns the
+/// date-gated selection of `Christmas`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChestModelTexture {
     Normal,
     Trapped,
+    Christmas,
     Ender,
     Copper,
     CopperExposed,

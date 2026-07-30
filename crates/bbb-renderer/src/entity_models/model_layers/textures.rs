@@ -1260,7 +1260,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 710] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 713] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1462,6 +1462,9 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CHEST_TRAPPED_TEXTURE_REF,
     CHEST_TRAPPED_LEFT_TEXTURE_REF,
     CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+    CHEST_CHRISTMAS_TEXTURE_REF,
+    CHEST_CHRISTMAS_LEFT_TEXTURE_REF,
+    CHEST_CHRISTMAS_RIGHT_TEXTURE_REF,
     CHEST_ENDER_TEXTURE_REF,
     CHEST_COPPER_TEXTURE_REF,
     CHEST_COPPER_LEFT_TEXTURE_REF,
@@ -3010,8 +3013,7 @@ const fn chest_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
 
 // Vanilla `Sheets.CHEST_MAPPER` sprites (`entity/chest/<name>` on the 64×64 chest sheet), named per
 // `ChestSpecialRenderer.createDefaultTextures(prefix)`: `<prefix>` / `<prefix>_left` /
-// `<prefix>_right` for single/left/right, plus the always-single `ender`. The `christmas*` set is
-// deferred with the date gate.
+// `<prefix>_right` for single/left/right, plus the always-single `ender`.
 pub(in crate::entity_models) const CHEST_NORMAL_TEXTURE_REF: EntityModelTextureRef =
     chest_sheet_texture_ref("textures/entity/chest/normal.png");
 pub(in crate::entity_models) const CHEST_NORMAL_LEFT_TEXTURE_REF: EntityModelTextureRef =
@@ -3024,6 +3026,12 @@ pub(in crate::entity_models) const CHEST_TRAPPED_LEFT_TEXTURE_REF: EntityModelTe
     chest_sheet_texture_ref("textures/entity/chest/trapped_left.png");
 pub(in crate::entity_models) const CHEST_TRAPPED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
     chest_sheet_texture_ref("textures/entity/chest/trapped_right.png");
+pub(in crate::entity_models) const CHEST_CHRISTMAS_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/christmas.png");
+pub(in crate::entity_models) const CHEST_CHRISTMAS_LEFT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/christmas_left.png");
+pub(in crate::entity_models) const CHEST_CHRISTMAS_RIGHT_TEXTURE_REF: EntityModelTextureRef =
+    chest_sheet_texture_ref("textures/entity/chest/christmas_right.png");
 pub(in crate::entity_models) const CHEST_ENDER_TEXTURE_REF: EntityModelTextureRef =
     chest_sheet_texture_ref("textures/entity/chest/ender.png");
 pub(in crate::entity_models) const CHEST_COPPER_TEXTURE_REF: EntityModelTextureRef =
@@ -3051,13 +3059,16 @@ pub(in crate::entity_models) const CHEST_COPPER_OXIDIZED_LEFT_TEXTURE_REF: Entit
 pub(in crate::entity_models) const CHEST_COPPER_OXIDIZED_RIGHT_TEXTURE_REF: EntityModelTextureRef =
     chest_sheet_texture_ref("textures/entity/chest/copper_oxidized_right.png");
 
-pub(in crate::entity_models) const CHEST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
+pub(in crate::entity_models) const CHEST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 22] = [
     CHEST_NORMAL_TEXTURE_REF,
     CHEST_NORMAL_LEFT_TEXTURE_REF,
     CHEST_NORMAL_RIGHT_TEXTURE_REF,
     CHEST_TRAPPED_TEXTURE_REF,
     CHEST_TRAPPED_LEFT_TEXTURE_REF,
     CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+    CHEST_CHRISTMAS_TEXTURE_REF,
+    CHEST_CHRISTMAS_LEFT_TEXTURE_REF,
+    CHEST_CHRISTMAS_RIGHT_TEXTURE_REF,
     CHEST_ENDER_TEXTURE_REF,
     CHEST_COPPER_TEXTURE_REF,
     CHEST_COPPER_LEFT_TEXTURE_REF,
@@ -3094,6 +3105,11 @@ pub(in crate::entity_models) fn chest_texture_ref(
             CHEST_TRAPPED_TEXTURE_REF,
             CHEST_TRAPPED_LEFT_TEXTURE_REF,
             CHEST_TRAPPED_RIGHT_TEXTURE_REF,
+        ),
+        ChestModelTexture::Christmas => (
+            CHEST_CHRISTMAS_TEXTURE_REF,
+            CHEST_CHRISTMAS_LEFT_TEXTURE_REF,
+            CHEST_CHRISTMAS_RIGHT_TEXTURE_REF,
         ),
         ChestModelTexture::Ender => (
             CHEST_ENDER_TEXTURE_REF,
