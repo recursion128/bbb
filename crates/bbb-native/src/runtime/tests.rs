@@ -19226,6 +19226,318 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_beacon_labels_without_generic_container_copy() {
+    let world = beacon_test_world(false, 0);
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert_eq!(screen.text_labels.len(), 2);
+    assert_eq!(
+        screen
+            .text_labels
+            .iter()
+            .map(|label| label.text.as_str())
+            .collect::<Vec<_>>(),
+        ["Primary Power", "Secondary Power"]
+    );
+    assert_eq!(
+        screen
+            .text_labels
+            .iter()
+            .map(|label| (
+                label.scrolling.unwrap().x,
+                label.y,
+                label.tint,
+                label.shadow,
+            ))
+            .collect::<Vec<_>>(),
+        [
+            (
+                BEACON_PRIMARY_LABEL_CENTER_X
+                    - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap() / 2,
+                BEACON_LABEL_Y,
+                BEACON_LABEL_TEXT_COLOR,
+                false,
+            ),
+            (
+                BEACON_SECONDARY_LABEL_CENTER_X
+                    - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap() / 2,
+                BEACON_LABEL_Y,
+                BEACON_LABEL_TEXT_COLOR,
+                false,
+            ),
+        ]
+    );
+    assert!(screen
+        .text_labels
+        .iter()
+        .all(|label| label.text != "Beacon" && label.text != "Inventory"));
+}
+
+#[test]
+fn hud_inventory_screen_projects_beacon_hover_precedence() {
+    let disabled_world = beacon_test_world(false, 0);
+    let disabled = beacon_screen_with_local_state(
+        &disabled_world,
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((53, 22)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(&disabled, 53, 22),
+        Some(HudInventoryBackgroundTexture::BeaconButtonDisabled)
+    );
+    assert_eq!(disabled.tooltip.as_ref().unwrap().lines[0].text, "Speed");
+
+    let world = beacon_test_world(true, 4);
+    let highlighted = beacon_screen_with_local_state(
+        &world,
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((53, 22)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(&highlighted, 53, 22),
+        Some(HudInventoryBackgroundTexture::BeaconButtonHighlighted)
+    );
+
+    let selected = beacon_screen_with_local_state(
+        &world,
+        None,
+        InventoryHudLocalState {
+            beacon_effect_selection: Some((Some(VANILLA_MOB_EFFECT_STRENGTH_ID), None)),
+            cursor_position: Some((65, 72)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(&selected, 65, 72),
+        Some(HudInventoryBackgroundTexture::BeaconButtonSelected)
+    );
+
+    let disabled_confirm = beacon_screen_with_local_state(
+        &disabled_world,
+        None,
+        InventoryHudLocalState {
+            beacon_effect_selection: Some((Some(VANILLA_MOB_EFFECT_SPEED_ID), None)),
+            cursor_position: Some((BEACON_CONFIRM_BUTTON_X, BEACON_ACTION_BUTTON_Y)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(
+            &disabled_confirm,
+            BEACON_CONFIRM_BUTTON_X,
+            BEACON_ACTION_BUTTON_Y,
+        ),
+        Some(HudInventoryBackgroundTexture::BeaconButtonDisabled)
+    );
+    assert_eq!(
+        disabled_confirm.tooltip.as_ref().unwrap().lines[0].text,
+        "Done"
+    );
+
+    let active_confirm = beacon_screen_with_local_state(
+        &world,
+        None,
+        InventoryHudLocalState {
+            beacon_effect_selection: Some((Some(VANILLA_MOB_EFFECT_SPEED_ID), None)),
+            cursor_position: Some((BEACON_CONFIRM_BUTTON_X, BEACON_ACTION_BUTTON_Y)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(
+            &active_confirm,
+            BEACON_CONFIRM_BUTTON_X,
+            BEACON_ACTION_BUTTON_Y,
+        ),
+        Some(HudInventoryBackgroundTexture::BeaconButtonHighlighted)
+    );
+
+    let cancel = beacon_screen_with_local_state(
+        &world,
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((BEACON_CANCEL_BUTTON_X, BEACON_ACTION_BUTTON_Y)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        beacon_button_texture_at(&cancel, BEACON_CANCEL_BUTTON_X, BEACON_ACTION_BUTTON_Y,),
+        Some(HudInventoryBackgroundTexture::BeaconButtonHighlighted)
+    );
+    assert_eq!(cancel.tooltip.as_ref().unwrap().lines[0].text, "Cancel");
+}
+
+#[test]
+fn hud_inventory_screen_projects_localized_beacon_tooltips_and_upgrade_visibility() {
+    let root = unique_runtime_temp_dir("beacon-presentation");
+    write_runtime_beacon_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let world = beacon_test_world(true, 4);
+
+    let primary = beacon_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        InventoryHudLocalState {
+            cursor_position: Some((53, 22)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        primary
+            .text_labels
+            .iter()
+            .map(|label| label.text.as_str())
+            .collect::<Vec<_>>(),
+        ["Main Power", "Auxiliary Power"]
+    );
+    assert_eq!(primary.tooltip.as_ref().unwrap().lines[0].text, "Swift");
+    assert_eq!(primary.floating_items.len(), 5);
+    assert_eq!(
+        primary
+            .floating_items
+            .iter()
+            .map(|item| (item.x, item.y))
+            .collect::<Vec<_>>(),
+        [(20, 109), (41, 109), (63, 109), (86, 109), (108, 109)]
+    );
+    assert!(primary.floating_items.iter().all(|item| {
+        !item.draw_decorations && item.block_model.is_none() && item.icon.layers.len() == 1
+    }));
+
+    let upgrade = beacon_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        InventoryHudLocalState {
+            beacon_effect_selection: Some((Some(VANILLA_MOB_EFFECT_STRENGTH_ID), None)),
+            cursor_position: Some((168, 47)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+    assert_eq!(
+        upgrade.tooltip.as_ref().unwrap(),
+        &HudInventoryTooltip {
+            slot_id: u16::MAX,
+            x: 168,
+            y: 47,
+            style: None,
+            lines: vec![HudInventoryTooltipLine {
+                text: "Might II".to_string(),
+                tint: [1.0, 1.0, 1.0, 1.0],
+                runs: Vec::new(),
+            }],
+        }
+    );
+    assert_eq!(upgrade.background_layers.len(), 19);
+
+    for (cursor, text) in [
+        ((BEACON_CONFIRM_BUTTON_X, BEACON_ACTION_BUTTON_Y), "Apply"),
+        ((BEACON_CANCEL_BUTTON_X, BEACON_ACTION_BUTTON_Y), "Abort"),
+    ] {
+        let screen = beacon_screen_with_local_state(
+            &world,
+            Some(&item_runtime),
+            InventoryHudLocalState {
+                beacon_effect_selection: Some((Some(VANILLA_MOB_EFFECT_SPEED_ID), None)),
+                cursor_position: Some(cursor),
+                ..InventoryHudLocalState::default()
+            },
+        );
+        assert_eq!(screen.tooltip.as_ref().unwrap().lines[0].text, text);
+    }
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hud_inventory_screen_omits_unresolved_beacon_examples_and_invalid_upgrade() {
+    let world = beacon_test_world(true, 4);
+
+    let screen = beacon_screen_with_local_state(
+        &world,
+        None,
+        InventoryHudLocalState {
+            beacon_effect_selection: Some((Some(i32::MAX), None)),
+            cursor_position: Some((168, 47)),
+            ..InventoryHudLocalState::default()
+        },
+    );
+
+    assert!(screen.floating_items.is_empty());
+    assert_eq!(screen.background_layers.len(), 17);
+    assert_eq!(screen.tooltip, None);
+    assert_eq!(
+        beacon_button_texture_at(&screen, BEACON_CONFIRM_BUTTON_X, BEACON_ACTION_BUTTON_Y,),
+        Some(HudInventoryBackgroundTexture::BeaconButtonDisabled)
+    );
+}
+
+fn beacon_test_world(payment: bool, levels: i16) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+        title: bbb_protocol::RichTextComponent::plain("Beacon"),
+    });
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 37];
+    if payment {
+        items[0] = item_stack(42, 1);
+    }
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+        container_id: 7,
+        id: BEACON_LEVELS_DATA_ID,
+        value: levels,
+    });
+    world
+}
+
+fn beacon_screen_with_local_state(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    local_state: InventoryHudLocalState,
+) -> HudInventoryScreen {
+    hud_inventory_screen_with_local_state(
+        world,
+        item_runtime,
+        &TerrainTextureState::default(),
+        None,
+        local_state,
+        0.0,
+    )
+    .unwrap()
+}
+
+fn beacon_button_texture_at(
+    screen: &HudInventoryScreen,
+    x: i32,
+    y: i32,
+) -> Option<HudInventoryBackgroundTexture> {
+    screen
+        .background_layers
+        .iter()
+        .find(|layer| {
+            layer.x == x
+                && layer.y == y
+                && layer.width == BEACON_EFFECT_BUTTON_SIZE
+                && layer.height == BEACON_EFFECT_BUTTON_SIZE
+        })
+        .map(|layer| layer.texture)
+}
+
+#[test]
 fn hud_inventory_screen_projects_anvil_text_field_and_error_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -25553,6 +25865,69 @@ fn write_runtime_tooltip_item_assets(root: &Path) {
         &[
             ("command_block", "command_block"),
             ("test_sword", "iron_sword"),
+        ],
+    );
+}
+
+fn write_runtime_beacon_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    for (item_id, rgba) in [
+        ("netherite_ingot", [40, 50, 60, 255]),
+        ("emerald", [40, 200, 80, 255]),
+        ("diamond", [80, 220, 240, 255]),
+        ("gold_ingot", [240, 190, 40, 255]),
+        ("iron_ingot", [210, 210, 220, 255]),
+    ] {
+        write_runtime_json(
+            &assets.join("items").join(format!("{item_id}.json")),
+            &format!(
+                r#"{{
+                    "model": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{item_id}"
+                    }}
+                }}"#
+            ),
+        );
+        write_flat_runtime_item_model_and_texture(&assets, item_id, &rgba);
+    }
+    write_runtime_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+            "block.minecraft.beacon.primary": "Main Power",
+            "block.minecraft.beacon.secondary": "Auxiliary Power",
+            "effect.minecraft.speed": "Swift",
+            "effect.minecraft.strength": "Might",
+            "gui.done": "Apply",
+            "gui.cancel": "Abort"
+        }"#,
+    );
+    crate::item_registry_test_fixture::write_item_registry_fixture(
+        root.as_ref(),
+        &[
+            "netherite_ingot",
+            "emerald",
+            "diamond",
+            "gold_ingot",
+            "iron_ingot",
         ],
     );
 }

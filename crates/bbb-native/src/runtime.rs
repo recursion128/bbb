@@ -230,6 +230,10 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
 };
 use bbb_protocol::entity_types::*;
+use bbb_protocol::item_types::{
+    vanilla_item_type, VANILLA_ITEM_DIAMOND_ID, VANILLA_ITEM_EMERALD_ID,
+    VANILLA_ITEM_GOLD_INGOT_ID, VANILLA_ITEM_IRON_INGOT_ID, VANILLA_ITEM_NETHERITE_INGOT_ID,
+};
 use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, MobEffectCategory, VANILLA_BEACON_EFFECT_TIERS,
     VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
@@ -447,6 +451,17 @@ const BEACON_ACTION_BUTTON_Y: i32 = 107;
 const BEACON_ACTION_BUTTON_SIZE: u32 = 22;
 const BEACON_ACTION_ICON_OFFSET: i32 = 2;
 const BEACON_ACTION_ICON_SIZE: u32 = 18;
+const BEACON_PRIMARY_LABEL_CENTER_X: i32 = 62;
+const BEACON_SECONDARY_LABEL_CENTER_X: i32 = 169;
+const BEACON_LABEL_Y: i32 = 10;
+const BEACON_LABEL_TEXT_COLOR: [f32; 4] = rgba32(-2_039_584);
+const BEACON_EXAMPLE_PAYMENT_ITEMS: [(i32, i32, i32); 5] = [
+    (VANILLA_ITEM_NETHERITE_INGOT_ID, 20, 109),
+    (VANILLA_ITEM_EMERALD_ID, 41, 109),
+    (VANILLA_ITEM_DIAMOND_ID, 63, 109),
+    (VANILLA_ITEM_GOLD_INGOT_ID, 86, 109),
+    (VANILLA_ITEM_IRON_INGOT_ID, 108, 109),
+];
 const ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE: u32 = 16;
 const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
@@ -645,6 +660,7 @@ struct CartographyTablePresentation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct BeaconEffectButton {
     primary: bool,
+    upgrade: bool,
     tier: i16,
     effect_id: i32,
     x: i32,
@@ -10435,6 +10451,14 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
             hud_fonts,
         )
         .or(inventory_tooltip),
+        InventoryScreenBackground::Beacon => hud_beacon_tooltip(
+            item_runtime,
+            local_state.cursor_position,
+            local_state
+                .beacon_effect_selection
+                .unwrap_or_else(|| beacon_effect_selection_from_world(world)),
+        )
+        .or(inventory_tooltip),
         _ => inventory_tooltip,
     };
 
@@ -13808,8 +13832,11 @@ fn hud_inventory_text_labels(
     local_state: &InventoryHudLocalState,
     enchantment_options: Option<&[EnchantmentOptionHudState; ENCHANTMENT_OPTION_COUNT]>,
 ) -> Vec<HudInventoryTextLabel> {
-    let mut labels =
-        hud_server_opened_container_labels(world, item_runtime, background, screen_height);
+    let mut labels = if background == InventoryScreenBackground::Beacon {
+        hud_beacon_text_labels(item_runtime)
+    } else {
+        hud_server_opened_container_labels(world, item_runtime, background, screen_height)
+    };
     match background {
         InventoryScreenBackground::Anvil => {
             if let Some(text) = local_state
@@ -13842,6 +13869,45 @@ fn hud_inventory_text_labels(
         }
         InventoryScreenBackground::Lectern => {}
         _ => {}
+    }
+    labels
+}
+
+fn hud_beacon_text_labels(item_runtime: Option<&NativeItemRuntime>) -> Vec<HudInventoryTextLabel> {
+    let mut labels = Vec::with_capacity(2);
+    for (translation_key, fallback, center_x) in [
+        (
+            "block.minecraft.beacon.primary",
+            "Primary Power",
+            BEACON_PRIMARY_LABEL_CENTER_X,
+        ),
+        (
+            "block.minecraft.beacon.secondary",
+            "Secondary Power",
+            BEACON_SECONDARY_LABEL_CENTER_X,
+        ),
+    ] {
+        let text = localized_gui_text(item_runtime, translation_key, fallback);
+        let bounds_x =
+            center_x - i32::try_from(CONTAINER_CENTERED_LABEL_WIDTH).unwrap_or(i32::MAX) / 2;
+        labels.push(HudInventoryTextLabel {
+            x: bounds_x,
+            y: BEACON_LABEL_Y,
+            width: CONTAINER_LABEL_WIDTH,
+            text: text.clone(),
+            tint: BEACON_LABEL_TEXT_COLOR,
+            background: None,
+            input: None,
+            scrolling: Some(HudInventoryScrollingText {
+                x: bounds_x,
+                y: BEACON_LABEL_Y - 1,
+                width: CONTAINER_CENTERED_LABEL_WIDTH,
+                height: CONTAINER_TEXT_LINE_HEIGHT,
+            }),
+            shadow: false,
+            font: None,
+            runs: Vec::new(),
+        });
     }
     labels
 }
@@ -14346,6 +14412,67 @@ fn hud_recipe_book_control_tooltip(
         style: None,
         lines: vec![HudInventoryTooltipLine {
             text: localized_gui_text(item_runtime, translation_key, fallback),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            runs: Vec::new(),
+        }],
+    }
+}
+
+fn hud_beacon_tooltip(
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+    selection: (Option<i32>, Option<i32>),
+) -> Option<HudInventoryTooltip> {
+    let (cursor_x, cursor_y) = cursor_position?;
+    for button in beacon_effect_buttons(selection.0) {
+        if !beacon_button_contains(cursor_position, button.x, button.y) {
+            continue;
+        }
+        let descriptor = vanilla_mob_effect_type(button.effect_id)?;
+        let resource_path = descriptor
+            .resource_id
+            .strip_prefix("minecraft:")
+            .unwrap_or(descriptor.resource_id);
+        let translation_key = format!("effect.minecraft.{resource_path}");
+        let fallback = humanize_resource_path(resource_path);
+        let mut text = localized_gui_text(item_runtime, &translation_key, &fallback);
+        if button.upgrade {
+            text.push_str(" II");
+        }
+        return Some(hud_beacon_control_tooltip(text, cursor_x, cursor_y));
+    }
+
+    let action = if beacon_button_contains(
+        cursor_position,
+        BEACON_CONFIRM_BUTTON_X,
+        BEACON_ACTION_BUTTON_Y,
+    ) {
+        Some(("gui.done", "Done"))
+    } else if beacon_button_contains(
+        cursor_position,
+        BEACON_CANCEL_BUTTON_X,
+        BEACON_ACTION_BUTTON_Y,
+    ) {
+        Some(("gui.cancel", "Cancel"))
+    } else {
+        None
+    };
+    let (translation_key, fallback) = action?;
+    Some(hud_beacon_control_tooltip(
+        localized_gui_text(item_runtime, translation_key, fallback),
+        cursor_x,
+        cursor_y,
+    ))
+}
+
+fn hud_beacon_control_tooltip(text: String, x: i32, y: i32) -> HudInventoryTooltip {
+    HudInventoryTooltip {
+        slot_id: u16::MAX,
+        x,
+        y,
+        style: None,
+        lines: vec![HudInventoryTooltipLine {
+            text,
             tint: [1.0, 1.0, 1.0, 1.0],
             runs: Vec::new(),
         }],
@@ -15093,6 +15220,13 @@ fn hud_inventory_floating_items(
             keybind_context,
             partial_tick,
         ),
+        InventoryScreenBackground::Beacon => hud_beacon_example_payment_items(
+            world,
+            item_runtime,
+            terrain_textures,
+            keybind_context,
+            partial_tick,
+        ),
         _ => Vec::new(),
     };
     if background == InventoryScreenBackground::Merchant {
@@ -15121,6 +15255,74 @@ fn hud_inventory_floating_items(
         partial_tick,
         &mut items,
     );
+    items
+}
+
+fn hud_beacon_example_payment_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(item_runtime) = item_runtime else {
+        return Vec::new();
+    };
+    let mut items = Vec::with_capacity(BEACON_EXAMPLE_PAYMENT_ITEMS.len());
+    for (vanilla_item_id, x, y) in BEACON_EXAMPLE_PAYMENT_ITEMS {
+        let Some(resource_id) =
+            vanilla_item_type(vanilla_item_id).map(|item_type| item_type.resource_id)
+        else {
+            continue;
+        };
+        let Some(item_id) = item_runtime.item_protocol_id(resource_id) else {
+            continue;
+        };
+        let stack = ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        let Some(icon) = hud_fake_item_icon_for_stack(
+            world,
+            Some(item_runtime),
+            &stack,
+            None,
+            false,
+            false,
+            false,
+            false,
+            false,
+            keybind_context,
+            0,
+            partial_tick,
+        ) else {
+            continue;
+        };
+        items.push(HudInventoryItem {
+            x,
+            y,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon,
+            scissor: None,
+            draw_decorations: false,
+            block_model: fake_block_item_3d_model(
+                world,
+                &stack,
+                Some(item_runtime),
+                terrain_textures,
+                None,
+                false,
+                false,
+                false,
+                false,
+                false,
+                keybind_context,
+                0,
+            ),
+        });
+    }
     items
 }
 
@@ -15441,8 +15643,18 @@ fn hud_inventory_background_layers(
             let selection = local_state
                 .beacon_effect_selection
                 .unwrap_or_else(|| beacon_effect_selection_from_world(world));
-            push_beacon_effect_button_layers(world, &mut layers, selection);
-            push_beacon_action_button_layers(world, &mut layers, selection);
+            push_beacon_effect_button_layers(
+                world,
+                &mut layers,
+                selection,
+                local_state.cursor_position,
+            );
+            push_beacon_action_button_layers(
+                world,
+                &mut layers,
+                selection,
+                local_state.cursor_position,
+            );
             layers
         }
         InventoryScreenBackground::BrewingStand => {
@@ -16427,11 +16639,19 @@ fn push_beacon_action_button_layers(
     world: &WorldStore,
     layers: &mut Vec<HudInventoryBackgroundLayer>,
     selection: (Option<i32>, Option<i32>),
+    cursor_position: Option<(i32, i32)>,
 ) {
-    let confirm_texture = if beacon_confirm_button_is_active(world, selection) {
-        HudInventoryBackgroundTexture::BeaconButton
-    } else {
+    let confirm_active = beacon_confirm_button_is_active(world, selection);
+    let confirm_texture = if !confirm_active {
         HudInventoryBackgroundTexture::BeaconButtonDisabled
+    } else if beacon_button_contains(
+        cursor_position,
+        BEACON_CONFIRM_BUTTON_X,
+        BEACON_ACTION_BUTTON_Y,
+    ) {
+        HudInventoryBackgroundTexture::BeaconButtonHighlighted
+    } else {
+        HudInventoryBackgroundTexture::BeaconButton
     };
     push_beacon_action_button_layer(
         layers,
@@ -16441,7 +16661,15 @@ fn push_beacon_action_button_layers(
     );
     push_beacon_action_button_layer(
         layers,
-        HudInventoryBackgroundTexture::BeaconButton,
+        if beacon_button_contains(
+            cursor_position,
+            BEACON_CANCEL_BUTTON_X,
+            BEACON_ACTION_BUTTON_Y,
+        ) {
+            HudInventoryBackgroundTexture::BeaconButtonHighlighted
+        } else {
+            HudInventoryBackgroundTexture::BeaconButton
+        },
         HudInventoryBackgroundTexture::BeaconCancel,
         BEACON_CANCEL_BUTTON_X,
     );
@@ -16451,6 +16679,7 @@ fn push_beacon_effect_button_layers(
     world: &WorldStore,
     layers: &mut Vec<HudInventoryBackgroundLayer>,
     selection: (Option<i32>, Option<i32>),
+    cursor_position: Option<(i32, i32)>,
 ) {
     let levels = beacon_levels(world);
     for button in beacon_effect_buttons(selection.0) {
@@ -16463,6 +16692,8 @@ fn push_beacon_effect_button_layers(
             HudInventoryBackgroundTexture::BeaconButtonDisabled
         } else if selected {
             HudInventoryBackgroundTexture::BeaconButtonSelected
+        } else if beacon_button_contains(cursor_position, button.x, button.y) {
+            HudInventoryBackgroundTexture::BeaconButtonHighlighted
         } else {
             HudInventoryBackgroundTexture::BeaconButton
         };
@@ -16497,6 +16728,7 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
         for (column, effect_id) in effects.iter().enumerate() {
             buttons.push(BeaconEffectButton {
                 primary: true,
+                upgrade: false,
                 tier: i16::try_from(tier).unwrap_or_default(),
                 effect_id: *effect_id,
                 x: BEACON_PRIMARY_EFFECT_CENTER_X
@@ -16514,6 +16746,7 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
     for (column, effect_id) in secondary_effects.iter().enumerate() {
         buttons.push(BeaconEffectButton {
             primary: false,
+            upgrade: false,
             tier: 3,
             effect_id: *effect_id,
             x: BEACON_SECONDARY_EFFECT_CENTER_X
@@ -16522,9 +16755,10 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
             y: BEACON_SECONDARY_EFFECT_Y,
         });
     }
-    if let Some(effect_id) = primary_effect {
+    if let Some(effect_id) = primary_effect.filter(|effect_id| beacon_primary_effect(*effect_id)) {
         buttons.push(BeaconEffectButton {
             primary: false,
+            upgrade: true,
             tier: 3,
             effect_id,
             x: BEACON_SECONDARY_EFFECT_CENTER_X
@@ -16535,6 +16769,22 @@ fn beacon_effect_buttons(primary_effect: Option<i32>) -> Vec<BeaconEffectButton>
         });
     }
     buttons
+}
+
+fn beacon_primary_effect(effect_id: i32) -> bool {
+    VANILLA_BEACON_EFFECT_TIERS[..3]
+        .iter()
+        .copied()
+        .flatten()
+        .any(|candidate| *candidate == effect_id)
+}
+
+fn beacon_button_contains(cursor_position: Option<(i32, i32)>, x: i32, y: i32) -> bool {
+    let Some((cursor_x, cursor_y)) = cursor_position else {
+        return false;
+    };
+    let size = i32::try_from(BEACON_EFFECT_BUTTON_SIZE).unwrap_or_default();
+    cursor_x >= x && cursor_x < x + size && cursor_y >= y && cursor_y < y + size
 }
 
 fn beacon_effect_icon_texture(effect_id: i32) -> Option<HudInventoryBackgroundTexture> {
@@ -16576,7 +16826,7 @@ fn beacon_confirm_button_is_active(
     world: &WorldStore,
     selection: (Option<i32>, Option<i32>),
 ) -> bool {
-    open_container_slot_has_item(world, 0) && selection.0.is_some()
+    open_container_slot_has_item(world, 0) && selection.0.is_some_and(beacon_primary_effect)
 }
 
 fn beacon_effect_selection_from_world(world: &WorldStore) -> (Option<i32>, Option<i32>) {
