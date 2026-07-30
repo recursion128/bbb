@@ -2525,6 +2525,7 @@ fn horse_body_armor_trim_follows_foil_and_precedes_saddle() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 64],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 64 * 4],
     }])
     .unwrap()
@@ -2856,6 +2857,7 @@ fn equine_saddle_foil_and_trim_keep_family_models_and_vanilla_order() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 64],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 64 * 4],
     }])
     .unwrap()

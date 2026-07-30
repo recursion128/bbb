@@ -3,6 +3,8 @@ use std::io::Cursor;
 use anyhow::{bail, ensure, Context, Result};
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 
+use crate::StandaloneTextureSampling;
+
 const SKIN_WIDTH: u32 = 64;
 const SKIN_HEIGHT: u32 = 64;
 const LEGACY_SKIN_HEIGHT: u32 = 32;
@@ -13,12 +15,14 @@ const MAX_DYNAMIC_PLAYER_TEXTURE_DIMENSION: u32 = 8_192;
 const MAX_DYNAMIC_PLAYER_TEXTURE_PIXELS: u64 = 16 * 1024 * 1024;
 const MAX_DYNAMIC_PLAYER_TEXTURE_DECODE_BYTES: u64 = 128 * 1024 * 1024;
 
-/// A downloaded player skin after vanilla-compatible size validation and legacy-layout repair.
+/// A player skin after vanilla-compatible size validation and legacy-layout repair.
 ///
 /// The image is always a 64x64 RGBA skin texture ready for a future dynamic texture upload.
+/// Downloaded skins have no pack sampling contract; local ResourceTexture body patches retain one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DynamicPlayerSkinImage {
     pub handle: u64,
+    pub standalone_sampling: Option<StandaloneTextureSampling>,
     pub rgba: Vec<u8>,
 }
 
@@ -29,11 +33,14 @@ impl DynamicPlayerSkinImage {
 /// A variable-size entity texture decoded or loaded for runtime atlas upload.
 ///
 /// This preserves the decoded dimensions and RGBA pixels unchanged. Player cape/elytra downloads
-/// and pack-backed registry variant assets share this renderer boundary.
+/// and pack-backed registry variant assets share this renderer boundary. Pack standalone resources
+/// retain their independent `.png.mcmeta` sampler contract; atlas-owned and downloaded images leave
+/// it absent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DynamicEntityTextureImage {
     pub handle: u64,
     pub size: [u32; 2],
+    pub standalone_sampling: Option<StandaloneTextureSampling>,
     pub rgba: Vec<u8>,
 }
 
@@ -107,6 +114,7 @@ pub fn decode_dynamic_player_texture_png(
     Ok(DynamicEntityTextureImage {
         handle,
         size: [width, height],
+        standalone_sampling: None,
         rgba,
     })
 }
@@ -241,6 +249,7 @@ fn process_dynamic_player_skin_rgba(
 
     Ok(DynamicPlayerSkinImage {
         handle,
+        standalone_sampling: None,
         rgba: image,
     })
 }
@@ -484,6 +493,7 @@ mod tests {
         let skin = decode_dynamic_player_skin_png(77, &png).unwrap();
 
         assert_eq!(skin.handle, 77);
+        assert_eq!(skin.standalone_sampling, None);
         assert_eq!(skin.rgba.len(), 64 * 64 * 4);
         assert_eq!(pixel(&skin.rgba, 0, 0), [0, 0, 99, 255]);
     }
@@ -498,6 +508,7 @@ mod tests {
 
         assert_eq!(texture.handle, 55);
         assert_eq!(texture.size, [64, 32]);
+        assert_eq!(texture.standalone_sampling, None);
         assert_eq!(texture.rgba.len(), 64 * 32 * 4);
         assert_eq!(pixel_with_width(&texture.rgba, 64, 2, 2), [2, 2, 44, 4]);
     }

@@ -1293,6 +1293,7 @@ mod tests {
         let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
             handle: runtime_texture.handle,
             size: [64, 64],
+            standalone_sampling: None,
             rgba: vec![0xff; 64 * 64 * 4],
         }])
         .expect("runtime banner-pattern atlas")
@@ -1371,6 +1372,7 @@ mod tests {
         let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
             handle: trim_texture.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0xff; 64 * 32 * 4],
         }])
         .expect("dynamic trim atlas")

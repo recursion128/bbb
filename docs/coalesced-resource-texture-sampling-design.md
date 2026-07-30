@@ -64,16 +64,18 @@ into the same runtime atlas.
 - `bbb-pack` remains the parser and selected-pack owner of
   `SpriteTextureMetadata`. `ResourceTextureImage.texture_metadata` and
   `SpriteImage.texture_metadata` are the two existing metadata sources.
-- `bbb-render-types::DynamicEntityTextureImage` adds
+- `bbb-render-types::DynamicEntityTextureImage` and
+  `DynamicPlayerSkinImage` add
   `standalone_sampling: Option<StandaloneTextureSampling>`. `Some` means the
   pixels came from a pack standalone resource and require independent
-  ReloadableTexture semantics. `None` retains the current atlas-owned
-  treatment. The renderer does not depend on `bbb-pack`.
+  ReloadableTexture semantics. `None` retains the current atlas-owned or
+  downloaded treatment. The renderer does not depend on `bbb-pack`.
 - `bbb-native::NativeEntityVariantTextureRuntime` maps
   `ResourceTextureImage.texture_metadata` to `Some(...)`.
   `bbb-item-model::load_local_dynamic_player_texture` does the same for local
-  profile resource patches. Atlas-sprite uploads and downloaded profile
-  decodes set `None`.
+  profile cape/elytra resource patches, and
+  `load_local_dynamic_player_skin` does the same for local body resource
+  patches. Atlas-sprite uploads and downloaded profile decodes set `None`.
 - `bbb-renderer` preserves this optional value in
   `EntityDynamicPlayerTextureAtlasEntry` together with the entry's integer
   pixel origin and size. Atlas packing remains the single CPU/GPU owner.
@@ -137,7 +139,8 @@ range, generation key, or fallback API changes.
    profile resources, and explicitly classify every existing image producer.
    Run `scripts/cargo-dev.sh test -p bbb-render-types player_skin`,
    `scripts/cargo-dev.sh test -p bbb-native entity_variant_textures`, and
-   `scripts/cargo-dev.sh test -p bbb-item-model dynamic_player_texture`.
+   `scripts/cargo-dev.sh test -p bbb-item-model
+   player_profile_resource_texture_patch`.
 2. **Atlas and mesh contract.** Preserve integer entry geometry and sampling
    in atlas layouts, add the disabled-by-default vertex payload, fill only
    resource-backed dynamic submissions, and test multi-column layout,

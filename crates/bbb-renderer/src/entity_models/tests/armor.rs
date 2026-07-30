@@ -537,6 +537,7 @@ fn adult_humanoid_armor_trim_uses_runtime_atlas_after_foil() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()
@@ -593,6 +594,7 @@ fn baby_humanoid_armor_suppresses_trim_layer() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()
@@ -633,6 +635,7 @@ fn small_armor_stand_keeps_decal_armor_trim_on_adult_texture_layer() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()
@@ -1846,6 +1849,7 @@ fn equipment_asset_humanoid_layers_preserve_dye_foil_trim_and_declared_order() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x77; 64 * 32 * 4],
     }])
     .unwrap()
@@ -1951,6 +1955,7 @@ fn equipment_asset_selects_leggings_and_baby_layers_and_suppresses_baby_trim() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 64],
+        standalone_sampling: None,
         rgba: vec![0x55; 64 * 64 * 4],
     }])
     .unwrap()

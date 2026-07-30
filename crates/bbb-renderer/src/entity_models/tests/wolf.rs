@@ -730,6 +730,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()
@@ -943,6 +944,7 @@ fn invisible_wolf_body_armor_keeps_decal_trim_submission() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()

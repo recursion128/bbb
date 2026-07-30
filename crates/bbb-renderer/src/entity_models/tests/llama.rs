@@ -606,6 +606,7 @@ fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantic
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: LLAMA_BODY_WHITE_TEXTURE_REF.size,
+        standalone_sampling: None,
         rgba: vec![0xff; 128 * 64 * 4],
     }])
     .unwrap()

@@ -2490,12 +2490,14 @@ mod tests {
             .upload_dynamic_entity_texture(crate::DynamicEntityTextureImage {
                 handle: 42,
                 size: [2, 3],
+                standalone_sampling: None,
                 rgba: vec![63; 2 * 3 * 4],
             })
             .unwrap();
         renderer
             .upload_dynamic_player_skin(crate::DynamicPlayerSkinImage {
                 handle: 43,
+                standalone_sampling: None,
                 rgba: vec![31; 64 * 64 * 4],
             })
             .unwrap();
@@ -3138,6 +3140,7 @@ mod tests {
         renderer
             .upload_dynamic_player_skin(crate::DynamicPlayerSkinImage {
                 handle: 41,
+                standalone_sampling: None,
                 rgba: vec![0xff; 64 * 64 * 4],
             })
             .unwrap();

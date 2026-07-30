@@ -17,11 +17,13 @@ fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light() {
         DynamicEntityTextureImage {
             handle: front.handle,
             size: [32, 16],
+            standalone_sampling: None,
             rgba: vec![0xff; 32 * 16 * 4],
         },
         DynamicEntityTextureImage {
             handle: back.handle,
             size: [16, 16],
+            standalone_sampling: None,
             rgba: vec![0x7f; 16 * 16 * 4],
         },
     ])
@@ -120,11 +122,13 @@ fn painting_tile_facing_uses_vanilla_yaw_mapping() {
         DynamicEntityTextureImage {
             handle: front.handle,
             size: [16, 16],
+            standalone_sampling: None,
             rgba: vec![0xff; 16 * 16 * 4],
         },
         DynamicEntityTextureImage {
             handle: back.handle,
             size: [16, 16],
+            standalone_sampling: None,
             rgba: vec![0xff; 16 * 16 * 4],
         },
     ])

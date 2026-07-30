@@ -120,6 +120,7 @@ mod tests {
             &root,
             &[DynamicPlayerSkinImage {
                 handle: 2,
+                standalone_sampling: None,
                 rgba: skin_rgba,
             }],
             &[DynamicPlayerTextureImage {

@@ -866,11 +866,13 @@ fn nautilus_body_and_saddle_trims_keep_layer_and_collector_order() {
         DynamicEntityTextureImage {
             handle: body_trim_texture.handle,
             size: [128, 128],
+            standalone_sampling: None,
             rgba: vec![0xff; 128 * 128 * 4],
         },
         DynamicEntityTextureImage {
             handle: saddle_trim_texture.handle,
             size: [64, 64],
+            standalone_sampling: None,
             rgba: vec![0xff; 64 * 64 * 4],
         },
     ])

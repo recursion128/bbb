@@ -352,6 +352,7 @@ fn banner_runtime_pattern_uses_dynamic_atlas_without_replacing_static_layers() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: texture.handle,
         size: [64, 64],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 64 * 4],
     }])
     .unwrap()

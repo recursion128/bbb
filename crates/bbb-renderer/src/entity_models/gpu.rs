@@ -5060,6 +5060,7 @@ mod tests {
         renderer
             .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
                 handle: 91,
+                standalone_sampling: None,
                 rgba: vec![0xff; 64 * 64 * 4],
             })
             .unwrap();
@@ -5078,6 +5079,7 @@ mod tests {
         renderer
             .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
                 handle: 91,
+                standalone_sampling: None,
                 rgba: vec![0x44; 64 * 64 * 4],
             })
             .unwrap();

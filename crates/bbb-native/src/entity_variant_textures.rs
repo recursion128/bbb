@@ -3,7 +3,9 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, Result};
 use bbb_pack::PackRoots;
 use bbb_protocol::data_component_types::vanilla_data_component_animal_texture_variant_registries;
-use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
+use bbb_renderer::{
+    DynamicEntityTextureImage, EntityDynamicTexture, Renderer, StandaloneTextureSampling,
+};
 use bbb_world::{
     WorldStore, CAT_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
@@ -316,6 +318,7 @@ impl NativeEntityVariantTextureRuntime {
             uploads.push(DynamicEntityTextureImage {
                 handle: texture.handle,
                 size: [image.width, image.height],
+                standalone_sampling: None,
                 rgba: image.rgba,
             });
             self.entries.insert(
@@ -408,6 +411,10 @@ impl NativeEntityVariantTextureRuntime {
                 uploader.upload_dynamic_entity_texture(DynamicEntityTextureImage {
                     handle: texture.handle,
                     size: image.size,
+                    standalone_sampling: Some(StandaloneTextureSampling::new(
+                        image.texture_metadata.blur,
+                        image.texture_metadata.clamp,
+                    )),
                     rgba: image.rgba,
                 })
             });
@@ -541,6 +548,11 @@ mod tests {
             3,
             2,
         );
+        std::fs::write(
+            sources.join("assets/example/textures/entity/cow/adult.png.mcmeta"),
+            r#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         write_png(
             &sources.join("assets/example/textures/entity/cow/baby.png"),
             2,
@@ -583,6 +595,14 @@ mod tests {
         assert_eq!(uploader.images.len(), 2);
         assert_eq!(uploader.images[0].handle, ready.handle);
         assert_eq!(uploader.images[0].size, [3, 2]);
+        assert_eq!(
+            uploader.images[0].standalone_sampling,
+            Some(StandaloneTextureSampling::new(true, true))
+        );
+        assert_eq!(
+            uploader.images[1].standalone_sampling,
+            Some(StandaloneTextureSampling::default())
+        );
         assert_eq!(
             runtime.status("example:entity/cow/baby"),
             Some(EntityVariantTextureStatus::Failed)

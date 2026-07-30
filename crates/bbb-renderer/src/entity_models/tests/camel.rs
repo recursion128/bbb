@@ -607,6 +607,7 @@ fn camel_saddle_foil_and_trim_use_family_specific_equipment_layers() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [128, 128],
+        standalone_sampling: None,
         rgba: vec![0xff; 128 * 128 * 4],
     }])
     .unwrap()

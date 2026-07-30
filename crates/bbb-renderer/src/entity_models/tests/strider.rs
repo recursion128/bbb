@@ -559,6 +559,7 @@ fn strider_saddle_foil_and_trim_follow_the_base_equipment_layer() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 128],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 128 * 4],
     }])
     .unwrap()

@@ -339,6 +339,7 @@ fn simple_equipment_layers_preserve_skip_dye_foil_trim_and_submission_order() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
         handle: trim_texture.handle,
         size: [64, 64],
+        standalone_sampling: None,
         rgba: vec![0x66; 64 * 64 * 4],
     }])
     .unwrap()

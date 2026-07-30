@@ -364,6 +364,10 @@ pub(super) fn load_local_dynamic_player_skin(
     );
     Ok(DynamicPlayerSkinImage {
         handle: profile_texture_handle(source_id),
+        standalone_sampling: Some(StandaloneTextureSampling::new(
+            image.texture_metadata.blur,
+            image.texture_metadata.clamp,
+        )),
         rgba: image.rgba,
     })
 }

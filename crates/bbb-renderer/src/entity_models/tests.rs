@@ -604,6 +604,7 @@ fn texture_backed_blended_draw_plan_preserves_cross_atlas_distance_order() {
     let (dynamic_atlas, _) =
         build_dynamic_player_skin_atlas(&[crate::player_skin::DynamicPlayerSkinImage {
             handle: dynamic_skin.handle,
+            standalone_sampling: None,
             rgba: vec![0xdd; 64 * 64 * 4],
         }])
         .unwrap();

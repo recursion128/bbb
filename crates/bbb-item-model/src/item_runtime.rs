@@ -51,7 +51,7 @@ use bbb_render_types::{
     EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
     FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, HudComponentTextRun,
     HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, HudTextStyle,
-    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
+    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask, StandaloneTextureSampling,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
@@ -307,6 +307,10 @@ fn load_local_dynamic_player_texture(
         DynamicPlayerTextureImage {
             handle,
             size: [image.width, image.height],
+            standalone_sampling: Some(StandaloneTextureSampling::new(
+                image.texture_metadata.blur,
+                image.texture_metadata.clamp,
+            )),
             rgba: image.rgba,
         },
     ))

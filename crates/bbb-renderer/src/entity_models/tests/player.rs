@@ -642,6 +642,7 @@ fn ready_dynamic_player_skin_deadmau5_ears_use_dynamic_skin_atlas_submission() {
     };
     let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
         handle: dynamic_skin.handle,
+        standalone_sampling: None,
         rgba: vec![0xdd; 64 * 64 * 4],
     }])
     .unwrap()
@@ -1073,6 +1074,7 @@ fn ready_dynamic_player_skin_body_uses_dynamic_cutout_atlas_submission() {
     );
     let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
         handle: dynamic_skin.handle,
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 64 * 4],
     }])
     .unwrap()
@@ -1479,6 +1481,7 @@ fn first_person_ready_dynamic_player_arm_uses_dynamic_skin_translucent_bucket() 
     };
     let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
         handle: dynamic_skin.handle,
+        standalone_sampling: None,
         rgba: vec![0x7f; 64 * 64 * 4],
     }])
     .unwrap()

@@ -666,6 +666,7 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
     let (dynamic_atlas, dynamic_rgba) =
         build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
             handle: dynamic_skin.handle,
+            standalone_sampling: None,
             rgba: rgba.clone(),
         }])
         .unwrap();

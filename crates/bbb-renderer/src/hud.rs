@@ -27439,6 +27439,7 @@ mod tests {
             .upload_dynamic_entity_texture(DynamicEntityTextureImage {
                 handle: 81_261,
                 size: [64, 64],
+                standalone_sampling: None,
                 rgba: [255, 255, 0, 255].repeat(64 * 64),
             })
             .unwrap();

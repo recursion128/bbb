@@ -4769,6 +4769,26 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
         3,
         &elytra_rgba,
     );
+    std::fs::write(
+        assets
+            .join("textures")
+            .join("entity")
+            .join("player")
+            .join("cape")
+            .join("custom.png.mcmeta"),
+        r#"{"texture":{"blur":true,"clamp":false}}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        assets
+            .join("textures")
+            .join("entity")
+            .join("player")
+            .join("elytra")
+            .join("custom.png.mcmeta"),
+        r#"{"texture":{"blur":false,"clamp":true}}"#,
+    )
+    .unwrap();
 
     let mut runtime = NativeItemRuntime::empty_for_test();
     runtime.profile_texture_resources =
@@ -4840,6 +4860,10 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
     let cape_image = cape_download.texture.as_ref().expect("cape image");
     assert_eq!(cape_image.handle, cape.handle);
     assert_eq!(cape_image.size, [4, 2]);
+    assert_eq!(
+        cape_image.standalone_sampling,
+        Some(StandaloneTextureSampling::new(true, false))
+    );
     assert_eq!(cape_image.rgba, cape_rgba);
 
     let elytra_download = downloads
@@ -4850,6 +4874,10 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
     let elytra_image = elytra_download.texture.as_ref().expect("elytra image");
     assert_eq!(elytra_image.handle, elytra.handle);
     assert_eq!(elytra_image.size, [2, 3]);
+    assert_eq!(
+        elytra_image.standalone_sampling,
+        Some(StandaloneTextureSampling::new(false, true))
+    );
     assert_eq!(elytra_image.rgba, elytra_rgba);
 
     assert!(runtime
@@ -4984,6 +5012,16 @@ fn player_profile_resource_texture_patch_loads_local_body_skin() {
         64,
         &body_rgba,
     );
+    std::fs::write(
+        assets
+            .join("textures")
+            .join("entity")
+            .join("player")
+            .join("body")
+            .join("custom.png.mcmeta"),
+        r#"{"texture":{"blur":true,"clamp":true}}"#,
+    )
+    .unwrap();
 
     let mut runtime = NativeItemRuntime::empty_for_test();
     runtime.profile_texture_resources =
@@ -5040,6 +5078,10 @@ fn player_profile_resource_texture_patch_loads_local_body_skin() {
     assert_eq!(downloads[0].url, body_source);
     let image = downloads[0].skin.as_ref().expect("local body skin image");
     assert_eq!(image.handle, expected_skin.handle);
+    assert_eq!(
+        image.standalone_sampling,
+        Some(StandaloneTextureSampling::new(true, true))
+    );
     assert_eq!(image.rgba, body_rgba);
 
     assert_eq!(
