@@ -130,7 +130,8 @@ fn end_gateway_cube_uses_unit_cube_faces_without_beam_when_inactive() {
 
     assert_eq!(meshes.end_gateway.vertices.len(), 8);
     assert_eq!(meshes.end_gateway.indices.len(), 12);
-    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.end_gateway_beam_opaque.vertices.is_empty());
+    assert!(meshes.end_gateway_beam_translucent.vertices.is_empty());
     let min_y = meshes
         .end_gateway
         .vertices
@@ -242,31 +243,103 @@ fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_eq!(meshes.end_gateway.vertices.len(), 8);
-    assert_eq!(meshes.scroll.vertices.len(), 32);
-    assert_eq!(meshes.scroll.indices.len(), 48);
+    assert_eq!(meshes.end_gateway_beam_opaque.vertices.len(), 16);
+    assert_eq!(meshes.end_gateway_beam_opaque.indices.len(), 24);
+    assert_eq!(meshes.end_gateway_beam_translucent.vertices.len(), 16);
+    assert_eq!(meshes.end_gateway_beam_translucent.indices.len(), 24);
+    assert_eq!(meshes.opaque_beam_draws.len(), 1);
+    assert_eq!(
+        (
+            meshes.opaque_beam_draws[0].render_type,
+            meshes.opaque_beam_draws[0].index_start,
+            meshes.opaque_beam_draws[0].index_count
+        ),
+        (EntityModelLayerRenderType::EndGatewayBeamOpaque, 0, 24)
+    );
+    assert_eq!(meshes.submissions.len(), 2);
     assert_eq!(
         meshes.submissions[0].render_type.vanilla_name(),
-        "end_gateway_beam"
+        "beacon_beam"
     );
     assert_eq!(
-        meshes.scroll.vertices[0].tint,
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EndGatewayBeamOpaque
+    );
+    assert_eq!(
+        meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::EndGatewayBeamTranslucent
+    );
+    assert_eq!(
+        meshes.end_gateway_beam_opaque.vertices[0].tint,
         [199.0 / 255.0, 78.0 / 255.0, 189.0 / 255.0, 1.0]
     );
-    assert_eq!(meshes.scroll.vertices[16].tint[3], 32.0 / 255.0);
+    assert_eq!(
+        meshes.end_gateway_beam_translucent.vertices[0].tint[3],
+        32.0 / 255.0
+    );
     let min_y = meshes
-        .scroll
+        .end_gateway_beam_opaque
         .vertices
         .iter()
         .map(|vertex| vertex.position[1])
         .fold(f32::INFINITY, f32::min);
     let max_y = meshes
-        .scroll
+        .end_gateway_beam_opaque
         .vertices
         .iter()
         .map(|vertex| vertex.position[1])
         .fold(f32::NEG_INFINITY, f32::max);
     assert_eq!(min_y, -8.0);
     assert_eq!(max_y, 12.0);
+}
+
+#[test]
+fn end_gateway_beam_sorts_only_translucent_glow_with_camera() {
+    let atlas = atlas_with_portal_textures();
+    let instance = EntityModelInstance::new(
+        -1,
+        EntityModelKind::EndPortalBlock {
+            kind: EndPortalModelKind::EndGateway,
+            faces: portal_faces(),
+        },
+        [10.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_end_gateway_beam(Some(EndGatewayBeamRenderState {
+        scale: 0.5,
+        height: 10,
+        color_argb: 0xFFC74EBD,
+        animation_time: 3.25,
+    }));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[instance],
+        &atlas,
+        None,
+        None,
+        Some([0.0, 64.0, 0.0]),
+        None,
+    );
+
+    assert_eq!(meshes.end_gateway_beam_opaque.indices.len(), 24);
+    assert_eq!(meshes.end_gateway_beam_translucent.indices.len(), 24);
+    let beam_draws = meshes
+        .sorted_main_translucent_draws
+        .iter()
+        .filter_map(|draw| match draw {
+            EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw) => Some(draw),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(beam_draws.len(), 1);
+    assert_eq!(
+        beam_draws[0].render_type,
+        EntityModelLayerRenderType::EndGatewayBeamTranslucent
+    );
+    assert_eq!(
+        (beam_draws[0].index_start, beam_draws[0].index_count),
+        (0, 24)
+    );
 }
 
 #[test]

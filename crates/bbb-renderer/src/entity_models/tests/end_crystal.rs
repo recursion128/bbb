@@ -197,7 +197,7 @@ fn end_crystal_body_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
-    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.end_crystal_beam.vertices.is_empty());
 }
 
 #[test]
@@ -271,32 +271,55 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
         delta.normalize().to_array(),
     );
 
-    assert_eq!(meshes.scroll.vertices.len(), 32);
-    assert_eq!(meshes.scroll.indices.len(), 48);
+    assert_eq!(meshes.end_crystal_beam.vertices.len(), 32);
+    assert_eq!(meshes.end_crystal_beam.indices.len(), 48);
+    assert_eq!(meshes.opaque_beam_draws.len(), 1);
+    assert_eq!(
+        (
+            meshes.opaque_beam_draws[0].render_type,
+            meshes.opaque_beam_draws[0].index_start,
+            meshes.opaque_beam_draws[0].index_count
+        ),
+        (EntityModelLayerRenderType::EndCrystalBeam, 0, 48)
+    );
     let rect = atlas
         .entries
         .iter()
         .find(|entry| entry.texture == END_CRYSTAL_BEAM_TEXTURE_REF)
         .unwrap()
         .uv;
-    assert_eq!(meshes.scroll.vertices[0].uv_rect_min, rect.min);
+    assert_eq!(meshes.end_crystal_beam.vertices[0].uv_rect_min, rect.min);
     assert_eq!(
-        meshes.scroll.vertices[0].uv_rect_size,
+        meshes.end_crystal_beam.vertices[0].uv_rect_size,
         [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]]
     );
-    assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
-    assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        meshes.end_crystal_beam.vertices[0].tint,
+        [0.0, 0.0, 0.0, 1.0]
+    );
+    assert_eq!(
+        meshes.end_crystal_beam.vertices[1].tint,
+        [1.0, 1.0, 1.0, 1.0]
+    );
     assert!(meshes
-        .scroll
+        .end_crystal_beam
         .vertices
         .iter()
         .all(|vertex| vertex.light == beam_submit.light && vertex.overlay == beam_submit.overlay));
-    assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
-    assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
+    assert_close3(
+        meshes.end_crystal_beam.vertices[0].normal,
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::NEG_Y)
+            .normalize()
+            .to_array(),
+    );
+    assert_eq!(meshes.end_crystal_beam.vertices[0].local_uv[0], 0.0);
+    assert_eq!(meshes.end_crystal_beam.vertices[3].local_uv[0], 0.125);
     let length = delta.length();
     assert!(
-        (meshes.scroll.vertices[1].local_uv[1]
-            - meshes.scroll.vertices[0].local_uv[1]
+        (meshes.end_crystal_beam.vertices[1].local_uv[1]
+            - meshes.end_crystal_beam.vertices[0].local_uv[1]
             - length / 32.0)
             .abs()
             < 1.0e-6
@@ -374,10 +397,48 @@ fn end_crystal_beam_submission_survives_missing_beam_texture_atlas_entry() {
         delta.normalize().to_array(),
     );
     assert!(
-        meshes.scroll.vertices.is_empty(),
+        meshes.end_crystal_beam.vertices.is_empty(),
         "missing end_crystal_beam.png suppresses only folded beam geometry"
     );
-    assert!(meshes.scroll.indices.is_empty());
+    assert!(meshes.end_crystal_beam.indices.is_empty());
+    assert!(meshes.opaque_beam_draws.is_empty());
+}
+
+#[test]
+fn end_crystal_beam_ranges_preserve_multiple_submit_boundaries() {
+    let images = vec![
+        blank_texture(END_CRYSTAL_TEXTURE_REF),
+        blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF),
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instances = [
+        EntityModelInstance::end_crystal(454, [0.0, 64.0, 0.0], 0.0).with_end_crystal_beam(Some(
+            EndCrystalBeamRenderState {
+                beam_offset: [4.0, 2.0, 0.0],
+            },
+        )),
+        EntityModelInstance::end_crystal(455, [8.0, 64.0, 0.0], 0.0).with_end_crystal_beam(Some(
+            EndCrystalBeamRenderState {
+                beam_offset: [-4.0, 2.0, 0.0],
+            },
+        )),
+    ];
+
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+
+    assert_eq!(meshes.end_crystal_beam.indices.len(), 96);
+    assert_eq!(meshes.opaque_beam_draws.len(), 2);
+    assert_eq!(
+        meshes
+            .opaque_beam_draws
+            .iter()
+            .map(|draw| (draw.render_type, draw.index_start, draw.index_count))
+            .collect::<Vec<_>>(),
+        vec![
+            (EntityModelLayerRenderType::EndCrystalBeam, 0, 48),
+            (EntityModelLayerRenderType::EndCrystalBeam, 48, 48),
+        ]
+    );
 }
 
 #[test]

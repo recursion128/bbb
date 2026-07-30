@@ -145,6 +145,7 @@ impl Renderer {
         take_owner!(entity_model_translucent_emissive_mesh);
         take_owner!(entity_model_item_entity_translucent_mesh);
         take_owner!(entity_model_item_entity_translucent_cull_mesh);
+        take_owner!(entity_model_opaque_beam_draws);
         take_owner!(entity_model_sorted_main_translucent_draws);
         take_owner!(entity_model_sorted_translucent_draws);
         take_owner!(entity_shadow_texture);
@@ -182,6 +183,10 @@ impl Renderer {
         take_owner!(first_person_dynamic_player_arm_mesh);
         take_owner!(entity_model_scroll_mesh);
         take_owner!(entity_model_scroll_additive_mesh);
+        take_owner!(entity_model_guardian_beam_mesh);
+        take_owner!(entity_model_end_crystal_beam_mesh);
+        take_owner!(entity_model_end_gateway_beam_opaque_mesh);
+        take_owner!(entity_model_end_gateway_beam_translucent_mesh);
         take_owner!(entity_model_bounds);
 
         // Sky/environment owners rebuilt from pack resources.

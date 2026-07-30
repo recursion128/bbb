@@ -147,16 +147,16 @@ pub(super) use layers::{
     copper_golem_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
     creeper_textured_layer_passes, custom_head_skull_layer_pass,
     decorated_pot_textured_layer_passes, donkey_textured_layer_passes,
-    drowned_textured_layer_passes, end_crystal_textured_layer_passes, end_gateway_beam_layer_pass,
-    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, equipment_layer_pass, evoker_fangs_textured_layer_passes,
-    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, horse_textured_layer_passes,
-    humanoid_armor_layer_pass, husk_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
-    llama_spit_textured_layer_passes, llama_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    drowned_textured_layer_passes, end_crystal_textured_layer_passes,
+    end_gateway_beam_layer_passes, ender_dragon_textured_layer_passes,
+    enderman_textured_layer_passes, endermite_textured_layer_passes, equipment_layer_pass,
+    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, horse_textured_layer_passes, humanoid_armor_layer_pass,
+    husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
+    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, player_cape_layer_pass,
@@ -301,6 +301,7 @@ pub(crate) enum EntityModelTranslucentDrawRange {
     Textured(EntityModelTexturedDrawRange),
     Scroll(EntityModelScrollDrawRange),
     AdditiveScroll(EntityModelScrollDrawRange),
+    BeaconBeamTranslucent(EntityModelScrollDrawRange),
     PositionColor(EntityModelPositionColorDrawRange),
     Portal(EntityModelPortalDrawRange),
 }
@@ -327,8 +328,28 @@ pub(crate) struct EntityModelPortalDrawRange {
 
 struct PendingSortedScrollUpload {
     render_type: EntityModelLayerRenderType,
+    owner: EntityModelScrollOwner,
     sort_key: EntityModelSubmitSortKey,
     mesh: EntityModelScrollMesh,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntityModelScrollOwner {
+    BreezeWind,
+    EnergySwirl,
+    GuardianBeam,
+    EndCrystalBeam,
+    EndGatewayBeamOpaque,
+    EndGatewayBeamTranslucent,
+}
+
+impl EntityModelScrollOwner {
+    const fn is_opaque_beam(self) -> bool {
+        matches!(
+            self,
+            Self::GuardianBeam | Self::EndCrystalBeam | Self::EndGatewayBeamOpaque
+        )
+    }
 }
 
 pub(super) struct EntityModelTexturedMeshes {
@@ -403,6 +424,14 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
     pub(super) scroll_additive: EntityModelScrollMesh,
+    /// Vanilla `GuardianRenderer` custom beam geometry through exact `entityCutout` state.
+    pub(super) guardian_beam: EntityModelScrollMesh,
+    /// Vanilla opaque `endCrystalBeam` custom geometry.
+    pub(super) end_crystal_beam: EntityModelScrollMesh,
+    /// Vanilla opaque `beaconBeam` core used by the End Gateway.
+    pub(super) end_gateway_beam_opaque: EntityModelScrollMesh,
+    /// Vanilla translucent `beaconBeam` glow used by the End Gateway.
+    pub(super) end_gateway_beam_translucent: EntityModelScrollMesh,
     /// Vanilla `entityGlint` folded through the glint texture transform.
     pub(super) entity_glint: EntityModelScrollMesh,
     /// Vanilla `armorEntityGlint` folded through the armor glint texture transform.
@@ -435,6 +464,9 @@ pub(super) struct EntityModelTexturedMeshes {
     /// `end_sky.png` and `end_portal.png` together, so they cannot use either the single-texture
     /// entity submission or no-texture custom-geometry metadata.
     pub(super) portal_submissions: Vec<EntityModelPortalSubmission>,
+    /// Opaque custom beam ranges preserve submit identity while sharing one GPU buffer per exact
+    /// render state. They draw in the main solid feature phase, never the translucent plan.
+    pub(super) opaque_beam_draws: Vec<EntityModelScrollDrawRange>,
     pub(super) sorted_main_translucent_draws: Vec<EntityModelTranslucentDrawRange>,
     pub(super) sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
@@ -496,6 +528,10 @@ impl EntityModelTexturedMeshes {
             dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
+            guardian_beam: EntityModelScrollMesh::new(),
+            end_crystal_beam: EntityModelScrollMesh::new(),
+            end_gateway_beam_opaque: EntityModelScrollMesh::new(),
+            end_gateway_beam_translucent: EntityModelScrollMesh::new(),
             entity_glint: EntityModelScrollMesh::new(),
             armor_entity_glint: EntityModelScrollMesh::new(),
             water_mask: EntityModelMesh::new(),
@@ -507,6 +543,7 @@ impl EntityModelTexturedMeshes {
             submissions: Vec::new(),
             custom_submissions: Vec::new(),
             portal_submissions: Vec::new(),
+            opaque_beam_draws: Vec::new(),
             sorted_main_translucent_draws: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
@@ -563,6 +600,9 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::EndCrystalBeam
+            | EntityModelLayerRenderBucket::BeaconBeamOpaque
+            | EntityModelLayerRenderBucket::BeaconBeamTranslucent
             | EntityModelLayerRenderBucket::PositionColor
             | EntityModelLayerRenderBucket::Portal => {
                 panic!("scroll/dissolve render types are not emitted into textured mesh buckets")
@@ -605,6 +645,9 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::EndCrystalBeam
+            | EntityModelLayerRenderBucket::BeaconBeamOpaque
+            | EntityModelLayerRenderBucket::BeaconBeamTranslucent
             | EntityModelLayerRenderBucket::PositionColor
             | EntityModelLayerRenderBucket::Portal
             | EntityModelLayerRenderBucket::OutlineOnly
@@ -658,6 +701,9 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::Dissolve
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::EndCrystalBeam
+            | EntityModelLayerRenderBucket::BeaconBeamOpaque
+            | EntityModelLayerRenderBucket::BeaconBeamTranslucent
             | EntityModelLayerRenderBucket::PositionColor
             | EntityModelLayerRenderBucket::Portal
             | EntityModelLayerRenderBucket::OutlineOnly
@@ -766,26 +812,6 @@ impl EntityModelTexturedMeshes {
         })
     }
 
-    fn scroll_draw_key(
-        &self,
-        submission: EntityModelRenderSubmission,
-        insertion_index: usize,
-    ) -> Option<EntityModelSubmitSortKey> {
-        let camera_position = self.sort_camera_position?;
-        let position = submission.transform.transform_point3(Vec3::ZERO);
-        let camera = Vec3::from_array(camera_position);
-        let distance_sq = (position - camera).length_squared();
-        Some(EntityModelSubmitSortKey {
-            order: submission.order,
-            distance_sq: if distance_sq.is_finite() {
-                distance_sq
-            } else {
-                0.0
-            },
-            insertion_index,
-        })
-    }
-
     fn custom_geometry_draw_key(
         &self,
         submission: EntityModelCustomGeometrySubmission,
@@ -875,7 +901,7 @@ impl EntityModelTexturedMeshes {
     fn push_scroll_draw_range(
         &mut self,
         render_type: EntityModelLayerRenderType,
-        bucket: EntityModelLayerRenderBucket,
+        owner: EntityModelScrollOwner,
         sort_key: EntityModelSubmitSortKey,
         index_start: u32,
         index_count: u32,
@@ -891,14 +917,21 @@ impl EntityModelTexturedMeshes {
             index_start,
             index_count,
         };
-        match bucket {
-            EntityModelLayerRenderBucket::Scroll => self
+        match owner {
+            EntityModelScrollOwner::BreezeWind => self
                 .sorted_main_translucent_draws
                 .push(EntityModelTranslucentDrawRange::Scroll(draw)),
-            EntityModelLayerRenderBucket::AdditiveScroll => self
+            EntityModelScrollOwner::EnergySwirl => self
                 .sorted_main_translucent_draws
                 .push(EntityModelTranslucentDrawRange::AdditiveScroll(draw)),
-            _ => {}
+            EntityModelScrollOwner::EndGatewayBeamTranslucent => self
+                .sorted_main_translucent_draws
+                .push(EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw)),
+            EntityModelScrollOwner::GuardianBeam
+            | EntityModelScrollOwner::EndCrystalBeam
+            | EntityModelScrollOwner::EndGatewayBeamOpaque => {
+                unreachable!("opaque scroll owners never enter the translucent sort plan")
+            }
         }
     }
 
@@ -968,18 +1001,32 @@ impl EntityModelTexturedMeshes {
         self.pending_sorted_scroll_uploads
             .sort_by(|left, right| compare_submit_sort_key(left.sort_key, right.sort_key));
         for upload in std::mem::take(&mut self.pending_sorted_scroll_uploads) {
-            let bucket = upload.render_type.mesh_bucket();
             let index_count = u32::try_from(upload.mesh.indices.len())
                 .expect("sorted scroll index count fits in u32");
-            let index_start = append_scroll_mesh(scroll_bucket_mut(self, bucket), upload.mesh);
+            let index_start =
+                append_scroll_mesh(scroll_owner_mesh_mut(self, upload.owner), upload.mesh);
             self.push_scroll_draw_range(
                 upload.render_type,
-                bucket,
+                upload.owner,
                 upload.sort_key,
                 index_start,
                 index_count,
             );
         }
+        self.opaque_beam_draws.sort_by(|left, right| {
+            compare_submit_sort_key(
+                EntityModelSubmitSortKey {
+                    order: left.order,
+                    distance_sq: left.distance_sq,
+                    insertion_index: left.insertion_index,
+                },
+                EntityModelSubmitSortKey {
+                    order: right.order,
+                    distance_sq: right.distance_sq,
+                    insertion_index: right.insertion_index,
+                },
+            )
+        });
         self.sorted_main_translucent_draws.sort_by(|left, right| {
             compare_submit_sort_key(
                 translucent_draw_sort_key(*left),
@@ -997,11 +1044,14 @@ fn translucent_draw_sort_key(draw: EntityModelTranslucentDrawRange) -> EntityMod
             insertion_index: draw.insertion_index,
         },
         EntityModelTranslucentDrawRange::Scroll(draw)
-        | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => EntityModelSubmitSortKey {
-            order: draw.order,
-            distance_sq: draw.distance_sq,
-            insertion_index: draw.insertion_index,
-        },
+        | EntityModelTranslucentDrawRange::AdditiveScroll(draw)
+        | EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw) => {
+            EntityModelSubmitSortKey {
+                order: draw.order,
+                distance_sq: draw.distance_sq,
+                insertion_index: draw.insertion_index,
+            }
+        }
         EntityModelTranslucentDrawRange::PositionColor(draw) => EntityModelSubmitSortKey {
             order: draw.order,
             distance_sq: draw.distance_sq,
@@ -2674,21 +2724,34 @@ fn fill_textured_submission_vertices(
     }
 }
 
-fn scroll_mesh_mut(
-    meshes: &mut EntityModelTexturedMeshes,
-    render_type: EntityModelLayerRenderType,
-) -> &mut EntityModelScrollMesh {
-    scroll_bucket_mut(meshes, render_type.mesh_bucket())
+fn scroll_owner_for_render_type(render_type: EntityModelLayerRenderType) -> EntityModelScrollOwner {
+    match render_type {
+        EntityModelLayerRenderType::BreezeWind => EntityModelScrollOwner::BreezeWind,
+        EntityModelLayerRenderType::EnergySwirl => EntityModelScrollOwner::EnergySwirl,
+        EntityModelLayerRenderType::EndCrystalBeam => EntityModelScrollOwner::EndCrystalBeam,
+        EntityModelLayerRenderType::EndGatewayBeamOpaque => {
+            EntityModelScrollOwner::EndGatewayBeamOpaque
+        }
+        EntityModelLayerRenderType::EndGatewayBeamTranslucent => {
+            EntityModelScrollOwner::EndGatewayBeamTranslucent
+        }
+        _ => panic!("only dedicated scroll render types are emitted through the scroll mesh"),
+    }
 }
 
-fn scroll_bucket_mut(
+fn scroll_owner_mesh_mut(
     meshes: &mut EntityModelTexturedMeshes,
-    bucket: EntityModelLayerRenderBucket,
+    owner: EntityModelScrollOwner,
 ) -> &mut EntityModelScrollMesh {
-    match bucket {
-        EntityModelLayerRenderBucket::Scroll => &mut meshes.scroll,
-        EntityModelLayerRenderBucket::AdditiveScroll => &mut meshes.scroll_additive,
-        _ => panic!("only scroll render types are emitted through the scroll mesh"),
+    match owner {
+        EntityModelScrollOwner::BreezeWind => &mut meshes.scroll,
+        EntityModelScrollOwner::EnergySwirl => &mut meshes.scroll_additive,
+        EntityModelScrollOwner::GuardianBeam => &mut meshes.guardian_beam,
+        EntityModelScrollOwner::EndCrystalBeam => &mut meshes.end_crystal_beam,
+        EntityModelScrollOwner::EndGatewayBeamOpaque => &mut meshes.end_gateway_beam_opaque,
+        EntityModelScrollOwner::EndGatewayBeamTranslucent => {
+            &mut meshes.end_gateway_beam_translucent
+        }
     }
 }
 
@@ -2780,17 +2843,19 @@ fn render_scrolled_textured_submission(
     fill_textured_submission_vertices(&mut scratch, 0, submission);
     let mut scroll = EntityModelScrollMesh::new();
     append_scrolled_textured_mesh(&mut scroll, &scratch, entry.uv, uv_offset);
+    let owner = scroll_owner_for_render_type(submit.render_type);
     if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
         meshes
             .pending_sorted_scroll_uploads
             .push(PendingSortedScrollUpload {
                 render_type: submit.render_type,
+                owner,
                 sort_key,
                 mesh: scroll,
             });
         return;
     }
-    append_scroll_mesh(scroll_mesh_mut(meshes, submit.render_type), scroll);
+    append_scroll_mesh(scroll_owner_mesh_mut(meshes, owner), scroll);
 }
 
 pub(in crate::entity_models) fn render_no_overlay_scrolled_textured_layers<M: EntityModel>(
@@ -2818,7 +2883,7 @@ pub(in crate::entity_models) fn render_no_overlay_scrolled_textured_layers<M: En
 fn render_scroll_geometry_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
-    target_bucket: EntityModelLayerRenderBucket,
+    owner: EntityModelScrollOwner,
     atlas: &EntityModelTextureAtlasLayout,
     emit: impl FnOnce(
         &mut EntityModelScrollMesh,
@@ -2837,27 +2902,31 @@ fn render_scroll_geometry_submission(
             .pending_sorted_scroll_uploads
             .push(PendingSortedScrollUpload {
                 render_type: submit.render_type,
+                owner,
                 sort_key,
                 mesh,
             });
         return;
     }
-    if let Some(sort_key) = meshes.scroll_draw_key(submission, insertion_index) {
-        let mut mesh = EntityModelScrollMesh::new();
-        emit(&mut mesh, entry, submission);
-        let index_count =
-            u32::try_from(mesh.indices.len()).expect("scroll geometry index count fits in u32");
-        let index_start = append_scroll_mesh(scroll_bucket_mut(meshes, target_bucket), mesh);
-        meshes.push_scroll_draw_range(
-            submit.render_type,
-            target_bucket,
-            sort_key,
-            index_start,
-            index_count,
-        );
-        return;
+    let target = scroll_owner_mesh_mut(meshes, owner);
+    let index_start =
+        u32::try_from(target.indices.len()).expect("opaque beam index start fits in u32");
+    emit(target, entry, submission);
+    if owner.is_opaque_beam() {
+        let index_end =
+            u32::try_from(target.indices.len()).expect("opaque beam index end fits in u32");
+        let index_count = index_end.saturating_sub(index_start);
+        if index_count > 0 {
+            meshes.opaque_beam_draws.push(EntityModelScrollDrawRange {
+                render_type: submit.render_type,
+                order: submission.order,
+                distance_sq: 0.0,
+                insertion_index,
+                index_start,
+                index_count,
+            });
+        }
     }
-    emit(scroll_bucket_mut(meshes, target_bucket), entry, submission);
 }
 
 fn render_textured_root_pass(
@@ -3399,7 +3468,7 @@ pub(in crate::entity_models) fn render_guardian_beam(
     render_scroll_geometry_submission(
         meshes,
         submit,
-        EntityModelLayerRenderBucket::Scroll,
+        EntityModelScrollOwner::GuardianBeam,
         atlas,
         |mesh, entry, submit| {
             let top = length;
@@ -3431,6 +3500,11 @@ pub(in crate::entity_models) fn render_guardian_beam(
             let rect = entry.uv;
             let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
             let base = u32::try_from(mesh.vertices.len()).expect("scroll vertex count fits in u32");
+            let normal = submit
+                .transform
+                .transform_vector3(Vec3::Y)
+                .normalize_or_zero()
+                .to_array();
             for (x, y, z, u, v) in vertices {
                 let world = submit.transform.transform_point3(Vec3::new(x, y, z));
                 mesh.vertices.push(EntityModelScrollVertex {
@@ -3441,6 +3515,7 @@ pub(in crate::entity_models) fn render_guardian_beam(
                     tint: submit.tint,
                     light: submit.light,
                     overlay: submit.overlay,
+                    normal,
                 });
             }
             // Each quad → two triangles (the scroll pipeline renders cull-off, so winding is
@@ -3872,40 +3947,44 @@ fn render_end_gateway_beam(
     }
     let tint = argb_to_tint(beam.color_argb);
     let transform = Mat4::from_translation(Vec3::from_array(instance.position));
-    let submit =
-        no_overlay_layer_submission_with_tint(end_gateway_beam_layer_pass(), tint, transform)
+    let [opaque_pass, translucent_pass] = end_gateway_beam_layer_passes();
+    let opaque_submit = no_overlay_layer_submission_with_tint(opaque_pass, tint, transform)
+        .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+    let translucent_submit =
+        no_overlay_layer_submission_with_tint(translucent_pass, tint, transform)
             .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
-    emit_end_gateway_beam_submission(meshes, submit, atlas, beam);
+    emit_end_gateway_beam_submission(meshes, opaque_submit, translucent_submit, atlas, beam);
 }
 
 fn emit_end_gateway_beam_submission(
     meshes: &mut EntityModelTexturedMeshes,
-    submit: EntityModelSubmissionEmit,
+    opaque_submit: EntityModelSubmissionEmit,
+    translucent_submit: EntityModelSubmissionEmit,
     atlas: &EntityModelTextureAtlasLayout,
     beam: EndGatewayBeamRenderState,
 ) {
+    let beam_start = -beam.height;
+    let height = beam.height * 2;
+    let beam_end = beam_start + height;
+    let transform = opaque_submit.transform * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5));
+    let scroll = if height < 0 {
+        beam.animation_time
+    } else {
+        -beam.animation_time
+    };
+    let tex_v_off = frac(scroll * 0.2 - (scroll * 0.1).floor());
+    let vv2 = -1.0 + tex_v_off;
+
+    let solid_radius = 0.15;
+    let solid_vv1 = height as f32 * beam.scale * (0.5 / solid_radius) + vv2;
+    let inner_transform =
+        transform * Mat4::from_rotation_y((beam.animation_time * 2.25 - 45.0).to_radians());
     render_scroll_geometry_submission(
         meshes,
-        submit,
-        EntityModelLayerRenderBucket::Scroll,
+        opaque_submit,
+        EntityModelScrollOwner::EndGatewayBeamOpaque,
         atlas,
         |mesh, entry, submit| {
-            let beam_start = -beam.height;
-            let height = beam.height * 2;
-            let beam_end = beam_start + height;
-            let transform = submit.transform * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5));
-            let scroll = if height < 0 {
-                beam.animation_time
-            } else {
-                -beam.animation_time
-            };
-            let tex_v_off = frac(scroll * 0.2 - (scroll * 0.1).floor());
-            let vv2 = -1.0 + tex_v_off;
-
-            let solid_radius = 0.15;
-            let solid_vv1 = height as f32 * beam.scale * (0.5 / solid_radius) + vv2;
-            let inner_transform =
-                transform * Mat4::from_rotation_y((beam.animation_time * 2.25 - 45.0).to_radians());
             append_beacon_beam_part(
                 mesh,
                 entry,
@@ -3922,9 +4001,17 @@ fn emit_end_gateway_beam_submission(
                 solid_vv1,
                 vv2,
             );
+        },
+    );
 
-            let glow_radius = 0.175;
-            let glow_vv1 = height as f32 * beam.scale + vv2;
+    let glow_radius = 0.175;
+    let glow_vv1 = height as f32 * beam.scale + vv2;
+    render_scroll_geometry_submission(
+        meshes,
+        translucent_submit,
+        EntityModelScrollOwner::EndGatewayBeamTranslucent,
+        atlas,
+        |mesh, entry, submit| {
             let mut glow_tint = submit.tint;
             glow_tint[3] = 32.0 / 255.0;
             append_beacon_beam_part(
@@ -4053,6 +4140,10 @@ fn append_beacon_beam_vertex(
         tint,
         light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
         overlay: ENTITY_VERTEX_NO_OVERLAY,
+        normal: transform
+            .transform_vector3(Vec3::Y)
+            .normalize_or_zero()
+            .to_array(),
     });
 }
 
@@ -4217,7 +4308,7 @@ fn emit_crystal_beam_submission(
     render_scroll_geometry_submission(
         meshes,
         submit,
-        submit.render_type.mesh_bucket(),
+        EntityModelScrollOwner::EndCrystalBeam,
         atlas,
         |mesh, entry, submit| {
             let rect = entry.uv;
@@ -4253,6 +4344,11 @@ fn emit_crystal_beam_submission(
                         [0.0, 0.0, 0.0, 1.0],
                     ),
                 ] {
+                    let normal = submit
+                        .transform
+                        .transform_vector3(Vec3::NEG_Y)
+                        .normalize_or_zero()
+                        .to_array();
                     mesh.vertices.push(EntityModelScrollVertex {
                         position: submit.transform.transform_point3(position).to_array(),
                         local_uv,
@@ -4261,6 +4357,7 @@ fn emit_crystal_beam_submission(
                         tint,
                         light: submit.light,
                         overlay: submit.overlay,
+                        normal,
                     });
                 }
                 mesh.indices.extend_from_slice(&[

@@ -537,31 +537,54 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
         delta.normalize().to_array(),
     );
 
-    assert_eq!(meshes.scroll.vertices.len(), 32);
-    assert_eq!(meshes.scroll.indices.len(), 48);
+    assert_eq!(meshes.end_crystal_beam.vertices.len(), 32);
+    assert_eq!(meshes.end_crystal_beam.indices.len(), 48);
+    assert_eq!(meshes.opaque_beam_draws.len(), 1);
+    assert_eq!(
+        (
+            meshes.opaque_beam_draws[0].render_type,
+            meshes.opaque_beam_draws[0].index_start,
+            meshes.opaque_beam_draws[0].index_count
+        ),
+        (EntityModelLayerRenderType::EndCrystalBeam, 0, 48)
+    );
     let rect = atlas
         .entries
         .iter()
         .find(|entry| entry.texture == END_CRYSTAL_BEAM_TEXTURE_REF)
         .unwrap()
         .uv;
-    assert_eq!(meshes.scroll.vertices[0].uv_rect_min, rect.min);
+    assert_eq!(meshes.end_crystal_beam.vertices[0].uv_rect_min, rect.min);
     assert_eq!(
-        meshes.scroll.vertices[0].uv_rect_size,
+        meshes.end_crystal_beam.vertices[0].uv_rect_size,
         [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]]
     );
-    assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
-    assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        meshes.end_crystal_beam.vertices[0].tint,
+        [0.0, 0.0, 0.0, 1.0]
+    );
+    assert_eq!(
+        meshes.end_crystal_beam.vertices[1].tint,
+        [1.0, 1.0, 1.0, 1.0]
+    );
     assert!(meshes
-        .scroll
+        .end_crystal_beam
         .vertices
         .iter()
         .all(|vertex| vertex.light == beam_submit.light && vertex.overlay == beam_submit.overlay));
-    assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
-    assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
+    assert_close3(
+        meshes.end_crystal_beam.vertices[0].normal,
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::NEG_Y)
+            .normalize()
+            .to_array(),
+    );
+    assert_eq!(meshes.end_crystal_beam.vertices[0].local_uv[0], 0.0);
+    assert_eq!(meshes.end_crystal_beam.vertices[3].local_uv[0], 0.125);
     assert!(
-        (meshes.scroll.vertices[1].local_uv[1]
-            - meshes.scroll.vertices[0].local_uv[1]
+        (meshes.end_crystal_beam.vertices[1].local_uv[1]
+            - meshes.end_crystal_beam.vertices[0].local_uv[1]
             - delta.length() / 32.0)
             .abs()
             < 1.0e-6
@@ -641,10 +664,11 @@ fn ender_dragon_healing_beam_submission_survives_missing_beam_texture_atlas_entr
         delta.normalize().to_array(),
     );
     assert!(
-        meshes.scroll.vertices.is_empty(),
+        meshes.end_crystal_beam.vertices.is_empty(),
         "missing end_crystal_beam.png suppresses only folded healing-beam geometry"
     );
-    assert!(meshes.scroll.indices.is_empty());
+    assert!(meshes.end_crystal_beam.indices.is_empty());
+    assert!(meshes.opaque_beam_draws.is_empty());
 }
 
 #[test]

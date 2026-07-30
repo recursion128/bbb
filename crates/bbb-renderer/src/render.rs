@@ -413,6 +413,14 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 stats.entity_model_draw_calls += 1;
             }
+            for draw in &self.entity_model_opaque_beam_draws {
+                self.draw_entity_opaque_beam_range(
+                    &mut pass,
+                    *draw,
+                    &mut stats.pipeline_switches,
+                    &mut stats.entity_model_draw_calls,
+                );
+            }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_solid_z_offset_forward_mesh,
                 &self.entity_model_texture_atlas,
@@ -4586,7 +4594,10 @@ impl Renderer {
                 || self.entity_model_end_portal_mesh.is_some()
                 || self.entity_model_end_gateway_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
-                || self.entity_model_scroll_additive_mesh.is_some()))
+                || self.entity_model_scroll_additive_mesh.is_some()
+                || self
+                    .entity_model_end_gateway_beam_translucent_mesh
+                    .is_some()))
             || (self.entity_dynamic_player_skin_atlas.is_some()
                 && self.entity_dynamic_player_skin_translucent_mesh.is_some())
             || (self.entity_dynamic_player_texture_atlas.is_some()
@@ -4876,7 +4887,8 @@ impl Renderer {
                 entity_model_draw_calls,
             ),
             EntityModelTranslucentDrawRange::Scroll(draw)
-            | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => self
+            | EntityModelTranslucentDrawRange::AdditiveScroll(draw)
+            | EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw) => self
                 .draw_entity_scroll_range(pass, draw, pipeline_switches, entity_model_draw_calls),
             EntityModelTranslucentDrawRange::PositionColor(draw) => self
                 .draw_entity_position_color_range(
@@ -4986,6 +4998,50 @@ impl Renderer {
         }
     }
 
+    fn draw_entity_opaque_beam_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelScrollDrawRange,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        let (mesh, pipeline, uses_lightmap) = match draw.render_type {
+            EntityModelLayerRenderType::EntityCutout => (
+                self.entity_model_guardian_beam_mesh.as_ref(),
+                &self.entity_model_guardian_beam_pipeline,
+                true,
+            ),
+            EntityModelLayerRenderType::EndCrystalBeam => (
+                self.entity_model_end_crystal_beam_mesh.as_ref(),
+                &self.entity_model_end_crystal_beam_pipeline,
+                true,
+            ),
+            EntityModelLayerRenderType::EndGatewayBeamOpaque => (
+                self.entity_model_end_gateway_beam_opaque_mesh.as_ref(),
+                &self.entity_model_beacon_beam_opaque_pipeline,
+                false,
+            ),
+            _ => return,
+        };
+        let (Some(mesh), Some(atlas)) = (mesh, &self.entity_model_texture_atlas) else {
+            return;
+        };
+        let index_end = draw.index_start.saturating_add(draw.index_count);
+        if draw.index_count == 0 || index_end > mesh.index_count {
+            return;
+        }
+        pass.set_pipeline(pipeline);
+        *pipeline_switches += 1;
+        pass.set_bind_group(0, &atlas.bind_group, &[]);
+        if uses_lightmap {
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        }
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
+        *entity_model_draw_calls += 1;
+    }
+
     fn draw_entity_scroll_range<'a>(
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
@@ -4993,20 +5049,29 @@ impl Renderer {
         pipeline_switches: &mut u64,
         entity_model_draw_calls: &mut u64,
     ) {
-        let (mesh, uses_lightmap) = match draw.render_type {
-            EntityModelLayerRenderType::BreezeWind
-            | EntityModelLayerRenderType::EndCrystalBeam
-            | EntityModelLayerRenderType::EndGatewayBeam => {
+        let (mesh, pipeline, uses_lightmap) = match draw.render_type {
+            EntityModelLayerRenderType::BreezeWind => {
                 let Some(mesh) = self.entity_model_scroll_mesh.as_ref() else {
                     return;
                 };
-                (mesh, true)
+                (mesh, &self.entity_model_scroll_pipeline, true)
             }
             EntityModelLayerRenderType::EnergySwirl => {
                 let Some(mesh) = self.entity_model_scroll_additive_mesh.as_ref() else {
                     return;
                 };
-                (mesh, false)
+                (mesh, &self.entity_model_scroll_additive_pipeline, false)
+            }
+            EntityModelLayerRenderType::EndGatewayBeamTranslucent => {
+                let Some(mesh) = self.entity_model_end_gateway_beam_translucent_mesh.as_ref()
+                else {
+                    return;
+                };
+                (
+                    mesh,
+                    &self.entity_model_beacon_beam_translucent_pipeline,
+                    false,
+                )
             }
             _ => return,
         };
@@ -5018,11 +5083,7 @@ impl Renderer {
         let Some(atlas) = &self.entity_model_texture_atlas else {
             return;
         };
-        if draw.render_type == EntityModelLayerRenderType::EnergySwirl {
-            pass.set_pipeline(&self.entity_model_scroll_additive_pipeline);
-        } else {
-            pass.set_pipeline(&self.entity_model_scroll_pipeline);
-        }
+        pass.set_pipeline(pipeline);
         *pipeline_switches += 1;
         pass.set_bind_group(0, &atlas.bind_group, &[]);
         if uses_lightmap {
@@ -5205,6 +5266,18 @@ impl Renderer {
             &self.entity_model_texture_atlas,
         ) {
             pass.set_pipeline(&self.entity_model_scroll_additive_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_end_gateway_beam_translucent_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_beacon_beam_translucent_pipeline);
             *pipeline_switches += 1;
             pass.set_bind_group(0, &atlas.bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
@@ -7233,6 +7306,66 @@ mod tests {
             source[cutout_cull..].contains("entity_dynamic_player_skin_solid_mesh")
                 && source[cutout_cull..].contains("entity_dynamic_player_texture_solid_mesh"),
             "dynamic skin and profile entitySolid buckets use the dedicated pipeline"
+        );
+    }
+
+    #[test]
+    fn entity_beam_states_use_opaque_main_and_translucent_feature_owners() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let opaque_beams = source[main_pass..]
+            .find("for draw in &self.entity_model_opaque_beam_draws")
+            .map(|index| main_pass + index)
+            .expect("opaque custom beam ranges have a dedicated main-pass dispatch");
+        let opaque_helper = source
+            .find("fn draw_entity_opaque_beam_range")
+            .expect("typed opaque beam range helper is present");
+        let translucent_helper = source
+            .find("fn draw_entity_scroll_range")
+            .expect("typed translucent scroll range helper is present");
+        let fallback_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("fallback translucent feature helper is present");
+        let tests_mod = source
+            .find("#[cfg(test)]")
+            .expect("render tests module is present");
+
+        assert!(
+            source[opaque_beams..opaque_helper].contains("self.draw_entity_opaque_beam_range("),
+            "the main solid phase draws recorded opaque beam index ranges"
+        );
+        let opaque_dispatch = &source[opaque_helper..translucent_helper];
+        assert!(
+            opaque_dispatch.contains("self.entity_model_guardian_beam_mesh")
+                && opaque_dispatch.contains("&self.entity_model_guardian_beam_pipeline")
+                && opaque_dispatch.contains("self.entity_model_end_crystal_beam_mesh")
+                && opaque_dispatch.contains("&self.entity_model_end_crystal_beam_pipeline")
+                && opaque_dispatch.contains("self.entity_model_end_gateway_beam_opaque_mesh")
+                && opaque_dispatch.contains("&self.entity_model_beacon_beam_opaque_pipeline"),
+            "Guardian, End Crystal, and beacon core own independent opaque mesh/pipeline pairs"
+        );
+        assert!(
+            opaque_dispatch.contains("if uses_lightmap"),
+            "only entity-shader beam states bind LightTexture in the shared opaque dispatch"
+        );
+
+        let translucent_dispatch = &source[translucent_helper..fallback_helper];
+        assert!(
+            translucent_dispatch.contains("EntityModelLayerRenderType::EndGatewayBeamTranslucent")
+                && translucent_dispatch
+                    .contains("self.entity_model_end_gateway_beam_translucent_mesh")
+                && translucent_dispatch
+                    .contains("self.entity_model_beacon_beam_translucent_pipeline"),
+            "sorted beacon glow ranges select the no-lightmap translucent beacon pipeline"
+        );
+        assert!(
+            source[fallback_helper..tests_mod]
+                .contains("entity_model_end_gateway_beam_translucent_mesh")
+                && source[fallback_helper..tests_mod]
+                    .contains("entity_model_beacon_beam_translucent_pipeline"),
+            "camera-less fallback draws the split beacon glow through the same exact state"
         );
     }
 

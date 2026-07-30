@@ -6,7 +6,7 @@ Status: active.
 
 Close the active Vanilla 26.1 fine-grained/coalesced GPU render-state gap for
 the complete repo-native entity/block-entity render-type surface. Remove every
-remaining semantic state merge among the 29 typed
+remaining semantic state merge among the 30 typed
 `EntityModelLayerRenderType` values without changing the CPU submission graph,
 texture residency, model geometry, or world-to-render extraction boundary.
 
@@ -14,12 +14,12 @@ Completion requires:
 
 - `entitySolid` to preserve low-alpha texels while `entityCutoutCull` keeps the
   `0.1` alpha cutoff;
-- End Crystal beam, Breeze wind, and End Gateway beacon-beam geometry to select
-  their exact Vanilla pipelines instead of one shared translucent scroll
-  pipeline;
+- Guardian beam, End Crystal beam, Breeze wind, and End Gateway beacon-beam
+  geometry to select their exact Vanilla pipelines instead of one shared
+  translucent scroll pipeline;
 - the End Gateway beam's opaque core and translucent glow to be separate typed
   submissions and draw ranges;
-- all 29 typed render states to have a mechanically exhaustive bucket/pipeline
+- all 30 typed render states to have a mechanically exhaustive bucket/pipeline
   disposition;
 - the existing dynamic `LightTexture`, darkness-adjusted brightness gamma, and
   diffuse-lighting paths to be reverse-audited against Vanilla and guarded as
@@ -38,6 +38,8 @@ The authoritative local sources are:
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/blockentity/BeaconRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/blockentity/TheEndGatewayRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/EndCrystalRenderer.java`;
+- `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/EnderDragonRenderer.java`;
+- `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/GuardianRenderer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/net/minecraft/client/renderer/entity/layers/BreezeWindLayer.java`;
 - `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.vsh`; and
 - `/home/zgy/Work/mc-code/sources/26.1/assets/minecraft/shaders/core/entity.fsh`.
@@ -56,11 +58,17 @@ texture-matrix scroll define.
 `ALPHA_CUTOUT 0.1`, `APPLY_TEXTURE_MATRIX`, `NO_OVERLAY`, and
 `NO_CARDINAL_LIGHTING`, while retaining the entity lightmap.
 
+`GuardianRenderer` submits its beam with `RenderTypes.entityCutout`. It is
+opaque replacement with depth writes, no culling, `ALPHA_CUTOUT 0.1`, entity
+lightmap and overlay, and ordinary per-face cardinal lighting. Its animated UVs
+are baked into the custom geometry and the submitted normal is `(0, 1, 0)`.
+
 `BeaconRenderer.submitBeaconBeam` submits two render types in order. The inner
-core uses `BEACON_BEAM_OPAQUE`: opaque replacement, depth writes, no culling,
-fog, and no entity lightmap/overlay/diffuse stage. The outer glow uses
+core uses `BEACON_BEAM_OPAQUE`: opaque replacement, depth writes, back-face
+culling, fog, and no entity lightmap/overlay/diffuse stage. The outer glow uses
 `BEACON_BEAM_TRANSLUCENT`: translucent blending, `LessEqual`, no depth writes,
-and the same shader inputs. The glow alpha is exactly `32/255`.
+back-face culling, and the same shader inputs. The glow alpha is exactly
+`32/255`.
 
 `LightTexture` is a dynamic 16x16 RGBA8 texture. Its lightmap shader applies
 ambient and night-vision colors, sky/block factors, boss darkening, darkness
@@ -76,10 +84,10 @@ the normal on back faces, while cull-on pipelines use the ordinary normal.
   combined value is removed. Its exhaustive `ALL`, bucket, blending, culling,
   outline, crumbling, and Vanilla-name methods remain the authority.
 - `EntityModelTexturedMeshes` keeps compatible vertex formats but separates
-  semantic draw ownership: a dedicated static `entitySolid` mesh, a dedicated
-  End Crystal beam mesh/range, a Breeze wind mesh/range, and distinct End
-  Gateway opaque/translucent beam meshes/ranges. No generic per-draw boolean
-  state override is introduced.
+  semantic draw ownership: a dedicated static `entitySolid` mesh, dedicated
+  Guardian and End Crystal beam meshes/ranges, a Breeze wind mesh/range, and
+  distinct End Gateway opaque/translucent beam meshes/ranges. No generic
+  per-draw boolean state override is introduced.
 - `bbb-renderer::Renderer` owns dedicated pipelines selected solely by typed
   render identity. Opaque End Crystal/End Gateway beam ranges draw in the main
   solid feature phase. Breeze and End Gateway glow remain in the sorted main
@@ -130,10 +138,11 @@ the normal on back faces, while cull-on pipelines use the ordinary normal.
    solid versus discarded cutout behavior plus the exhaustive typed
    disposition. Run
    `scripts/cargo-dev.sh test -p bbb-renderer entity_model_solid`.
-2. **Beam and wind state.** Split End Crystal, Breeze, and End Gateway CPU
-   ranges and GPU pipelines; split End Gateway core/glow submissions and
-   solid/translucent scheduling. Prove blend/cull/depth/lightmap/overlay/
-   diffuse/texture-matrix state and deterministic geometry ordering. Run
+2. **Beam and wind state.** Split Guardian, End Crystal, Breeze, and End
+   Gateway CPU ranges and GPU pipelines; split End Gateway core/glow
+   submissions and solid/translucent scheduling. Prove blend/cull/depth/
+   lightmap/overlay/diffuse/texture-matrix state and deterministic geometry
+   ordering. Run
    `scripts/cargo-dev.sh test -p bbb-renderer beam` and
    `scripts/cargo-dev.sh test -p bbb-renderer breeze`.
 3. **Reverse audit and closeout.** Pin the already-present `LightTexture`

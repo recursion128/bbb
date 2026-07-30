@@ -95,12 +95,10 @@ impl EntityModelPortalMesh {
     }
 }
 
-/// A vertex of the scrolling-overlay mesh (vanilla `breezeWind` / `energySwirl` render types): a
-/// texture-matrix `OffsetTextureTransform` over a `GL_REPEAT` texture. Because our textures live in a
-/// shared atlas (no per-texture `REPEAT`), the scroll is reproduced in the shader: the atlas UV is
-/// inverted back to a local `0..1` UV, the per-instance offset is added, and the shader `fract`s it
-/// and maps it back into `[uv_rect_min, uv_rect_min + uv_rect_size]` — the per-fragment `fract`
-/// recreating the `REPEAT` seam.
+/// A vertex for tiled custom entity geometry and texture-matrix overlays. Because these textures
+/// live in a shared atlas (no per-texture `REPEAT`), the shader wraps local UVs back into the atlas
+/// sub-rect. The normal is retained for exact `entityCutout` / `endCrystalBeam` cardinal lighting;
+/// Breeze, energy swirl, and beacon-beam shaders intentionally ignore it.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct EntityModelScrollVertex {
@@ -114,6 +112,7 @@ pub(super) struct EntityModelScrollVertex {
     pub(super) tint: [f32; 4],
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
+    pub(super) normal: [f32; 3],
 }
 
 pub(super) struct EntityModelScrollMesh {
@@ -247,6 +246,7 @@ pub(super) fn append_scrolled_textured_mesh(
             tint: vertex.tint,
             light: vertex.light,
             overlay: vertex.overlay,
+            normal: vertex.normal,
         });
     }
     scroll

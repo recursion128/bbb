@@ -536,7 +536,7 @@ fn guardian_without_active_target_emits_no_beam() {
         &atlas,
     );
     assert!(
-        meshes.scroll.vertices.is_empty(),
+        meshes.guardian_beam.vertices.is_empty(),
         "a guardian with no active target emits no beam geometry"
     );
     assert!(
@@ -611,8 +611,9 @@ fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
     assert_eq!(beam_submit.overlay, [0.0, 10.0]);
     assert_ne!(beam_submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
-    assert!(meshes.scroll.vertices.is_empty());
-    assert!(meshes.scroll.indices.is_empty());
+    assert!(meshes.guardian_beam.vertices.is_empty());
+    assert!(meshes.guardian_beam.indices.is_empty());
+    assert!(meshes.opaque_beam_draws.is_empty());
 }
 
 #[test]
@@ -631,17 +632,30 @@ fn guardian_beam_emits_twisted_prism_with_scale_color() {
             attack_scale: 1.0,
         }));
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
-    assert_eq!(meshes.scroll.vertices.len(), 12, "12 beam vertices");
-    assert_eq!(meshes.scroll.indices.len(), 18, "3 quads → 18 indices");
+    assert_eq!(meshes.guardian_beam.vertices.len(), 12, "12 beam vertices");
+    assert_eq!(
+        meshes.guardian_beam.indices.len(),
+        18,
+        "3 quads → 18 indices"
+    );
+    assert_eq!(meshes.opaque_beam_draws.len(), 1);
+    assert_eq!(
+        (
+            meshes.opaque_beam_draws[0].render_type,
+            meshes.opaque_beam_draws[0].index_start,
+            meshes.opaque_beam_draws[0].index_count
+        ),
+        (EntityModelLayerRenderType::EntityCutout, 0, 18)
+    );
 
     // Vanilla color ramp at `attackScale = 1` (`colorScale = 1`): red `64+191=255`, green `32+191=223`,
     // blue `128-64=64`, alpha opaque.
     let expected = [1.0, 223.0 / 255.0, 64.0 / 255.0, 1.0];
     assert!(meshes
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == expected));
+        .all(|vertex| vertex.tint == expected && vertex.normal == [0.0, 1.0, 0.0]));
     assert_eq!(meshes.submissions.len(), 2);
     let beam_submissions: Vec<_> = meshes
         .submissions
@@ -673,12 +687,12 @@ fn guardian_beam_emits_twisted_prism_with_scale_color() {
         [0.0, 1.0, 0.0],
     );
     // Every beam vertex carries the beam texture's atlas sub-rect for the shader's vertical tiling.
-    let rect_size = meshes.scroll.vertices[0].uv_rect_size;
+    let rect_size = meshes.guardian_beam.vertices[0].uv_rect_size;
     assert!(rect_size[0] > 0.0 && rect_size[1] > 0.0);
     // The longitudinal strips span the beam length in V (vanilla `maxV = minV + length * 2.5`,
     // `length = |beamVector| + 1`): the V extent is `(8 + 1) * 2.5 = 22.5` tiles.
     let v_values: Vec<f32> = meshes
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
         .map(|vertex| vertex.local_uv[1])
@@ -719,13 +733,13 @@ fn guardian_beam_orients_along_world_target_vector() {
     // vice versa — regardless of the body yaw, which the beam ignores.
     let along_x = beam_along([10.0, 0.0, 0.0], 1.3);
     let along_x_x: Vec<f32> = along_x
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
         .map(|v| v.position[0])
         .collect();
     let along_x_z: Vec<f32> = along_x
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
         .map(|v| v.position[2])
@@ -734,13 +748,13 @@ fn guardian_beam_orients_along_world_target_vector() {
     assert!(extent(along_x_z) < 1.0, "beam along +X is thin in Z");
     let along_z = beam_along([0.0, 0.0, 10.0], 2.7);
     let along_z_z: Vec<f32> = along_z
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
         .map(|v| v.position[2])
         .collect();
     let along_z_x: Vec<f32> = along_z
-        .scroll
+        .guardian_beam
         .vertices
         .iter()
         .map(|v| v.position[0])

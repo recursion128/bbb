@@ -377,6 +377,12 @@ fn translucent_draw_plan_sorts_order_then_camera_distance_then_insertion() {
                     draw.insertion_index,
                     "additive_scroll",
                 ),
+                EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw) => (
+                    draw.render_type,
+                    draw.order,
+                    draw.insertion_index,
+                    "beacon_beam_translucent",
+                ),
                 EntityModelTranslucentDrawRange::PositionColor(draw) => (
                     draw.render_type,
                     draw.order,

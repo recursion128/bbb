@@ -146,7 +146,7 @@ impl EntityDynamicPlayerTextureAtlasGpu {
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
-pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
+pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2, 7 => Float32x3];
 pub(super) const ENTITY_MODEL_PORTAL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x2];
 pub(super) const ENTITY_MODEL_DISSOLVE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x2, 5 => Float32x2, 6 => Float32x3];
 
@@ -1706,6 +1706,244 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const ENTITY_MODEL_TILED_ENTITY_SHADER_TEMPLATE: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) local_uv: vec2<f32>,
+    @location(2) uv_rect_min: vec2<f32>,
+    @location(3) uv_rect_size: vec2<f32>,
+    @location(4) tint: vec4<f32>,
+    @location(5) light: vec2<f32>,
+    @location(6) overlay: vec2<f32>,
+    @location(7) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) local_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) tint: vec4<f32>,
+    @location(4) light: vec2<f32>,
+    @location(5) overlay: vec2<f32>,
+    @location(6) normal: vec3<f32>,
+    @location(7) spherical_distance: f32,
+    @location(8) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
+}
+
+fn linear_fog_value(value: f32, start: f32, end: f32) -> f32 {
+    if (value <= start) {
+        return 0.0;
+    }
+    if (value >= end) {
+        return 1.0;
+    }
+    return (value - start) / (end - start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.local_uv = input.local_uv;
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
+    out.tint = input.tint;
+    out.light = input.light;
+    out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
+    let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if sample.a < 0.1 {
+        discard;
+    }
+    let texel = sample * input.tint;
+    var rgb = texel.rgb;
+    __OVERLAY_STAGE__
+    let light_color = sample_lightmap(input.light);
+    let diffuse = __DIFFUSE_STAGE__;
+    return apply_fog(
+        vec4<f32>(rgb * diffuse * light_color, texel.a),
+        input.spherical_distance,
+        input.cylindrical_distance,
+    );
+}
+"#;
+
+fn entity_model_tiled_entity_shader(apply_overlay: bool, per_face_lighting: bool) -> String {
+    let overlay_stage = if apply_overlay {
+        r#"if (input.overlay.y < 8.0) {
+        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+    }"#
+    } else {
+        ""
+    };
+    let diffuse_stage = if per_face_lighting {
+        "per_face_diffuse_light(input.normal, front_facing)"
+    } else {
+        "diffuse_light(input.normal)"
+    };
+    ENTITY_MODEL_TILED_ENTITY_SHADER_TEMPLATE
+        .replace("__OVERLAY_STAGE__", overlay_stage)
+        .replace("__DIFFUSE_STAGE__", diffuse_stage)
+}
+
+/// Vanilla beacon-beam shader state: tiled texture, vertex color and fog only.
+pub(super) const ENTITY_MODEL_BEACON_BEAM_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) local_uv: vec2<f32>,
+    @location(2) uv_rect_min: vec2<f32>,
+    @location(3) uv_rect_size: vec2<f32>,
+    @location(4) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) local_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) tint: vec4<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
+};
+
+fn linear_fog_value(value: f32, start: f32, end: f32) -> f32 {
+    if (value <= start) {
+        return 0.0;
+    }
+    if (value >= end) {
+        return 1.0;
+    }
+    return (value - start) / (end - start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.local_uv = input.local_uv;
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
+    out.tint = input.tint;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
+    let texel = textureSample(entity_texture_atlas, entity_sampler, atlas_uv) * input.tint;
+    return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 fn entity_model_glint_shader(scale: &str, use_view_offset_z_layering: bool) -> String {
     let view_proj = if use_view_offset_z_layering {
         "camera.view_proj_view_offset_z"
@@ -2535,6 +2773,13 @@ const ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED: bool = true;
 const ENTITY_MODEL_SCROLL_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT: u32 = 1;
 const ENTITY_MODEL_SCROLL_CULL_MODE: Option<wgpu::Face> = None;
+const ENTITY_MODEL_BEAM_OPAQUE_BLEND: Option<wgpu::BlendState> = None;
+const ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+const ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = false;
+const ENTITY_MODEL_BEAM_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const ENTITY_MODEL_BEACON_BEAM_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
 /// (`BlendFunction.TRANSLUCENT`), lightmap-lit, depth-writing, cull off.
@@ -2573,6 +2818,82 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
     )
 }
 
+pub(crate) fn create_entity_model_guardian_beam_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-guardian-beam",
+        &entity_model_tiled_entity_shader(true, true),
+        ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+        ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+    )
+}
+
+pub(crate) fn create_entity_model_end_crystal_beam_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-end-crystal-beam",
+        &entity_model_tiled_entity_shader(false, false),
+        ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+        ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+    )
+}
+
+pub(crate) fn create_entity_model_beacon_beam_opaque_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth_and_cull(
+        device,
+        format,
+        bind_group_layout,
+        None,
+        "bbb-entity-model-beacon-beam-opaque",
+        ENTITY_MODEL_BEACON_BEAM_SHADER,
+        ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+        ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+        ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
+    )
+}
+
+pub(crate) fn create_entity_model_beacon_beam_translucent_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth_and_cull(
+        device,
+        format,
+        bind_group_layout,
+        None,
+        "bbb-entity-model-beacon-beam-translucent",
+        ENTITY_MODEL_BEACON_BEAM_SHADER,
+        ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+        ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
+    )
+}
+
 pub(crate) fn create_entity_model_entity_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2585,7 +2906,7 @@ pub(crate) fn create_entity_model_entity_glint_pipeline(
         None,
         "bbb-entity-model-entity-glint",
         &entity_model_glint_shader("0.5", false),
-        ENTITY_MODEL_GLINT_BLEND,
+        Some(ENTITY_MODEL_GLINT_BLEND),
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
     )
@@ -2603,7 +2924,7 @@ pub(crate) fn create_entity_model_armor_entity_glint_pipeline(
         None,
         "bbb-entity-model-armor-entity-glint",
         &entity_model_glint_shader("0.16", true),
-        ENTITY_MODEL_GLINT_BLEND,
+        Some(ENTITY_MODEL_GLINT_BLEND),
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
     )
@@ -2627,7 +2948,7 @@ fn create_entity_model_scroll_pipeline_with_blend(
         lightmap_bind_group_layout,
         label_prefix,
         shader_source,
-        blend,
+        Some(blend),
         ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
     )
@@ -2640,9 +2961,35 @@ fn create_entity_model_scroll_pipeline_with_depth(
     lightmap_bind_group_layout: Option<&wgpu::BindGroupLayout>,
     label_prefix: &str,
     shader_source: &str,
-    blend: wgpu::BlendState,
+    blend: Option<wgpu::BlendState>,
     depth_write_enabled: bool,
     depth_compare: wgpu::CompareFunction,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth_and_cull(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        label_prefix,
+        shader_source,
+        blend,
+        depth_write_enabled,
+        depth_compare,
+        ENTITY_MODEL_SCROLL_CULL_MODE,
+    )
+}
+
+fn create_entity_model_scroll_pipeline_with_depth_and_cull(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: Option<&wgpu::BindGroupLayout>,
+    label_prefix: &str,
+    shader_source: &str,
+    blend: Option<wgpu::BlendState>,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
+    cull_mode: Option<wgpu::Face>,
 ) -> wgpu::RenderPipeline {
     let shader_label = format!("{label_prefix}-shader");
     let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
@@ -2654,8 +3001,8 @@ fn create_entity_model_scroll_pipeline_with_depth(
             &pipeline_bind_group_layouts(bind_group_layout, lightmap_bind_group_layout),
         )
         .vertex_buffers(&[entity_model_scroll_vertex_layout()])
-        .color_target(format, Some(blend))
-        .cull_mode(ENTITY_MODEL_SCROLL_CULL_MODE)
+        .color_target(format, blend)
+        .cull_mode(cull_mode)
         .depth_stencil(depth_stencil_state(
             DEPTH_FORMAT,
             depth_write_enabled,
@@ -2983,6 +3330,7 @@ impl Renderer {
                 } else {
                     0
                 };
+            self.entity_model_opaque_beam_draws = meshes.opaque_beam_draws.clone();
             self.entity_model_sorted_main_translucent_draws =
                 meshes.sorted_main_translucent_draws.clone();
             self.entity_model_sorted_translucent_draws = meshes.sorted_translucent_draws.clone();
@@ -3228,6 +3576,28 @@ impl Renderer {
                 meshes.scroll_additive,
                 "bbb-entity-model-scroll-additive",
             );
+            self.entity_model_guardian_beam_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.guardian_beam,
+                "bbb-entity-model-guardian-beam",
+            );
+            self.entity_model_end_crystal_beam_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.end_crystal_beam,
+                "bbb-entity-model-end-crystal-beam",
+            );
+            self.entity_model_end_gateway_beam_opaque_mesh =
+                create_entity_model_scroll_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.end_gateway_beam_opaque,
+                    "bbb-entity-model-end-gateway-beam-opaque",
+                );
+            self.entity_model_end_gateway_beam_translucent_mesh =
+                create_entity_model_scroll_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.end_gateway_beam_translucent,
+                    "bbb-entity-model-end-gateway-beam-translucent",
+                );
             self.entity_model_entity_glint_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.entity_glint,
@@ -3255,6 +3625,7 @@ impl Renderer {
             self.entity_model_translucent_emissive_mesh = None;
             self.entity_model_item_entity_translucent_mesh = None;
             self.entity_model_item_entity_translucent_cull_mesh = None;
+            self.entity_model_opaque_beam_draws.clear();
             self.entity_model_sorted_main_translucent_draws.clear();
             self.entity_model_sorted_translucent_draws.clear();
             self.entity_model_sorted_item_entity_draws.clear();
@@ -3287,6 +3658,10 @@ impl Renderer {
             self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
+            self.entity_model_guardian_beam_mesh = None;
+            self.entity_model_end_crystal_beam_mesh = None;
+            self.entity_model_end_gateway_beam_opaque_mesh = None;
+            self.entity_model_end_gateway_beam_translucent_mesh = None;
             self.entity_model_entity_glint_mesh = None;
             self.entity_model_armor_entity_glint_mesh = None;
         }
@@ -3419,6 +3794,18 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_additive_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_guardian_beam_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_end_crystal_beam_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_end_gateway_beam_opaque_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_end_gateway_beam_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_entity_glint_mesh
@@ -4602,10 +4989,14 @@ mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
         entity_model_solid_shader, entity_model_solid_z_offset_forward_shader,
-        win_screen_end_portal_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE,
-        ENTITY_MODEL_ARMOR_CUTOUT_BLEND, ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
-        ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_ARMOR_SHADER, ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND,
+        entity_model_tiled_entity_shader, win_screen_end_portal_shader,
+        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
+        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
+        ENTITY_MODEL_BEACON_BEAM_SHADER, ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+        ENTITY_MODEL_BEAM_OPAQUE_BLEND, ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND, ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_DISSOLVE_SHADER, ENTITY_MODEL_DRAGON_RAYS_BLEND,
         ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
@@ -5120,6 +5511,54 @@ mod tests {
                 && !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("input.overlay"),
             "vanilla ENERGY_SWIRL defines EMISSIVE and NO_OVERLAY"
         );
+    }
+
+    #[test]
+    fn entity_model_beam_pipeline_states_match_vanilla() {
+        assert_eq!(ENTITY_MODEL_BEAM_OPAQUE_BLEND, None);
+        assert!(ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED);
+        let translucent =
+            ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND.expect("beacon glow uses translucent blending");
+        assert_eq!(translucent.color.src_factor, wgpu::BlendFactor::SrcAlpha);
+        assert_eq!(
+            translucent.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert!(!ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(ENTITY_MODEL_SCROLL_CULL_MODE, None);
+        assert_eq!(ENTITY_MODEL_BEACON_BEAM_CULL_MODE, Some(wgpu::Face::Back));
+    }
+
+    #[test]
+    fn guardian_and_end_crystal_beam_shaders_keep_distinct_entity_state() {
+        let guardian = entity_model_tiled_entity_shader(true, true);
+        assert!(guardian.contains("fract(input.local_uv)"));
+        assert!(guardian.contains("if sample.a < 0.1"));
+        assert!(guardian.contains("input.overlay.y < 8.0"));
+        assert!(
+            guardian.contains("let diffuse = per_face_diffuse_light(input.normal, front_facing)")
+        );
+        assert!(guardian.contains("sample_lightmap(input.light)"));
+
+        let crystal = entity_model_tiled_entity_shader(false, false);
+        assert!(crystal.contains("fract(input.local_uv)"));
+        assert!(crystal.contains("if sample.a < 0.1"));
+        assert!(!crystal.contains("input.overlay.y < 8.0"));
+        assert!(crystal.contains("let diffuse = diffuse_light(input.normal)"));
+        assert!(crystal.contains("sample_lightmap(input.light)"));
+    }
+
+    #[test]
+    fn beacon_beam_shader_omits_entity_only_stages() {
+        assert!(ENTITY_MODEL_BEACON_BEAM_SHADER.contains("fract(input.local_uv)"));
+        assert!(!ENTITY_MODEL_BEACON_BEAM_SHADER.contains("if sample.a < 0.1"));
+        assert!(!ENTITY_MODEL_BEACON_BEAM_SHADER.contains("lightmap_texture"));
+        assert!(!ENTITY_MODEL_BEACON_BEAM_SHADER.contains("input.overlay"));
+        assert!(!ENTITY_MODEL_BEACON_BEAM_SHADER.contains("diffuse_light"));
     }
 
     #[test]
