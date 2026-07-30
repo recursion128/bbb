@@ -2,6 +2,7 @@ import argparse
 import copy
 import importlib.util
 import json
+import re
 import socket
 import tempfile
 import threading
@@ -94,6 +95,16 @@ class PlayableGateHeadlessProbeTests(unittest.TestCase):
         probe["world_apply_errors"] = ["bad chunk"]
         with self.assertRaisesRegex(playable_gate.GateFailure, "not empty"):
             playable_gate.validate_headless_probe(probe)
+
+    def test_live_probe_username_fits_the_protocol_limit(self):
+        source = (REPO_ROOT / "scripts" / "playable-gate.sh").read_text(
+            encoding="utf-8"
+        )
+        match = re.search(
+            r"--username ([a-z0-9-]+) \\\n    --probe-server", source
+        )
+        self.assertIsNotNone(match)
+        self.assertLessEqual(len(match.group(1).encode("utf-16-le")) // 2, 16)
 
 
 class PlayableGateMovementTests(unittest.TestCase):

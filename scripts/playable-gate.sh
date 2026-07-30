@@ -413,7 +413,7 @@ fi
 if ! timeout "$timeout_seconds" \
   "$client_bin" \
     --server "127.0.0.1:$server_port" \
-    --username bbb-playableprobe \
+    --username bbb-probe \
     --probe-server \
     </dev/null >"$probe_json" 2>>"$client_log"
 then
