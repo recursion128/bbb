@@ -96,6 +96,18 @@ pub(crate) struct Args {
     pub(crate) client_locale: String,
     #[arg(long = "client-narrator", value_enum, default_value = "off")]
     pub(crate) client_narrator: ClientNarratorArg,
+    #[arg(
+        long = "client-show-subtitles",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_show_subtitles: bool,
+    #[arg(
+        long = "notification-display-time",
+        default_value_t = 1.0,
+        value_parser = parse_notification_display_time
+    )]
+    pub(crate) notification_display_time: f32,
     #[arg(long = "narrator-command", value_name = "PATH")]
     pub(crate) narrator_command: Option<PathBuf>,
     #[arg(long = "narrator-command-arg", value_name = "ARG")]
@@ -615,6 +627,18 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
     Ok(gamma)
 }
 
+fn parse_notification_display_time(value: &str) -> std::result::Result<f32, String> {
+    let multiplier = value
+        .parse::<f32>()
+        .map_err(|err| format!("notification display time must be a number: {err}"))?;
+    if !multiplier.is_finite() || !(0.5..=10.0).contains(&multiplier) {
+        return Err(
+            "notification display time must be finite and between 0.5 and 10.0".to_string(),
+        );
+    }
+    Ok(multiplier)
+}
+
 fn parse_client_fov(value: &str) -> std::result::Result<u16, String> {
     let degrees = value
         .parse::<u16>()
@@ -1043,6 +1067,30 @@ mod tests {
             NarratorStatus::from(args.client_narrator),
             NarratorStatus::System
         );
+    }
+
+    #[test]
+    fn startup_sound_subtitle_options_use_vanilla_defaults_and_bounds() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!defaults.client_show_subtitles);
+        assert_eq!(defaults.notification_display_time, 1.0);
+
+        let configured = Args::try_parse_from([
+            "bbb-native",
+            "--client-show-subtitles=true",
+            "--notification-display-time",
+            "10.0",
+        ])
+        .unwrap();
+        assert!(configured.client_show_subtitles);
+        assert_eq!(configured.notification_display_time, 10.0);
+
+        for invalid in ["0.49", "10.01", "NaN", "inf"] {
+            assert!(
+                Args::try_parse_from(["bbb-native", "--notification-display-time", invalid,])
+                    .is_err()
+            );
+        }
     }
 
     #[test]

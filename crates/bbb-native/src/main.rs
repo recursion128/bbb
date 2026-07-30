@@ -66,6 +66,7 @@ mod sign_scene;
 mod simulation;
 mod skull_scene;
 mod sky_assets;
+mod sound_subtitle_runtime;
 mod spawner_scene;
 mod startup;
 mod terrain_runtime;
@@ -123,6 +124,7 @@ use simulation::{
     update_renderer_from_publication, SimulationCore, SimulationRenderContext,
 };
 use sky_assets::load_sky_textures;
+use sound_subtitle_runtime::SoundSubtitleRuntime;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
     load_known_packs_manager, load_pack_roots, parse_args, run_probe_if_requested,
@@ -543,6 +545,7 @@ fn main() -> Result<()> {
     let mut narrator_runtime = args.narrator_command.clone().map(|command| {
         NativeNarratorRuntime::new(narrator_status, command, args.narrator_command_args.clone())
     });
+    let mut sound_subtitle_runtime = SoundSubtitleRuntime::default();
     if narrator_runtime.is_none() && narrator_status != NarratorStatus::Off {
         tracing::warn!(
             ?narrator_status,
@@ -1107,6 +1110,32 @@ fn main() -> Result<()> {
                             hud_debug_profiler_chart: debug_profiler.chart(),
                         },
                     );
+                    let subtitle_now = Instant::now();
+                    if let Some(audio) = audio_runtime.as_mut() {
+                        let events = audio.drain_subtitle_events();
+                        if args.client_show_subtitles {
+                            for event in events {
+                                sound_subtitle_runtime.record(event, subtitle_now);
+                            }
+                        }
+                    }
+                    let sound_subtitles = if args.client_show_subtitles && audio_runtime.is_some() {
+                        sound_subtitle_runtime.project(
+                            runtime::audio_listener_state_from_world(&render_publication.world),
+                            args.notification_display_time,
+                            subtitle_now,
+                            |key| {
+                                item_runtime
+                                    .as_ref()
+                                    .map(|runtime| runtime.localized_text(key))
+                                    .unwrap_or(key)
+                                    .to_string()
+                            },
+                        )
+                    } else {
+                        bbb_renderer::HudSoundSubtitles::default()
+                    };
+                    renderer.set_hud_sound_subtitles(sound_subtitles);
                     if let Some(items) = item_runtime.as_ref() {
                         maybe_upload_item_texture_animation(
                             &mut renderer,

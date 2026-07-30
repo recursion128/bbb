@@ -8,7 +8,8 @@ use std::collections::BTreeSet;
 
 use anyhow::{Context, Result};
 use bbb_audio::{
-    AudioChannelObservation, AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand,
+    AudioChannelObservation, AudioCommand, AudioPlaybackEvent, KiraAudioRuntime,
+    TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{JukeboxSongRegistry, PackRoots, SoundCatalog, SoundEventRegistry};
@@ -60,6 +61,13 @@ pub(crate) struct NativeAudioRuntime {
     active_tickable_sounds: BTreeSet<(i32, String)>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SoundSubtitleEvent {
+    pub(crate) subtitle_key: String,
+    pub(crate) position: [f64; 3],
+    pub(crate) range: f64,
+}
+
 pub(crate) struct NativeAudioReload {
     catalog: SoundCatalog,
 }
@@ -108,6 +116,13 @@ impl NativeAudioRuntime {
         self.catalog.events.keys().cloned().collect()
     }
 
+    pub(crate) fn drain_subtitle_events(&mut self) -> Vec<SoundSubtitleEvent> {
+        self.playback
+            .drain_playback_events()
+            .filter_map(|event| subtitle_event_from_playback(&self.catalog, event))
+            .collect()
+    }
+
     pub(crate) fn prepare_reload(roots: &PackRoots) -> Result<NativeAudioReload> {
         Ok(NativeAudioReload {
             catalog: load_required_native_sound_catalog(roots)?,
@@ -151,6 +166,18 @@ impl NativeAudioRuntime {
             }
         }
     }
+}
+
+fn subtitle_event_from_playback(
+    catalog: &SoundCatalog,
+    event: AudioPlaybackEvent,
+) -> Option<SoundSubtitleEvent> {
+    let subtitle_key = catalog.events.get(&event.event_id)?.subtitle.clone()?;
+    Some(SoundSubtitleEvent {
+        subtitle_key,
+        position: event.position,
+        range: event.range,
+    })
 }
 
 fn project_audio_channel_observation(
@@ -411,6 +438,45 @@ mod tests {
         assert_eq!(counters.sound_static_channels_capacity, 256);
         assert_eq!(counters.sound_streaming_channels_capacity, 256);
         assert_eq!(counters.resolve_failures, 3);
+    }
+
+    #[test]
+    fn audio_runtime_maps_playback_root_event_to_current_subtitle_key() {
+        let mut catalog = SoundCatalog::default();
+        catalog.events.insert(
+            "minecraft:block.note_block.harp".to_string(),
+            bbb_pack::SoundEventDefinition {
+                id: "minecraft:block.note_block.harp".to_string(),
+                replace: false,
+                subtitle: Some("subtitles.block.note_block.note".to_string()),
+                sounds: Vec::new(),
+            },
+        );
+        let playback = AudioPlaybackEvent {
+            event_id: "minecraft:block.note_block.harp".to_string(),
+            position: [1.0, 2.0, 3.0],
+            range: 16.0,
+        };
+
+        assert_eq!(
+            subtitle_event_from_playback(&catalog, playback),
+            Some(SoundSubtitleEvent {
+                subtitle_key: "subtitles.block.note_block.note".to_string(),
+                position: [1.0, 2.0, 3.0],
+                range: 16.0,
+            })
+        );
+        assert_eq!(
+            subtitle_event_from_playback(
+                &catalog,
+                AudioPlaybackEvent {
+                    event_id: "minecraft:missing".to_string(),
+                    position: [0.0; 3],
+                    range: f64::INFINITY,
+                },
+            ),
+            None
+        );
     }
 
     #[test]

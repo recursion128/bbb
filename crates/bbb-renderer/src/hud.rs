@@ -30,6 +30,7 @@ mod player_list;
 mod reporting;
 mod scoreboard;
 mod social;
+mod sound_subtitles;
 mod spectator;
 
 pub use self::book::{
@@ -113,6 +114,9 @@ pub use self::social::{
     HudSocialInteractionsLayout, HudSocialInteractionsLinkConfirmationScreen,
     HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
     HudSocialInteractionsPlayerAction, HudSocialInteractionsRect, HudSocialInteractionsScreen,
+};
+pub use self::sound_subtitles::{
+    HudSoundSubtitleDirection, HudSoundSubtitleRow, HudSoundSubtitles, HUD_SOUND_SUBTITLE_MAX_ROWS,
 };
 pub(crate) use self::spectator::HudPlayerFaceGpu;
 pub use self::spectator::{HudHotbarMode, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon};
@@ -1575,6 +1579,7 @@ const HUD_COMMAND_UNSELECTED_TINT: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170
 const HUD_COMMAND_SELECTED_TINT: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
 const HUD_COMMAND_INPUT_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 128.0 / 255.0];
 const HUD_COMMAND_LIST_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 208.0 / 255.0];
+const HUD_SOUND_SUBTITLE_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 0.8];
 const HUD_COMMAND_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const HUD_COMMAND_LINE_HEIGHT: i32 = 12;
 const HUD_DEBUG_OVERLAY_TEXT_TINT: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
@@ -3133,6 +3138,12 @@ pub(super) enum HudScreenStratum {
     All,
     BeforeBlur,
     AfterBlur,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudSoundSubtitlePlacement {
+    BeforeScreen,
+    Deferred,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -5547,6 +5558,10 @@ impl Renderer {
             screen.and_then(code_of_conduct::sanitize_hud_code_of_conduct_screen);
     }
 
+    pub fn set_hud_sound_subtitles(&mut self, subtitles: HudSoundSubtitles) {
+        self.hud_sound_subtitles = sound_subtitles::sanitize_hud_sound_subtitles(subtitles);
+    }
+
     /// Projects `Gui.extractPlayerHealth`'s inputs (health, max health,
     /// absorption, base heart type, hardcore, regen, tick). `collect_hud_draws`
     /// derives the container/absorption rows, `numHealthRows`, the regen wave,
@@ -6150,12 +6165,69 @@ impl Renderer {
         }
     }
 
+    fn hud_has_any_screen(&self) -> bool {
+        self.hud_chat_context.focused
+            || self.hud_inventory_screen.is_some()
+            || self.hud_sign_editor_screen.is_some()
+            || self.hud_command_block_editor_screen.is_some()
+            || self.hud_structure_block_editor_screen.is_some()
+            || self.hud_jigsaw_block_editor_screen.is_some()
+            || self.hud_test_block_editor_screen.is_some()
+            || self.hud_test_instance_block_editor_screen.is_some()
+            || self.hud_pause_screen.is_some()
+            || self.hud_social_interactions_screen.is_some()
+            || self.hud_player_reporting_screen.is_some()
+            || self.hud_stats_screen.is_some()
+            || self.hud_game_rules_screen.is_some()
+            || self.hud_death_screen.is_some()
+            || self.hud_game_event_screen.is_some()
+            || self.hud_book_screen.is_some()
+            || self.hud_debug_options_screen.is_some()
+            || self.hud_code_of_conduct_screen.is_some()
+    }
+
+    fn hud_has_ingame_ui_screen(&self) -> bool {
+        self.hud_inventory_screen.is_some()
+            || self.hud_sign_editor_screen.is_some()
+            || self.hud_command_block_editor_screen.is_some()
+            || self.hud_structure_block_editor_screen.is_some()
+            || self.hud_jigsaw_block_editor_screen.is_some()
+            || self.hud_test_block_editor_screen.is_some()
+            || self.hud_test_instance_block_editor_screen.is_some()
+            || self.hud_book_screen.is_some()
+    }
+
+    fn hud_sound_subtitle_placement(&self) -> Option<HudSoundSubtitlePlacement> {
+        if self.hide_gui && !self.hud_has_ingame_ui_screen() {
+            return None;
+        }
+        Some(if self.hud_has_any_screen() {
+            HudSoundSubtitlePlacement::BeforeScreen
+        } else {
+            HudSoundSubtitlePlacement::Deferred
+        })
+    }
+
     pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
         let mut vertices = Vec::new();
         let mut commands = Vec::new();
         let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
+        let sound_subtitle_placement = self.hud_sound_subtitle_placement();
         if let Some(screen @ HudGameEventScreen::Win(_)) = &self.hud_game_event_screen {
+            if sound_subtitle_placement == Some(HudSoundSubtitlePlacement::BeforeScreen) {
+                push_hud_sound_subtitles(
+                    &mut vertices,
+                    &mut commands,
+                    &self.hud_white_pixel,
+                    self.hud_font_atlas.as_ref(),
+                    &self.hud_font_glyphs,
+                    &self.hud_obfuscated_glyph_pool,
+                    self.counters.frame_index,
+                    surface_size,
+                    &self.hud_sound_subtitles,
+                );
+            }
             game_event::push_hud_game_event_screen(
                 &mut vertices,
                 &mut commands,
@@ -6851,6 +6923,20 @@ impl Renderer {
                     },
                 );
             }
+        }
+
+        if sound_subtitle_placement == Some(HudSoundSubtitlePlacement::BeforeScreen) {
+            push_hud_sound_subtitles(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                &self.hud_sound_subtitles,
+            );
         }
 
         if let Some(screen) = &self.hud_command_block_editor_screen {
@@ -7755,6 +7841,20 @@ impl Renderer {
             surface_size,
             &self.hud_tutorial_toasts,
         );
+
+        if sound_subtitle_placement == Some(HudSoundSubtitlePlacement::Deferred) {
+            push_hud_sound_subtitles(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                &self.hud_sound_subtitles,
+            );
+        }
 
         if let Some(screen) = &self.hud_code_of_conduct_screen {
             if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
@@ -14828,6 +14928,79 @@ fn hud_plain_text_width(text: &str, glyphs: &HudFontGlyphMap) -> u32 {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn push_hud_sound_subtitles<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    subtitles: &HudSoundSubtitles,
+) {
+    let Some(font_atlas) = font_atlas else {
+        return;
+    };
+    let layout = sound_subtitles::hud_sound_subtitle_layout(
+        subtitles,
+        surface_size.width,
+        surface_size.height,
+        |text| hud_plain_text_width(text, glyphs),
+    );
+    for (row, row_layout) in subtitles.rows.iter().zip(layout.rows) {
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            row_layout.background.x,
+            row_layout.background.y,
+            row_layout.background.width,
+            row_layout.background.height,
+            HUD_SOUND_SUBTITLE_BACKGROUND_TINT,
+        );
+        let brightness = f32::from(row.brightness) / 255.0;
+        let tint = [brightness, brightness, brightness, 1.0];
+        if let Some(arrow) = row_layout.arrow {
+            push_hud_plain_text(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                arrow.text,
+                (arrow.origin.0 as f32, arrow.origin.1 as f32),
+                tint,
+                1.0,
+                true,
+            );
+        }
+        push_hud_plain_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &row.text,
+            (
+                row_layout.text_origin.0 as f32,
+                row_layout.text_origin.1 as f32,
+            ),
+            tint,
+            1.0,
+            true,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn push_hud_command_suggestions<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -21028,6 +21201,149 @@ mod tests {
             lighting: GuiItemLightingEntry::Items3d,
             foil: false,
         }
+    }
+
+    #[test]
+    fn sound_subtitle_placement_obeys_screen_and_hide_gui_rules() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::Deferred)
+        );
+
+        renderer.hud_chat_context.focused = true;
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::BeforeScreen)
+        );
+        renderer.set_hide_gui(true);
+        assert_eq!(renderer.hud_sound_subtitle_placement(), None);
+
+        renderer.hud_chat_context.focused = false;
+        renderer.hud_sign_editor_screen = Some(HudSignEditorScreen {
+            kind: HudSignEditorKind::Standing {
+                wood: SignModelWood::Oak,
+                attachment: SignModelAttachment::Standing,
+            },
+            sign_preview: None,
+            title: String::new(),
+            lines: std::array::from_fn(|_| String::new()),
+            line: 0,
+            cursor: 0,
+            selection: 0,
+            cursor_visible: false,
+            text_tint: [1.0; 4],
+            done: String::new(),
+            done_hovered: false,
+            preedit: None,
+        });
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::BeforeScreen)
+        );
+    }
+
+    #[test]
+    fn sound_subtitle_commands_precede_screens_or_defer_past_debug_and_toasts() {
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("pub(super) fn collect_hud_draws(&self)")
+            .expect("HUD collection owner");
+        let collect_end = source[collect_start..]
+            .find("fn hud_inventory_background_sprite(")
+            .map(|offset| collect_start + offset)
+            .expect("end of HUD collection owner");
+        let collect = &source[collect_start..collect_end];
+        let first_normal_screen = collect
+            .find("if let Some(screen) = &self.hud_command_block_editor_screen")
+            .expect("first ordinary screen draw");
+        let before_screen = collect[..first_normal_screen]
+            .rfind("push_hud_sound_subtitles(")
+            .expect("before-screen subtitle draw");
+        assert!(before_screen < first_normal_screen);
+
+        let tutorial_toasts = collect
+            .rfind("push_hud_tutorial_toasts(")
+            .expect("tutorial toast draw");
+        let deferred_subtitles = collect[tutorial_toasts..]
+            .find("push_hud_sound_subtitles(")
+            .map(|offset| tutorial_toasts + offset)
+            .expect("deferred subtitle draw");
+        let following_screen = collect[deferred_subtitles..]
+            .find("if let Some(screen) = &self.hud_code_of_conduct_screen")
+            .map(|offset| deferred_subtitles + offset)
+            .expect("screen after deferred slot");
+        assert!(tutorial_toasts < deferred_subtitles);
+        assert!(deferred_subtitles < following_screen);
+    }
+
+    #[test]
+    fn sound_subtitle_offscreen_pixels_pin_background_brightness_and_arrow() {
+        use crate::camera::ClearColor;
+
+        let Some(mut renderer) = Renderer::new_offscreen(64, 64) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+        let mut glyphs = HudFontGlyphMap::new();
+        for (character, advance) in [('N', 6), ('<', 6), ('>', 6), (' ', 4)] {
+            glyphs.insert_first_wins(
+                character,
+                HudAsciiGlyph {
+                    uv: HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    width: 1,
+                    height: 1,
+                    advance,
+                    ascent: HUD_FONT_BASELINE,
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("sound subtitle font");
+        renderer.set_hud_sound_subtitles(HudSoundSubtitles {
+            rows: vec![HudSoundSubtitleRow {
+                text: "N".to_string(),
+                brightness: 75,
+                direction: HudSoundSubtitleDirection::Right,
+            }],
+        });
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("sound subtitle frame");
+
+        let background = pixels.pixel(36, 24);
+        assert!(
+            background[2] >= 120 && background[2] <= 128 && background[0] < 4,
+            "80% black background over blue: {background:?}"
+        );
+        let text = pixels.pixel(46, 25);
+        assert!(
+            text.iter()
+                .take(3)
+                .all(|channel| (144..=150).contains(channel)),
+            "75-brightness centered text: {text:?}"
+        );
+        let arrow = pixels.pixel(56, 25);
+        assert!(
+            arrow
+                .iter()
+                .take(3)
+                .all(|channel| (144..=150).contains(channel)),
+            "right arrow shares row brightness: {arrow:?}"
+        );
     }
 
     #[test]

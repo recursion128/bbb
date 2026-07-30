@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use anyhow::{anyhow, Result};
 use kira::{
@@ -18,6 +18,7 @@ use crate::{
 const MIN_SPATIAL_DISTANCE: f32 = 1.0;
 const DISTANCE_DELAY_THRESHOLD_SQR: f64 = 100.0;
 const DISTANCE_DELAY_TICKS_PER_BLOCK: f64 = 0.5;
+const MAX_PLAYBACK_EVENTS: usize = 1024;
 
 pub struct KiraAudioRuntime {
     manager: AudioManager<DefaultBackend>,
@@ -28,6 +29,14 @@ pub struct KiraAudioRuntime {
     music_gain: f32,
     residency: AudioResidency,
     channel_capacity: usize,
+    playback_events: VecDeque<AudioPlaybackEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioPlaybackEvent {
+    pub event_id: String,
+    pub position: [f64; 3],
+    pub range: f64,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -86,6 +95,7 @@ impl KiraAudioRuntime {
             music_gain: 1.0,
             residency: AudioResidency::new(resource_generation),
             channel_capacity,
+            playback_events: VecDeque::new(),
         })
     }
 
@@ -120,8 +130,13 @@ impl KiraAudioRuntime {
         }))
     }
 
+    pub fn drain_playback_events(&mut self) -> impl Iterator<Item = AudioPlaybackEvent> + '_ {
+        self.playback_events.drain(..)
+    }
+
     pub fn reset_resource_generation(&mut self, resource_generation: u64) {
         self.delayed_positioned.clear();
+        self.playback_events.clear();
         for sound in &mut self.playing {
             sound.handle.stop();
         }
@@ -201,6 +216,7 @@ impl KiraAudioRuntime {
         ambient_loop: bool,
     ) -> Result<()> {
         self.retain_active_sounds();
+        push_bounded_playback_event(&mut self.playback_events, local_playback_event(sound));
         if !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
@@ -240,9 +256,6 @@ impl KiraAudioRuntime {
 
     fn play_positioned_sound(&mut self, command: &PlayPositionedSoundCommand) -> Result<()> {
         self.retain_active_sounds();
-        if !sound_should_start(command.channel_gain, &command.category) {
-            return Ok(());
-        }
         if let Some(delayed) = delayed_positioned_sound_for_command(command, self.listener_position)
         {
             self.delayed_positioned.push(delayed);
@@ -284,6 +297,10 @@ impl KiraAudioRuntime {
         tickable: bool,
     ) -> Result<()> {
         self.retain_active_sounds();
+        push_bounded_playback_event(
+            &mut self.playback_events,
+            spatial_playback_event(sound, position, gain, linear_attenuation),
+        );
         if !tickable && !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
@@ -748,6 +765,47 @@ fn spatial_max_distance(sound: &ResolvedSound, gain: f32, fixed_range: Option<f3
     (sound.attenuation_distance as f32 * gain.max(1.0)).max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
 }
 
+fn local_playback_event(sound: &ResolvedSound) -> AudioPlaybackEvent {
+    AudioPlaybackEvent {
+        event_id: sound.event_id.clone(),
+        position: [0.0, 0.0, 0.0],
+        range: f64::INFINITY,
+    }
+}
+
+fn spatial_playback_event(
+    sound: &ResolvedSound,
+    position: [f64; 3],
+    gain: f32,
+    linear_attenuation: bool,
+) -> AudioPlaybackEvent {
+    let range = if linear_attenuation {
+        let subtitle_gain = if gain.is_nan() {
+            f64::NAN
+        } else {
+            f64::from(gain.max(1.0))
+        };
+        f64::from(sound.attenuation_distance) * subtitle_gain
+    } else {
+        f64::INFINITY
+    };
+    AudioPlaybackEvent {
+        event_id: sound.event_id.clone(),
+        position,
+        range,
+    }
+}
+
+fn push_bounded_playback_event(
+    events: &mut VecDeque<AudioPlaybackEvent>,
+    event: AudioPlaybackEvent,
+) {
+    if events.len() == MAX_PLAYBACK_EVENTS {
+        events.pop_front();
+    }
+    events.push_back(event);
+}
+
 fn vanilla_distance_delay_ticks(
     distance_delay: bool,
     listener_position: [f64; 3],
@@ -1189,6 +1247,57 @@ mod tests {
                 updates: vec![("minecraft:ambient.keep".to_string(), 0)],
                 starts: vec![1],
             }
+        );
+    }
+
+    #[test]
+    fn playback_event_local_and_spatial_ranges_match_vanilla_subtitle_listener() {
+        let sound = test_resolved_sound("minecraft:block.note_block.harp");
+
+        assert_eq!(
+            local_playback_event(&sound),
+            AudioPlaybackEvent {
+                event_id: sound.event_id.clone(),
+                position: [0.0, 0.0, 0.0],
+                range: f64::INFINITY,
+            }
+        );
+        assert_eq!(
+            spatial_playback_event(&sound, [1.0, 2.0, 3.0], 0.25, true).range,
+            16.0
+        );
+        assert_eq!(
+            spatial_playback_event(&sound, [1.0, 2.0, 3.0], 2.5, true).range,
+            40.0
+        );
+        assert_eq!(
+            spatial_playback_event(&sound, [1.0, 2.0, 3.0], 1.0, false).range,
+            f64::INFINITY
+        );
+    }
+
+    #[test]
+    fn playback_event_fifo_drops_oldest_at_its_explicit_bound() {
+        let mut events = VecDeque::new();
+        for index in 0..=MAX_PLAYBACK_EVENTS {
+            push_bounded_playback_event(
+                &mut events,
+                AudioPlaybackEvent {
+                    event_id: format!("minecraft:test.{index}"),
+                    position: [f64::from(index as u32), 0.0, 0.0],
+                    range: 16.0,
+                },
+            );
+        }
+
+        assert_eq!(events.len(), MAX_PLAYBACK_EVENTS);
+        assert_eq!(
+            events.front().map(|event| event.event_id.as_str()),
+            Some("minecraft:test.1")
+        );
+        assert_eq!(
+            events.back().map(|event| event.event_id.as_str()),
+            Some("minecraft:test.1024")
         );
     }
 

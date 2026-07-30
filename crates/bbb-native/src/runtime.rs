@@ -18560,7 +18560,7 @@ fn audio_scene_command_from_world(world: &WorldStore) -> TickEntitySoundPosition
     }
 }
 
-fn audio_listener_state_from_world(world: &WorldStore) -> Option<AudioListenerState> {
+pub(crate) fn audio_listener_state_from_world(world: &WorldStore) -> Option<AudioListenerState> {
     let camera = world.local_player().camera;
     if let Some(camera_id) = camera.entity_id {
         if !camera.follows_player {
