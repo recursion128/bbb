@@ -763,22 +763,55 @@ impl NativeItemRuntime {
         self.item_minimum_attack_charges_by_protocol_id().len()
     }
 
-    pub fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
-        let mut durations = BTreeMap::new();
+    pub fn item_swing_animations_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, bbb_protocol::packets::SwingAnimationSummary> {
+        let mut animations = BTreeMap::new();
         let Some(registry) = &self.registry else {
-            return durations;
+            return animations;
         };
         for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
-            let Some(duration) = registry.default_swing_animation_duration(resource_id) else {
+            let Some(animation) = registry.default_swing_animation(resource_id) else {
                 continue;
             };
-            durations.insert(protocol_id as i32, duration);
+            animations.insert(
+                protocol_id as i32,
+                bbb_protocol::packets::SwingAnimationSummary {
+                    animation_type: animation.animation_type,
+                    duration: animation.duration,
+                },
+            );
         }
-        durations
+        animations
+    }
+
+    pub fn item_default_swing_animation(
+        &self,
+        resource_id: &str,
+    ) -> Option<bbb_protocol::packets::SwingAnimationSummary> {
+        let animation = self
+            .registry
+            .as_ref()?
+            .default_swing_animation(resource_id)?;
+        Some(bbb_protocol::packets::SwingAnimationSummary {
+            animation_type: animation.animation_type,
+            duration: animation.duration,
+        })
+    }
+
+    pub fn item_swing_animation_count(&self) -> usize {
+        self.item_swing_animations_by_protocol_id().len()
+    }
+
+    pub fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        self.item_swing_animations_by_protocol_id()
+            .into_iter()
+            .map(|(item_id, animation)| (item_id, animation.duration))
+            .collect()
     }
 
     pub fn item_swing_animation_duration_count(&self) -> usize {
-        self.item_swing_animation_durations_by_protocol_id().len()
+        self.item_swing_animation_count()
     }
 
     pub fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {

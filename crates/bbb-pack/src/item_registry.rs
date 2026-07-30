@@ -8,7 +8,8 @@ use bbb_protocol::equipment_slots::{
     VANILLA_EQUIPMENT_SLOT_GROUP_FEET_ID, VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
     VANILLA_EQUIPMENT_SLOT_GROUP_LEGS_ID,
 };
-use serde::{Deserialize, Serialize};
+use bbb_protocol::item_component_value_types::SwingAnimationTypeSummary;
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize};
 
 use crate::generated_java_expression::GeneratedJavaExpression;
 use crate::{
@@ -35,6 +36,56 @@ pub enum ItemMountBodyArmorKind {
     Horse,
     Llama,
     Nautilus,
+}
+
+/// Source-derived prototype value for `DataComponents.SWING_ANIMATION`.
+///
+/// The custom deserializer keeps old duration-only item-catalog overrides
+/// readable. That legacy table only represented Vanilla spear defaults, so an
+/// integer is unambiguously upgraded to `STAB`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ItemSwingAnimation {
+    #[serde(rename = "type")]
+    pub animation_type: SwingAnimationTypeSummary,
+    pub duration: i32,
+}
+
+impl<'de> Deserialize<'de> for ItemSwingAnimation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Typed {
+            #[serde(rename = "type")]
+            animation_type: SwingAnimationTypeSummary,
+            duration: i32,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Wire {
+            Typed(Typed),
+            LegacyDuration(i32),
+        }
+
+        let value = match Wire::deserialize(deserializer)? {
+            Wire::Typed(value) => Self {
+                animation_type: value.animation_type,
+                duration: value.duration,
+            },
+            Wire::LegacyDuration(duration) => Self {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration,
+            },
+        };
+        if value.duration <= 0 {
+            return Err(D::Error::custom(
+                "item prototype swing animation duration must be positive",
+            ));
+        }
+        Ok(value)
+    }
 }
 
 /// One vanilla `DataComponentInitializers` rule whose value depends on the
@@ -146,8 +197,8 @@ pub struct ItemRegistryCatalog {
     default_attack_ranges: BTreeMap<String, ItemAttackRange>,
     #[serde(default)]
     default_minimum_attack_charge_bits: BTreeMap<String, u32>,
-    #[serde(default)]
-    default_swing_animation_durations: BTreeMap<String, i32>,
+    #[serde(default, alias = "default_swing_animation_durations")]
+    default_swing_animations: BTreeMap<String, ItemSwingAnimation>,
     #[serde(default)]
     default_kinetic_weapons: BTreeMap<String, ItemKineticWeaponDefaults>,
     #[serde(default)]
@@ -508,7 +559,7 @@ impl ItemRegistryCatalog {
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_minimum_attack_charge_bits = BTreeMap::new();
-        let mut default_swing_animation_durations = BTreeMap::new();
+        let mut default_swing_animations = BTreeMap::new();
         let mut default_kinetic_weapons = BTreeMap::new();
         let mut default_attribute_modifiers = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
@@ -585,9 +636,8 @@ impl ItemRegistryCatalog {
             let default_minimum_attack_charge =
                 default_minimum_attack_charge_for_declaration(expression)
                     .with_context(source_context)?;
-            let default_swing_animation_duration =
-                default_swing_animation_duration_for_declaration(expression)
-                    .with_context(source_context)?;
+            let default_swing_animation =
+                default_swing_animation_for_declaration(expression).with_context(source_context)?;
             let default_kinetic_weapon =
                 default_kinetic_weapon_for_declaration(expression).with_context(source_context)?;
             let default_attribute_modifier_entries =
@@ -682,9 +732,8 @@ impl ItemRegistryCatalog {
                     default_minimum_attack_charge_bits
                         .insert(resource_id.clone(), default_minimum_attack_charge.to_bits());
                 }
-                if let Some(default_swing_animation_duration) = default_swing_animation_duration {
-                    default_swing_animation_durations
-                        .insert(resource_id.clone(), default_swing_animation_duration);
+                if let Some(default_swing_animation) = default_swing_animation {
+                    default_swing_animations.insert(resource_id.clone(), default_swing_animation);
                 }
                 if let Some(default_kinetic_weapon) = default_kinetic_weapon {
                     default_kinetic_weapons.insert(resource_id.clone(), default_kinetic_weapon);
@@ -821,7 +870,7 @@ impl ItemRegistryCatalog {
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_minimum_attack_charge_bits,
-            default_swing_animation_durations,
+            default_swing_animations,
             default_kinetic_weapons,
             default_attribute_modifiers,
             default_use_effects,
@@ -1112,11 +1161,14 @@ impl ItemRegistryCatalog {
             .map(f32::from_bits)
     }
 
-    pub fn default_swing_animation_duration(&self, resource_id: &str) -> Option<i32> {
+    pub fn default_swing_animation(&self, resource_id: &str) -> Option<ItemSwingAnimation> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
-        self.default_swing_animation_durations
-            .get(&resource_id)
-            .copied()
+        self.default_swing_animations.get(&resource_id).copied()
+    }
+
+    pub fn default_swing_animation_duration(&self, resource_id: &str) -> Option<i32> {
+        self.default_swing_animation(resource_id)
+            .map(|animation| animation.duration)
     }
 
     pub fn default_kinetic_weapon(&self, resource_id: &str) -> Option<ItemKineticWeaponDefaults> {
@@ -1957,11 +2009,15 @@ fn default_kinetic_weapon_for_declaration(
     }))
 }
 
-fn default_swing_animation_duration_for_declaration(
+fn default_swing_animation_for_declaration(
     expression: &GeneratedJavaExpression,
-) -> Result<Option<i32>> {
+) -> Result<Option<ItemSwingAnimation>> {
     if let Some(attack_duration) = spear_attack_duration_for_declaration(expression)? {
-        return Ok(Some((attack_duration * 20.0) as i32));
+        let duration = positive_swing_animation_ticks(attack_duration, "spear")?;
+        return Ok(Some(ItemSwingAnimation {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration,
+        }));
     }
 
     let Some(value) = component_value(expression, "SWING_ANIMATION") else {
@@ -1973,28 +2029,59 @@ fn default_swing_animation_duration_for_declaration(
     else {
         bail!("SWING_ANIMATION component lacks SwingAnimation constructor");
     };
+    if creation.arguments.len() != 2 {
+        bail!("SwingAnimation constructor must have two arguments");
+    }
+    let animation_type = creation.arguments[0]
+        .field_constant("SwingAnimationType")
+        .and_then(|constant| {
+            SwingAnimationTypeSummary::from_serialized_name(&constant.to_ascii_lowercase())
+        })
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "unknown SwingAnimationType {}",
+                creation.arguments[0].canonical
+            )
+        })?;
     let duration = creation
         .arguments
         .get(1)
         .ok_or_else(|| anyhow::anyhow!("SwingAnimation constructor lacks duration"))?;
-    if duration.kind == "decimal_integer_literal" {
-        return Ok(Some(duration.canonical.parse()?));
+    let duration = if duration.kind == "decimal_integer_literal" {
+        duration.canonical.parse()?
+    } else {
+        let numbers = duration
+            .children
+            .iter()
+            .flat_map(|child| child.children.iter().chain(std::iter::once(child)))
+            .filter(|child| child.kind == "decimal_floating_point_literal")
+            .collect::<Vec<_>>();
+        let seconds = numbers
+            .iter()
+            .find(|number| number.canonical.trim_end_matches('F') != "20.0")
+            .ok_or_else(|| {
+                anyhow::anyhow!("unsupported SwingAnimation duration {}", duration.canonical)
+            })?;
+        positive_swing_animation_ticks(
+            parse_java_float_literal(&seconds.canonical)?,
+            "SWING_ANIMATION",
+        )?
+    };
+    if duration <= 0 {
+        bail!("SWING_ANIMATION duration must be positive");
     }
-    let numbers = duration
-        .children
-        .iter()
-        .flat_map(|child| child.children.iter().chain(std::iter::once(child)))
-        .filter(|child| child.kind == "decimal_floating_point_literal")
-        .collect::<Vec<_>>();
-    let seconds = numbers
-        .iter()
-        .find(|number| number.canonical.trim_end_matches('F') != "20.0")
-        .ok_or_else(|| {
-            anyhow::anyhow!("unsupported SwingAnimation duration {}", duration.canonical)
-        })?;
-    Ok(Some(
-        (parse_java_float_literal(&seconds.canonical)? * 20.0) as i32,
-    ))
+    Ok(Some(ItemSwingAnimation {
+        animation_type,
+        duration,
+    }))
+}
+
+fn positive_swing_animation_ticks(seconds: f32, owner: &str) -> Result<i32> {
+    let ticks = seconds * 20.0;
+    if !seconds.is_finite() || seconds <= 0.0 || ticks > i32::MAX as f32 {
+        bail!("{owner} SWING_ANIMATION duration must be a finite positive tick duration");
+    }
+    Ok(ticks as i32)
 }
 
 fn default_attribute_modifiers_for_declaration(
@@ -3051,6 +3138,169 @@ mod tests {
         assert_eq!(
             catalog.default_minimum_attack_charge("minecraft:diamond_sword"),
             None
+        );
+    }
+
+    #[test]
+    fn swing_animation_defaults_preserve_generated_type_and_duration() {
+        fn field(owner: &str, constant: &str) -> GeneratedJavaExpression {
+            GeneratedJavaExpression {
+                kind: "field_access".to_string(),
+                canonical: format!("{owner}.{constant}"),
+                name: Some(constant.to_string()),
+                object: Some(Box::new(GeneratedJavaExpression {
+                    kind: "identifier".to_string(),
+                    canonical: owner.to_string(),
+                    name: Some(owner.to_string()),
+                    object: None,
+                    arguments: Vec::new(),
+                    children: Vec::new(),
+                })),
+                arguments: Vec::new(),
+                children: Vec::new(),
+            }
+        }
+
+        fn explicit(animation_type: &str, duration: i32) -> GeneratedJavaExpression {
+            let creation = GeneratedJavaExpression {
+                kind: "object_creation_expression".to_string(),
+                canonical: format!(
+                    "new SwingAnimation(SwingAnimationType.{animation_type}, {duration})"
+                ),
+                name: Some("SwingAnimation".to_string()),
+                object: None,
+                arguments: vec![
+                    field("SwingAnimationType", animation_type),
+                    GeneratedJavaExpression {
+                        kind: "decimal_integer_literal".to_string(),
+                        canonical: duration.to_string(),
+                        name: None,
+                        object: None,
+                        arguments: Vec::new(),
+                        children: Vec::new(),
+                    },
+                ],
+                children: Vec::new(),
+            };
+            GeneratedJavaExpression {
+                kind: "test_root".to_string(),
+                canonical: "test".to_string(),
+                name: None,
+                object: None,
+                arguments: Vec::new(),
+                children: vec![GeneratedJavaExpression {
+                    kind: "method_invocation".to_string(),
+                    canonical: format!(
+                        ".component(DataComponents.SWING_ANIMATION, {})",
+                        creation.canonical
+                    ),
+                    name: Some("component".to_string()),
+                    object: None,
+                    arguments: vec![field("DataComponents", "SWING_ANIMATION"), creation],
+                    children: Vec::new(),
+                }],
+            }
+        }
+
+        for (constant, animation_type) in [
+            ("NONE", SwingAnimationTypeSummary::None),
+            ("WHACK", SwingAnimationTypeSummary::Whack),
+            ("STAB", SwingAnimationTypeSummary::Stab),
+        ] {
+            assert_eq!(
+                default_swing_animation_for_declaration(&explicit(constant, 11)).unwrap(),
+                Some(ItemSwingAnimation {
+                    animation_type,
+                    duration: 11,
+                })
+            );
+        }
+        assert!(
+            default_swing_animation_for_declaration(&explicit("WHACK", 0))
+                .unwrap_err()
+                .to_string()
+                .contains("must be positive")
+        );
+
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        for (resource_id, duration) in [
+            ("minecraft:wooden_spear", 13),
+            ("minecraft:stone_spear", 15),
+            ("minecraft:copper_spear", 17),
+            ("minecraft:iron_spear", 19),
+            ("minecraft:golden_spear", 19),
+            ("minecraft:diamond_spear", 21),
+            ("minecraft:netherite_spear", 23),
+        ] {
+            assert_eq!(
+                catalog.default_swing_animation(resource_id),
+                Some(ItemSwingAnimation {
+                    animation_type: SwingAnimationTypeSummary::Stab,
+                    duration,
+                }),
+                "{resource_id}"
+            );
+        }
+        assert_eq!(
+            catalog.default_swing_animation("minecraft:diamond_sword"),
+            None
+        );
+    }
+
+    #[test]
+    fn swing_animation_override_schema_accepts_typed_and_legacy_values() {
+        let mut value =
+            serde_json::to_value(ItemRegistryCatalog::from_generated_source_catalog(None).unwrap())
+                .unwrap();
+        assert_eq!(
+            value["default_swing_animations"]["minecraft:wooden_spear"],
+            serde_json::json!({"type": "stab", "duration": 13})
+        );
+
+        let typed: ItemSwingAnimation =
+            serde_json::from_value(serde_json::json!({"type": "none", "duration": 9})).unwrap();
+        assert_eq!(
+            typed,
+            ItemSwingAnimation {
+                animation_type: SwingAnimationTypeSummary::None,
+                duration: 9,
+            }
+        );
+        let legacy: ItemSwingAnimation = serde_json::from_value(serde_json::json!(17)).unwrap();
+        assert_eq!(
+            legacy,
+            ItemSwingAnimation {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 17,
+            }
+        );
+        assert!(serde_json::from_value::<ItemSwingAnimation>(
+            serde_json::json!({"type": "whack", "duration": 0})
+        )
+        .is_err());
+
+        let animations = value
+            .as_object_mut()
+            .unwrap()
+            .remove("default_swing_animations")
+            .unwrap();
+        value["default_swing_animation_durations"] = serde_json::Value::Object(
+            animations
+                .as_object()
+                .unwrap()
+                .iter()
+                .map(|(resource_id, animation)| {
+                    (resource_id.clone(), animation["duration"].clone())
+                })
+                .collect(),
+        );
+        let legacy_catalog: ItemRegistryCatalog = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            legacy_catalog.default_swing_animation("minecraft:wooden_spear"),
+            Some(ItemSwingAnimation {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            })
         );
     }
 

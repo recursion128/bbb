@@ -18444,7 +18444,7 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
         "default_mount_body_armor_kinds",
         "mount_body_armor_assets",
         "default_attack_ranges",
-        "default_swing_animation_durations",
+        "default_swing_animations",
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
@@ -18510,7 +18510,7 @@ fn copy_item_registry_profile(
         "default_mount_body_armor_kinds",
         "mount_body_armor_assets",
         "default_attack_ranges",
-        "default_swing_animation_durations",
+        "default_swing_animations",
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
@@ -18708,4 +18708,30 @@ fn unique_temp_dir(label: &str) -> PathBuf {
         .as_nanos();
     let id = NEXT_TEMP_DIR_ID.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!("bbb-native-{label}-{nanos}-{id}"))
+}
+#[test]
+fn item_runtime_projects_typed_swing_animation_defaults_by_protocol_id() {
+    use bbb_protocol::item_component_value_types::SwingAnimationTypeSummary;
+
+    let runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    let spear_id = runtime
+        .item_protocol_id("minecraft:wooden_spear")
+        .expect("wooden spear id");
+    let animations = runtime.item_swing_animations_by_protocol_id();
+
+    assert_eq!(
+        animations[&spear_id],
+        bbb_protocol::packets::SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        }
+    );
+    assert_eq!(
+        runtime.item_default_swing_animation("minecraft:wooden_spear"),
+        Some(animations[&spear_id])
+    );
+    assert_eq!(
+        runtime.item_default_swing_animation("minecraft:diamond_sword"),
+        None
+    );
 }
