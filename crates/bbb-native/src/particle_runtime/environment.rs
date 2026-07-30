@@ -20,16 +20,13 @@ use bbb_world::{
 };
 
 use super::{
-    argb_particle_color, falling_dust_color_for_block_state_id,
+    argb_particle_color, falling_dust_color_for_block_state_id, particle_biome_blend_at,
     particle_item_option_state_for_stack, particle_provider_accepts_spawn, random_between,
     rgb_particle_color_u32, EnvironmentParticleColorSource, EnvironmentParticleSpawn,
     LevelParticleSpawnContext, ParticleBiomeSampler, ParticleCommandResolver,
     ParticleOptionRenderState, SimpleParticleTemplate,
 };
-use crate::{
-    biome_tint::{build_biome_blend, is_foliage_tinted_block},
-    terrain_runtime::BlockRenderPosition,
-};
+use crate::biome_tint::is_foliage_tinted_block;
 
 struct PreparedEnvironmentParticle {
     template: SimpleParticleTemplate,
@@ -102,22 +99,9 @@ impl ParticleCommandResolver {
                 block_pos,
                 block_resource_id,
             } => {
-                let center = BlockRenderPosition {
-                    x: block_pos.x,
-                    y: block_pos.y,
-                    z: block_pos.z,
-                };
                 let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
                 let blend = if is_foliage_tinted_block(block_resource_id) {
-                    biome_sampler.map(|sampler| {
-                        build_biome_blend(center, |pos| {
-                            sampler.biome_id_at(BlockPos {
-                                x: pos.x,
-                                y: pos.y,
-                                z: pos.z,
-                            })
-                        })
-                    })
+                    particle_biome_blend_at(block_pos, biome_sampler)
                 } else {
                     None
                 };

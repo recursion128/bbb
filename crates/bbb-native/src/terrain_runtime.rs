@@ -31,8 +31,8 @@ use occlusion::{
     ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainSectionOcclusionGraph,
 };
 pub(crate) use textures::{
-    load_terrain_textures, try_load_terrain_textures, BlockRenderPosition,
-    TerrainParticleTintCatalog, TerrainTextureState,
+    load_terrain_textures, terrain_particle_biome_blend_center, try_load_terrain_textures,
+    BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
 };
 
 const MAX_TERRAIN_UPLOAD_CHUNKS: usize = 49;

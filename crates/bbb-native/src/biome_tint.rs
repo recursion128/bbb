@@ -150,7 +150,7 @@ pub(crate) fn build_biome_blend(
 /// `(center.x - r + col, center.y, center.z - r + row)`, and `None` marks a
 /// column whose chunk is not loaded — an honestly-truncated window edge that is
 /// dropped from the average rather than fabricated.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct BiomeBlend {
     center: BlockRenderPosition,
     samples: [Option<i32>; BIOME_BLEND_SAMPLES],
@@ -162,6 +162,10 @@ impl BiomeBlend {
         samples: [Option<i32>; BIOME_BLEND_SAMPLES],
     ) -> Self {
         Self { center, samples }
+    }
+
+    pub(crate) fn center_biome_id(&self) -> Option<i32> {
+        self.samples[BIOME_BLEND_SAMPLES / 2]
     }
 
     /// Iterates the window as `(biome_id, sample_position)` pairs. Each

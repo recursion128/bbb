@@ -239,9 +239,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   NBT load owner for the renderer-observable persistent fields. Reopen when
   that bounded projection exists with current-session registry and equipment
   context; do not approximate custom tags as default entity metadata.
-- **Biome blend for block-break particles.** They still sample the single centre
-  biome, unlike terrain tints which blend over `biomeBlendRadius`.
-
 ## Entity models and animation
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`

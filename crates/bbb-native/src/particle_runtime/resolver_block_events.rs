@@ -48,6 +48,7 @@ impl ParticleCommandResolver {
         &self,
         event: &LevelEvent,
         context: LevelEventParticleContext,
+        biome_sampler: Option<&dyn ParticleBiomeSampler>,
     ) -> ParticleSpawnBatch {
         let block_state_id = event.data;
         if block_state_id < 0 || block_state_id == vanilla_air_block_state_id() {
@@ -75,10 +76,34 @@ impl ParticleCommandResolver {
             y: event.pos.y,
             z: event.pos.z,
         };
+        let biome_blend = self
+            .terrain_particle_tint_catalog
+            .block_state_biome_blend_center(
+                block_state_id,
+                BlockRenderPosition {
+                    x: event_pos.x,
+                    y: event_pos.y,
+                    z: event_pos.z,
+                },
+            )
+            .and_then(|center| {
+                particle_biome_blend_at(
+                    WorldBlockPos {
+                        x: center.x,
+                        y: center.y,
+                        z: center.z,
+                    },
+                    biome_sampler,
+                )
+            });
         let option_color = self.terrain_particle_tint_color_for_block_position(
             block_state_id,
             event_pos,
-            context.biome_id_at_event_pos,
+            biome_blend
+                .as_ref()
+                .and_then(BiomeBlend::center_biome_id)
+                .or(context.biome_id_at_event_pos),
+            biome_blend.as_ref(),
         );
         let option_state = ParticleOptionRenderState {
             block: Some(ParticleBlockOptionState { block_state_id }),

@@ -276,6 +276,7 @@ fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
 
     let state = local_destroy_hit_particle_state(&world, pos, ProtocolDirection::North)
         .expect("slab hit particle snapshot");
+    assert_eq!(state.biome_blend, None);
     let batch = resolver.local_destroy_hit_particle_batch(state);
 
     assert_eq!(batch.commands.len(), 1);
@@ -307,6 +308,46 @@ fn local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale() {
     let barrier = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
     set_player_action_test_block(&mut world, pos, barrier);
     assert!(local_destroy_hit_particle_state(&world, pos, ProtocolDirection::Up).is_none());
+}
+
+#[test]
+fn local_destroy_hit_particle_uses_captured_biome_blend() {
+    let pos = WorldBlockPos { x: 0, y: 8, z: 0 };
+    let short_grass = test_block_state_id("minecraft:short_grass", []);
+    let mut world = player_action_particle_world();
+    set_player_action_test_block(&mut world, pos, short_grass);
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+        test_biome_color_profile(
+            11,
+            [100, 110, 120],
+            [130, 140, 150],
+            [160, 170, 180],
+            [4, 5, 6],
+        ),
+    ]));
+    let mut resolver = test_resolver(0);
+    resolver.set_terrain_particle_sprite_ids(&textures);
+    let mut state = local_destroy_hit_particle_state(&world, pos, ProtocolDirection::North)
+        .expect("short-grass hit particle snapshot");
+    assert!(state.biome_blend.is_some());
+    state.biome_blend = Some(build_biome_blend(
+        BlockRenderPosition {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        |sample| Some(if sample.x < 0 { 7 } else { 11 }),
+    ));
+
+    let batch = resolver.local_destroy_hit_particle_batch(state);
+
+    let expected = split_x_blended_rgb(0, 0, [10, 20, 30], [100, 110, 120]);
+    assert_eq!(batch.len(), 1);
+    assert_eq!(
+        batch.commands[0].option_color,
+        Some(rgb_option_06(expected[0], expected[1], expected[2]))
+    );
 }
 
 #[test]
@@ -2662,7 +2703,7 @@ fn terrain_particle_commands_use_installed_block_tint_colors() {
 }
 
 #[test]
-fn terrain_particle_tint_samples_biome_at_each_spawn_position() {
+fn terrain_particle_biome_blend_is_centered_at_each_spawn_position() {
     let mut resolver = test_resolver(0);
     let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
         test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
@@ -2705,17 +2746,59 @@ fn terrain_particle_tint_samples_biome_at_each_spawn_position() {
             y: command.position[1],
             z: command.position[2],
         });
-        let expected_color = if block_pos.x < 0 {
+        if block_pos.x < 0 {
             saw_left = true;
-            rgb_option_06(10, 20, 30)
         } else {
             saw_right = true;
-            rgb_option_06(100, 110, 120)
-        };
-        assert_eq!(command.option_color, Some(expected_color));
+        }
+        let expected =
+            split_x_blended_rgb(block_pos.x, sampler.split_x, [10, 20, 30], [100, 110, 120]);
+        assert_eq!(
+            command.option_color,
+            Some(rgb_option_06(expected[0], expected[1], expected[2]))
+        );
     }
     assert!(saw_left);
     assert!(saw_right);
+}
+
+#[test]
+fn falling_dust_block_tint_uses_biome_blend_at_spawn_position() {
+    let mut resolver = test_resolver(0);
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+        test_biome_color_profile(
+            11,
+            [100, 110, 120],
+            [130, 140, 150],
+            [160, 170, 180],
+            [4, 5, 6],
+        ),
+    ]));
+    resolver.set_terrain_particle_sprite_ids(&textures);
+    let short_grass_id = test_block_state_id("minecraft:short_grass", []);
+    let sampler = SplitXBiomeSampler {
+        split_x: 0,
+        left_biome_id: 7,
+        right_biome_id: 11,
+    };
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
+    packet.position.x = 0.5;
+    packet.particle.raw_options = block_particle_options(short_grass_id);
+
+    let batch = resolver.resolve_level_particles_with_context(
+        &packet,
+        LevelParticleSpawnContext::default(),
+        Some(&sampler),
+        None,
+    );
+
+    let expected = split_x_blended_rgb(0, 0, [10, 20, 30], [100, 110, 120]);
+    assert_eq!(batch.len(), 1);
+    assert_eq!(
+        batch.commands[0].option_color,
+        Some(rgb_option(expected[0], expected[1], expected[2]))
+    );
 }
 
 #[test]
@@ -9555,6 +9638,48 @@ fn level_event_destroy_block_particles_use_event_pos_terrain_tint() {
 }
 
 #[test]
+fn level_event_destroy_block_particles_use_event_pos_biome_blend() {
+    let mut resolver = test_resolver(0);
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        test_biome_color_profile(7, [10, 20, 30], [40, 50, 60], [70, 80, 90], [1, 2, 3]),
+        test_biome_color_profile(
+            11,
+            [100, 110, 120],
+            [130, 140, 150],
+            [160, 170, 180],
+            [4, 5, 6],
+        ),
+    ]));
+    resolver.set_terrain_particle_sprite_ids(&textures);
+    let short_grass_id = test_block_state_id("minecraft:short_grass", []);
+    let event = LevelEvent {
+        event_type: DESTROY_BLOCK_PARTICLES_LEVEL_EVENT,
+        data: short_grass_id,
+        ..level_event_packet(DESTROY_BLOCK_PARTICLES_LEVEL_EVENT)
+    };
+    let sampler = SplitXBiomeSampler {
+        split_x: 10,
+        left_biome_id: 7,
+        right_biome_id: 11,
+    };
+    let mut random = LevelEventSoundRandomState::with_seed(0);
+
+    let batch = resolver.resolve_level_event_particles_with_context_and_resources(
+        &event,
+        LevelEventParticleContext::default(),
+        &mut random,
+        Some(&sampler),
+        None,
+    );
+
+    let expected = split_x_blended_rgb(10, 10, [10, 20, 30], [100, 110, 120]);
+    assert!(!batch.is_empty());
+    assert!(batch.commands.iter().all(|command| {
+        command.option_color == Some(rgb_option_06(expected[0], expected[1], expected[2]))
+    }));
+}
+
+#[test]
 fn level_event_smash_attack_particles_use_vanilla_dust_pillar_context() {
     let resolver = test_resolver(0);
     let event = LevelEvent {
@@ -10979,6 +11104,23 @@ fn rgb_option_06(r: u8, g: u8, b: u8) -> [f32; 4] {
         f32::from(g) / 255.0 * 0.6,
         f32::from(b) / 255.0 * 0.6,
         1.0,
+    ]
+}
+
+fn split_x_blended_rgb(center_x: i32, split_x: i32, left: [u8; 3], right: [u8; 3]) -> [u8; 3] {
+    let left_columns = (center_x - crate::biome_tint::BIOME_BLEND_RADIUS
+        ..=center_x + crate::biome_tint::BIOME_BLEND_RADIUS)
+        .filter(|x| *x < split_x)
+        .count() as u32;
+    let left_samples = left_columns * crate::biome_tint::BIOME_BLEND_DIAMETER as u32;
+    let right_samples = crate::biome_tint::BIOME_BLEND_SAMPLES as u32 - left_samples;
+    [
+        ((u32::from(left[0]) * left_samples + u32::from(right[0]) * right_samples)
+            / crate::biome_tint::BIOME_BLEND_SAMPLES as u32) as u8,
+        ((u32::from(left[1]) * left_samples + u32::from(right[1]) * right_samples)
+            / crate::biome_tint::BIOME_BLEND_SAMPLES as u32) as u8,
+        ((u32::from(left[2]) * left_samples + u32::from(right[2]) * right_samples)
+            / crate::biome_tint::BIOME_BLEND_SAMPLES as u32) as u8,
     ]
 }
 

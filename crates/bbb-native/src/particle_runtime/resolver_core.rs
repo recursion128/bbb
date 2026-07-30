@@ -337,7 +337,7 @@ impl ParticleCommandResolver {
                 self.shoot_particles(event, VANILLA_PARTICLE_TYPE_SMOKE_ID, random)
             }
             DESTROY_BLOCK_PARTICLES_LEVEL_EVENT | BRUSH_BLOCK_COMPLETE_LEVEL_EVENT => {
-                self.destroy_block_particle_batch(event, context)
+                self.destroy_block_particle_batch(event, context, biome_sampler)
             }
             BLAZE_SMOKE_LEVEL_EVENT => {
                 let mut batch = ParticleSpawnBatch::default();
@@ -964,22 +964,57 @@ impl ParticleCommandResolver {
     ) -> Option<[f32; 4]> {
         let block_state_id = option_state.block?.block_state_id;
         let block_pos = block_pos_containing(position);
-        let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
         match particle_type_id {
             VANILLA_PARTICLE_TYPE_BLOCK_ID
             | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
-            | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID => self
-                .terrain_particle_tint_color_for_block_position(
+            | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID => {
+                let biome_blend = self
+                    .terrain_particle_tint_catalog
+                    .block_state_biome_blend_center(
+                        block_state_id,
+                        BlockRenderPosition {
+                            x: block_pos.x,
+                            y: block_pos.y,
+                            z: block_pos.z,
+                        },
+                    )
+                    .and_then(|center| {
+                        particle_biome_blend_at(
+                            WorldBlockPos {
+                                x: center.x,
+                                y: center.y,
+                                z: center.z,
+                            },
+                            biome_sampler,
+                        )
+                    });
+                self.terrain_particle_tint_color_for_block_position(
                     block_state_id,
                     block_pos,
-                    biome_id,
-                ),
+                    biome_blend.as_ref().and_then(BiomeBlend::center_biome_id),
+                    biome_blend.as_ref(),
+                )
+            }
             VANILLA_PARTICLE_TYPE_FALLING_DUST_ID => {
                 let render_position = BlockRenderPosition {
                     x: block_pos.x,
                     y: block_pos.y,
                     z: block_pos.z,
                 };
+                let biome_blend = self
+                    .terrain_particle_tint_catalog
+                    .block_state_biome_blend_center(block_state_id, render_position)
+                    .and_then(|center| {
+                        particle_biome_blend_at(
+                            WorldBlockPos {
+                                x: center.x,
+                                y: center.y,
+                                z: center.z,
+                            },
+                            biome_sampler,
+                        )
+                    });
+                let biome_id = biome_blend.as_ref().and_then(BiomeBlend::center_biome_id);
                 let block_tint = self
                     .falling_dust_block_tint_colors
                     .contains_key(&block_state_id)
@@ -989,6 +1024,7 @@ impl ParticleCommandResolver {
                                 block_state_id,
                                 biome_id,
                                 Some(render_position),
+                                biome_blend.as_ref(),
                             )
                     })
                     .flatten()
@@ -1008,6 +1044,7 @@ impl ParticleCommandResolver {
         block_state_id: i32,
         block_pos: WorldBlockPos,
         biome_id: Option<i32>,
+        biome_blend: Option<&BiomeBlend>,
     ) -> Option<[f32; 4]> {
         if !self
             .terrain_particle_tint_colors
@@ -1025,6 +1062,7 @@ impl ParticleCommandResolver {
                 block_state_id,
                 biome_id,
                 Some(render_position),
+                biome_blend,
             )
             .or_else(|| {
                 self.terrain_particle_tint_colors

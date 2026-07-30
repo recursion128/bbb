@@ -1218,7 +1218,7 @@ fn particle_tint_catalog_samples_biome_profiles() {
     let position = Some(BlockRenderPosition { x: 4, y: 64, z: 8 });
 
     assert_eq!(
-        catalog.terrain_particle_tint_color_for_block_state(short_grass, Some(42), position),
+        catalog.terrain_particle_tint_color_for_block_state(short_grass, Some(42), position, None,),
         Some(rgb_06(9, 18, 27))
     );
     assert_eq!(
@@ -1226,9 +1226,32 @@ fn particle_tint_catalog_samples_biome_profiles() {
         Some(rgb_06(9, 18, 27))
     );
     assert_eq!(
-        catalog.falling_dust_block_tint_color_for_block_state(water, Some(42), position),
+        catalog.falling_dust_block_tint_color_for_block_state(water, Some(42), position, None,),
         Some(rgb(90, 99, 108))
     );
+}
+
+#[test]
+fn terrain_particle_biome_blend_center_uses_lower_half_for_double_tall_grass() {
+    let upper = block_state_id("minecraft:tall_grass", [("half", "upper")]);
+    let lower = block_state_id("minecraft:tall_grass", [("half", "lower")]);
+    let short = block_state_id("minecraft:short_grass", []);
+    let stone = block_state_id("minecraft:stone", []);
+    let position = BlockRenderPosition { x: 4, y: 64, z: 8 };
+
+    assert_eq!(
+        terrain_particle_biome_blend_center(upper, position),
+        Some(BlockRenderPosition { y: 63, ..position })
+    );
+    assert_eq!(
+        terrain_particle_biome_blend_center(lower, position),
+        Some(position)
+    );
+    assert_eq!(
+        terrain_particle_biome_blend_center(short, position),
+        Some(position)
+    );
+    assert_eq!(terrain_particle_biome_blend_center(stone, position), None);
 }
 
 // Vanilla `ClientLevel.calculateBlockTint` averages a biome `ColorResolver`

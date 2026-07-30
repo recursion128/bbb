@@ -43,8 +43,12 @@ use bbb_world::{
     VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 
-use crate::terrain_runtime::{
-    BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
+use crate::{
+    biome_tint::{build_biome_blend, BiomeBlend},
+    terrain_runtime::{
+        terrain_particle_biome_blend_center, BlockRenderPosition, TerrainParticleTintCatalog,
+        TerrainTextureState,
+    },
 };
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
@@ -67,7 +71,7 @@ pub(crate) struct LocalDestroyHitParticleState {
     block_state_id: i32,
     shape_min: [f64; 3],
     shape_max: [f64; 3],
-    biome_id: Option<i32>,
+    biome_blend: Option<BiomeBlend>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -762,6 +766,27 @@ fn block_pos_containing(position: Vec3d) -> WorldBlockPos {
         y: position.y.floor() as i32,
         z: position.z.floor() as i32,
     }
+}
+
+fn particle_biome_blend_at(
+    block_pos: WorldBlockPos,
+    biome_sampler: Option<&dyn ParticleBiomeSampler>,
+) -> Option<BiomeBlend> {
+    let sampler = biome_sampler?;
+    Some(build_biome_blend(
+        BlockRenderPosition {
+            x: block_pos.x,
+            y: block_pos.y,
+            z: block_pos.z,
+        },
+        |sample| {
+            sampler.biome_id_at(WorldBlockPos {
+                x: sample.x,
+                y: sample.y,
+                z: sample.z,
+            })
+        },
+    ))
 }
 
 fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: &[u8]) -> u32 {

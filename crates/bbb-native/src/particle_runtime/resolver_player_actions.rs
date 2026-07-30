@@ -37,19 +37,30 @@ pub(crate) fn local_destroy_hit_particle_state(
     }
     let (shape_min, shape_max) = crate::block_outline::block_probe_shape_boxes(&probe)
         .and_then(|boxes| block_shape_bounds(&boxes))?;
-    let biome_id = world
-        .chunk_biome_sampler(bbb_world::ChunkPos {
+    let biome_blend = terrain_particle_biome_blend_center(
+        probe.block_state_id,
+        BlockRenderPosition {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+    )
+    .map(|center| {
+        let biome_sampler = world.chunk_biome_sampler(bbb_world::ChunkPos {
             x: pos.x.div_euclid(16),
             z: pos.z.div_euclid(16),
+        });
+        build_biome_blend(center, |sample| {
+            biome_sampler.biome_id_at(sample.x, sample.y, sample.z)
         })
-        .biome_id_at(pos.x, pos.y, pos.z);
+    });
     Some(LocalDestroyHitParticleState {
         pos,
         face,
         block_state_id: probe.block_state_id,
         shape_min,
         shape_max,
-        biome_id,
+        biome_blend,
     })
 }
 
@@ -351,7 +362,11 @@ impl ParticleCommandResolver {
             color: self.terrain_particle_tint_color_for_block_position(
                 state.block_state_id,
                 state.pos,
-                state.biome_id,
+                state
+                    .biome_blend
+                    .as_ref()
+                    .and_then(BiomeBlend::center_biome_id),
+                state.biome_blend.as_ref(),
             ),
             power: Some(0.2),
             scale: Some(0.6),

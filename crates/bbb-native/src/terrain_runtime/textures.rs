@@ -87,7 +87,7 @@ impl Default for TerrainTextureState {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct BlockRenderPosition {
     pub(crate) x: i32,
     pub(crate) y: i32,
@@ -1436,7 +1436,9 @@ impl TerrainTextureState {
         position: Option<BlockRenderPosition>,
     ) -> Option<TerrainTint> {
         self.tint_context()
-            .block_colors_layer0_terrain_particle_tint(block_name, properties, biome_id, position)
+            .block_colors_layer0_terrain_particle_tint(
+                block_name, properties, biome_id, position, None,
+            )
     }
 
     fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {
@@ -1501,6 +1503,7 @@ impl TerrainParticleTintCatalog {
         block_state_id: i32,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> Option<[f32; 4]> {
         let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
         let block_state = block_states.by_id(block_state_id)?;
@@ -1510,8 +1513,17 @@ impl TerrainParticleTintCatalog {
                 &block_state.properties,
                 biome_id,
                 position,
+                blend,
             )
             .map(terrain_particle_rgb_06)
+    }
+
+    pub(crate) fn block_state_biome_blend_center(
+        &self,
+        block_state_id: i32,
+        position: BlockRenderPosition,
+    ) -> Option<BlockRenderPosition> {
+        terrain_particle_biome_blend_center(block_state_id, position)
     }
 
     pub(crate) fn falling_dust_block_tint_color_for_block_state(
@@ -1519,6 +1531,7 @@ impl TerrainParticleTintCatalog {
         block_state_id: i32,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> Option<[f32; 4]> {
         let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
         let block_state = block_states.by_id(block_state_id)?;
@@ -1528,6 +1541,7 @@ impl TerrainParticleTintCatalog {
                 &block_state.properties,
                 biome_id,
                 position,
+                blend,
             )
             .map(terrain_tint_particle_rgb)
     }
@@ -1583,31 +1597,23 @@ impl TerrainTintContext<'_> {
         properties: &BTreeMap<String, String>,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
+        blend: Option<&BiomeBlend>,
     ) -> Option<TerrainTint> {
+        if let Some(kind) = terrain_particle_biome_tint_kind(block_name) {
+            return Some(match kind {
+                TerrainParticleBiomeTintKind::Grass => self.grass_tint(biome_id, position, blend),
+                TerrainParticleBiomeTintKind::Foliage => self.foliage_tint(biome_id, blend),
+                TerrainParticleBiomeTintKind::DryFoliage => self.dry_foliage_tint(biome_id, blend),
+                TerrainParticleBiomeTintKind::Water => self.water_tint(biome_id, blend),
+            });
+        }
         match block_name {
             // Vanilla `BlockTintSources.grassBlock().colorAsTerrainParticle` returns -1.
             "minecraft:grass_block" | "minecraft:pink_petals" | "minecraft:wildflowers" => {
                 Some(TerrainTint::WHITE)
             }
-            "minecraft:large_fern"
-            | "minecraft:tall_grass"
-            | "minecraft:fern"
-            | "minecraft:short_grass"
-            | "minecraft:potted_fern"
-            | "minecraft:bush"
-            | "minecraft:sugar_cane" => Some(self.grass_tint(biome_id, position, None)),
             "minecraft:spruce_leaves" => Some(TerrainTint::from_rgb_u8(0x61, 0x99, 0x61)),
             "minecraft:birch_leaves" => Some(TerrainTint::from_rgb_u8(0x80, 0xa7, 0x55)),
-            "minecraft:oak_leaves"
-            | "minecraft:jungle_leaves"
-            | "minecraft:acacia_leaves"
-            | "minecraft:dark_oak_leaves"
-            | "minecraft:vine"
-            | "minecraft:mangrove_leaves" => Some(self.foliage_tint(biome_id, None)),
-            "minecraft:leaf_litter" => Some(self.dry_foliage_tint(biome_id, None)),
-            "minecraft:water_cauldron" | "minecraft:water" | "minecraft:bubble_column" => {
-                Some(self.water_tint(biome_id, None))
-            }
             "minecraft:redstone_wire" => Some(redstone_wire_tint(
                 properties
                     .get("power")
@@ -1733,9 +1739,9 @@ impl TerrainTintContext<'_> {
     /// position), then the R/G/B channels are summed and integer-divided by the
     /// sample count. With a fully-loaded window the count is the vanilla
     /// `(2r+1)^2`; unloaded columns are dropped so a render-distance edge
-    /// averages only the columns that actually exist. When `blend` is `None`
-    /// (item / particle rendering, or an all-unavailable window) it degrades to
-    /// the single-biome resolve, i.e. `biomeBlendRadius == 0`.
+    /// averages only the columns that actually exist. Without a sampling
+    /// owner, or when every window column is unavailable, it degrades to the
+    /// single-biome resolve, i.e. `biomeBlendRadius == 0`.
     fn blend_rgb(
         &self,
         biome_id: Option<i32>,
@@ -1771,6 +1777,54 @@ impl TerrainTintContext<'_> {
     fn biome_profile(&self, biome_id: Option<i32>) -> Option<&BiomeColorProfile> {
         self.biome_colors?.profile(biome_id?)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TerrainParticleBiomeTintKind {
+    Grass,
+    Foliage,
+    DryFoliage,
+    Water,
+}
+
+fn terrain_particle_biome_tint_kind(block_name: &str) -> Option<TerrainParticleBiomeTintKind> {
+    match block_name {
+        "minecraft:large_fern"
+        | "minecraft:tall_grass"
+        | "minecraft:fern"
+        | "minecraft:short_grass"
+        | "minecraft:potted_fern"
+        | "minecraft:bush"
+        | "minecraft:sugar_cane" => Some(TerrainParticleBiomeTintKind::Grass),
+        "minecraft:oak_leaves"
+        | "minecraft:jungle_leaves"
+        | "minecraft:acacia_leaves"
+        | "minecraft:dark_oak_leaves"
+        | "minecraft:vine"
+        | "minecraft:mangrove_leaves" => Some(TerrainParticleBiomeTintKind::Foliage),
+        "minecraft:leaf_litter" => Some(TerrainParticleBiomeTintKind::DryFoliage),
+        "minecraft:water_cauldron" | "minecraft:water" | "minecraft:bubble_column" => {
+            Some(TerrainParticleBiomeTintKind::Water)
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn terrain_particle_biome_blend_center(
+    block_state_id: i32,
+    mut position: BlockRenderPosition,
+) -> Option<BlockRenderPosition> {
+    let block_states = bbb_world::BlockStateRegistry::vanilla_26_1();
+    let block_state = block_states.by_id(block_state_id)?;
+    terrain_particle_biome_tint_kind(&block_state.name)?;
+    if matches!(
+        block_state.name.as_str(),
+        "minecraft:large_fern" | "minecraft:tall_grass"
+    ) && block_state.properties.get("half").map(String::as_str) == Some("upper")
+    {
+        position.y = position.y.saturating_sub(1);
+    }
+    Some(position)
 }
 
 fn terrain_particle_rgb_06(tint: TerrainTint) -> [f32; 4] {
