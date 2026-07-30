@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
+#[cfg(test)]
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
