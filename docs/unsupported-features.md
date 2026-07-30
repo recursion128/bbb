@@ -59,13 +59,13 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
-- A declared Linux x86_64 release/platform acceptance matrix is still missing.
-  It must name the supported window/GPU backend rows and record clean build,
-  fixture/live playable, CLI version/protocol/pack-format diagnostics,
-  startup/shutdown, resize/DPI/fullscreen/focus, keyboard/mouse/clipboard/IME,
-  no-audio-device and headless-probe results with reproducible commands and
-  artifact locations. Historical build/performance measurements alone do not
-  declare a supported release row.
+- Linux X11, live DPI-transition/fullscreen, and compositor-originated
+  focus/keyboard/mouse/clipboard/IME release validation is `deferred`: the
+  maintained headless runner has a real Wayland/Vulkan window but no
+  interactive compositor seat/input injector or X11 fixture. Reopen when a
+  maintained interactive Linux runner can capture those events and execute the
+  same release/live matrix; do not infer them from the declared windowed
+  Wayland row or semantic unit tests.
 - macOS and Windows release validation is `deferred`: the repository has
   platform-specific URI/config paths and historical macOS build measurements,
   but no maintained host/runner with winit, wgpu, audio and input fixtures for

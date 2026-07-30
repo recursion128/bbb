@@ -886,3 +886,6 @@
 - **2026-07-30（lifecycle/fault soak 交付门禁）**：三轮真实 Vanilla 26.1
   quit/kick/quit 会话现验收故障 receipts、终态 gauge、跨轮进程趋势与 clean exit；
   合同与本地 report/stamp 见 `docs/lifecycle-soak-gate-design.md`。
+- **2026-07-30（Linux x86_64 发布矩阵闭环）**：Wayland/Vulkan/windowed 行现由
+  fresh release、build-info、headless/live/quit、backend 与输入/lifecycle receipts
+  联合验收；合同与本地 report/stamp 见 `docs/linux-platform-acceptance.md`。

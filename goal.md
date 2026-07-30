@@ -287,7 +287,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
-- p4-delivery: active
+- p4-delivery: maintenance
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -354,9 +354,9 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`，但不是开放愿景队列；ready 工作只对应账本
-“P4 lifecycle, soak, and supported-platform release gates”的 active items。
-当前唯一 ready 项是声明支持的 Linux x86_64 发布矩阵。
+状态：`maintenance`。账本当前没有 active item；安全预算、bounded runtime、
+lifecycle/fault soak 与已声明平台行均有有界 gate，剩余官方 Java 同载对照、
+扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
 
 已有维护证据：
 
@@ -373,8 +373,12 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
   指标趋势与 clean exit；`last-lifecycle-soak`/归档 report 是 maintenance
   证据，fixture 重放不能替代该 gate。
+- `scripts/platform-acceptance-gate.sh` 依
+  `docs/linux-platform-acceptance.md` 声明并验收 Linux x86_64 / Wayland /
+  Vulkan / windowed external-multiplayer 行：fresh locked release build、
+  build-info、headless probe、完整 live/quit、实际 backend 日志、输入语义
+  focused receipts 与 lifecycle-soak 证据统一写入 report/stamp。
 
-剩余验收只有声明支持的 Linux 发布矩阵；其唯一支持行、evidence tier、runner
-边界和机械 gate 合同见 `docs/linux-platform-acceptance.md`。非 Linux 发布验证
-按账本条件 deferred。该 active 通过真实 release/live gate 后删除并把路线改为
-`maintenance`；若届时 active=0，再走工作流第 4 步的机械终止判据。
+维护触发只来自上述 gate/stamp 回退、已声明行/构建配置/runtime owner 变化，或
+账本 deferred 重启条件满足；不能由宽泛 soak、性能、平台愿景重新生成 ready
+工作。active=0 时走工作流第 4 步的机械终止判据。
