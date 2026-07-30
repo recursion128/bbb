@@ -17,6 +17,7 @@ Environment:
   BBB_PLAYABLE_SERVER_JAR       Explicit local vanilla 26.1 server jar
   BBB_PLAYABLE_ACCEPT_EULA=1    Required EULA acknowledgement
   BBB_PLAYABLE_JAVA             Explicit Java executable
+  BBB_MC_CODE_ROOT              Vanilla 26.1 sources/assets root
   BBB_LIFECYCLE_SOAK_ARTIFACT_DIR  Result directory; default is fresh /tmp
 
 The caller must also provide DISPLAY or WAYLAND_DISPLAY. The gate never
@@ -37,6 +38,13 @@ case "${1:-}" in
     ;;
 esac
 
+mc_code_root=${BBB_MC_CODE_ROOT:-}
+if [ -z "$mc_code_root" ] ||
+  [ ! -d "$mc_code_root/sources/26.1/assets/minecraft" ]
+then
+  echo "lifecycle soak failed: set BBB_MC_CODE_ROOT to the Vanilla 26.1 code root" >&2
+  exit 2
+fi
 if [ -n "$(git -C "$repo_root" status --porcelain)" ]; then
   echo "lifecycle soak failed: worktree must be clean" >&2
   exit 2
