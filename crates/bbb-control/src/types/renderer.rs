@@ -5,6 +5,26 @@ pub struct RendererCounters {
     pub frame_index: u64,
     pub width: u32,
     pub height: u32,
+    #[serde(default)]
+    pub surface_resizes: u64,
+    #[serde(default)]
+    pub surface_zero_size_skips: u64,
+    #[serde(default)]
+    pub surface_lost: u64,
+    #[serde(default)]
+    pub surface_outdated: u64,
+    #[serde(default)]
+    pub surface_timeouts: u64,
+    #[serde(default)]
+    pub surface_reconfigurations: u64,
+    #[serde(default)]
+    pub surface_frames_skipped: u64,
+    #[serde(default)]
+    pub window_resize_requests: u64,
+    #[serde(default)]
+    pub window_minimize_requests: u64,
+    #[serde(default)]
+    pub window_restore_requests: u64,
     pub draw_calls: u64,
     pub opaque_draw_calls: u64,
     pub cutout_draw_calls: u64,

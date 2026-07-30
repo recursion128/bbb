@@ -9,6 +9,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+lifecycle-soak = ["bbb-renderer/lifecycle-soak"]
+
 [[bin]]
 name = "bbb-native"
 path = "src/main.rs"

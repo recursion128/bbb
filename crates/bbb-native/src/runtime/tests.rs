@@ -8,6 +8,34 @@ use std::{
 };
 
 #[test]
+fn renderer_surface_recovery_counters_cross_the_control_projection() {
+    let source = bbb_renderer::RendererCounters {
+        surface_resizes: 2,
+        surface_zero_size_skips: 1,
+        surface_lost: 3,
+        surface_outdated: 4,
+        surface_timeouts: 5,
+        surface_reconfigurations: 7,
+        surface_frames_skipped: 12,
+        window_resize_requests: 2,
+        window_minimize_requests: 1,
+        window_restore_requests: 1,
+        ..Default::default()
+    };
+    let projected = control_renderer_counters(source);
+    assert_eq!(projected.surface_resizes, 2);
+    assert_eq!(projected.surface_zero_size_skips, 1);
+    assert_eq!(projected.surface_lost, 3);
+    assert_eq!(projected.surface_outdated, 4);
+    assert_eq!(projected.surface_timeouts, 5);
+    assert_eq!(projected.surface_reconfigurations, 7);
+    assert_eq!(projected.surface_frames_skipped, 12);
+    assert_eq!(projected.window_resize_requests, 2);
+    assert_eq!(projected.window_minimize_requests, 1);
+    assert_eq!(projected.window_restore_requests, 1);
+}
+
+#[test]
 fn jigsaw_priority_tooltip_hit_testing_matches_priority_fields() {
     let layout = hud_jigsaw_block_editor_layout(winit::dpi::PhysicalSize::new(320, 240));
     assert_eq!(

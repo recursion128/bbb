@@ -165,6 +165,25 @@ pub(super) enum RenderSurface {
     Offscreen(std::sync::Arc<wgpu::Texture>),
 }
 
+#[cfg(feature = "lifecycle-soak")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LifecycleSoakSurfaceError {
+    Lost,
+    Outdated,
+    Timeout,
+}
+
+#[cfg(feature = "lifecycle-soak")]
+impl LifecycleSoakSurfaceError {
+    fn into_surface_error(self) -> wgpu::SurfaceError {
+        match self {
+            Self::Lost => wgpu::SurfaceError::Lost,
+            Self::Outdated => wgpu::SurfaceError::Outdated,
+            Self::Timeout => wgpu::SurfaceError::Timeout,
+        }
+    }
+}
+
 impl RenderSurface {
     /// Acquires this frame's color target. `Ok(None)` means "skip this frame"
     /// — the swapchain was lost/outdated (reconfigured here, vanilla-style) or
@@ -173,19 +192,41 @@ impl RenderSurface {
         &mut self,
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
+        counters: &mut RendererCounters,
+        injected_fault: Option<wgpu::SurfaceError>,
     ) -> Result<Option<FrameTarget>> {
-        match self {
-            Self::Window(surface) => match surface.get_current_texture() {
-                Ok(frame) => Ok(Some(FrameTarget::Surface(frame))),
-                Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                    surface.configure(device, config);
-                    Ok(None)
-                }
-                Err(wgpu::SurfaceError::Timeout) => Ok(None),
-                Err(err) => Err(err.into()),
+        let acquired = match injected_fault {
+            Some(error) => Err(error),
+            None => match self {
+                Self::Window(surface) => surface.get_current_texture().map(FrameTarget::Surface),
+                #[cfg(test)]
+                Self::Offscreen(texture) => Ok(FrameTarget::Offscreen(texture.clone())),
             },
-            #[cfg(test)]
-            Self::Offscreen(texture) => Ok(Some(FrameTarget::Offscreen(texture.clone()))),
+        };
+        match acquired {
+            Ok(frame) => Ok(Some(frame)),
+            Err(wgpu::SurfaceError::Lost) => {
+                counters.surface_lost = counters.surface_lost.saturating_add(1);
+                counters.surface_reconfigurations =
+                    counters.surface_reconfigurations.saturating_add(1);
+                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
+                self.configure(device, config);
+                Ok(None)
+            }
+            Err(wgpu::SurfaceError::Outdated) => {
+                counters.surface_outdated = counters.surface_outdated.saturating_add(1);
+                counters.surface_reconfigurations =
+                    counters.surface_reconfigurations.saturating_add(1);
+                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
+                self.configure(device, config);
+                Ok(None)
+            }
+            Err(wgpu::SurfaceError::Timeout) => {
+                counters.surface_timeouts = counters.surface_timeouts.saturating_add(1);
+                counters.surface_frames_skipped = counters.surface_frames_skipped.saturating_add(1);
+                Ok(None)
+            }
+            Err(error) => Err(error.into()),
         }
     }
 
@@ -269,6 +310,8 @@ pub struct Renderer {
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
+    #[cfg(feature = "lifecycle-soak")]
+    pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceError>,
     pub(super) started_at: Instant,
     pub(super) gpu_timing: Option<GpuFrameTiming>,
     pub(super) last_frame_profile: RendererFrameProfile,
@@ -1774,6 +1817,8 @@ impl Renderer {
                 height: size.height,
                 ..RendererCounters::default()
             },
+            #[cfg(feature = "lifecycle-soak")]
+            lifecycle_soak_surface_faults: std::collections::VecDeque::new(),
             started_at: Instant::now(),
             gpu_timing,
             last_frame_profile: RendererFrameProfile::default(),
@@ -2439,8 +2484,11 @@ impl Renderer {
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {
         if size.width == 0 || size.height == 0 {
+            self.counters.surface_zero_size_skips =
+                self.counters.surface_zero_size_skips.saturating_add(1);
             return Ok(());
         }
+        self.counters.surface_resizes = self.counters.surface_resizes.saturating_add(1);
         if let Some(post_effect_graphs) = &mut self.post_effect_graphs {
             post_effect_graphs.resize(&self.device, size.width, size.height)?;
         }
@@ -2531,6 +2579,30 @@ impl Renderer {
 
     pub fn counters(&self) -> RendererCounters {
         self.counters.clone()
+    }
+
+    #[cfg(feature = "lifecycle-soak")]
+    pub fn inject_lifecycle_soak_surface_error(&mut self, error: LifecycleSoakSurfaceError) {
+        self.lifecycle_soak_surface_faults
+            .push_back(error.into_surface_error());
+    }
+
+    #[cfg(feature = "lifecycle-soak")]
+    pub fn record_lifecycle_soak_window_resize_request(&mut self) {
+        self.counters.window_resize_requests =
+            self.counters.window_resize_requests.saturating_add(1);
+    }
+
+    #[cfg(feature = "lifecycle-soak")]
+    pub fn record_lifecycle_soak_window_minimize_request(&mut self) {
+        self.counters.window_minimize_requests =
+            self.counters.window_minimize_requests.saturating_add(1);
+    }
+
+    #[cfg(feature = "lifecycle-soak")]
+    pub fn record_lifecycle_soak_window_restore_request(&mut self) {
+        self.counters.window_restore_requests =
+            self.counters.window_restore_requests.saturating_add(1);
     }
 
     pub fn set_gpu_timing_enabled(&mut self, enabled: bool) {

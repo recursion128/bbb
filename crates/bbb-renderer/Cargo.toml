@@ -9,6 +9,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+lifecycle-soak = []
+
 [dependencies]
 anyhow = { workspace = true }
 bbb-pack = { path = "../bbb-pack" }

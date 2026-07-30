@@ -141,7 +141,17 @@ impl Renderer {
             gpu_async,
             ..crate::renderer::RendererFrameProfile::default()
         };
-        let Some(frame) = self.surface.acquire_frame(&self.device, &self.config)? else {
+        #[cfg(feature = "lifecycle-soak")]
+        let injected_fault = self.lifecycle_soak_surface_faults.pop_front();
+        #[cfg(not(feature = "lifecycle-soak"))]
+        let injected_fault = None;
+        let Some(frame) = self.surface.acquire_frame(
+            &self.device,
+            &self.config,
+            &mut self.counters,
+            injected_fault,
+        )?
+        else {
             return Ok(());
         };
         let render_encoding_started_at = std::time::Instant::now();
@@ -5291,6 +5301,34 @@ impl Renderer {
 #[cfg(test)]
 mod tests {
     use super::{Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+
+    #[cfg(feature = "lifecycle-soak")]
+    #[test]
+    fn lifecycle_soak_faults_use_the_real_reconfigure_and_skip_paths() {
+        use crate::LifecycleSoakSurfaceError;
+
+        let Some(mut renderer) = Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        for error in [
+            LifecycleSoakSurfaceError::Lost,
+            LifecycleSoakSurfaceError::Outdated,
+            LifecycleSoakSurfaceError::Timeout,
+        ] {
+            renderer.inject_lifecycle_soak_surface_error(error);
+            renderer.render(None).unwrap();
+        }
+        let counters = renderer.counters();
+        assert_eq!(counters.surface_lost, 1);
+        assert_eq!(counters.surface_outdated, 1);
+        assert_eq!(counters.surface_timeouts, 1);
+        assert_eq!(counters.surface_reconfigurations, 2);
+        assert_eq!(counters.surface_frames_skipped, 3);
+        assert_eq!(counters.frame_index, 0);
+
+        renderer.render(None).unwrap();
+        assert_eq!(renderer.counters().frame_index, 1);
+    }
 
     /// The frame's step sequence in submission order. `render()` calls exactly
     /// these methods in exactly this order, and `render_steps_are_defined_in_frame_

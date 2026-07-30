@@ -49,6 +49,8 @@ mod item_registry_test_fixture;
 mod item_texture_animation;
 mod lectern_book_scene;
 mod level_load_runtime;
+#[cfg(feature = "lifecycle-soak")]
+mod lifecycle_soak;
 mod map_textures;
 mod music_runtime;
 mod narrator_runtime;
@@ -420,6 +422,8 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
 fn main() -> Result<()> {
     init_tracing();
     let args = parse_args();
+    #[cfg(feature = "lifecycle-soak")]
+    let mut lifecycle_soak = lifecycle_soak::LifecycleSoakRuntime::from_env()?;
     let runtime = tokio::runtime::Runtime::new()?;
 
     if run_status_if_requested(&runtime, &args)? {
@@ -519,21 +523,40 @@ fn main() -> Result<()> {
         profile_id,
     );
     start_control_api(&runtime, args.control, &control);
-    let (mut audio_runtime, mut audio_status) = match pack_roots.as_ref() {
-        Some(roots) => match NativeAudioRuntime::load(roots) {
-            Ok(runtime) => {
-                let status = runtime.counters();
-                (Some(runtime), status)
-            }
-            Err(err) => {
-                tracing::warn!(?err, "continuing without native audio runtime");
-                (None, AudioCounters::disabled(err.to_string()))
-            }
-        },
-        None => (
+    let force_no_audio_device = {
+        #[cfg(feature = "lifecycle-soak")]
+        {
+            lifecycle_soak
+                .as_ref()
+                .is_some_and(lifecycle_soak::LifecycleSoakRuntime::force_no_audio_device)
+        }
+        #[cfg(not(feature = "lifecycle-soak"))]
+        {
+            false
+        }
+    };
+    let (mut audio_runtime, mut audio_status) = if force_no_audio_device {
+        (
             None,
-            AudioCounters::disabled("pack roots unavailable for native audio runtime"),
-        ),
+            AudioCounters::disabled("lifecycle-soak injected no audio device"),
+        )
+    } else {
+        match pack_roots.as_ref() {
+            Some(roots) => match NativeAudioRuntime::load(roots) {
+                Ok(runtime) => {
+                    let status = runtime.counters();
+                    (Some(runtime), status)
+                }
+                Err(err) => {
+                    tracing::warn!(?err, "continuing without native audio runtime");
+                    (None, AudioCounters::disabled(err.to_string()))
+                }
+            },
+            None => (
+                None,
+                AudioCounters::disabled("pack roots unavailable for native audio runtime"),
+            ),
+        }
     };
     let narrator_status = NarratorStatus::from(args.client_narrator);
     world.set_available_command_sounds(
@@ -914,6 +937,10 @@ fn main() -> Result<()> {
                 next
             });
             return;
+        }
+        #[cfg(feature = "lifecycle-soak")]
+        if let Some(runtime) = lifecycle_soak.as_mut() {
+            runtime.apply_due(Instant::now(), &window, &mut renderer);
         }
         let mut resource_reloads = Vec::new();
         loop {

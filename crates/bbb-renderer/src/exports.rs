@@ -223,6 +223,8 @@ pub use crate::player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
     DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
+#[cfg(feature = "lifecycle-soak")]
+pub use crate::renderer::LifecycleSoakSurfaceError;
 pub use crate::renderer::{
     Renderer, RendererFrameProfile, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
 };
