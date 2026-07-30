@@ -7139,7 +7139,7 @@ fn hud_boss_bar_projection_covers_every_vanilla_color_and_overlay() {
 }
 
 #[test]
-fn renderer_frame_item_entity_and_chest_projections_extract_after_tick_advances() {
+fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     let source = include_str!("../runtime.rs");
     let entity_tick = source
         .find("advance_native_client_ticks(")
@@ -7359,6 +7359,18 @@ fn renderer_frame_item_entity_and_chest_projections_extract_after_tick_advances(
             "item/entity RendererFrame fields should read the post-tick world snapshot"
         );
     }
+}
+
+#[test]
+fn christmas_chest_projection_uses_render_owner_snapshot() {
+    let source = include_str!("../runtime.rs");
+    let christmas_snapshot = source
+        .find("non_entity_render_extraction.christmas_chest_textures()")
+        .expect("render extraction should read its immutable Christmas-date snapshot");
+    let chest_instances = source
+        .find("entity_instances.extend(chest_model_instances_from_world_at_partial_tick(")
+        .expect("render extraction should project chest block-entity model instances");
+    assert!(christmas_snapshot < chest_instances);
 }
 
 #[test]
