@@ -216,8 +216,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   decoded duration is diagnostic and its 26.1 client handler is empty.
 - `BeaconMenu`: render confirm/cancel hover state, selected-effect highlight and
   hover state, labels, and tooltips.
-- [`LecternMenu` rich text, wrapping, filtering, and click behavior engineering
-  slice](lectern-screen-presentation-design.md).
 - `SmithingMenu`: generic held-item / non-skull head-item projection for the
   armor stand preview, cycling empty-slot icons, tooltips.
 

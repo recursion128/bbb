@@ -808,3 +808,7 @@
   换行与滚动、复选框、焦点和精确接受/拒绝输入现由 screen-local 状态投影到原生
   字体、控件、scissor 与确定性 GPU 像素；合同见
   `docs/archive/code-of-conduct-screen-presentation-design.md`。
+- **2026-07-29（讲台书屏幕呈现工程闭环）**：written/writable 原始与过滤页、
+  资源字体、富文本悬停/点击及服务端权威翻页现共用原生 Book 表面；精确按钮布局、
+  键鼠命令顺序与确定性 GPU 像素已闭环，合同见
+  `docs/archive/lectern-screen-presentation-design.md`。
