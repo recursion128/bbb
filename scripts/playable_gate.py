@@ -1169,12 +1169,54 @@ def _await_settled_player(address: tuple[str, int], deadline: float) -> dict[str
     raise GateFailure("player never settled on the ground after join")
 
 
-def drive_basic_movement(address: tuple[str, int], timeout_seconds: float) -> dict[str, Any]:
+def _movement_lane_commands(pose: dict[str, Any]) -> tuple[str, str]:
+    position = _object(pose.get("position"), "local_player.pose.position")
+    center_x = math.floor(float(position["x"]))
+    feet_y = math.floor(float(position["y"]))
+    center_z = math.floor(float(position["z"]))
+    return (
+        f"fill {center_x - 5} {feet_y - 1} {center_z - 5} "
+        f"{center_x + 5} {feet_y - 1} {center_z + 5} minecraft:smooth_stone",
+        f"fill {center_x - 5} {feet_y} {center_z - 5} "
+        f"{center_x + 5} {feet_y + 3} {center_z + 5} minecraft:air",
+    )
+
+
+def drive_basic_movement(
+    address: tuple[str, int], server_command: Path, timeout_seconds: float
+) -> dict[str, Any]:
     """Hold forward+jump and inject a look delta through the control input
     surface, then wait until the local player's canonical position moved.  The
     server acknowledges legal movement by NOT sending a position correction."""
 
-    start_pose = _await_settled_player(address, time.monotonic() + timeout_seconds)
+    preparation_deadline = time.monotonic() + timeout_seconds
+    start_pose = _await_settled_player(address, preparation_deadline)
+    floor_command, clear_command = _movement_lane_commands(start_pose)
+    _server_console_command(server_command, floor_command)
+    _server_console_command(server_command, clear_command)
+    start_position_probe = _object(
+        start_pose.get("position"), "local_player.pose.position"
+    )
+    floor_x = math.floor(float(start_position_probe["x"]))
+    floor_y = math.floor(float(start_position_probe["y"])) - 1
+    floor_z = math.floor(float(start_position_probe["z"]))
+
+    def _movement_lane_ready() -> bool:
+        floor = _probe_block(address, floor_x, floor_y, floor_z)
+        feet = _probe_block(address, floor_x, floor_y + 1, floor_z)
+        return (
+            floor is not None
+            and floor.get("block_name") == "minecraft:smooth_stone"
+            and _block_is_air(feet)
+        )
+
+    _await_value(
+        preparation_deadline,
+        "the deterministic movement lane to reach canonical state",
+        _movement_lane_ready,
+        lambda ready: ready,
+    )
+    start_pose = _await_settled_player(address, preparation_deadline)
     start_x, start_z = _pose_xz(start_pose)
     start_position = dict(_object(start_pose.get("position"), "local_player.pose.position"))
     start_yaw = float(start_pose.get("y_rot", 0.0))
@@ -3469,7 +3511,7 @@ def collect_live(args: argparse.Namespace) -> None:
                 "movement",
                 "runtime_side_effect",
                 lambda: drive_basic_movement(
-                    address, min(30.0, gameplay_timeout)
+                    address, args.server_command, min(30.0, gameplay_timeout)
                 ),
             ),
             (

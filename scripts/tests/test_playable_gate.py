@@ -165,6 +165,19 @@ class PlayableGateMovementTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_movement_lane_flattens_and_clears_the_spawn_area(self):
+        floor, clear = playable_gate._movement_lane_commands(
+            {"position": {"x": 8.5, "y": 68.0, "z": 2.5}}
+        )
+        self.assertEqual(
+            floor,
+            "fill 3 67 -3 13 67 7 minecraft:smooth_stone",
+        )
+        self.assertEqual(
+            clear,
+            "fill 3 68 -3 13 71 7 minecraft:air",
+        )
+
 
 class PlayableGateBlockInteractionTests(unittest.TestCase):
     def setUp(self):
