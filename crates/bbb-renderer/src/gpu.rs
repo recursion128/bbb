@@ -161,6 +161,12 @@ pub(super) struct TerrainAtlasGpu {
     mip_level_count: u32,
 }
 
+impl TerrainAtlasGpu {
+    pub(crate) fn view_and_sampler(&self) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self.view, &self.sampler)
+    }
+}
+
 pub(super) fn create_depth_target(device: &wgpu::Device, width: u32, height: u32) -> DepthTarget {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("bbb-terrain-depth"),

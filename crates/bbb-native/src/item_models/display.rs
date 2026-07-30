@@ -260,6 +260,7 @@ fn bake_item_display(
         residency,
         light,
         ITEM_MODEL_NO_OVERLAY,
+        ItemModelDrawTarget::World,
     );
 }
 

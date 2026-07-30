@@ -2426,7 +2426,8 @@ pub struct HudEntityPreviewItemLayer {
 /// lighting, bounds, scissor, transform, and depth-isolation contract explicit; the
 /// `entity_preview_pip_passes` frame step renders each sanitized preview into its persistent PIP
 /// target (`entity_models/gui_preview.rs`) and `collect_hud_draws` blits it in GUI submission
-/// order. `item_layers` stays render-plan metadata: hand/head item models are not GPU-drawn yet.
+/// order. `item_layers` identifies hand/head item submissions resolved through resident item-model
+/// owners and drawn into that same private target.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudEntityPreview {
     pub entity: EntityModelInstance,

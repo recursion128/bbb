@@ -189,6 +189,9 @@ pub enum ItemModelDrawTarget {
     EntityOutline,
     Particle,
     FirstPerson,
+    /// One sanitized GUI entity preview's private color/depth PIP target.
+    /// The payload is the preview index in the active render plan.
+    EntityPreview(u32),
     Gui,
     GuiBeforeBlur,
     GuiAfterBlur,
@@ -2317,6 +2320,16 @@ mod tests {
         );
         assert_ne!(ItemModelDrawPhase::Outline, ItemModelDrawPhase::Solid);
         assert_ne!(ItemModelDrawPhase::Outline, ItemModelDrawPhase::Translucent);
+    }
+
+    #[test]
+    fn smithing_entity_preview_target_is_indexed_and_not_a_gui_scissor_lane() {
+        let first = ItemModelDrawTarget::EntityPreview(0);
+        let second = ItemModelDrawTarget::EntityPreview(1);
+        assert!(!first.is_gui());
+        assert_ne!(first, second);
+        assert_ne!(first, ItemModelDrawTarget::FirstPerson);
+        assert_ne!(first, ItemModelDrawTarget::Gui);
     }
 
     #[test]

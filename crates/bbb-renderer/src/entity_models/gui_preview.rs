@@ -430,7 +430,9 @@ impl HudEntityPreviewPipTarget {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
         let color_view = color_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -541,13 +543,14 @@ impl Renderer {
     /// Renders one sanitized preview into its PIP target: writes the PIP camera, bakes and
     /// uploads the entity geometry, then encodes the isolated color+depth pass (cleared to
     /// transparent color and depth 1.0 per preview, vanilla `clearColorAndDepthTextures`).
-    /// Returns `(draw_calls, pipeline_switches)`.
+    /// Returns `(entity_draw_calls, item_draw_calls, pipeline_switches)`.
     pub(crate) fn encode_hud_entity_preview_pip(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         target: &mut HudEntityPreviewPipTarget,
         preview: &HudEntityPreview,
-    ) -> (u64, u64) {
+        preview_index: u32,
+    ) -> (u64, u64, u64) {
         let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
             CameraUniform::hud_entity_preview_pip(
                 target.width as f32,
@@ -650,8 +653,38 @@ impl Renderer {
                         sampler,
                     )
                 });
+        let block_item_bind_group = {
+            let (view, sampler) = self.terrain_atlas.view_and_sampler();
+            atlas_camera_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                &target.camera_buffer,
+                view,
+                sampler,
+            )
+        };
+        let item_bind_group = self.item_entity_atlas.as_ref().map(|atlas| {
+            let (view, sampler) = atlas.view_and_sampler();
+            atlas_camera_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                &target.camera_buffer,
+                view,
+                sampler,
+            )
+        });
+        let glint_bind_group = self.item_glint_texture.as_ref().map(|glint| {
+            let (view, sampler) = glint.view_and_sampler();
+            atlas_camera_bind_group(
+                &self.device,
+                &self.terrain_bind_group_layout,
+                &target.camera_buffer,
+                view,
+                sampler,
+            )
+        });
 
-        let mut draw_calls = 0u64;
+        let mut entity_draw_calls = 0u64;
         let mut pipeline_switches = 0u64;
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(HUD_ENTITY_PREVIEW_PIP_PASS_LABEL),
@@ -677,144 +710,282 @@ impl Renderer {
             timestamp_writes: None,
         });
 
-        let Some(geometry) = &geometry else {
-            return (draw_calls, pipeline_switches);
-        };
-        let Some(static_bind_group) = &static_bind_group else {
-            return (draw_calls, pipeline_switches);
-        };
+        if let (Some(geometry), Some(static_bind_group)) =
+            (geometry.as_ref(), static_bind_group.as_ref())
+        {
+            if has_colored {
+                let (Some(vertex_buffer), Some(index_buffer)) = (
+                    target.colored_vertices.buffer(),
+                    target.colored_indices.buffer(),
+                ) else {
+                    unreachable!("colored buffers uploaded above");
+                };
+                pass.set_pipeline(&self.entity_model_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, static_bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..geometry.colored_indices.len() as u32, 0, 0..1);
+                entity_draw_calls += 1;
+            }
 
-        if has_colored {
-            let (Some(vertex_buffer), Some(index_buffer)) = (
-                target.colored_vertices.buffer(),
-                target.colored_indices.buffer(),
-            ) else {
-                unreachable!("colored buffers uploaded above");
-            };
-            pass.set_pipeline(&self.entity_model_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, static_bind_group, &[]);
-            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..geometry.colored_indices.len() as u32, 0, 0..1);
-            draw_calls += 1;
-        }
-
-        for ordered_draw in &geometry.draw_order {
-            match *ordered_draw {
-                HudEntityPreviewPipDrawOrder::Textured(draw_index) => {
-                    if !has_textured {
-                        continue;
-                    }
-                    let (Some(vertex_buffer), Some(index_buffer)) = (
-                        target.textured_vertices.buffer(),
-                        target.textured_indices.buffer(),
-                    ) else {
-                        unreachable!("textured buffers uploaded above");
-                    };
-                    let draw = &geometry.textured_draws[draw_index];
-                    let bind_group = match draw.atlas {
-                        EntityModelTexturedDrawAtlas::Static => static_bind_group,
-                        EntityModelTexturedDrawAtlas::DynamicPlayerSkin => {
-                            match &dynamic_skin_bind_group {
-                                Some(bind_group) => bind_group,
-                                None => continue,
+            for ordered_draw in &geometry.draw_order {
+                match *ordered_draw {
+                    HudEntityPreviewPipDrawOrder::Textured(draw_index) => {
+                        if !has_textured {
+                            continue;
+                        }
+                        let (Some(vertex_buffer), Some(index_buffer)) = (
+                            target.textured_vertices.buffer(),
+                            target.textured_indices.buffer(),
+                        ) else {
+                            unreachable!("textured buffers uploaded above");
+                        };
+                        let draw = &geometry.textured_draws[draw_index];
+                        let bind_group = match draw.atlas {
+                            EntityModelTexturedDrawAtlas::Static => static_bind_group,
+                            EntityModelTexturedDrawAtlas::DynamicPlayerSkin => {
+                                match &dynamic_skin_bind_group {
+                                    Some(bind_group) => bind_group,
+                                    None => continue,
+                                }
                             }
-                        }
-                        EntityModelTexturedDrawAtlas::DynamicPlayerTexture => {
-                            match &dynamic_texture_bind_group {
-                                Some(bind_group) => bind_group,
-                                None => continue,
+                            EntityModelTexturedDrawAtlas::DynamicPlayerTexture => {
+                                match &dynamic_texture_bind_group {
+                                    Some(bind_group) => bind_group,
+                                    None => continue,
+                                }
                             }
+                        };
+                        let (pipeline, uses_lightmap) = match draw.pipeline {
+                            HudEntityPreviewPipPipeline::Cutout => {
+                                (&self.entity_model_textured_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::CutoutCull => {
+                                (&self.entity_model_textured_cull_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::SolidZOffsetForward => {
+                                (&self.entity_model_solid_z_offset_forward_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::CutoutZOffset => {
+                                (&self.entity_model_cutout_z_offset_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorCutout => {
+                                (&self.entity_model_armor_cutout_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTrim => {
+                                (&self.entity_model_armor_cutout_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTrimDecal => {
+                                (&self.entity_model_armor_decal_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::Translucent => {
+                                (&self.entity_model_translucent_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::ArmorTranslucent => {
+                                (&self.entity_model_armor_translucent_pipeline, true)
+                            }
+                            HudEntityPreviewPipPipeline::TranslucentEmissive => {
+                                (&self.entity_model_translucent_emissive_pipeline, false)
+                            }
+                            HudEntityPreviewPipPipeline::Eyes => {
+                                (&self.entity_model_eyes_pipeline, false)
+                            }
+                        };
+                        pass.set_pipeline(pipeline);
+                        pipeline_switches += 1;
+                        pass.set_bind_group(0, bind_group, &[]);
+                        if uses_lightmap {
+                            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                         }
-                    };
-                    let (pipeline, uses_lightmap) = match draw.pipeline {
-                        HudEntityPreviewPipPipeline::Cutout => {
-                            (&self.entity_model_textured_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::CutoutCull => {
-                            (&self.entity_model_textured_cull_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::SolidZOffsetForward => {
-                            (&self.entity_model_solid_z_offset_forward_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::CutoutZOffset => {
-                            (&self.entity_model_cutout_z_offset_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::ArmorCutout => {
-                            (&self.entity_model_armor_cutout_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::ArmorTrim => {
-                            (&self.entity_model_armor_cutout_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::ArmorTrimDecal => {
-                            (&self.entity_model_armor_decal_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::Translucent => {
-                            (&self.entity_model_translucent_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::ArmorTranslucent => {
-                            (&self.entity_model_armor_translucent_pipeline, true)
-                        }
-                        HudEntityPreviewPipPipeline::TranslucentEmissive => {
-                            (&self.entity_model_translucent_emissive_pipeline, false)
-                        }
-                        HudEntityPreviewPipPipeline::Eyes => {
-                            (&self.entity_model_eyes_pipeline, false)
-                        }
-                    };
-                    pass.set_pipeline(pipeline);
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, bind_group, &[]);
-                    if uses_lightmap {
-                        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(
+                            draw.index_start..draw.index_start + draw.index_count,
+                            0,
+                            0..1,
+                        );
+                        entity_draw_calls += 1;
                     }
-                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(
-                        draw.index_start..draw.index_start + draw.index_count,
-                        0,
-                        0..1,
-                    );
-                    draw_calls += 1;
-                }
-                HudEntityPreviewPipDrawOrder::Scroll(draw_index) => {
-                    if !has_scroll {
-                        continue;
+                    HudEntityPreviewPipDrawOrder::Scroll(draw_index) => {
+                        if !has_scroll {
+                            continue;
+                        }
+                        let (Some(vertex_buffer), Some(index_buffer)) = (
+                            target.scroll_vertices.buffer(),
+                            target.scroll_indices.buffer(),
+                        ) else {
+                            unreachable!("scroll buffers uploaded above");
+                        };
+                        let draw = &geometry.scroll_draws[draw_index];
+                        if draw.armor {
+                            pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
+                        } else {
+                            pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
+                        }
+                        pipeline_switches += 1;
+                        pass.set_bind_group(0, static_bind_group, &[]);
+                        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(
+                            draw.index_start..draw.index_start + draw.index_count,
+                            0,
+                            0..1,
+                        );
+                        entity_draw_calls += 1;
                     }
-                    let (Some(vertex_buffer), Some(index_buffer)) = (
-                        target.scroll_vertices.buffer(),
-                        target.scroll_indices.buffer(),
-                    ) else {
-                        unreachable!("scroll buffers uploaded above");
-                    };
-                    let draw = &geometry.scroll_draws[draw_index];
-                    if draw.armor {
-                        pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
-                    } else {
-                        pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
-                    }
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, static_bind_group, &[]);
-                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(
-                        draw.index_start..draw.index_start + draw.index_count,
-                        0,
-                        0..1,
-                    );
-                    draw_calls += 1;
                 }
             }
         }
 
+        let (item_draw_calls, item_pipeline_switches) = self.draw_hud_entity_preview_items(
+            &mut pass,
+            preview_index,
+            &block_item_bind_group,
+            item_bind_group.as_ref(),
+            static_bind_group.as_ref(),
+            dynamic_skin_bind_group.as_ref(),
+            dynamic_texture_bind_group.as_ref(),
+            glint_bind_group.as_ref(),
+        );
+        pipeline_switches = pipeline_switches.saturating_add(item_pipeline_switches);
+        (entity_draw_calls, item_draw_calls, pipeline_switches)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_hud_entity_preview_items<'pass>(
+        &'pass self,
+        pass: &mut wgpu::RenderPass<'pass>,
+        preview_index: u32,
+        block_bind_group: &'pass wgpu::BindGroup,
+        item_bind_group: Option<&'pass wgpu::BindGroup>,
+        entity_bind_group: Option<&'pass wgpu::BindGroup>,
+        dynamic_skin_bind_group: Option<&'pass wgpu::BindGroup>,
+        dynamic_entity_bind_group: Option<&'pass wgpu::BindGroup>,
+        glint_bind_group: Option<&'pass wgpu::BindGroup>,
+    ) -> (u64, u64) {
+        let Some(instance_buffer) = self.item_model_residency.instance_buffer() else {
+            return (0, 0);
+        };
+        let target = crate::item_models::ItemModelDrawTarget::EntityPreview(preview_index);
+        let mut draw_calls = 0u64;
+        let mut pipeline_switches = 0u64;
+        let mut active_phase = None;
+        for draw in self.item_model_residency.draws() {
+            if draw.target != target
+                || draw.scissor.is_some()
+                || draw.phase == crate::item_models::ItemModelDrawPhase::Outline
+            {
+                continue;
+            }
+            let Some(owner) = self.item_model_residency.owner(&draw.asset) else {
+                continue;
+            };
+            let pipeline = match draw.phase {
+                crate::item_models::ItemModelDrawPhase::Solid => &self.resident_item_model_pipeline,
+                crate::item_models::ItemModelDrawPhase::SolidNoCutout => {
+                    &self.resident_item_model_solid_no_cutout_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::SolidZOffsetForward => {
+                    &self.resident_item_model_z_offset_forward_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::CutoutNoCull => {
+                    &self.resident_item_model_cutout_no_cull_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::CutoutZOffset => {
+                    &self.resident_item_model_cutout_z_offset_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Pattern => {
+                    &self.resident_item_model_pattern_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Translucent => {
+                    &self.resident_item_model_translucent_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::TranslucentNoCull => {
+                    &self.resident_item_model_translucent_no_cull_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Glint
+                | crate::item_models::ItemModelDrawPhase::GlintTranslucent => {
+                    &self.resident_item_model_glint_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::EndPortal => {
+                    &self.resident_item_model_end_portal_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::EndGateway => {
+                    &self.resident_item_model_end_gateway_pipeline
+                }
+                crate::item_models::ItemModelDrawPhase::Outline => continue,
+            };
+            if active_phase != Some(draw.phase) {
+                pass.set_pipeline(pipeline);
+                active_phase = Some(draw.phase);
+                pipeline_switches = pipeline_switches.saturating_add(1);
+            }
+            if matches!(
+                draw.phase,
+                crate::item_models::ItemModelDrawPhase::Glint
+                    | crate::item_models::ItemModelDrawPhase::GlintTranslucent
+            ) {
+                let Some(bind_group) = glint_bind_group else {
+                    continue;
+                };
+                pass.set_bind_group(0, bind_group, &[]);
+            } else {
+                let bind_group = match draw.asset.atlas() {
+                    crate::item_models::ItemModelAtlasKind::Blocks => block_bind_group,
+                    crate::item_models::ItemModelAtlasKind::Items => {
+                        let Some(bind_group) = item_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::Entity => {
+                        let Some(bind_group) = entity_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::DynamicPlayerSkin => {
+                        let Some(bind_group) = dynamic_skin_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                    crate::item_models::ItemModelAtlasKind::DynamicEntity => {
+                        let Some(bind_group) = dynamic_entity_bind_group else {
+                            continue;
+                        };
+                        bind_group
+                    }
+                };
+                pass.set_bind_group(0, bind_group, &[]);
+                if !matches!(
+                    draw.phase,
+                    crate::item_models::ItemModelDrawPhase::EndPortal
+                        | crate::item_models::ItemModelDrawPhase::EndGateway
+                ) {
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                }
+            }
+            pass.set_vertex_buffer(0, owner.vertex_buffer.slice(..));
+            pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            pass.set_index_buffer(owner.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(
+                0..owner.index_count,
+                0,
+                draw.first_instance..draw.first_instance.saturating_add(draw.instance_count),
+            );
+            draw_calls = draw_calls.saturating_add(1);
+        }
         (draw_calls, pipeline_switches)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
     use super::super::model_layers::armor_stand_entity_texture_refs;
     use super::super::{
@@ -822,6 +993,183 @@ mod tests {
     };
     use super::*;
     use crate::{DynamicEntityTextureImage, EntityArmorTrim, EntityDynamicTexture};
+
+    #[test]
+    fn smithing_entity_preview_pip_draws_the_exact_resident_item_target() {
+        use crate::hud::{
+            HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+            HudEntityPreviewItemSlot, HudEntityPreviewRect,
+        };
+        use crate::item_models::{
+            ItemModelAssetIdentity, ItemModelAssetRequest, ItemModelAssetSource,
+            ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil,
+            ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelQuad,
+            ItemModelResidencyFrame, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+        };
+
+        const WIDTH: u32 = 40;
+        const HEIGHT: u32 = 40;
+        const PADDED_BYTES_PER_ROW: u32 = 256;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &[255, 0, 0, 255])
+            .expect("red block atlas");
+        let identity = ItemModelAssetIdentity::new("minecraft:smithing_preview_test", "plain", 0);
+        let front = ItemModelQuad {
+            corners: [
+                [-8.0, -8.0, 0.0],
+                [8.0, -8.0, 0.0],
+                [8.0, 8.0, 0.0],
+                [-8.0, 8.0, 0.0],
+            ],
+            uvs: [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, 1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let back = ItemModelQuad {
+            corners: [
+                [-8.0, 8.0, 0.0],
+                [8.0, 8.0, 0.0],
+                [8.0, -8.0, 0.0],
+                [-8.0, -8.0, 0.0],
+            ],
+            normal: [0.0, 0.0, -1.0],
+            ..front
+        };
+        renderer
+            .set_item_model_residency_frame(ItemModelResidencyFrame {
+                assets: vec![ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: ItemModelAtlasKind::Blocks,
+                    geometry_class: ItemModelGeometryClass::Solid,
+                    source: ItemModelAssetSource::Quads(Arc::from([front, back])),
+                }],
+                instances: vec![
+                    ItemModelInstanceRequest {
+                        identity: identity.clone(),
+                        atlas: ItemModelAtlasKind::Blocks,
+                        geometry_class: ItemModelGeometryClass::Solid,
+                        transform: Mat4::IDENTITY,
+                        tint: [1.0; 4],
+                        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        foil: ItemModelFoil::None,
+                        target: ItemModelDrawTarget::EntityPreview(0),
+                        phase: ItemModelDrawPhase::Solid,
+                        submit_order: 0,
+                        scissor: None,
+                    },
+                    // If target filtering regresses, this later black draw wins the equal-depth
+                    // test and erases the red sentinel.
+                    ItemModelInstanceRequest {
+                        identity,
+                        atlas: ItemModelAtlasKind::Blocks,
+                        geometry_class: ItemModelGeometryClass::Solid,
+                        transform: Mat4::IDENTITY,
+                        tint: [0.0, 0.0, 0.0, 1.0],
+                        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                        overlay: ITEM_MODEL_NO_OVERLAY,
+                        foil: ItemModelFoil::None,
+                        target: ItemModelDrawTarget::EntityPreview(1),
+                        phase: ItemModelDrawPhase::Solid,
+                        submit_order: 1,
+                        scissor: None,
+                    },
+                ],
+                special_items: Vec::new(),
+            })
+            .expect("resident preview item");
+
+        let preview = HudEntityPreview {
+            entity: armor_stand_preview_instance(),
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: WIDTH,
+                height: HEIGHT,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 20.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: vec![HudEntityPreviewItemLayer {
+                slot: HudEntityPreviewItemSlot::LeftHand,
+                display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+                item_id: 1,
+                count: 1,
+                foil: false,
+                light_coords: crate::ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+                overlay: ITEM_MODEL_NO_OVERLAY,
+                order: 0,
+                submit_sequence: 1,
+            }],
+        };
+        let mut target = renderer.ensure_hud_entity_preview_pip_target(None, WIDTH, HEIGHT);
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-smithing-preview-item-test"),
+            });
+        let (_, item_draw_calls, _) =
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0);
+        assert_eq!(item_draw_calls, 1);
+
+        let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-smithing-preview-item-readback"),
+            size: u64::from(PADDED_BYTES_PER_ROW * HEIGHT),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &target._color_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &readback,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(PADDED_BYTES_PER_ROW),
+                    rows_per_image: Some(HEIGHT),
+                },
+            },
+            wgpu::Extent3d {
+                width: WIDTH,
+                height: HEIGHT,
+                depth_or_array_layers: 1,
+            },
+        );
+        renderer.queue.submit(std::iter::once(encoder.finish()));
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        renderer.device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let has_red_item_pixel = data
+            .chunks_exact(PADDED_BYTES_PER_ROW as usize)
+            .take(HEIGHT as usize)
+            .flat_map(|row| row[..(WIDTH * 4) as usize].chunks_exact(4))
+            // Offscreen production targets are BGRA.
+            .any(|pixel| {
+                pixel[3] > 0 && pixel[2] > 32 && u16::from(pixel[2]) > u16::from(pixel[0]) + 16
+            });
+        assert!(
+            has_red_item_pixel,
+            "resident PIP item must produce red pixels"
+        );
+        drop(data);
+        readback.unmap();
+    }
 
     fn armor_stand_preview_instance() -> EntityModelInstance {
         EntityModelInstance::armor_stand(

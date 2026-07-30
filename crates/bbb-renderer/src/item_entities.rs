@@ -80,6 +80,12 @@ pub(crate) struct ItemEntityAtlasGpu {
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
+impl ItemEntityAtlasGpu {
+    pub(crate) fn view_and_sampler(&self) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self._view, &self._sampler)
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ItemEntityVertex {

@@ -259,6 +259,12 @@ pub(crate) struct ItemGlintTextureGpu {
     pub(crate) gui_bind_group: wgpu::BindGroup,
 }
 
+impl ItemGlintTextureGpu {
+    pub(crate) fn view_and_sampler(&self) -> (&wgpu::TextureView, &wgpu::Sampler) {
+        (&self._view, &self._sampler)
+    }
+}
+
 impl ItemModelMesh {
     pub fn new() -> Self {
         Self::default()

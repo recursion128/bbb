@@ -7,13 +7,16 @@ use bbb_protocol::entity_data_serializers::{
 };
 use bbb_protocol::packets::{
     AddEntity, BlockEvent, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
-    DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent,
-    EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, RegistryData, RegistryDataEntry,
-    RegistryTags, SetEntityData, SetEquipment, SetPlayerInventory, SwingAnimationSummary,
-    TagNetworkPayload, UpdateTags, Vec3d,
+    ContainerSetContent, DataComponentPatchSummary, EntityAnimation, EntityDataValue,
+    EntityDataValueKind, EntityEvent, EquipmentSlotUpdate, MapColorPatch, MapItemData, OpenScreen,
+    PlayLogin, RegistryData, RegistryDataEntry, RegistryTags, SetEntityData, SetEquipment,
+    SetPlayerInventory, SwingAnimationSummary, TagNetworkPayload, UpdateTags, Vec3d,
 };
 use bbb_renderer::{
-    EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
+    EntityDefaultPlayerSkin, EntityPlayerSkin, GuiItemLightingEntry, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudInventoryScreen, ParticleItemOptionState, PlayerModelPartVisibility,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
 };
 use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
@@ -4784,7 +4787,7 @@ fn dropped_composite_item_preserves_ordinary_special_leaf_order() {
 }
 
 #[test]
-fn shared_hand_item_bake_submits_selected_special_geometry() {
+fn smithing_shared_hand_item_bake_preserves_world_and_pip_special_targets() {
     let root = unique_item_model_temp_dir("hand-special-item");
     write_special_item_runtime_fixture(&root);
     let item_runtime =
@@ -4857,6 +4860,47 @@ fn shared_hand_item_bake_submits_selected_special_geometry() {
             },
             false,
         )
+    );
+
+    bake_item_stack_at_transform_with_light_and_overlay(
+        &stack,
+        &WorldStore::new(),
+        Mat4::IDENTITY,
+        BlockModelDisplayContext::ThirdPersonLeftHand,
+        true,
+        None,
+        None,
+        None,
+        None,
+        false,
+        0.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        BLOCK_THIRD_PERSON_FALLBACK,
+        GENERATED_THIRD_PERSON_FALLBACK,
+        &item_runtime,
+        &TerrainTextureState::default(),
+        None,
+        &mut block,
+        &mut block_translucent,
+        &mut block_glint,
+        &mut block_glint_translucent,
+        &mut flat,
+        &mut flat_translucent,
+        &mut flat_glint,
+        &mut flat_glint_translucent,
+        &mut residency,
+        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        ITEM_MODEL_NO_OVERLAY,
+        ItemModelDrawTarget::EntityPreview(4),
+    );
+    assert_eq!(residency.special_items.len(), 2);
+    assert_eq!(
+        residency.special_items[1].target,
+        ItemModelDrawTarget::EntityPreview(4)
     );
 
     std::fs::remove_dir_all(root).unwrap();
@@ -5269,6 +5313,170 @@ fn component_select_prototype_and_dynamic_registry_reach_native_item_consumers()
         &mut held_residency,
     );
     assert_eq!(held_residency.assets[0].identity.model_id(), MATCH_ASSET);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn smithing_preview_projects_generated_hand_and_head_items_to_indexed_pip_geometry() {
+    use bbb_protocol::{menu_types::VANILLA_MENU_TYPE_SMITHING_ID, RichTextComponent};
+
+    let root = unique_item_model_temp_dir("smithing-preview-generated");
+    write_flat_item_runtime_fixture(&root, &["preview_item"]);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let item_id = item_runtime
+        .item_protocol_id("minecraft:preview_item")
+        .expect("fixture item id");
+    let stack = ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
+        title: RichTextComponent::plain("Smithing"),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 40];
+    items[3] = stack;
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 8,
+        state_id: 1,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    let entity = EntityModelInstance::armor_stand(
+        -1,
+        [0.0; 3],
+        210.0,
+        false,
+        true,
+        false,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_look(0.0, 25.0);
+    let preview = |slot, display_context| HudEntityPreview {
+        entity: entity.clone(),
+        lighting: GuiItemLightingEntry::EntityInUi,
+        rect: HudEntityPreviewRect {
+            x: 121,
+            y: 20,
+            width: 40,
+            height: 60,
+        },
+        scissor: None,
+        translation: [0.0, 1.0, 0.0],
+        rotation: [0.0, 0.0, 1.0, 0.0],
+        override_camera_rotation: None,
+        scale: 25.0,
+        depth_isolated: true,
+        after_background_layer: None,
+        item_layers: vec![HudEntityPreviewItemLayer {
+            slot,
+            display_context,
+            item_id,
+            count: 1,
+            foil: false,
+            light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+            overlay: ITEM_MODEL_NO_OVERLAY,
+            order: 0,
+            submit_sequence: 1,
+        }],
+    };
+    let screen = |preview| HudInventoryScreen {
+        width: 176,
+        height: 166,
+        background_layers: Vec::new(),
+        foreground_layers: Vec::new(),
+        fill_layers: Vec::new(),
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        foreground_items: Vec::new(),
+        ghost_items: Vec::new(),
+        entity_previews: vec![preview],
+        map_previews: Vec::new(),
+        banner_pattern_previews: Vec::new(),
+        text_labels: Vec::new(),
+        scroll_area: None,
+        preedit_overlay: None,
+        hovered_slot_id: None,
+        tooltip: None,
+    };
+    let extract = |preview| {
+        smithing_entity_preview_item_models(
+            &world,
+            Some(&item_runtime),
+            &TerrainTextureState::default(),
+            None,
+            Some(&screen(preview)),
+            None,
+            None,
+            None,
+            None,
+        )
+    };
+
+    let hand = extract(preview(
+        HudEntityPreviewItemSlot::LeftHand,
+        HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+    ));
+    let head = extract(preview(
+        HudEntityPreviewItemSlot::Head,
+        HudEntityPreviewItemDisplayContext::Head,
+    ));
+    assert_eq!(hand.instances.len(), 1);
+    assert_eq!(head.instances.len(), 1);
+    assert_eq!(
+        hand.instances[0].target,
+        ItemModelDrawTarget::EntityPreview(0)
+    );
+    assert_eq!(
+        head.instances[0].target,
+        ItemModelDrawTarget::EntityPreview(0)
+    );
+    assert_eq!(hand.instances[0].light, ITEM_MODEL_FULL_BRIGHT_LIGHT);
+    assert_eq!(head.instances[0].overlay, ITEM_MODEL_NO_OVERLAY);
+
+    let hand_attach = humanoid_hand_attach_transforms(&entity, true);
+    let head_attach = custom_head_item_transforms(&entity);
+    assert_eq!(hand_attach.len(), 1);
+    assert_eq!(head_attach.len(), 1);
+    let result_stack = &world
+        .inventory()
+        .open_container
+        .as_ref()
+        .expect("smithing container")
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 3)
+        .expect("result slot")
+        .item;
+    let hand_display = item_runtime
+        .item_display_transform_for_stack(
+            result_stack,
+            BlockModelDisplayContext::ThirdPersonLeftHand,
+        )
+        .unwrap_or(GENERATED_THIRD_PERSON_FALLBACK);
+    let head_display = item_runtime
+        .item_display_transform_for_stack(result_stack, BlockModelDisplayContext::Head)
+        .unwrap_or(GENERATED_HEAD_FALLBACK);
+    let expected_hand = hand_attach[0] * display_matrix(&hand_display, true);
+    let expected_head = head_attach[0] * display_matrix(&head_display, false);
+    assert!(hand.instances[0]
+        .transform
+        .abs_diff_eq(expected_hand, 1.0e-6));
+    assert!(head.instances[0]
+        .transform
+        .abs_diff_eq(expected_head, 1.0e-6));
+    assert!(
+        !hand.instances[0]
+            .transform
+            .abs_diff_eq(head.instances[0].transform, 1.0e-6),
+        "hand and head placement must remain distinct"
+    );
 
     std::fs::remove_dir_all(root).unwrap();
 }

@@ -2983,15 +2983,18 @@ impl Renderer {
         retired.truncate(previews.len());
         let mut reusable = retired.into_iter();
         let mut targets = Vec::with_capacity(previews.len());
-        for preview in &previews {
+        for (preview_index, preview) in previews.iter().enumerate() {
             let mut target = self.ensure_hud_entity_preview_pip_target(
                 reusable.next(),
                 preview.rect.width,
                 preview.rect.height,
             );
-            let (draw_calls, pipeline_switches) =
-                self.encode_hud_entity_preview_pip(encoder, &mut target, preview);
-            stats.entity_model_draw_calls += draw_calls;
+            let preview_index =
+                u32::try_from(preview_index).expect("sanitized entity preview count fits u32");
+            let (entity_draw_calls, item_draw_calls, pipeline_switches) =
+                self.encode_hud_entity_preview_pip(encoder, &mut target, preview, preview_index);
+            stats.entity_model_draw_calls += entity_draw_calls;
+            stats.item_model_draw_calls += item_draw_calls;
             stats.pipeline_switches += pipeline_switches;
             targets.push(target);
         }

@@ -2560,6 +2560,15 @@ pub(super) fn bake_item_stack_at_transform(
         residency,
         ITEM_MODEL_FULL_BRIGHT_LIGHT,
         ITEM_MODEL_NO_OVERLAY,
+        if matches!(
+            context,
+            BlockModelDisplayContext::FirstPersonLeftHand
+                | BlockModelDisplayContext::FirstPersonRightHand
+        ) {
+            ItemModelDrawTarget::FirstPerson
+        } else {
+            ItemModelDrawTarget::World
+        },
     );
 }
 
@@ -2600,6 +2609,7 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     residency: &mut ItemModelResidencyFrame,
     light: [f32; 2],
     overlay: [f32; 2],
+    target: ItemModelDrawTarget,
 ) {
     let effective_stack = world.effective_item_stack(stack);
     let stack = effective_stack.as_ref();
@@ -2608,16 +2618,6 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
     };
     let retained = item_runtime.item_display_transform_for_stack(stack, context);
     let foil = item_stack_foil_mode(stack, item_runtime, context);
-    let target = if matches!(
-        context,
-        BlockModelDisplayContext::FirstPersonLeftHand
-            | BlockModelDisplayContext::FirstPersonRightHand
-    ) {
-        ItemModelDrawTarget::FirstPerson
-    } else {
-        ItemModelDrawTarget::World
-    };
-
     let is_crossbow = item_runtime
         .item_resource_id(item_id)
         .is_some_and(|resource_id| {

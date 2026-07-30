@@ -188,10 +188,11 @@ use crate::{
         display_entity_item_models, dropped_item_models, entity_block_models,
         first_person_item_models_with_map_cache, first_person_player_arms,
         held_item_models_with_variant_textures, item_pickup_particle_item_models,
-        ominous_item_spawner_models, world_attribute_keys, world_banner_pattern_tooltip_context,
-        world_damage_type_keys, world_enchantment_keys, world_instrument_tooltip_context,
-        world_jukebox_song_tooltip_context, world_painting_variant_tooltip_context,
-        world_trim_material_keys, world_trim_material_tooltip_context, world_trim_pattern_keys,
+        ominous_item_spawner_models, smithing_entity_preview_item_models, world_attribute_keys,
+        world_banner_pattern_tooltip_context, world_damage_type_keys, world_enchantment_keys,
+        world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
+        world_painting_variant_tooltip_context, world_trim_material_keys,
+        world_trim_material_tooltip_context, world_trim_pattern_keys,
         world_trim_pattern_tooltip_context, FirstPersonHandPresentation,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
@@ -4118,6 +4119,17 @@ pub(crate) fn update_renderer_from_publication(
         terrain_textures,
         entity_partial_tick,
     );
+    let smithing_preview_item_models = smithing_entity_preview_item_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        Some(entity_variant_textures),
+        hud_inventory_screen.as_ref(),
+        enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
+        trim_material_keys.as_deref(),
+        attribute_keys.as_deref(),
+    );
     let mut item_model_residency = dropped_item_models.residency;
     item_model_residency.append(display_entity_item_models.residency);
     item_model_residency.append(ominous_item_spawner_models.residency);
@@ -4126,6 +4138,7 @@ pub(crate) fn update_renderer_from_publication(
     item_model_residency.append(first_person_item_models.residency);
     item_model_residency.append(item_frame_models.residency);
     item_model_residency.append(entity_block_models);
+    item_model_residency.append(smithing_preview_item_models);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(ominous_item_spawner_models.block_meshes);
     block_item_meshes.extend(held_item_models.block_meshes);

@@ -66,6 +66,7 @@ mod display;
 mod dropped;
 mod first_person;
 mod hand_presentation;
+mod smithing_preview;
 mod special;
 mod transforms;
 
@@ -87,6 +88,7 @@ pub(crate) use dropped::{
 pub(crate) use first_person::first_person_item_models;
 pub(crate) use first_person::{first_person_item_models_with_map_cache, first_person_player_arms};
 pub(crate) use hand_presentation::FirstPersonHandPresentation;
+pub(crate) use smithing_preview::smithing_entity_preview_item_models;
 pub(crate) use special::{
     project_special_item_model, special_item_leaf_matrix, special_item_pack_texture_descriptors,
 };
