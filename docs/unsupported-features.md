@@ -276,10 +276,6 @@ Owner: `bbb-world` + `bbb-native`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
-- **Broader collision-clipping parity** for special contexts beyond the covered
-  `WakeParticle` case.
-- **Player-coupled particle emitters** beyond the currently covered scoped cases.
-
 Routing invariant: terrain/item atlas rendering, block-entity client-effect
 presentation, and audio-device/runtime parity stay with their owning domains;
 the `LevelEventHandler` switch itself is not a second owner.
@@ -746,7 +742,7 @@ Shared todo root causes (one slice may clear several rows):
 | WaterDropParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (WaterDropParticle.java:16) now in `collision_size()` (this slice); move + `onGround` 50% removal + collision-shape/fluid-surface gate covered |
 | WhiteAshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (WhiteAshParticle.java:22) |
 | WhiteSmokeParticle.Provider | covered | not-needed | not-needed | not-needed | as SmokeParticle.Provider |
-| TrackingEmitter (code-spawned) | not-needed | not-needed | not-needed | not-needed | NoRender emitter, no `move`; entity-AABB sampling covered for the wired paths (entity event 35, animate 4/5); other vanilla construction sites belong to their entity-event slices |
+| TrackingEmitter (code-spawned) | not-needed | not-needed | not-needed | not-needed | NoRender emitter, no `move`; all five 26.1 construction sites audited: entity event 35 and animate 4/5 are covered; `LocalPlayer.crit` cannot follow a successful client `hurtOrSimulate` because its required Living target keeps base `hurtClient=false`, while `LocalPlayer.magicCrit` is unreachable because inherited `getEnchantedDamage` returns the input damage unchanged |
 | FireworkParticles.Starter (code-spawned) | not-needed | covered | covered | not-needed | no `move`; camera-distance far-variant selection (FireworkParticles.java:284-287) covered; life-0 blast / large_blast (:216-238) + delayed twinkle (:273-281) covered |
 | ItemPickupParticle (code-spawned) | not-needed | covered | not-needed | not-needed | follows target entity midpoint (ItemPickupParticle.java:45-49); covered incl. 3-tick lifetime and quadratic extract |
 
