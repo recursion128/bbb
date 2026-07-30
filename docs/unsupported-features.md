@@ -267,6 +267,10 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 
 - **Standalone mip/sampler generalization**, full vanilla mip generation, and
   standalone texture sampler parity.
+- **Coalesced resource-texture per-entry sampling parity.** Pack
+  `ClientAsset.ResourceTexture` metadata is loaded before BBB coalesces runtime
+  entity textures; preserve independent blur/clamp semantics without atlas
+  bleeding or a second pack/cache owner.
 
 ## Movement and interaction
 
