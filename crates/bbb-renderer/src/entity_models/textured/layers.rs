@@ -259,6 +259,8 @@ pub(crate) enum EntityModelLayerRenderType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
+    /// Vanilla `ENTITY_SOLID`: cull-on entity shading without alpha cutout.
+    Solid,
     Cutout,
     /// Vanilla `RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD`: the culling, opaque entity-solid
     /// state with `VIEW_OFFSET_Z_LAYERING_FORWARD` projection. It cannot share the ordinary solid
@@ -319,8 +321,8 @@ impl EntityModelLayerRenderType {
 
     pub(in crate::entity_models) const fn mesh_bucket(self) -> EntityModelLayerRenderBucket {
         match self {
-            Self::EntitySolid
-            | Self::ArmorCutoutNoCull
+            Self::EntitySolid => EntityModelLayerRenderBucket::Solid,
+            Self::ArmorCutoutNoCull
             | Self::ArmorTrimCutoutNoCull
             | Self::ArmorTrimDecalCutoutNoCull
             | Self::EntityCutout

@@ -275,16 +275,15 @@ fn decorated_pot_textured_mesh_bakes_base_and_four_sides() {
     }
     // Base pass: neck (2 boxes) + top + bottom planes = 4 cubes × 6 faces = 24 faces; the four
     // side passes bake one NORTH face each (the vanilla `EnumSet.of(Direction.NORTH)` mask) —
-    // 28 faces / 112 vertices / 168 indices, all in the backface-culled cutout bucket
-    // (`entitySolid`).
-    assert_eq!(meshes.cutout_cull.cutout_faces, 28);
-    assert_eq!(meshes.cutout_cull.vertices.len(), 112);
-    assert_eq!(meshes.cutout_cull.indices.len(), 168);
+    // 28 faces / 112 vertices / 168 indices, all in the backface-culled solid bucket.
+    assert_eq!(meshes.solid.cutout_faces, 28);
+    assert_eq!(meshes.solid.vertices.len(), 112);
+    assert_eq!(meshes.solid.indices.len(), 168);
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     let light = meshes.submissions[0].light;
     assert!(meshes
-        .cutout_cull
+        .solid
         .vertices
         .iter()
         .all(|vertex| vertex.light == light));

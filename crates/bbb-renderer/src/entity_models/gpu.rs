@@ -678,6 +678,11 @@ fn entity_model_solid_z_offset_forward_shader() -> String {
         )
 }
 
+fn entity_model_solid_shader() -> String {
+    ENTITY_MODEL_TEXTURED_CULL_SHADER
+        .replace("    if sample.a < 0.1 {\n        discard;\n    }\n", "")
+}
+
 pub(super) const ENTITY_MODEL_ARMOR_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1874,6 +1879,28 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.ENTITY_SOLID`: opaque replacement, depth write,
+/// back-face culling, lightmap and overlay, without `ALPHA_CUTOUT`.
+pub(crate) fn create_entity_model_solid_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = entity_model_solid_shader();
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-solid",
+        &shader,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SURFACE_CULL_MODE,
+    )
+}
+
 /// Vanilla `RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD`: entity-solid opaque replacement,
 /// depth write, back-face culling, lightmap and overlay, with
 /// `LayeringTransform.VIEW_OFFSET_Z_LAYERING_FORWARD` applied before drawing.
@@ -2960,6 +2987,11 @@ impl Renderer {
                 meshes.sorted_main_translucent_draws.clone();
             self.entity_model_sorted_translucent_draws = meshes.sorted_translucent_draws.clone();
             self.entity_model_sorted_item_entity_draws = meshes.sorted_item_entity_draws.clone();
+            self.entity_model_solid_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.solid,
+                "bbb-entity-model-solid",
+            );
             self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.cutout,
@@ -3078,6 +3110,12 @@ impl Renderer {
                     meshes.dynamic_player_skin_cutout,
                     "bbb-entity-dynamic-player-skin-cutout",
                 );
+            self.entity_dynamic_player_skin_solid_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_solid,
+                    "bbb-entity-dynamic-player-skin-solid",
+                );
             self.entity_dynamic_player_skin_cutout_cull_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -3119,6 +3157,12 @@ impl Renderer {
                     &self.device,
                     meshes.dynamic_player_texture_cutout,
                     "bbb-entity-dynamic-player-texture-cutout",
+                );
+            self.entity_dynamic_player_texture_solid_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_solid,
+                    "bbb-entity-dynamic-player-texture-solid",
                 );
             self.entity_dynamic_player_texture_cutout_cull_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
@@ -3197,6 +3241,7 @@ impl Renderer {
                 );
         } else {
             self.block_entity_crumbling_index_count = 0;
+            self.entity_model_solid_mesh = None;
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
             self.entity_model_dissolve_mesh = None;
@@ -3221,6 +3266,7 @@ impl Renderer {
             self.entity_model_end_gateway_mesh = None;
             self.entity_model_outline_mesh = None;
             self.entity_model_outline_cull_mesh = None;
+            self.entity_dynamic_player_skin_solid_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_cutout_cull_mesh = None;
             self.entity_dynamic_player_skin_solid_z_offset_forward_mesh = None;
@@ -3228,6 +3274,7 @@ impl Renderer {
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh = None;
+            self.entity_dynamic_player_texture_solid_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
             self.entity_dynamic_player_texture_cutout_cull_mesh = None;
             self.entity_dynamic_player_texture_solid_z_offset_forward_mesh = None;
@@ -3246,6 +3293,9 @@ impl Renderer {
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
             self.entity_model_water_mask_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_solid_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_textured_mesh
@@ -3308,6 +3358,9 @@ impl Renderer {
             self.entity_model_outline_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_solid_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_cutout_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
@@ -3327,6 +3380,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_solid_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_mesh
@@ -4545,13 +4601,13 @@ fn create_entity_model_portal_mesh_gpu_from_mesh(
 mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
-        entity_model_solid_z_offset_forward_shader, win_screen_end_portal_shader,
-        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
-        ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
-        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
-        ENTITY_MODEL_DRAGON_RAYS_BLEND, ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
-        ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        entity_model_solid_shader, entity_model_solid_z_offset_forward_shader,
+        win_screen_end_portal_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE,
+        ENTITY_MODEL_ARMOR_CUTOUT_BLEND, ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
+        ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_SHADER, ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_DISSOLVE_SHADER, ENTITY_MODEL_DRAGON_RAYS_BLEND,
+        ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_END_GATEWAY_LAYERS,
@@ -4867,6 +4923,49 @@ mod tests {
         assert!(
             !shader.contains("if sample.a < 0.1") && !shader.contains("discard"),
             "vanilla ENTITY_SOLID does not define ALPHA_CUTOUT"
+        );
+    }
+
+    #[test]
+    fn entity_model_solid_shader_preserves_low_alpha_texels_without_cutout() {
+        let shader = entity_model_solid_shader();
+        assert!(
+            shader.contains(
+                "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
+            ) && shader.contains("let texel = sample * input.tint"),
+            "entitySolid still samples and tints the entity texture"
+        );
+        assert!(
+            !shader.contains("if sample.a < 0.1") && !shader.contains("discard"),
+            "vanilla ENTITY_SOLID has no ALPHA_CUTOUT and must preserve low-alpha texels"
+        );
+        assert!(
+            shader.contains("sample_lightmap(input.light)")
+                && shader.contains("input.overlay")
+                && shader.contains("diffuse_light(input.normal)")
+                && !shader.contains("per_face_diffuse_light"),
+            "vanilla ENTITY_SOLID keeps lightmap/overlay and one-sided cull lighting"
+        );
+    }
+
+    #[test]
+    fn entity_model_solid_pipeline_is_independent_from_cutout_cull() {
+        let source = include_str!("gpu.rs");
+        let factory = source
+            .find("pub(crate) fn create_entity_model_solid_pipeline")
+            .expect("entitySolid pipeline factory is present");
+        let next_factory = source[factory..]
+            .find("pub(crate) fn create_entity_model_solid_z_offset_forward_pipeline")
+            .map(|index| factory + index)
+            .expect("next entity pipeline factory is present");
+        let factory_source = &source[factory..next_factory];
+        assert!(factory_source.contains("\"bbb-entity-model-solid\""));
+        assert!(factory_source.contains("entity_model_solid_shader()"));
+        assert!(
+            factory_source.contains("ENTITY_MODEL_SURFACE_OPAQUE_BLEND")
+                && factory_source.contains("ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED")
+                && factory_source.contains("ENTITY_MODEL_SURFACE_CULL_MODE"),
+            "vanilla ENTITY_SOLID is opaque, depth-writing, and back-face culled"
         );
     }
 

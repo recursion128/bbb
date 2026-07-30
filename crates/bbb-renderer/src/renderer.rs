@@ -46,7 +46,8 @@ use crate::{
         create_entity_model_eyes_pipeline, create_entity_model_leash_pipeline,
         create_entity_model_outline_cull_pipeline, create_entity_model_outline_pipeline,
         create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
-        create_entity_model_scroll_pipeline, create_entity_model_solid_z_offset_forward_pipeline,
+        create_entity_model_scroll_pipeline, create_entity_model_solid_pipeline,
+        create_entity_model_solid_z_offset_forward_pipeline,
         create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
         create_entity_model_translucent_cull_pipeline,
         create_entity_model_translucent_emissive_pipeline,
@@ -302,6 +303,7 @@ pub struct Renderer {
     pub(super) entity_model_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_cull_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_solid_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_dissolve_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_solid_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_cutout_z_offset_pipeline: wgpu::RenderPipeline,
@@ -462,6 +464,7 @@ pub struct Renderer {
     pub(super) block_entity_crumbling_index_count: u32,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_water_mask_mesh: Option<EntityModelMeshGpu>,
+    pub(super) entity_model_solid_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_textured_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_dissolve_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -489,6 +492,7 @@ pub struct Renderer {
     pub(super) entity_model_outline_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
     pub(super) entity_model_armor_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
+    pub(super) entity_dynamic_player_skin_solid_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_solid_z_offset_forward_mesh:
@@ -500,6 +504,7 @@ pub struct Renderer {
     pub(super) entity_dynamic_player_skin_item_entity_translucent_cull_mesh:
         Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_dynamic_player_texture_solid_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_cutout_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_solid_z_offset_forward_mesh:
         Option<EntityModelTexturedMeshGpu>,
@@ -1302,6 +1307,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let entity_model_solid_pipeline = create_entity_model_solid_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_dissolve_pipeline = create_entity_model_dissolve_pipeline(
             &device,
             format,
@@ -1763,6 +1774,7 @@ impl Renderer {
             entity_model_pipeline,
             entity_model_textured_pipeline,
             entity_model_textured_cull_pipeline,
+            entity_model_solid_pipeline,
             entity_model_dissolve_pipeline,
             entity_model_solid_z_offset_forward_pipeline,
             entity_model_cutout_z_offset_pipeline,
@@ -1951,6 +1963,7 @@ impl Renderer {
             block_entity_crumbling_index_count: 0,
             entity_model_mesh: None,
             entity_model_water_mask_mesh: None,
+            entity_model_solid_mesh: None,
             entity_model_textured_mesh: None,
             entity_model_textured_cull_mesh: None,
             entity_model_dissolve_mesh: None,
@@ -1978,6 +1991,7 @@ impl Renderer {
             entity_model_outline_cull_mesh: None,
             entity_model_entity_glint_mesh: None,
             entity_model_armor_entity_glint_mesh: None,
+            entity_dynamic_player_skin_solid_mesh: None,
             entity_dynamic_player_skin_cutout_mesh: None,
             entity_dynamic_player_skin_cutout_cull_mesh: None,
             entity_dynamic_player_skin_solid_z_offset_forward_mesh: None,
@@ -1986,6 +2000,7 @@ impl Renderer {
             entity_dynamic_player_skin_item_entity_translucent_mesh: None,
             entity_dynamic_player_skin_item_entity_translucent_cull_mesh: None,
             entity_dynamic_player_texture_cutout_mesh: None,
+            entity_dynamic_player_texture_solid_mesh: None,
             entity_dynamic_player_texture_cutout_cull_mesh: None,
             entity_dynamic_player_texture_solid_z_offset_forward_mesh: None,
             entity_dynamic_player_texture_cutout_z_offset_mesh: None,

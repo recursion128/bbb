@@ -131,6 +131,7 @@ impl Renderer {
         take_owner!(entity_model_texture_atlas);
         take_owner!(entity_model_mesh);
         take_owner!(entity_model_water_mask_mesh);
+        take_owner!(entity_model_solid_mesh);
         take_owner!(entity_model_textured_mesh);
         take_owner!(entity_model_textured_cull_mesh);
         take_owner!(entity_model_dissolve_mesh);
@@ -158,6 +159,7 @@ impl Renderer {
         take_owner!(entity_model_outline_cull_mesh);
         take_owner!(entity_model_entity_glint_mesh);
         take_owner!(entity_model_armor_entity_glint_mesh);
+        take_owner!(entity_dynamic_player_skin_solid_mesh);
         take_owner!(entity_dynamic_player_skin_cutout_mesh);
         take_owner!(entity_dynamic_player_skin_cutout_cull_mesh);
         take_owner!(entity_dynamic_player_skin_solid_z_offset_forward_mesh);
@@ -165,6 +167,7 @@ impl Renderer {
         take_owner!(entity_dynamic_player_skin_translucent_mesh);
         take_owner!(entity_dynamic_player_skin_item_entity_translucent_mesh);
         take_owner!(entity_dynamic_player_skin_item_entity_translucent_cull_mesh);
+        take_owner!(entity_dynamic_player_texture_solid_mesh);
         take_owner!(entity_dynamic_player_texture_cutout_mesh);
         take_owner!(entity_dynamic_player_texture_cutout_cull_mesh);
         take_owner!(entity_dynamic_player_texture_solid_z_offset_forward_mesh);

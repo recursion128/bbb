@@ -199,7 +199,7 @@ fn conduit_textured_mesh_submits_shell_and_active_parts() {
     );
 
     // Shell uses culling `entitySolid`; the active parts use non-culling `entityCutout`.
-    assert_eq!(meshes.cutout_cull.cutout_faces, 6);
+    assert_eq!(meshes.solid.cutout_faces, 6);
     assert_eq!(meshes.cutout.cutout_faces, 24);
     // Vanilla attaches the overlay only to shell and cage submissions. Wind and eye use otherwise
     // eligible entity cutout layers, so this proves renderer extraction state (not bucket type)
@@ -211,10 +211,10 @@ fn conduit_textured_mesh_submits_shell_and_active_parts() {
     let eligible_meshes = entity_model_textured_meshes(&eligible, &atlas);
     assert_eq!(
         meshes.crumbling.indices.len(),
-        eligible_meshes.cutout_cull.indices.len() + eligible_meshes.cutout.indices.len()
+        eligible_meshes.solid.indices.len() + eligible_meshes.cutout.indices.len()
     );
     assert_eq!(
         meshes.crumbling.vertices.len(),
-        eligible_meshes.cutout_cull.vertices.len() + eligible_meshes.cutout.vertices.len()
+        eligible_meshes.solid.vertices.len() + eligible_meshes.cutout.vertices.len()
     );
 }

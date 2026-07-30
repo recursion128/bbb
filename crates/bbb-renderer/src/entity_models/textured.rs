@@ -335,6 +335,9 @@ pub(super) struct EntityModelTexturedMeshes {
     /// Posed model geometry duplicated through Vanilla's
     /// `SheetedDecalTextureGenerator` contract for block-entity break progress.
     pub(super) crumbling: BlockDestroyOverlayMesh,
+    /// Vanilla `RenderTypes.entitySolid(texture)` geometry. Unlike cutout-cull,
+    /// this cull-on state preserves sampled texels below alpha `0.1`.
+    pub(super) solid: EntityModelTexturedMesh,
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
     /// Vanilla `RenderTypes.entitySolidZOffsetForward(texture)` geometry. This owns a dedicated
@@ -375,6 +378,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) outline_cull: EntityModelTexturedMesh,
     /// Ready remote player skins are rendered through a dedicated atlas, preserving their vanilla
     /// cutout/translucent render type while swapping only the texture source.
+    pub(super) dynamic_player_skin_solid: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_cutout_cull: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_solid_z_offset_forward: EntityModelTexturedMesh,
@@ -384,6 +388,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh,
     /// Ready remote non-skin player profile textures, such as capes and elytra, use a separate
     /// variable-size atlas while preserving the vanilla render type.
+    pub(super) dynamic_player_texture_solid: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_cull: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_solid_z_offset_forward: EntityModelTexturedMesh,
@@ -453,6 +458,7 @@ impl EntityModelTexturedMeshes {
     pub(in crate::entity_models) fn new(sort_camera_position: Option<[f32; 3]>) -> Self {
         Self {
             crumbling: BlockDestroyOverlayMesh::new(),
+            solid: EntityModelTexturedMesh::new(),
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
             solid_z_offset_forward: EntityModelTexturedMesh::new(),
@@ -469,6 +475,7 @@ impl EntityModelTexturedMeshes {
             eyes: EntityModelTexturedMesh::new(),
             outline: EntityModelTexturedMesh::new(),
             outline_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_solid: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout_cull: EntityModelTexturedMesh::new(),
             dynamic_player_skin_solid_z_offset_forward: EntityModelTexturedMesh::new(),
@@ -476,6 +483,7 @@ impl EntityModelTexturedMeshes {
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_solid: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_cull: EntityModelTexturedMesh::new(),
             dynamic_player_texture_solid_z_offset_forward: EntityModelTexturedMesh::new(),
@@ -531,6 +539,7 @@ impl EntityModelTexturedMeshes {
             _ => {}
         }
         match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Solid => &mut self.solid,
             EntityModelLayerRenderBucket::Cutout => {
                 if render_type.surface_cull() {
                     &mut self.cutout_cull
@@ -569,6 +578,7 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Solid => &mut self.dynamic_player_skin_solid,
             EntityModelLayerRenderBucket::Cutout => {
                 if render_type.surface_cull() {
                     &mut self.dynamic_player_skin_cutout_cull
@@ -619,6 +629,7 @@ impl EntityModelTexturedMeshes {
             return &mut self.dynamic_player_texture_armor_trim_decal;
         }
         match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Solid => &mut self.dynamic_player_texture_solid,
             EntityModelLayerRenderBucket::Cutout => {
                 if render_type.surface_cull() {
                     &mut self.dynamic_player_texture_cutout_cull

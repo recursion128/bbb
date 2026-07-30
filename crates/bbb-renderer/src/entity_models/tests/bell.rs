@@ -144,7 +144,7 @@ fn bell_layer_passes_match_vanilla_renderer() {
 }
 
 #[test]
-fn bell_textured_mesh_bakes_two_boxes_into_the_cutout_cull_bucket() {
+fn bell_textured_mesh_bakes_two_boxes_into_the_solid_bucket() {
     let images: Vec<EntityModelTextureImage> = bell_entity_texture_refs()
         .iter()
         .map(|texture| {
@@ -163,14 +163,14 @@ fn bell_textured_mesh_bakes_two_boxes_into_the_cutout_cull_bucket() {
     assert_eq!(submit.transform, bell_model_root_transform(instance));
     assert_eq!(submit.light, instance.render_state.shader_light());
     // body + base: 2 boxes -> 12 faces / 48 vertices / 72 indices, all in the backface-culled
-    // cutout bucket (vanilla `entitySolid`).
-    assert_eq!(meshes.cutout_cull.cutout_faces, 12);
-    assert_eq!(meshes.cutout_cull.vertices.len(), 48);
-    assert_eq!(meshes.cutout_cull.indices.len(), 72);
+    // dedicated solid bucket (vanilla `entitySolid`).
+    assert_eq!(meshes.solid.cutout_faces, 12);
+    assert_eq!(meshes.solid.vertices.len(), 48);
+    assert_eq!(meshes.solid.indices.len(), 72);
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout_cull
+        .solid
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light));

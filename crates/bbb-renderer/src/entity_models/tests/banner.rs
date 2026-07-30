@@ -319,11 +319,11 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
         assert_eq!(submission.light, instance.render_state.shader_light());
     }
     // The frame pass bakes pole + bar (12 faces) and the flag pass the flag box (6 faces) into
-    // the backface-culled cutout bucket (`entitySolid`); the two pattern passes re-bake the flag
+    // the dedicated backface-culled solid bucket; the two pattern passes re-bake the flag
     // box into the translucent bucket (vanilla `bannerPattern`'s translucent blend).
-    assert_eq!(meshes.cutout_cull.cutout_faces, 18);
-    assert_eq!(meshes.cutout_cull.vertices.len(), 72);
-    assert_eq!(meshes.cutout_cull.indices.len(), 108);
+    assert_eq!(meshes.solid.cutout_faces, 18);
+    assert_eq!(meshes.solid.vertices.len(), 72);
+    assert_eq!(meshes.solid.indices.len(), 108);
     assert_eq!(meshes.translucent.vertices.len(), 48);
     assert_eq!(meshes.translucent.indices.len(), 72);
     assert!(meshes.cutout.vertices.is_empty());
@@ -334,14 +334,8 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     assert!(meshes.submissions[1].affects_crumbling);
     assert!(!meshes.submissions[2].affects_crumbling);
     assert!(!meshes.submissions[3].affects_crumbling);
-    assert_eq!(
-        meshes.crumbling.indices.len(),
-        meshes.cutout_cull.indices.len()
-    );
-    assert_eq!(
-        meshes.crumbling.vertices.len(),
-        meshes.cutout_cull.vertices.len()
-    );
+    assert_eq!(meshes.crumbling.indices.len(), meshes.solid.indices.len());
+    assert_eq!(meshes.crumbling.vertices.len(), meshes.solid.vertices.len());
 }
 
 #[test]

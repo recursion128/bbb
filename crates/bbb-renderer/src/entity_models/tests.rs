@@ -181,7 +181,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
         (
             EntityModelLayerRenderType::EntitySolid,
             "entitySolid",
-            EntityModelLayerRenderBucket::Cutout,
+            EntityModelLayerRenderBucket::Solid,
             true,
             true,
             false,

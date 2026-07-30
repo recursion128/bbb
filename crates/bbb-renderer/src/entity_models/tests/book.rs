@@ -219,7 +219,7 @@ fn book_layer_passes_match_vanilla_renderer() {
 }
 
 #[test]
-fn book_textured_mesh_bakes_seven_boxes_into_the_cutout_cull_bucket() {
+fn book_textured_mesh_bakes_seven_boxes_into_the_solid_bucket() {
     let images: Vec<EntityModelTextureImage> = book_entity_texture_refs()
         .iter()
         .map(|texture| {
@@ -240,15 +240,14 @@ fn book_textured_mesh_bakes_seven_boxes_into_the_cutout_cull_bucket() {
         enchanting_table_book_model_root_transform(instance)
     );
     // 7 boxes (two covers, spine seam, two page halves, two flip pages) -> 42
-    // faces / 168 vertices / 252 indices, all in the backface-culled cutout
-    // bucket (vanilla `entitySolid`).
-    assert_eq!(meshes.cutout_cull.cutout_faces, 42);
-    assert_eq!(meshes.cutout_cull.vertices.len(), 168);
-    assert_eq!(meshes.cutout_cull.indices.len(), 252);
+    // faces / 168 vertices / 252 indices, all in the backface-culled solid bucket.
+    assert_eq!(meshes.solid.cutout_faces, 42);
+    assert_eq!(meshes.solid.vertices.len(), 168);
+    assert_eq!(meshes.solid.indices.len(), 252);
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout_cull
+        .solid
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light));

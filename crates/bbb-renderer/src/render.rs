@@ -375,6 +375,19 @@ impl Renderer {
                 stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_solid_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_textured_cull_mesh,
                 &self.entity_model_texture_atlas,
             ) {
@@ -455,6 +468,19 @@ impl Renderer {
                 stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_skin_solid_mesh,
+                &self.entity_dynamic_player_skin_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_cull_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
@@ -498,6 +524,19 @@ impl Renderer {
                 &self.entity_dynamic_player_skin_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_solid_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_pipeline);
                 stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -7164,6 +7203,36 @@ mod tests {
                 && source[main_helper..tests_mod]
                     .contains("self.entity_model_armor_translucent_pipeline"),
             "fallback unsorted translucent features also draw armorTranslucent"
+        );
+    }
+
+    #[test]
+    fn entity_solid_uses_dedicated_main_pass_pipeline_before_cutout_cull() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let solid = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_solid_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("entitySolid pipeline is drawn in the main pass");
+        let cutout_cull = source[solid..]
+            .find("pass.set_pipeline(&self.entity_model_textured_cull_pipeline)")
+            .map(|index| solid + index)
+            .expect("entityCutoutCull pipeline follows entitySolid");
+        assert!(
+            source[main_pass..solid].contains("&self.entity_model_solid_mesh"),
+            "static entitySolid geometry has a dedicated mesh owner"
+        );
+        assert!(
+            source[solid..cutout_cull]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "entitySolid samples the renderer-owned LightTexture"
+        );
+        assert!(
+            source[cutout_cull..].contains("entity_dynamic_player_skin_solid_mesh")
+                && source[cutout_cull..].contains("entity_dynamic_player_texture_solid_mesh"),
+            "dynamic skin and profile entitySolid buckets use the dedicated pipeline"
         );
     }
 

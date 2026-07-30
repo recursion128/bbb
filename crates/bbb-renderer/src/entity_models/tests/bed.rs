@@ -196,7 +196,7 @@ fn bed_layer_passes_match_vanilla_renderer() {
 }
 
 #[test]
-fn bed_textured_mesh_bakes_visible_faces_into_the_cutout_cull_bucket() {
+fn bed_textured_mesh_bakes_visible_faces_into_the_solid_bucket() {
     let images: Vec<EntityModelTextureImage> = bed_entity_texture_refs()
         .iter()
         .enumerate()
@@ -216,14 +216,14 @@ fn bed_textured_mesh_bakes_visible_faces_into_the_cutout_cull_bucket() {
     assert_eq!(submit.transform, bed_model_root_transform(instance));
     assert_eq!(submit.light, instance.render_state.shader_light());
     // main + 2 legs, each with one vanilla-hidden face: 3 boxes × 5 faces = 15 faces /
-    // 60 vertices / 90 indices, all in the backface-culled cutout bucket (`entitySolid`).
-    assert_eq!(meshes.cutout_cull.cutout_faces, 15);
-    assert_eq!(meshes.cutout_cull.vertices.len(), 60);
-    assert_eq!(meshes.cutout_cull.indices.len(), 90);
+    // 60 vertices / 90 indices, all in the backface-culled solid bucket.
+    assert_eq!(meshes.solid.cutout_faces, 15);
+    assert_eq!(meshes.solid.vertices.len(), 60);
+    assert_eq!(meshes.solid.indices.len(), 90);
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout_cull
+        .solid
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light));
