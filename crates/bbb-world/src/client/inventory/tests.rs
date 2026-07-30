@@ -11577,6 +11577,7 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
             "inventory_menu",
             "local_inventory_open",
             "open_container",
+            "open_container_revision",
             "player_slots",
         ]
     );
@@ -11602,6 +11603,54 @@ fn inventory_state_serde_shape_survives_world_store_json_round_trip() {
 
     let restored: WorldStore = serde_json::from_value(value).unwrap();
     assert_eq!(restored.inventory(), store.inventory());
+}
+
+#[test]
+fn open_container_revision_tracks_only_accepted_server_container_mutations() {
+    let mut store = WorldStore::new();
+    assert_eq!(store.inventory().open_container_revision, 0);
+
+    store.apply_open_screen(ProtocolOpenScreen {
+        container_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: bbb_protocol::RichTextComponent::plain("Chest"),
+    });
+    assert_eq!(store.inventory().open_container_revision, 1);
+
+    assert!(!store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 6,
+        id: 0,
+        value: 1,
+    }));
+    assert_eq!(store.inventory().open_container_revision, 1);
+
+    assert!(
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 5,
+            state_id: 2,
+            items: vec![item_stack(42, 1)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        })
+    );
+    assert_eq!(store.inventory().open_container_revision, 2);
+
+    assert!(store.apply_container_set_slot(ProtocolContainerSetSlot {
+        container_id: 5,
+        state_id: 3,
+        slot: 0,
+        item: item_stack(43, 1),
+    }));
+    assert_eq!(store.inventory().open_container_revision, 3);
+
+    assert!(store.apply_container_set_data(ProtocolContainerSetData {
+        container_id: 5,
+        id: 0,
+        value: 1,
+    }));
+    assert_eq!(store.inventory().open_container_revision, 4);
+
+    assert!(store.apply_container_close(ProtocolContainerClose { container_id: 99 }));
+    assert_eq!(store.inventory().open_container_revision, 5);
 }
 
 #[test]

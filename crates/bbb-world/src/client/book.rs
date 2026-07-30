@@ -1,6 +1,10 @@
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+    },
     item_types::VANILLA_ITEM_WRITABLE_BOOK_ID,
+    menu_types::VANILLA_MENU_TYPE_LECTERN_ID,
     packets::{
         InteractionHand, ItemStackSummary as ProtocolItemStackSummary, OpenBook as ProtocolOpenBook,
     },
@@ -44,6 +48,15 @@ pub struct BookViewScreenState {
     pub pages: Vec<BookViewPageState>,
     #[serde(default)]
     pub current_page: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LecternBookViewState {
+    pub container_id: i32,
+    pub revision: u64,
+    pub pages: Vec<BookViewPageState>,
+    pub current_page: usize,
+    pub may_build: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,8 +202,7 @@ impl WorldStore {
         let Some(item) = self.local_item_in_hand(packet.hand) else {
             return;
         };
-        let has_writable_content = self.item_has_writable_book_content(item);
-        let Some(pages) = book_view_pages_from_item(item, has_writable_content) else {
+        let Some(pages) = self.book_view_pages_for_item(item) else {
             return;
         };
         let generation = self.next_book_screen_generation();
@@ -205,6 +217,33 @@ impl WorldStore {
 
     pub fn current_book(&self) -> Option<&BookScreenState> {
         self.client_ui.current_book.as_ref()
+    }
+
+    pub fn lectern_book_view(&self) -> Option<LecternBookViewState> {
+        let container = self
+            .inventory
+            .open_container
+            .as_ref()
+            .filter(|container| container.menu_type_id == Some(VANILLA_MENU_TYPE_LECTERN_ID))?;
+        let pages = container
+            .slots
+            .iter()
+            .find(|slot| slot.slot == 0)
+            .and_then(|slot| self.book_view_pages_for_item(&slot.item))
+            .unwrap_or_default();
+        let current_page = container
+            .data_values
+            .iter()
+            .find_map(|value| (value.id == 0).then_some(i32::from(value.value)))
+            .unwrap_or_default()
+            .clamp(0, pages.len().saturating_sub(1) as i32) as usize;
+        Some(LecternBookViewState {
+            container_id: container.container_id,
+            revision: self.inventory.open_container_revision,
+            pages,
+            current_page,
+            may_build: !self.local_player_is_adventure() && !self.local_player_is_spectator(),
+        })
     }
 
     pub fn last_open_book(&self) -> Option<&OpenBookState> {
@@ -472,6 +511,29 @@ impl WorldStore {
                 ))
     }
 
+    fn item_has_written_book_content(&self, item: &ProtocolItemStackSummary) -> bool {
+        !item
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID)
+            && (item.component_patch.written_book.is_some()
+                || self.item_stack_has_effective_component(
+                    item,
+                    VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+                ))
+    }
+
+    fn book_view_pages_for_item(
+        &self,
+        item: &ProtocolItemStackSummary,
+    ) -> Option<Vec<BookViewPageState>> {
+        book_view_pages_from_item(
+            item,
+            self.item_has_written_book_content(item),
+            self.item_has_writable_book_content(item),
+        )
+    }
+
     fn book_inventory_slot(&self, hand: InteractionHand) -> Option<i32> {
         match hand {
             InteractionHand::MainHand => {
@@ -507,9 +569,11 @@ fn interaction_hand_name(hand: InteractionHand) -> &'static str {
 
 fn book_view_pages_from_item(
     item: &ProtocolItemStackSummary,
+    has_written_content: bool,
     has_writable_content: bool,
 ) -> Option<Vec<BookViewPageState>> {
-    if let Some(written) = &item.component_patch.written_book {
+    if has_written_content {
+        let written = item.component_patch.written_book.as_ref()?;
         return Some(
             written
                 .pages
@@ -594,7 +658,11 @@ mod tests {
     use bbb_protocol::{
         data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
         item_types::VANILLA_ITEM_WRITABLE_BOOK_ID,
-        packets::{DataComponentPatchSummary, SetPlayerInventory, WrittenBookContentSummary},
+        menu_types::VANILLA_MENU_TYPE_LECTERN_ID,
+        packets::{
+            ContainerSetContent, ContainerSetData, DataComponentPatchSummary, OpenScreen,
+            SetPlayerInventory, WrittenBookContentSummary,
+        },
         ComponentClickEvent, NbtSummaryEntry, NbtSummaryValue,
     };
 
@@ -649,6 +717,88 @@ mod tests {
             world.current_book().unwrap().plain_pages_for_filter(true),
             vec!["Filtered".to_string()]
         );
+    }
+
+    #[test]
+    fn lectern_book_view_reuses_exact_filtered_page_access_and_server_page() {
+        let raw = styled_page("Exact raw", "red", 2);
+        let filtered = styled_page("Filtered", "blue", 1);
+        let mut item = item_stack(1200);
+        item.component_patch.written_book = Some(WrittenBookContentSummary {
+            title: "Guide".to_string(),
+            title_filter: None,
+            author: "Alex".to_string(),
+            generation: 0,
+            pages: vec!["Exact raw".to_string(), "Second".to_string()],
+            page_filters: vec![Some("Filtered".to_string()), None],
+            resolved: true,
+        });
+        item.component_patch.written_book_pages_nbt = vec![
+            Some(raw.clone()),
+            Some(NbtSummaryValue::String("Second".to_string())),
+        ];
+        item.component_patch.written_book_page_filters_nbt = vec![Some(filtered.clone()), None];
+
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
+            title: RichTextComponent::plain("Lectern"),
+        });
+        assert!(world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 2,
+            items: vec![item],
+            carried_item: ProtocolItemStackSummary::empty(),
+        }));
+        assert!(world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 99,
+        }));
+
+        let lectern = world.lectern_book_view().unwrap();
+        assert_eq!(lectern.container_id, 7);
+        assert_eq!(lectern.revision, 3);
+        assert_eq!(lectern.current_page, 1);
+        assert!(lectern.may_build);
+        assert_eq!(lectern.pages[0].raw.component(), &raw);
+        assert_eq!(
+            lectern.pages[0].filtered.as_ref().unwrap().component(),
+            &filtered
+        );
+    }
+
+    #[test]
+    fn lectern_book_view_uses_empty_access_and_writable_literal_filters() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
+            title: RichTextComponent::plain("Lectern"),
+        });
+        let empty = world.lectern_book_view().unwrap();
+        assert!(empty.pages.is_empty());
+        assert_eq!(empty.current_page, 0);
+
+        let mut item = item_stack(VANILLA_ITEM_WRITABLE_BOOK_ID);
+        item.component_patch.writable_book_pages = vec!["raw".to_string(), "second".to_string()];
+        item.component_patch.writable_book_page_filters = vec![Some("filtered".to_string()), None];
+        assert!(world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 2,
+            items: vec![item],
+            carried_item: ProtocolItemStackSummary::empty(),
+        }));
+
+        let lectern = world.lectern_book_view().unwrap();
+        assert_eq!(lectern.pages[0].raw.text(), "raw");
+        assert_eq!(
+            lectern.pages[0].filtered.as_ref().unwrap().text(),
+            "filtered"
+        );
+        assert_eq!(lectern.pages[1].raw.text(), "second");
+        assert!(lectern.pages[1].filtered.is_none());
     }
 
     #[test]

@@ -440,6 +440,10 @@ pub struct InventoryState {
     #[serde(default)]
     pub local_inventory_open: bool,
     pub open_container: Option<ContainerState>,
+    /// Monotonic identity for renderer/input projections of the current
+    /// server-opened container.
+    #[serde(default)]
+    pub open_container_revision: u64,
     #[serde(default, skip_serializing)]
     local_quick_craft: LocalQuickCraftState,
 }
@@ -525,6 +529,7 @@ impl Default for InventoryState {
             inventory_menu: default_inventory_menu(),
             local_inventory_open: false,
             open_container: None,
+            open_container_revision: 0,
             local_quick_craft: LocalQuickCraftState::default(),
         }
     }
@@ -680,6 +685,7 @@ impl InventoryState {
             data_values: existing.data_values,
             merchant_offers: existing.merchant_offers,
         });
+        self.advance_open_container_revision();
         self.update_merchant_offer_count(counters);
     }
 
@@ -751,6 +757,7 @@ impl InventoryState {
             data_values: existing.data_values,
             merchant_offers,
         });
+        self.advance_open_container_revision();
         self.update_merchant_offer_count(counters);
         true
     }
@@ -803,6 +810,7 @@ impl InventoryState {
             data_values: existing.data_values,
             merchant_offers: None,
         });
+        self.advance_open_container_revision();
         self.update_merchant_offer_count(counters);
     }
 
@@ -852,6 +860,7 @@ impl InventoryState {
             }
         } else {
             self.write_back_container_player_section(counters, menu_type_id, total_slots, &[row]);
+            self.advance_open_container_revision();
         }
         self.update_merchant_offer_count(counters);
         true
@@ -875,6 +884,9 @@ impl InventoryState {
             return false;
         };
         set_container_data_value(&mut container.data_values, packet.id, packet.value);
+        if packet.container_id != INVENTORY_MENU_CONTAINER_ID {
+            self.advance_open_container_revision();
+        }
         self.update_merchant_offer_count(counters);
         true
     }
@@ -892,6 +904,7 @@ impl InventoryState {
             true
         } else if self.open_container.is_some() {
             self.open_container = None;
+            self.advance_open_container_revision();
             self.local_quick_craft.reset();
             counters.merchant_offers_tracked = 0;
             counters.container_close_updates_applied += 1;
@@ -922,6 +935,7 @@ impl InventoryState {
             .is_some_and(|container| container.container_id == container_id)
         {
             self.open_container = None;
+            self.advance_open_container_revision();
             self.local_quick_craft.reset();
             counters.merchant_offers_tracked = 0;
             true
@@ -937,6 +951,9 @@ impl InventoryState {
             .map(|container| container.container_id);
         self.local_inventory_open = false;
         self.open_container = None;
+        if server_container_id.is_some() {
+            self.advance_open_container_revision();
+        }
         self.local_quick_craft.reset();
         counters.merchant_offers_tracked = 0;
         server_container_id
@@ -967,6 +984,10 @@ impl InventoryState {
                 self.local_inventory_open
                     .then_some(INVENTORY_MENU_CONTAINER_ID)
             })
+    }
+
+    fn advance_open_container_revision(&mut self) {
+        self.open_container_revision = self.open_container_revision.saturating_add(1);
     }
 
     pub(crate) fn recipe_update_listener_context(&self) -> Option<RecipeUpdateListenerContext> {
