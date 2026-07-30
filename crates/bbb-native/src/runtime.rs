@@ -255,6 +255,7 @@ mod dialog_screen;
 mod game_rules_screen;
 mod loom_screen;
 mod render_extract;
+mod smithing_screen;
 mod vignette;
 pub(crate) use render_extract::*;
 mod events;
@@ -672,6 +673,7 @@ struct InventoryHudLocalState {
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     advanced_item_tooltips: bool,
+    smithing: smithing_screen::SmithingScreenFrame,
 }
 
 pub(crate) use control_requests::{
@@ -741,6 +743,7 @@ pub(crate) struct HudRenderRuntime {
     contextual: waypoint_locator::HudContextualRuntime,
     vignette: vignette::VignetteRuntime,
     scope_scale: f32,
+    smithing_screen: smithing_screen::SmithingScreenRuntime,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -3647,6 +3650,12 @@ pub(crate) fn update_renderer_from_publication(
                 shift_down: input.shift_down(),
                 keybind_context: item_model_keybind_context,
                 advanced_item_tooltips: input.debug_advanced_item_tooltips(),
+                smithing: hud_render_runtime.smithing_screen.frame(
+                    world,
+                    item_runtime,
+                    publication.client_tick_index,
+                    entity_partial_tick,
+                ),
             },
             surface_size,
             renderer,
@@ -10110,6 +10119,9 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
         &local_state,
         enchantment_options.as_ref(),
     );
+    if background == InventoryScreenBackground::Smithing {
+        background_layers.extend(local_state.smithing.background_layers.iter().copied());
+    }
     if let Some(presentation) = &loom_presentation {
         background_layers.extend(presentation.background_layers.iter().copied());
     }
@@ -10402,6 +10414,14 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
             .as_ref()
             .and_then(|presentation| presentation.tooltip.clone())
             .or(inventory_tooltip),
+        InventoryScreenBackground::Smithing => smithing_screen::tooltip(
+            world,
+            item_runtime,
+            hovered_slot_id,
+            local_state.cursor_position,
+            hud_fonts,
+        )
+        .or(inventory_tooltip),
         _ => inventory_tooltip,
     };
 

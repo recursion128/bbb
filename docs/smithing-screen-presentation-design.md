@@ -72,7 +72,8 @@ Authoritative local sources are
   animation clock, pointer state, decoded image, or GPU handle.
 - `bbb-native::runtime::smithing_screen` becomes the semantic owner of the
   Smithing screen-local cycling state and world-to-HUD projection. Its runtime
-  key is the level generation plus `open_container_revision`; it advances at
+  key is the level generation plus the canonical screen-replacement revision;
+  it advances at
   most once per published client tick and resets when a different screen
   instance opens.
 - The native frame projection carries only typed slot-icon layers, tooltip
@@ -106,8 +107,9 @@ Authoritative local sources are
 ## Bounds and fallback rules
 
 - The icon catalog is fixed at the twenty Vanilla sprite identities above.
-  Missing sprite data leaves only that icon layer absent; it cannot abort or
-  partially replace the accepted HUD resource generation.
+  Missing required sprite data rejects the staged HUD load and preserves the
+  prior accepted owner array; it cannot partially replace the accepted HUD
+  resource generation.
 - Missing item runtime, invalid item id, absent item-model leaves, or missing
   resident atlas data omits only the result item. The armor stand and static
   Smithing screen remain visible.

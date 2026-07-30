@@ -1179,6 +1179,10 @@ pub(crate) fn try_load_hud_textures(
         smithing_error.height,
         &smithing_error.rgba,
     )?;
+    for icon in bbb_renderer::HudSmithingSlotIcon::ALL {
+        let sprite = hud_sprite(&sprites, icon.sprite_path())?;
+        renderer.upload_hud_smithing_slot_icon(icon, sprite.width, sprite.height, &sprite.rgba)?;
+    }
     let brewing_stand = gui_texture(
         roots,
         "textures/gui/container/brewing_stand.png",

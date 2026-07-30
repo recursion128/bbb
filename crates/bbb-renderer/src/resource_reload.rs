@@ -400,6 +400,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_smoker_burn_progress);
         $take_owner!(hud_smithing_background);
         $take_owner!(hud_smithing_error);
+        $take_owner!(hud_smithing_slot_icons);
         $take_owner!(hud_grindstone_background);
         $take_owner!(hud_grindstone_error);
         $take_owner!(hud_hopper_background);

@@ -2008,6 +2008,88 @@ pub enum HudAdvancementLineTexture {
     Foreground,
 }
 
+/// Fixed Vanilla 26.1 sprite catalog consumed by the Smithing screen's three
+/// `CyclingSlotBackground` instances.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum HudSmithingSlotIcon {
+    TemplateArmorTrim,
+    TemplateNetheriteUpgrade,
+    Helmet,
+    Chestplate,
+    Leggings,
+    Boots,
+    Hoe,
+    Axe,
+    Sword,
+    Shovel,
+    Spear,
+    Pickaxe,
+    Ingot,
+    RedstoneDust,
+    Quartz,
+    Emerald,
+    Diamond,
+    LapisLazuli,
+    AmethystShard,
+    NautilusArmor,
+}
+
+impl HudSmithingSlotIcon {
+    pub const ALL: [Self; 20] = [
+        Self::TemplateArmorTrim,
+        Self::TemplateNetheriteUpgrade,
+        Self::Helmet,
+        Self::Chestplate,
+        Self::Leggings,
+        Self::Boots,
+        Self::Hoe,
+        Self::Axe,
+        Self::Sword,
+        Self::Shovel,
+        Self::Spear,
+        Self::Pickaxe,
+        Self::Ingot,
+        Self::RedstoneDust,
+        Self::Quartz,
+        Self::Emerald,
+        Self::Diamond,
+        Self::LapisLazuli,
+        Self::AmethystShard,
+        Self::NautilusArmor,
+    ];
+    pub const COUNT: usize = Self::ALL.len();
+
+    pub(crate) const fn as_index(self) -> usize {
+        self as usize
+    }
+
+    pub const fn sprite_path(self) -> &'static str {
+        match self {
+            Self::TemplateArmorTrim => "container/slot/smithing_template_armor_trim",
+            Self::TemplateNetheriteUpgrade => "container/slot/smithing_template_netherite_upgrade",
+            Self::Helmet => "container/slot/helmet",
+            Self::Chestplate => "container/slot/chestplate",
+            Self::Leggings => "container/slot/leggings",
+            Self::Boots => "container/slot/boots",
+            Self::Hoe => "container/slot/hoe",
+            Self::Axe => "container/slot/axe",
+            Self::Sword => "container/slot/sword",
+            Self::Shovel => "container/slot/shovel",
+            Self::Spear => "container/slot/spear",
+            Self::Pickaxe => "container/slot/pickaxe",
+            Self::Ingot => "container/slot/ingot",
+            Self::RedstoneDust => "container/slot/redstone_dust",
+            Self::Quartz => "container/slot/quartz",
+            Self::Emerald => "container/slot/emerald",
+            Self::Diamond => "container/slot/diamond",
+            Self::LapisLazuli => "container/slot/lapis_lazuli",
+            Self::AmethystShard => "container/slot/amethyst_shard",
+            Self::NautilusArmor => "container/slot/nautilus_armor",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
     InworldMenuBackground,
@@ -2135,6 +2217,10 @@ pub enum HudInventoryBackgroundTexture {
     SmokerBurnProgress,
     Smithing,
     SmithingError,
+    SmithingSlotIcon {
+        icon: HudSmithingSlotIcon,
+        alpha_bits: u32,
+    },
     Grindstone,
     GrindstoneError,
     Hopper,
@@ -2163,6 +2249,22 @@ pub enum HudInventoryBackgroundTexture {
     VillagerTradeArrow,
     VillagerTradeArrowOutOfStock,
     VillagerDiscountStrikethrough,
+}
+
+impl HudInventoryBackgroundTexture {
+    pub fn smithing_slot_icon(icon: HudSmithingSlotIcon, alpha: f32) -> Self {
+        Self::SmithingSlotIcon {
+            icon,
+            alpha_bits: alpha.clamp(0.0, 1.0).to_bits(),
+        }
+    }
+
+    fn smithing_slot_icon_alpha(self) -> Option<f32> {
+        match self {
+            Self::SmithingSlotIcon { alpha_bits, .. } => Some(f32::from_bits(alpha_bits)),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -4891,6 +4993,18 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_smithing_error = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_smithing_slot_icon(
+        &mut self,
+        icon: HudSmithingSlotIcon,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_smithing_slot_icons[icon.as_index()] =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -8282,6 +8396,9 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::Smithing => self.hud_smithing_background.as_ref(),
             HudInventoryBackgroundTexture::SmithingError => self.hud_smithing_error.as_ref(),
+            HudInventoryBackgroundTexture::SmithingSlotIcon { icon, .. } => {
+                self.hud_smithing_slot_icons[icon.as_index()].as_ref()
+            }
             HudInventoryBackgroundTexture::Grindstone => self.hud_grindstone_background.as_ref(),
             HudInventoryBackgroundTexture::GrindstoneError => self.hud_grindstone_error.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
@@ -9670,22 +9787,34 @@ fn push_hud_inventory_background_layers<'a>(
 ) {
     for layer in layers {
         if let Some(background) = renderer.hud_inventory_background_sprite(layer.texture) {
-            push_hud_draw_with_uv(
-                vertices,
-                commands,
-                background,
+            let rect = inventory_background_hud_rect(
                 surface_size,
-                inventory_background_hud_rect(
-                    surface_size,
-                    screen.width,
-                    screen.height,
-                    layer.x,
-                    layer.y,
-                    layer.width,
-                    layer.height,
-                ),
-                layer.uv,
+                screen.width,
+                screen.height,
+                layer.x,
+                layer.y,
+                layer.width,
+                layer.height,
             );
+            match layer.texture.smithing_slot_icon_alpha() {
+                Some(alpha) => push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    background,
+                    surface_size,
+                    rect,
+                    layer.uv,
+                    [1.0, 1.0, 1.0, alpha],
+                ),
+                None => push_hud_draw_with_uv(
+                    vertices,
+                    commands,
+                    background,
+                    surface_size,
+                    rect,
+                    layer.uv,
+                ),
+            }
         }
     }
 }
@@ -19990,8 +20119,18 @@ fn sanitize_hud_test_instance_block_text_field(
 }
 
 fn sanitize_hud_inventory_background_layer(
-    layer: HudInventoryBackgroundLayer,
+    mut layer: HudInventoryBackgroundLayer,
 ) -> Option<HudInventoryBackgroundLayer> {
+    if let HudInventoryBackgroundTexture::SmithingSlotIcon {
+        icon, alpha_bits, ..
+    } = layer.texture
+    {
+        let alpha = f32::from_bits(alpha_bits);
+        if !alpha.is_finite() {
+            return None;
+        }
+        layer.texture = HudInventoryBackgroundTexture::smithing_slot_icon(icon, alpha);
+    }
     let uv = match layer.texture {
         HudInventoryBackgroundTexture::InworldMenuBackground => {
             sanitize_repeating_hud_uv_rect(layer.uv)?
@@ -26845,6 +26984,47 @@ mod tests {
         assert_eq!(screen.background_layers[0].uv.min, [0.0, 0.0]);
         assert_eq!(screen.background_layers[0].uv.max, [25.0, 18.75]);
         assert_eq!(screen.background_layers[1].uv.max, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn smithing_slot_icon_catalog_is_complete_unique_and_resource_shaped() {
+        assert_eq!(HudSmithingSlotIcon::ALL.len(), HudSmithingSlotIcon::COUNT);
+        let paths = HudSmithingSlotIcon::ALL
+            .into_iter()
+            .map(HudSmithingSlotIcon::sprite_path)
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(paths.len(), HudSmithingSlotIcon::COUNT);
+        assert!(paths.iter().all(|path| path.starts_with("container/slot/")));
+    }
+
+    #[test]
+    fn smithing_slot_icon_alpha_is_bounded_and_non_finite_is_rejected() {
+        let layer = HudInventoryBackgroundLayer {
+            texture: HudInventoryBackgroundTexture::smithing_slot_icon(
+                HudSmithingSlotIcon::Helmet,
+                2.0,
+            ),
+            x: 8,
+            y: 48,
+            width: 16,
+            height: 16,
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        };
+        let sanitized = sanitize_hud_inventory_background_layer(layer).unwrap();
+        assert_eq!(sanitized.texture.smithing_slot_icon_alpha(), Some(1.0));
+        assert!(
+            sanitize_hud_inventory_background_layer(HudInventoryBackgroundLayer {
+                texture: HudInventoryBackgroundTexture::SmithingSlotIcon {
+                    icon: HudSmithingSlotIcon::Helmet,
+                    alpha_bits: f32::NAN.to_bits(),
+                },
+                ..layer
+            })
+            .is_none()
+        );
     }
 
     #[test]
