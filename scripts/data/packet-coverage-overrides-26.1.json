@@ -1943,7 +1943,7 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-native/src/input/inventory/tests.rs#every_generated_server_opened_menu_type_has_a_native_layout",
-          "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_native_labels",
+          "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_a_native_surface",
           "crates/bbb-native/src/runtime/tests.rs#open_screen_title_localizes_rich_component_runs_and_uses_real_glyph_centering",
           "crates/bbb-renderer/src/hud.rs#scrolling_widget_text_layout_matches_vanilla_period_and_centering",
           "vanilla:net/minecraft/client/gui/screens/MenuScreens.java#SCREENS",
@@ -1960,7 +1960,7 @@
           "crates/bbb-world/src/client/inventory/tests.rs#open_screen_exact_title_is_stored_and_survives_set_content",
           "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#inventory_events_update_world_and_world_counters",
           "crates/bbb-native/src/input/inventory/tests.rs#every_generated_server_opened_menu_type_has_a_native_layout",
-          "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_native_labels",
+          "crates/bbb-native/src/runtime/tests.rs#all_generated_open_screen_menu_types_project_a_native_surface",
           "crates/bbb-native/src/runtime/tests.rs#open_screen_title_localizes_rich_component_runs_and_uses_real_glyph_centering"
         ],
         "status": "complete"
