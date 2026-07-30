@@ -203,6 +203,100 @@ fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
 }
 
 #[test]
+fn hud_heart_health_frame_matches_vanilla_damage_hold_and_blink_phase() {
+    let start = Instant::now();
+    let mut runtime = HudRenderRuntime::default();
+
+    assert_eq!(
+        runtime.player_health_frame(start, 0, 20, 0),
+        HudPlayerHealthFrame {
+            display_health: 20,
+            blinking: false,
+        }
+    );
+
+    // The edge arms tick + 20 but this frame uses the phase computed before
+    // the edge and holds the old displayed health.
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(100), 1, 16, 20),
+        HudPlayerHealthFrame {
+            display_health: 20,
+            blinking: false,
+        }
+    );
+    // remaining = 17, (17 / 3) % 2 == 1.
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(250), 4, 16, 19),
+        HudPlayerHealthFrame {
+            display_health: 20,
+            blinking: true,
+        }
+    );
+    // The wall-clock comparison is strict: equality does not expire the hold.
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(1_100), 8, 16, 15),
+        HudPlayerHealthFrame {
+            display_health: 20,
+            blinking: false,
+        }
+    );
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(1_101), 10, 16, 14),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: true,
+        }
+    );
+}
+
+#[test]
+fn hud_heart_health_frame_uses_ten_tick_heal_and_invulnerability_gate() {
+    let start = Instant::now();
+    let mut runtime = HudRenderRuntime::default();
+    assert_eq!(
+        runtime.player_health_frame(start, 30, 16, 0),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: false,
+        }
+    );
+
+    // A healing edge under invulnerability arms tick + 10, after extracting
+    // this frame's false phase.
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(50), 31, 20, 1),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: false,
+        }
+    );
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(100), 32, 20, 0),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: true,
+        }
+    );
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(500), 41, 20, 0),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: false,
+        }
+    );
+
+    // A later edge without invulnerability does not create a new deadline.
+    assert_eq!(
+        runtime.player_health_frame(start + Duration::from_millis(501), 42, 18, 0),
+        HudPlayerHealthFrame {
+            display_health: 16,
+            blinking: false,
+        }
+    );
+    assert_eq!(runtime.player_health.blink_until_tick, 41);
+}
+
+#[test]
 fn hud_spyglass_scope_matches_vanilla_frame_interpolation_and_visibility() {
     let mut state = HudRenderRuntime::default();
 

@@ -1411,19 +1411,19 @@ impl HudHeartKind {
 }
 
 /// One frame's player-health inputs (vanilla `Gui.extractPlayerHealth` /
-/// `extractHearts`, Gui.java:743-873): the synced health, the resolved
-/// MAX_HEALTH attribute, the absorption amount, the base `HeartType`, the
-/// hardcore flag, the Regeneration wave gate, and the client tick. The
-/// renderer derives the container/absorption rows, `numHealthRows` /
-/// `healthRowHeight`, the regen per-heart lift, and the low-health shake.
-///
-/// Blink (vanilla's damage/heal flash) is intentionally not modeled: it needs
-/// the untracked `player.invulnerableTime` and the wall-clock `displayHealth`
-/// hold, so `blinking` is always `false` here (see the ledger deferral).
+/// `extractHearts`, Gui.java:743-873): the synced current health, native-held
+/// displayed health and blink phase, resolved MAX_HEALTH attribute, absorption
+/// amount, base `HeartType`, hardcore flag, Regeneration wave gate, and client
+/// tick. The renderer derives the ordered heart instances and row geometry.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudPlayerHealth {
     /// Vanilla `player.getHealth()`; the draw ceils it (Gui.java:746).
     pub health: f32,
+    /// Vanilla `Gui.displayHealth`, held for one wall-clock second after a
+    /// damage/heal edge and drawn as the old blinking fill.
+    pub display_health: i32,
+    /// The frame phase derived from Vanilla `Gui.healthBlinkTime`.
+    pub blinking: bool,
     /// Vanilla `player.getAttributeValue(Attributes.MAX_HEALTH)` (Gui.java:768).
     pub max_health: f32,
     /// Vanilla `player.getAbsorptionAmount()` (Gui.java:769); the draw ceils it.
@@ -23031,6 +23031,8 @@ mod tests {
 
         let full_normal = HudPlayerHealth {
             health: 20.0,
+            display_health: 20,
+            blinking: false,
             max_health: 20.0,
             absorption: 0.0,
             heart_type: HudHeartKind::Normal,

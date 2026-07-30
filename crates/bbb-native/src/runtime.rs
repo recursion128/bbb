@@ -706,6 +706,7 @@ const HUD_DEBUG_NETWORK_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_TPS_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_NETWORK_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
 const BOSS_BAR_PROGRESS_LERP_DURATION: Duration = Duration::from_millis(100);
+const HUD_HEALTH_DISPLAY_HOLD_DURATION: Duration = Duration::from_millis(1_000);
 const CHUNK_BORDER_NEIGHBOR_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 0.5];
 const CHUNK_BORDER_CELL_COLOR: [f32; 4] = [0.0, 155.0 / 255.0, 155.0 / 255.0, 1.0];
 const CHUNK_BORDER_YELLOW_COLOR: [f32; 4] = [1.0, 1.0, 0.0, 1.0];
@@ -760,7 +761,22 @@ pub(crate) struct HudRenderRuntime {
     contextual: waypoint_locator::HudContextualRuntime,
     vignette: vignette::VignetteRuntime,
     scope_scale: f32,
+    player_health: HudPlayerHealthPresentation,
     smithing_screen: smithing_screen::SmithingScreenRuntime,
+}
+
+#[derive(Debug, Default)]
+struct HudPlayerHealthPresentation {
+    last_health: i32,
+    display_health: i32,
+    last_health_at: Option<Instant>,
+    blink_until_tick: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudPlayerHealthFrame {
+    display_health: i32,
+    blinking: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -904,6 +920,51 @@ impl HudRenderRuntime {
         HudFrameDeltaTicks {
             game_time,
             realtime,
+        }
+    }
+
+    fn player_health_frame(
+        &mut self,
+        now: Instant,
+        tick_count: u64,
+        current_health: i32,
+        invulnerable_time: i32,
+    ) -> HudPlayerHealthFrame {
+        // Vanilla computes this frame's phase before observing a health edge,
+        // so a newly armed deadline cannot blink until a later extraction.
+        let remaining_blink_ticks = self
+            .player_health
+            .blink_until_tick
+            .saturating_sub(tick_count);
+        let blinking = self.player_health.blink_until_tick > tick_count
+            && (remaining_blink_ticks / 3) % 2 == 1;
+
+        if invulnerable_time > 0 {
+            let blink_duration = if current_health < self.player_health.last_health {
+                Some(20)
+            } else if current_health > self.player_health.last_health {
+                Some(10)
+            } else {
+                None
+            };
+            if let Some(blink_duration) = blink_duration {
+                self.player_health.last_health_at = Some(now);
+                self.player_health.blink_until_tick = tick_count.saturating_add(blink_duration);
+            }
+        }
+
+        let display_hold_expired = self.player_health.last_health_at.map_or(true, |last| {
+            now.saturating_duration_since(last) > HUD_HEALTH_DISPLAY_HOLD_DURATION
+        });
+        if display_hold_expired {
+            self.player_health.display_health = current_health;
+            self.player_health.last_health_at = Some(now);
+        }
+        self.player_health.last_health = current_health;
+
+        HudPlayerHealthFrame {
+            display_health: self.player_health.display_health,
+            blinking,
         }
     }
 
@@ -3194,19 +3255,41 @@ pub(crate) fn update_renderer_from_publication(
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let hud_started_at = Instant::now();
     let local_player = world.local_player();
-    // Vanilla `Gui.extractPlayerHealth` / `extractHearts` inputs (Gui.java:743-873):
-    // the synced health pairs with the MAX_HEALTH attribute, absorption, the
-    // hardcore flag, the `HeartType.forPlayer` base type (poison > wither >
-    // fully-frozen > normal), the Regeneration wave gate, and the client tick.
-    let hud_player_health = local_player.health.map(|health| HudPlayerHealth {
-        health: health.health,
-        max_health: world.local_player_max_health(),
-        absorption: world.local_player_absorption(),
-        heart_type: local_player_heart_type(world),
-        hardcore: world.is_hardcore(),
-        regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
-        tick_count: publication.client_tick_index,
-    });
+    // Vanilla reaches `Gui.extractPlayerHealth` only while the GUI is visible
+    // and `GameMode.canHurtPlayer()` is true (survival/adventure). The synced
+    // health then pairs with the MAX_HEALTH attribute, absorption, hardcore,
+    // `HeartType.forPlayer`, Regeneration, and the client tick.
+    let local_player_invulnerable_time = world
+        .local_player_id()
+        .and_then(|entity_id| world.entity_damage_invulnerable_time(entity_id))
+        .unwrap_or(0);
+    let game_mode_can_hurt_player = matches!(
+        GameType::from_id(world.gameplay().game_type),
+        GameType::Survival | GameType::Adventure
+    );
+    let hud_player_health = (!input.hide_gui() && game_mode_can_hurt_player)
+        .then_some(local_player.health)
+        .flatten()
+        .filter(|health| health.health.is_finite())
+        .map(|health| {
+            let presentation = hud_render_runtime.player_health_frame(
+                render_started_at,
+                publication.client_tick_index,
+                health.health.ceil() as i32,
+                local_player_invulnerable_time,
+            );
+            HudPlayerHealth {
+                health: health.health,
+                display_health: presentation.display_health,
+                blinking: presentation.blinking,
+                max_health: world.local_player_max_health(),
+                absorption: world.local_player_absorption(),
+                heart_type: local_player_heart_type(world),
+                hardcore: world.is_hardcore(),
+                regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
+                tick_count: publication.client_tick_index,
+            }
+        });
     // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
     // the `Options.hideGui` branch and does not partial-tick interpolate it.
     let hud_sleep_overlay = hud_sleep_overlay_from_world(world);

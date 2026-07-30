@@ -1866,6 +1866,8 @@ mod tests {
     fn player_health(health: f32) -> HudPlayerHealth {
         HudPlayerHealth {
             health,
+            display_health: health.ceil() as i32,
+            blinking: false,
             max_health: 20.0,
             absorption: 0.0,
             heart_type: HudHeartKind::Normal,

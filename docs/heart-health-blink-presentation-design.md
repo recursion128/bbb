@@ -65,6 +65,10 @@ does not infer invulnerability from wall-clock time or add protocol state.
   equivalents. A deterministic helper accepts an explicit `Instant`, client
   tick, ceiled current health, and canonical invulnerability time and returns
   the old displayed health plus this frame's blink flag.
+- Native advances that state only when Vanilla would call
+  `extractPlayerHealth`: the GUI is visible and the current game mode is
+  survival or adventure. Creative, spectator, hidden-GUI, missing-health, and
+  non-finite-health frames do not fabricate an edge.
 - The initial helper state follows Java field defaults (`lastHealth = 0`,
   `displayHealth = 0`, no prior timestamp). A missing timestamp is treated as
   an expired hold for display catch-up. Missing local-player health produces no
@@ -116,7 +120,7 @@ does not infer invulnerability from wall-clock time or add protocol state.
    invulnerability time, and project displayed health plus the frame blink bit.
    Run
    `scripts/cargo-dev.sh test -p bbb-native heart` and
-   `scripts/cargo-dev.sh test -p bbb-world damage_invulnerable`.
+   `scripts/cargo-dev.sh test -p bbb-world damage_invulnerability`.
 2. **Renderer consumption.** Add ordered blinking instances and consume their
    typed sprite variant. Lock damage/heal order, row expansion, absorption
    exclusion, and offscreen pixels. Run
