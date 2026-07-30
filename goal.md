@@ -372,8 +372,8 @@ selected pack、server push/pop、原子 reload generation 和 profile/skin/cape
 elytra 动态纹理 owner 已落地；owner/失效合同以
 `docs/resource-pack-lifecycle-design.md` 为准；coalesced ResourceTexture
 per-entry sampler 工程合同见
-`docs/coalesced-resource-texture-sampling-design.md`。剩余工作不得重建平行
-pack stack、cache 状态机或 selectable old/new reload path。
+`docs/archive/coalesced-resource-texture-sampling-design.md`。剩余工作不得
+重建平行 pack stack、cache 状态机或 selectable old/new reload path。
 
 1. **non-profile 动态纹理**：后续真实远端 producer 复用既有 bounded
    pending/ready/failed owner。

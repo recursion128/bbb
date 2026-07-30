@@ -858,3 +858,7 @@
   贯通全部既有 standalone GPU owner，单 mip sampler 统一钉住 LOD 0；item 与
   armor glint 已拆为独立世界/PIP 资源并有确定性像素证据，合同见
   `docs/archive/standalone-texture-sampling-design.md`。
+- **2026-07-30（合并 ResourceTexture 入口采样工程闭环）**：registry variant
+  与本地 profile body/cape/elytra 的 blur/clamp 现贯通同一动态实体图集；
+  level-zero bounded texel sampling 保留四种组合且隔离相邻入口，合同见
+  `docs/archive/coalesced-resource-texture-sampling-design.md`。

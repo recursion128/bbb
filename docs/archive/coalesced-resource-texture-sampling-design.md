@@ -1,6 +1,6 @@
 # Coalesced Resource-Texture Sampling Engineering Contract
 
-Status: active from 2026-07-30.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 

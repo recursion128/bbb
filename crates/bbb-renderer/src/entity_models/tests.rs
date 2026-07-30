@@ -1000,9 +1000,13 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
         ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_TEXTURED_CULL_SHADER,
     ] {
+        assert!(shader.contains("let sample = sample_entity_texture("));
         assert!(shader.contains(
-            "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
+            "let atlas_sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv)"
         ));
+        assert!(
+            shader.contains("return textureLoad(entity_texture_atlas, pixel_origin + resolved, 0)")
+        );
         assert!(shader.contains("if sample.a < 0.1"));
         assert!(shader.contains("let texel = sample * input.tint"));
         assert!(!shader.contains("if texel.a <= 0.1"));
@@ -1012,6 +1016,24 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3, 6 => Float32x2, 7 => Float32x2, 8 => Float32x4]
     );
+}
+
+#[test]
+fn entity_textured_shader_bounds_resource_texture_sampling_to_its_entry() {
+    for shader in [
+        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+    ] {
+        assert!(shader.contains("return ((coordinate % extent) + extent) % extent"));
+        assert!(shader.contains("return clamp(coordinate, 0, extent - 1)"));
+        assert!(shader.contains("let coordinate = vec2<i32>(floor(local_uv * size_f))"));
+        assert!(shader.contains("let sample_position = local_uv * size_f - vec2<f32>(0.5)"));
+        assert_eq!(
+            shader.matches("load_standalone_texel(lower").count(),
+            4,
+            "linear sampling must resolve all four taps inside the entry"
+        );
+    }
 }
 
 #[test]

@@ -302,6 +302,9 @@ struct VertexIn {
     @location(3) light: vec2<f32>,
     @location(4) overlay: vec2<f32>,
     @location(5) normal: vec3<f32>,
+    @location(6) standalone_local_uv: vec2<f32>,
+    @location(7) standalone_pixel_origin: vec2<f32>,
+    @location(8) standalone_size_flags: vec4<f32>,
 };
 
 struct VertexOut {
@@ -313,7 +316,66 @@ struct VertexOut {
     @location(4) normal: vec3<f32>,
     @location(5) spherical_distance: f32,
     @location(6) cylindrical_distance: f32,
+    @location(7) standalone_local_uv: vec2<f32>,
+    @location(8) standalone_pixel_origin: vec2<f32>,
+    @location(9) standalone_size_flags: vec4<f32>,
 };
+
+fn resolve_standalone_texel_coordinate(coordinate: i32, extent: i32, clamp_address: bool) -> i32 {
+    if clamp_address {
+        return clamp(coordinate, 0, extent - 1);
+    }
+    return ((coordinate % extent) + extent) % extent;
+}
+
+fn load_standalone_texel(
+    coordinate: vec2<i32>,
+    pixel_origin: vec2<i32>,
+    size: vec2<i32>,
+    clamp_address: bool,
+) -> vec4<f32> {
+    let resolved = vec2<i32>(
+        resolve_standalone_texel_coordinate(coordinate.x, size.x, clamp_address),
+        resolve_standalone_texel_coordinate(coordinate.y, size.y, clamp_address),
+    );
+    return textureLoad(entity_texture_atlas, pixel_origin + resolved, 0);
+}
+
+fn sample_entity_texture(
+    atlas_uv: vec2<f32>,
+    local_uv: vec2<f32>,
+    pixel_origin_value: vec2<f32>,
+    size_flags: vec4<f32>,
+) -> vec4<f32> {
+    let atlas_sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if size_flags.x < 0.5 || size_flags.y < 0.5 {
+        return atlas_sample;
+    }
+
+    let pixel_origin = vec2<i32>(round(pixel_origin_value));
+    let size = vec2<i32>(round(size_flags.xy));
+    let size_f = vec2<f32>(size);
+    let clamp_address = size_flags.w > 0.5;
+    if size_flags.z < 0.5 {
+        let coordinate = vec2<i32>(floor(local_uv * size_f));
+        return load_standalone_texel(coordinate, pixel_origin, size, clamp_address);
+    }
+
+    let sample_position = local_uv * size_f - vec2<f32>(0.5);
+    let lower = vec2<i32>(floor(sample_position));
+    let weight = fract(sample_position);
+    let top = mix(
+        load_standalone_texel(lower, pixel_origin, size, clamp_address),
+        load_standalone_texel(lower + vec2<i32>(1, 0), pixel_origin, size, clamp_address),
+        weight.x,
+    );
+    let bottom = mix(
+        load_standalone_texel(lower + vec2<i32>(0, 1), pixel_origin, size, clamp_address),
+        load_standalone_texel(lower + vec2<i32>(1, 1), pixel_origin, size, clamp_address),
+        weight.x,
+    );
+    return mix(top, bottom, weight.y);
+}
 
 fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     let uv = clamp(
@@ -368,12 +430,20 @@ fn vs_main(input: VertexIn) -> VertexOut {
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    out.standalone_local_uv = input.standalone_local_uv;
+    out.standalone_pixel_origin = input.standalone_pixel_origin;
+    out.standalone_size_flags = input.standalone_size_flags;
     return out;
 }
 
 @fragment
 fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
-    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    let sample = sample_entity_texture(
+        input.uv,
+        input.standalone_local_uv,
+        input.standalone_pixel_origin,
+        input.standalone_size_flags,
+    );
     if sample.a < 0.1 {
         discard;
     }
@@ -841,6 +911,9 @@ struct VertexIn {
     @location(3) light: vec2<f32>,
     @location(4) overlay: vec2<f32>,
     @location(5) normal: vec3<f32>,
+    @location(6) standalone_local_uv: vec2<f32>,
+    @location(7) standalone_pixel_origin: vec2<f32>,
+    @location(8) standalone_size_flags: vec4<f32>,
 };
 
 struct VertexOut {
@@ -852,7 +925,66 @@ struct VertexOut {
     @location(4) normal: vec3<f32>,
     @location(5) spherical_distance: f32,
     @location(6) cylindrical_distance: f32,
+    @location(7) standalone_local_uv: vec2<f32>,
+    @location(8) standalone_pixel_origin: vec2<f32>,
+    @location(9) standalone_size_flags: vec4<f32>,
 };
+
+fn resolve_standalone_texel_coordinate(coordinate: i32, extent: i32, clamp_address: bool) -> i32 {
+    if clamp_address {
+        return clamp(coordinate, 0, extent - 1);
+    }
+    return ((coordinate % extent) + extent) % extent;
+}
+
+fn load_standalone_texel(
+    coordinate: vec2<i32>,
+    pixel_origin: vec2<i32>,
+    size: vec2<i32>,
+    clamp_address: bool,
+) -> vec4<f32> {
+    let resolved = vec2<i32>(
+        resolve_standalone_texel_coordinate(coordinate.x, size.x, clamp_address),
+        resolve_standalone_texel_coordinate(coordinate.y, size.y, clamp_address),
+    );
+    return textureLoad(entity_texture_atlas, pixel_origin + resolved, 0);
+}
+
+fn sample_entity_texture(
+    atlas_uv: vec2<f32>,
+    local_uv: vec2<f32>,
+    pixel_origin_value: vec2<f32>,
+    size_flags: vec4<f32>,
+) -> vec4<f32> {
+    let atlas_sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if size_flags.x < 0.5 || size_flags.y < 0.5 {
+        return atlas_sample;
+    }
+
+    let pixel_origin = vec2<i32>(round(pixel_origin_value));
+    let size = vec2<i32>(round(size_flags.xy));
+    let size_f = vec2<f32>(size);
+    let clamp_address = size_flags.w > 0.5;
+    if size_flags.z < 0.5 {
+        let coordinate = vec2<i32>(floor(local_uv * size_f));
+        return load_standalone_texel(coordinate, pixel_origin, size, clamp_address);
+    }
+
+    let sample_position = local_uv * size_f - vec2<f32>(0.5);
+    let lower = vec2<i32>(floor(sample_position));
+    let weight = fract(sample_position);
+    let top = mix(
+        load_standalone_texel(lower, pixel_origin, size, clamp_address),
+        load_standalone_texel(lower + vec2<i32>(1, 0), pixel_origin, size, clamp_address),
+        weight.x,
+    );
+    let bottom = mix(
+        load_standalone_texel(lower + vec2<i32>(0, 1), pixel_origin, size, clamp_address),
+        load_standalone_texel(lower + vec2<i32>(1, 1), pixel_origin, size, clamp_address),
+        weight.x,
+    );
+    return mix(top, bottom, weight.y);
+}
 
 fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     let uv = clamp(
@@ -900,12 +1032,20 @@ fn vs_main(input: VertexIn) -> VertexOut {
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    out.standalone_local_uv = input.standalone_local_uv;
+    out.standalone_pixel_origin = input.standalone_pixel_origin;
+    out.standalone_size_flags = input.standalone_size_flags;
     return out;
 }
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    let sample = sample_entity_texture(
+        input.uv,
+        input.standalone_local_uv,
+        input.standalone_pixel_origin,
+        input.standalone_size_flags,
+    );
     if sample.a < 0.1 {
         discard;
     }
@@ -5193,19 +5333,25 @@ mod tests {
 
     #[test]
     fn entity_model_textured_shaders_cut_out_sampled_texture_alpha_before_tint() {
-        for (label, shader, uv_expr) in [
-            ("entity textured", ENTITY_MODEL_TEXTURED_SHADER, "input.uv"),
+        for (label, shader, sampling) in [
+            (
+                "entity textured",
+                ENTITY_MODEL_TEXTURED_SHADER,
+                "let sample = sample_entity_texture(",
+            ),
             (
                 "entity textured cull",
                 ENTITY_MODEL_TEXTURED_CULL_SHADER,
-                "input.uv",
+                "let sample = sample_entity_texture(",
             ),
-            ("breezeWind scroll", ENTITY_MODEL_SCROLL_SHADER, "atlas_uv"),
+            (
+                "breezeWind scroll",
+                ENTITY_MODEL_SCROLL_SHADER,
+                "let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv)",
+            ),
         ] {
             assert!(
-                shader.contains(&format!(
-                    "let sample = textureSample(entity_texture_atlas, entity_sampler, {uv_expr})"
-                )),
+                shader.contains(sampling),
                 "{label} shader should sample texture before tint"
             );
             assert!(
@@ -5323,9 +5469,8 @@ mod tests {
     fn entity_model_solid_shader_preserves_low_alpha_texels_without_cutout() {
         let shader = entity_model_solid_shader();
         assert!(
-            shader.contains(
-                "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
-            ) && shader.contains("let texel = sample * input.tint"),
+            shader.contains("let sample = sample_entity_texture(")
+                && shader.contains("let texel = sample * input.tint"),
             "entitySolid still samples and tints the entity texture"
         );
         assert!(
@@ -5366,9 +5511,8 @@ mod tests {
     fn entity_model_cutout_z_offset_shader_matches_vanilla_cutout_shape() {
         let shader = entity_model_cutout_z_offset_shader();
         assert!(
-            shader.contains(
-                "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
-            ) && shader.contains("if sample.a < 0.1")
+            shader.contains("let sample = sample_entity_texture(")
+                && shader.contains("if sample.a < 0.1")
                 && shader.contains("let texel = sample * input.tint")
                 && shader.contains("discard"),
             "vanilla ENTITY_CUTOUT_Z_OFFSET cuts out sampled texture alpha before tint"

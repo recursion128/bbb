@@ -261,15 +261,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   `displayEntity` remains null and `clientTick` advances neither spin nor
   display particles.
 
-## GPU and resources
-
-Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
-
-- **Coalesced resource-texture per-entry sampling parity.** Pack
-  `ClientAsset.ResourceTexture` metadata is loaded before BBB coalesces runtime
-  entity textures; preserve independent blur/clamp semantics without atlas
-  bleeding or a second pack/cache owner.
-
 ## Movement and interaction
 
 Owner: `bbb-world` + `bbb-native`

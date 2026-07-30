@@ -1025,14 +1025,17 @@ mod tests {
     use std::sync::Arc;
 
     use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
-    use super::super::model_layers::{armor_stand_entity_texture_refs, banner_entity_texture_refs};
+    use super::super::model_layers::{
+        armor_stand_entity_texture_refs, banner_entity_texture_refs, pig_entity_texture_refs,
+    };
     use super::super::{
         EntityArmorMaterial, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     use super::*;
     use crate::{
         BannerPatternLayer, BannerPatternTexture, DynamicEntityTextureImage, EntityArmorTrim,
-        EntityDyeColor, EntityDynamicTexture,
+        EntityDyeColor, EntityDynamicTexture, HudEntityPreviewRect, PigModelVariant,
+        StandaloneTextureSampling,
     };
 
     #[test]
@@ -1210,6 +1213,182 @@ mod tests {
         );
         drop(data);
         readback.unmap();
+    }
+
+    #[test]
+    fn resource_texture_pip_pixels_distinguish_filtering_without_atlas_bleeding() {
+        const WIDTH: u32 = 64;
+        const HEIGHT: u32 = 64;
+
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            eprintln!("skipping resource-texture PIP test without a compatible adapter");
+            return;
+        };
+        let static_images = pig_entity_texture_refs()
+            .iter()
+            .copied()
+            .map(|texture| {
+                EntityModelTextureImage::new(
+                    texture,
+                    vec![0xff; usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap()],
+                )
+            })
+            .collect::<Vec<_>>();
+        renderer
+            .upload_entity_model_textures(&static_images)
+            .expect("pig entity atlas");
+
+        let nearest = render_resource_texture_pig_pip(
+            &mut renderer,
+            StandaloneTextureSampling::new(false, false),
+            WIDTH,
+            HEIGHT,
+        );
+        let linear = render_resource_texture_pig_pip(
+            &mut renderer,
+            StandaloneTextureSampling::new(true, false),
+            WIDTH,
+            HEIGHT,
+        );
+
+        let visible = |pixel: &&[u8; 4]| pixel[3] > 0;
+        assert!(nearest.iter().filter(visible).count() > 100);
+        assert!(linear.iter().filter(visible).count() > 100);
+        let sentinel_green = |pixel: &&[u8; 4]| {
+            pixel[3] > 0
+                && u16::from(pixel[1]) > u16::from(pixel[0]) + 24
+                && u16::from(pixel[1]) > u16::from(pixel[2]) + 24
+        };
+        assert_eq!(
+            nearest.iter().filter(sentinel_green).count(),
+            0,
+            "nearest resource sampling must not read the green neighbour entry"
+        );
+        assert_eq!(
+            linear.iter().filter(sentinel_green).count(),
+            0,
+            "all four linear taps must remain inside the red/blue resource entry"
+        );
+
+        let purple = |pixel: &&[u8; 4]| {
+            pixel[3] > 0
+                && pixel[0] > 24
+                && pixel[2] > 24
+                && u16::from(pixel[1]) + 16 < u16::from(pixel[0]).min(u16::from(pixel[2]))
+        };
+        let nearest_purple = nearest.iter().filter(purple).count();
+        let linear_purple = linear.iter().filter(purple).count();
+        assert!(
+            linear_purple > nearest_purple + 8,
+            "linear filtering must blend red/blue texels ({linear_purple}) more than nearest ({nearest_purple})"
+        );
+    }
+
+    fn render_resource_texture_pig_pip(
+        renderer: &mut Renderer,
+        sampling: StandaloneTextureSampling,
+        width: u32,
+        height: u32,
+    ) -> Vec<[u8; 4]> {
+        const TEXTURE_HANDLE: u64 = 91_001;
+        const SENTINEL_HANDLE: u64 = 91_002;
+        const BYTES_PER_ROW: u32 = 256;
+
+        renderer
+            .upload_dynamic_entity_textures(vec![
+                DynamicEntityTextureImage {
+                    handle: TEXTURE_HANDLE,
+                    size: [2, 1],
+                    standalone_sampling: Some(sampling),
+                    rgba: vec![255, 0, 0, 255, 0, 0, 255, 255],
+                },
+                DynamicEntityTextureImage {
+                    handle: SENTINEL_HANDLE,
+                    size: [1, 1],
+                    standalone_sampling: None,
+                    rgba: vec![0, 255, 0, 255],
+                },
+            ])
+            .expect("dynamic resource texture atlas");
+        let preview = HudEntityPreview {
+            entity: EntityModelInstance::pig(
+                -1,
+                [0.0, 0.0, 0.0],
+                210.0,
+                PigModelVariant::Temperate,
+                false,
+            )
+            .with_dynamic_texture(Some(EntityDynamicTexture {
+                handle: TEXTURE_HANDLE,
+            })),
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation: None,
+            scale: 24.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: Vec::new(),
+        };
+        let mut target = renderer.ensure_hud_entity_preview_pip_target(None, width, height);
+        let mut encoder = renderer
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("bbb-resource-texture-pip-test"),
+            });
+        let (entity_draw_calls, _, _) =
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0);
+        assert!(entity_draw_calls > 0);
+
+        let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bbb-resource-texture-pip-readback"),
+            size: u64::from(BYTES_PER_ROW * height),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &target._color_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &readback,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(BYTES_PER_ROW),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        renderer.queue.submit(std::iter::once(encoder.finish()));
+        let slice = readback.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        renderer.device.poll(wgpu::Maintain::Wait);
+        let data = slice.get_mapped_range();
+        let pixels = data
+            .chunks_exact(BYTES_PER_ROW as usize)
+            .take(height as usize)
+            .flat_map(|row| row[..(width * 4) as usize].chunks_exact(4))
+            // Offscreen production targets are BGRA.
+            .map(|pixel| [pixel[2], pixel[1], pixel[0], pixel[3]])
+            .collect();
+        drop(data);
+        readback.unmap();
+        pixels
     }
 
     fn armor_stand_preview_instance() -> EntityModelInstance {
