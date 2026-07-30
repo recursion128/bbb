@@ -521,6 +521,14 @@ mod tests {
     }
 
     #[test]
+    fn vanilla_mean_linear_uses_arithmetic_alpha_instead_of_linear_light_alpha() {
+        assert_eq!(
+            mean_linear([0, 0, 0, 0], [0, 0, 0, 64], [0, 0, 0, 128], [0, 0, 0, 255],),
+            [0, 0, 0, 111]
+        );
+    }
+
+    #[test]
     fn sprite_mip_levels_auto_cutout_solidifies_non_item_base() {
         let image = SpriteImage::new(
             "minecraft:block/cutout",
@@ -536,6 +544,20 @@ mod tests {
             levels[0].rgba,
             vec![10, 20, 30, 255, 10, 20, 30, 0, 10, 20, 30, 0, 10, 20, 30, 0]
         );
+    }
+
+    #[test]
+    fn solidify_uses_vanilla_x_major_seed_and_neighbor_order_for_ties() {
+        let mut rgba = vec![0; 3 * 3 * 4];
+        rgba[rgba_offset(3, 0, 1).unwrap()..rgba_offset(3, 0, 1).unwrap() + 4]
+            .copy_from_slice(&[255, 0, 0, 255]);
+        rgba[rgba_offset(3, 2, 1).unwrap()..rgba_offset(3, 2, 1).unwrap() + 4]
+            .copy_from_slice(&[0, 0, 255, 255]);
+
+        solidify(&mut rgba, 3, 3).unwrap();
+
+        let center = rgba_offset(3, 1, 1).unwrap();
+        assert_eq!(&rgba[center..center + 4], &[255, 0, 0, 0]);
     }
 
     #[test]
@@ -573,6 +595,15 @@ mod tests {
             levels[0].rgba,
             vec![100, 80, 60, 255, 30, 30, 30, 255, 22, 22, 22, 0, 22, 22, 22, 0]
         );
+    }
+
+    #[test]
+    fn dark_cutout_all_transparent_base_uses_vanilla_negative_one_seed_color() {
+        let mut rgba = vec![0; 2 * 2 * 4];
+
+        fill_empty_areas_with_dark_color(&mut rgba, 2, 2).unwrap();
+
+        assert_eq!(rgba, [191, 191, 191, 0].repeat(4));
     }
 
     #[test]

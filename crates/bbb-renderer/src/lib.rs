@@ -31,6 +31,7 @@ mod screenshot;
 mod selection;
 mod sheeted_decal;
 mod sky;
+mod texture_sampling;
 mod transparency;
 mod vignette;
 mod weather;

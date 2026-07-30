@@ -1,13 +1,17 @@
 use anyhow::{Context, Result};
 
-use crate::{image::decode_png_file_rgba_with_budget, PackRoots, ResourceLocation};
+use crate::{
+    image::decode_png_file_rgba_with_budget, sprites::read_texture_metadata, PackRoots,
+    ResourceLocation, SpriteTextureMetadata,
+};
 
 /// One pack-backed `ClientAsset.ResourceTexture`, decoded at its original PNG dimensions.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResourceTextureImage {
     pub asset_id: String,
     pub texture_path: String,
     pub size: [u32; 2],
+    pub texture_metadata: SpriteTextureMetadata,
     pub rgba: Vec<u8>,
 }
 
@@ -26,6 +30,7 @@ impl PackRoots {
             .get_resource(&texture)
             .with_context(|| format!("missing resource texture {}", texture.id()))?;
         let path = resource.path;
+        let texture_metadata = read_texture_metadata(&path, &resources)?;
         let image = decode_png_file_rgba_with_budget(
             &path,
             "resource texture",
@@ -37,6 +42,7 @@ impl PackRoots {
             asset_id: asset.id(),
             texture_path: texture.id(),
             size,
+            texture_metadata,
             rgba: image.into_raw(),
         })
     }
@@ -62,6 +68,11 @@ mod tests {
             1,
             [1, 2, 3, 255],
         );
+        std::fs::write(
+            sources.join("assets/minecraft/textures/entity/cow/custom.png.mcmeta"),
+            br#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         write_png(
             &overlay.join("assets/minecraft/textures/entity/cow/custom.png"),
             1,
@@ -74,6 +85,11 @@ mod tests {
             1,
             [17, 19, 23, 255],
         );
+        std::fs::write(
+            overlay.join("assets/example/textures/animals/calf.png.mcmeta"),
+            br#"{"texture":{"blur":true,"clamp":true}}"#,
+        )
+        .unwrap();
         let roots = roots(&root, &sources, vec![overlay]);
 
         let overridden = roots
@@ -85,6 +101,10 @@ mod tests {
             "minecraft:textures/entity/cow/custom.png"
         );
         assert_eq!(overridden.size, [1, 2]);
+        assert_eq!(
+            overridden.texture_metadata,
+            SpriteTextureMetadata::default()
+        );
         assert_eq!(overridden.rgba, [7, 11, 13, 255].repeat(2));
 
         let custom = roots
@@ -93,6 +113,8 @@ mod tests {
         assert_eq!(custom.asset_id, "example:animals/calf");
         assert_eq!(custom.texture_path, "example:textures/animals/calf.png");
         assert_eq!(custom.size, [3, 1]);
+        assert!(custom.texture_metadata.blur);
+        assert!(custom.texture_metadata.clamp);
         assert_eq!(custom.rgba, [17, 19, 23, 255].repeat(3));
 
         std::fs::remove_dir_all(root).unwrap();

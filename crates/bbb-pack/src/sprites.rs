@@ -517,6 +517,17 @@ fn read_sprite_metadata(
     .with_context(|| format!("parse mcmeta {}", path.display()))
 }
 
+pub(crate) fn read_texture_metadata(
+    image_path: &Path,
+    resources: &PackResourceStack,
+) -> Result<SpriteTextureMetadata> {
+    let metadata_path = mcmeta_path(image_path);
+    Ok(read_sprite_metadata(Some(&metadata_path), Some(resources))?
+        .texture
+        .unwrap_or_default()
+        .into_metadata())
+}
+
 fn mcmeta_path(path: &Path) -> PathBuf {
     let file_name = path
         .file_name()
