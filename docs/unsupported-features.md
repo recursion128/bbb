@@ -233,9 +233,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 - **Accessibility text backdrop** (`textWithBackdrop`, option default `0`).
 - **Jukebox now-playing path** (`Gui.setNowPlaying`, the only `animate_color=true`
   producer). The flag is already carried end to end.
-- [**Sound-captions subtitle overlay** engineering
-  slice](sound-caption-overlay-design.md), distinct from the title subtitle
-  drawn inside `extractTitle`.
 - **Client-only debug entries with no HUD line** are `not-needed`:
   LocalDifficulty, EntitySpawnCounts, and ChunkGenerationStats read an
   integrated local-server mirror (`ServerLevel`,

@@ -812,3 +812,6 @@
   资源字体、富文本悬停/点击及服务端权威翻页现共用原生 Book 表面；精确按钮布局、
   键鼠命令顺序与确定性 GPU 像素已闭环，合同见
   `docs/archive/lectern-screen-presentation-design.md`。
+- **2026-07-29（声音字幕覆盖层工程闭环）**：根音效字幕键、实际播放/延迟释放
+  时序、首次范围与位置刷新、听距/方向/寿命/亮度及屏幕 strata 已贯通原生音频、
+  HUD 字体和确定性 GPU 像素，合同见 `docs/archive/sound-caption-overlay-design.md`。
