@@ -696,12 +696,15 @@ fn mooshroom_mushroom_layers_use_vanilla_default_block_states() {
 #[test]
 fn entity_block_attachments_collect_snow_golem_iron_golem_and_mooshroom_layers() {
     let world = WorldStore::new();
-    let snow_golem =
-        EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0).with_snow_golem_pumpkin(true);
+    let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+        .with_snow_golem_pumpkin(true)
+        .with_outline_color(0xff55_aa11);
     let iron_golem = EntityModelInstance::iron_golem(74, [1.0, 64.0, 0.0], 0.0)
-        .with_iron_golem_offer_flower_tick(400);
+        .with_iron_golem_offer_flower_tick(400)
+        .with_outline_color(0xff55_aa11);
     let idle_iron_golem = EntityModelInstance::iron_golem(75, [2.0, 64.0, 0.0], 0.0);
-    let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false);
+    let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false)
+        .with_outline_color(0xff55_aa11);
     let baby_mooshroom = EntityModelInstance::mooshroom(87, [4.0, 64.0, 0.0], 0.0, true);
 
     let attachments = entity_block_attachments(
@@ -721,6 +724,9 @@ fn entity_block_attachments_collect_snow_golem_iron_golem_and_mooshroom_layers()
     assert!(attachments
         .iter()
         .all(|attachment| !attachment.outline_only));
+    assert!(attachments
+        .iter()
+        .all(|attachment| attachment.outline_color == 0xff55_aa11));
     assert_eq!(attachments[0].block_id.as_ref(), CARVED_PUMPKIN_BLOCK_ID);
     assert_eq!(
         attachments[0].properties,
@@ -826,11 +832,68 @@ fn entity_block_models_retain_outline_only_solid_and_translucent_geometry() {
 }
 
 #[test]
-fn entity_block_models_keep_visible_attachment_geometry_in_block_feature_lanes() {
+fn entity_block_models_reuse_visible_attachment_geometry_for_main_and_outline() {
     let world = WorldStore::new();
     let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
         .with_snow_golem_pumpkin(true)
         .with_outline_color(0xff55_aa11);
+    let terrain_textures = TerrainTextureState::default();
+    let mut quads = unit_block_quads();
+    let mut translucent = quads[0];
+    translucent.translucent = true;
+    quads.push(translucent);
+    terrain_textures.insert_block_item_quads_for_test(
+        CARVED_PUMPKIN_BLOCK_ID,
+        carved_pumpkin_default_properties(),
+        Arc::from(quads),
+    );
+
+    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+
+    assert_eq!(
+        residency.assets.len(),
+        2,
+        "solid and translucent classes each have one static geometry request"
+    );
+    assert_eq!(residency.instances.len(), 4);
+    for pair in residency.instances.chunks_exact(2) {
+        let main = &pair[0];
+        let outline = &pair[1];
+        assert_eq!(main.identity, outline.identity);
+        assert_eq!(main.atlas, outline.atlas);
+        assert_eq!(main.geometry_class, outline.geometry_class);
+        assert_eq!(main.transform, outline.transform);
+        assert_eq!(main.target, ItemModelDrawTarget::BlockFeature);
+        assert_eq!(
+            main.phase,
+            match main.geometry_class {
+                ItemModelGeometryClass::Solid => ItemModelDrawPhase::Solid,
+                ItemModelGeometryClass::Translucent => ItemModelDrawPhase::Translucent,
+            }
+        );
+        assert_eq!(main.tint, [1.0; 4]);
+        assert_eq!(outline.target, ItemModelDrawTarget::EntityOutline);
+        assert_eq!(outline.phase, ItemModelDrawPhase::Outline);
+        assert_eq!(
+            outline.tint,
+            [
+                0x55 as f32 / 255.0,
+                0xaa as f32 / 255.0,
+                0x11 as f32 / 255.0,
+                1.0,
+            ]
+        );
+        assert_eq!(main.light, outline.light);
+        assert_eq!(main.overlay, outline.overlay);
+        assert!(main.submit_order < outline.submit_order);
+    }
+}
+
+#[test]
+fn entity_block_models_emit_no_outline_copy_for_zero_color() {
+    let world = WorldStore::new();
+    let snow_golem =
+        EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0).with_snow_golem_pumpkin(true);
     let terrain_textures = TerrainTextureState::default();
     terrain_textures.insert_block_item_quads_for_test(
         CARVED_PUMPKIN_BLOCK_ID,
@@ -840,13 +903,13 @@ fn entity_block_models_keep_visible_attachment_geometry_in_block_feature_lanes()
 
     let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
 
+    assert_eq!(residency.assets.len(), 1);
     assert_eq!(residency.instances.len(), 1);
     assert_eq!(
         residency.instances[0].target,
         ItemModelDrawTarget::BlockFeature
     );
     assert_eq!(residency.instances[0].phase, ItemModelDrawPhase::Solid);
-    assert_eq!(residency.instances[0].tint, [1.0; 4]);
 }
 
 #[test]
@@ -856,7 +919,8 @@ fn entity_block_attachments_collect_enderman_carried_block_from_world() {
     let light_coords = (6_u32 << 4) | (10_u32 << 20);
     let enderman = EntityModelInstance::enderman(entity_id, [0.0, 64.0, 0.0], 0.0)
         .with_enderman_carrying(true)
-        .with_light_coords(light_coords);
+        .with_light_coords(light_coords)
+        .with_outline_color(0xff55_aa11);
 
     let attachments = entity_block_attachments(&[enderman], &world, None, 1.0);
 
@@ -867,6 +931,8 @@ fn entity_block_attachments_collect_enderman_carried_block_from_world() {
         BTreeMap::from([("snowy".to_string(), "false".to_string())])
     );
     assert_eq!(attachments[0].light, [6.0 / 15.0, 10.0 / 15.0]);
+    assert_eq!(attachments[0].outline_color, 0xff55_aa11);
+    assert!(!attachments[0].outline_only);
 }
 
 #[test]
@@ -897,13 +963,21 @@ fn entity_block_attachments_collect_minecart_display_block_from_world() {
         .transform_point3(Vec3::splat(0.5))
         .is_finite());
 
+    let glowing = minecart.with_outline_color(0xff55_aa11);
+    let glowing_attachments = entity_block_attachments(&[glowing], &world, None, 1.0);
+    assert_eq!(glowing_attachments[0].outline_color, 0xff55_aa11);
+    assert!(!glowing_attachments[0].outline_only);
+
     let hidden = minecart.with_invisible(true);
     assert!(entity_block_attachments(&[hidden], &world, None, 1.0).is_empty());
 
     let outline = hidden.with_appears_glowing(true);
     let outline_attachments = entity_block_attachments(&[outline], &world, None, 1.0);
     assert_eq!(outline_attachments.len(), 1);
-    assert!(outline_attachments[0].outline_only);
+    assert!(
+        !outline_attachments[0].outline_only,
+        "AbstractMinecartRenderer always uses ordinary BlockModelRenderState.submit"
+    );
 }
 
 #[test]
@@ -925,6 +999,8 @@ fn entity_block_attachments_apply_tnt_minecart_fuse_scale_and_white_overlay() {
     );
     assert_eq!(attachments[0].light, [5.0 / 15.0, 12.0 / 15.0]);
     assert_eq!(attachments[0].overlay, [15.0, 10.0]);
+    assert_eq!(attachments[0].outline_color, 0);
+    assert!(!attachments[0].outline_only);
     assert_eq!(
         attachments[0].transform,
         minecart_tnt_display_block_transform(&primed, 6).unwrap()
@@ -942,6 +1018,13 @@ fn entity_block_attachments_apply_tnt_minecart_fuse_scale_and_white_overlay() {
         .pop()
         .expect("odd strobe tnt attachment");
     assert_eq!(odd_strobe_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
+
+    let glowing = primed.with_outline_color(0xff55_aa11);
+    let glowing_attachment = entity_block_attachments(&[glowing], &world, None, 1.0)
+        .pop()
+        .expect("glowing tnt minecart attachment");
+    assert_eq!(glowing_attachment.outline_color, 0xff55_aa11);
+    assert!(!glowing_attachment.outline_only);
 }
 
 #[test]
@@ -964,13 +1047,18 @@ fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
         attachments[0].transform,
         primed_tnt_block_transform(&tnt, 4.5).unwrap()
     );
+    assert_eq!(attachments[0].outline_color, 0);
     assert!(!attachments[0].outline_only);
     let hidden = tnt.with_invisible(true);
     assert!(entity_block_attachments(&[hidden], &world, None, 0.5).is_empty());
     let outline = hidden.with_appears_glowing(true);
     let outline_attachments = entity_block_attachments(&[outline], &world, None, 0.5);
     assert_eq!(outline_attachments.len(), 1);
-    assert!(outline_attachments[0].outline_only);
+    assert!(
+        !outline_attachments[0].outline_only,
+        "TntRenderer always uses ordinary BlockModelRenderState.submit"
+    );
+    assert_ne!(outline_attachments[0].outline_color, 0);
 
     let default_world = world_with_primed_tnt(entity_id, 6, None);
     let default_attachment = entity_block_attachments(&[tnt], &default_world, None, 0.0)
@@ -1188,6 +1276,17 @@ fn copper_golem_antenna_attachment_uses_block_state_component_properties() {
         .transform
         .transform_point3(Vec3::splat(0.5))
         .is_finite());
+    assert_eq!(attachment.outline_color, 0);
+    assert!(!attachment.outline_only);
+    let glowing = copper_golem.with_outline_color(0xff55_aa11);
+    let glowing_attachment =
+        copper_golem_antenna_block_attachment_from_stack(&glowing, &stack, "minecraft:oak_button")
+            .unwrap();
+    assert_eq!(glowing_attachment.outline_color, 0xff55_aa11);
+    assert!(
+        !glowing_attachment.outline_only,
+        "BlockDecorationLayer always uses ordinary BlockModelRenderState.submit"
+    );
     assert!(copper_golem_antenna_block_attachment_from_stack(
         &EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0),
         &stack,

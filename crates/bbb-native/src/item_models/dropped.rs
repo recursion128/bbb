@@ -177,72 +177,85 @@ pub(crate) fn entity_block_models(
                 0,
             );
             let source = ItemModelAssetSource::Quads(Arc::clone(&quads));
-            let target = if attachment.outline_only {
-                ItemModelDrawTarget::EntityOutline
-            } else {
-                ItemModelDrawTarget::BlockFeature
-            };
-            let tint = if attachment.outline_only {
-                argb_outline_tint(attachment.outline_color)
-            } else {
-                [1.0; 4]
-            };
             if quads.iter().any(|quad| !quad.translucent) {
-                let first_instance = residency.instances.len();
-                push_resident_item_instances(
+                push_entity_block_geometry(
                     &mut residency,
                     identity.clone(),
-                    ItemModelAtlasKind::Blocks,
                     ItemModelGeometryClass::Solid,
                     source.clone(),
-                    &[attachment.transform],
-                    tint,
-                    attachment.light,
-                    attachment.overlay,
-                    ItemModelFoil::None,
-                    target,
-                );
-                let phase = if attachment.outline_only {
-                    ItemModelDrawPhase::Outline
-                } else {
+                    &attachment,
                     block_model_solid_phase(
                         moving_block,
                         attachment.block_id.as_ref(),
                         terrain_textures,
-                    )
-                };
-                if phase != ItemModelDrawPhase::Solid {
-                    for instance in &mut residency.instances[first_instance..] {
-                        if instance.phase == ItemModelDrawPhase::Solid {
-                            instance.phase = phase;
-                        }
-                    }
-                }
+                    ),
+                );
             }
             if quads.iter().any(|quad| quad.translucent) {
-                let first_instance = residency.instances.len();
-                push_resident_item_instances(
+                push_entity_block_geometry(
                     &mut residency,
                     identity,
-                    ItemModelAtlasKind::Blocks,
                     ItemModelGeometryClass::Translucent,
                     source,
-                    &[attachment.transform],
-                    tint,
-                    attachment.light,
-                    attachment.overlay,
-                    ItemModelFoil::None,
-                    target,
+                    &attachment,
+                    ItemModelDrawPhase::Translucent,
                 );
-                if attachment.outline_only {
-                    for instance in &mut residency.instances[first_instance..] {
-                        instance.phase = ItemModelDrawPhase::Outline;
-                    }
-                }
             }
         }
     }
     residency
+}
+
+fn push_entity_block_geometry(
+    residency: &mut ItemModelResidencyFrame,
+    identity: ItemModelAssetIdentity,
+    geometry_class: ItemModelGeometryClass,
+    source: ItemModelAssetSource,
+    attachment: &EntityBlockAttachment,
+    ordinary_phase: ItemModelDrawPhase,
+) {
+    residency.assets.push(ItemModelAssetRequest {
+        identity: identity.clone(),
+        atlas: ItemModelAtlasKind::Blocks,
+        geometry_class,
+        source,
+    });
+    if !attachment.outline_only {
+        let first_instance = residency.instances.len();
+        push_resident_item_instances_for_asset(
+            residency,
+            identity.clone(),
+            ItemModelAtlasKind::Blocks,
+            geometry_class,
+            std::slice::from_ref(&attachment.transform),
+            [1.0; 4],
+            attachment.light,
+            attachment.overlay,
+            ItemModelFoil::None,
+            ItemModelDrawTarget::BlockFeature,
+        );
+        for instance in &mut residency.instances[first_instance..] {
+            instance.phase = ordinary_phase;
+        }
+    }
+    if attachment.outline_color != 0 {
+        let first_instance = residency.instances.len();
+        push_resident_item_instances_for_asset(
+            residency,
+            identity,
+            ItemModelAtlasKind::Blocks,
+            geometry_class,
+            std::slice::from_ref(&attachment.transform),
+            argb_outline_tint(attachment.outline_color),
+            attachment.light,
+            attachment.overlay,
+            ItemModelFoil::None,
+            ItemModelDrawTarget::EntityOutline,
+        );
+        for instance in &mut residency.instances[first_instance..] {
+            instance.phase = ItemModelDrawPhase::Outline;
+        }
+    }
 }
 
 fn argb_outline_tint(color: u32) -> [f32; 4] {
@@ -364,7 +377,7 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: minecart_tnt_display_block_overlay(instance),
                     outline_color: instance.render_state.outline_color,
-                    outline_only: entity_block_attachment_outline_only(instance),
+                    outline_only: false,
                     moving_block: None,
                 });
             }
@@ -381,7 +394,7 @@ pub(super) fn entity_block_attachments(
                     light: entity_render_state_shader_light(instance),
                     overlay: primed_tnt_block_overlay(fuse),
                     outline_color: instance.render_state.outline_color,
-                    outline_only: entity_block_attachment_outline_only(instance),
+                    outline_only: false,
                     moving_block: None,
                 });
             }
