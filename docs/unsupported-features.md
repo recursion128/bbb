@@ -271,6 +271,7 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - **GPU outline presentation for `submitOnlyOutline` entity-attached block-model
   layers** (snow-golem carved pumpkin, mooshroom mushroom). Outline-only
   attachment metadata is recorded and ordinary block-quad baking is suppressed.
+  Active engineering contract: `docs/entity-block-outline-design.md`.
 - **Frog tongue prey-targeting** (`DATA_TONGUE_TARGET_ID`). Not part of the model
   animation.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
