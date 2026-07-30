@@ -265,13 +265,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.
-- **GPU outline copies for ordinary `BlockModelRenderState.submit(...,
-  outlineColor)` entity-attached block-model layers.** The completed
-  `submitOnlyOutline` lane covers hidden glowing attachments, but ordinary
-  block-feature submissions still omit the additional outline-target copy for
-  visible glowing snow-golem/mooshroom layers and the iron-golem, enderman,
-  minecart, TNT, and copper-golem block-model families. Active engineering
-  contract: [`entity-block-outline-copy-design.md`](entity-block-outline-copy-design.md).
 - **Frog tongue prey-targeting is `not-needed`.**
   `DATA_TONGUE_TARGET_ID` is consumed by frog/AI behavior only. Vanilla
   `FrogRenderer.extractRenderState` does not project it, `FrogRenderState` has

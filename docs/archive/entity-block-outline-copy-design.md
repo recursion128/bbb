@@ -1,6 +1,6 @@
 # Ordinary Entity Block Outline-Copy Engineering Contract
 
-Status: active.
+Status: completed on 2026-07-30.
 
 ## Goal and completion
 
@@ -123,6 +123,7 @@ Authoritative local sources are
    checks, review the integrated diff, and run the full gate.
 
 The pre-start full gate passed at
-`98632f57bb4da13a1fdfbbfd23bf63d3f96fff3c`. The contract and native stages are
-safe stopping points. Any focused or gate failure is fixed forward before
-another slice; history is not rewritten.
+`98632f57bb4da13a1fdfbbfd23bf63d3f96fff3c`. The contract, native, and renderer
+stages are the clean commits `4b8b89696`, `21e21afc4`, and `40360558e`. Any
+focused or gate failure is fixed forward before another slice; history is not
+rewritten.

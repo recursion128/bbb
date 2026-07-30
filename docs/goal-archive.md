@@ -825,3 +825,7 @@
   错误 tooltip 与盔甲架手持/头戴结果物品现共享隔离 PIP 和 resident item
   owner，并有手/头几何及 GPU 像素证据；合同见
   `docs/archive/smithing-screen-presentation-design.md`。
+- **2026-07-30（普通实体附着方块 outline-copy 工程闭环）**：雪傀儡、哞菇、
+  铁傀儡、末影人、矿车、TNT 与铜傀儡的普通 block-feature 提交现复用同一
+  resident owner 写入 outline target，并有主表面/后处理 GPU 像素证据；合同见
+  `docs/archive/entity-block-outline-copy-design.md`。
