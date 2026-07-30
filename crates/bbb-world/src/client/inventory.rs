@@ -3505,13 +3505,17 @@ impl WorldStore {
             .map(|item| {
                 self.entity_swing_duration_with_effects(
                     id,
-                    item_stack_swing_duration(
-                        item,
-                        &self.items.default_item_swing_animation_durations,
-                    ),
+                    self.item_stack_swing_animation(item).duration,
                 )
             })
             .unwrap_or(ATTACK_SWING_DURATION)
+    }
+
+    pub fn item_stack_swing_animation(
+        &self,
+        stack: &ProtocolItemStackSummary,
+    ) -> ProtocolSwingAnimationSummary {
+        item_stack_swing_animation(stack, &self.items.default_item_swing_animations)
     }
 
     pub fn trigger_local_player_swing(&mut self, hand: InteractionHand) -> bool {
@@ -3887,9 +3891,11 @@ impl WorldStore {
         self.items.set_default_item_minimum_attack_charges(charges)
     }
 
-    pub fn set_default_item_swing_animation_durations(&mut self, durations: BTreeMap<i32, i32>) {
-        self.items
-            .set_default_item_swing_animation_durations(durations)
+    pub fn set_default_item_swing_animations(
+        &mut self,
+        animations: BTreeMap<i32, ProtocolSwingAnimationSummary>,
+    ) {
+        self.items.set_default_item_swing_animations(animations)
     }
 
     fn entity_swing_duration_with_effects(&self, entity_id: i32, duration: i32) -> i32 {

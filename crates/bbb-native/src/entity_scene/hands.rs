@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::packets::SwingAnimationTypeSummary;
 
 /// Whether the entity's main-hand item is a bow (vanilla `SkeletonRenderState.isHoldingBow =
 /// getMainHandItem().is(Items.BOW)`), driving the skeleton's `BOW_AND_ARROW` aim pose. Resolved through
@@ -92,8 +93,7 @@ pub(super) fn entity_hand_holds_bow(
 
 /// Whether the item in the given hand is one of the tool-material spears. This is the item/tag side of
 /// vanilla spear presentation: held spear poses and kinetic use transforms come from the resolved item
-/// prototype. Per-stack `DataComponents.SWING_ANIMATION` overrides are handled by
-/// [`entity_hand_swing_is_stab`].
+/// prototype. Swing animation types are resolved independently from the canonical world prototype.
 pub(super) fn entity_hand_holds_spear(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -201,24 +201,10 @@ pub(super) fn component_patch_has_added_component(
 
 pub(super) fn entity_hand_swing_is_stab(
     world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    if stack
-        .component_patch
-        .removed_type_ids
-        .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
-    {
-        return false;
-    }
-    if let Some(swing_animation) = stack.component_patch.swing_animation {
-        return swing_animation.animation_type == SwingAnimationTypeSummary::Stab;
-    }
-    entity_hand_holds_spear(world, item_runtime, entity_id, off_hand)
+    entity_hand_swing_animation_type(world, entity_id, off_hand) == SwingAnimationTypeSummary::Stab
 }
 
 pub(super) fn entity_hand_swing_is_none(
@@ -226,22 +212,18 @@ pub(super) fn entity_hand_swing_is_none(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    if stack
-        .component_patch
-        .removed_type_ids
-        .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
-    {
-        return false;
-    }
-    stack
-        .component_patch
-        .swing_animation
-        .is_some_and(|swing_animation| {
-            swing_animation.animation_type == SwingAnimationTypeSummary::None
-        })
+    entity_hand_swing_animation_type(world, entity_id, off_hand) == SwingAnimationTypeSummary::None
+}
+
+fn entity_hand_swing_animation_type(
+    world: &WorldStore,
+    entity_id: i32,
+    off_hand: bool,
+) -> SwingAnimationTypeSummary {
+    world
+        .held_item(entity_id, off_hand)
+        .map(|stack| world.item_stack_swing_animation(&stack).animation_type)
+        .unwrap_or(SwingAnimationTypeSummary::Whack)
 }
 
 /// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==

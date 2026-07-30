@@ -10,6 +10,16 @@ fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     protocol_pose_data(accessors.pose_data_id, pose_id)
 }
 
+fn spear_swing_defaults(item_id: i32) -> BTreeMap<i32, SwingAnimationSummary> {
+    BTreeMap::from([(
+        item_id,
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        },
+    )])
+}
+
 #[test]
 fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
     // Vanilla `Wolf.tick` marks the wolf wet while `isInWaterOrRain()`, then `getWetShade(partialTick)`
@@ -760,7 +770,7 @@ fn local_player_attack_swing_samples_local_entity() {
 }
 
 #[test]
-fn entity_model_sources_use_held_item_default_swing_duration() {
+fn entity_model_sources_use_held_item_default_swing_animation_duration() {
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, partial: f32| {
@@ -773,7 +783,7 @@ fn entity_model_sources_use_held_item_default_swing_duration() {
     };
 
     let mut store = WorldStore::new();
-    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+    store.set_default_item_swing_animations(spear_swing_defaults(SPEAR_ITEM_ID));
     store.apply_add_entity(protocol_add_entity_with_type(
         51,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -844,7 +854,7 @@ fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
     removed.component_patch.removed_type_ids = vec![40];
 
     let mut store = WorldStore::new();
-    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+    store.set_default_item_swing_animations(spear_swing_defaults(SPEAR_ITEM_ID));
     store.apply_add_entity(protocol_add_entity_with_type(
         52,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -868,7 +878,102 @@ fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
 }
 
 #[test]
-fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
+fn item_stack_swing_animation_resolves_typed_prototype_patch_and_removal_precedence() {
+    let mut store = WorldStore::new();
+    store.set_default_item_swing_animations(BTreeMap::from([
+        (
+            40,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::None,
+                duration: 5,
+            },
+        ),
+        (
+            41,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Whack,
+                duration: 7,
+            },
+        ),
+        (
+            42,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            },
+        ),
+        (
+            43,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::None,
+                duration: 0,
+            },
+        ),
+    ]));
+    let stack = |item_id| ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+
+    for (item_id, animation_type, duration) in [
+        (40, SwingAnimationTypeSummary::None, 5),
+        (41, SwingAnimationTypeSummary::Whack, 7),
+        (42, SwingAnimationTypeSummary::Stab, 13),
+    ] {
+        assert_eq!(
+            store.item_stack_swing_animation(&stack(item_id)),
+            SwingAnimationSummary {
+                animation_type,
+                duration,
+            }
+        );
+    }
+    assert_eq!(
+        store.item_stack_swing_animation(&stack(43)),
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Whack,
+            duration: ATTACK_SWING_DURATION,
+        },
+        "invalid prototype durations are not published"
+    );
+
+    let mut patched = stack(42);
+    patched.component_patch.swing_animation = Some(SwingAnimationSummary {
+        animation_type: SwingAnimationTypeSummary::None,
+        duration: 0,
+    });
+    assert_eq!(
+        store.item_stack_swing_animation(&patched),
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::None,
+            duration: ATTACK_SWING_DURATION,
+        },
+        "the explicit type survives duration sanitization"
+    );
+
+    patched.component_patch.removed_type_ids =
+        vec![bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+    assert_eq!(
+        store.item_stack_swing_animation(&patched),
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Whack,
+            duration: ATTACK_SWING_DURATION,
+        },
+        "removal wins over both patch payload and prototype"
+    );
+
+    assert_eq!(
+        store.item_stack_swing_animation(&ItemStackSummary::empty()),
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Whack,
+            duration: ATTACK_SWING_DURATION,
+        }
+    );
+}
+
+#[test]
+fn entity_model_sources_apply_mob_effect_swing_animation_duration_modifiers() {
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
@@ -900,7 +1005,7 @@ fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
     };
 
     let mut store = WorldStore::new();
-    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+    store.set_default_item_swing_animations(spear_swing_defaults(SPEAR_ITEM_ID));
 
     store.apply_add_entity(protocol_add_entity_with_type(
         53,
@@ -946,7 +1051,7 @@ fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
 }
 
 #[test]
-fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_changes() {
+fn entity_model_sources_refresh_in_flight_swing_animation_duration_from_runtime_state_changes() {
     const PLAIN_ITEM_ID: i32 = 41;
     const SPEAR_ITEM_ID: i32 = 42;
 
@@ -979,7 +1084,7 @@ fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_chan
     };
 
     let mut store = WorldStore::new();
-    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+    store.set_default_item_swing_animations(spear_swing_defaults(SPEAR_ITEM_ID));
 
     // `LivingEntity.updateSwingTime` re-reads `getCurrentSwingDuration()` every tick,
     // so swapping to a longer current hand item keeps the in-flight swing alive.

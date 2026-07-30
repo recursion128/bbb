@@ -1166,11 +1166,6 @@ impl ItemRegistryCatalog {
         self.default_swing_animations.get(&resource_id).copied()
     }
 
-    pub fn default_swing_animation_duration(&self, resource_id: &str) -> Option<i32> {
-        self.default_swing_animation(resource_id)
-            .map(|animation| animation.duration)
-    }
-
     pub fn default_kinetic_weapon(&self, resource_id: &str) -> Option<ItemKineticWeaponDefaults> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_kinetic_weapons.get(&resource_id).copied()

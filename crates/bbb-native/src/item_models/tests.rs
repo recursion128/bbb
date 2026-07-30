@@ -3394,7 +3394,7 @@ fn first_person_item_models_apply_spear_kinetic_use_pose_and_feedback() {
 }
 
 #[test]
-fn first_person_item_models_apply_stab_swing_for_spear_and_stack_patch() {
+fn first_person_item_models_apply_stab_swing_animation_for_spear_and_stack_patch() {
     let root = unique_item_model_temp_dir("first-person-stab-swing");
     write_flat_item_runtime_fixture(&root, &["stab_item", "wooden_spear"]);
     let item_runtime =
@@ -3678,6 +3678,48 @@ fn first_person_whack_swing_transform_matches_vanilla_swing_arm() {
         FirstPersonSwingAnimation::Whack,
         "removing swing_animation falls back to vanilla SwingAnimation.DEFAULT WHACK",
     );
+}
+
+#[test]
+fn first_person_swing_animation_uses_custom_prototype_type() {
+    let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": [
+            "example:none_wand",
+            "example:whack_wand",
+            "example:stab_wand"
+        ],
+        "protocol_ids": {
+            "example:none_wand": 0,
+            "example:whack_wand": 1,
+            "example:stab_wand": 2
+        },
+        "default_swing_animations": {
+            "example:none_wand": {"type": "none", "duration": 5},
+            "example:whack_wand": {"type": "whack", "duration": 7},
+            "example:stab_wand": {"type": "stab", "duration": 9}
+        }
+    }))
+    .unwrap();
+    let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        bbb_pack::EquipmentAssetCatalog::default(),
+    );
+
+    for (item_id, expected) in [
+        (0, FirstPersonSwingAnimation::None),
+        (1, FirstPersonSwingAnimation::Whack),
+        (2, FirstPersonSwingAnimation::Stab),
+    ] {
+        let stack = ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        assert_eq!(
+            first_person_stack_swing_animation(&stack, &runtime),
+            expected
+        );
+    }
 }
 
 #[test]

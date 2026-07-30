@@ -605,39 +605,51 @@ pub(super) fn item_stack_minimum_attack_charge(
         .unwrap_or(0.0)
 }
 
-pub(super) fn item_stack_swing_duration(
+pub(super) fn item_stack_swing_animation(
     stack: &ProtocolItemStackSummary,
-    default_item_swing_animation_durations: &BTreeMap<i32, i32>,
-) -> i32 {
+    default_item_swing_animations: &BTreeMap<i32, ProtocolSwingAnimationSummary>,
+) -> ProtocolSwingAnimationSummary {
     if item_stack_is_empty(stack)
         || stack
             .component_patch
             .removed_type_ids
             .contains(&VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
     {
-        return ATTACK_SWING_DURATION;
+        return default_swing_animation();
     }
 
     if let Some(swing_animation) = stack.component_patch.swing_animation {
-        return item_swing_animation_duration_from_protocol(swing_animation);
+        return sanitize_swing_animation(swing_animation);
     }
 
     let Some(item_id) = stack.item_id.filter(|item_id| *item_id >= 0) else {
-        return ATTACK_SWING_DURATION;
+        return default_swing_animation();
     };
-    default_item_swing_animation_durations
+    default_item_swing_animations
         .get(&item_id)
         .copied()
-        .unwrap_or(ATTACK_SWING_DURATION)
+        .map(sanitize_swing_animation)
+        .unwrap_or_else(default_swing_animation)
 }
 
-pub(super) fn item_swing_animation_duration_from_protocol(
+fn sanitize_swing_animation(
     swing_animation: ProtocolSwingAnimationSummary,
-) -> i32 {
-    if swing_animation.duration > 0 {
+) -> ProtocolSwingAnimationSummary {
+    let duration = if swing_animation.duration > 0 {
         swing_animation.duration
     } else {
         ATTACK_SWING_DURATION
+    };
+    ProtocolSwingAnimationSummary {
+        animation_type: swing_animation.animation_type,
+        duration,
+    }
+}
+
+fn default_swing_animation() -> ProtocolSwingAnimationSummary {
+    ProtocolSwingAnimationSummary {
+        animation_type: bbb_protocol::packets::SwingAnimationTypeSummary::Whack,
+        duration: ATTACK_SWING_DURATION,
     }
 }
 

@@ -102,10 +102,8 @@ pub(super) fn entity_model_instance(
     let main_hand_holds_spear =
         entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
     let off_hand_holds_spear = entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
-    let main_hand_swing_is_stab_type =
-        entity_hand_swing_is_stab(world, item_runtime, source.entity_id, false);
-    let off_hand_swing_is_stab_type =
-        entity_hand_swing_is_stab(world, item_runtime, source.entity_id, true);
+    let main_hand_swing_is_stab_type = entity_hand_swing_is_stab(world, source.entity_id, false);
+    let off_hand_swing_is_stab_type = entity_hand_swing_is_stab(world, source.entity_id, true);
     let main_hand_swing_is_none_type = entity_hand_swing_is_none(world, source.entity_id, false);
     let off_hand_swing_is_none_type = entity_hand_swing_is_none(world, source.entity_id, true);
     let player_main_hand_holds_spear = is_player && main_hand_holds_spear;

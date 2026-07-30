@@ -3749,10 +3749,8 @@ fn entity_model_instances_custom_head_skull_needs_item_runtime() {
 }
 
 #[test]
-fn entity_model_instances_stab_swing_needs_a_resolved_spear() {
-    // The STAB swing type needs the held item resolved through the item registry to confirm a spear
-    // (the STAB default lives on the item prototype, not the network patch); without an item runtime
-    // it can never resolve, so the projection defaults off and the entity keeps the WHACK swing.
+fn entity_model_instances_empty_hand_swing_defaults_to_whack() {
+    // Vanilla `ItemStack.EMPTY.getSwingAnimation()` resolves `SwingAnimation.DEFAULT`.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         240,
@@ -3814,6 +3812,13 @@ fn entity_model_instances_project_stab_from_attack_arm_item() {
     };
 
     let mut world = WorldStore::new();
+    world.set_default_item_swing_animations(std::collections::BTreeMap::from([(
+        WOODEN_SPEAR_ID,
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        },
+    )]));
     world.apply_add_entity(protocol_add_entity(
         240,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -3852,6 +3857,73 @@ fn entity_model_instances_project_stab_from_attack_arm_item() {
         zombie_attack.main_hand_swing_is_stab,
         "ArmedEntityRenderState extracts attack-arm STAB for non-player humanoids too"
     );
+}
+
+#[test]
+fn entity_model_instances_use_custom_prototype_swing_animation_types_for_both_attack_hands() {
+    const NONE_ITEM_ID: i32 = 70;
+    const STAB_ITEM_ID: i32 = 71;
+
+    let mut world = WorldStore::new();
+    world.set_default_item_swing_animations(std::collections::BTreeMap::from([
+        (
+            NONE_ITEM_ID,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::None,
+                duration: 5,
+            },
+        ),
+        (
+            STAB_ITEM_ID,
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 9,
+            },
+        ),
+    ]));
+    world.apply_add_entity(protocol_add_entity(
+        247,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [1.0, 64.0, -9.0],
+    ));
+    assert!(world.apply_set_equipment(SetEquipment {
+        entity_id: 247,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(NONE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: ItemStackSummary {
+                    item_id: Some(STAB_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            },
+        ],
+    }));
+    let state = |world: &WorldStore| {
+        entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 247)
+            .unwrap()
+            .render_state
+    };
+
+    assert!(world.apply_entity_animation(EntityAnimation { id: 247, action: 0 }));
+    let main_attack = state(&world);
+    assert!(main_attack.main_hand_swing_is_none);
+    assert!(!main_attack.main_hand_swing_is_stab);
+
+    assert!(world.apply_entity_animation(EntityAnimation { id: 247, action: 3 }));
+    let off_attack = state(&world);
+    assert!(!off_attack.main_hand_swing_is_none);
+    assert!(off_attack.main_hand_swing_is_stab);
 }
 
 #[test]
@@ -3966,6 +4038,13 @@ fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
     });
 
     let mut world = WorldStore::new();
+    world.set_default_item_swing_animations(std::collections::BTreeMap::from([(
+        WOODEN_SPEAR_ID,
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        },
+    )]));
     world.apply_add_entity(protocol_add_entity(
         243,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -4183,6 +4262,13 @@ fn entity_model_instances_project_player_held_spear_arm_pose() {
     };
 
     let mut world = WorldStore::new();
+    world.set_default_item_swing_animations(std::collections::BTreeMap::from([(
+        WOODEN_SPEAR_ID,
+        SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 13,
+        },
+    )]));
     world.apply_add_entity(protocol_add_entity(
         243,
         VANILLA_ENTITY_TYPE_PLAYER_ID,

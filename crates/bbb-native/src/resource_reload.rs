@@ -531,7 +531,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     wolf_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     attack_ranges: BTreeMap<i32, ItemAttackRange>,
     minimum_attack_charges: BTreeMap<i32, f32>,
-    swing_animation_durations: BTreeMap<i32, i32>,
+    swing_animations: BTreeMap<i32, bbb_protocol::packets::SwingAnimationSummary>,
     piercing_weapon_item_ids: BTreeSet<i32>,
     damageable_item_ids: BTreeSet<i32>,
     use_effects: BTreeMap<i32, ItemUseEffects>,
@@ -621,7 +621,7 @@ impl ItemRuntimeWorldDefaults {
             wolf_body_armor_materials: items.wolf_body_armor_materials_by_protocol_id(),
             attack_ranges: items.item_attack_ranges_by_protocol_id(),
             minimum_attack_charges: items.item_minimum_attack_charges_by_protocol_id(),
-            swing_animation_durations: items.item_swing_animation_durations_by_protocol_id(),
+            swing_animations: items.item_swing_animations_by_protocol_id(),
             piercing_weapon_item_ids: items.default_piercing_weapon_item_ids_by_protocol_id(),
             damageable_item_ids: items.default_damageable_item_ids_by_protocol_id(),
             use_effects: items.item_use_effects_by_protocol_id(),
@@ -680,7 +680,7 @@ impl ItemRuntimeWorldDefaults {
         world.set_default_wolf_body_armor_materials(self.wolf_body_armor_materials);
         world.set_default_item_attack_ranges(self.attack_ranges);
         world.set_default_item_minimum_attack_charges(self.minimum_attack_charges);
-        world.set_default_item_swing_animation_durations(self.swing_animation_durations);
+        world.set_default_item_swing_animations(self.swing_animations);
         world.set_default_piercing_weapon_item_ids(self.piercing_weapon_item_ids);
         world.set_default_damageable_item_ids(self.damageable_item_ids);
         world.set_default_item_use_effects(self.use_effects);
@@ -794,7 +794,10 @@ mod tests {
             VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
             VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         },
-        packets::{DataComponentPatchSummary, ItemStackSummary},
+        packets::{
+            DataComponentPatchSummary, ItemStackSummary, SwingAnimationSummary,
+            SwingAnimationTypeSummary,
+        },
     };
 
     #[test]
@@ -1081,6 +1084,46 @@ mod tests {
                 .local_selected_main_hand_minimum_attack_charge()
                 .to_bits(),
             1.0_f32.to_bits()
+        );
+    }
+
+    #[test]
+    fn swing_animation_defaults_reload_and_replace_the_world_generation() {
+        let items = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+        let wooden_spear_id = items.item_protocol_id("minecraft:wooden_spear").unwrap();
+        let defaults = ItemRuntimeWorldDefaults::from_runtime(&items);
+        assert_eq!(
+            defaults.swing_animations.get(&wooden_spear_id),
+            Some(&SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            })
+        );
+
+        let stack = ItemStackSummary {
+            item_id: Some(wooden_spear_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let mut world = WorldStore::new();
+        defaults.apply(&mut world);
+        assert_eq!(
+            world.item_stack_swing_animation(&stack),
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 13,
+            }
+        );
+
+        ItemRuntimeWorldDefaults::from_runtime(&NativeItemRuntime::empty_for_test())
+            .apply(&mut world);
+        assert_eq!(
+            world.item_stack_swing_animation(&stack),
+            SwingAnimationSummary {
+                animation_type: SwingAnimationTypeSummary::Whack,
+                duration: 6,
+            },
+            "a later runtime generation atomically replaces the old prototype table"
         );
     }
 

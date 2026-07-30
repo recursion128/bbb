@@ -803,17 +803,6 @@ impl NativeItemRuntime {
         self.item_swing_animations_by_protocol_id().len()
     }
 
-    pub fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
-        self.item_swing_animations_by_protocol_id()
-            .into_iter()
-            .map(|(item_id, animation)| (item_id, animation.duration))
-            .collect()
-    }
-
-    pub fn item_swing_animation_duration_count(&self) -> usize {
-        self.item_swing_animation_count()
-    }
-
     pub fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {
         let mut use_effects = BTreeMap::new();
         let Some(registry) = &self.registry else {

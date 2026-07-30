@@ -55,7 +55,7 @@ fn fixture_value(item_ids: &[&str]) -> serde_json::Value {
         "mount_body_armor_assets",
         "default_attack_ranges",
         "default_minimum_attack_charge_bits",
-        "default_swing_animation_durations",
+        "default_swing_animations",
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",
@@ -87,7 +87,10 @@ fn fixture_value(item_ids: &[&str]) -> serde_json::Value {
                 if let Some(value) = vanilla[field].get(resource_id) {
                     values.insert(resource_id.to_string(), value.clone());
                 }
-            } else if field == "default_kinetic_weapons" {
+            } else if matches!(
+                field,
+                "default_swing_animations" | "default_kinetic_weapons"
+            ) {
                 if let Some(value) = vanilla[field].get(resource_id) {
                     values.insert(resource_id.to_string(), value.clone());
                 }
@@ -122,7 +125,7 @@ fn copy_profile(catalog: &mut serde_json::Value, target_item_id: &str, vanilla_i
         "mount_body_armor_assets",
         "default_attack_ranges",
         "default_minimum_attack_charge_bits",
-        "default_swing_animation_durations",
+        "default_swing_animations",
         "default_kinetic_weapons",
         "default_attribute_modifiers",
         "default_use_effects",

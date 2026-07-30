@@ -28,6 +28,7 @@ use bbb_protocol::item_types::{
 };
 use bbb_protocol::packets::{
     ConsumableSummary, DataComponentPatchSummary, ItemStackSummary as ProtocolItemStackSummary,
+    SwingAnimationSummary,
 };
 
 use crate::{
@@ -126,7 +127,8 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) default_item_minimum_attack_charges: PublicationShared<BTreeMap<i32, f32>>,
     #[serde(default)]
-    pub(crate) default_item_swing_animation_durations: PublicationShared<BTreeMap<i32, i32>>,
+    pub(crate) default_item_swing_animations:
+        PublicationShared<BTreeMap<i32, SwingAnimationSummary>>,
     #[serde(default)]
     pub(crate) default_item_use_effects: PublicationShared<BTreeMap<i32, ItemUseEffects>>,
     #[serde(default)]
@@ -587,13 +589,13 @@ impl ItemProfiles {
             .into();
     }
 
-    pub(crate) fn set_default_item_swing_animation_durations(
+    pub(crate) fn set_default_item_swing_animations(
         &mut self,
-        durations: BTreeMap<i32, i32>,
+        animations: BTreeMap<i32, SwingAnimationSummary>,
     ) {
-        self.default_item_swing_animation_durations = durations
+        self.default_item_swing_animations = animations
             .into_iter()
-            .filter(|(item_id, duration)| *item_id >= 0 && *duration > 0)
+            .filter(|(item_id, animation)| *item_id >= 0 && animation.duration > 0)
             .collect::<BTreeMap<_, _>>()
             .into();
     }

@@ -6,13 +6,15 @@ use std::{
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
+#[cfg(test)]
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID;
 use bbb_protocol::entity_types::*;
 #[cfg(test)]
 use bbb_protocol::packets::{EntityDataRegistryIdentity, EntityDataRegistrySource};
 use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     },
     item_types,
     packets::{
@@ -20,7 +22,6 @@ use bbb_protocol::{
         EntityDataRegistryHolder, EntityDataRegistryReference, EntityDataRegistryRevision,
         EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
         PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-        SwingAnimationTypeSummary,
     },
 };
 use bbb_renderer::{

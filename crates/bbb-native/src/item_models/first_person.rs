@@ -908,7 +908,10 @@ pub(super) fn first_person_stack_swing_animation(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> FirstPersonSwingAnimation {
-    if first_person_stack_removes_swing_animation(stack) {
+    if stack.count <= 0
+        || stack.item_id.is_none()
+        || first_person_stack_removes_swing_animation(stack)
+    {
         return FirstPersonSwingAnimation::Whack;
     }
     if let Some(swing_animation) = stack.component_patch.swing_animation {
@@ -921,14 +924,15 @@ pub(super) fn first_person_stack_swing_animation(
     stack
         .item_id
         .and_then(|item_id| item_runtime.item_resource_id(item_id))
-        .filter(|resource_id| {
-            item_runtime
-                .item_default_kinetic_weapon(resource_id)
-                .is_some()
-        })
-        .map_or(FirstPersonSwingAnimation::Whack, |_| {
-            FirstPersonSwingAnimation::Stab
-        })
+        .and_then(|resource_id| item_runtime.item_default_swing_animation(resource_id))
+        .map_or(
+            FirstPersonSwingAnimation::Whack,
+            |swing_animation| match swing_animation.animation_type {
+                SwingAnimationTypeSummary::None => FirstPersonSwingAnimation::None,
+                SwingAnimationTypeSummary::Whack => FirstPersonSwingAnimation::Whack,
+                SwingAnimationTypeSummary::Stab => FirstPersonSwingAnimation::Stab,
+            },
+        )
 }
 
 fn first_person_stack_spear_kinetic_weapon(
