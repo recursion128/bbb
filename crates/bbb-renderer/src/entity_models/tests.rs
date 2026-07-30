@@ -1010,7 +1010,7 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
     }
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3, 6 => Float32x2, 7 => Float32x2, 8 => Float32x4]
     );
 }
 
@@ -1230,7 +1230,7 @@ fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3, 6 => Float32x2, 7 => Float32x2, 8 => Float32x4]
     );
     // Eyes stay emissive: the lightmap shade must not dim them.
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("lightmap_brightness"));

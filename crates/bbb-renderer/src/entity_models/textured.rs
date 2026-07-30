@@ -1552,6 +1552,9 @@ fn append_camera_billboard_quad(
                 light,
                 overlay: ENTITY_VERTEX_NO_OVERLAY,
                 normal,
+                standalone_local_uv: [0.0; 2],
+                standalone_pixel_origin: [0.0; 2],
+                standalone_size_flags: [0.0; 4],
             }),
     );
     mesh.indices
@@ -1708,6 +1711,9 @@ fn append_fishing_hook_quad(
             light,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
             normal,
+            standalone_local_uv: [0.0; 2],
+            standalone_pixel_origin: [0.0; 2],
+            standalone_size_flags: [0.0; 4],
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -2107,6 +2113,14 @@ fn render_textured_dynamic_player_skin_submission(
     if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
         let mut mesh = EntityModelTexturedMesh::new();
         emit(&mut mesh, entry);
+        fill_standalone_texture_sampling_vertices(
+            &mut mesh,
+            0,
+            entry.uv,
+            entry.pixel_origin,
+            entry.size,
+            entry.standalone_sampling,
+        );
         fill_textured_submission_vertices(&mut mesh, 0, submission);
         if let Some(copy) = submission_crumbling_copy(&mesh, 0, 0, submission, current_crumbling) {
             append_crumbling_copy(&mut meshes.crumbling, copy);
@@ -2126,6 +2140,14 @@ fn render_textured_dynamic_player_skin_submission(
         let vertex_start = mesh.vertices.len();
         let index_start = mesh.indices.len();
         emit(mesh, entry);
+        fill_standalone_texture_sampling_vertices(
+            mesh,
+            vertex_start,
+            entry.uv,
+            entry.pixel_origin,
+            entry.size,
+            entry.standalone_sampling,
+        );
         fill_textured_submission_vertices(mesh, vertex_start, submission);
         submission_crumbling_copy(
             mesh,
@@ -2151,6 +2173,14 @@ fn render_textured_dynamic_player_texture_submission(
     if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
         let mut mesh = EntityModelTexturedMesh::new();
         emit(&mut mesh, entry);
+        fill_standalone_texture_sampling_vertices(
+            &mut mesh,
+            0,
+            entry.uv,
+            entry.pixel_origin,
+            entry.size,
+            entry.standalone_sampling,
+        );
         fill_textured_submission_vertices(&mut mesh, 0, submission);
         if let Some(copy) = submission_crumbling_copy(&mesh, 0, 0, submission, current_crumbling) {
             append_crumbling_copy(&mut meshes.crumbling, copy);
@@ -2170,6 +2200,14 @@ fn render_textured_dynamic_player_texture_submission(
         let vertex_start = mesh.vertices.len();
         let index_start = mesh.indices.len();
         emit(mesh, entry);
+        fill_standalone_texture_sampling_vertices(
+            mesh,
+            vertex_start,
+            entry.uv,
+            entry.pixel_origin,
+            entry.size,
+            entry.standalone_sampling,
+        );
         fill_textured_submission_vertices(mesh, vertex_start, submission);
         submission_crumbling_copy(
             mesh,
@@ -2181,6 +2219,36 @@ fn render_textured_dynamic_player_texture_submission(
     };
     if let Some(copy) = crumbling_copy {
         append_crumbling_copy(&mut meshes.crumbling, copy);
+    }
+}
+
+fn fill_standalone_texture_sampling_vertices(
+    mesh: &mut EntityModelTexturedMesh,
+    vertex_start: usize,
+    uv: EntityModelUvRect,
+    pixel_origin: [u32; 2],
+    size: [u32; 2],
+    sampling: Option<bbb_render_types::StandaloneTextureSampling>,
+) {
+    let Some(sampling) = sampling else {
+        return;
+    };
+    let uv_size = [uv.max[0] - uv.min[0], uv.max[1] - uv.min[1]];
+    debug_assert!(uv_size[0] > 0.0 && uv_size[1] > 0.0);
+    let size_flags = [
+        size[0] as f32,
+        size[1] as f32,
+        if sampling.blur { 1.0 } else { 0.0 },
+        if sampling.clamp { 1.0 } else { 0.0 },
+    ];
+    let pixel_origin = [pixel_origin[0] as f32, pixel_origin[1] as f32];
+    for vertex in &mut mesh.vertices[vertex_start..] {
+        vertex.standalone_local_uv = [
+            (vertex.uv[0] - uv.min[0]) / uv_size[0],
+            (vertex.uv[1] - uv.min[1]) / uv_size[1],
+        ];
+        vertex.standalone_pixel_origin = pixel_origin;
+        vertex.standalone_size_flags = size_flags;
     }
 }
 
@@ -2405,6 +2473,9 @@ fn append_painting_quad(
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
             normal,
+            standalone_local_uv: [0.0; 2],
+            standalone_pixel_origin: [0.0; 2],
+            standalone_size_flags: [0.0; 4],
         }
     }));
     let a = Vec3::from_array(mesh.vertices[base as usize].position);

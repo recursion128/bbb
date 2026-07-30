@@ -2023,7 +2023,10 @@ pub struct EntityModelTextureAtlasLayout {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityDynamicPlayerSkinAtlasEntry {
     pub(crate) handle: u64,
+    pub(crate) pixel_origin: [u32; 2],
+    pub(crate) size: [u32; 2],
     pub(crate) uv: EntityModelUvRect,
+    pub(crate) standalone_sampling: Option<StandaloneTextureSampling>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2036,8 +2039,10 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasLayout {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityDynamicPlayerTextureAtlasEntry {
     pub(crate) handle: u64,
+    pub(crate) pixel_origin: [u32; 2],
     pub(crate) size: [u32; 2],
     pub(crate) uv: EntityModelUvRect,
+    pub(crate) standalone_sampling: Option<StandaloneTextureSampling>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

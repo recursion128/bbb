@@ -3,6 +3,7 @@ use super::*;
 use crate::entity_models::gpu::build_dynamic_player_texture_atlas_with_height_limit;
 use crate::entity_models::model::{EntityModel, ModelCube};
 use crate::player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage};
+use crate::StandaloneTextureSampling;
 use glam::{Mat4, Vec3};
 
 /// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
@@ -1481,7 +1482,7 @@ fn first_person_ready_dynamic_player_arm_uses_dynamic_skin_translucent_bucket() 
     };
     let dynamic_atlas = build_dynamic_player_skin_atlas(&[DynamicPlayerSkinImage {
         handle: dynamic_skin.handle,
-        standalone_sampling: None,
+        standalone_sampling: Some(StandaloneTextureSampling::new(true, true)),
         rgba: vec![0x7f; 64 * 64 * 4],
     }])
     .unwrap()
@@ -1507,11 +1508,21 @@ fn first_person_ready_dynamic_player_arm_uses_dynamic_skin_translucent_bucket() 
     assert!(meshes.translucent.vertices.is_empty());
     assert_eq!(meshes.dynamic_player_skin_translucent.vertices.len(), 48);
     assert_eq!(meshes.dynamic_player_skin_translucent.indices.len(), 72);
+    assert!(meshes
+        .dynamic_player_skin_translucent
+        .vertices
+        .iter()
+        .all(|vertex| {
+            vertex.standalone_local_uv == vertex.uv
+                && vertex.standalone_pixel_origin == [0.0, 0.0]
+                && vertex.standalone_size_flags == [64.0, 64.0, 1.0, 1.0]
+        }));
 }
 
 #[test]
 fn dynamic_player_texture_atlas_stitches_variable_profile_textures() {
-    let cape = dynamic_player_texture_image(20, [4, 2], 10);
+    let mut cape = dynamic_player_texture_image(20, [4, 2], 10);
+    cape.standalone_sampling = Some(StandaloneTextureSampling::new(true, false));
     let elytra = dynamic_player_texture_image(10, [2, 3], 40);
 
     let (layout, rgba) = build_dynamic_player_texture_atlas(&[cape.clone(), elytra.clone()])
@@ -1521,11 +1532,18 @@ fn dynamic_player_texture_atlas_stitches_variable_profile_textures() {
     assert_eq!(layout.height, 5);
     assert_eq!(layout.entries.len(), 2);
     assert_eq!(layout.entries[0].handle, cape.handle);
+    assert_eq!(layout.entries[0].pixel_origin, [0, 0]);
     assert_eq!(layout.entries[0].size, cape.size);
+    assert_eq!(
+        layout.entries[0].standalone_sampling,
+        cape.standalone_sampling
+    );
     assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
     assert_close2(layout.entries[0].uv.max, [1.0, 2.0 / 5.0]);
     assert_eq!(layout.entries[1].handle, elytra.handle);
+    assert_eq!(layout.entries[1].pixel_origin, [0, 2]);
     assert_eq!(layout.entries[1].size, elytra.size);
+    assert_eq!(layout.entries[1].standalone_sampling, None);
     assert_close2(layout.entries[1].uv.min, [0.0, 2.0 / 5.0]);
     assert_close2(layout.entries[1].uv.max, [0.5, 1.0]);
 
@@ -1552,6 +1570,9 @@ fn dynamic_player_texture_atlas_wraps_columns_at_the_height_limit() {
     assert_eq!(layout.width, 8);
     assert_eq!(layout.height, 4);
     assert_eq!(layout.entries.len(), 3);
+    assert_eq!(layout.entries[0].pixel_origin, [0, 0]);
+    assert_eq!(layout.entries[1].pixel_origin, [0, 2]);
+    assert_eq!(layout.entries[2].pixel_origin, [4, 0]);
     assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
     assert_close2(layout.entries[0].uv.max, [0.5, 0.5]);
     assert_close2(layout.entries[1].uv.min, [0.0, 0.5]);
@@ -1583,6 +1604,7 @@ fn dynamic_player_texture_atlas_rejects_bad_profile_texture_dimensions() {
     let err = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: 88,
         size: [2, 2],
+        standalone_sampling: None,
         rgba: vec![0xff; 15],
     }])
     .unwrap_err();
@@ -1608,6 +1630,7 @@ fn dynamic_player_texture_atlas_rejects_zero_sized_profile_textures() {
     let err = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: 89,
         size: [0, 2],
+        standalone_sampling: None,
         rgba: Vec::new(),
     }])
     .unwrap_err();
@@ -1628,6 +1651,7 @@ fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: dynamic_texture.handle,
         size: [64, 64],
+        standalone_sampling: Some(StandaloneTextureSampling::new(false, true)),
         rgba: vec![0xaa; 64 * 64 * 4],
     }])
     .unwrap()
@@ -1656,6 +1680,15 @@ fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
         .is_empty());
     assert_eq!(meshes.dynamic_player_texture_cutout.cutout_faces, 72);
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 288);
+    assert!(meshes
+        .dynamic_player_texture_cutout
+        .vertices
+        .iter()
+        .all(|vertex| {
+            vertex.standalone_local_uv == vertex.uv
+                && vertex.standalone_pixel_origin == [0.0, 0.0]
+                && vertex.standalone_size_flags == [64.0, 64.0, 0.0, 1.0]
+        }));
 }
 
 #[test]
@@ -1709,6 +1742,7 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: cape_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x66; 64 * 32 * 4],
     }])
     .unwrap()
@@ -1809,6 +1843,7 @@ fn player_cape_layer_is_suppressed_when_player_is_invisible() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: cape_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x99; 64 * 32 * 4],
     }])
     .unwrap()
@@ -1853,6 +1888,7 @@ fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: cape_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x77; 64 * 32 * 4],
     }])
     .unwrap()
@@ -1893,6 +1929,7 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: cape_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x88; 64 * 32 * 4],
     }])
     .unwrap()
@@ -2115,6 +2152,7 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: profile_elytra.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x99; 64 * 32 * 4],
     }])
     .unwrap()
@@ -2211,6 +2249,7 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: profile_cape.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x55; 64 * 32 * 4],
     }])
     .unwrap()
@@ -3733,7 +3772,12 @@ fn dynamic_player_texture_image(
             rgba.extend_from_slice(&[base + x as u8, x as u8, y as u8, 255]);
         }
     }
-    DynamicPlayerTextureImage { handle, size, rgba }
+    DynamicPlayerTextureImage {
+        handle,
+        size,
+        standalone_sampling: None,
+        rgba,
+    }
 }
 
 fn atlas_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {

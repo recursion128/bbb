@@ -145,7 +145,7 @@ impl EntityDynamicPlayerTextureAtlasGpu {
 }
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
-pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
+pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 9] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3, 6 => Float32x2, 7 => Float32x2, 8 => Float32x4];
 pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2, 7 => Float32x3];
 pub(super) const ENTITY_MODEL_PORTAL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x2];
 pub(super) const ENTITY_MODEL_DISSOLVE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x4, 4 => Float32x2, 5 => Float32x2, 6 => Float32x3];
@@ -4236,10 +4236,13 @@ pub(crate) fn build_dynamic_player_skin_atlas(
         }
         entries.push(EntityDynamicPlayerSkinAtlasEntry {
             handle: image.handle,
+            pixel_origin: [0, y],
+            size: DynamicPlayerSkinImage::SIZE,
             uv: EntityModelUvRect {
                 min: [0.0, y as f32 / height as f32],
                 max: [1.0, (y + skin_height) as f32 / height as f32],
             },
+            standalone_sampling: image.standalone_sampling,
         });
         y += skin_height;
     }
@@ -4337,6 +4340,7 @@ pub(crate) fn build_dynamic_player_texture_atlas_with_height_limit(
         }
         entries.push(EntityDynamicPlayerTextureAtlasEntry {
             handle: image.handle,
+            pixel_origin: [x, y],
             size: image.size,
             uv: EntityModelUvRect {
                 min: [x as f32 / width as f32, y as f32 / height as f32],
@@ -4345,6 +4349,7 @@ pub(crate) fn build_dynamic_player_texture_atlas_with_height_limit(
                     (y + image_height) as f32 / height as f32,
                 ],
             },
+            standalone_sampling: image.standalone_sampling,
         });
         y += image_height;
     }

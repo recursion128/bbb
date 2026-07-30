@@ -126,6 +126,7 @@ mod tests {
             &[DynamicPlayerTextureImage {
                 handle: 9,
                 size: [2, 3],
+                standalone_sampling: None,
                 rgba: cape_rgba,
             }],
         )

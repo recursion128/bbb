@@ -111,6 +111,7 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: profile_elytra.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x77; 64 * 32 * 4],
     }])
     .unwrap()
@@ -222,6 +223,7 @@ fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: profile_elytra.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0x44; 64 * 32 * 4],
     }])
     .unwrap()
@@ -688,11 +690,13 @@ fn wings_trim_follows_foil_for_static_and_profile_textures() {
         DynamicPlayerTextureImage {
             handle: trim_texture.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0xff; 64 * 32 * 4],
         },
         DynamicPlayerTextureImage {
             handle: profile_elytra.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0x77; 64 * 32 * 4],
         },
     ])
@@ -798,6 +802,7 @@ fn baby_wings_trim_uses_baby_model_and_survives_missing_base_texture() {
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: trim_texture.handle,
         size: [64, 32],
+        standalone_sampling: None,
         rgba: vec![0xff; 64 * 32 * 4],
     }])
     .unwrap()
@@ -914,16 +919,19 @@ fn equipment_asset_wings_use_per_layer_player_override_and_submission_first_owne
         DynamicPlayerTextureImage {
             handle: profile_elytra.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0x11; 64 * 32 * 4],
         },
         DynamicPlayerTextureImage {
             handle: profile_cape.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0x22; 64 * 32 * 4],
         },
         DynamicPlayerTextureImage {
             handle: trim_texture.handle,
             size: [64, 32],
+            standalone_sampling: None,
             rgba: vec![0x33; 64 * 32 * 4],
         },
     ])

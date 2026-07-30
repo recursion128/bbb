@@ -35,6 +35,15 @@ fn generic_dynamic_entity_texture_uses_shared_atlas_and_static_fallback() {
     assert_eq!(ready.submissions[0].dynamic_player_texture, None);
     assert!(ready.cutout.vertices.is_empty());
     assert!(!ready.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(ready
+        .dynamic_player_texture_cutout
+        .vertices
+        .iter()
+        .all(|vertex| {
+            vertex.standalone_local_uv == [0.0; 2]
+                && vertex.standalone_pixel_origin == [0.0; 2]
+                && vertex.standalone_size_flags == [0.0; 4]
+        }));
 
     let pending =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);

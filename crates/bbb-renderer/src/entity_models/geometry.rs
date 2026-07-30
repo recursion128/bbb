@@ -33,6 +33,12 @@ pub(super) struct EntityModelTexturedVertex {
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
     pub(super) normal: [f32; 3],
+    /// Local UV and integer atlas entry bounds for a pack standalone resource. A zero size
+    /// disables this payload and preserves the ordinary atlas sampler path.
+    pub(super) standalone_local_uv: [f32; 2],
+    pub(super) standalone_pixel_origin: [f32; 2],
+    /// `[width, height, blur, clamp]`, encoded as floats for a portable vertex ABI.
+    pub(super) standalone_size_flags: [f32; 4],
 }
 
 pub(super) struct EntityModelMesh {
@@ -770,6 +776,9 @@ fn emit_textured_model_polygon(
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
             normal,
+            standalone_local_uv: [0.0; 2],
+            standalone_pixel_origin: [0.0; 2],
+            standalone_size_flags: [0.0; 4],
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
