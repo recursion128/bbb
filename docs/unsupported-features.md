@@ -218,6 +218,7 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   hover state, labels, and tooltips.
 - `SmithingMenu`: generic held-item / non-skull head-item projection for the
   armor stand preview, cycling empty-slot icons, tooltips.
+  Active engineering contract: `docs/smithing-screen-presentation-design.md`.
 
 ## HUD and debug overlay
 
