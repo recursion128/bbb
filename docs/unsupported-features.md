@@ -282,8 +282,12 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   the entity's client-local `random.nextInt(40) + 180` timeout, so a remote
   client's particular phase is not reconstructable and bbb must not fabricate
   a seed.
-- **Minecart spawner animated block-entity display content.** Classified as
-  block-entity special renderer presentation.
+- **Minecart spawner animated block-entity display content is `not-needed`.**
+  Vanilla renders a `MinecartSpawner` through the ordinary minecart display
+  block only. No block-entity renderer calls
+  `BaseSpawner.getOrCreateDisplayEntity` for that embedded spawner, so its
+  `displayEntity` remains null and `clientTick` advances neither spin nor
+  display particles.
 
 ## GPU and resources
 
