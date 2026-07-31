@@ -284,7 +284,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
 - p1-generated-facts: maintenance
-- p2-non-entity: maintenance
+- p2-non-entity: active
 - p2-hud: maintenance
 - p3-resources: maintenance
 - p4-delivery: maintenance
@@ -313,26 +313,28 @@ membership owner。没有具体文件、事实源与验收测试的手工 grep �
 
 ### P2：非实体客户端行为 closeout
 
-状态：`maintenance`。packet/registry/item/entity coverage 均无 open row，
-unsupported 的非实体域无 active item；world/block-entity、movement/interaction、
-inventory、particle/level-event、audio 与跨域 side-effect 的关闭证据见 archive
-对应 milestone 及 playable gate。后续只由新 active ledger item、coverage row
-回退或 P0 触发重开；vertical slice 仍须贯通 protocol summary、canonical state、
-runtime effect/counter 与适用 presentation。
+状态：`active`。packet/registry/item/entity coverage 均无 open row，但
+unsupported 账本重新确认了 inventory 持久化、相机流体/fog 与 trial-spawner
+display 三个 ready 工程；具体合同只由账本维护并按 hardest-ready-first 串行推进。
+其余 world/block-entity、movement/interaction、particle/level-event、audio 与跨域
+side-effect 的关闭证据见 archive 对应 milestone 及 playable gate。vertical slice
+仍须贯通 protocol summary、canonical state、runtime effect/counter 与适用
+presentation。
 
 ### P2：屏幕、HUD、字体与截图
 
 状态：`maintenance`。账本对应域没有 active item；screen/HUD/font/debug 与
-deterministic screenshot/pixel evidence 的关闭索引见 archive。entity preview
-`item_layers` 与 unihex 仍按各自 `Reopen when ...` 留在 Todo 域但不进 ready。
-启动配置继续只走 CLI，F3+I entity payload 继续由 entity owner 唯一负责。
+deterministic screenshot/pixel evidence 的关闭索引见 archive。
+`context_entity_type` 与 unihex 仍按各自 `Reopen when ...` 留在 Todo 域但不进
+ready。启动配置继续只走 CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 ### P3：动态资源 presentation breadth
 
 状态：`maintenance`。selected/startup/server pack、push/pop、原子 immutable
 resource generation、profile/map/variant/painting/pattern/trim 动态资源与诊断
 owner 已由 `docs/resource-pack-lifecycle-design.md`、资源预算合同、archive 和
-playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred。
+playable 证据覆盖；剩余 non-profile producer 属于当前不存在且未声明进入范围的
+server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
   immutable resource generation；`BuiltInRegistries.BLOCK` / `ENTITY_TYPE`
@@ -349,12 +351,12 @@ playable 证据覆盖；更广 non-profile producer 仍按账本条件 deferred�
   pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
   schema、pack stack 或 cache owner。
 
-当前无 ready P3 工作；只有账本 deferred 重启条件满足或发现具体 active producer
-时才重开。
+当前无 ready P3 工作；只有声明新 screen surface、目标版本产生新 producer 或发现
+当前表面的具体 active producer 时才重开。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`maintenance`。账本当前没有 active item；安全预算、bounded runtime、
+状态：`maintenance`。账本 P4 域没有 active item；安全预算、bounded runtime、
 lifecycle/fault soak 与已声明平台行均有有界 gate，剩余官方 Java 同载对照、
 扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
 

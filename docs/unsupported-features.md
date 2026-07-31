@@ -43,10 +43,10 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 - Further reduction of dynamic item-model property-selection, draw/pipeline
   state churn, and driver-deferred resident-release tails is `deferred`: the
-  repo-native optimization phases and before/after matrices have landed, but no
-  remaining losing owner has been measured. Reopen when an equal-scene capture
-  or runtime observation identifies a concrete regression or dominant owner;
-  preserve exact phase/translucent order and bounded-owner fallback.
+  current repo-native before/after matrices identify no remaining measured
+  losing owner. Reopen when an equal-scene capture or runtime observation
+  identifies a concrete regression or dominant owner; preserve exact
+  phase/translucent order and bounded-owner fallback.
 - Equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low, and
   chunk-update comparison captures are `deferred`: this host lacks the official
   asset/account launch, deterministic common camera replay, and equivalent
@@ -81,10 +81,13 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
   owner becomes client-visible on the wire.
-- Vanilla `hotbar.nbt` interchange for creative hotbar presets is `deferred`:
-  the current store is a bbb-owned JSON file of `ItemStackSummary` rows, while
-  Vanilla uses a registry-coupled `ItemStack` codec. Reopen when full item NBT
-  codec support with registry context lands.
+- Implement Vanilla-compatible `hotbar.nbt` interchange for creative hotbar
+  presets. Follow `HotbarManager.load` / `save` and `Hotbar.CODEC`: own a
+  registry-aware persistent `ItemStack.OPTIONAL_CODEC` projection, preserve the
+  fixed nine groups of nine slots plus `DataVersion`, recover an invalid file or
+  row to the same empty scope as Vanilla, keep first-access lazy loading and
+  save-on-store behavior, and migrate the existing bbb JSON store without
+  silently discarding a valid preset.
 
 ## Renderer scene parity
 
@@ -101,13 +104,13 @@ Living-entity render state:
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
-- Fire-resistance lava fog is `deferred`: Vanilla 26.1
-  `LavaFogEnvironment.isApplicable` selects only `FogType.LAVA`, and
-  `setupFog` widens the end to 5.0 only for a living camera entity with
-  `MobEffects.FIRE_RESISTANCE`. `Camera.getFluidInCamera` derives that fog type
-  by sampling real lava fluid across the camera near plane. Reopen when the
-  camera environment owns the sampled lava fog medium used by
-  `Camera.getFluidInCamera`; do not approximate it from the effect alone.
+- Implement one authoritative camera-fluid sample shared by FOV and fog.
+  Follow `Camera.getFluidInCamera`: Water wins at the eye, Lava samples the
+  near-plane center and four corners against the inclusive fluid surface, and
+  the sampler consumes the actual viewport and base FOV. Project
+  `None`/`Water`/`Lava` into `CameraFogType`; follow
+  `LavaFogEnvironment.setupFog` for normal `0.25..1`, living-camera fire
+  resistance `0..5`, and spectator `-8..renderDistance*0.5` distances.
 
 ## HUD overlay and screen render surfaces
 
@@ -126,8 +129,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   `setOnGround`; interpolation uses `setPos`, and only locally authoritative
   `Entity.move` calls `checkFallDamage`, so remote `fallDistance` remains its
   default zero. Local-player high-fall powder snow and the falling-block type
-  branch are covered; locally controlled vehicle physics stays tracked under
-  the existing full boat/vehicle movement item.
+  branch are covered; locally controlled vehicle physics is owned by
+  `bbb-world::entities::passengers` and does not make a remote entity's
+  server-authoritative `fallDistance` observable.
 - Entity-hitbox local-server green boxes and delta arrows are `not-needed`:
   vanilla 26.1 `EntityHitboxDebugRenderer.getServerEntity` returns an entity
   only through `Minecraft.getSingleplayerServer()` -> `IntegratedServer` ->
@@ -142,14 +146,13 @@ Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
 
-- Additional ambient-context numeric `range_dispatch` properties are
-  `deferred`: Vanilla 26.1 registers no property beyond the implemented set.
-  Reopen when a later target registers one and its exact GUI ambient state
-  becomes available.
 - Additional `minecraft:context_entity_type` non-GUI wiring is `deferred`: the
-  current generated held/head consumers already carry their real living owner.
-  Reopen when another item consumer gains a real living owner; non-living
-  `ItemOwner` values remain null after Vanilla's `asLivingEntity` narrowing.
+  current generated held/head consumers carry their real living owner, while
+  `SmithingScreen.updateArmorStandPreview` deliberately calls
+  `updateForTopItem(..., level=null, owner=null, seed=0)` for both the head and
+  left-hand preview. Reopen when a different current client consumer passes a
+  real living owner to `ItemModelResolver`; non-living `ItemOwner` values remain
+  null after Vanilla's `asLivingEntity` narrowing.
 - Full `minecraft:local_time` ICU parity is `deferred`: the remaining localized
   symbols, locale-specific week data, IANA long `z`, generic `v`, and
   one-/four-letter `V` widths have no portable ICU owner compatible with the
@@ -197,21 +200,11 @@ prepare from that stack, renderer/audio owners commit atomically, and control
 publishes source/priority/failure plus bounded dynamic-texture observations.
 Skin/cape/elytra requests share one exact resource/session-generation cache.
 
-- Broader non-profile dynamic texture loading is `deferred`: the applicable
-  Vanilla 26.1 producers are covered by map textures, profile skin/cape/elytra,
-  and synchronized pack-backed variant/painting/pattern/trim owners. The other
-  external-image producers belong to the absent server/world-list favicon and
-  pack-selection screens. Reopen when either screen enters scope or a new exact
-  Vanilla producer is identified.
 - Synchronized custom block/entity registry identities are `not-needed`:
   Vanilla 26.1 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` contains neither
   `BLOCK` nor `ENTITY_TYPE`; their protocol identities remain fixed, and a
   resource pack cannot add either registry entry. Reopen if the target protocol
   begins synchronizing one of those registries.
-
-## Screens and presentation
-
-Owner: `bbb-native` + `bbb-renderer`
 
 ## Fonts and text
 
@@ -252,12 +245,14 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
-- **Trial-spawner display-state behavior and custom `SpawnData` entity NBT
-  variants** are `deferred`: Vanilla creates the cached display entity through
-  `EntityType.loadEntityRecursive`, while bbb has no inbound synthetic-entity
-  NBT load owner for the renderer-observable persistent fields. Reopen when
-  that bounded projection exists with current-session registry and equipment
-  context; do not approximate custom tags as default entity metadata.
+- Implement trial-spawner display state and renderer-observable custom
+  `spawn_data.entity` NBT. Follow
+  `TrialSpawnerStateData.getOrCreateDisplayEntity` and
+  `TrialSpawnerRenderer.extractSpawnerData`: decode the update-tag
+  `spawn_data`, retain a bounded persistent projection for fields consumed by
+  the existing entity renderer, resolve registry/equipment data against the
+  current session, and reuse the shared display-entity path. Do not add server
+  spawning, AI, or an unbounded general entity-NBT loader.
 ## Entity models and animation
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
@@ -279,21 +274,6 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
   `BaseSpawner.getOrCreateDisplayEntity` for that embedded spawner, so its
   `displayEntity` remains null and `clientTick` advances neither spin nor
   display particles.
-
-## Movement and interaction
-
-Owner: `bbb-world` + `bbb-native`
-
-- **Non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision** is `deferred`:
-  there is no locally controlled non-player movement surface. Reopen when
-  locally controlled non-player entities are added.
-- **Non-player freeze-immune entity type exceptions** are `deferred`: there is
-  no locally controlled non-player freezing surface for the `canFreeze` type
-  nuance. Reopen when locally controlled entity freezing is added.
-- **No-collision hazard `entityInside` effects**: sweet berry bush age-gated
-  damage and fox/bee exceptions are `deferred`: there is no locally controlled
-  non-player hazard surface. Reopen when locally controlled non-player entities
-  are added.
 
 ## Particles and level events
 
@@ -320,7 +300,44 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Bundle delimiter world state.** `ClientboundBundleDelimiterPacket` is
   consumed by `PacketBundlePacker` / `BundlerInfo` as connection framing before
   listener dispatch; it has no payload, listener handler, or canonical world
-  mutation. Bundle assembly itself remains a connection-runtime todo above.
+  mutation.
+
+## Target-version item-model surface
+
+- **Additional ambient-context numeric `range_dispatch` properties.** Vanilla
+  26.1 `RangeSelectItemModelProperties.bootstrap` registers exactly
+  custom-model-data, bundle fullness, damage, cooldown, time, compass,
+  crossbow pull, use cycle, use duration and count, all of which are present in
+  the native resolver. Reopen only when the target version changes or that
+  registration list differs.
+
+## Resource and screen surface
+
+- **Broader non-profile dynamic textures.** The remaining Vanilla 26.1
+  external-image producers are server/world-list favicons and pack-selection
+  presentation. bbb exposes startup/server-pack configuration through the CLI
+  and has neither screen; its current client surfaces already own map textures,
+  profile skin/cape/elytra and synchronized pack-backed presentation. Reopen
+  only if one of those screens enters the declared client scope or a new
+  current-surface producer is identified.
+
+## Non-player movement authority
+
+- **`POWDER_SNOW_WALKABLE_MOBS` collision exceptions.** Vanilla 26.1's tag
+  contains only rabbit, endermite, silverfish and fox. None is a locally
+  client-authoritative ridden type in the current client, so their collision is
+  server-owned. Reopen specifically if one of those four types gains local
+  movement authority.
+- **Freeze-immune entity-type exceptions.** Vanilla
+  `LivingEntity.tick` applies freeze damage only in `ServerLevel`, and
+  `FREEZE_IMMUNE_ENTITY_TYPES` contains only stray, polar bear, snow golem and
+  wither. Their remote frozen presentation remains server synchronized. Reopen
+  specifically if one of those four types gains local freezing authority.
+- **Sweet-berry fox/bee exceptions.** Vanilla
+  `SweetBerryBushBlock.entityInside` skips fox and bee slowing, while its
+  age-gated damage executes only in `ServerLevel`. Neither fox nor bee is a
+  locally client-authoritative ridden type in the current client. Reopen if
+  either exact type gains local movement authority.
 
 ## Entity models and layers
 
@@ -423,7 +440,7 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Input, movement, and interaction
 
-- **Server-owned FishingHook catching/removal outcomes.** The client tick now
+- **Server-owned FishingHook catching/removal outcomes.** The bbb client tick
   owns Vanilla flight, Bobbing, hooked-target following, collision/deflection,
   metadata biting impulse, and Breeze deflect audio. `catchingFish`, loot,
   open-water/server timers, rod durability/pull results, and canonical removal
@@ -578,26 +595,19 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 # Appendix: per-provider particle coverage matrix
 
-Not history: this is the entry point for particle work. A new provider gap
-is opened by adding a row or flipping a cell back to `todo`, before the
-slice is cut. `not-needed` cells carry the vanilla evidence and must not be
-deleted.
+This is the current provider fact matrix. Open behavior is represented by a
+`todo` cell; `covered` names a current native owner, and `not-needed` carries
+the Vanilla reason that no owner is required. When a gap is found, add its row
+or flip the affected cell to `todo` before selecting a slice. Delete no
+`not-needed` evidence and do not append completion records or commit hashes.
 
-
-Usage: no open todo cells remain — every cell is `covered` or `not-needed`.
-When a new provider behavior gap is found, first add the row (or flip the
-affected cell back to `todo` with a root-cause tag), then cut a slice for
-it; when the slice lands, flip the cell to `covered` and append the commit
-hash to the row's notes. `not-needed` means vanilla 26.1 has no such
-behavior for that provider (reason noted); do not pick those rows. Every row was judged
-against the vanilla 26.1 class under
+Every row is judged against the Vanilla 26.1 class under
 `~/Work/mc-code/sources/26.1/net/minecraft/client/particle/` (line references
 in notes), cross-checked against the bbb runtime
 (`crates/bbb-renderer/src/particles/descriptors.rs` — `collision_size()`,
 `moves_without_collision()`, `drip_fluid()`, `required_fluid()`,
 `air_downward_acceleration()`, `tick_motion()` —
-`crates/bbb-renderer/src/particles/instance.rs`, and the completion history
-earlier in this file).
+`crates/bbb-renderer/src/particles/instance.rs`).
 
 Column definitions:
 
@@ -611,60 +621,22 @@ Column definitions:
   or view coupling inside the particle or provider tick.
 - sounds: sounds triggered by the particle's own tick (`playLocalSound`).
   Spawn-site sounds emitted by packet / level-event / entity-event handlers
-  are tracked by those histories, not here.
+  stay with those handler domains, not this matrix.
 - removal-gates: removal (or motion gates) driven by block / fluid / entity
   state queries during tick. Collision-driven removal (e.g. leaves
   `onGround`) belongs to the collision column.
 
-Shared todo root causes (one slice may clear several rows):
-
-- `[bounds]`: vanilla per-provider collision AABB (`setSize` /
-  `scale`-derived) vs the former default 0.2x0.2 fallback in
-  `descriptors.rs collision_size()`. RESOLVED (this slice): the 24 static
-  per-provider sizes are now table-driven in `collision_size()` — drip family
-  0.01 (DripParticle.java:25), rain / splash 0.01 (WaterDropParticle.java:16),
-  bubble / bubble column 0.02 (BubbleParticle.java:22 /
-  BubbleColumnUpParticle.java:24), soul 0.3 and firefly 0.3 (`scale(1.5F)` →
-  `Particle.scale` `setSize(0.2F * 1.5F)` = 0.3, Particle.java:77-80). The
-  remaining collision `todo` rows are `[leaf-bounds]` and `[wake-grow]`.
-- `[leaf-bounds]`: FallingLeaves uses a per-spawn random size
-  (`setSize(size, size)`, `size = scale * (0.05F | 0.075F)`,
-  FallingLeavesParticle.java:41-43) — needs per-instance collision size, not
-  a static table entry. RESOLVED (this slice): `from_spawn_command_*` sets the
-  collision box to the already-sampled `visual.base_quad_size` (= vanilla
-  `size`) for all three leaf providers, reusing the existing `nextBoolean`
-  draw so the spawn RNG sequence is unchanged.
-- `[wake-grow]`: WakeParticle re-sizes its collision box every tick
-  (`setSize(life * 0.001F)`, WakeParticle.java:46-47). RESOLVED (this slice):
-  the Wake tick arm updates `collision_width`/`collision_height` to
-  `life * 0.001` after `move`, so the growth trails the move exactly as in
-  vanilla (initial 0.01 box still comes from `collision_size()`).
-- `[nearest-player]`: PlayerCloudParticle pulls toward
-  `level.getNearestPlayer(x, y, z, 2.0, false)` — the nearest of all
-  players, not only the local one (PlayerCloudParticle.java:51-58).
-  RESOLVED (this slice): the native pump now projects a candidate list
-  (`particle_player_motion_contexts` — the local player pose plus every
-  `VANILLA_ENTITY_TYPE_PLAYER_ID` entity transform, spectators excluded on
-  both paths per `EntitySelector.NO_SPECTATORS`, creative kept because
-  `filterOutCreative=false`, EntityGetter.java:95-98), and the renderer
-  cloud/sneeze tick resolves the strict nearest candidate within 2.0 per
-  particle (`dist < range * range`, minimum squared distance,
-  EntityGetter.java:74-88; the former local-only path also accepted
-  `dist == 4.0`, now excluded). Remote player `delta_movement` comes from
-  the entity transform state, matching the pull's
-  `player.getDeltaMovement().y` read.
-
 | Provider | collision | player-coupled | sounds | removal-gates | Notes |
 | --- | --- | --- | --- | --- | --- |
-| AshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (AshParticle.java:19, BaseAshSmoke last ctor arg); curves covered in history above |
+| AshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (AshParticle.java:19, BaseAshSmoke last ctor arg) |
 | AttackSweepParticle.Provider | not-needed | not-needed | not-needed | not-needed | tick never calls `move` (AttackSweepParticle.java:28-37) |
 | BlockMarker.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` + zero velocity (BlockMarker.java:14-17); vanilla has no spawn filter here — bbb matches |
 | BreakingItemParticle.Provider | covered | not-needed | not-needed | not-needed | no `setSize` → default 0.2 bounds correct; generic collision callback; gravity 1.0 |
 | BreakingItemParticle.SlimeProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
 | BreakingItemParticle.CobwebProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
 | BreakingItemParticle.SnowballProvider | covered | not-needed | not-needed | not-needed | as BreakingItemParticle.Provider |
-| BubbleColumnUpParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleColumnUpParticle.java:24) now in `collision_size()` (this slice); non-water removal :35-37 covered (`required_fluid`, descriptors.rs:2071-2078) |
-| BubbleParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.02F)` (BubbleParticle.java:22) now in `collision_size()` (this slice); +0.002 rise / 0.85 damping covered; non-water removal :43-45 covered |
+| BubbleColumnUpParticle.Provider | covered | not-needed | not-needed | covered | `setSize(0.02F)` (BubbleColumnUpParticle.java:24) maps to `collision_size()`; non-water removal :35-37 maps to `required_fluid()` |
+| BubbleParticle.Provider | covered | not-needed | not-needed | covered | `setSize(0.02F)` (BubbleParticle.java:22) maps to `collision_size()`; +0.002 rise / 0.85 damping and non-water removal :43-45 are covered |
 | BubblePopParticle.Provider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; direct-gravity-no-friction tick covered |
 | CampfireSmokeParticle.CosyProvider | covered | not-needed | not-needed | not-needed | 0.25 bounds special-cased (descriptors.rs:2048-2050); `alpha<=0` removal + random drift covered |
 | CampfireSmokeParticle.SignalProvider | covered | not-needed | not-needed | not-needed | as CosyProvider |
@@ -672,23 +644,23 @@ Shared todo root causes (one slice may clear several rows):
 | CritParticle.DamageIndicatorProvider | not-needed | not-needed | not-needed | not-needed | as CritParticle.Provider |
 | CritParticle.MagicProvider | not-needed | not-needed | not-needed | not-needed | as CritParticle.Provider |
 | DragonBreathParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics=false` (DragonBreathParticle.java:34) — the `onGround`/`hasHitGround` branch (:48-55) is dead in vanilla because `move` never sets `onGround` without physics; bbb models the tick formula including the branch |
-| DripParticle.LavaHangProvider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (DripParticle.java:25) now in `collision_size()` (this slice); lava-surface removal :58-64 covered (`drip_fluid`); cooling RGB + hang damping + fall child covered |
-| DripParticle.LavaFallProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` → land child covered; lava-surface removal covered |
-| DripParticle.LavaLandProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); lava-surface removal covered |
-| DripParticle.WaterHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); water-surface removal covered |
-| DripParticle.WaterFallProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` → splash child covered; water-surface removal covered |
-| DripParticle.HoneyHangProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` → no fluid gate (DripParticle.java:366-371) |
-| DripParticle.HoneyFallProvider | covered | not-needed | covered | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `BEEHIVE_DRIP` on land (DripParticle.java:313-320) covered via renderer particle sound events; `Fluids.EMPTY` |
-| DripParticle.HoneyLandProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
-| DripParticle.NectarFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `onGround` removal covered; `Fluids.EMPTY` |
-| DripParticle.SporeBlossomFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
-| DripParticle.ObsidianTearHangProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY`; glow light covered |
-| DripParticle.ObsidianTearFallProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
-| DripParticle.ObsidianTearLandProvider | covered | not-needed | not-needed | not-needed | `[bounds]` 0.01 now in `collision_size()` (this slice); `Fluids.EMPTY` |
-| DripParticle.DripstoneWaterHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); water-surface removal covered |
-| DripParticle.DripstoneWaterFallProvider | covered | not-needed | covered | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `POINTED_DRIPSTONE_DRIP_WATER` on land (DripParticle.java:156-162) covered |
-| DripParticle.DripstoneLavaHangProvider | covered | not-needed | not-needed | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); cooling RGB covered; lava-surface removal covered |
-| DripParticle.DripstoneLavaFallProvider | covered | not-needed | covered | covered | `[bounds]` 0.01 now in `collision_size()` (this slice); `POINTED_DRIPSTONE_DRIP_LAVA` on land covered |
+| DripParticle.LavaHangProvider | covered | not-needed | not-needed | covered | `setSize(0.01F)` (DripParticle.java:25); lava-surface removal :58-64, cooling RGB, damping and fall child are covered |
+| DripParticle.LavaFallProvider | covered | not-needed | not-needed | covered | 0.01 bounds; `onGround` land child and lava-surface removal are covered |
+| DripParticle.LavaLandProvider | covered | not-needed | not-needed | covered | 0.01 bounds; lava-surface removal is covered |
+| DripParticle.WaterHangProvider | covered | not-needed | not-needed | covered | 0.01 bounds; water-surface removal is covered |
+| DripParticle.WaterFallProvider | covered | not-needed | not-needed | covered | 0.01 bounds; `onGround` splash child and water-surface removal are covered |
+| DripParticle.HoneyHangProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY` means no fluid gate (DripParticle.java:366-371) |
+| DripParticle.HoneyFallProvider | covered | not-needed | covered | not-needed | 0.01 bounds; `BEEHIVE_DRIP` on land (DripParticle.java:313-320); `Fluids.EMPTY` |
+| DripParticle.HoneyLandProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY` |
+| DripParticle.NectarFallProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `onGround` removal; `Fluids.EMPTY` |
+| DripParticle.SporeBlossomFallProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY` |
+| DripParticle.ObsidianTearHangProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY`; glow light is covered |
+| DripParticle.ObsidianTearFallProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY` |
+| DripParticle.ObsidianTearLandProvider | covered | not-needed | not-needed | not-needed | 0.01 bounds; `Fluids.EMPTY` |
+| DripParticle.DripstoneWaterHangProvider | covered | not-needed | not-needed | covered | 0.01 bounds; water-surface removal is covered |
+| DripParticle.DripstoneWaterFallProvider | covered | not-needed | covered | covered | 0.01 bounds; `POINTED_DRIPSTONE_DRIP_WATER` on land (DripParticle.java:156-162) |
+| DripParticle.DripstoneLavaHangProvider | covered | not-needed | not-needed | covered | 0.01 bounds; cooling RGB and lava-surface removal are covered |
+| DripParticle.DripstoneLavaFallProvider | covered | not-needed | covered | covered | 0.01 bounds; `POINTED_DRIPSTONE_DRIP_LAVA` on land is covered |
 | DustParticle.Provider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; `hasPhysics=true` + `speedUpWhenYMotionIsBlocked` via generic path |
 | DustColorTransitionParticle.Provider | covered | not-needed | not-needed | not-needed | as DustParticle.Provider; transition lerp covered |
 | DustPlumeParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (DustPlumeParticle.java:22, BaseAshSmoke last arg); gravity/friction decay covered |
@@ -696,10 +668,10 @@ Shared todo root causes (one slice may clear several rows):
 | EndRodParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` override (EndRodParticle.java:22-25); in `moves_without_collision` |
 | ExplodeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; physics, gravity -0.1, friction 0.9 |
 | FallingDustParticle.Provider | covered | not-needed | not-needed | not-needed | custom tick move + `onGround` roll reset covered; spawn `INVISIBLE` rejection + tint covered; no removal gate in vanilla |
-| FallingLeavesParticle.CherryProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` per-spawn `setSize(size, size)` (0.05/0.075) now driven by the sampled `base_quad_size` in `from_spawn_command_*` (this slice); `onGround` + horizontal-block removal + first-tick grace covered — removal is collision-driven, no state query |
-| FallingLeavesParticle.PaleOakProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15) covered (this slice); rest as CherryProvider |
-| FallingLeavesParticle.TintedLeavesProvider | covered | not-needed | not-needed | not-needed | `[leaf-bounds]` (0.1/0.15) covered (this slice); ARGB tint covered |
-| FireflyParticle.FireflyProvider | covered | not-needed | not-needed | covered | `[bounds]` provider `scale(1.5F)` → `setSize(0.3F)` (FireflyParticle.java:94, Particle.java:77-80) now in `collision_size()` (this slice); generic move + non-air removal :50-51 covered |
+| FallingLeavesParticle.CherryProvider | covered | not-needed | not-needed | not-needed | per-spawn `setSize(size, size)` uses sampled `base_quad_size` (0.05/0.075); collision removal and first-tick grace are covered |
+| FallingLeavesParticle.PaleOakProvider | covered | not-needed | not-needed | not-needed | sampled 0.1/0.15 bounds; otherwise as CherryProvider |
+| FallingLeavesParticle.TintedLeavesProvider | covered | not-needed | not-needed | not-needed | sampled 0.1/0.15 bounds; ARGB tint is covered |
+| FireflyParticle.FireflyProvider | covered | not-needed | not-needed | covered | provider `scale(1.5F)` gives 0.3 bounds (FireflyParticle.java:94, Particle.java:77-80); generic move and non-air removal :50-51 are covered |
 | FireworkParticles.FlashProvider | not-needed | not-needed | not-needed | not-needed | zero velocity, lifetime 4; overlay alpha/size covered |
 | FireworkParticles.SparkProvider | covered | not-needed | not-needed | not-needed | no `setSize` → default bounds; SimpleAnimated physics via generic path; trail/twinkle children + fade covered; sounds live on the Starter row |
 | FlameParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` override (FlameParticle.java:29-32); in `moves_without_collision` |
@@ -723,7 +695,7 @@ Shared todo root causes (one slice may clear several rows):
 | LargeSmokeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; smoke-family collision + blocked-Y speed-up covered |
 | LavaParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds physics; child smoke emission covered |
 | NoteParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics` stays true in vanilla; default bounds; generic collision + speed-up |
-| PlayerCloudParticle.Provider | not-needed | covered | not-needed | not-needed | `hasPhysics=false` (PlayerCloudParticle.java:32); `[nearest-player]` nearest-of-all-players pull covered (this slice): native projects local + remote player candidates minus spectators, renderer picks the strict nearest within 2.0 per particle |
+| PlayerCloudParticle.Provider | not-needed | covered | not-needed | not-needed | `hasPhysics=false` (PlayerCloudParticle.java:32); native projects non-spectator local and remote players and the renderer selects the strict nearest within 2.0 |
 | PlayerCloudParticle.SneezeProvider | not-needed | covered | not-needed | not-needed | as PlayerCloudParticle.Provider |
 | PortalParticle.Provider | not-needed | not-needed | not-needed | not-needed | collision-free `move` (PortalParticle.java:48-51); curve covered |
 | ReversePortalParticle.ReversePortalProvider | not-needed | not-needed | not-needed | not-needed | inherits portal collision-free `move` |
@@ -735,14 +707,14 @@ Shared todo root causes (one slice may clear several rows):
 | SmokeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; blocked-Y speed-up via collision callback covered |
 | SnowflakeParticle.Provider | covered | not-needed | not-needed | not-needed | default bounds; post-tick damping covered |
 | SonicBoomParticle.Provider | not-needed | not-needed | not-needed | not-needed | tick never calls `move` (inherits HugeExplosionParticle) |
-| SoulParticle.Provider | covered | not-needed | not-needed | not-needed | `[bounds]` `scale(1.5F)` → `setSize(0.3F)` (SoulParticle.java:17 + Particle.java:77-80) now in `collision_size()` (this slice); rising motion covered |
-| SoulParticle.EmissiveProvider | covered | not-needed | not-needed | not-needed | as SoulParticle.Provider; `[bounds]` 0.3 covered (this slice) |
+| SoulParticle.Provider | covered | not-needed | not-needed | not-needed | `scale(1.5F)` gives 0.3 bounds (SoulParticle.java:17, Particle.java:77-80); rising motion is covered |
+| SoulParticle.EmissiveProvider | covered | not-needed | not-needed | not-needed | as SoulParticle.Provider, including 0.3 bounds |
 | SpellParticle.Provider | not-needed | covered | not-needed | not-needed | `hasPhysics=false` (SpellParticle.java:33); scoping alpha (:35-37, :49-53, :62-69) covered — vanilla itself only checks the local player |
 | SpellParticle.InstantProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; RGB + power covered |
 | SpellParticle.MobEffectProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; ARGB covered |
 | SpellParticle.WitchProvider | not-needed | covered | not-needed | not-needed | as SpellParticle.Provider; magenta brightness covered |
 | SpitParticle.Provider | covered | not-needed | not-needed | not-needed | ExplodeParticle physics, gravity 0.5, default bounds |
-| SplashParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` inherits WaterDrop `setSize(0.01F)` (WaterDropParticle.java:16 via `super`) now in `collision_size()` (this slice); `onGround` 50% removal + collision-shape/fluid-surface gate :39-55 covered |
+| SplashParticle.Provider | covered | not-needed | not-needed | covered | inherits WaterDrop 0.01 bounds; `onGround` 50% removal and collision-shape/fluid-surface gate :39-55 are covered |
 | SquidInkParticle.Provider | not-needed | not-needed | not-needed | covered | `hasPhysics=false`; in-air downward drift gate :43-45 covered (`air_downward_acceleration`) |
 | SquidInkParticle.GlowInkProvider | not-needed | not-needed | not-needed | covered | as SquidInkParticle.Provider |
 | SuspendedParticle.UnderwaterProvider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false`; `setSize(0.01F)` has no behavioral effect without physics |
@@ -761,31 +733,11 @@ Shared todo root causes (one slice may clear several rows):
 | TrailParticle.Provider | not-needed | not-needed | not-needed | not-needed | tick lerps toward fixed target, no `move` |
 | TrialSpawnerDetectionParticle.Provider | covered | not-needed | not-needed | not-needed | `hasPhysics=true` (TrialSpawnerDetectionParticle.java:39), default bounds; LOOKAT_Y covered |
 | VibrationSignalParticle.Provider | not-needed | not-needed | not-needed | covered | no `move`; entity-target-missing removal :77-79 covered via native entity target context |
-| WakeParticle.Provider | covered | not-needed | not-needed | not-needed | `[wake-grow]` initial `setSize(0.01F)` covered (descriptors.rs:2051) + per-tick `setSize(life * 0.001F)` growth :46-47 now applied after `move` in the Wake tick arm (this slice) |
+| WakeParticle.Provider | covered | not-needed | not-needed | not-needed | initial 0.01 bounds plus per-tick `setSize(life * 0.001F)` after `move` (WakeParticle.java:46-47) |
 | WaterCurrentDownParticle.Provider | not-needed | not-needed | not-needed | covered | `hasPhysics=false` (WaterCurrentDownParticle.java:17) — the `onGround` half of :45 is dead in vanilla; non-water removal covered |
-| WaterDropParticle.Provider | covered | not-needed | not-needed | covered | `[bounds]` `setSize(0.01F)` (WaterDropParticle.java:16) now in `collision_size()` (this slice); move + `onGround` 50% removal + collision-shape/fluid-surface gate covered |
+| WaterDropParticle.Provider | covered | not-needed | not-needed | covered | `setSize(0.01F)` (WaterDropParticle.java:16); move, `onGround` 50% removal and collision-shape/fluid-surface gate are covered |
 | WhiteAshParticle.Provider | not-needed | not-needed | not-needed | not-needed | `hasPhysics=false` (WhiteAshParticle.java:22) |
 | WhiteSmokeParticle.Provider | covered | not-needed | not-needed | not-needed | as SmokeParticle.Provider |
 | TrackingEmitter (code-spawned) | not-needed | not-needed | not-needed | not-needed | NoRender emitter, no `move`; all five 26.1 construction sites audited: entity event 35 and animate 4/5 are covered; `LocalPlayer.crit` cannot follow a successful client `hurtOrSimulate` because its required Living target keeps base `hurtClient=false`, while `LocalPlayer.magicCrit` is unreachable because inherited `getEnchantedDamage` returns the input damage unchanged |
 | FireworkParticles.Starter (code-spawned) | not-needed | covered | covered | not-needed | no `move`; camera-distance far-variant selection (FireworkParticles.java:284-287) covered; life-0 blast / large_blast (:216-238) + delayed twinkle (:273-281) covered |
 | ItemPickupParticle (code-spawned) | not-needed | covered | not-needed | not-needed | follows target entity midpoint (ItemPickupParticle.java:45-49); covered incl. 3-tick lifetime and quadratic extract |
-
-Row and cell counts (2026-07-05; player-coupled counts updated after the
-nearest-player slice cleared `[nearest-player]`, collision counts after the
-dynamic-collision-size slice cleared `[leaf-bounds]` + `[wake-grow]`):
-
-- 113 rows: 110 distinct provider classes registered by vanilla 26.1
-  `ParticleResources.registerProviders()` (lines 56-172; 117 registrations
-  minus 7 duplicate-class registrations) plus 3 code-spawned particles
-  (`TrackingEmitter`, `FireworkParticles.Starter`, `ItemPickupParticle`).
-- collision: 56 covered / 57 not-needed / 0 todo (the dynamic-collision-size
-  slice flipped the last 4: 3 `[leaf-bounds]` leaf providers now sized from the
-  sampled `base_quad_size`, and `[wake-grow]` Wake now grows `life * 0.001`
-  per tick)
-- player-coupled: 8 covered / 105 not-needed / 0 todo (the nearest-player
-  slice flipped the last 2: PlayerCloud + Sneeze now pull toward the
-  nearest of all players, not only the local one)
-- sounds: 4 covered / 109 not-needed / 0 todo
-- removal-gates: 18 covered / 95 not-needed / 0 todo
-- 0 todo cells — the table is fully `covered` / `not-needed`; new provider
-  behavior gaps re-enter as new `todo` cells (see Usage above).
