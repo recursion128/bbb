@@ -356,7 +356,10 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
 状态：`maintenance`。账本 P4 域没有 active item；安全预算、bounded runtime、
 lifecycle/fault soak 与已声明平台行均有有界 gate，剩余官方 Java 同载对照、
-扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
+扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。官方
+26.1 离线启动、共同 replay/capture 合同与当前宿主 blocker 由
+`docs/official-client-performance-benchmark.md` 唯一维护；不得把其中的软件
+smoke 指标升级成正式性能结论。
 
 已有维护证据：
 

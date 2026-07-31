@@ -889,12 +889,12 @@
 - **2026-07-30（Linux x86_64 发布矩阵闭环）**：Wayland/Vulkan/windowed 行现由
   fresh release、build-info、headless/live/quit、backend 与输入/lifecycle receipts
   联合验收；合同与本地 report/stamp 见 `docs/linux-platform-acceptance.md`。
-- **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 item component
-  现由点击 HashOps 与磁盘 NBT 共享同一 registry-aware Codec 投影；9×9 懒加载、
-  分层故障恢复、`DataVersion`、逐格编码回退及旧 bbb JSON 非破坏迁移已贯通。
-- **2026-07-31（Trial Spawner 显示实体工程闭环）**：update-tag
-  `spawn_data.entity` 的有界持久投影现按状态缓存并携带当前 session
-  registry/equipment 上下文，经共享实体、装备与手持物路径提交。
-- **2026-07-31（相机流体与 Lava fog 工程闭环）**：`Camera.getFluidInCamera`
-  的 Water/近裁剪面 Lava 采样现由 FOV 与 fog 共享；Lava 颜色、sky 抑制及
-  normal/fire-resistance/spectator 距离遵循 26.1 环境优先级。
+- **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 component 共用
+  registry-aware Codec；9×9 懒加载、故障恢复、`DataVersion` 与旧 JSON 迁移已贯通。
+- **2026-07-31（Trial Spawner 显示实体工程闭环）**：有界 `spawn_data.entity`
+  投影携带 session registry/equipment 上下文并复用实体、装备与手持物路径。
+- **2026-07-31（相机流体与 Lava fog 工程闭环）**：共享 Water/Lava 采样、颜色、
+  sky 抑制及 normal/fire-resistance/spectator 距离均对齐 26.1。
+- **2026-07-31（官方 26.1 同载比较工程安全停止）**：离线启动、共同 replay 与
+  OpenGL/Vulkan capture smoke 已建立；真实 GPU/perf 权限和可见内容一致性仍是
+  外部/renderer blocker，合同见 `docs/official-client-performance-benchmark.md`。

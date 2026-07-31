@@ -48,12 +48,23 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
   identifies a concrete regression or dominant owner; preserve exact
   phase/translucent order and bounded-owner fallback.
 - Equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low, and
-  chunk-update comparison captures are `deferred`: this host lacks the official
-  asset/account launch, deterministic common camera replay, and equivalent
-  external frame/GPU capture path recorded in
-  `docs/simulation-render-performance-design.md`. Reopen when those inputs are
-  provisioned, and report any losing scene by measured owner instead of
-  reducing visible work.
+  chunk-update comparison captures are `deferred`: the verified full assets,
+  unmodified offline-developer launcher, fixed world, server-authoritative
+  three-scene replay, OpenGL/Vulkan MangoHud capture, parsers, and anchor
+  evidence are owned by
+  `scripts/official_client_benchmark.py` and
+  `docs/official-client-performance-benchmark.md`; launcher/account material is
+  not a blocker. The current user cannot open `/dev/dri/renderD128`, required
+  `perf stat` events are denied by `perf_event_paranoid=4`, and tracefs is not
+  writable. Common-camera anchor review also shows different actual terrain
+  visibility, while no API-neutral official draw/visible-count capture exists.
+  Reopen when a maintained runner provides real GPU and required perf access,
+  bbb and Vanilla render the same reviewed visible workload without a resident
+  cap, and the common-tool overhead is at most 1%; ftrace-only GPU-duration
+  claims additionally require a proven client-context submission/fence chain.
+  Then execute at least three valid captures per client in the declared ABBA
+  order and report any losing scene by measured owner instead of reducing
+  visible work.
 
 ## P4 lifecycle, soak, and supported-platform release gates
 
