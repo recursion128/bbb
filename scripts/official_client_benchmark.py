@@ -1054,6 +1054,12 @@ def generate_replay_datapack(replay: Mapping[str, Any], output: Path) -> str:
             f"scores={{bbb_replay=0..{final_tick}}}] "
             f"run function bbb_benchmark:dispatch/0_{final_tick}"
         ),
+        (
+            "execute if score #run bbb_replay_control matches 1 "
+            f"as @a[name={BENCHMARK_USERNAME},"
+            f"scores={{bbb_replay=0..{final_tick}}}] "
+            "run scoreboard players add @s bbb_replay 1"
+        ),
     ]
     (function_dir / "tick.mcfunction").write_text(
         "\n".join(tick_commands) + "\n", encoding="utf-8"
@@ -1108,7 +1114,6 @@ def generate_replay_datapack(replay: Mapping[str, Any], output: Path) -> str:
                 f"execute if score @s bbb_replay matches {tick} "
                 f"run tp @s {coordinates} {yaw} {pitch}"
             )
-        commands.append("scoreboard players add @s bbb_replay 1")
         path.write_text("\n".join(commands) + "\n", encoding="utf-8")
 
     write_dispatch(0, final_tick)

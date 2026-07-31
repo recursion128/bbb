@@ -635,6 +635,13 @@ class ReplayTests(unittest.TestCase):
             self.assertIn(
                 "run function bbb_benchmark:dispatch/0_11", tick
             )
+            self.assertEqual(
+                tick.count("scoreboard players add @s bbb_replay 1"), 1
+            )
+            self.assertLess(
+                tick.index("run function bbb_benchmark:dispatch/0_11"),
+                tick.index("scoreboard players add @s bbb_replay 1"),
+            )
             self.assertTrue(
                 all(
                     line.startswith(
@@ -651,9 +658,7 @@ class ReplayTests(unittest.TestCase):
                 "static_orbit segment_start 0 0 80 0 90 0",
                 dispatch,
             )
-            self.assertTrue(
-                dispatch.rstrip().endswith("scoreboard players add @s bbb_replay 1")
-            )
+            self.assertNotIn("scoreboard players add", dispatch)
             load = (
                 Path(directory)
                 / "data/bbb_benchmark/function/load.mcfunction"
