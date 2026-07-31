@@ -473,10 +473,12 @@ pub(super) struct EntityModelTexturedMeshes {
     pending_sorted_textured_uploads: Vec<PendingSortedTexturedUpload>,
     pending_sorted_scroll_uploads: Vec<PendingSortedScrollUpload>,
     sort_camera_position: Option<[f32; 3]>,
-    /// The camera pose at mesh-build time, consumed by camera-facing billboard renderers
-    /// (`ExperienceOrbRenderer`-style `mulPose(camera.orientation)` quads). The GPU path rebuilds
-    /// these meshes on every camera-pose change, so the baked orientation stays current.
-    camera_pose: Option<crate::CameraPose>,
+    /// The camera orientation at mesh-build time, consumed by camera-facing billboard renderers
+    /// (`ExperienceOrbRenderer`-style `mulPose(camera.orientation)` quads). World extraction
+    /// derives it from the camera pose; GUI entity PIP derives it from
+    /// `GuiEntityRenderer`'s per-preview override. The GPU path rebuilds these meshes whenever
+    /// the owning camera input changes, so the baked orientation stays current.
+    camera_orientation: Option<Mat4>,
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
     current_submission_outline_color: u32,
@@ -550,7 +552,7 @@ impl EntityModelTexturedMeshes {
             pending_sorted_textured_uploads: Vec::new(),
             pending_sorted_scroll_uploads: Vec::new(),
             sort_camera_position,
-            camera_pose: None,
+            camera_orientation: None,
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
             current_submission_outline_color: 0,
@@ -1262,8 +1264,31 @@ pub(super) fn entity_model_textured_meshes_with_equipment_for_camera(
     sort_camera_position: Option<[f32; 3]>,
     camera_pose: Option<crate::CameraPose>,
 ) -> EntityModelTexturedMeshes {
+    entity_model_textured_meshes_with_equipment_for_camera_orientation(
+        instances,
+        atlas,
+        owned_entries,
+        equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        sort_camera_position,
+        camera_pose.map(camera_billboard_orientation),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn entity_model_textured_meshes_with_equipment_for_camera_orientation(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    owned_entries: &[EntityModelOwnedTextureAtlasEntry],
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    sort_camera_position: Option<[f32; 3]>,
+    camera_orientation: Option<Mat4>,
+) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new(sort_camera_position);
-    meshes.camera_pose = camera_pose;
+    meshes.camera_orientation = camera_orientation;
     for instance in instances {
         // Vanilla `EntityRenderer.submit` submits leash ropes before any model or layer work and
         // without the invisibility gates below, so the rope emits ahead of both dispatch branches.
@@ -1572,8 +1597,8 @@ fn normalized_entity_texture_uv(uv: [f32; 2], rect: EntityModelUvRect) -> [f32; 
 /// Vanilla 26.1 `ExperienceOrbRenderer.submit`: translate up 0.1, face the camera
 /// (`mulPose(camera.orientation)`), scale 0.3, and emit one icon quad as
 /// `RenderTypes.entityTranslucentCullItemTarget` with the age-driven red/blue sine tint at
-/// alpha 128. Without a camera pose (no frame rendered yet) the billboard has no orientation and
-/// is skipped; the mesh rebuild on the first camera update restores it.
+/// alpha 128. Without a camera orientation (no frame rendered yet) the billboard is skipped; the
+/// mesh rebuild on the first camera update restores it.
 pub(in crate::entity_models) fn render_experience_orb(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1582,11 +1607,11 @@ pub(in crate::entity_models) fn render_experience_orb(
     let EntityModelKind::ExperienceOrb { icon } = instance.kind else {
         return;
     };
-    let Some(pose) = meshes.camera_pose else {
+    let Some(camera_orientation) = meshes.camera_orientation else {
         return;
     };
     let transform = Mat4::from_translation(Vec3::from_array(instance.position) + Vec3::Y * 0.1)
-        * camera_billboard_orientation(pose)
+        * camera_orientation
         * Mat4::from_scale(Vec3::splat(0.3));
     let tint = experience_orb_pickup_particle_tint(instance.render_state.age_in_ticks);
     let light = instance.render_state.shader_light();
@@ -1607,9 +1632,9 @@ pub(in crate::entity_models) fn render_experience_orb(
 /// Vanilla 26.1 `DragonFireballRenderer.submit`: scale 2, face the camera
 /// (`mulPose(camera.orientation)`), and emit one full-sheet white quad as
 /// `RenderTypes.entityCutout`. The constant `getBlockLightLevel` = 15 arrives through the
-/// instance light coords (generated static-full-bright renderer catalog). Without a camera pose
-/// (no frame rendered yet) the billboard has no orientation and is skipped; the mesh rebuild on
-/// the first camera update restores it.
+/// instance light coords (generated static-full-bright renderer catalog). Without a camera
+/// orientation (no frame rendered yet) the billboard is skipped; the mesh rebuild on the first
+/// camera update restores it.
 pub(in crate::entity_models) fn render_dragon_fireball(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1618,12 +1643,12 @@ pub(in crate::entity_models) fn render_dragon_fireball(
     if !matches!(instance.kind, EntityModelKind::DragonFireball) {
         return;
     }
-    let Some(pose) = meshes.camera_pose else {
+    let Some(camera_orientation) = meshes.camera_orientation else {
         return;
     };
     let transform = Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_scale(Vec3::splat(2.0))
-        * camera_billboard_orientation(pose);
+        * camera_orientation;
     let light = instance.render_state.shader_light();
     let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EntityCutout,
@@ -1659,12 +1684,12 @@ pub(in crate::entity_models) fn render_fishing_hook(
     {
         return;
     }
-    let Some(pose) = meshes.camera_pose else {
+    let Some(camera_orientation) = meshes.camera_orientation else {
         return;
     };
     let transform = Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_scale(Vec3::splat(0.5))
-        * camera_billboard_orientation(pose);
+        * camera_orientation;
     let light = instance.render_state.shader_light();
     let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EntityCutoutCull,

@@ -127,6 +127,10 @@ struct FrameDrawStats {
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
         let render_started_at = std::time::Instant::now();
+        let glint_elapsed_millis = render_started_at
+            .saturating_duration_since(self.started_at)
+            .as_secs_f64()
+            * 1000.0;
         let frame_interval =
             render_started_at.saturating_duration_since(self.last_frame_started_at);
         self.last_frame_started_at = render_started_at;
@@ -192,7 +196,7 @@ impl Renderer {
         self.transparency_blit_pass(&frame, &mut encoder, &mut stats);
         self.first_person_item_pass(&frame, &mut encoder, &mut stats);
         self.camera_post_effect_pass(&frame, &mut encoder, &mut stats)?;
-        self.entity_preview_pip_passes(&mut encoder, &mut stats);
+        self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);
         self.vignette_pass(&frame, &mut encoder, &mut stats);
         self.win_screen_portal_pass(&frame, &mut encoder, &mut stats);
         self.hud_passes(&frame, &mut encoder, &mut stats)?;
@@ -3023,6 +3027,7 @@ impl Renderer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
+        glint_elapsed_millis: f64,
     ) {
         let previews = match (&self.hud_sign_editor_screen, &self.hud_inventory_screen) {
             (Some(screen), _) if screen.sign_preview.is_some() => {
@@ -3048,8 +3053,14 @@ impl Renderer {
             );
             let preview_index =
                 u32::try_from(preview_index).expect("sanitized entity preview count fits u32");
-            let (entity_draw_calls, item_draw_calls, pipeline_switches) =
-                self.encode_hud_entity_preview_pip(encoder, &mut target, preview, preview_index);
+            let (entity_draw_calls, item_draw_calls, pipeline_switches) = self
+                .encode_hud_entity_preview_pip(
+                    encoder,
+                    &mut target,
+                    preview,
+                    preview_index,
+                    glint_elapsed_millis,
+                );
             stats.entity_model_draw_calls += entity_draw_calls;
             stats.item_model_draw_calls += item_draw_calls;
             stats.pipeline_switches += pipeline_switches;
@@ -5735,7 +5746,7 @@ mod tests {
             .find("self.camera_post_effect_pass(&frame, &mut encoder, &mut stats)")
             .expect("camera post-effect pass is scheduled");
         let entity_preview = source
-            .find("self.entity_preview_pip_passes(&mut encoder, &mut stats);")
+            .find("self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);")
             .expect("entity preview PIP is scheduled");
         let vignette = source
             .find("self.vignette_pass(&frame, &mut encoder, &mut stats);")

@@ -213,12 +213,6 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
 
 Owner: `bbb-native` + `bbb-renderer`
 
-- **Entity-in-UI preview `item_layers` GPU drawing**, per-preview override-camera
-  orientation, and PIP-camera glint scroll animation time
-  (`HudEntityPreviewItemLayer` / `GuiEntityRenderer`) are `deferred`: hand/head
-  item models do not expose baked item quads at the native renderer boundary.
-  Reopen when that baked item-quad handoff is available.
-
 ## Fonts and text
 
 Owner: `bbb-pack` + `bbb-renderer`

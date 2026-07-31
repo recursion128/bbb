@@ -15,10 +15,10 @@
 //! [`CameraUniform::hud_entity_preview_pip`] camera, and the HUD pass blits the color texture
 //! through the HUD sprite pipeline in GUI submission order.
 
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use wgpu::util::DeviceExt as _;
 
-use crate::camera::{CameraUniform, LightingEntry};
+use crate::camera::{CameraUniform, LightingEntry, VANILLA_DEFAULT_GLINT_SPEED};
 use crate::frame_buffers::FrameDataBuffer;
 use crate::gpu::create_depth_target;
 use crate::hud::HudEntityPreview;
@@ -40,7 +40,7 @@ use super::geometry::{
 use super::instances::EntityModelInstance;
 use super::model_layers::SignModel;
 use super::textured::{
-    entity_model_textured_meshes_with_equipment_for_camera, sign_textured_layer_passes,
+    entity_model_textured_meshes_with_equipment_for_camera_orientation, sign_textured_layer_passes,
     EntityModelTexturedDrawAtlas, EntityModelTexturedMeshes,
 };
 
@@ -222,6 +222,7 @@ pub(crate) fn bake_hud_preview_pip_geometry(
         equipment_assets,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
+        gui_entity_camera_orientation(preview.override_camera_rotation),
     )
 }
 
@@ -240,6 +241,7 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         &equipment_assets,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
+        Mat4::IDENTITY,
     )
 }
 
@@ -250,8 +252,9 @@ fn bake_hud_entity_preview_pip_geometry_with_equipment(
     equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    camera_orientation: Mat4,
 ) -> HudEntityPreviewPipGeometry {
-    let meshes = entity_model_textured_meshes_with_equipment_for_camera(
+    let meshes = entity_model_textured_meshes_with_equipment_for_camera_orientation(
         std::slice::from_ref(instance),
         atlas,
         owned_entries,
@@ -259,7 +262,7 @@ fn bake_hud_entity_preview_pip_geometry_with_equipment(
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
         None,
-        None,
+        Some(camera_orientation),
     );
     let mut geometry = HudEntityPreviewPipGeometry::default();
     let translucent_pipeline = if matches!(instance.kind, EntityModelKind::Banner { .. }) {
@@ -362,6 +365,22 @@ fn bake_hud_entity_preview_pip_geometry_with_equipment(
     geometry
 }
 
+/// Vanilla `GuiEntityRenderer.renderToTexture`: a fresh `CameraRenderState` starts with identity
+/// orientation. When the preview supplies an override, the camera-facing feature orientation is
+/// `override.conjugate(new Quaternionf()).rotateY(PI)`.
+fn gui_entity_camera_orientation(override_rotation: Option<[f32; 4]>) -> Mat4 {
+    let Some(rotation) = override_rotation else {
+        return Mat4::IDENTITY;
+    };
+    let rotation = Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]);
+    let rotation = if rotation.is_finite() && rotation.length_squared() > f32::EPSILON {
+        rotation.normalize()
+    } else {
+        Quat::IDENTITY
+    };
+    Mat4::from_quat(rotation.conjugate() * Quat::from_rotation_y(std::f32::consts::PI))
+}
+
 fn bake_hud_gui_sign_preview_pip_geometry(
     instance: &EntityModelInstance,
     wood: SignModelWood,
@@ -400,6 +419,33 @@ fn hud_preview_lighting_entry(lighting: GuiItemLightingEntry) -> LightingEntry {
         GuiItemLightingEntry::Items3d => LightingEntry::Items3d,
         GuiItemLightingEntry::EntityInUi => LightingEntry::EntityInUi,
     }
+}
+
+fn hud_entity_preview_camera_uniform(
+    preview: &HudEntityPreview,
+    width: f32,
+    height: f32,
+    glint_elapsed_millis: f64,
+) -> CameraUniform {
+    let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
+        CameraUniform::hud_entity_preview_pip(
+            width,
+            height,
+            preview.scale,
+            preview.translation,
+            preview.rotation,
+        )
+    } else {
+        CameraUniform::hud_picture_in_picture(
+            width,
+            height,
+            preview.scale,
+            preview.translation,
+            preview.rotation,
+            hud_preview_lighting_entry(preview.lighting),
+        )
+    };
+    camera.with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
 }
 
 /// Persistent GPU state for one GUI entity preview slot: the vanilla-private color + depth
@@ -564,25 +610,14 @@ impl Renderer {
         target: &mut HudEntityPreviewPipTarget,
         preview: &HudEntityPreview,
         preview_index: u32,
+        glint_elapsed_millis: f64,
     ) -> (u64, u64, u64) {
-        let camera = if preview.lighting == GuiItemLightingEntry::EntityInUi {
-            CameraUniform::hud_entity_preview_pip(
-                target.width as f32,
-                target.height as f32,
-                preview.scale,
-                preview.translation,
-                preview.rotation,
-            )
-        } else {
-            CameraUniform::hud_picture_in_picture(
-                target.width as f32,
-                target.height as f32,
-                preview.scale,
-                preview.translation,
-                preview.rotation,
-                hud_preview_lighting_entry(preview.lighting),
-            )
-        };
+        let camera = hud_entity_preview_camera_uniform(
+            preview,
+            target.width as f32,
+            target.height as f32,
+            glint_elapsed_millis,
+        );
         self.queue
             .write_buffer(&target.camera_buffer, 0, bytemuck::bytes_of(&camera));
 
@@ -1027,6 +1062,7 @@ mod tests {
     use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
     use super::super::model_layers::{
         armor_stand_entity_texture_refs, banner_entity_texture_refs, pig_entity_texture_refs,
+        DRAGON_FIREBALL_TEXTURE_REF,
     };
     use super::super::{
         EntityArmorMaterial, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -1164,7 +1200,7 @@ mod tests {
                 label: Some("bbb-smithing-preview-item-test"),
             });
         let (_, item_draw_calls, _) =
-            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0);
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0, 0.0);
         assert_eq!(item_draw_calls, 1);
 
         let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
@@ -1344,7 +1380,7 @@ mod tests {
                 label: Some("bbb-resource-texture-pip-test"),
             });
         let (entity_draw_calls, _, _) =
-            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0);
+            renderer.encode_hud_entity_preview_pip(&mut encoder, &mut target, &preview, 0, 0.0);
         assert!(entity_draw_calls > 0);
 
         let readback = renderer.device.create_buffer(&wgpu::BufferDescriptor {
@@ -1413,6 +1449,81 @@ mod tests {
             })
             .collect();
         build_entity_model_texture_atlas(&images).expect("atlas").0
+    }
+
+    fn entity_preview_for(
+        entity: EntityModelInstance,
+        override_camera_rotation: Option<[f32; 4]>,
+    ) -> HudEntityPreview {
+        HudEntityPreview {
+            entity,
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 0,
+                y: 0,
+                width: 40,
+                height: 40,
+            },
+            scissor: None,
+            translation: [0.0; 3],
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            override_camera_rotation,
+            scale: 20.0,
+            depth_isolated: true,
+            after_background_layer: None,
+            item_layers: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn preview_override_camera_orients_camera_facing_entity_geometry_like_vanilla() {
+        let texture = DRAGON_FIREBALL_TEXTURE_REF;
+        let texture_len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        let images = [EntityModelTextureImage::new(
+            texture,
+            vec![0xff; texture_len],
+        )];
+        let atlas = build_entity_model_texture_atlas(&images)
+            .expect("dragon fireball atlas")
+            .0;
+        let equipment_assets = ResolvedEntityEquipmentAssetCatalog::legacy_static_fallback();
+        let entity = EntityModelInstance::new(7, EntityModelKind::DragonFireball, [0.0; 3], 0.0);
+        let x_rotation = Quat::from_rotation_x(30.0_f32.to_radians());
+        let preview = entity_preview_for(entity, Some(x_rotation.to_array()));
+
+        let geometry =
+            bake_hud_preview_pip_geometry(&preview, &atlas, &[], &equipment_assets, None, None);
+        assert_eq!(geometry.textured_vertices.len(), 4);
+
+        // `GuiEntityRenderer`: override.conjugate().rotateY(PI), after the fireball's scale(2).
+        let camera_orientation =
+            Mat4::from_quat(x_rotation.conjugate() * Quat::from_rotation_y(std::f32::consts::PI));
+        let transform = Mat4::from_scale(Vec3::splat(2.0)) * camera_orientation;
+        let expected = [
+            Vec3::new(-0.5, -0.25, 0.0),
+            Vec3::new(0.5, -0.25, 0.0),
+            Vec3::new(0.5, 0.75, 0.0),
+            Vec3::new(-0.5, 0.75, 0.0),
+        ]
+        .map(|corner| transform.transform_point3(corner));
+        for (vertex, expected) in geometry.textured_vertices.iter().zip(expected) {
+            let actual = Vec3::from_array(vertex.position);
+            assert!(
+                actual.abs_diff_eq(expected, 1.0e-5),
+                "camera-facing vertex {actual:?} != {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn preview_camera_uniform_uses_the_frame_glint_clock() {
+        let preview = entity_preview_for(armor_stand_preview_instance(), None);
+        let camera = hud_entity_preview_camera_uniform(&preview, 40.0, 60.0, 1_000.0);
+
+        assert_eq!(
+            camera.glint_offsets(),
+            [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
+        );
     }
 
     #[test]
