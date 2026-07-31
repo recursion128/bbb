@@ -7298,7 +7298,7 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
         .find("let mut entity_instances =\n        visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick(")
         .expect("pump should extract entity model instances");
     let held_models = source
-        .find("let held_item_models =")
+        .find("let mut held_item_models =")
         .expect("pump should extract held item models");
     let chest_instances = source
         .find("entity_instances.extend(chest_model_instances_from_world_at_partial_tick(")
@@ -7421,19 +7421,21 @@ fn renderer_frame_item_and_entity_projections_extract_after_tick_advances() {
     assert!(end_gateway_tick < skull_tick);
     assert!(skull_tick < skull_instances);
     assert!(held_models < skull_instances);
-    // Ordinary spawners run `BaseSpawner.clientTick` before the renderer reads
-    // the display entity spin/scale source; the display entity itself reuses
-    // the shared entity-model stream.
+    // Ordinary and Trial Spawners advance before the renderer reads their
+    // display entity spin/scale sources; both display entities reuse the
+    // shared entity-model stream.
     let spawner_tick = source
         .find("world.advance_spawner_block_ticks(running_ticks);")
         .expect("pump should advance ordinary spawner ticks");
+    let trial_spawner_tick = source
+        .find("world.advance_trial_spawner_block_ticks(running_ticks);")
+        .expect("pump should advance Trial Spawner ticks");
     let spawner_instances = source
-        .find(
-            "entity_instances.extend(spawner_display_entity_instances_from_world_at_partial_tick(",
-        )
+        .find("for submission in spawner_display_entity_submissions_from_world_at_partial_tick(")
         .expect("pump should extract spawner display entity model instances");
     assert!(skull_tick < spawner_tick);
-    assert!(spawner_tick < spawner_instances);
+    assert!(spawner_tick < trial_spawner_tick);
+    assert!(trial_spawner_tick < spawner_instances);
     assert!(skull_instances < spawner_instances);
     assert!(held_models < spawner_instances);
     let moving_piston_tick = source
