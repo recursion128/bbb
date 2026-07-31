@@ -50,6 +50,7 @@ mod terrain_state;
 mod test_blocks;
 mod test_instance_blocks;
 mod toasts;
+mod trial_spawner_blocks;
 mod tutorial;
 mod world_state;
 

@@ -1,27 +1,104 @@
-//! World -> renderer projection for ordinary mob-spawner display entities.
+//! World -> renderer projection for ordinary and Trial Spawner display entities.
 //!
 //! Vanilla `SpawnerRenderer` reuses the entity renderer for the cached
-//! `BaseSpawner` display entity, then wraps that submission in a spawner-local
-//! transform. bbb follows the same split: native selects the existing entity
-//! model kind, while the renderer applies the spawner wrapper transform.
+//! display entity, then wraps that submission in a spawner-local transform.
+//! Trial Spawners additionally carry a tiny world containing the bounded
+//! persistent entity projection, so the same entity/equipment/item paths can
+//! consume custom `spawn_data.entity` state.
 
 use bbb_renderer::{EntityModelInstance, EntityModelKind, SpawnerDisplayRenderState};
 use bbb_world::{SpawnerDisplayEntitySourceState, TerrainLight, WorldStore};
 
-use crate::entity_scene::entity_model_kind_for_world_entity_type_at_partial_tick;
+use crate::{
+    entity_scene::{
+        entity_model_instance_from_world_entity_at_partial_tick,
+        entity_model_instance_from_world_entity_with_variant_textures_at_partial_tick,
+        entity_model_kind_for_world_entity_type_at_partial_tick,
+    },
+    entity_variant_textures::NativeEntityVariantTextureRuntime,
+};
+use bbb_item_model::NativeItemRuntime;
 
 /// Block-entity model sentinel id; no vanilla network entity id is negative.
 const SPAWNER_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 
+pub(crate) struct SpawnerDisplayEntitySubmission {
+    pub instance: EntityModelInstance,
+    /// Present only for Trial Spawners whose persistent equipment must be
+    /// resolved by the shared held-item extraction path.
+    pub entity_world: Option<WorldStore>,
+}
+
+#[cfg(test)]
 pub(crate) fn spawner_display_entity_instances_from_world_at_partial_tick(
     world: &WorldStore,
     partial_tick: f32,
 ) -> Vec<EntityModelInstance> {
-    world
+    spawner_display_entity_submissions_from_world_at_partial_tick(world, None, None, partial_tick)
+        .into_iter()
+        .map(|submission| submission.instance)
+        .collect()
+}
+
+pub(crate) fn spawner_display_entity_submissions_from_world_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    variant_textures: Option<&NativeEntityVariantTextureRuntime>,
+    partial_tick: f32,
+) -> Vec<SpawnerDisplayEntitySubmission> {
+    let mut submissions: Vec<_> = world
         .spawner_display_entity_source_states(partial_tick)
         .into_iter()
         .filter_map(|source| spawner_display_entity_instance(source, world, partial_tick))
-        .collect()
+        .map(|instance| SpawnerDisplayEntitySubmission {
+            instance,
+            entity_world: None,
+        })
+        .collect();
+    submissions.extend(
+        world
+            .trial_spawner_display_entity_source_states(partial_tick)
+            .into_iter()
+            .filter_map(|source| {
+                let mut instance = match variant_textures {
+                    Some(textures) => {
+                        entity_model_instance_from_world_entity_with_variant_textures_at_partial_tick(
+                            &source.entity_world,
+                            item_runtime,
+                            textures,
+                            source.entity_id,
+                            partial_tick,
+                        )
+                    }
+                    None => entity_model_instance_from_world_entity_at_partial_tick(
+                        &source.entity_world,
+                        item_runtime,
+                        source.entity_id,
+                        partial_tick,
+                    ),
+                }?;
+                if matches!(instance.kind, EntityModelKind::NoRender) {
+                    return None;
+                }
+                instance.position = [
+                    source.pos.x as f32,
+                    source.pos.y as f32,
+                    source.pos.z as f32,
+                ];
+                instance = instance.with_spawner_display(Some(SpawnerDisplayRenderState {
+                    spin_degrees: source.spin_degrees,
+                    scale: source.scale,
+                }));
+                if let Some(light) = world.sample_block_light(source.pos) {
+                    instance = instance.with_light_coords(spawner_light_coords(light));
+                }
+                Some(SpawnerDisplayEntitySubmission {
+                    instance,
+                    entity_world: Some(source.entity_world),
+                })
+            }),
+    );
+    submissions
 }
 
 fn spawner_display_entity_instance(
@@ -205,5 +282,96 @@ mod tests {
                 scale: source.scale,
             })
         );
+    }
+
+    #[test]
+    fn projects_trial_spawner_custom_entity_through_shared_entity_world() {
+        let mut world = world_with_air_chunk();
+        let pos = BlockPos { x: 2, y: 3, z: 4 };
+        set_trial_spawner(&mut world, pos);
+        world
+            .apply_block_entity_data(BlockEntityData {
+                pos: ProtocolBlockPos {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                },
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID,
+                raw_nbt: trial_spawner_nbt(),
+            })
+            .expect("trial spawner block entity data decodes");
+        world.advance_trial_spawner_block_ticks(1);
+
+        let submissions =
+            spawner_display_entity_submissions_from_world_at_partial_tick(&world, None, None, 1.0);
+        let submission = submissions
+            .iter()
+            .find(|submission| submission.entity_world.is_some())
+            .expect("trial spawner submission");
+        assert_eq!(
+            submission.instance.kind,
+            EntityModelKind::Zombie { baby: true }
+        );
+        assert_eq!(submission.instance.position, [2.0, 3.0, 4.0]);
+        assert_eq!(
+            submission.instance.render_state.spawner_display,
+            Some(SpawnerDisplayRenderState {
+                spin_degrees: 50.0,
+                scale: 0.53125,
+            })
+        );
+        let entity_world = submission.entity_world.as_ref().unwrap();
+        assert!(entity_world
+            .equipment_item(
+                submission.instance.entity_id,
+                bbb_protocol::packets::EquipmentSlot::MainHand,
+            )
+            .is_some());
+    }
+
+    fn set_trial_spawner(world: &mut WorldStore, pos: BlockPos) {
+        let state_id = world
+            .registries()
+            .block_state_id_by_name_and_properties(
+                "minecraft:trial_spawner",
+                &BTreeMap::from([
+                    ("ominous".to_string(), "false".to_string()),
+                    ("trial_spawner_state".to_string(), "active".to_string()),
+                ]),
+            )
+            .expect("active trial spawner block state is registered");
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id: state_id,
+        }));
+    }
+
+    fn trial_spawner_nbt() -> Vec<u8> {
+        let mut out = vec![10];
+        write_tag_name(&mut out, 10, "spawn_data");
+        write_tag_name(&mut out, 10, "entity");
+        write_tag_name(&mut out, 8, "id");
+        write_nbt_string_payload(&mut out, "minecraft:zombie");
+        write_tag_name(&mut out, 1, "IsBaby");
+        out.push(1);
+        write_tag_name(&mut out, 10, "equipment");
+        write_tag_name(&mut out, 10, "mainhand");
+        write_tag_name(&mut out, 8, "id");
+        write_nbt_string_payload(&mut out, "minecraft:stone");
+        write_tag_name(&mut out, 3, "count");
+        out.extend_from_slice(&1_i32.to_be_bytes());
+        out.push(0);
+        out.push(0);
+        out.push(0);
+        out.push(0);
+        write_tag_name(&mut out, 4, "next_mob_spawns_at");
+        out.extend_from_slice(&0_i64.to_be_bytes());
+        out.push(0);
+        out
     }
 }

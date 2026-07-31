@@ -27,8 +27,9 @@ pub use crate::chunks::{
     ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection, ChunkState,
     ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
     PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
-    SignTextDyeColor, SignTextSideState, VaultConnectionParticleState,
-    VaultConnectionParticleTargetState, VaultSharedDataState,
+    SignTextDyeColor, SignTextSideState, TrialSpawnerBlockEntityData,
+    TrialSpawnerEntityNbtProjection, TrialSpawnerEquipmentNbtProjection,
+    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use crate::conduit_blocks::{
     is_conduit_block_name, ConduitBlockState, ConduitModelSourceState,

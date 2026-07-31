@@ -540,5 +540,6 @@ pub use crate::terrain_state::*;
 pub use crate::test_blocks::*;
 pub use crate::test_instance_blocks::*;
 pub use crate::toasts::*;
+pub use crate::trial_spawner_blocks::*;
 pub use crate::tutorial::*;
 pub use crate::world_state::*;

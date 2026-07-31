@@ -11,7 +11,8 @@ use bbb_protocol::{
         VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
         VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
         VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     },
     codec::{Decoder, ProtocolError},
     packets::JigsawJoint,
@@ -283,6 +284,11 @@ fn decode_block_entity_record(
     } else {
         None
     };
+    let trial_spawner = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID {
+        crate::chunks::decode_trial_spawner_block_entity_data(&raw_nbt)?
+    } else {
+        None
+    };
     let command_block = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID {
         Some(crate::command_blocks::decode_command_block_entity_data(
             &raw_nbt,
@@ -348,6 +354,7 @@ fn decode_block_entity_record(
         banner_patterns,
         end_gateway,
         spawner,
+        trial_spawner,
         command_block,
         comparator_output,
         structure_block,

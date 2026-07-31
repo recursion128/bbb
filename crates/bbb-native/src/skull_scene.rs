@@ -279,6 +279,7 @@ mod tests {
             banner_patterns: None,
             end_gateway: None,
             spawner: None,
+            trial_spawner: None,
             command_block: None,
             comparator_output: None,
             structure_block: None,

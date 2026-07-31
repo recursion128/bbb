@@ -7043,6 +7043,7 @@ mod tests {
                 banner_patterns: None,
                 end_gateway: None,
                 spawner: None,
+                trial_spawner: None,
                 note_block_sound: None,
                 skull_profile: None,
             }],

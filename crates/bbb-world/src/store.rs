@@ -128,6 +128,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) spawner_blocks: Vec<crate::SpawnerBlockState>,
     #[serde(default)]
+    pub(crate) trial_spawner_blocks: Vec<crate::TrialSpawnerBlockRenderState>,
+    #[serde(default)]
     pub(crate) vault_blocks: Vec<crate::VaultBlockState>,
     #[serde(default)]
     pub(crate) enchanting_table_books: Vec<crate::EnchantingTableBookState>,

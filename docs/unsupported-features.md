@@ -234,18 +234,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
   `NaturalSpawner.SpawnState`, `ChunkGenerator` / `RandomState` /
   `BiomeSource`) that an external native client does not own.
 
-## Block entities and terrain
-
-Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
-
-- Implement trial-spawner display state and renderer-observable custom
-  `spawn_data.entity` NBT. Follow
-  `TrialSpawnerStateData.getOrCreateDisplayEntity` and
-  `TrialSpawnerRenderer.extractSpawnerData`: decode the update-tag
-  `spawn_data`, retain a bounded persistent projection for fields consumed by
-  the existing entity renderer, resolve registry/equipment data against the
-  current session, and reuse the shared display-entity path. Do not add server
-  spawning, AI, or an unbounded general entity-NBT loader.
 ## Entity models and animation
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`

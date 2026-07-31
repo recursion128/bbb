@@ -892,3 +892,6 @@
 - **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 item component
   现由点击 HashOps 与磁盘 NBT 共享同一 registry-aware Codec 投影；9×9 懒加载、
   分层故障恢复、`DataVersion`、逐格编码回退及旧 bbb JSON 非破坏迁移已贯通。
+- **2026-07-31（Trial Spawner 显示实体工程闭环）**：update-tag
+  `spawn_data.entity` 的有界持久投影现按状态缓存并携带当前 session
+  registry/equipment 上下文，经共享实体、装备与手持物路径提交。

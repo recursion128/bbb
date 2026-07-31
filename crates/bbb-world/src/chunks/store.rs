@@ -1,5 +1,8 @@
 use bbb_protocol::{
-    block_entity_types::{VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID},
+    block_entity_types::{
+        VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+    },
     block_state_types::vanilla_block_state_support_facts,
     block_types::{
         vanilla_block_type_for_resource_id, VANILLA_BLOCK_COPPER_CHEST_ID,
@@ -89,6 +92,7 @@ impl WorldStore {
             return;
         }
         self.prune_moving_pistons_in_chunk(pos);
+        self.prune_trial_spawner_blocks_in_chunk(pos);
         self.first_chunk.get_or_insert(pos);
         if let Some(existing) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) {
             *existing = column.into();
@@ -1130,6 +1134,9 @@ impl WorldStore {
             }
             _ => false,
         };
+        let reset_trial_spawner_cache = block_kind_changed
+            && !keep_changed_block_entity
+            && old_block_entity_type_id == Some(VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID);
         let dimension = self.dimension;
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             return false;
@@ -1172,6 +1179,9 @@ impl WorldStore {
             );
         }
         self.moving_pistons.retain(|moving| moving.pos != pos);
+        if reset_trial_spawner_cache {
+            self.trial_spawner_blocks.retain(|state| state.pos != pos);
+        }
         self.mark_terrain_block_changed(pos);
         self.reconcile_command_block_editor_after_block_change(pos);
         self.reconcile_structure_block_editor_after_block_change(pos);

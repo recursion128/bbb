@@ -1085,6 +1085,27 @@ pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
     )
 }
 
+pub(crate) fn entity_model_instance_from_world_entity_with_variant_textures_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    textures: &NativeEntityVariantTextureRuntime,
+    entity_id: i32,
+    entity_partial_tick: f32,
+) -> Option<EntityModelInstance> {
+    let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
+    let source = world.entity_model_source_at_partial_tick(entity_id, entity_partial_tick)?;
+    let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
+    let context = EntityVariantRenderContext { world, textures };
+    entity_model_instance(
+        source,
+        world,
+        item_runtime,
+        game_time,
+        entity_partial_tick,
+        Some(&context),
+    )
+}
+
 pub(crate) fn entity_model_kind_for_world_entity_type_at_partial_tick(
     world: &WorldStore,
     entity_type_id: i32,

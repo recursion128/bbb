@@ -74,7 +74,7 @@ impl BlockEntityVisibility {
         }
     }
 
-    fn is_visible(
+    pub(crate) fn is_visible(
         self,
         instance: &EntityModelInstance,
         world: &WorldStore,

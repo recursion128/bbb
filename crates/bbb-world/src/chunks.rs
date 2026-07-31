@@ -12,6 +12,7 @@ mod skull;
 mod spawner;
 mod state;
 mod store;
+mod trial_spawner;
 mod vault;
 
 pub(crate) use banner_patterns::decode_banner_patterns;
@@ -38,9 +39,12 @@ pub use state::{
     CampfireBlockEntityData, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
     ChunkViewState, DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary,
     SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, SpawnerBlockEntityData,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    TrialSpawnerBlockEntityData, TrialSpawnerEntityNbtProjection,
+    TrialSpawnerEquipmentNbtProjection, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
+pub(crate) use trial_spawner::decode_trial_spawner_block_entity_data;
 pub(crate) use vault::decode_vault_shared_data;
 
 #[cfg(test)]

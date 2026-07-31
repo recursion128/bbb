@@ -220,7 +220,7 @@ use crate::{
         effects::ParticleBatchSink, publication::SimulationPublication, SimulationRenderContext,
     },
     skull_scene::skull_model_instances_from_world_at_partial_tick,
-    spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
+    spawner_scene::spawner_display_entity_submissions_from_world_at_partial_tick,
     startup::VANILLA_UNLIMITED_FRAMERATE_LIMIT,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
@@ -2810,6 +2810,9 @@ pub(crate) fn advance_simulation(
     // Vanilla `BaseSpawner.clientTick` advances the ordinary spawner's display
     // entity spin only while a nearby player exists.
     world.advance_spawner_block_ticks(running_ticks);
+    // Vanilla `TrialSpawner.tickClient` advances the cached display entity's
+    // state-dependent spin independently of the ordinary nearby-player gate.
+    world.advance_trial_spawner_block_ticks(running_ticks);
     // Vanilla `VaultBlockEntity.Client.tick` advances display-item spin before
     // its local particles and ambient sound.
     world.advance_vault_block_ticks(running_ticks);
@@ -4020,7 +4023,7 @@ pub(crate) fn update_renderer_from_publication(
     );
     let display_text_surfaces = display_entity_item_models.text_surfaces;
     let item_mid_started_at = Instant::now();
-    let held_item_models = held_item_models_with_variant_textures(
+    let mut held_item_models = held_item_models_with_variant_textures(
         &entity_instances,
         world,
         item_runtime,
@@ -4123,10 +4126,26 @@ pub(crate) fn update_renderer_from_publication(
         entity_partial_tick,
         item_runtime,
     ));
-    entity_instances.extend(spawner_display_entity_instances_from_world_at_partial_tick(
+    for submission in spawner_display_entity_submissions_from_world_at_partial_tick(
         world,
+        item_runtime,
+        Some(entity_variant_textures),
         entity_partial_tick,
-    ));
+    ) {
+        if !block_entity_visibility.is_visible(&submission.instance, world, terrain_upload) {
+            continue;
+        }
+        if let Some(entity_world) = submission.entity_world.as_ref() {
+            held_item_models.append(held_item_models_with_variant_textures(
+                std::slice::from_ref(&submission.instance),
+                entity_world,
+                item_runtime,
+                terrain_textures,
+                Some(entity_variant_textures),
+            ));
+        }
+        entity_instances.push(submission.instance);
+    }
     retain_visible_block_entity_instances(
         &mut entity_instances,
         block_entity_model_start,

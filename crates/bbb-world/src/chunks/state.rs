@@ -1,5 +1,5 @@
-use bbb_protocol::packets::inventory::ResolvableProfileSummary;
-use bbb_protocol::StyledTextRun;
+use bbb_protocol::packets::{inventory::ResolvableProfileSummary, EquipmentSlot};
+use bbb_protocol::{NbtSummaryValue, StyledTextRun};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -103,6 +103,8 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spawner: Option<SpawnerBlockEntityData>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trial_spawner: Option<TrialSpawnerBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub command_block: Option<crate::CommandBlockEntityDataState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comparator_output: Option<i32>,
@@ -137,6 +139,7 @@ impl BlockEntityRecord {
             banner_patterns: None,
             end_gateway: None,
             spawner: None,
+            trial_spawner: None,
             command_block: None,
             comparator_output: None,
             structure_block: None,
@@ -155,6 +158,37 @@ impl BlockEntityRecord {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CampfireBlockEntityData {
     pub occupied_slots: [bool; 4],
+}
+
+/// The two `TrialSpawnerStateData.getUpdateTag` fields consumed by the
+/// client-side display-entity path. `spawn_entity` is the bounded persistent
+/// input retained for the renderer projection; server spawn rules remain in
+/// the raw block-entity NBT only.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrialSpawnerBlockEntityData {
+    pub spawn_entity: Option<TrialSpawnerEntityNbtProjection>,
+    pub next_mob_spawns_at: i64,
+}
+
+/// Fixed renderer-observable subset of the `SpawnData.entity` compound.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrialSpawnerEntityNbtProjection {
+    pub entity_id: Option<String>,
+    pub rotation_bits: [u32; 2],
+    pub glowing: bool,
+    pub ticks_frozen: i32,
+    pub fall_flying: bool,
+    pub baby: bool,
+    pub left_handed: bool,
+    pub equipment: Vec<TrialSpawnerEquipmentNbtProjection>,
+}
+
+/// One of the eight closed `EquipmentSlot.CODEC` keys plus the registry-aware
+/// persistent `ItemStack` value that will be resolved against the session.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrialSpawnerEquipmentNbtProjection {
+    pub slot: EquipmentSlot,
+    pub item: NbtSummaryValue,
 }
 
 /// The end gateway block entity fields read by `TheEndGatewayRenderer`:

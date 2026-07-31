@@ -53,7 +53,7 @@ pub struct TrialSpawnerClientEffectSource {
     pub ominous: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrialSpawnerClientState {
     Inactive,
     WaitingForPlayers,
@@ -64,8 +64,35 @@ pub enum TrialSpawnerClientState {
 }
 
 impl TrialSpawnerClientState {
+    pub(crate) fn from_block_property(state: &str) -> Option<Self> {
+        match state {
+            "inactive" => Some(Self::Inactive),
+            "waiting_for_players" => Some(Self::WaitingForPlayers),
+            "active" => Some(Self::Active),
+            "waiting_for_reward_ejection" => Some(Self::WaitingForRewardEjection),
+            "ejecting_reward" => Some(Self::EjectingReward),
+            "cooldown" => Some(Self::Cooldown),
+            _ => None,
+        }
+    }
+
     pub fn is_capable_of_spawning(self) -> bool {
         matches!(self, Self::WaitingForPlayers | Self::Active)
+    }
+
+    pub(crate) fn has_spinning_mob(self) -> bool {
+        matches!(self, Self::WaitingForPlayers | Self::Active)
+    }
+
+    pub(crate) fn spinning_mob_speed(self) -> Option<f64> {
+        match self {
+            Self::WaitingForPlayers => Some(200.0),
+            Self::Active => Some(1000.0),
+            Self::Inactive
+            | Self::WaitingForRewardEjection
+            | Self::EjectingReward
+            | Self::Cooldown => None,
+        }
     }
 }
 
@@ -209,7 +236,7 @@ impl WorldStore {
                         let Some(state) = block
                             .block_properties
                             .get("trial_spawner_state")
-                            .and_then(|state| trial_spawner_state(state))
+                            .and_then(|state| TrialSpawnerClientState::from_block_property(state))
                         else {
                             continue;
                         };
@@ -301,18 +328,6 @@ fn campfire_facing_2d(facing: &str) -> Option<u8> {
         "west" => Some(1),
         "north" => Some(2),
         "east" => Some(3),
-        _ => None,
-    }
-}
-
-fn trial_spawner_state(state: &str) -> Option<TrialSpawnerClientState> {
-    match state {
-        "inactive" => Some(TrialSpawnerClientState::Inactive),
-        "waiting_for_players" => Some(TrialSpawnerClientState::WaitingForPlayers),
-        "active" => Some(TrialSpawnerClientState::Active),
-        "waiting_for_reward_ejection" => Some(TrialSpawnerClientState::WaitingForRewardEjection),
-        "ejecting_reward" => Some(TrialSpawnerClientState::EjectingReward),
-        "cooldown" => Some(TrialSpawnerClientState::Cooldown),
         _ => None,
     }
 }

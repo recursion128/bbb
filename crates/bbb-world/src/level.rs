@@ -973,6 +973,7 @@ impl WorldStore {
         self.shulker_box_lids.clear();
         self.decorated_pot_wobbles.clear();
         self.enchanting_table_books.clear();
+        self.trial_spawner_blocks.clear();
         self.vault_blocks.clear();
         self.enchanting_book_random = crate::EnchantingBookRandom::default();
         self.level_events.clear();

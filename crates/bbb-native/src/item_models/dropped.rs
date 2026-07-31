@@ -1364,6 +1364,7 @@ fn special_foil_decal_pose_scale(context: BlockModelDisplayContext) -> f32 {
 }
 
 /// The baked held-item meshes for this frame, split by atlas (block-items vs flat items).
+#[derive(Default)]
 pub(crate) struct HeldItemModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
@@ -1374,6 +1375,24 @@ pub(crate) struct HeldItemModels {
     pub flat_glint_meshes: Vec<ItemModelMesh>,
     pub flat_glint_translucent_meshes: Vec<ItemModelMesh>,
     pub residency: ItemModelResidencyFrame,
+}
+
+impl HeldItemModels {
+    pub(crate) fn append(&mut self, source: Self) {
+        self.block_meshes.extend(source.block_meshes);
+        self.block_translucent_meshes
+            .extend(source.block_translucent_meshes);
+        self.block_glint_meshes.extend(source.block_glint_meshes);
+        self.block_glint_translucent_meshes
+            .extend(source.block_glint_translucent_meshes);
+        self.flat_meshes.extend(source.flat_meshes);
+        self.flat_translucent_meshes
+            .extend(source.flat_translucent_meshes);
+        self.flat_glint_meshes.extend(source.flat_glint_meshes);
+        self.flat_glint_translucent_meshes
+            .extend(source.flat_glint_translucent_meshes);
+        self.residency.append(source.residency);
+    }
 }
 
 #[cfg(test)]
