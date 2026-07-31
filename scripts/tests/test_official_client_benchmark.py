@@ -567,16 +567,28 @@ class ReplayTests(unittest.TestCase):
                 if frame["capture_segment"] == segment["id"]
             ]
             self.assertEqual(len(frames), 480)
+            capture_index = next(
+                index
+                for index, frame in enumerate(frames)
+                if frame["marker"] == "capture_start"
+            )
             anchor_index = next(
                 index
                 for index, frame in enumerate(frames)
                 if frame["marker"] == "anchor"
             )
+            self.assertEqual(capture_index, 167)
+            self.assertEqual(anchor_index, 168)
+            capture_pose = {
+                key: frames[capture_index][key]
+                for key in ("x", "y", "z", "yaw", "pitch")
+            }
             anchor_pose = {
                 key: frames[anchor_index][key]
                 for key in ("x", "y", "z", "yaw", "pitch")
             }
-            for frame in frames[anchor_index : anchor_index + 40]:
+            self.assertEqual(capture_pose, anchor_pose)
+            for frame in frames[anchor_index - 48 : anchor_index + 1]:
                 self.assertEqual(
                     {key: frame[key] for key in anchor_pose}, anchor_pose
                 )
@@ -607,7 +619,7 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(fixture, benchmark.default_replay())
         self.assertEqual(
             benchmark.replay_hash(fixture),
-            "c40b92e6686a9bfbc32dd4192020c4c95caa2ab1607383e33dffa6b8562eae14",
+            "da7850e8e79eb22506985386889e8ec16141b82ce62db56a8adaa1cb545d8f4c",
         )
 
     def test_replay_rejects_noncontiguous_ticks(self):

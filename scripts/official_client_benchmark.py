@@ -882,12 +882,23 @@ def validate_replay(replay: Mapping[str, Any]) -> None:
 def default_replay() -> dict[str, Any]:
     frames: list[dict[str, Any]] = []
     segment_ticks = 480
+    capture_hold = range(120, 169)
     marker_ticks = {
         0: "segment_start",
-        120: "capture_start",
-        240: "anchor",
-        479: "capture_end",
+        capture_hold.stop - 2: "capture_start",
+        capture_hold.stop - 1: "anchor",
+        segment_ticks - 1: "capture_end",
     }
+
+    def motion_tick(offset: int) -> int:
+        """Collapse settle holds without introducing a post-hold camera jump."""
+        if offset < capture_hold.start:
+            return offset
+        if offset < capture_hold.stop:
+            return capture_hold.start
+        return offset - (len(capture_hold) - 1)
+
+    final_motion_tick = motion_tick(segment_ticks - 1)
 
     def append_segment(
         segment: str, positions: Sequence[tuple[float, float, float, float, float]]
@@ -911,9 +922,9 @@ def default_replay() -> dict[str, Any]:
             )
 
     orbit: list[tuple[float, float, float, float, float]] = []
-    anchor_angle = math.radians(48.0)
     for offset in range(segment_ticks):
-        angle = anchor_angle if 240 <= offset < 280 else math.radians(offset * 0.2)
+        progress = motion_tick(offset) / final_motion_tick
+        angle = math.radians((segment_ticks - 1) * 0.2 * progress)
         x = math.cos(angle) * 24.0
         z = math.sin(angle) * 24.0
         # Vanilla yaw 0 looks toward +Z and -90 toward +X. Point inward at
@@ -926,11 +937,8 @@ def default_replay() -> dict[str, Any]:
     append_segment("static_orbit", orbit)
 
     flight: list[tuple[float, float, float, float, float]] = []
-    anchor_progress = 240.0 / (segment_ticks - 1)
     for offset in range(segment_ticks):
-        progress = (
-            anchor_progress if 240 <= offset < 280 else offset / (segment_ticks - 1)
-        )
+        progress = motion_tick(offset) / final_motion_tick
         x = -12.0 + 24.0 * progress
         z = 128.0 + math.sin(progress * math.tau * 2.0) * 2.0
         flight.append((x, 92.0, z, -90.0, 0.0))
@@ -959,13 +967,12 @@ def default_replay() -> dict[str, Any]:
         144.5,
     )
     crossing: list[tuple[float, float, float, float, float]] = []
-    hold_ticks = segment_ticks // len(boundary_positions)
     for offset in range(segment_ticks):
-        if 240 <= offset < 280:
-            x = 79.5
-        else:
-            index = min(offset // hold_ticks, len(boundary_positions) - 1)
-            x = boundary_positions[index]
+        index = min(
+            motion_tick(offset) * len(boundary_positions) // (final_motion_tick + 1),
+            len(boundary_positions) - 1,
+        )
+        x = boundary_positions[index]
         crossing.append((x, 88.0, -48.5, -90.0, 0.0))
     append_segment("chunk_boundary_crossing", crossing)
 
@@ -4428,6 +4435,26 @@ def require_bbb_terrain_residency(
     )
     evidence = {**fields, "terrain_cache_ready": ready}
     if not valid:
+        evidence.update(
+            {
+                name: int(renderer.get(name, 0))
+                for name in (
+                    "terrain_mesh_jobs_queued",
+                    "terrain_mesh_jobs_completed",
+                    "terrain_mesh_jobs_stale",
+                    "terrain_mesh_sections_queued",
+                    "terrain_mesh_sections_completed",
+                    "terrain_mesh_sections_stale",
+                    "terrain_mesh_queue_full",
+                    "terrain_mesh_recent_build_nanos",
+                    "terrain_mesh_peak_build_nanos",
+                    "terrain_mesh_recent_build_sections",
+                    "terrain_mesh_peak_build_sections",
+                    "terrain_changed_owners",
+                    "terrain_uploaded_owners",
+                )
+            }
+        )
         raise BenchmarkFailure(
             f"bbb {capture_segment} terrain is not fully resident: "
             f"{json.dumps(evidence, sort_keys=True)}"
