@@ -2629,6 +2629,12 @@ impl Renderer {
     }
 
     pub fn set_terrain_mesh_worker_counters(&mut self, counters: TerrainMeshWorkerCounters) {
+        self.counters.terrain_selected_chunks = counters.selected_chunks;
+        self.counters.terrain_resident_chunks = counters.resident_chunks;
+        self.counters.terrain_selected_sections = counters.selected_sections;
+        self.counters.terrain_resident_sections = counters.resident_sections;
+        self.counters.terrain_pending_jobs = counters.pending_jobs;
+        self.counters.terrain_cache_ready = counters.cache_ready;
         self.counters.terrain_mesh_jobs_queued = counters.queued_jobs;
         self.counters.terrain_mesh_jobs_completed = counters.completed_jobs;
         self.counters.terrain_mesh_jobs_stale = counters.stale_jobs;
@@ -3895,6 +3901,29 @@ mod tests {
         assert_eq!(renderer.counters().uploaded_sections, 1);
         assert_eq!(renderer.counters().terrain_vertices, 3);
         assert!(renderer.counters().upload_bytes > 0);
+    }
+
+    #[test]
+    fn terrain_residency_observation_crosses_the_renderer_counter_boundary() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        renderer.set_terrain_mesh_worker_counters(crate::TerrainMeshWorkerCounters {
+            selected_chunks: 625,
+            resident_chunks: 625,
+            selected_sections: 15_000,
+            resident_sections: 15_000,
+            pending_jobs: 0,
+            cache_ready: true,
+            ..Default::default()
+        });
+
+        assert_eq!(renderer.counters().terrain_selected_chunks, 625);
+        assert_eq!(renderer.counters().terrain_resident_chunks, 625);
+        assert_eq!(renderer.counters().terrain_selected_sections, 15_000);
+        assert_eq!(renderer.counters().terrain_resident_sections, 15_000);
+        assert_eq!(renderer.counters().terrain_pending_jobs, 0);
+        assert!(renderer.counters().terrain_cache_ready);
     }
 
     #[test]

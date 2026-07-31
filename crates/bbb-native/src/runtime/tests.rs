@@ -20,6 +20,12 @@ fn renderer_surface_recovery_counters_cross_the_control_projection() {
         window_resize_requests: 2,
         window_minimize_requests: 1,
         window_restore_requests: 1,
+        terrain_selected_chunks: 625,
+        terrain_resident_chunks: 624,
+        terrain_selected_sections: 15_000,
+        terrain_resident_sections: 14_976,
+        terrain_pending_jobs: 1,
+        terrain_cache_ready: false,
         ..Default::default()
     };
     let projected = control_renderer_counters(source);
@@ -33,6 +39,12 @@ fn renderer_surface_recovery_counters_cross_the_control_projection() {
     assert_eq!(projected.window_resize_requests, 2);
     assert_eq!(projected.window_minimize_requests, 1);
     assert_eq!(projected.window_restore_requests, 1);
+    assert_eq!(projected.terrain_selected_chunks, 625);
+    assert_eq!(projected.terrain_resident_chunks, 624);
+    assert_eq!(projected.terrain_selected_sections, 15_000);
+    assert_eq!(projected.terrain_resident_sections, 14_976);
+    assert_eq!(projected.terrain_pending_jobs, 1);
+    assert!(!projected.terrain_cache_ready);
 }
 
 #[test]

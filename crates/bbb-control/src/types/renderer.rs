@@ -184,6 +184,18 @@ pub struct RendererCounters {
     #[serde(default)]
     pub terrain_peak_resident_bytes: u64,
     #[serde(default)]
+    pub terrain_selected_chunks: usize,
+    #[serde(default)]
+    pub terrain_resident_chunks: usize,
+    #[serde(default)]
+    pub terrain_selected_sections: usize,
+    #[serde(default)]
+    pub terrain_resident_sections: usize,
+    #[serde(default)]
+    pub terrain_pending_jobs: usize,
+    #[serde(default)]
+    pub terrain_cache_ready: bool,
+    #[serde(default)]
     pub terrain_mesh_jobs_queued: u64,
     #[serde(default)]
     pub terrain_mesh_jobs_completed: u64,

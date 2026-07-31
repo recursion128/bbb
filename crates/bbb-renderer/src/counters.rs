@@ -9,6 +9,12 @@
 /// without depending on the renderer (and pulling in wgpu).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TerrainMeshWorkerCounters {
+    pub selected_chunks: usize,
+    pub resident_chunks: usize,
+    pub selected_sections: usize,
+    pub resident_sections: usize,
+    pub pending_jobs: usize,
+    pub cache_ready: bool,
     pub queued_jobs: u64,
     pub completed_jobs: u64,
     pub stale_jobs: u64,
@@ -110,6 +116,12 @@ pub struct RendererCounters {
     pub terrain_translucent_resort_index_bytes: u64,
     pub terrain_full_replacements: u64,
     pub terrain_peak_resident_bytes: u64,
+    pub terrain_selected_chunks: usize,
+    pub terrain_resident_chunks: usize,
+    pub terrain_selected_sections: usize,
+    pub terrain_resident_sections: usize,
+    pub terrain_pending_jobs: usize,
+    pub terrain_cache_ready: bool,
     pub terrain_mesh_jobs_queued: u64,
     pub terrain_mesh_jobs_completed: u64,
     pub terrain_mesh_jobs_stale: u64,

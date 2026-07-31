@@ -1383,6 +1383,42 @@ def _wait_for_log(
     raise BenchmarkFailure(f"timed out waiting for log marker {marker!r}: {path}")
 
 
+def replay_capture_markers(
+    replay: Mapping[str, Any],
+) -> list[Mapping[str, Any]]:
+    frames = replay.get("frames")
+    if not isinstance(frames, list):
+        raise BenchmarkFailure("replay lacks frames for capture markers")
+    markers = [
+        frame
+        for frame in frames
+        if isinstance(frame, Mapping)
+        and frame.get("marker") in ("capture_start", "anchor", "capture_end")
+    ]
+    expected = ["capture_start", "anchor", "capture_end"] * 3
+    if [frame.get("marker") for frame in markers] != expected:
+        raise BenchmarkFailure("replay capture markers are incomplete or out of order")
+    return markers
+
+
+def benchmark_marker_line(replay_hash: str, frame: Mapping[str, Any]) -> str:
+    return (
+        f"BBB_BENCHMARK_MARKER {replay_hash} "
+        f"{frame['capture_segment']} {frame['marker']} {frame['server_tick']}"
+    )
+
+
+def marker_timeline_observation(
+    frame: Mapping[str, Any], *, elapsed_seconds: float
+) -> dict[str, Any]:
+    return {
+        "capture_segment": str(frame["capture_segment"]),
+        "marker": str(frame["marker"]),
+        "server_tick": int(frame["server_tick"]),
+        "elapsed_seconds": max(0.0, elapsed_seconds),
+    }
+
+
 def _wait_for_socket(
     path: Path,
     *,
@@ -1830,6 +1866,7 @@ def parse_mangohud_csv(path: Path) -> dict[str, Any]:
 def split_mangohud_capture_by_replay(
     capture: Mapping[str, Sequence[Any]],
     replay: Mapping[str, Any],
+    marker_timeline: Sequence[Mapping[str, Any]],
 ) -> dict[str, dict[str, list[float]]]:
     samples = capture.get("samples", ())
     if not samples or any(
@@ -1842,23 +1879,57 @@ def split_mangohud_capture_by_replay(
     frames = replay.get("frames")
     if not isinstance(frames, list):
         raise BenchmarkFailure("replay lacks frames for MangoHud segmentation")
+    expected_timeline = [
+        (
+            str(frame["capture_segment"]),
+            str(frame["marker"]),
+            int(frame["server_tick"]),
+        )
+        for frame in replay_capture_markers(replay)
+    ]
+    observed_timeline: list[tuple[str, str, int]] = []
+    elapsed_by_boundary: dict[tuple[str, str], float] = {}
+    previous_elapsed = -1.0
+    for observation in marker_timeline:
+        marker = str(observation.get("marker", ""))
+        observed = (
+            str(observation.get("capture_segment", "")),
+            marker,
+            int(observation.get("server_tick", -1)),
+        )
+        elapsed = float(observation.get("elapsed_seconds", -1.0))
+        if elapsed < 0.0 or elapsed < previous_elapsed:
+            raise BenchmarkFailure(
+                "capture marker elapsed times must be non-negative and monotonic"
+        )
+        previous_elapsed = elapsed
+        observed_timeline.append(observed)
+        if marker in ("capture_start", "capture_end"):
+            elapsed_by_boundary[(observed[0], observed[1])] = elapsed
+    if observed_timeline != expected_timeline:
+        raise BenchmarkFailure(
+            "capture marker timeline does not match replay marker order"
+        )
     starts = {
-        frame["capture_segment"]: int(frame["server_tick"])
-        for frame in frames
-        if frame.get("marker") == "capture_start"
+        segment: elapsed
+        for (segment, marker), elapsed in elapsed_by_boundary.items()
+        if marker == "capture_start"
     }
     ends = {
-        frame["capture_segment"]: int(frame["server_tick"])
-        for frame in frames
-        if frame.get("marker") == "capture_end"
+        segment: elapsed
+        for (segment, marker), elapsed in elapsed_by_boundary.items()
+        if marker == "capture_end"
     }
     if set(starts) != set(ends) or len(starts) != 3:
         raise BenchmarkFailure("replay capture segment boundaries are incomplete")
-    first_tick = min(starts.values())
     segmented: dict[str, dict[str, list[float]]] = {}
     for segment in starts:
-        start_seconds = (starts[segment] - first_tick) / 20.0
-        end_seconds = (ends[segment] - first_tick + 1) / 20.0
+        start_seconds = starts[segment]
+        end_seconds = ends[segment]
+        if end_seconds <= start_seconds:
+            raise BenchmarkFailure(
+                f"capture marker timeline has an empty segment: {segment}"
+            )
         selected = [
             sample
             for sample in samples
@@ -1888,13 +1959,16 @@ def split_mangohud_capture_by_replay(
 def summarize_mangohud_logs(
     paths: Sequence[Path],
     replay: Mapping[str, Any],
+    marker_timeline: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     if len(paths) != 1:
         raise BenchmarkFailure(
             "formal MangoHud capture requires exactly one raw frame log"
         )
     capture = parse_mangohud_csv(paths[0])
-    segments = split_mangohud_capture_by_replay(capture, replay)
+    segments = split_mangohud_capture_by_replay(
+        capture, replay, marker_timeline
+    )
     return {
         "overall": [asdict(summarize_frames(capture))],
         "segments": {
@@ -2926,6 +3000,12 @@ def summarize_workload_evidence(
     }
     bbb_render_evidence: dict[str, Any] = {}
     selected_fields = (
+        "terrain_selected_chunks",
+        "terrain_resident_chunks",
+        "terrain_selected_sections",
+        "terrain_resident_sections",
+        "terrain_pending_jobs",
+        "terrain_cache_ready",
         "visible_sections",
         "resident_bytes",
         "opaque_draw_calls",
@@ -2950,6 +3030,9 @@ def summarize_workload_evidence(
                 raise BenchmarkFailure(f"bbb {segment} lacks required {field}")
         if int(renderer.get("visible_sections", 0)) <= 0:
             raise BenchmarkFailure(f"bbb {segment} has no visible sections")
+        require_bbb_terrain_residency(
+            renderer, capture_segment=segment
+        )
         if int(renderer.get("active_particle_instances", -1)) != 0:
             raise BenchmarkFailure(
                 f"bbb {segment} minimal-particle workload is not stable"
@@ -3480,7 +3563,14 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
             raise BenchmarkFailure(
                 f"formal run {index} did not use the AMD hardware GPU"
             )
-        split = split_mangohud_capture_by_replay(capture, replay)
+        marker_timeline = run.get("marker_timeline")
+        if not isinstance(marker_timeline, list):
+            raise BenchmarkFailure(
+                f"formal run {index} lacks an observed marker timeline"
+            )
+        split = split_mangohud_capture_by_replay(
+            capture, replay, marker_timeline
+        )
         for name in metric_names:
             aggregate_captures[client]["overall"][name].extend(
                 capture.get(name, ())
@@ -4040,22 +4130,14 @@ def run_official_smoke(
                 result["renderdoc_target_ident"] = renderdoc_ident
             result["warmup_seconds"] = FIXED_WARMUP_SECONDS
             _warmup_and_start_replay(server_process, replay)
-            if mangohud_root is not None or weston_debug_path is not None:
-                capture_start = next(
-                    frame
-                    for frame in replay["frames"]
-                    if frame.get("marker") == "capture_start"
-                )
-                _wait_for_log(
-                    server_log_path,
-                    (
-                        f"BBB_BENCHMARK_MARKER {digest} "
-                        f"{capture_start['capture_segment']} capture_start "
-                        f"{capture_start['server_tick']}"
-                    ),
-                    process=client_watch_process,
-                    timeout=timeout,
-                )
+            capture_markers = replay_capture_markers(replay)
+            first_capture_start = capture_markers[0]
+            _wait_for_log(
+                server_log_path,
+                benchmark_marker_line(digest, first_capture_start),
+                process=client_watch_process,
+                timeout=timeout,
+            )
             if weston_debug_path is not None:
                 timeline_session = WestonTimelineSession(
                     weston_debug_path=weston_debug_path,
@@ -4075,21 +4157,27 @@ def run_official_smoke(
                 result["mangohud_capture_start"] = mangohud_set_logging(
                     process_pid=client_process.pid, enabled=True
                 )
-            for anchor in (
-                frame
-                for frame in replay["frames"]
-                if frame.get("marker") == "anchor"
-            ):
-                anchor_marker = (
-                    f"BBB_BENCHMARK_MARKER {digest} "
-                    f"{anchor['capture_segment']} anchor {anchor['server_tick']}"
+            capture_origin = time.monotonic()
+            result["marker_timeline"] = [
+                marker_timeline_observation(
+                    first_capture_start, elapsed_seconds=0.0
                 )
+            ]
+            for marker_frame in capture_markers[1:]:
                 _wait_for_log(
                     server_log_path,
-                    anchor_marker,
+                    benchmark_marker_line(digest, marker_frame),
                     process=client_watch_process,
                     timeout=timeout,
                 )
+                result["marker_timeline"].append(
+                    marker_timeline_observation(
+                        marker_frame,
+                        elapsed_seconds=time.monotonic() - capture_origin,
+                    )
+                )
+                if marker_frame["marker"] != "anchor":
+                    continue
                 if renderdoc_ident is not None and renderdoc_control is not None:
                     result["renderdoc_captures"].append(
                         _capture_renderdoc_anchor(
@@ -4097,8 +4185,8 @@ def run_official_smoke(
                             capture_dir=artifact_dir / "renderdoc",
                             target_ident=renderdoc_ident,
                             client="vanilla",
-                            segment=anchor["capture_segment"],
-                            server_tick=anchor["server_tick"],
+                            segment=marker_frame["capture_segment"],
+                            server_tick=marker_frame["server_tick"],
                         )
                     )
                 time.sleep(0.5)
@@ -4108,22 +4196,10 @@ def run_official_smoke(
                             artifact_dir=artifact_dir,
                             environment=environment,
                             client="vanilla",
-                            segment=anchor["capture_segment"],
-                            tick=anchor["server_tick"],
+                            segment=marker_frame["capture_segment"],
+                            tick=marker_frame["server_tick"],
                         )
                     )
-            final_frame = replay["frames"][-1]
-            final_marker = (
-                f"BBB_BENCHMARK_MARKER {digest} "
-                f"{final_frame['capture_segment']} "
-                f"{final_frame['marker']} {final_frame['server_tick']}"
-            )
-            _wait_for_log(
-                server_log_path,
-                final_marker,
-                process=client_watch_process,
-                timeout=timeout,
-            )
             if mangohud_root is not None:
                 result["mangohud_capture_stop"] = mangohud_set_logging(
                     process_pid=client_process.pid,
@@ -4254,7 +4330,14 @@ def run_official_smoke(
                 )
             else:
                 try:
-                    mango_summary = summarize_mangohud_logs(raw_logs, replay)
+                    marker_timeline = result.get("marker_timeline")
+                    if not isinstance(marker_timeline, list):
+                        raise BenchmarkFailure(
+                            "official capture lacks an observed marker timeline"
+                        )
+                    mango_summary = summarize_mangohud_logs(
+                        raw_logs, replay, marker_timeline
+                    )
                     result["mangohud_frame_summaries"] = mango_summary["overall"]
                     result["mangohud_segment_summaries"] = mango_summary["segments"]
                     result["presented_frames"] = mango_summary["presented_frames"]
@@ -4310,6 +4393,43 @@ def _control_request(
             f"bbb-control method {method} failed: {decoded.get('error')}"
         )
     return decoded.get("result")
+
+
+def require_bbb_terrain_residency(
+    renderer: Mapping[str, Any], *, capture_segment: str
+) -> dict[str, Any]:
+    fields = {
+        name: int(renderer.get(name, 0))
+        for name in (
+            "terrain_selected_chunks",
+            "terrain_resident_chunks",
+            "terrain_selected_sections",
+            "terrain_resident_sections",
+            "terrain_pending_jobs",
+            "terrain_mesh_queue_depth",
+            "uploaded_sections",
+        )
+    }
+    ready = renderer.get("terrain_cache_ready") is True
+    valid = (
+        ready
+        and fields["terrain_selected_chunks"] > 0
+        and fields["terrain_selected_chunks"]
+        == fields["terrain_resident_chunks"]
+        and fields["terrain_selected_sections"] > 0
+        and fields["terrain_selected_sections"]
+        == fields["terrain_resident_sections"]
+        == fields["uploaded_sections"]
+        and fields["terrain_pending_jobs"] == 0
+        and fields["terrain_mesh_queue_depth"] == 0
+    )
+    evidence = {**fields, "terrain_cache_ready": ready}
+    if not valid:
+        raise BenchmarkFailure(
+            f"bbb {capture_segment} terrain is not fully resident: "
+            f"{json.dumps(evidence, sort_keys=True)}"
+        )
+    return evidence
 
 
 def run_bbb_smoke(
@@ -4631,22 +4751,21 @@ def run_bbb_smoke(
                 result["renderdoc_target_ident"] = renderdoc_ident
             result["warmup_seconds"] = FIXED_WARMUP_SECONDS
             _warmup_and_start_replay(server_process, replay)
-            if mangohud_root is not None or weston_debug_path is not None:
-                capture_start = next(
-                    frame
-                    for frame in replay["frames"]
-                    if frame.get("marker") == "capture_start"
-                )
-                _wait_for_log(
-                    server_log_path,
-                    (
-                        f"BBB_BENCHMARK_MARKER {digest} "
-                        f"{capture_start['capture_segment']} capture_start "
-                        f"{capture_start['server_tick']}"
-                    ),
-                    process=client_watch_process,
-                    timeout=timeout,
-                )
+            capture_markers = replay_capture_markers(replay)
+            first_capture_start = capture_markers[0]
+            _wait_for_log(
+                server_log_path,
+                benchmark_marker_line(digest, first_capture_start),
+                process=client_watch_process,
+                timeout=timeout,
+            )
+            first_residency = _control_request(
+                ("127.0.0.1", control_port), "renderer.counters"
+            )
+            require_bbb_terrain_residency(
+                first_residency,
+                capture_segment=str(first_capture_start["capture_segment"]),
+            )
             if weston_debug_path is not None:
                 timeline_session = WestonTimelineSession(
                     weston_debug_path=weston_debug_path,
@@ -4666,20 +4785,56 @@ def run_bbb_smoke(
                 result["mangohud_capture_start"] = mangohud_set_logging(
                     process_pid=client_process.pid, enabled=True
                 )
-            for anchor in (
-                frame
-                for frame in replay["frames"]
-                if frame.get("marker") == "anchor"
-            ):
+            capture_origin = time.monotonic()
+            result["marker_timeline"] = [
+                marker_timeline_observation(
+                    first_capture_start, elapsed_seconds=0.0
+                )
+            ]
+            result["capture_start_residency"] = [
+                {
+                    "capture_segment": first_capture_start["capture_segment"],
+                    "server_tick": first_capture_start["server_tick"],
+                    "renderer": require_bbb_terrain_residency(
+                        first_residency,
+                        capture_segment=str(
+                            first_capture_start["capture_segment"]
+                        ),
+                    ),
+                }
+            ]
+            for marker_frame in capture_markers[1:]:
                 _wait_for_log(
                     server_log_path,
-                    (
-                        f"BBB_BENCHMARK_MARKER {digest} "
-                        f"{anchor['capture_segment']} anchor {anchor['server_tick']}"
-                    ),
+                    benchmark_marker_line(digest, marker_frame),
                     process=client_watch_process,
                     timeout=timeout,
                 )
+                result["marker_timeline"].append(
+                    marker_timeline_observation(
+                        marker_frame,
+                        elapsed_seconds=time.monotonic() - capture_origin,
+                    )
+                )
+                if marker_frame["marker"] == "capture_start":
+                    renderer_counters = _control_request(
+                        ("127.0.0.1", control_port), "renderer.counters"
+                    )
+                    result["capture_start_residency"].append(
+                        {
+                            "capture_segment": marker_frame["capture_segment"],
+                            "server_tick": marker_frame["server_tick"],
+                            "renderer": require_bbb_terrain_residency(
+                                renderer_counters,
+                                capture_segment=str(
+                                    marker_frame["capture_segment"]
+                                ),
+                            ),
+                        }
+                    )
+                    continue
+                if marker_frame["marker"] != "anchor":
+                    continue
                 if renderdoc_ident is not None and renderdoc_control is not None:
                     result["renderdoc_captures"].append(
                         _capture_renderdoc_anchor(
@@ -4687,18 +4842,23 @@ def run_bbb_smoke(
                             capture_dir=artifact_dir / "renderdoc",
                             target_ident=renderdoc_ident,
                             client="bbb",
-                            segment=anchor["capture_segment"],
-                            server_tick=anchor["server_tick"],
+                            segment=marker_frame["capture_segment"],
+                            server_tick=marker_frame["server_tick"],
                         )
                     )
                 time.sleep(0.5)
+                renderer_counters = _control_request(
+                    ("127.0.0.1", control_port), "renderer.counters"
+                )
+                require_bbb_terrain_residency(
+                    renderer_counters,
+                    capture_segment=str(marker_frame["capture_segment"]),
+                )
                 result["anchor_observations"].append(
                     {
-                        "capture_segment": anchor["capture_segment"],
-                        "server_tick": anchor["server_tick"],
-                        "renderer": _control_request(
-                            ("127.0.0.1", control_port), "renderer.counters"
-                        ),
+                        "capture_segment": marker_frame["capture_segment"],
+                        "server_tick": marker_frame["server_tick"],
+                        "renderer": renderer_counters,
                         "chunk_view": _control_request(
                             ("127.0.0.1", control_port), "world.chunk_view"
                         ),
@@ -4714,21 +4874,10 @@ def run_bbb_smoke(
                             artifact_dir=artifact_dir,
                             environment=environment,
                             client="bbb",
-                            segment=anchor["capture_segment"],
-                            tick=anchor["server_tick"],
+                            segment=marker_frame["capture_segment"],
+                            tick=marker_frame["server_tick"],
                         )
                     )
-            final_frame = replay["frames"][-1]
-            _wait_for_log(
-                server_log_path,
-                (
-                    f"BBB_BENCHMARK_MARKER {digest} "
-                    f"{final_frame['capture_segment']} "
-                    f"{final_frame['marker']} {final_frame['server_tick']}"
-                ),
-                process=client_watch_process,
-                timeout=timeout,
-            )
             if mangohud_root is not None:
                 result["mangohud_capture_stop"] = mangohud_set_logging(
                     process_pid=client_process.pid,
@@ -4849,7 +4998,14 @@ def run_bbb_smoke(
                 )
             else:
                 try:
-                    mango_summary = summarize_mangohud_logs(raw_logs, replay)
+                    marker_timeline = result.get("marker_timeline")
+                    if not isinstance(marker_timeline, list):
+                        raise BenchmarkFailure(
+                            "bbb capture lacks an observed marker timeline"
+                        )
+                    mango_summary = summarize_mangohud_logs(
+                        raw_logs, replay, marker_timeline
+                    )
                     result["mangohud_frame_summaries"] = mango_summary["overall"]
                     result["mangohud_segment_summaries"] = mango_summary["segments"]
                     result["presented_frames"] = mango_summary["presented_frames"]

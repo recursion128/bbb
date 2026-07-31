@@ -863,14 +863,37 @@ class CaptureTests(unittest.TestCase):
             path.write_text(
                 "fps,frametime,gpu_load,elapsed\n"
                 "100,10,50,1000000000\n"
-                "100,10,60,25000000000\n"
-                "100,10,70,49000000000\n",
+                "100,10,60,11000000000\n"
+                "100,10,70,21000000000\n",
                 encoding="utf-8",
             )
             capture = benchmark.parse_mangohud_csv(path)
+            replay = benchmark.default_replay()
+            boundary_elapsed = {
+                ("static_orbit", "capture_start"): 0.0,
+                ("static_orbit", "anchor"): 2.5,
+                ("static_orbit", "capture_end"): 5.0,
+                ("preloaded_flight", "capture_start"): 10.0,
+                ("preloaded_flight", "anchor"): 12.5,
+                ("preloaded_flight", "capture_end"): 15.0,
+                ("chunk_boundary_crossing", "capture_start"): 20.0,
+                ("chunk_boundary_crossing", "anchor"): 22.5,
+                ("chunk_boundary_crossing", "capture_end"): 25.0,
+            }
+            timeline = [
+                benchmark.marker_timeline_observation(
+                    frame,
+                    elapsed_seconds=boundary_elapsed.get(
+                        (frame["capture_segment"], frame["marker"]),
+                        0.0,
+                    ),
+                )
+                for frame in benchmark.replay_capture_markers(replay)
+            ]
             segments = benchmark.split_mangohud_capture_by_replay(
                 capture,
-                benchmark.default_replay(),
+                replay,
+                timeline,
             )
             self.assertEqual(
                 list(segments),
@@ -883,6 +906,45 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(
                 segments["chunk_boundary_crossing"]["gpu_load"],
                 [70.0],
+            )
+
+    def test_mangohud_segmentation_rejects_tick_derived_or_missing_timeline(self):
+        replay = benchmark.default_replay()
+        capture = {
+            "samples": [
+                {"elapsed_seconds": 1.0, "frame_ms": 10.0}
+            ]
+        }
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "marker timeline"
+        ):
+            benchmark.split_mangohud_capture_by_replay(
+                capture, replay, []
+            )
+
+    def test_bbb_terrain_residency_requires_full_loaded_section_coverage(self):
+        ready = {
+            "terrain_selected_chunks": 625,
+            "terrain_resident_chunks": 625,
+            "terrain_selected_sections": 15000,
+            "terrain_resident_sections": 15000,
+            "terrain_pending_jobs": 0,
+            "terrain_mesh_queue_depth": 0,
+            "terrain_cache_ready": True,
+            "uploaded_sections": 15000,
+        }
+        self.assertEqual(
+            benchmark.require_bbb_terrain_residency(
+                ready, capture_segment="static_orbit"
+            )["terrain_resident_chunks"],
+            625,
+        )
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "not fully resident"
+        ):
+            benchmark.require_bbb_terrain_residency(
+                {**ready, "terrain_resident_chunks": 49},
+                capture_segment="static_orbit",
             )
 
     def test_mangohud_control_starts_and_stops_logging_without_input(self):
@@ -1158,6 +1220,14 @@ class CaptureTests(unittest.TestCase):
             ],
         }
         renderer = {
+            "terrain_selected_chunks": 625,
+            "terrain_resident_chunks": 625,
+            "terrain_selected_sections": 15000,
+            "terrain_resident_sections": 15000,
+            "terrain_pending_jobs": 0,
+            "terrain_mesh_queue_depth": 0,
+            "terrain_cache_ready": True,
+            "uploaded_sections": 15000,
             "visible_sections": 1,
             "resident_bytes": 1024,
             "opaque_draw_calls": 1,
