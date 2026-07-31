@@ -17,10 +17,11 @@ use crate::renderer::RenderSurface;
 use crate::screenshot::ScreenshotPixels;
 use crate::Renderer;
 
-/// The production surface format family `choose_format` prefers (sRGB), so
-/// offscreen frames exercise the same color pipeline as the swapchain,
-/// including the BGRA byte-order swap on readback.
-const OFFSCREEN_SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+/// The production surface format family `choose_format` requires. Vanilla
+/// 26.1 maps `TextureFormat.RGBA8` to `GL_RGBA8`, so colors remain numeric
+/// UNORM values rather than entering an implicit sRGB decode/encode path.
+/// BGRA keeps the production swapchain byte-order conversion in readback.
+const OFFSCREEN_SURFACE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
 
 impl Renderer {
     /// Builds a windowless `Renderer` whose frame target is a `width`x`height`
@@ -142,7 +143,7 @@ mod tests {
             // No GPU / software adapter on this machine — skip rather than fail.
             return;
         };
-        // Pure blue background: survives the sRGB surface encoding as byte 255.
+        // Pure blue remains byte 255 through the Vanilla-compatible UNORM target.
         renderer.set_clear_color(ClearColor {
             r: 0.0,
             g: 0.0,
@@ -184,6 +185,44 @@ mod tests {
             renderer.counters.draw_calls
         );
         assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    /// Vanilla 26.1 creates its main target and ordinary resource textures as
+    /// `GL_RGBA8`, so neither clear values nor sampled texels receive implicit
+    /// sRGB transfer-function conversion. Keep a non-primary color here: pure
+    /// red/green/blue would fail to distinguish UNORM from sRGB encoding.
+    #[test]
+    fn offscreen_frame_preserves_vanilla_rgba8_numeric_channels() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let clear = [17_u8, 34, 51, 255];
+        let texel = [120_u8, 167, 255, 255];
+        renderer.set_clear_color(ClearColor {
+            r: f64::from(clear[0]) / 255.0,
+            g: f64::from(clear[1]) / 255.0,
+            b: f64::from(clear[2]) / 255.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &texel.repeat(16))
+            .expect("upload crosshair");
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+
+        assert_channels_within_one(pixels.pixel(8, 8), clear);
+        assert_channels_within_one(pixels.pixel(WIDTH / 2, HEIGHT / 2), texel);
+    }
+
+    fn assert_channels_within_one(actual: [u8; 4], expected: [u8; 4]) {
+        for (channel, (&actual_channel, &expected_channel)) in
+            actual.iter().zip(expected.iter()).enumerate()
+        {
+            assert!(
+                actual_channel.abs_diff(expected_channel) <= 1,
+                "channel {channel}: expected {expected_channel}, got {actual_channel}; full expected={expected:?} actual={actual:?}"
+            );
+        }
     }
 
     #[test]
@@ -1049,7 +1088,7 @@ mod tests {
             .render_offscreen_frame()
             .expect("player-reporting frame");
         let outside = pixels.pixel(4, 4);
-        let focused_row = pixels.pixel(WIDTH / 2, 62);
+        let focused_row = pixels.pixel(WIDTH / 2, 48);
         let footer = pixels.pixel(WIDTH / 2, HEIGHT - 28);
         assert!(
             outside[2] < 100,

@@ -3748,18 +3748,12 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
         .find(|f| {
             matches!(
                 f,
-                wgpu::TextureFormat::Bgra8UnormSrgb | wgpu::TextureFormat::Rgba8UnormSrgb
+                wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
             )
         })
-        .or_else(|| {
-            formats.iter().copied().find(|f| {
-                matches!(
-                    f,
-                    wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
-                )
-            })
+        .ok_or_else(|| {
+            anyhow!("surface does not expose a Vanilla-compatible RGBA/BGRA 8-bit UNORM format")
         })
-        .ok_or_else(|| anyhow!("surface does not expose an RGBA/BGRA 8-bit format"))
 }
 
 #[cfg(test)]
@@ -3775,28 +3769,16 @@ mod tests {
     use glam::Vec3;
 
     #[test]
-    fn choose_format_prefers_srgb_surface_formats_for_screenshot_readback() {
+    fn choose_format_requires_vanilla_rgba8_numeric_surface_behavior() {
         assert_eq!(
             choose_format(&[
-                wgpu::TextureFormat::Rgba8Unorm,
                 wgpu::TextureFormat::Bgra8UnormSrgb,
+                wgpu::TextureFormat::Rgba8Unorm,
                 wgpu::TextureFormat::Rgba16Float,
             ])
             .unwrap(),
-            wgpu::TextureFormat::Bgra8UnormSrgb
+            wgpu::TextureFormat::Rgba8Unorm
         );
-        assert_eq!(
-            choose_format(&[
-                wgpu::TextureFormat::Rgba8Unorm,
-                wgpu::TextureFormat::Rgba8UnormSrgb,
-            ])
-            .unwrap(),
-            wgpu::TextureFormat::Rgba8UnormSrgb
-        );
-    }
-
-    #[test]
-    fn choose_format_falls_back_to_unorm_screenshot_readback_formats() {
         assert_eq!(
             choose_format(&[
                 wgpu::TextureFormat::Rgba16Float,
@@ -3819,13 +3801,14 @@ mod tests {
     fn choose_format_rejects_non_screenshot_readback_formats() {
         let err = choose_format(&[
             wgpu::TextureFormat::Rgba16Float,
+            wgpu::TextureFormat::Bgra8UnormSrgb,
             wgpu::TextureFormat::Depth24Plus,
         ])
         .unwrap_err();
 
         assert!(err
             .to_string()
-            .contains("surface does not expose an RGBA/BGRA 8-bit format"));
+            .contains("surface does not expose a Vanilla-compatible RGBA/BGRA 8-bit UNORM format"));
     }
 
     #[test]

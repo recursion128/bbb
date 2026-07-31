@@ -89,11 +89,11 @@ fn post_effect_graph_executes_selected_custom_shader_pixels_in_pass_order() {
     queue.submit(Some(encoder.finish()));
     let pixel = read_first_pixel(&device, &queue, &target, 4, 4);
     assert!(
-        (20..=22).contains(&pixel[0])
-            && (79..=81).contains(&pixel[1])
-            && (39..=41).contains(&pixel[2])
+        (29..=31).contains(&pixel[0])
+            && (84..=86).contains(&pixel[1])
+            && (41..=43).contains(&pixel[2])
             && pixel[3] >= 250,
-        "custom target tint plus sRGB texture should produce [21,80,40,255], got {pixel:?}"
+        "custom target tint plus RGBA8 texture should produce [30,85,42,255], got {pixel:?}"
     );
 
     std::fs::remove_dir_all(root).unwrap();

@@ -21768,14 +21768,14 @@ mod tests {
 
         let background = pixels.pixel(36, 24);
         assert!(
-            background[2] >= 120 && background[2] <= 128 && background[0] < 4,
+            background[2] >= 48 && background[2] <= 54 && background[0] < 4,
             "80% black background over blue: {background:?}"
         );
         let text = pixels.pixel(46, 25);
         assert!(
             text.iter()
                 .take(3)
-                .all(|channel| (144..=150).contains(channel)),
+                .all(|channel| (72..=78).contains(channel)),
             "75-brightness centered text: {text:?}"
         );
         let arrow = pixels.pixel(56, 25);
@@ -21783,7 +21783,7 @@ mod tests {
             arrow
                 .iter()
                 .take(3)
-                .all(|channel| (144..=150).contains(channel)),
+                .all(|channel| (72..=78).contains(channel)),
             "right arrow shares row brightness: {arrow:?}"
         );
     }
@@ -24316,7 +24316,7 @@ mod tests {
         );
         let input_background = pixels.pixel(300, 232);
         assert!(
-            input_background[2] > 160 && input_background[2] < 220,
+            input_background[2] >= 124 && input_background[2] <= 130,
             "input background should half-darken the blue frame, got {input_background:?}"
         );
         let previous_marker = pixels.pixel(10, 49);
@@ -28636,7 +28636,7 @@ mod tests {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });

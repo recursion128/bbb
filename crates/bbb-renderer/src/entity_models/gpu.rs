@@ -3990,7 +3990,7 @@ fn create_entity_model_texture_atlas_gpu(
         mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
@@ -4091,7 +4091,7 @@ fn create_dynamic_player_skin_atlas_gpu(
         mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
@@ -4192,7 +4192,7 @@ fn create_dynamic_player_texture_atlas_gpu(
         mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });

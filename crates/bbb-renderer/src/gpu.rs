@@ -287,7 +287,9 @@ pub(super) fn create_terrain_atlas_mips_gpu(
         mip_level_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        // Vanilla 26.1 `TextureAtlas` uses `TextureFormat.RGBA8`, mapped by
+        // `GlConst.toGlInternalId` to `GL_RGBA8`, not an sRGB texture.
+        format: wgpu::TextureFormat::Rgba8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
