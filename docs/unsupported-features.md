@@ -41,15 +41,19 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- The official equal-load capture identifies a concrete bbb frame-tail
-  regression: in the chunk-boundary segment its application-frame interval is
-  p95 151.610 ms versus Vanilla 3.446 ms, with 314 versus zero 33.333 ms
-  hitches. Localize the dominant bbb owner across chunk application, meshing,
-  GPU upload, draw/pipeline state and resident release, then remove the measured
-  tail without reducing the shared visible/resident workload. Preserve exact
-  phase/translucent order and bounded-owner fallback; completion requires the
-  same replay/camera/world/resource/settings hashes and external interval/perf
-  evidence before and after the change.
+- The official-client comparison is an active P0 engineering item because its
+  claimed equal-load premise is false: generated dispatch can consume adjacent
+  replay leaves in one server tick; bbb caps terrain residency at 49 chunks and
+  reaches anchors with incomplete meshes; and bbb sRGB targets/textures do not
+  match Vanilla 26.1 `TextureFormat.RGBA8` / `GL_RGBA8` numeric color behavior.
+  First restore marker-time, loaded-resident geometry and deterministic color/
+  structure parity, then localize and remove the measured application-frame
+  tail across chunk application, meshing, GPU upload, draw/pipeline state and
+  resident release. Completion requires four valid captures per client in two
+  ABBA rounds with the same camera/world/resource/settings and actual visible/
+  resident workload; bbb p50/p95 must not exceed Vanilla, p99 must not regress,
+  and no bbb-only 33.333 ms hitch may remain. Preserve exact phase/translucent
+  order and bounded-owner fallback.
 - API-neutral per-client GPU execution duration is `deferred`: the current
   kernel exposes `dma_fence:dma_fence_signaled` instead of the requested
   `fence:fence_signaled`, and the headless Xwayland path has no proven

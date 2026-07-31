@@ -9,8 +9,13 @@ The existing repo-native owner and frame-tail baselines remain in
 `docs/simulation-render-performance-design.md`; this document adds only the
 cross-client launch, workload, and external-measurement boundary.
 
-The current host completed two ABBA rounds (four valid captures per client) on
-the AMD Radeon 610M. The machine-readable result is
+The current P0 audit invalidated the equal-load status of the existing two ABBA
+rounds: generated replay dispatch can consume adjacent leaves in one server
+tick, bbb caps terrain residency at 49 chunks and reaches anchors before all
+required meshes converge, and its sRGB render targets/textures do not match
+Vanilla 26.1's numeric `TextureFormat.RGBA8` / `GL_RGBA8` color path. The old
+captures remain diagnostic evidence only and must not be presented as a formal
+cross-client result. Their machine-readable result is
 `/tmp/bbb-formal-abba-v1/summary.json`, SHA-256
 `370a87331c8bdb3eb15e9c6ebc824608b9a1329a948d9b2d4df321b5cfde3fcb`;
 large external assets, clients, tools, worlds, screenshots, and captures remain

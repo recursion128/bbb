@@ -240,7 +240,8 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
 
 ## P0 重新打开条件与 audit 分类
 
-只有出现以下任一情况才开 P0 slice（普通视觉精度、长尾功能缺口和性能优化不算）：
+只有出现以下任一情况才开 P0 slice（普通视觉精度、长尾功能缺口和未进入正式
+交付合同的性能优化不算）：
 
 - vanilla 26.1 合法 offline-mode session 无法完成 login/configuration/play handoff，
   或既有 playable smoke 在连接、spawn、chunk、movement、inventory、interaction、
@@ -266,6 +267,9 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
   `entityCutoutZOffset` / `entityTranslucent` / `Eyes` / `EnergySwirl` 等）。
 - 新 layer/renderer 继承错误 light/overlay，或 invisible、self-visible
   translucent、hidden glowing outline 分支回退到普通可见路径。
+- 已声明完成的正式同载性能合同出现可复现的 camera/world/resource/settings、
+  visible/resident geometry、颜色域或 capture 时序不一致，或在同载成立后出现足以
+  破坏可玩交付的稳定帧尾回退。修复不得减少任一侧实际可见/resident 工作量。
 
 已知非 P0 分类基准见 `scripts/data/p0-audit-allowlist.txt`；分类变化时更新该文件并附依据。
 
@@ -274,6 +278,54 @@ P0 完成标准：触发回退有最小复现和对应 semantic/integration regr
 metadata；协议/world/runtime 问题断言状态转换、ordering、canonical state 与 side
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；开放式
 视觉 parity 留在对应优先级。
+
+### 当前 P0 工程：官方 26.1 同载渲染与性能闭环
+
+这是一个高风险工程 slice，单一语义目标是恢复并满足“相同实际画面负载下 bbb 的
+稳定帧性能不劣于官方 Vanilla 26.1”。渲染一致性是性能比较的真实性前置，不是并行
+feature。完成必须同时满足：
+
+- replay 每个 frame 只在一个真实 server tick 执行，marker 时间与生成顺序可由日志
+  机械证明；场景分段按实际 marker 时间而不是 `frame ordinal / 20` 推导；
+- 两边使用同一 camera/world/resource/settings hash；bbb 在 capture 前 resident 所有
+  server 已加载的共同视距 chunk/section，terrain worker/cache 无待完成锚点工作；
+- Vanilla `TextureFormat.RGBA8` / OpenGL `GL_RGBA8` 数值颜色合同贯穿 bbb 的资源
+  texture、lightmap、世界中间 target、surface 与 screenshot readback；天空、雾、
+  terrain、cutout、translucent 与实体锚点通过确定性像素/结构比较；
+- 三场景各至少四次有效 capture，保持 Java → bbb → bbb → Java 的两轮 ABBA；bbb
+  application-frame p50/p95 均不劣于 Vanilla，p99 不恶化，且没有 Vanilla 不存在的
+  `>=33.333 ms` hitch；共同 `perf stat` 仍只报告每 presented frame 的进程均值；
+- 最终机器可解析 summary 保留每次 run、无效原因、截图/marker/residency、MangoHud、
+  perf 与工具版本/校验；`HEAD` 通过 full gate，适用的 live playable stamp 刷新。
+
+非目标：不 patch/mod 官方 jar，不改协议/服务器玩法，不通过 view distance、resident
+cap、实体/粒子/HUD/透明层删减或较低图形设置换取性能，不把 MangoHud interval 称为
+CPU/GPU duration，不把本工程扩成通用 renderer 重写或 GPU-only ftrace 工程。
+
+边界与权威依据：benchmark/replay/capture parser 归
+`scripts/official_client_benchmark.py`；chunk snapshot/mesh/readiness 归
+`bbb-native::terrain_runtime`；GPU texture/target/submit 归 `bbb-renderer`；canonical
+chunk/world 仍归 `bbb-world`。关键 Vanilla 依据是 `MainTarget`、`RenderTarget`、
+`TextureFormat`、`GlConst`、`TextureAtlas`、`Lightmap`、`LevelRenderer`、
+`SkyRenderer`、`FogRenderer`、`ClientboundPlayerPositionPacket` 与 teleport 路径。
+
+串行阶段与 focused tests：
+
+1. 修 replay dispatch/marker 分段及 parser，运行 scripts benchmark unittest；
+2. 修 RGBA8 数值颜色合同与 deterministic readback，运行 bbb-renderer sky/terrain/
+   offscreen/screenshot tests；
+3. 移除 49-chunk cap，建立全 loaded-resident readiness barrier 与结构证据，运行
+   bbb-native terrain/runtime tests 和两边 workload smoke；
+4. 在有效共同 workload 上以 phase counters、marker-window `perf record -g` 和相同
+   `perf stat` 定位 dominant owner；每轮只改当前证据指向的 owner并复测；
+5. 通过截图/RenderDoc workload checkpoint 后重跑正式 ABBA，更新唯一 benchmark
+   文档、账本和 machine-readable summary。
+
+基线 full gate 已在开工前关闭。阶段 1～3 合并为第一个真实性里程碑并 full gate；
+之后每累计四个提交、跨核心 owner、准备正式 capture 或停止时 full gate；最终 HEAD
+必须 full-gated。任一阶段失败均 fix-forward；安全停止点只允许位于干净提交且文档
+明确仍为 active 的 checkpoint。外部客户端/assets/world/capture/tool 产物只留外部
+目录，不提交仓库。
 
 ## 客户端差异优先级
 
@@ -354,10 +406,11 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。官方 Java 同载对照已关闭比较工程合同，并把 bbb
-chunk-boundary frame-tail 回归提升为账本中唯一 ready 项；下一 slice 按共同
-replay 的 losing scene 定位 dominant runtime owner，不得在当前比较 slice
-夹带优化。安全预算、bounded runtime、lifecycle/fault soak 与已声明平台行已有
+状态：`active`。官方 Java 同载对照的截图审计重开为当前 P0 工程：replay dispatch
+会在同一 server tick 消费相邻 leaf，bbb 的 49-chunk cap 与未收敛 mesh 造成可见
+几何缺失，Vanilla RGBA8 与 bbb sRGB target/texture 合同造成颜色偏差；旧 ABBA 只
+保留诊断价值。在真实性里程碑通过后，继续按修正 workload 的 losing scene 定位并
+消除 dominant runtime owner。安全预算、bounded runtime、lifecycle/fault soak 与已声明平台行已有
 有界 gate；剩余 GPU-only duration 关联、扩展 Linux 交互矩阵和非 Linux 发布行
 只按各自 `Reopen when ...` deferred。官方 26.1 离线启动、共同
 replay/capture 合同、两轮 ABBA 结果与 GPU-duration 精确 blocker 由
@@ -372,8 +425,9 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
 - simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
   shutdown/join 与 panic propagation 由
   `docs/simulation-render-thread-design.md` 和 focused tests 维护；
-- repo-native before/after、runtime observation 与同载官方 Java 两轮 ABBA
-  已有稳定基线；后续性能 slice 必须按测得的 losing scene/owner 优化，不能通过
+- repo-native before/after 与 runtime observation 已有稳定基线；旧同载官方 Java
+  ABBA 因可见/resident/颜色/时序合同不成立只可用于诊断；当前工程必须先恢复共同
+  workload，再按测得的 losing scene/owner 优化，不能通过
   减少可见或 resident 工作伪造胜负结论；
 - `scripts/lifecycle-soak-gate.sh` 依
   `docs/lifecycle-soak-gate-design.md` 组合三轮真实 live playable、
