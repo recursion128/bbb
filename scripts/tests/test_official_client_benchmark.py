@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import socket
 import subprocess
@@ -250,18 +251,192 @@ class LaunchPlanTests(unittest.TestCase):
         )
         self.assertNotIn("offline", benchmark.sanitized_argv(argv))
 
+    def test_x11_launch_omits_wayland_preference(self):
+        plan = benchmark.build_vanilla_launch_plan(
+            self.audit(),
+            java_path=Path("/tmp/java"),
+            game_dir=Path("/tmp/game"),
+            assets_dir=Path("/tmp/assets"),
+            natives_dir=Path("/tmp/natives"),
+            server_port=25565,
+            prefer_wayland=False,
+        )
+        self.assertNotIn("-DMC_DEBUG_PREFER_WAYLAND", plan.argv)
+        self.assertIn("-DMC_DEBUG_ENABLED", plan.argv)
+
+    def test_renderdoc_launch_and_target_output_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            renderdoccmd = root / "renderdoccmd"
+            renderdoccmd.write_text("#!/bin/sh\n", encoding="utf-8")
+            renderdoccmd.chmod(0o755)
+            argv = benchmark.build_renderdoc_launch_argv(
+                renderdoccmd=renderdoccmd,
+                capture_template=root / "capture",
+                working_dir=root / "game",
+                client_argv=("/tmp/client", "--fixed"),
+            )
+            self.assertEqual(argv[1:3], ("capture", "--working-dir"))
+            self.assertEqual(argv[-2:], ("/tmp/client", "--fixed"))
+            self.assertEqual(
+                benchmark.parse_renderdoc_target_ident(
+                    "Launching '/tmp/client'\nLaunched as ID 38920\n"
+                ),
+                38920,
+            )
+            parsed = benchmark.parse_renderdoc_control_output(
+                "api=Vulkan\n"
+                "byte_size=4096\n"
+                "capture_id=1\n"
+                "frame_number=240\n"
+                "path=/tmp/capture.rdc\n"
+                "pid=123\n"
+                "target=bbb-native\n"
+            )
+            self.assertEqual(parsed["api"], "Vulkan")
+            self.assertEqual(parsed["frame_number"], 240)
+            self.assertEqual(parsed["byte_size"], 4096)
+
+    def test_renderdoc_target_output_rejects_missing_or_invalid_fields(self):
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "exactly one target ID"
+        ):
+            benchmark.parse_renderdoc_target_ident("no target")
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "missing fields"
+        ):
+            benchmark.parse_renderdoc_control_output("api=OpenGL\n")
+
+    def test_renderdoc_anchor_associates_the_new_capture_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            control = root / "control"
+            control.write_text("#!/bin/sh\n", encoding="utf-8")
+            control.chmod(0o755)
+            capture_dir = root / "captures"
+            capture_dir.mkdir()
+            capture_path = capture_dir / "bbb_frame240.rdc"
+
+            def run_control(*_args, **_kwargs):
+                capture_path.write_bytes(b"capture")
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=(
+                        "api=Vulkan\n"
+                        "byte_size=7\n"
+                        "capture_id=1\n"
+                        "frame_number=240\n"
+                        f"path={capture_path}\n"
+                        "pid=123\n"
+                        "target=bbb-native\n"
+                    ),
+                )
+
+            with mock.patch.object(
+                benchmark.subprocess, "run", side_effect=run_control
+            ):
+                capture = benchmark._capture_renderdoc_anchor(
+                    control_path=control,
+                    capture_dir=capture_dir,
+                    target_ident=12345,
+                    client="bbb",
+                    segment="static_orbit",
+                    server_tick=240,
+                )
+            self.assertEqual(capture["frame_number"], 240)
+            self.assertEqual(capture["byte_size"], 7)
+            self.assertEqual(capture["path"], str(capture_path))
+
+    def test_renderdoc_xml_and_common_draw_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            captures = []
+            segments = (
+                "static_orbit",
+                "preloaded_flight",
+                "chunk_boundary_crossing",
+            )
+            for client, driver, draw_name, renderer in (
+                ("vanilla", "OpenGL", "glDrawElements", "AMD radeonsi"),
+                ("bbb", "Vulkan", "vkCmdDrawIndexed", "AMD RADV"),
+            ):
+                for index, segment in enumerate(segments):
+                    rdc = root / f"{client}-{segment}.rdc"
+                    rdc.write_bytes(b"capture")
+                    xml = root / f"{client}-{segment}.xml"
+                    present = (
+                        "glXSwapBuffers"
+                        if driver == "OpenGL"
+                        else "vkQueuePresentKHR"
+                    )
+                    xml.write_text(
+                        '<?xml version="1.0"?>'
+                        "<rdc><header>"
+                        f'<driver id="2">{driver}</driver>'
+                        '<thumbnail width="1280" height="720">thumb.jpg</thumbnail>'
+                        "</header><chunks>"
+                        '<chunk name="DeviceInitialisation">'
+                        f'<string name="{"renderer" if driver == "OpenGL" else "deviceName"}">'
+                        f"{renderer}</string>"
+                        "</chunk>"
+                        '<chunk name="glDrawBuffer" />'
+                        f'<chunk name="{draw_name}" />'
+                        f'<chunk name="{present}" />'
+                        "</chunks></rdc>",
+                        encoding="utf-8",
+                    )
+                    captures.append(
+                        {
+                            "client": client,
+                            "capture_segment": segment,
+                            "server_tick": index * 480 + 240,
+                            "rdc": str(rdc),
+                            "xml": str(xml),
+                        }
+                    )
+            parsed = benchmark.parse_renderdoc_xml(
+                root / "vanilla-static_orbit.xml"
+            )
+            self.assertEqual(parsed["event_categories"]["draw"], 1)
+            self.assertEqual(parsed["event_categories"]["present"], 1)
+            self.assertNotIn("glDrawBuffer", parsed["draw_calls_by_api"])
+
+            summary = benchmark.summarize_renderdoc_evidence(
+                {"schema": 1, "captures": captures}
+            )
+            self.assertEqual(summary["status"], "validated")
+            self.assertFalse(summary["formal_timing_sample"])
+            self.assertEqual(len(summary["captures"]), 6)
+            self.assertEqual(summary["captures"][1]["driver"], "Vulkan")
+
+    def test_renderdoc_xml_rejects_no_draw_work(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "empty.xml"
+            path.write_text(
+                "<rdc><header><driver>OpenGL</driver>"
+                '<thumbnail width="1280" height="720" /></header>'
+                '<chunks><chunk name="glXSwapBuffers" /></chunks></rdc>',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "draw work"
+            ):
+                benchmark.parse_renderdoc_xml(path)
+
     def test_options_pin_equal_load_settings(self):
         options = benchmark.vanilla_options()
         self.assertEqual(options["version"], "4786")
         self.assertEqual(options["renderDistance"], "12")
         self.assertEqual(options["simulationDistance"], "12")
+        self.assertEqual(options["inactivityFpsLimit"], '"minimized"')
         self.assertEqual(options["graphicsPreset"], '"custom"')
         self.assertEqual(options["ao"], "true")
         self.assertEqual(options["biomeBlendRadius"], "2")
         self.assertEqual(options["prioritizeChunkUpdates"], "1")
         self.assertEqual(options["renderClouds"], '"true"')
         self.assertEqual(options["cloudRange"], "64")
-        self.assertEqual(options["particles"], "0")
+        self.assertEqual(options["particles"], "2")
         self.assertEqual(options["mipmapLevels"], "4")
         self.assertEqual(options["cutoutLeaves"], "true")
         self.assertEqual(options["entityShadows"], "true")
@@ -295,6 +470,23 @@ class LaunchPlanTests(unittest.TestCase):
             ):
                 benchmark.audit_vanilla_options(path)
 
+    def test_workload_debug_profile_is_explicit_and_noninteractive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = benchmark.write_vanilla_workload_debug_profile(
+                Path(directory)
+            )
+            profile = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(profile["DataVersion"], 4786)
+            self.assertEqual(
+                profile["custom"],
+                {
+                    "minecraft:chunk_render_stats": "alwaysOn",
+                    "minecraft:entity_render_stats": "alwaysOn",
+                    "minecraft:particle_render_stats": "alwaysOn",
+                    "minecraft:player_position": "alwaysOn",
+                },
+            )
+
     def test_bbb_launch_arguments_pin_the_same_external_settings(self):
         with tempfile.TemporaryDirectory() as directory:
             binary = Path(directory) / "bbb-native"
@@ -308,7 +500,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--username") + 1], "bbb-benchmark")
         self.assertEqual(argv[argv.index("--client-view-distance") + 1], "12")
         self.assertEqual(argv[argv.index("--render-distance") + 1], "12")
-        self.assertEqual(argv[argv.index("--client-particles") + 1], "all")
+        self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
         settings = benchmark.equal_load_settings()
@@ -318,6 +510,7 @@ class LaunchPlanTests(unittest.TestCase):
             "mode": "windowed",
         })
         self.assertEqual(settings["gui_scale"], 1)
+        self.assertEqual(settings["particles"], "minimal")
         self.assertTrue(settings["view_bobbing"])
         self.assertEqual(settings["audio"], "disabled")
 
@@ -387,6 +580,22 @@ class ReplayTests(unittest.TestCase):
                 self.assertEqual(
                     {key: frame[key] for key in anchor_pose}, anchor_pose
                 )
+        orbit_anchor = next(
+            frame
+            for frame in replay["frames"]
+            if frame["capture_segment"] == "static_orbit"
+            and frame["marker"] == "anchor"
+        )
+        yaw = math.radians(orbit_anchor["yaw"])
+        look = (-math.sin(yaw), math.cos(yaw))
+        toward_origin = (-orbit_anchor["x"], -orbit_anchor["z"])
+        self.assertGreater(
+            look[0] * toward_origin[0] + look[1] * toward_origin[1],
+            0.0,
+        )
+        self.assertTrue(
+            all(frame["pitch"] == 0.0 for frame in replay["frames"])
+        )
 
     def test_checked_in_replay_is_the_canonical_default(self):
         fixture = json.loads(
@@ -398,7 +607,7 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(fixture, benchmark.default_replay())
         self.assertEqual(
             benchmark.replay_hash(fixture),
-            "b36fcf5620b93ed60fb46c2a31ef74fa6042d7e39bc4177147837fc85968a0aa",
+            "c40b92e6686a9bfbc32dd4192020c4c95caa2ab1607383e33dffa6b8562eae14",
         )
 
     def test_replay_rejects_noncontiguous_ticks(self):
@@ -467,6 +676,13 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("online-mode=false\n", properties)
             self.assertIn("enforce-secure-profile=false\n", properties)
             self.assertIn("level-seed=bbb-official-benchmark-26.1\n", properties)
+            self.assertIn("level-type=minecraft:flat\n", properties)
+            self.assertIn(
+                "generator-settings="
+                + benchmark.VOID_FLAT_GENERATOR_SETTINGS
+                + "\n",
+                properties,
+            )
             self.assertIn("view-distance=12\n", properties)
             self.assertEqual(
                 digest,
@@ -476,6 +692,19 @@ class ReplayTests(unittest.TestCase):
             self.assertIn("gamerule random_tick_speed 0", commands)
             self.assertIn("gamerule spawn_mobs false", commands)
             self.assertTrue(any(command.startswith("summon minecraft:armor_stand") for command in commands))
+            self.assertIn(
+                "fill -32 79 120 32 79 136 minecraft:stone_bricks",
+                commands,
+            )
+            self.assertIn(
+                "fill -16 79 -64 160 79 -32 minecraft:deepslate_tiles",
+                commands,
+            )
+            self.assertIn(
+                "fill 88 80 -64 88 104 -32 "
+                "minecraft:polished_andesite",
+                commands,
+            )
             self.assertEqual(commands[-3:], (
                 "forceload remove all",
                 "save-all flush",
@@ -606,10 +835,10 @@ class CaptureTests(unittest.TestCase):
             path.write_text(
                 "os,cpu,gpu,ram,kernel,driver,cpuscheduler\n"
                 "Linux,fixture,fixture,1,fixture,fixture,fixture\n"
-                "fps,frametime,gpu_load,gpu_core_clock,gpu_temp\n"
-                "100,10,50,1000,60\n"
-                "50,20,70,1200,70\n"
-                "25,40,90,1400,80\n",
+                "fps,frametime,gpu_load,gpu_core_clock,gpu_temp,cpu_temp\n"
+                "100,10,50,1000,60,70\n"
+                "50,20,70,1200,70,80\n"
+                "25,40,90,1400,80,90\n",
                 encoding="utf-8",
             )
             parsed = benchmark.parse_mangohud_csv(path)
@@ -619,6 +848,37 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(summary.one_percent_low_fps, 25.0)
             self.assertEqual(summary.hitch_counts["ge_33.333_ms"], 1)
             self.assertEqual(summary.gpu_load_mean, 70.0)
+            self.assertEqual(summary.gpu_temp_peak_c, 80.0)
+            self.assertEqual(summary.cpu_temp_peak_c, 90.0)
+            self.assertEqual(parsed["system"]["gpu"], "fixture")
+
+    def test_mangohud_elapsed_samples_split_by_replay_segments(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mango.csv"
+            path.write_text(
+                "fps,frametime,gpu_load,elapsed\n"
+                "100,10,50,1000000000\n"
+                "100,10,60,25000000000\n"
+                "100,10,70,49000000000\n",
+                encoding="utf-8",
+            )
+            capture = benchmark.parse_mangohud_csv(path)
+            segments = benchmark.split_mangohud_capture_by_replay(
+                capture,
+                benchmark.default_replay(),
+            )
+            self.assertEqual(
+                list(segments),
+                [
+                    "static_orbit",
+                    "preloaded_flight",
+                    "chunk_boundary_crossing",
+                ],
+            )
+            self.assertEqual(
+                segments["chunk_boundary_crossing"]["gpu_load"],
+                [70.0],
+            )
 
     def test_mangohud_control_starts_and_stops_logging_without_input(self):
         process_pid = os.getpid()
@@ -705,6 +965,25 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(parsed["per_presented_frame"]["cycles"], 20.0)
             self.assertIn("no CPU-frame percentiles", parsed["scope"])
 
+    def test_perf_stat_argv_is_pid_scoped_and_fixed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            perf = root / "perf"
+            perf.write_text("#!/bin/sh\n", encoding="utf-8")
+            perf.chmod(0o755)
+            output = root / "perf.csv"
+            argv = benchmark.build_perf_stat_argv(
+                perf_path=perf,
+                target_pid=1234,
+                output_path=output,
+            )
+            self.assertEqual(argv[1:3], ("stat", "-x,"))
+            self.assertEqual(argv[argv.index("-p") + 1], "1234")
+            self.assertEqual(
+                argv[argv.index("-e") + 1],
+                ",".join(benchmark.REQUIRED_PERF_EVENTS),
+            )
+
     def test_perf_permission_failure_is_explicit(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "perf.txt"
@@ -717,6 +996,61 @@ class CaptureTests(unittest.TestCase):
                 benchmark.BenchmarkFailure, "kernel permission"
             ):
                 benchmark.parse_perf_stat(path, presented_frames=1)
+
+    def test_weston_timeline_filters_flight_recorder_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "timeline.jsonl"
+            events = [
+                {"id": 7, "type": "weston_surface", "desc": "bbb-native"},
+                {"T": [9, 0], "N": "core_commit_damage", "ws": 7},
+                {"T": [10, 0], "N": "core_commit_damage", "ws": 7},
+                {"T": [10, 20_000_000], "N": "core_commit_damage", "ws": 7},
+                {"T": [11, 0], "N": "core_commit_damage", "ws": 7},
+            ]
+            path.write_text(
+                "\n".join(json.dumps(event) for event in events) + "\n",
+                encoding="utf-8",
+            )
+            parsed = benchmark.parse_weston_timeline(
+                path,
+                surface_title="bbb",
+                start_monotonic=9.5,
+                end_monotonic=10.5,
+            )
+            self.assertEqual(parsed["surface_commits"], 2)
+            self.assertAlmostEqual(
+                parsed["commit_interval"]["p50_ms"],
+                20.0,
+            )
+
+    def test_formal_summary_rejects_non_abba_order_before_metrics(self):
+        runs = [
+            {"client": client}
+            for client in (
+                "vanilla",
+                "bbb",
+                "vanilla",
+                "bbb",
+                "vanilla",
+                "bbb",
+                "vanilla",
+                "bbb",
+            )
+        ]
+        with mock.patch.object(
+            benchmark,
+            "load_json_object",
+            side_effect=runs,
+        ):
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "not repeated ABBA"
+            ):
+                benchmark.summarize_formal_comparison(
+                    {
+                        "schema": 1,
+                        "runs": [f"/tmp/run-{index}.json" for index in range(8)],
+                    }
+                )
 
     def test_ftrace_requires_every_client_associated_event(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -792,6 +1126,145 @@ class CaptureTests(unittest.TestCase):
             "visible_content_mismatch",
             [blocker["code"] for blocker in summary["blockers"]],
         )
+
+    def test_workload_evidence_requires_common_contract_and_draws(self):
+        segments = (
+            "static_orbit",
+            "preloaded_flight",
+            "chunk_boundary_crossing",
+        )
+        common = {
+            "status": "passed",
+            "position_corrections": 0,
+            "replay_hash": "r",
+            "world_hash": "w",
+            "resource_hash": "a",
+            "settings_hash": "s",
+            "scene_contract_hash": "scene",
+            "server_camera_log": {"sha256": "camera", "markers": 12},
+            "screenshots": [
+                {
+                    "capture_segment": segment,
+                    "server_tick": index * 480 + 240,
+                    "path": f"/tmp/{segment}.png",
+                    "sha256": str(index + 1) * 64,
+                }
+                for index, segment in enumerate(segments)
+            ],
+        }
+        renderer = {
+            "visible_sections": 1,
+            "resident_bytes": 1024,
+            "opaque_draw_calls": 1,
+            "cutout_draw_calls": 1,
+            "translucent_draw_calls": 1,
+            "opaque_faces": 1,
+            "cutout_faces": 1,
+            "translucent_faces": 1,
+            "entity_render_candidates": 1,
+            "entity_render_projected": 1,
+            "entity_scene_draw_calls": 1,
+            "active_particle_instances": 0,
+            "particle_draw_calls": 0,
+            "draw_calls": 5,
+        }
+        vanilla = {
+            **common,
+            "client": "vanilla",
+            "workload_debug_profile": True,
+        }
+        bbb = {
+            **common,
+            "client": "bbb",
+            "anchor_observations": [
+                {"capture_segment": segment, "renderer": renderer}
+                for segment in segments
+            ],
+        }
+        summary = benchmark.summarize_workload_evidence(
+            vanilla=vanilla,
+            bbb=bbb,
+            visual_review_status="match",
+            visual_review_note="fixture landmarks match",
+        )
+        self.assertEqual(summary["status"], "matched")
+        self.assertFalse(summary["formal_timing_sample"])
+        self.assertEqual(len(summary["screenshot_pairs"]), 3)
+        self.assertEqual(
+            summary["bbb_renderer_counters"]["preloaded_flight"][
+                "entity_scene_draw_calls"
+            ],
+            1,
+        )
+
+        bad_bbb = {**bbb, "world_hash": "different"}
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "world_hash mismatch"
+        ):
+            benchmark.summarize_workload_evidence(
+                vanilla=vanilla,
+                bbb=bad_bbb,
+                visual_review_status="match",
+                visual_review_note="fixture landmarks match",
+            )
+
+    def test_formal_evidence_links_contract_camera_and_anchor_ticks(self):
+        contracts = {
+            "replay_hash": "r",
+            "world_hash": "w",
+            "resource_hash": "a",
+            "settings_hash": "s",
+            "scene_contract_hash": "scene",
+        }
+        screenshot_pairs = [
+            {
+                "capture_segment": segment,
+                "vanilla": {"server_tick": tick},
+                "bbb": {"server_tick": tick},
+            }
+            for segment, tick in (
+                ("static_orbit", 240),
+                ("preloaded_flight", 720),
+                ("chunk_boundary_crossing", 1200),
+            )
+        ]
+        captures = [
+            {
+                "client": client,
+                "capture_segment": pair["capture_segment"],
+                "server_tick": pair[client]["server_tick"],
+            }
+            for pair in screenshot_pairs
+            for client in ("vanilla", "bbb")
+        ]
+        workload = {
+            "contracts": contracts,
+            "server_camera_log": {"sha256": "camera"},
+            "screenshot_pairs": screenshot_pairs,
+        }
+        renderdoc = {"captures": captures}
+        benchmark.validate_formal_evidence_linkage(
+            contracts=contracts,
+            camera_hash="camera",
+            workload=workload,
+            renderdoc=renderdoc,
+        )
+
+        mismatched = {
+            "captures": [
+                *captures[:-1],
+                {**captures[-1], "server_tick": 1201},
+            ]
+        }
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "reviewed screenshot anchors"
+        ):
+            benchmark.validate_formal_evidence_linkage(
+                contracts=contracts,
+                camera_hash="camera",
+                workload=workload,
+                renderdoc=mismatched,
+            )
 
 
 class ProcessCleanupTests(unittest.TestCase):

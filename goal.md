@@ -287,7 +287,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
-- p4-delivery: maintenance
+- p4-delivery: active
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -354,12 +354,15 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`maintenance`。账本 P4 域没有 active item；安全预算、bounded runtime、
-lifecycle/fault soak 与已声明平台行均有有界 gate，剩余官方 Java 同载对照、
-扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。官方
-26.1 离线启动、共同 replay/capture 合同与当前宿主 blocker 由
-`docs/official-client-performance-benchmark.md` 唯一维护；不得把其中的软件
-smoke 指标升级成正式性能结论。
+状态：`active`。官方 Java 同载对照已关闭比较工程合同，并把 bbb
+chunk-boundary frame-tail 回归提升为账本中唯一 ready 项；下一 slice 按共同
+replay 的 losing scene 定位 dominant runtime owner，不得在当前比较 slice
+夹带优化。安全预算、bounded runtime、lifecycle/fault soak 与已声明平台行已有
+有界 gate；剩余 GPU-only duration 关联、扩展 Linux 交互矩阵和非 Linux 发布行
+只按各自 `Reopen when ...` deferred。官方 26.1 离线启动、共同
+replay/capture 合同、两轮 ABBA 结果与 GPU-duration 精确 blocker 由
+`docs/official-client-performance-benchmark.md` 唯一维护；不得把 MangoHud
+present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
 已有维护证据：
 
@@ -369,8 +372,9 @@ smoke 指标升级成正式性能结论。
 - simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
   shutdown/join 与 panic propagation 由
   `docs/simulation-render-thread-design.md` 和 focused tests 维护；
-- repo-native before/after 与 runtime observation 已有稳定基线；只有同载官方
-  Java 对比按账本条件 deferred，不能伪造胜负结论；
+- repo-native before/after、runtime observation 与同载官方 Java 两轮 ABBA
+  已有稳定基线；后续性能 slice 必须按测得的 losing scene/owner 优化，不能通过
+  减少可见或 resident 工作伪造胜负结论；
 - `scripts/lifecycle-soak-gate.sh` 依
   `docs/lifecycle-soak-gate-design.md` 组合三轮真实 live playable、
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程

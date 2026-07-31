@@ -26,6 +26,7 @@ import stat
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ElementTree
 import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
@@ -44,9 +45,21 @@ COMPOSITOR_HEIGHT = 900
 VIEW_DISTANCE = 12
 SIMULATION_DISTANCE = 12
 SERVER_SEED = "bbb-official-benchmark-26.1"
+VOID_FLAT_GENERATOR_SETTINGS = json.dumps(
+    {
+        "biome": "minecraft:plains",
+        "features": False,
+        "lakes": False,
+        "layers": [{"block": "minecraft:air", "height": 1}],
+        "structure_overrides": [],
+    },
+    sort_keys=True,
+    separators=(",", ":"),
+)
 SERVER_READY_MARKER = "Done ("
 WORLD_PREPARED_MARKER = "BBB_BENCHMARK_WORLD_PREPARED"
 DEFAULT_HITCH_THRESHOLDS_MS = (33.333, 50.0, 100.0)
+THERMAL_REJECT_C = 95.0
 REQUIRED_PERF_EVENTS = (
     "task-clock",
     "cycles",
@@ -144,6 +157,9 @@ class FrameSummary:
     gpu_load_mean: float | None
     gpu_clock_mean_mhz: float | None
     gpu_temp_mean_c: float | None
+    gpu_temp_peak_c: float | None
+    cpu_temp_mean_c: float | None
+    cpu_temp_peak_c: float | None
 
 
 @dataclass(frozen=True)
@@ -171,7 +187,7 @@ def equal_load_settings() -> dict[str, Any]:
         "prioritize_chunk_updates": "player_affected",
         "clouds": True,
         "cloud_distance": 64,
-        "particles": "all",
+        "particles": "minimal",
         "mipmap_levels": 4,
         "cutout_leaves": True,
         "entity_shadows": True,
@@ -568,6 +584,10 @@ def vanilla_options() -> dict[str, str]:
         "version": "4786",
         "fullscreen": "false",
         "enableVsync": "false",
+        # FramerateLimitTracker otherwise enters its 30 FPS SHORT_AFK state
+        # after 60 seconds, even while the server-authoritative replay moves
+        # the camera. MINIMIZED retains the iconified-window safety throttle.
+        "inactivityFpsLimit": '"minimized"',
         "maxFps": "260",
         "renderDistance": str(VIEW_DISTANCE),
         "simulationDistance": str(SIMULATION_DISTANCE),
@@ -581,7 +601,7 @@ def vanilla_options() -> dict[str, str]:
         "prioritizeChunkUpdates": "1",
         "renderClouds": '"true"',
         "cloudRange": "64",
-        "particles": "0",
+        "particles": "2",
         "mipmapLevels": "4",
         "cutoutLeaves": "true",
         "entityShadows": "true",
@@ -608,6 +628,26 @@ def write_vanilla_options(game_dir: Path) -> Path:
     payload = "".join(f"{key}:{value}\n" for key, value in vanilla_options().items())
     options_path.write_text(payload, encoding="utf-8")
     return options_path
+
+
+def write_vanilla_workload_debug_profile(game_dir: Path) -> Path:
+    """Pins non-interactive Vanilla render workload counters for evidence runs."""
+    game_dir.mkdir(parents=True, exist_ok=True)
+    profile_path = game_dir / "debug-profile.json"
+    profile_path.write_bytes(
+        canonical_json_bytes(
+            {
+                "DataVersion": 4786,
+                "custom": {
+                    "minecraft:chunk_render_stats": "alwaysOn",
+                    "minecraft:entity_render_stats": "alwaysOn",
+                    "minecraft:particle_render_stats": "alwaysOn",
+                    "minecraft:player_position": "alwaysOn",
+                },
+            }
+        )
+    )
+    return profile_path
 
 
 def audit_vanilla_options(path: Path) -> dict[str, Any]:
@@ -666,13 +706,14 @@ def build_vanilla_launch_plan(
     assets_dir: Path,
     natives_dir: Path,
     server_port: int,
+    prefer_wayland: bool = True,
 ) -> LaunchPlan:
     if not 1 <= server_port <= 65535:
         raise BenchmarkFailure(f"invalid server port: {server_port}")
     classpath = os.pathsep.join(
         [entry.path for entry in audit.libraries] + [audit.client.path]
     )
-    argv = (
+    jvm_argv = [
         str(java_path),
         "-Xms2G",
         "-Xmx4G",
@@ -681,31 +722,37 @@ def build_vanilla_launch_plan(
         "-XX:+UseStringDeduplication",
         "-XX:+UseZGC",
         "-DMC_DEBUG_ENABLED",
-        "-DMC_DEBUG_PREFER_WAYLAND",
-        f"-Djava.library.path={natives_dir}",
-        "-cp",
-        classpath,
-        audit.main_class,
-        "--offlineDeveloperMode",
-        "--username",
-        BENCHMARK_USERNAME,
-        "--accessToken",
-        OFFLINE_ACCESS_TOKEN,
-        "--version",
-        MINECRAFT_VERSION,
-        "--gameDir",
-        str(game_dir),
-        "--assetsDir",
-        str(assets_dir),
-        "--assetIndex",
-        audit.asset_index_id,
-        "--width",
-        str(WINDOW_WIDTH),
-        "--height",
-        str(WINDOW_HEIGHT),
-        "--quickPlayMultiplayer",
-        f"127.0.0.1:{server_port}",
+    ]
+    if prefer_wayland:
+        jvm_argv.append("-DMC_DEBUG_PREFER_WAYLAND")
+    jvm_argv.extend(
+        [
+            f"-Djava.library.path={natives_dir}",
+            "-cp",
+            classpath,
+            audit.main_class,
+            "--offlineDeveloperMode",
+            "--username",
+            BENCHMARK_USERNAME,
+            "--accessToken",
+            OFFLINE_ACCESS_TOKEN,
+            "--version",
+            MINECRAFT_VERSION,
+            "--gameDir",
+            str(game_dir),
+            "--assetsDir",
+            str(assets_dir),
+            "--assetIndex",
+            audit.asset_index_id,
+            "--width",
+            str(WINDOW_WIDTH),
+            "--height",
+            str(WINDOW_HEIGHT),
+            "--quickPlayMultiplayer",
+            f"127.0.0.1:{server_port}",
+        ]
     )
+    argv = tuple(jvm_argv)
     return LaunchPlan(
         schema=BENCHMARK_SCHEMA,
         client="vanilla",
@@ -744,7 +791,7 @@ def build_bbb_launch_argv(
         "--render-distance",
         str(VIEW_DISTANCE),
         "--client-particles",
-        "all",
+        "minimal",
         "--tutorial-step",
         "none",
         "--client-vsync",
@@ -866,8 +913,13 @@ def default_replay() -> dict[str, Any]:
         angle = anchor_angle if 240 <= offset < 280 else math.radians(offset * 0.2)
         x = math.cos(angle) * 24.0
         z = math.sin(angle) * 24.0
-        yaw = math.degrees(math.atan2(-x, z))
-        orbit.append((x, 82.0, z, yaw, 12.0))
+        # Vanilla yaw 0 looks toward +Z and -90 toward +X. Point inward at
+        # the controlled scene instead of away into naturally generated land.
+        yaw = math.degrees(math.atan2(x, -z))
+        # Keep the common replay pitch neutral. The benchmark is comparing
+        # renderer work, not camera-sign parity, so a zero pitch prevents a
+        # client-specific pitch convention from changing the visible set.
+        orbit.append((x, 72.0, z, yaw, 0.0))
     append_segment("static_orbit", orbit)
 
     flight: list[tuple[float, float, float, float, float]] = []
@@ -876,9 +928,9 @@ def default_replay() -> dict[str, Any]:
         progress = (
             anchor_progress if 240 <= offset < 280 else offset / (segment_ticks - 1)
         )
-        x = -96.0 + 192.0 * progress
-        z = 40.0 + math.sin(progress * math.tau * 2.0) * 20.0
-        flight.append((x, 96.0, z, -90.0, 18.0))
+        x = -12.0 + 24.0 * progress
+        z = 128.0 + math.sin(progress * math.tau * 2.0) * 2.0
+        flight.append((x, 92.0, z, -90.0, 0.0))
     append_segment("preloaded_flight", flight)
 
     boundary_positions = (
@@ -911,7 +963,7 @@ def default_replay() -> dict[str, Any]:
         else:
             index = min(offset // hold_ticks, len(boundary_positions) - 1)
             x = boundary_positions[index]
-        crossing.append((x, 88.0, -48.5, -90.0, 20.0))
+        crossing.append((x, 88.0, -48.5, -90.0, 0.0))
     append_segment("chunk_boundary_crossing", crossing)
 
     replay = {
@@ -1079,6 +1131,8 @@ def server_properties(server_port: int) -> tuple[tuple[str, str], ...]:
         ("server-port", str(server_port)),
         ("level-name", "world"),
         ("level-seed", SERVER_SEED),
+        ("level-type", "minecraft:flat"),
+        ("generator-settings", VOID_FLAT_GENERATOR_SETTINGS),
         ("gamemode", "spectator"),
         ("force-gamemode", "true"),
         ("difficulty", "peaceful"),
@@ -1164,10 +1218,51 @@ def world_preparation_commands(
         "weather clear 1000000",
         "difficulty peaceful",
         *_forceload_tiles(replay),
-        "fill -16 63 -16 16 63 16 minecraft:polished_andesite",
-        "fill -8 64 -8 8 72 8 minecraft:glass hollow",
-        "fill -7 64 -7 7 64 7 minecraft:water",
+        # Static-orbit scene: opaque floor, a bounded translucent volume, and
+        # an open roof so both clients see the same controlled contents.
+        "fill -40 63 -40 40 63 40 minecraft:polished_andesite",
+        "fill -24 64 -24 24 64 24 minecraft:water",
+        "fill -24 65 -24 24 76 -24 minecraft:glass",
+        "fill -24 65 24 24 76 24 minecraft:glass",
+        "fill -24 65 -23 -24 76 23 minecraft:glass",
+        "fill 24 65 -23 24 76 23 minecraft:glass",
+        # Preloaded-flight scene: a bounded arena keeps every drawn landmark
+        # within the common near field while the camera changes its frustum.
+        "fill -32 79 120 32 79 136 minecraft:stone_bricks",
+        "fill -32 80 120 -32 112 136 minecraft:polished_andesite",
+        "fill 32 80 120 32 112 136 minecraft:polished_andesite",
+        # Chunk-boundary scene: opaque partitions bound each cell's visible
+        # contents while the authoritative camera still crosses chunk centers.
+        "fill -16 79 -64 160 79 -32 minecraft:deepslate_tiles",
     ]
+    pillar_blocks = (
+        "minecraft:polished_andesite",
+        "minecraft:oak_leaves[persistent=true]",
+        "minecraft:blue_stained_glass",
+        "minecraft:glowstone",
+    )
+    for x_index, x in enumerate(range(-24, 25, 8)):
+        for z_index, z in enumerate((122, 128, 134)):
+            height = 4 + ((x_index + z_index) % 4) * 3
+            block = pillar_blocks[(x_index + z_index) % len(pillar_blocks)]
+            commands.append(
+                f"fill {x - 2} 80 {z - 2} {x + 2} {80 + height} {z + 2} {block}"
+            )
+    for wall_x in range(8, 161, 16):
+        commands.append(
+            f"fill {wall_x} 80 -64 {wall_x} 104 -32 "
+            "minecraft:polished_andesite"
+        )
+    for x_index, x in enumerate(range(0, 160, 16)):
+        height = 5 + (x_index % 5) * 2
+        block = pillar_blocks[(x_index + 1) % len(pillar_blocks)]
+        commands.append(
+            f"fill {x + 4} 80 -60 {x + 10} {80 + height} -54 {block}"
+        )
+        commands.append(
+            f"fill {x + 4} 80 -42 {x + 10} {84 + height} -36 "
+            "minecraft:glass hollow"
+        )
     for index, (x, z) in enumerate(
         (
             (-6, -6),
@@ -1195,6 +1290,23 @@ def world_preparation_commands(
             "{Tags:[\"bbb_benchmark_scene\",\"bbb_benchmark_armor\"],NoGravity:1b,"
             "Invulnerable:1b,PersistenceRequired:1b,"
             f"Rotation:[{yaw:.1f}f,0.0f]}}"
+        )
+    for index, x in enumerate(range(-8, 25, 16)):
+        z = 128 + (-4 if index % 2 == 0 else 4)
+        commands.append(
+            "summon minecraft:armor_stand "
+            f"{x} 90 {z} "
+            "{Tags:[\"bbb_benchmark_scene\",\"bbb_benchmark_armor\"],NoGravity:1b,"
+            "Invulnerable:1b,PersistenceRequired:1b,"
+            f"Rotation:[{(index * 36) % 360:.1f}f,0.0f]}}"
+        )
+    for index, wall_x in enumerate(range(24, 153, 32)):
+        commands.append(
+            "summon minecraft:armor_stand "
+            f"{wall_x - 4} 86 -48 "
+            "{Tags:[\"bbb_benchmark_scene\",\"bbb_benchmark_armor\"],NoGravity:1b,"
+            "Invulnerable:1b,PersistenceRequired:1b,"
+            f"Rotation:[{(index * 45) % 360:.1f}f,0.0f]}}"
         )
     commands.extend(
         (
@@ -1244,7 +1356,7 @@ def _wait_for_log(
     path: Path,
     marker: str,
     *,
-    process: subprocess.Popen[Any],
+    process: subprocess.Popen[Any] | None,
     timeout: float,
 ) -> None:
     deadline = time.monotonic() + timeout
@@ -1255,12 +1367,13 @@ def _wait_for_log(
             text = ""
         if marker in text:
             return
-        status = process.poll()
-        if status is not None:
-            raise BenchmarkFailure(
-                f"process exited with status {status} before log marker {marker!r}; "
-                f"see {path}"
-            )
+        if process is not None:
+            status = process.poll()
+            if status is not None:
+                raise BenchmarkFailure(
+                    f"process exited with status {status} before log marker "
+                    f"{marker!r}; see {path}"
+                )
         time.sleep(0.25)
     raise BenchmarkFailure(f"timed out waiting for log marker {marker!r}: {path}")
 
@@ -1604,7 +1717,7 @@ def mangohud_set_logging(
     )
 
 
-def parse_mangohud_csv(path: Path) -> dict[str, list[float]]:
+def parse_mangohud_csv(path: Path) -> dict[str, Any]:
     try:
         lines = [
             line
@@ -1625,11 +1738,24 @@ def parse_mangohud_csv(path: Path) -> dict[str, list[float]]:
     )
     if header_index is None:
         raise BenchmarkFailure(f"MangoHud log has no frame-metrics header: {path}")
+    system: dict[str, str] = {}
+    if header_index >= 2:
+        system_reader = csv.DictReader(lines[:2])
+        system_row = next(system_reader, None)
+        if system_row is not None:
+            system = {
+                str(key).strip(): str(value).strip()
+                for key, value in system_row.items()
+                if key is not None and value is not None
+            }
     reader = csv.DictReader(lines[header_index:])
     frames: list[float] = []
     gpu_load: list[float] = []
     gpu_clock: list[float] = []
     gpu_temp: list[float] = []
+    cpu_temp: list[float] = []
+    elapsed_seconds: list[float] = []
+    samples: list[dict[str, float]] = []
     for row in reader:
         frame_ms = _float_field(
             row, ("frametime", "frame_time", "frame_timing", "frametime_ms")
@@ -1642,21 +1768,135 @@ def parse_mangohud_csv(path: Path) -> dict[str, list[float]]:
         if frame_ms <= 0.0:
             raise BenchmarkFailure("MangoHud frame interval must be positive")
         frames.append(frame_ms)
-        for output, aliases in (
-            (gpu_load, ("gpu_load", "gpu load")),
-            (gpu_clock, ("gpu_core_clock", "gpu_clock", "gpu clock")),
-            (gpu_temp, ("gpu_temp", "gpu_temperature", "gpu temp")),
+        sample = {"frame_ms": frame_ms}
+        for name, output, aliases in (
+            ("gpu_load", gpu_load, ("gpu_load", "gpu load")),
+            (
+                "gpu_clock_mhz",
+                gpu_clock,
+                ("gpu_core_clock", "gpu_clock", "gpu clock"),
+            ),
+            (
+                "gpu_temp_c",
+                gpu_temp,
+                ("gpu_temp", "gpu_temperature", "gpu temp"),
+            ),
+            (
+                "cpu_temp_c",
+                cpu_temp,
+                ("cpu_temp", "cpu_temperature", "cpu temp"),
+            ),
         ):
             value = _float_field(row, aliases)
-            if value is not None:
+            if value is not None and (
+                not name.endswith("_temp_c") or value > 0.0
+            ):
                 output.append(value)
+                sample[name] = value
+        elapsed_ns = _float_field(row, ("elapsed",))
+        if elapsed_ns is not None:
+            if elapsed_ns < 0.0:
+                raise BenchmarkFailure("MangoHud elapsed time must not be negative")
+            elapsed = elapsed_ns / 1_000_000_000.0
+            elapsed_seconds.append(elapsed)
+            sample["elapsed_seconds"] = elapsed
+        samples.append(sample)
     if not frames:
         raise BenchmarkFailure("MangoHud log contains no frame samples")
+    if elapsed_seconds and len(elapsed_seconds) != len(frames):
+        raise BenchmarkFailure("MangoHud elapsed time is missing from some rows")
+    if any(
+        right <= left
+        for left, right in zip(elapsed_seconds, elapsed_seconds[1:])
+    ):
+        raise BenchmarkFailure("MangoHud elapsed time must increase monotonically")
     return {
         "frame_ms": frames,
         "gpu_load": gpu_load,
         "gpu_clock_mhz": gpu_clock,
         "gpu_temp_c": gpu_temp,
+        "cpu_temp_c": cpu_temp,
+        "elapsed_seconds": elapsed_seconds,
+        "samples": samples,
+        "system": system,
+    }
+
+
+def split_mangohud_capture_by_replay(
+    capture: Mapping[str, Sequence[Any]],
+    replay: Mapping[str, Any],
+) -> dict[str, dict[str, list[float]]]:
+    samples = capture.get("samples", ())
+    if not samples or any(
+        not isinstance(sample, Mapping) or "elapsed_seconds" not in sample
+        for sample in samples
+    ):
+        raise BenchmarkFailure(
+            "MangoHud segment summaries require elapsed time for every sample"
+        )
+    frames = replay.get("frames")
+    if not isinstance(frames, list):
+        raise BenchmarkFailure("replay lacks frames for MangoHud segmentation")
+    starts = {
+        frame["capture_segment"]: int(frame["server_tick"])
+        for frame in frames
+        if frame.get("marker") == "capture_start"
+    }
+    ends = {
+        frame["capture_segment"]: int(frame["server_tick"])
+        for frame in frames
+        if frame.get("marker") == "capture_end"
+    }
+    if set(starts) != set(ends) or len(starts) != 3:
+        raise BenchmarkFailure("replay capture segment boundaries are incomplete")
+    first_tick = min(starts.values())
+    segmented: dict[str, dict[str, list[float]]] = {}
+    for segment in starts:
+        start_seconds = (starts[segment] - first_tick) / 20.0
+        end_seconds = (ends[segment] - first_tick + 1) / 20.0
+        selected = [
+            sample
+            for sample in samples
+            if start_seconds
+            <= float(sample["elapsed_seconds"])
+            < end_seconds
+        ]
+        if not selected:
+            raise BenchmarkFailure(f"MangoHud segment has no samples: {segment}")
+        segmented[segment] = {
+            name: [
+                float(sample[name])
+                for sample in selected
+                if name in sample
+            ]
+            for name in (
+                "frame_ms",
+                "gpu_load",
+                "gpu_clock_mhz",
+                "gpu_temp_c",
+                "cpu_temp_c",
+            )
+        }
+    return segmented
+
+
+def summarize_mangohud_logs(
+    paths: Sequence[Path],
+    replay: Mapping[str, Any],
+) -> dict[str, Any]:
+    if len(paths) != 1:
+        raise BenchmarkFailure(
+            "formal MangoHud capture requires exactly one raw frame log"
+        )
+    capture = parse_mangohud_csv(paths[0])
+    segments = split_mangohud_capture_by_replay(capture, replay)
+    return {
+        "overall": [asdict(summarize_frames(capture))],
+        "segments": {
+            segment: asdict(summarize_frames(values))
+            for segment, values in segments.items()
+        },
+        "presented_frames": len(capture["frame_ms"]),
     }
 
 
@@ -1693,6 +1933,10 @@ def summarize_frames(
         values = list(capture.get(name, ()))
         return sum(values) / len(values) if values else None
 
+    def optional_max(name: str) -> float | None:
+        values = list(capture.get(name, ()))
+        return max(values) if values else None
+
     return FrameSummary(
         samples=len(frames),
         p50_ms=percentile(frames, 50.0),
@@ -1707,6 +1951,9 @@ def summarize_frames(
         gpu_load_mean=optional_mean("gpu_load"),
         gpu_clock_mean_mhz=optional_mean("gpu_clock_mhz"),
         gpu_temp_mean_c=optional_mean("gpu_temp_c"),
+        gpu_temp_peak_c=optional_max("gpu_temp_c"),
+        cpu_temp_mean_c=optional_mean("cpu_temp_c"),
+        cpu_temp_peak_c=optional_max("cpu_temp_c"),
     )
 
 
@@ -1894,6 +2141,267 @@ def validate_run(run: Mapping[str, Any], expected: Mapping[str, Any]) -> list[st
     return reasons
 
 
+def build_perf_stat_argv(
+    *,
+    perf_path: Path,
+    target_pid: int,
+    output_path: Path,
+) -> tuple[str, ...]:
+    if not perf_path.is_file() or not os.access(perf_path, os.X_OK):
+        raise BenchmarkFailure(f"perf executable is unavailable: {perf_path}")
+    if target_pid <= 0:
+        raise BenchmarkFailure("perf target PID must be positive")
+    return (
+        str(perf_path),
+        "stat",
+        "-x,",
+        "-o",
+        str(output_path),
+        "-p",
+        str(target_pid),
+        "-e",
+        ",".join(REQUIRED_PERF_EVENTS),
+    )
+
+
+class PerfStatSession:
+    def __init__(
+        self,
+        *,
+        perf_path: Path,
+        target_pid: int,
+        output_path: Path,
+    ) -> None:
+        self.argv = build_perf_stat_argv(
+            perf_path=perf_path,
+            target_pid=target_pid,
+            output_path=output_path,
+        )
+        self.output_path = output_path
+        self.process: subprocess.Popen[Any] | None = None
+
+    def start(self) -> dict[str, Any]:
+        if self.process is not None:
+            raise BenchmarkFailure("perf stat session was already started")
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        self.process = subprocess.Popen(
+            self.argv,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        time.sleep(0.1)
+        if self.process.poll() is not None:
+            stderr = self.process.stderr.read() if self.process.stderr else ""
+            raise BenchmarkFailure(
+                "perf stat failed to attach: "
+                + (stderr.strip() or f"exit {self.process.returncode}")
+            )
+        return {
+            "argv": list(self.argv),
+            "target_pid": int(self.argv[-3]),
+            "output": str(self.output_path),
+        }
+
+    def stop(self, timeout: float = 10.0) -> dict[str, Any]:
+        process = self.process
+        if process is None:
+            raise BenchmarkFailure("perf stat session was not started")
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGINT)
+            try:
+                process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=timeout)
+        stderr = process.stderr.read() if process.stderr else ""
+        if process.returncode not in (0, 130, -signal.SIGINT):
+            raise BenchmarkFailure(
+                "perf stat capture failed: "
+                + (stderr.strip() or f"exit {process.returncode}")
+            )
+        if not self.output_path.is_file() or self.output_path.stat().st_size <= 0:
+            raise BenchmarkFailure("perf stat did not produce an output file")
+        return {
+            "exit_status": process.returncode,
+            "output": str(self.output_path),
+            "bytes": self.output_path.stat().st_size,
+            "sha256": file_digest(self.output_path, "sha256"),
+        }
+
+    def cleanup(self) -> None:
+        if self.process is not None and self.process.poll() is None:
+            self.stop()
+
+
+def parse_weston_timeline(
+    path: Path,
+    *,
+    surface_title: str,
+    start_monotonic: float | None = None,
+    end_monotonic: float | None = None,
+) -> dict[str, Any]:
+    surface_ids: set[int] = set()
+    commits: list[float] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise BenchmarkFailure(f"cannot read Weston timeline {path}: {error}") from error
+    decoded: list[Mapping[str, Any]] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise BenchmarkFailure(f"invalid Weston timeline event: {line}") from error
+        if isinstance(event, Mapping):
+            decoded.append(event)
+            if (
+                event.get("type") == "weston_surface"
+                and surface_title in str(event.get("desc", ""))
+            ):
+                surface_ids.add(int(event["id"]))
+    if len(surface_ids) != 1:
+        raise BenchmarkFailure(
+            f"Weston timeline expected one {surface_title!r} surface, "
+            f"found {len(surface_ids)}"
+        )
+    surface_id = next(iter(surface_ids))
+    for event in decoded:
+        if (
+            event.get("N") == "core_commit_damage"
+            and event.get("ws") == surface_id
+        ):
+            timestamp = event.get("T")
+            if (
+                not isinstance(timestamp, list)
+                or len(timestamp) != 2
+            ):
+                raise BenchmarkFailure("Weston timeline event has invalid time")
+            commits.append(float(timestamp[0]) + float(timestamp[1]) / 1e9)
+    if start_monotonic is not None:
+        commits = [
+            timestamp
+            for timestamp in commits
+            if timestamp >= start_monotonic
+        ]
+    if end_monotonic is not None:
+        commits = [
+            timestamp
+            for timestamp in commits
+            if timestamp <= end_monotonic
+        ]
+    intervals = [
+        (right - left) * 1000.0
+        for left, right in zip(commits, commits[1:])
+        if right > left
+    ]
+    if not intervals:
+        raise BenchmarkFailure("Weston timeline has no surface commit intervals")
+    return {
+        "surface_title": surface_title,
+        "surface_id": surface_id,
+        "surface_commits": len(commits),
+        "commit_interval": asdict(
+            summarize_frames({"frame_ms": intervals})
+        ),
+        "scope": (
+            "Weston/Xwayland compositor-observed surface commit intervals; "
+            "not client CPU duration, presentation completion, or GPU duration"
+        ),
+    }
+
+
+class WestonTimelineSession:
+    def __init__(
+        self,
+        *,
+        weston_debug_path: Path,
+        wayland_display: str,
+        output_path: Path,
+        surface_title: str,
+    ) -> None:
+        if not weston_debug_path.is_file() or not os.access(
+            weston_debug_path, os.X_OK
+        ):
+            raise BenchmarkFailure(
+                f"weston-debug executable is unavailable: {weston_debug_path}"
+            )
+        self.argv = (str(weston_debug_path), "timeline")
+        self.output_path = output_path
+        self.surface_title = surface_title
+        self.environment = {
+            **os.environ,
+            "XDG_RUNTIME_DIR": os.environ.get(
+                "XDG_RUNTIME_DIR", "/run/user/1000"
+            ),
+            "WAYLAND_DISPLAY": wayland_display,
+        }
+        self.process: subprocess.Popen[Any] | None = None
+        self.output: Any = None
+        self.start_monotonic: float | None = None
+
+    def start(self) -> dict[str, Any]:
+        if self.process is not None:
+            raise BenchmarkFailure("Weston timeline session was already started")
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        self.output = self.output_path.open("w", encoding="utf-8")
+        self.process = subprocess.Popen(
+            self.argv,
+            stdin=subprocess.DEVNULL,
+            stdout=self.output,
+            stderr=subprocess.STDOUT,
+            env=self.environment,
+            start_new_session=True,
+        )
+        time.sleep(0.1)
+        if self.process.poll() is not None:
+            self.output.close()
+            raise BenchmarkFailure("weston-debug timeline failed to start")
+        self.start_monotonic = time.monotonic()
+        return {
+            "argv": list(self.argv),
+            "output": str(self.output_path),
+            "surface_title": self.surface_title,
+            "wayland_display": self.environment["WAYLAND_DISPLAY"],
+        }
+
+    def stop(self, timeout: float = 5.0) -> dict[str, Any]:
+        process = self.process
+        if process is None:
+            raise BenchmarkFailure("Weston timeline session was not started")
+        if process.poll() is None:
+            end_monotonic = time.monotonic()
+            os.killpg(process.pid, signal.SIGTERM)
+            try:
+                process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=timeout)
+        else:
+            end_monotonic = time.monotonic()
+        if self.output is not None and not self.output.closed:
+            self.output.close()
+        parsed = parse_weston_timeline(
+            self.output_path,
+            surface_title=self.surface_title,
+            start_monotonic=self.start_monotonic,
+            end_monotonic=end_monotonic,
+        )
+        return {
+            "exit_status": process.returncode,
+            "output": str(self.output_path),
+            "bytes": self.output_path.stat().st_size,
+            "sha256": file_digest(self.output_path, "sha256"),
+            "start_monotonic": self.start_monotonic,
+            "end_monotonic": end_monotonic,
+            **parsed,
+        }
+
+
 class ProcessGroup:
     def __init__(self, argv: Sequence[str], **popen_options: Any) -> None:
         self.argv = tuple(argv)
@@ -1910,32 +2418,43 @@ class ProcessGroup:
 
     def cleanup(self, timeout: float = 5.0) -> None:
         process = self.process
-        if process is None or process.poll() is not None:
+        if process is None:
             return
         try:
             os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
             return
-        try:
-            process.wait(timeout=timeout)
-            return
-        except subprocess.TimeoutExpired:
-            pass
+        if process.poll() is None:
+            try:
+                process.wait(timeout=timeout)
+                return
+            except subprocess.TimeoutExpired:
+                pass
+        else:
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                try:
+                    os.killpg(process.pid, 0)
+                except ProcessLookupError:
+                    return
+                time.sleep(0.05)
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             return
-        process.wait(timeout=timeout)
+        if process.poll() is None:
+            process.wait(timeout=timeout)
 
     def kill(self, timeout: float = 5.0) -> None:
         process = self.process
-        if process is None or process.poll() is not None:
+        if process is None:
             return
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             return
-        process.wait(timeout=timeout)
+        if process.poll() is None:
+            process.wait(timeout=timeout)
 
     def __enter__(self) -> "ProcessGroup":
         self.start()
@@ -2019,6 +2538,7 @@ def capture_preflight(
     *, java_path: Path, mangohud_root: Path | None
 ) -> dict[str, Any]:
     blockers: list[dict[str, str]] = []
+    gpu_duration_blockers: list[dict[str, str]] = []
     render_nodes: list[dict[str, Any]] = []
     for path in sorted(Path("/dev/dri").glob("renderD*")):
         status = path.stat()
@@ -2116,10 +2636,13 @@ def capture_preflight(
         for event in trace_events.values()
     )
     if not trace_access:
-        blockers.append(
+        gpu_duration_blockers.append(
             {
                 "code": "tracefs_events_unavailable",
-                "detail": "required amdgpu/fence/drm/sched trace events are not user-readable and writable",
+                "detail": (
+                    "required amdgpu/fence/drm/sched trace events are not "
+                    "user-readable and writable"
+                ),
             }
         )
 
@@ -2153,6 +2676,7 @@ def capture_preflight(
         "trace_roots": [str(path) for path in trace_roots],
         "trace_root_errors": trace_root_errors,
         "trace_events": trace_events,
+        "gpu_duration_blockers": gpu_duration_blockers,
         "mangohud": mango,
         "tools": {
             name: {
@@ -2165,6 +2689,7 @@ def capture_preflight(
         },
         "blockers": blockers,
         "formal_capture_ready": not blockers,
+        "gpu_duration_preflight_ready": not gpu_duration_blockers,
         "gpu_duration_claim_allowed": False,
     }
 
@@ -2236,10 +2761,10 @@ def summarize_blocked_comparison(
     ):
         blockers.append(
             {
-                "code": "mangohud_wayland_teardown_unstable",
+                "code": "mangohud_teardown_unstable",
                 "detail": (
                     "MangoHud 0.8.4 capture closes successfully, but both clients "
-                    "require post-capture SIGKILL to avoid reproducible Wayland teardown crashes"
+                    "require post-capture SIGKILL to avoid reproducible teardown crashes"
                 ),
             }
         )
@@ -2293,6 +2818,247 @@ def summarize_blocked_comparison(
     }
 
 
+def summarize_workload_evidence(
+    *,
+    vanilla: Mapping[str, Any],
+    bbb: Mapping[str, Any],
+    visual_review_status: str,
+    visual_review_note: str,
+) -> dict[str, Any]:
+    if visual_review_status not in ("match", "mismatch"):
+        raise BenchmarkFailure(
+            f"invalid visual workload review status: {visual_review_status}"
+        )
+    if not visual_review_note.strip():
+        raise BenchmarkFailure("visual workload review note must not be empty")
+    for name, smoke, expected_client in (
+        ("vanilla", vanilla, "vanilla"),
+        ("bbb", bbb, "bbb"),
+    ):
+        if smoke.get("client") != expected_client:
+            raise BenchmarkFailure(f"{name} smoke client identity mismatch")
+        if smoke.get("status") != "passed":
+            raise BenchmarkFailure(f"{name} workload smoke did not pass")
+        if smoke.get("position_corrections") != 0:
+            raise BenchmarkFailure(f"{name} workload observed a position correction")
+    if vanilla.get("workload_debug_profile") is not True:
+        raise BenchmarkFailure(
+            "Vanilla workload evidence requires the explicit debug profile"
+        )
+
+    contract_keys = (
+        "replay_hash",
+        "world_hash",
+        "resource_hash",
+        "settings_hash",
+        "scene_contract_hash",
+    )
+    contracts: dict[str, Any] = {}
+    for key in contract_keys:
+        value = vanilla.get(key)
+        if value is None or value != bbb.get(key):
+            raise BenchmarkFailure(f"workload contract {key} mismatch")
+        contracts[key] = value
+    vanilla_camera = vanilla.get("server_camera_log")
+    bbb_camera = bbb.get("server_camera_log")
+    if not isinstance(vanilla_camera, Mapping) or not isinstance(
+        bbb_camera, Mapping
+    ):
+        raise BenchmarkFailure("workload smoke lacks a server camera log")
+    if (
+        vanilla_camera.get("sha256") != bbb_camera.get("sha256")
+        or vanilla_camera.get("markers") != bbb_camera.get("markers")
+    ):
+        raise BenchmarkFailure("server camera logs differ")
+
+    segments = (
+        "static_orbit",
+        "preloaded_flight",
+        "chunk_boundary_crossing",
+    )
+    screenshots: dict[str, dict[str, Any]] = {}
+    for client, smoke in (("vanilla", vanilla), ("bbb", bbb)):
+        by_segment = {
+            screenshot.get("capture_segment"): screenshot
+            for screenshot in smoke.get("screenshots", ())
+            if isinstance(screenshot, Mapping)
+        }
+        if set(by_segment) != set(segments):
+            raise BenchmarkFailure(
+                f"{client} workload screenshots do not cover all segments"
+            )
+        for segment in segments:
+            screenshot = by_segment[segment]
+            if not screenshot.get("sha256") or not screenshot.get("path"):
+                raise BenchmarkFailure(
+                    f"{client} {segment} screenshot lacks content evidence"
+                )
+            screenshots.setdefault(segment, {})[client] = dict(screenshot)
+    for segment, pair in screenshots.items():
+        if pair["vanilla"].get("server_tick") != pair["bbb"].get("server_tick"):
+            raise BenchmarkFailure(f"{segment} screenshot tick mismatch")
+
+    observations = {
+        observation.get("capture_segment"): observation
+        for observation in bbb.get("anchor_observations", ())
+        if isinstance(observation, Mapping)
+    }
+    if set(observations) != set(segments):
+        raise BenchmarkFailure("bbb anchor observations do not cover all segments")
+    required_draws = {
+        "static_orbit": ("opaque_draw_calls", "translucent_draw_calls"),
+        "preloaded_flight": (
+            "opaque_draw_calls",
+            "cutout_draw_calls",
+            "translucent_draw_calls",
+            "entity_scene_draw_calls",
+        ),
+        "chunk_boundary_crossing": (
+            "opaque_draw_calls",
+            "translucent_draw_calls",
+            "entity_scene_draw_calls",
+        ),
+    }
+    bbb_render_evidence: dict[str, Any] = {}
+    selected_fields = (
+        "visible_sections",
+        "resident_bytes",
+        "opaque_draw_calls",
+        "cutout_draw_calls",
+        "translucent_draw_calls",
+        "opaque_faces",
+        "cutout_faces",
+        "translucent_faces",
+        "entity_render_candidates",
+        "entity_render_projected",
+        "entity_scene_draw_calls",
+        "active_particle_instances",
+        "particle_draw_calls",
+        "draw_calls",
+    )
+    for segment in segments:
+        renderer = observations[segment].get("renderer")
+        if not isinstance(renderer, Mapping):
+            raise BenchmarkFailure(f"bbb {segment} lacks renderer counters")
+        for field in required_draws[segment]:
+            if int(renderer.get(field, 0)) <= 0:
+                raise BenchmarkFailure(f"bbb {segment} lacks required {field}")
+        if int(renderer.get("visible_sections", 0)) <= 0:
+            raise BenchmarkFailure(f"bbb {segment} has no visible sections")
+        if int(renderer.get("active_particle_instances", -1)) != 0:
+            raise BenchmarkFailure(
+                f"bbb {segment} minimal-particle workload is not stable"
+            )
+        bbb_render_evidence[segment] = {
+            field: renderer.get(field) for field in selected_fields
+        }
+
+    evidence_hash = canonical_sha256(
+        {
+            "contracts": contracts,
+            "server_camera_log": {
+                "sha256": vanilla_camera.get("sha256"),
+                "markers": vanilla_camera.get("markers"),
+            },
+            "anchor_ticks": {
+                segment: screenshots[segment]["vanilla"].get("server_tick")
+                for segment in segments
+            },
+        }
+    )
+    return {
+        "schema": BENCHMARK_SCHEMA,
+        "status": (
+            "matched" if visual_review_status == "match" else "mismatched"
+        ),
+        "formal_timing_sample": False,
+        "workload_evidence_hash": evidence_hash,
+        "contracts": contracts,
+        "server_camera_log": {
+            "sha256": vanilla_camera.get("sha256"),
+            "markers": vanilla_camera.get("markers"),
+        },
+        "visual_review": {
+            "status": visual_review_status,
+            "note": visual_review_note,
+        },
+        "screenshot_pairs": [
+            {
+                "capture_segment": segment,
+                **screenshots[segment],
+            }
+            for segment in segments
+        ],
+        "bbb_renderer_counters": bbb_render_evidence,
+        "counter_scope": (
+            "bbb counters are renderer-native evidence; Vanilla chunk/entity/"
+            "particle debug values remain embedded in validation screenshots "
+            "and are not treated as numerically identical counter semantics"
+        ),
+    }
+
+
+def validate_formal_evidence_linkage(
+    *,
+    contracts: Mapping[str, Any],
+    camera_hash: str,
+    workload: Mapping[str, Any],
+    renderdoc: Mapping[str, Any],
+) -> None:
+    if workload.get("contracts") != dict(contracts):
+        raise BenchmarkFailure(
+            "visible workload evidence does not match the formal run contracts"
+        )
+    workload_camera = workload.get("server_camera_log")
+    if (
+        not isinstance(workload_camera, Mapping)
+        or workload_camera.get("sha256") != camera_hash
+    ):
+        raise BenchmarkFailure(
+            "visible workload evidence does not match the formal camera log"
+        )
+
+    screenshot_ticks: dict[tuple[str, str], int] = {}
+    for pair in workload.get("screenshot_pairs", ()):
+        if not isinstance(pair, Mapping):
+            raise BenchmarkFailure("visible workload screenshot pair is invalid")
+        segment = str(pair.get("capture_segment"))
+        for client in ("vanilla", "bbb"):
+            screenshot = pair.get(client)
+            if not isinstance(screenshot, Mapping):
+                raise BenchmarkFailure(
+                    f"visible workload lacks {client}/{segment} screenshot"
+                )
+            try:
+                screenshot_ticks[(client, segment)] = int(
+                    screenshot["server_tick"]
+                )
+            except (KeyError, TypeError, ValueError) as error:
+                raise BenchmarkFailure(
+                    f"visible workload has invalid {client}/{segment} tick"
+                ) from error
+
+    renderdoc_ticks: dict[tuple[str, str], int] = {}
+    for capture in renderdoc.get("captures", ()):
+        if not isinstance(capture, Mapping):
+            raise BenchmarkFailure("RenderDoc evidence capture is invalid")
+        key = (str(capture.get("client")), str(capture.get("capture_segment")))
+        if key in renderdoc_ticks:
+            raise BenchmarkFailure(
+                f"RenderDoc evidence duplicates {key[0]}/{key[1]}"
+            )
+        try:
+            renderdoc_ticks[key] = int(capture["server_tick"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise BenchmarkFailure(
+                f"RenderDoc evidence has invalid {key[0]}/{key[1]} tick"
+            ) from error
+    if renderdoc_ticks != screenshot_ticks:
+        raise BenchmarkFailure(
+            "RenderDoc draw evidence does not match the reviewed screenshot anchors"
+        )
+
+
 def _verify_world_snapshot(
     manifest_path: Path, world_dir: Path
 ) -> dict[str, Any]:
@@ -2308,6 +3074,614 @@ def _verify_world_snapshot(
             f"expected {manifest.get('world_hash')}, got {actual_hash}"
         )
     return manifest
+
+
+def build_renderdoc_launch_argv(
+    *,
+    renderdoccmd: Path,
+    capture_template: Path,
+    working_dir: Path,
+    client_argv: Sequence[str],
+) -> tuple[str, ...]:
+    if not renderdoccmd.is_file() or not os.access(renderdoccmd, os.X_OK):
+        raise BenchmarkFailure(f"RenderDoc command is unavailable: {renderdoccmd}")
+    if not client_argv:
+        raise BenchmarkFailure("RenderDoc client command must not be empty")
+    return (
+        str(renderdoccmd),
+        "capture",
+        "--working-dir",
+        str(working_dir),
+        "--capture-file",
+        str(capture_template),
+        *client_argv,
+    )
+
+
+def parse_renderdoc_target_ident(text: str) -> int:
+    matches = re.findall(r"^Launched as ID ([0-9]+)$", text, flags=re.MULTILINE)
+    if len(matches) != 1:
+        raise BenchmarkFailure(
+            "RenderDoc launch output must contain exactly one target ID"
+        )
+    ident = int(matches[0])
+    if not 1 <= ident <= 65535:
+        raise BenchmarkFailure(f"invalid RenderDoc target ID: {ident}")
+    return ident
+
+
+def parse_renderdoc_control_output(text: str) -> dict[str, Any]:
+    fields: dict[str, str] = {}
+    for line in text.splitlines():
+        key, separator, value = line.partition("=")
+        if separator and re.fullmatch(r"[a-z_]+", key):
+            fields[key] = value
+    required = {
+        "api",
+        "byte_size",
+        "capture_id",
+        "frame_number",
+        "path",
+        "pid",
+        "target",
+    }
+    missing = sorted(required - fields.keys())
+    if missing:
+        raise BenchmarkFailure(
+            "RenderDoc target-control output is missing fields: "
+            + ", ".join(missing)
+        )
+    try:
+        numeric = {
+            key: int(fields[key])
+            for key in ("byte_size", "capture_id", "frame_number", "pid")
+        }
+    except ValueError as error:
+        raise BenchmarkFailure(
+            "RenderDoc target-control output contains an invalid integer"
+        ) from error
+    if numeric["byte_size"] <= 0 or numeric["pid"] <= 0:
+        raise BenchmarkFailure(
+            "RenderDoc capture size and target PID must be positive"
+        )
+    capture_path = Path(fields["path"])
+    if not capture_path.is_absolute():
+        raise BenchmarkFailure("RenderDoc capture path must be absolute")
+    return {
+        "api": fields["api"],
+        **numeric,
+        "path": str(capture_path),
+        "target": fields["target"],
+    }
+
+
+def parse_renderdoc_xml(path: Path) -> dict[str, Any]:
+    """Summarize RenderDoc's replay-independent XML event stream."""
+    if not path.is_file():
+        raise BenchmarkFailure(f"RenderDoc XML does not exist: {path}")
+    driver: str | None = None
+    renderer: str | None = None
+    thumbnail: list[int] | None = None
+    chunk_count = 0
+    categories = {
+        "draw": 0,
+        "dispatch": 0,
+        "clear": 0,
+        "copy_or_blit": 0,
+        "pass_boundary": 0,
+        "present": 0,
+    }
+    draw_calls: dict[str, int] = {}
+    try:
+        elements = ElementTree.iterparse(path, events=("end",))
+        for _event, element in elements:
+            if element.tag == "driver" and driver is None:
+                driver = (element.text or "").strip()
+            elif element.tag == "thumbnail" and thumbnail is None:
+                try:
+                    thumbnail = [
+                        int(element.attrib["width"]),
+                        int(element.attrib["height"]),
+                    ]
+                except (KeyError, ValueError) as error:
+                    raise BenchmarkFailure(
+                        "RenderDoc XML thumbnail has invalid dimensions"
+                    ) from error
+            elif (
+                element.tag == "string"
+                and element.attrib.get("name") in ("renderer", "deviceName")
+                and renderer is None
+            ):
+                renderer = (element.text or "").strip()
+            elif element.tag == "chunk":
+                chunk_count += 1
+                name = element.attrib.get("name", "")
+                is_draw = (
+                    (
+                        name.startswith(("glDraw", "glMultiDraw"))
+                        and not name.startswith(("glDrawBuffer", "glDrawBuffers"))
+                    )
+                    or name.startswith("vkCmdDraw")
+                )
+                if is_draw:
+                    categories["draw"] += 1
+                    draw_calls[name] = draw_calls.get(name, 0) + 1
+                if name.startswith(("glDispatchCompute", "vkCmdDispatch")):
+                    categories["dispatch"] += 1
+                if name.startswith(("glClear", "vkCmdClear")):
+                    categories["clear"] += 1
+                if name.startswith(
+                    (
+                        "glBlit",
+                        "glCopy",
+                        "vkCmdBlit",
+                        "vkCmdCopy",
+                        "vkCmdResolve",
+                    )
+                ):
+                    categories["copy_or_blit"] += 1
+                if name.startswith(
+                    (
+                        "vkCmdBeginRenderPass",
+                        "vkCmdEndRenderPass",
+                        "vkCmdBeginRendering",
+                        "vkCmdEndRendering",
+                    )
+                ):
+                    categories["pass_boundary"] += 1
+                if name in (
+                    "glXSwapBuffers",
+                    "eglSwapBuffers",
+                    "vkQueuePresentKHR",
+                ):
+                    categories["present"] += 1
+            element.clear()
+    except ElementTree.ParseError as error:
+        raise BenchmarkFailure(f"invalid RenderDoc XML: {path}: {error}") from error
+    if driver not in ("OpenGL", "Vulkan"):
+        raise BenchmarkFailure(
+            f"RenderDoc XML has unsupported or missing driver: {driver!r}"
+        )
+    if thumbnail is None or min(thumbnail) <= 0:
+        raise BenchmarkFailure("RenderDoc XML lacks a positive thumbnail size")
+    if categories["draw"] <= 0 or categories["present"] != 1:
+        raise BenchmarkFailure(
+            "RenderDoc XML must contain draw work and exactly one presentation"
+        )
+    return {
+        "driver": driver,
+        "renderer": renderer,
+        "thumbnail": thumbnail,
+        "chunk_count": chunk_count,
+        "event_categories": categories,
+        "draw_calls_by_api": dict(sorted(draw_calls.items())),
+        "scope": (
+            "replay-independent serialized API event counts; draw calls are "
+            "not semantic workload equivalence, CPU duration, or GPU duration"
+        ),
+    }
+
+
+def summarize_renderdoc_evidence(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    if manifest.get("schema") != BENCHMARK_SCHEMA:
+        raise BenchmarkFailure("RenderDoc evidence manifest schema mismatch")
+    captures = manifest.get("captures")
+    if not isinstance(captures, list):
+        raise BenchmarkFailure("RenderDoc evidence manifest lacks captures")
+    segments = (
+        "static_orbit",
+        "preloaded_flight",
+        "chunk_boundary_crossing",
+    )
+    expected = {
+        (client, segment)
+        for client in ("vanilla", "bbb")
+        for segment in segments
+    }
+    observed: dict[tuple[str, str], dict[str, Any]] = {}
+    for capture in captures:
+        if not isinstance(capture, Mapping):
+            raise BenchmarkFailure("RenderDoc capture entry must be an object")
+        client = capture.get("client")
+        segment = capture.get("capture_segment")
+        key = (client, segment)
+        if key not in expected or key in observed:
+            raise BenchmarkFailure(
+                f"unexpected or duplicate RenderDoc capture: {client}/{segment}"
+            )
+        rdc_path = Path(str(capture.get("rdc")))
+        xml_path = Path(str(capture.get("xml")))
+        if not rdc_path.is_file() or rdc_path.stat().st_size <= 0:
+            raise BenchmarkFailure(f"RenderDoc capture is unavailable: {rdc_path}")
+        parsed = parse_renderdoc_xml(xml_path)
+        expected_driver = "OpenGL" if client == "vanilla" else "Vulkan"
+        if parsed["driver"] != expected_driver:
+            raise BenchmarkFailure(
+                f"{client} RenderDoc driver mismatch: {parsed['driver']}"
+            )
+        if parsed["thumbnail"] != [WINDOW_WIDTH, WINDOW_HEIGHT]:
+            raise BenchmarkFailure(
+                f"{client} RenderDoc frame is not {WINDOW_WIDTH}x{WINDOW_HEIGHT}"
+            )
+        try:
+            server_tick = int(capture["server_tick"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise BenchmarkFailure(
+                f"{client}/{segment} lacks a valid server tick"
+            ) from error
+        observed[key] = {
+            "client": client,
+            "capture_segment": segment,
+            "server_tick": server_tick,
+            "rdc": {
+                "path": str(rdc_path),
+                "bytes": rdc_path.stat().st_size,
+                "sha256": file_digest(rdc_path, "sha256"),
+            },
+            "xml": {
+                "path": str(xml_path),
+                "bytes": xml_path.stat().st_size,
+                "sha256": file_digest(xml_path, "sha256"),
+            },
+            **parsed,
+        }
+    if set(observed) != expected:
+        missing = sorted(expected - set(observed))
+        raise BenchmarkFailure(f"RenderDoc evidence lacks captures: {missing}")
+    ordered = [
+        observed[(client, segment)]
+        for segment in segments
+        for client in ("vanilla", "bbb")
+    ]
+    evidence_hash = canonical_sha256(
+        [
+            {
+                "client": item["client"],
+                "capture_segment": item["capture_segment"],
+                "server_tick": item["server_tick"],
+                "rdc_sha256": item["rdc"]["sha256"],
+                "xml_sha256": item["xml"]["sha256"],
+                "driver": item["driver"],
+                "thumbnail": item["thumbnail"],
+                "event_categories": item["event_categories"],
+                "draw_calls_by_api": item["draw_calls_by_api"],
+            }
+            for item in ordered
+        ]
+    )
+    return {
+        "schema": BENCHMARK_SCHEMA,
+        "status": "validated",
+        "formal_timing_sample": False,
+        "capture_overhead_excluded_from_metrics": True,
+        "renderdoc_evidence_hash": evidence_hash,
+        "captures": ordered,
+        "scope": (
+            "common RenderDoc 1.45 raw frame captures and replay-independent "
+            "XML API event streams prove each anchor submitted visible draw "
+            "work; API call counts are not compared as equivalent semantics "
+            "and are not performance measurements"
+        ),
+    }
+
+
+def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    if manifest.get("schema") != BENCHMARK_SCHEMA:
+        raise BenchmarkFailure("formal comparison manifest schema mismatch")
+    run_paths = manifest.get("runs")
+    if not isinstance(run_paths, list) or len(run_paths) < 6:
+        raise BenchmarkFailure("formal comparison requires at least six runs")
+    runs = [
+        load_json_object(Path(str(path)), "formal capture run")
+        for path in run_paths
+    ]
+    clients = [str(run.get("client")) for run in runs]
+    if len(runs) % 4 != 0 or any(
+        clients[index : index + 4] != ["vanilla", "bbb", "bbb", "vanilla"]
+        for index in range(0, len(runs), 4)
+    ):
+        raise BenchmarkFailure("formal capture order is not repeated ABBA")
+    if min(clients.count("vanilla"), clients.count("bbb")) < 3:
+        raise BenchmarkFailure("formal comparison lacks three runs per client")
+
+    workload_path = Path(str(manifest.get("workload_evidence")))
+    renderdoc_path = Path(str(manifest.get("renderdoc_evidence")))
+    workload = load_json_object(workload_path, "workload evidence")
+    renderdoc = load_json_object(renderdoc_path, "RenderDoc evidence")
+    if workload.get("status") != "matched":
+        raise BenchmarkFailure("visible workload evidence is not matched")
+    if renderdoc.get("status") != "validated":
+        raise BenchmarkFailure("common draw evidence is not validated")
+
+    contracts: dict[str, Any] = {}
+    contract_keys = (
+        "replay_hash",
+        "world_hash",
+        "resource_hash",
+        "settings_hash",
+        "scene_contract_hash",
+    )
+    for key in contract_keys:
+        values = {run.get(key) for run in runs}
+        if len(values) != 1 or None in values:
+            raise BenchmarkFailure(f"formal run {key} mismatch")
+        contracts[key] = next(iter(values))
+    camera_hashes = {
+        run.get("server_camera_log", {}).get("sha256") for run in runs
+    }
+    if len(camera_hashes) != 1 or None in camera_hashes:
+        raise BenchmarkFailure("formal run camera logs differ")
+    camera_hash = str(next(iter(camera_hashes)))
+    validate_formal_evidence_linkage(
+        contracts=contracts,
+        camera_hash=camera_hash,
+        workload=workload,
+        renderdoc=renderdoc,
+    )
+
+    expected_binary = manifest.get("bbb_binary_sha256")
+    metric_names = (
+        "frame_ms",
+        "gpu_load",
+        "gpu_clock_mhz",
+        "gpu_temp_c",
+        "cpu_temp_c",
+    )
+    aggregate_captures: dict[
+        str, dict[str, dict[str, list[float]]]
+    ] = {
+        client: {
+            segment: {name: [] for name in metric_names}
+            for segment in (
+                "overall",
+                "static_orbit",
+                "preloaded_flight",
+                "chunk_boundary_crossing",
+            )
+        }
+        for client in ("vanilla", "bbb")
+    }
+    perf_totals = {
+        client: {event: 0.0 for event in REQUIRED_PERF_EVENTS}
+        for client in ("vanilla", "bbb")
+    }
+    presented = {"vanilla": 0, "bbb": 0}
+    run_evidence: list[dict[str, Any]] = []
+    replay = load_json_object(
+        Path(str(manifest.get("replay"))), "formal replay"
+    )
+    for index, (path_value, run) in enumerate(zip(run_paths, runs), start=1):
+        client = str(run["client"])
+        if run.get("status") != "passed":
+            raise BenchmarkFailure(f"formal run {index} did not pass")
+        if run.get("position_corrections") != 0:
+            raise BenchmarkFailure(f"formal run {index} has a position correction")
+        if run.get("throttling") is not False:
+            raise BenchmarkFailure(
+                f"formal run {index} has throttling or unknown thermal state"
+            )
+        expected_api = "opengl" if client == "vanilla" else "vulkan"
+        if run.get("capture_api") != expected_api:
+            raise BenchmarkFailure(f"formal run {index} capture API mismatch")
+        raw_logs = run.get("mangohud_raw_logs")
+        if not isinstance(raw_logs, list) or len(raw_logs) != 1:
+            raise BenchmarkFailure(
+                f"formal run {index} lacks one MangoHud raw log"
+            )
+        raw_path = Path(str(raw_logs[0]))
+        capture = parse_mangohud_csv(raw_path)
+        gpu = str(capture.get("system", {}).get("gpu", ""))
+        if "AMD Radeon 610M" not in gpu or "llvmpipe" in gpu.lower():
+            raise BenchmarkFailure(
+                f"formal run {index} did not use the AMD hardware GPU"
+            )
+        split = split_mangohud_capture_by_replay(capture, replay)
+        for name in metric_names:
+            aggregate_captures[client]["overall"][name].extend(
+                capture.get(name, ())
+            )
+        for segment, values in split.items():
+            for name in metric_names:
+                aggregate_captures[client][segment][name].extend(
+                    values.get(name, ())
+                )
+        presented[client] += len(capture["frame_ms"])
+
+        perf = run.get("perf_stat", {}).get("events")
+        if not isinstance(perf, Mapping):
+            raise BenchmarkFailure(f"formal run {index} lacks perf stat")
+        for event in REQUIRED_PERF_EVENTS:
+            try:
+                perf_totals[client][event] += float(perf[event])
+            except (KeyError, TypeError, ValueError) as error:
+                raise BenchmarkFailure(
+                    f"formal run {index} lacks perf event {event}"
+                ) from error
+
+        if client == "vanilla":
+            options = run.get("loaded_options", {}).get("values", {})
+            if options.get("inactivityFpsLimit") != "minimized":
+                raise BenchmarkFailure(
+                    f"formal run {index} did not disable the AFK limiter"
+                )
+        else:
+            launch = load_json_object(
+                Path(str(run.get("launch_manifest"))), "bbb launch manifest"
+            )
+            if launch.get("binary", {}).get("sha256") != expected_binary:
+                raise BenchmarkFailure(f"formal run {index} bbb binary mismatch")
+        raw_summary = asdict(summarize_frames(capture))
+        run_evidence.append(
+            {
+                "sequence": index,
+                "client": client,
+                "smoke": str(path_value),
+                "smoke_sha256": file_digest(Path(str(path_value)), "sha256"),
+                "raw": str(raw_path),
+                "raw_sha256": file_digest(raw_path, "sha256"),
+                "gpu": gpu,
+                "frames": raw_summary,
+                "perf": run["perf_stat"],
+                "server_camera_log": run["server_camera_log"],
+            }
+        )
+
+    overhead_manifest = manifest.get("mangohud_overhead")
+    if not isinstance(overhead_manifest, Mapping):
+        raise BenchmarkFailure("formal manifest lacks MangoHud overhead evidence")
+    threshold = float(overhead_manifest.get("threshold_percent", 1.0))
+    overhead: dict[str, Any] = {}
+    for client in ("vanilla", "bbb"):
+        entry = overhead_manifest.get(client)
+        if not isinstance(entry, Mapping):
+            raise BenchmarkFailure(f"missing {client} MangoHud overhead evidence")
+        if entry.get("baseline_smoke"):
+            baseline_smoke = load_json_object(
+                Path(str(entry["baseline_smoke"])), "overhead baseline"
+            )
+            baseline = baseline_smoke.get("weston_timeline")
+        else:
+            baseline = parse_weston_timeline(
+                Path(str(entry.get("baseline_timeline"))),
+                surface_title=str(entry.get("surface_title")),
+            )
+        instrumented_smoke = load_json_object(
+            Path(str(entry.get("instrumented_smoke"))),
+            "overhead instrumented run",
+        )
+        instrumented = instrumented_smoke.get("weston_timeline")
+        if not isinstance(baseline, Mapping) or not isinstance(
+            instrumented, Mapping
+        ):
+            raise BenchmarkFailure(f"{client} overhead timeline is incomplete")
+        baseline_ms = float(baseline["commit_interval"]["p50_ms"])
+        instrumented_ms = float(
+            instrumented["commit_interval"]["p50_ms"]
+        )
+        impact = (instrumented_ms - baseline_ms) * 100.0 / baseline_ms
+        if impact > threshold:
+            raise BenchmarkFailure(
+                f"{client} MangoHud median overhead {impact:.3f}% exceeds "
+                f"{threshold:.3f}%"
+            )
+        overhead[client] = {
+            "baseline_p50_ms": baseline_ms,
+            "instrumented_p50_ms": instrumented_ms,
+            "impact_percent": impact,
+            "threshold_percent": threshold,
+            "scope": baseline["scope"],
+        }
+
+    performance: dict[str, Any] = {}
+    for client in ("vanilla", "bbb"):
+        performance[client] = {
+            "frames": {
+                segment: asdict(
+                    summarize_frames(capture)
+                )
+                for segment, capture in aggregate_captures[client].items()
+            },
+            "perf": {
+                "events": perf_totals[client],
+                "presented_frames": presented[client],
+                "per_presented_frame": {
+                    event: value / presented[client]
+                    for event, value in perf_totals[client].items()
+                },
+                "scope": (
+                    "process totals and per-MangoHud-frame means; "
+                    "no CPU-frame percentiles"
+                ),
+            },
+        }
+    return {
+        "schema": BENCHMARK_SCHEMA,
+        "formal_comparison_complete": True,
+        "metrics_publishable": True,
+        "contracts": contracts,
+        "server_camera_log_sha256": camera_hash,
+        "mangohud_overhead": overhead,
+        "runs": run_evidence,
+        "performance": performance,
+        "metric_scope": (
+            "MangoHud present-call frame intervals p50/p95/p99, 1% low, "
+            "hitches and GPU telemetry; perf process totals are normalized "
+            "per captured frame and are not CPU-frame percentiles"
+        ),
+        "gpu_duration": {
+            "claim_allowed": False,
+            "blocker": (
+                "this kernel exposes dma_fence:dma_fence_signaled instead of "
+                "the requested fence:fence_signaled, and no validated "
+                "client-context-to-headless-Xwayland-vblank association was "
+                "established across radeonsi and RADV"
+            ),
+        },
+        "artifacts": {
+            "workload_evidence": str(workload_path),
+            "workload_evidence_sha256": file_digest(
+                workload_path, "sha256"
+            ),
+            "renderdoc_evidence": str(renderdoc_path),
+            "renderdoc_evidence_sha256": file_digest(
+                renderdoc_path, "sha256"
+            ),
+        },
+    }
+
+
+def _capture_renderdoc_anchor(
+    *,
+    control_path: Path,
+    capture_dir: Path,
+    target_ident: int,
+    client: str,
+    segment: str,
+    server_tick: int,
+) -> dict[str, Any]:
+    if not control_path.is_file() or not os.access(control_path, os.X_OK):
+        raise BenchmarkFailure(
+            f"RenderDoc target-control helper is unavailable: {control_path}"
+        )
+    before = set(capture_dir.glob("*.rdc"))
+    capture = subprocess.run(
+        (str(control_path), str(target_ident), "0"),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=45.0,
+        check=False,
+    )
+    if capture.returncode != 0:
+        raise BenchmarkFailure(
+            "RenderDoc target-control capture failed: "
+            + (capture.stdout.strip() or f"exit {capture.returncode}")
+        )
+    parsed = parse_renderdoc_control_output(capture.stdout)
+    created = set(capture_dir.glob("*.rdc")) - before
+    if len(created) != 1:
+        raise BenchmarkFailure(
+            "RenderDoc target-control must create exactly one new capture; "
+            f"observed {len(created)}"
+        )
+    path = created.pop()
+    actual_size = path.stat().st_size
+    frame_match = re.search(r"_frame([0-9]+)\.rdc$", path.name)
+    if frame_match is None:
+        raise BenchmarkFailure(
+            f"RenderDoc capture filename has no frame number: {path}"
+        )
+    return {
+        **parsed,
+        "byte_size": actual_size,
+        "frame_number": int(frame_match.group(1)),
+        "path": str(path),
+        "client": client,
+        "capture_segment": segment,
+        "server_tick": server_tick,
+        "sha256": file_digest(path, "sha256"),
+    }
 
 
 def _take_weston_screenshot(
@@ -2367,9 +3741,30 @@ def run_official_smoke(
     accept_eula: bool,
     timeout: float,
     wayland_display: str,
+    x_display: str | None,
     mangohud_root: Path | None,
+    perf_path: Path | None,
+    weston_debug_path: Path | None,
     weston_path: Path | None,
+    workload_debug_profile: bool,
+    weston_renderer: str,
+    renderdoccmd: Path | None,
+    renderdoc_control: Path | None,
 ) -> dict[str, Any]:
+    if weston_renderer not in ("gl", "pixman"):
+        raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
+    if renderdoccmd is not None and mangohud_root is not None:
+        raise BenchmarkFailure(
+            "RenderDoc validation and MangoHud timing must use separate runs"
+        )
+    if perf_path is not None and mangohud_root is None:
+        raise BenchmarkFailure(
+            "perf normalization requires a simultaneous MangoHud frame capture"
+        )
+    if weston_debug_path is not None and x_display is None:
+        raise BenchmarkFailure(
+            "Weston timeline overhead capture requires the Xwayland path"
+        )
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise BenchmarkFailure(
             f"official smoke artifact directory must be empty: {artifact_dir}"
@@ -2400,6 +3795,11 @@ def run_official_smoke(
     )
     game_dir = artifact_dir / "game"
     options_path = write_vanilla_options(game_dir)
+    debug_profile_path = (
+        write_vanilla_workload_debug_profile(game_dir)
+        if workload_debug_profile
+        else None
+    )
     plan = build_vanilla_launch_plan(
         audit,
         java_path=java_path,
@@ -2407,13 +3807,30 @@ def run_official_smoke(
         assets_dir=mc_root / "downloads" / MINECRAFT_VERSION / "assets",
         natives_dir=natives_dir,
         server_port=server_port,
+        prefer_wayland=x_display is None,
     )
     server_log_path = artifact_dir / "server.log"
     client_log_path = artifact_dir / "vanilla-client.log"
     evidence_path = artifact_dir / "smoke.json"
     launch_path = artifact_dir / "vanilla-launch.json"
     host = host_facts(java_path)
-    host["wayland_display"] = wayland_display
+    host["window_system"] = "x11" if x_display is not None else "wayland"
+    host["display"] = x_display
+    host["wayland_display"] = None if x_display is not None else wayland_display
+    client_argv = plan.argv
+    if renderdoccmd is not None:
+        if renderdoc_control is None:
+            raise BenchmarkFailure(
+                "RenderDoc target-control helper is required for capture"
+            )
+        renderdoc_dir = artifact_dir / "renderdoc"
+        renderdoc_dir.mkdir()
+        client_argv = build_renderdoc_launch_argv(
+            renderdoccmd=renderdoccmd,
+            capture_template=renderdoc_dir / "vanilla",
+            working_dir=game_dir,
+            client_argv=plan.argv,
+        )
     launch_path.write_bytes(
         canonical_json_bytes(
             {
@@ -2421,7 +3838,25 @@ def run_official_smoke(
                 "audit": asdict(audit),
                 "natives": [asdict(entry) for entry in natives],
                 "options_hash": file_digest(options_path, "sha256"),
-                "launch": {**asdict(plan), "argv": sanitized_argv(plan.argv)},
+                "workload_debug_profile": (
+                    {
+                        "path": str(debug_profile_path),
+                        "sha256": file_digest(debug_profile_path, "sha256"),
+                    }
+                    if debug_profile_path is not None
+                    else None
+                ),
+                "launch": {**asdict(plan), "argv": sanitized_argv(client_argv)},
+                "renderdoc": (
+                    {
+                        "command": str(renderdoccmd),
+                        "command_sha256": file_digest(renderdoccmd, "sha256"),
+                        "control": str(renderdoc_control),
+                        "control_sha256": file_digest(renderdoc_control, "sha256"),
+                    }
+                    if renderdoccmd is not None and renderdoc_control is not None
+                    else None
+                ),
                 "host": host,
             }
         )
@@ -2443,6 +3878,7 @@ def run_official_smoke(
             }
         ),
         "visible_content_hash": None,
+        "workload_debug_profile": workload_debug_profile,
         "formal_capture_valid": False,
         "scope": "launcher/replay/common-capture semantic smoke, not a formal performance run",
         "server": asdict(server),
@@ -2452,11 +3888,16 @@ def run_official_smoke(
         "client_log": str(client_log_path),
         "screenshot": None,
         "screenshots": [],
+        "renderdoc_captures": [],
         "wayland_display": wayland_display,
+        "x_display": x_display,
+        "window_system": "x11" if x_display is not None else "wayland",
         "resolution": [WINDOW_WIDTH, WINDOW_HEIGHT],
     }
     server_group: ProcessGroup | None = None
     client_group: ProcessGroup | None = None
+    perf_session: PerfStatSession | None = None
+    timeline_session: WestonTimelineSession | None = None
     compositor_group: ProcessGroup | None = None
     compositor_output: Any = None
     try:
@@ -2464,6 +3905,10 @@ def run_official_smoke(
             raise BenchmarkFailure(
                 f"unsafe Wayland display name: {wayland_display!r}"
             )
+        if x_display is not None and re.fullmatch(
+            r":[0-9]+(?:\\.[0-9]+)?", x_display
+        ) is None:
+            raise BenchmarkFailure(f"unsafe X display name: {x_display!r}")
         runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", "/run/user/1000"))
         if weston_path is not None:
             if not weston_path.is_file() or not os.access(weston_path, os.X_OK):
@@ -2483,7 +3928,7 @@ def run_official_smoke(
                 "--idle-time=0",
                 f"--width={COMPOSITOR_WIDTH}",
                 f"--height={COMPOSITOR_HEIGHT}",
-                "--renderer=pixman",
+                f"--renderer={weston_renderer}",
                 "--no-config",
                 "--debug",
                 f"--log={artifact_dir / 'weston.log'}",
@@ -2542,7 +3987,11 @@ def run_official_smoke(
             )
             environment = os.environ.copy()
             environment["XDG_RUNTIME_DIR"] = str(runtime_dir)
-            environment["WAYLAND_DISPLAY"] = wayland_display
+            if x_display is None:
+                environment["WAYLAND_DISPLAY"] = wayland_display
+            else:
+                environment.pop("WAYLAND_DISPLAY", None)
+                environment["DISPLAY"] = x_display
             if mangohud_root is not None:
                 mango_environment, mango_audit = mangohud_environment(
                     package_root=mangohud_root,
@@ -2552,7 +4001,7 @@ def run_official_smoke(
                 environment.update(mango_environment)
                 result["mangohud"] = mango_audit
             client_group = ProcessGroup(
-                plan.argv,
+                client_argv,
                 cwd=game_dir,
                 stdin=subprocess.DEVNULL,
                 stdout=client_log,
@@ -2561,15 +4010,32 @@ def run_official_smoke(
             )
             client_process = client_group.start()
             result["client_pid"] = client_process.pid
+            client_watch_process = (
+                None if renderdoccmd is not None else client_process
+            )
             _wait_for_log(
                 server_log_path,
                 f"{BENCHMARK_USERNAME} joined the game",
-                process=client_process,
+                process=client_watch_process,
                 timeout=timeout,
             )
+            renderdoc_ident: int | None = None
+            if renderdoccmd is not None:
+                _wait_for_log(
+                    client_log_path,
+                    "Launched as ID ",
+                    process=None,
+                    timeout=timeout,
+                )
+                renderdoc_ident = parse_renderdoc_target_ident(
+                    client_log_path.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
+                )
+                result["renderdoc_target_ident"] = renderdoc_ident
             result["warmup_seconds"] = FIXED_WARMUP_SECONDS
             _warmup_and_start_replay(server_process, replay)
-            if mangohud_root is not None:
+            if mangohud_root is not None or weston_debug_path is not None:
                 capture_start = next(
                     frame
                     for frame in replay["frames"]
@@ -2582,9 +4048,25 @@ def run_official_smoke(
                         f"{capture_start['capture_segment']} capture_start "
                         f"{capture_start['server_tick']}"
                     ),
-                    process=client_process,
+                    process=client_watch_process,
                     timeout=timeout,
                 )
+            if weston_debug_path is not None:
+                timeline_session = WestonTimelineSession(
+                    weston_debug_path=weston_debug_path,
+                    wayland_display=wayland_display,
+                    output_path=artifact_dir / "weston-timeline.jsonl",
+                    surface_title="Minecraft 26.1",
+                )
+                result["weston_timeline_start"] = timeline_session.start()
+            if mangohud_root is not None:
+                if perf_path is not None:
+                    perf_session = PerfStatSession(
+                        perf_path=perf_path,
+                        target_pid=client_process.pid,
+                        output_path=artifact_dir / "perf-stat.csv",
+                    )
+                    result["perf_capture_start"] = perf_session.start()
                 result["mangohud_capture_start"] = mangohud_set_logging(
                     process_pid=client_process.pid, enabled=True
                 )
@@ -2600,9 +4082,20 @@ def run_official_smoke(
                 _wait_for_log(
                     server_log_path,
                     anchor_marker,
-                    process=client_process,
+                    process=client_watch_process,
                     timeout=timeout,
                 )
+                if renderdoc_ident is not None and renderdoc_control is not None:
+                    result["renderdoc_captures"].append(
+                        _capture_renderdoc_anchor(
+                            control_path=renderdoc_control,
+                            capture_dir=artifact_dir / "renderdoc",
+                            target_ident=renderdoc_ident,
+                            client="vanilla",
+                            segment=anchor["capture_segment"],
+                            server_tick=anchor["server_tick"],
+                        )
+                    )
                 time.sleep(0.5)
                 if weston_path is not None:
                     result["screenshots"].append(
@@ -2623,7 +4116,7 @@ def run_official_smoke(
             _wait_for_log(
                 server_log_path,
                 final_marker,
-                process=client_process,
+                process=client_watch_process,
                 timeout=timeout,
             )
             if mangohud_root is not None:
@@ -2632,6 +4125,10 @@ def run_official_smoke(
                     enabled=False,
                     completion_dir=artifact_dir / "mangohud",
                 )
+                if perf_session is not None:
+                    result["perf_capture_stop"] = perf_session.stop()
+            if timeline_session is not None:
+                result["weston_timeline"] = timeline_session.stop()
             if result["screenshots"]:
                 result["screenshot"] = result["screenshots"][-1]
             result["status"] = "passed"
@@ -2642,13 +4139,29 @@ def run_official_smoke(
         result["failure"] = str(error)
         raise
     finally:
+        if perf_session is not None and (
+            perf_session.process is not None
+            and perf_session.process.poll() is None
+        ):
+            try:
+                result["perf_capture_stop"] = perf_session.stop()
+            except BenchmarkFailure as error:
+                result.setdefault("invalid_reasons", []).append(str(error))
+        if timeline_session is not None and (
+            timeline_session.process is not None
+            and timeline_session.process.poll() is None
+        ):
+            try:
+                result["weston_timeline"] = timeline_session.stop()
+            except BenchmarkFailure as error:
+                result.setdefault("invalid_reasons", []).append(str(error))
         if client_group is not None:
             if mangohud_root is not None:
                 result["client_cleanup"] = {
                     "signal": "SIGKILL",
                     "reason": (
-                        "MangoHud 0.8.4 OpenGL on native Wayland reproducibly "
-                        "crashes in wl_proxy_destroy during SIGTERM teardown; "
+                        "MangoHud 0.8.4 OpenGL reproducibly crashes during "
+                        "ordered application teardown; "
                         "the control socket has already acknowledged logging stop"
                     ),
                 }
@@ -2736,10 +4249,28 @@ def run_official_smoke(
                 )
             else:
                 try:
-                    result["mangohud_frame_summaries"] = [
-                        asdict(summarize_frames(parse_mangohud_csv(path)))
-                        for path in raw_logs
-                    ]
+                    mango_summary = summarize_mangohud_logs(raw_logs, replay)
+                    result["mangohud_frame_summaries"] = mango_summary["overall"]
+                    result["mangohud_segment_summaries"] = mango_summary["segments"]
+                    result["presented_frames"] = mango_summary["presented_frames"]
+                    result["capture_api"] = "opengl"
+                    thermal = mango_summary["overall"][0]
+                    peaks = (
+                        thermal["cpu_temp_peak_c"],
+                        thermal["gpu_temp_peak_c"],
+                    )
+                    result["throttling"] = (
+                        None
+                        if any(value is None for value in peaks)
+                        else any(value >= THERMAL_REJECT_C for value in peaks)
+                    )
+                    result["thermal_reject_c"] = THERMAL_REJECT_C
+                    perf_output = artifact_dir / "perf-stat.csv"
+                    if perf_path is not None:
+                        result["perf_stat"] = parse_perf_stat(
+                            perf_output,
+                            presented_frames=result["presented_frames"],
+                        )
                 except BenchmarkFailure as error:
                     result.setdefault("invalid_reasons", []).append(str(error))
         if result.get("invalid_reasons") and result["status"] == "passed":
@@ -2789,9 +4320,30 @@ def run_bbb_smoke(
     accept_eula: bool,
     timeout: float,
     wayland_display: str,
+    x_display: str | None,
     mangohud_root: Path | None,
-    weston_path: Path,
+    perf_path: Path | None,
+    weston_debug_path: Path | None,
+    weston_path: Path | None,
+    weston_renderer: str,
+    renderdoccmd: Path | None,
+    renderdoc_control: Path | None,
+    extra_library_path: Path | None,
 ) -> dict[str, Any]:
+    if weston_renderer not in ("gl", "pixman"):
+        raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
+    if renderdoccmd is not None and mangohud_root is not None:
+        raise BenchmarkFailure(
+            "RenderDoc validation and MangoHud timing must use separate runs"
+        )
+    if perf_path is not None and mangohud_root is None:
+        raise BenchmarkFailure(
+            "perf normalization requires a simultaneous MangoHud frame capture"
+        )
+    if weston_debug_path is not None and x_display is None:
+        raise BenchmarkFailure(
+            "Weston timeline overhead capture requires the Xwayland path"
+        )
     if artifact_dir.exists() and any(artifact_dir.iterdir()):
         raise BenchmarkFailure(f"bbb smoke artifact directory must be empty: {artifact_dir}")
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -2820,11 +4372,39 @@ def run_bbb_smoke(
     runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", "/run/user/1000"))
     if re.fullmatch(r"[A-Za-z0-9_.-]+", wayland_display) is None:
         raise BenchmarkFailure(f"unsafe Wayland display name: {wayland_display!r}")
-    if not weston_path.is_file() or not os.access(weston_path, os.X_OK):
+    if x_display is not None and re.fullmatch(
+        r":[0-9]+(?:\\.[0-9]+)?", x_display
+    ) is None:
+        raise BenchmarkFailure(f"unsafe X display name: {x_display!r}")
+    if weston_path is not None and (
+        not weston_path.is_file() or not os.access(weston_path, os.X_OK)
+    ):
         raise BenchmarkFailure(f"Weston executable is unavailable: {weston_path}")
     socket_path = runtime_dir / wayland_display
-    if socket_path.exists():
+    if weston_path is not None and socket_path.exists():
         raise BenchmarkFailure(f"refusing to replace existing Wayland socket: {socket_path}")
+    if x_display is None and weston_path is None:
+        raise BenchmarkFailure(
+            "bbb Wayland smoke requires a managed Weston compositor"
+        )
+    if extra_library_path is not None and not extra_library_path.is_dir():
+        raise BenchmarkFailure(
+            f"extra library directory is unavailable: {extra_library_path}"
+        )
+    launch_client_argv = client_argv
+    if renderdoccmd is not None:
+        if renderdoc_control is None:
+            raise BenchmarkFailure(
+                "RenderDoc target-control helper is required for capture"
+            )
+        renderdoc_dir = artifact_dir / "renderdoc"
+        renderdoc_dir.mkdir()
+        launch_client_argv = build_renderdoc_launch_argv(
+            renderdoccmd=renderdoccmd,
+            capture_template=renderdoc_dir / "bbb",
+            working_dir=artifact_dir,
+            client_argv=client_argv,
+        )
 
     server_log_path = artifact_dir / "server.log"
     client_log_path = artifact_dir / "bbb-client.log"
@@ -2856,52 +4436,73 @@ def run_bbb_smoke(
         "client_log": str(client_log_path),
         "resolution": [WINDOW_WIDTH, WINDOW_HEIGHT],
         "wayland_display": wayland_display,
+        "x_display": x_display,
+        "window_system": "x11" if x_display is not None else "wayland",
         "screenshots": [],
         "anchor_observations": [],
+        "renderdoc_captures": [],
     }
     server_group: ProcessGroup | None = None
     client_group: ProcessGroup | None = None
+    perf_session: PerfStatSession | None = None
+    timeline_session: WestonTimelineSession | None = None
     compositor_group: ProcessGroup | None = None
     compositor_output: Any = None
     try:
-        compositor_output = (artifact_dir / "weston-stdout.log").open(
-            "w", encoding="utf-8"
-        )
-        compositor_argv = (
-            str(weston_path),
-            "--backend=headless-backend.so",
-            f"--socket={wayland_display}",
-            "--idle-time=0",
-            f"--width={COMPOSITOR_WIDTH}",
-            f"--height={COMPOSITOR_HEIGHT}",
-            "--renderer=pixman",
-            "--no-config",
-            "--debug",
-            f"--log={artifact_dir / 'weston.log'}",
-        )
-        compositor_group = ProcessGroup(
-            compositor_argv,
-            stdin=subprocess.DEVNULL,
-            stdout=compositor_output,
-            stderr=subprocess.STDOUT,
-            env={**os.environ, "XDG_RUNTIME_DIR": str(runtime_dir)},
-        )
-        compositor_process = compositor_group.start()
-        _wait_for_socket(socket_path, process=compositor_process, timeout=15.0)
-        result["compositor"] = {
-            "version": _command_output((str(weston_path), "--version")),
-            "argv": list(compositor_argv),
-            "log": str(artifact_dir / "weston.log"),
-        }
+        if weston_path is not None:
+            compositor_output = (artifact_dir / "weston-stdout.log").open(
+                "w", encoding="utf-8"
+            )
+            compositor_argv = (
+                str(weston_path),
+                "--backend=headless-backend.so",
+                f"--socket={wayland_display}",
+                "--idle-time=0",
+                f"--width={COMPOSITOR_WIDTH}",
+                f"--height={COMPOSITOR_HEIGHT}",
+                f"--renderer={weston_renderer}",
+                "--no-config",
+                "--debug",
+                f"--log={artifact_dir / 'weston.log'}",
+            )
+            compositor_group = ProcessGroup(
+                compositor_argv,
+                stdin=subprocess.DEVNULL,
+                stdout=compositor_output,
+                stderr=subprocess.STDOUT,
+                env={**os.environ, "XDG_RUNTIME_DIR": str(runtime_dir)},
+            )
+            compositor_process = compositor_group.start()
+            _wait_for_socket(socket_path, process=compositor_process, timeout=15.0)
+            result["compositor"] = {
+                "version": _command_output((str(weston_path), "--version")),
+                "argv": list(compositor_argv),
+                "log": str(artifact_dir / "weston.log"),
+            }
         environment = os.environ.copy()
         environment.update(
             {
                 "XDG_RUNTIME_DIR": str(runtime_dir),
-                "WAYLAND_DISPLAY": wayland_display,
                 "BBB_MC_CODE_ROOT": str(mc_root),
-                "RUST_LOG": "bbb_net=info,bbb_native=info,bbb_control=info",
+                "RUST_LOG": (
+                    "bbb_net=info,bbb_native=info,bbb_control=info,"
+                    "bbb_renderer=info"
+                ),
             }
         )
+        if x_display is None:
+            environment["WAYLAND_DISPLAY"] = wayland_display
+        else:
+            environment.pop("WAYLAND_DISPLAY", None)
+            environment["DISPLAY"] = x_display
+            environment["WINIT_UNIX_BACKEND"] = "x11"
+        if extra_library_path is not None:
+            inherited = environment.get("LD_LIBRARY_PATH")
+            environment["LD_LIBRARY_PATH"] = (
+                str(extra_library_path)
+                if not inherited
+                else str(extra_library_path) + os.pathsep + inherited
+            )
         if mangohud_root is not None:
             mango_environment, mango_audit = mangohud_environment(
                 package_root=mangohud_root,
@@ -2919,12 +4520,30 @@ def run_bbb_smoke(
                         "size": bbb_binary.stat().st_size,
                         "sha256": file_digest(bbb_binary, "sha256"),
                     },
-                    "argv": list(client_argv),
+                    "argv": list(launch_client_argv),
+                    "renderdoc": (
+                        {
+                            "command": str(renderdoccmd),
+                            "command_sha256": file_digest(
+                                renderdoccmd, "sha256"
+                            ),
+                            "control": str(renderdoc_control),
+                            "control_sha256": file_digest(
+                                renderdoc_control, "sha256"
+                            ),
+                        }
+                        if renderdoccmd is not None
+                        and renderdoc_control is not None
+                        else None
+                    ),
                     "environment": {
                         key: environment[key]
                         for key in (
                             "BBB_MC_CODE_ROOT",
                             "WAYLAND_DISPLAY",
+                            "DISPLAY",
+                            "WINIT_UNIX_BACKEND",
+                            "LD_LIBRARY_PATH",
                             "XDG_RUNTIME_DIR",
                             "MANGOHUD",
                             "MANGOHUD_CONFIG",
@@ -2973,7 +4592,7 @@ def run_bbb_smoke(
                 ),
             )
             client_group = ProcessGroup(
-                client_argv,
+                launch_client_argv,
                 cwd=artifact_dir,
                 stdin=subprocess.DEVNULL,
                 stdout=client_log,
@@ -2982,15 +4601,32 @@ def run_bbb_smoke(
             )
             client_process = client_group.start()
             result["client_pid"] = client_process.pid
+            client_watch_process = (
+                None if renderdoccmd is not None else client_process
+            )
             _wait_for_log(
                 server_log_path,
                 f"{BENCHMARK_USERNAME} joined the game",
-                process=client_process,
+                process=client_watch_process,
                 timeout=timeout,
             )
+            renderdoc_ident: int | None = None
+            if renderdoccmd is not None:
+                _wait_for_log(
+                    client_log_path,
+                    "Launched as ID ",
+                    process=None,
+                    timeout=timeout,
+                )
+                renderdoc_ident = parse_renderdoc_target_ident(
+                    client_log_path.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
+                )
+                result["renderdoc_target_ident"] = renderdoc_ident
             result["warmup_seconds"] = FIXED_WARMUP_SECONDS
             _warmup_and_start_replay(server_process, replay)
-            if mangohud_root is not None:
+            if mangohud_root is not None or weston_debug_path is not None:
                 capture_start = next(
                     frame
                     for frame in replay["frames"]
@@ -3003,9 +4639,25 @@ def run_bbb_smoke(
                         f"{capture_start['capture_segment']} capture_start "
                         f"{capture_start['server_tick']}"
                     ),
-                    process=client_process,
+                    process=client_watch_process,
                     timeout=timeout,
                 )
+            if weston_debug_path is not None:
+                timeline_session = WestonTimelineSession(
+                    weston_debug_path=weston_debug_path,
+                    wayland_display=wayland_display,
+                    output_path=artifact_dir / "weston-timeline.jsonl",
+                    surface_title="bbb",
+                )
+                result["weston_timeline_start"] = timeline_session.start()
+            if mangohud_root is not None:
+                if perf_path is not None:
+                    perf_session = PerfStatSession(
+                        perf_path=perf_path,
+                        target_pid=client_process.pid,
+                        output_path=artifact_dir / "perf-stat.csv",
+                    )
+                    result["perf_capture_start"] = perf_session.start()
                 result["mangohud_capture_start"] = mangohud_set_logging(
                     process_pid=client_process.pid, enabled=True
                 )
@@ -3020,9 +4672,20 @@ def run_bbb_smoke(
                         f"BBB_BENCHMARK_MARKER {digest} "
                         f"{anchor['capture_segment']} anchor {anchor['server_tick']}"
                     ),
-                    process=client_process,
+                    process=client_watch_process,
                     timeout=timeout,
                 )
+                if renderdoc_ident is not None and renderdoc_control is not None:
+                    result["renderdoc_captures"].append(
+                        _capture_renderdoc_anchor(
+                            control_path=renderdoc_control,
+                            capture_dir=artifact_dir / "renderdoc",
+                            target_ident=renderdoc_ident,
+                            client="bbb",
+                            segment=anchor["capture_segment"],
+                            server_tick=anchor["server_tick"],
+                        )
+                    )
                 time.sleep(0.5)
                 result["anchor_observations"].append(
                     {
@@ -3040,15 +4703,16 @@ def run_bbb_smoke(
                         ),
                     }
                 )
-                result["screenshots"].append(
-                    _take_weston_screenshot(
-                        artifact_dir=artifact_dir,
-                        environment=environment,
-                        client="bbb",
-                        segment=anchor["capture_segment"],
-                        tick=anchor["server_tick"],
+                if weston_path is not None:
+                    result["screenshots"].append(
+                        _take_weston_screenshot(
+                            artifact_dir=artifact_dir,
+                            environment=environment,
+                            client="bbb",
+                            segment=anchor["capture_segment"],
+                            tick=anchor["server_tick"],
+                        )
                     )
-                )
             final_frame = replay["frames"][-1]
             _wait_for_log(
                 server_log_path,
@@ -3057,7 +4721,7 @@ def run_bbb_smoke(
                     f"{final_frame['capture_segment']} "
                     f"{final_frame['marker']} {final_frame['server_tick']}"
                 ),
-                process=client_process,
+                process=client_watch_process,
                 timeout=timeout,
             )
             if mangohud_root is not None:
@@ -3066,7 +4730,11 @@ def run_bbb_smoke(
                     enabled=False,
                     completion_dir=artifact_dir / "mangohud",
                 )
-            else:
+                if perf_session is not None:
+                    result["perf_capture_stop"] = perf_session.stop()
+            if timeline_session is not None:
+                result["weston_timeline"] = timeline_session.stop()
+            if mangohud_root is None:
                 result["app_quit_response"] = _control_request(
                     ("127.0.0.1", control_port), "app.quit"
                 )
@@ -3084,13 +4752,29 @@ def run_bbb_smoke(
         result["failure"] = str(error)
         raise
     finally:
+        if perf_session is not None and (
+            perf_session.process is not None
+            and perf_session.process.poll() is None
+        ):
+            try:
+                result["perf_capture_stop"] = perf_session.stop()
+            except BenchmarkFailure as error:
+                result.setdefault("invalid_reasons", []).append(str(error))
+        if timeline_session is not None and (
+            timeline_session.process is not None
+            and timeline_session.process.poll() is None
+        ):
+            try:
+                result["weston_timeline"] = timeline_session.stop()
+            except BenchmarkFailure as error:
+                result.setdefault("invalid_reasons", []).append(str(error))
         if client_group is not None:
             if mangohud_root is not None:
                 result["client_cleanup"] = {
                     "signal": "SIGKILL",
                     "reason": (
-                        "MangoHud 0.8.4 Vulkan on native Wayland reproducibly "
-                        "crashes during ordered application teardown; "
+                        "MangoHud 0.8.4 Vulkan reproducibly crashes during "
+                        "ordered application teardown; "
                         "the control socket has already acknowledged logging stop"
                     ),
                 }
@@ -3160,10 +4844,28 @@ def run_bbb_smoke(
                 )
             else:
                 try:
-                    result["mangohud_frame_summaries"] = [
-                        asdict(summarize_frames(parse_mangohud_csv(path)))
-                        for path in raw_logs
-                    ]
+                    mango_summary = summarize_mangohud_logs(raw_logs, replay)
+                    result["mangohud_frame_summaries"] = mango_summary["overall"]
+                    result["mangohud_segment_summaries"] = mango_summary["segments"]
+                    result["presented_frames"] = mango_summary["presented_frames"]
+                    result["capture_api"] = "vulkan"
+                    thermal = mango_summary["overall"][0]
+                    peaks = (
+                        thermal["cpu_temp_peak_c"],
+                        thermal["gpu_temp_peak_c"],
+                    )
+                    result["throttling"] = (
+                        None
+                        if any(value is None for value in peaks)
+                        else any(value >= THERMAL_REJECT_C for value in peaks)
+                    )
+                    result["thermal_reject_c"] = THERMAL_REJECT_C
+                    perf_output = artifact_dir / "perf-stat.csv"
+                    if perf_path is not None:
+                        result["perf_stat"] = parse_perf_stat(
+                            perf_output,
+                            presented_frames=result["presented_frames"],
+                        )
                 except BenchmarkFailure as error:
                     result.setdefault("invalid_reasons", []).append(str(error))
         if result.get("invalid_reasons") and result["status"] == "passed":
@@ -3266,8 +4968,19 @@ def _command_run_official_smoke(args: argparse.Namespace) -> None:
         accept_eula=args.accept_eula,
         timeout=args.timeout,
         wayland_display=args.wayland_display,
+        x_display=args.x_display,
         mangohud_root=Path(args.mangohud_root) if args.mangohud_root else None,
+        perf_path=Path(args.perf) if args.perf else None,
+        weston_debug_path=(
+            Path(args.weston_debug) if args.weston_debug else None
+        ),
         weston_path=Path(args.weston) if args.weston else None,
+        workload_debug_profile=args.workload_debug_profile,
+        weston_renderer=args.weston_renderer,
+        renderdoccmd=Path(args.renderdoccmd) if args.renderdoccmd else None,
+        renderdoc_control=(
+            Path(args.renderdoc_control) if args.renderdoc_control else None
+        ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
@@ -3290,8 +5003,23 @@ def _command_run_bbb_smoke(args: argparse.Namespace) -> None:
         accept_eula=args.accept_eula,
         timeout=args.timeout,
         wayland_display=args.wayland_display,
+        x_display=args.x_display,
         mangohud_root=Path(args.mangohud_root) if args.mangohud_root else None,
-        weston_path=Path(args.weston),
+        perf_path=Path(args.perf) if args.perf else None,
+        weston_debug_path=(
+            Path(args.weston_debug) if args.weston_debug else None
+        ),
+        weston_path=Path(args.weston) if args.weston else None,
+        weston_renderer=args.weston_renderer,
+        renderdoccmd=Path(args.renderdoccmd) if args.renderdoccmd else None,
+        renderdoc_control=(
+            Path(args.renderdoc_control) if args.renderdoc_control else None
+        ),
+        extra_library_path=(
+            Path(args.extra_library_path)
+            if args.extra_library_path
+            else None
+        ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
@@ -3329,6 +5057,43 @@ def _command_summarize_blocked(args: argparse.Namespace) -> None:
         visible_content_status=args.visible_content_status,
         visible_content_note=args.visible_content_note,
     )
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(canonical_json_bytes(summary))
+    print(output)
+
+
+def _command_summarize_workload(args: argparse.Namespace) -> None:
+    vanilla = load_json_object(Path(args.vanilla_smoke), "vanilla smoke")
+    bbb = load_json_object(Path(args.bbb_smoke), "bbb smoke")
+    summary = summarize_workload_evidence(
+        vanilla=vanilla,
+        bbb=bbb,
+        visual_review_status=args.visual_review_status,
+        visual_review_note=args.visual_review_note,
+    )
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(canonical_json_bytes(summary))
+    print(output)
+
+
+def _command_summarize_renderdoc(args: argparse.Namespace) -> None:
+    manifest = load_json_object(
+        Path(args.manifest), "RenderDoc evidence manifest"
+    )
+    summary = summarize_renderdoc_evidence(manifest)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(canonical_json_bytes(summary))
+    print(output)
+
+
+def _command_summarize_formal(args: argparse.Namespace) -> None:
+    manifest = load_json_object(
+        Path(args.manifest), "formal comparison manifest"
+    )
+    summary = summarize_formal_comparison(manifest)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(canonical_json_bytes(summary))
@@ -3385,8 +5150,26 @@ def build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--timeout", type=float, default=240.0)
     smoke.add_argument("--accept-eula", action="store_true")
     smoke.add_argument("--wayland-display", default="bbb-gate")
+    smoke.add_argument("--x-display")
     smoke.add_argument("--mangohud-root")
+    smoke.add_argument("--perf")
+    smoke.add_argument("--weston-debug")
     smoke.add_argument("--weston")
+    smoke.add_argument("--renderdoccmd")
+    smoke.add_argument("--renderdoc-control")
+    smoke.add_argument(
+        "--weston-renderer",
+        choices=("gl", "pixman"),
+        default="gl",
+    )
+    smoke.add_argument(
+        "--workload-debug-profile",
+        action="store_true",
+        help=(
+            "enable Vanilla always-on chunk/entity/particle counters for "
+            "validation screenshots; do not use for formal timing"
+        ),
+    )
     smoke.set_defaults(handler=_command_run_official_smoke)
 
     bbb_smoke = subparsers.add_parser("run-bbb-smoke")
@@ -3401,8 +5184,19 @@ def build_parser() -> argparse.ArgumentParser:
     bbb_smoke.add_argument("--timeout", type=float, default=240.0)
     bbb_smoke.add_argument("--accept-eula", action="store_true")
     bbb_smoke.add_argument("--wayland-display", default="bbb-benchmark-native")
+    bbb_smoke.add_argument("--x-display")
     bbb_smoke.add_argument("--mangohud-root")
-    bbb_smoke.add_argument("--weston", required=True)
+    bbb_smoke.add_argument("--perf")
+    bbb_smoke.add_argument("--weston-debug")
+    bbb_smoke.add_argument("--weston")
+    bbb_smoke.add_argument("--renderdoccmd")
+    bbb_smoke.add_argument("--renderdoc-control")
+    bbb_smoke.add_argument("--extra-library-path")
+    bbb_smoke.add_argument(
+        "--weston-renderer",
+        choices=("gl", "pixman"),
+        default="gl",
+    )
     bbb_smoke.set_defaults(handler=_command_run_bbb_smoke)
 
     mango = subparsers.add_parser("summarize-mangohud")
@@ -3427,6 +5221,28 @@ def build_parser() -> argparse.ArgumentParser:
     blocked.add_argument("--visible-content-note", required=True)
     blocked.add_argument("--output", required=True)
     blocked.set_defaults(handler=_command_summarize_blocked)
+
+    workload = subparsers.add_parser("summarize-workload")
+    workload.add_argument("--vanilla-smoke", required=True)
+    workload.add_argument("--bbb-smoke", required=True)
+    workload.add_argument(
+        "--visual-review-status",
+        choices=("match", "mismatch"),
+        required=True,
+    )
+    workload.add_argument("--visual-review-note", required=True)
+    workload.add_argument("--output", required=True)
+    workload.set_defaults(handler=_command_summarize_workload)
+
+    renderdoc = subparsers.add_parser("summarize-renderdoc")
+    renderdoc.add_argument("--manifest", required=True)
+    renderdoc.add_argument("--output", required=True)
+    renderdoc.set_defaults(handler=_command_summarize_renderdoc)
+
+    formal = subparsers.add_parser("summarize-formal")
+    formal.add_argument("--manifest", required=True)
+    formal.add_argument("--output", required=True)
+    formal.set_defaults(handler=_command_summarize_formal)
     return parser
 
 

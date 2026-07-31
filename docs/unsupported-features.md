@@ -41,30 +41,23 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- Further reduction of dynamic item-model property-selection, draw/pipeline
-  state churn, and driver-deferred resident-release tails is `deferred`: the
-  current repo-native before/after matrices identify no remaining measured
-  losing owner. Reopen when an equal-scene capture or runtime observation
-  identifies a concrete regression or dominant owner; preserve exact
-  phase/translucent order and bounded-owner fallback.
-- Equal-load official Java 26.1 CPU p50/p95/p99, GPU-frame, 1%-low, and
-  chunk-update comparison captures are `deferred`: the verified full assets,
-  unmodified offline-developer launcher, fixed world, server-authoritative
-  three-scene replay, OpenGL/Vulkan MangoHud capture, parsers, and anchor
-  evidence are owned by
-  `scripts/official_client_benchmark.py` and
-  `docs/official-client-performance-benchmark.md`; launcher/account material is
-  not a blocker. The current user cannot open `/dev/dri/renderD128`, required
-  `perf stat` events are denied by `perf_event_paranoid=4`, and tracefs is not
-  writable. Common-camera anchor review also shows different actual terrain
-  visibility, while no API-neutral official draw/visible-count capture exists.
-  Reopen when a maintained runner provides real GPU and required perf access,
-  bbb and Vanilla render the same reviewed visible workload without a resident
-  cap, and the common-tool overhead is at most 1%; ftrace-only GPU-duration
-  claims additionally require a proven client-context submission/fence chain.
-  Then execute at least three valid captures per client in the declared ABBA
-  order and report any losing scene by measured owner instead of reducing
-  visible work.
+- The official equal-load capture identifies a concrete bbb frame-tail
+  regression: in the chunk-boundary segment its application-frame interval is
+  p95 151.610 ms versus Vanilla 3.446 ms, with 314 versus zero 33.333 ms
+  hitches. Localize the dominant bbb owner across chunk application, meshing,
+  GPU upload, draw/pipeline state and resident release, then remove the measured
+  tail without reducing the shared visible/resident workload. Preserve exact
+  phase/translucent order and bounded-owner fallback; completion requires the
+  same replay/camera/world/resource/settings hashes and external interval/perf
+  evidence before and after the change.
+- API-neutral per-client GPU execution duration is `deferred`: the current
+  kernel exposes `dma_fence:dma_fence_signaled` instead of the requested
+  `fence:fence_signaled`, and the headless Xwayland path has no proven
+  radeonsi/RADV client-context chain across submission, scheduler queue, fence
+  signal, and presentation while excluding Weston. Reopen when one common
+  capture proves that full association with acceptable overhead for both APIs.
+  Do not relabel MangoHud application-frame intervals, `perf stat` process
+  means, Weston surface commits, or GPU busy/load as GPU frame duration.
 
 ## P4 lifecycle, soak, and supported-platform release gates
 

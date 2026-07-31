@@ -889,12 +889,12 @@
 - **2026-07-30（Linux x86_64 发布矩阵闭环）**：Wayland/Vulkan/windowed 行现由
   fresh release、build-info、headless/live/quit、backend 与输入/lifecycle receipts
   联合验收；合同与本地 report/stamp 见 `docs/linux-platform-acceptance.md`。
-- **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 component 共用
-  registry-aware Codec；9×9 懒加载、故障恢复、`DataVersion` 与旧 JSON 迁移已贯通。
+- **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 component 共用 registry-aware Codec；9×9 懒加载、故障恢复、`DataVersion` 与旧 JSON 迁移已贯通。
 - **2026-07-31（Trial Spawner 显示实体工程闭环）**：有界 `spawn_data.entity`
   投影携带 session registry/equipment 上下文并复用实体、装备与手持物路径。
 - **2026-07-31（相机流体与 Lava fog 工程闭环）**：共享 Water/Lava 采样、颜色、
   sky 抑制及 normal/fire-resistance/spectator 距离均对齐 26.1。
-- **2026-07-31（官方 26.1 同载比较工程安全停止）**：离线启动、共同 replay 与
-  OpenGL/Vulkan capture smoke 已建立；真实 GPU/perf 权限和可见内容一致性仍是
-  外部/renderer blocker，合同见 `docs/official-client-performance-benchmark.md`。
+- **2026-07-31（官方 26.1 同载比较工程安全停止）**：离线启动、共同 replay 与 OpenGL/Vulkan capture smoke 已建立；真实 GPU/perf 权限和可见内容一致性曾阻塞。
+- **2026-07-31（官方 26.1 同载比较工程闭环）**：完整 assets、离线官方 jar、
+  共同 replay/draw 证据、MangoHud 开销门禁与两轮 ABBA 真机采样已闭环；bbb
+  chunk-boundary 长尾转 active，GPU-only duration 保持精确 deferred。
