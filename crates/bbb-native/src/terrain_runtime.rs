@@ -451,7 +451,7 @@ fn refresh_terrain_snapshot(
     pos: ChunkPos,
 ) {
     let snapshot_revision = world.terrain_chunk_snapshot_revision(pos);
-    let snapshot = world.extract_terrain_chunk(pos).map(|snapshot| {
+    let snapshot = world.extract_terrain_render_chunk(pos).map(|snapshot| {
         let biome_sampler = world.chunk_biome_sampler(pos);
         Arc::new(convert_terrain_snapshot(
             snapshot,
@@ -1011,6 +1011,17 @@ fn convert_terrain_snapshot(
         .into_iter()
         .enumerate()
         .map(|(index, cell)| {
+            let light = TerrainLight {
+                sky: cell.light.sky,
+                block: cell.light.block,
+            };
+            if matches!(cell.material, bbb_world::TerrainMaterialClass::Empty) {
+                return TerrainCell {
+                    block_state_id: cell.block_state_id,
+                    light,
+                    ..TerrainCell::EMPTY
+                };
+            }
             let local_x = (index % 16) as i32;
             let local_y = (index / (16 * 16)) as i32;
             let local_z = ((index / 16) % 16) as i32;
@@ -1082,10 +1093,7 @@ fn convert_terrain_snapshot(
                         TerrainMaterialClass::Translucent
                     }
                 },
-                light: TerrainLight {
-                    sky: cell.light.sky,
-                    block: cell.light.block,
-                },
+                light,
                 tint,
                 face_transparency,
                 skip_rendering: renderer_skip_rendering(cell.skip_rendering, cutout_leaves),

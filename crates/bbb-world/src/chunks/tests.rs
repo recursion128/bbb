@@ -2992,6 +2992,35 @@ fn synthetic_local_palette_chunk_packet_with_sections(section_count: usize) -> L
     }
 }
 
+fn synthetic_sparse_vertical_chunk_packet(non_empty_section: Option<usize>) -> LevelChunkWithLight {
+    let mut sections = Encoder::new();
+    for section_index in 0..5 {
+        if non_empty_section == Some(section_index) {
+            sections.write_i16(4096);
+            sections.write_i16(0);
+            write_local_block_palette(&mut sections);
+        } else {
+            sections.write_i16(0);
+            sections.write_i16(0);
+            sections.write_u8(0);
+            sections.write_var_i32(0);
+        }
+        sections.write_u8(0);
+        sections.write_var_i32(4);
+    }
+
+    LevelChunkWithLight {
+        x: 2,
+        z: -3,
+        chunk_data: LevelChunkData {
+            heightmaps: Vec::new(),
+            section_data: sections.into_inner(),
+            block_entities: Vec::new(),
+        },
+        light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+    }
+}
+
 fn terrain_section_revisions<const N: usize>(store: &WorldStore, pos: ChunkPos) -> [u64; N] {
     store
         .terrain_chunk_section_mesh_revisions(pos)

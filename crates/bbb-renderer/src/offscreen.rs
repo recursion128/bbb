@@ -116,6 +116,7 @@ mod tests {
     use winit::dpi::PhysicalSize;
 
     use crate::hud::HudDrawCommand;
+    use crate::terrain::{TerrainMesh, TerrainVertex};
     use crate::{
         ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
         EntityPlayerSkin, HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen,
@@ -212,6 +213,49 @@ mod tests {
 
         assert_channels_within_one(pixels.pixel(8, 8), clear);
         assert_channels_within_one(pixels.pixel(WIDTH / 2, HEIGHT / 2), texel);
+    }
+
+    #[test]
+    fn offscreen_terrain_samples_noon_sky_fourteen_from_the_dynamic_lightmap() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let texel = [132_u8, 135, 134, 255];
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &texel)
+            .expect("upload terrain texel");
+        let vertex = |position| TerrainVertex {
+            position,
+            normal: [0.0, 1.0, 0.0],
+            uv: [0.5, 0.5],
+            light: [0.0, 14.0 / 15.0],
+            tint: [1.0; 3],
+            shade: 1.0,
+            ambient_occlusion: 1.0,
+            block_state_id: 7,
+        };
+        renderer.upload_terrain_meshes(vec![TerrainMesh {
+            vertices: vec![
+                vertex([-0.5, -0.5, 0.0]),
+                vertex([0.5, -0.5, 0.0]),
+                vertex([0.5, 0.5, 0.0]),
+                vertex([-0.5, 0.5, 0.0]),
+            ],
+            indices: vec![0, 1, 2, 0, 2, 3],
+            source_sections: 1,
+            opaque_faces: 1,
+            ..TerrainMesh::default()
+        }]);
+
+        let pixels = renderer.render_offscreen_frame().expect("offscreen frame");
+        let center = pixels.pixel(WIDTH / 2, HEIGHT / 2);
+
+        assert!(
+            (115..=125).contains(&center[0])
+                && (118..=128).contains(&center[1])
+                && (117..=127).contains(&center[2]),
+            "sky-14 terrain texel should be daylight-lit, got {center:?}"
+        );
     }
 
     fn assert_channels_within_one(actual: [u8; 4], expected: [u8; 4]) {

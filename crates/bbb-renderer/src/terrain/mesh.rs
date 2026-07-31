@@ -360,11 +360,18 @@ pub(super) fn sort_translucent_quads_by_distance(
             let dx = centroid[0] - camera_position[0];
             let dy = centroid[1] - camera_position[1];
             let dz = centroid[2] - camera_position[2];
-            (quad_index, dx * dx + dy * dy + dz * dz)
+            let base = (quad_index * 4) as u32;
+            let index_offset = quad_index * 6;
+            let local_indices = mesh
+                .indices
+                .get(index_offset..index_offset + 6)
+                .map(|indices| std::array::from_fn(|index| indices[index] - base))
+                .unwrap_or([0, 1, 2, 0, 2, 3]);
+            (quad_index, dx * dx + dy * dy + dz * dz, local_indices)
         })
         .collect();
     quad_distances.sort_by(
-        |(left_index, left_distance), (right_index, right_distance)| {
+        |(left_index, left_distance, _), (right_index, right_distance, _)| {
             right_distance
                 .total_cmp(left_distance)
                 .then_with(|| left_index.cmp(right_index))
@@ -373,10 +380,10 @@ pub(super) fn sort_translucent_quads_by_distance(
 
     mesh.indices.clear();
     mesh.indices.reserve(quad_distances.len() * 6);
-    for (quad_index, _) in quad_distances {
+    for (quad_index, _, local_indices) in quad_distances {
         let base = (quad_index * 4) as u32;
         mesh.indices
-            .extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+            .extend(local_indices.into_iter().map(|index| base + index));
     }
 }
 

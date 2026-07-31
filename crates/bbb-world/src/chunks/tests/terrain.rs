@@ -1,4 +1,7 @@
-use super::{synthetic_local_palette_chunk_packet, terrain_cell_index, test_block_state_id};
+use super::{
+    synthetic_local_palette_chunk_packet, synthetic_sparse_vertical_chunk_packet,
+    terrain_cell_index, test_block_state_id,
+};
 use crate::{BlockPos, ChunkPos, WorldDimension, WorldStore};
 
 #[test]
@@ -61,4 +64,52 @@ fn extracted_terrain_carries_exact_solid_render_facts() {
             Some(resource_id)
         );
     }
+}
+
+#[test]
+fn render_extraction_crops_empty_vertical_sections_but_keeps_neighbor_sampling_bands() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: -32,
+        height: 80,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_sparse_vertical_chunk_packet(Some(2)))
+        .unwrap();
+
+    let render = store
+        .extract_terrain_render_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(render.min_y, -16);
+    assert_eq!(render.height, 48);
+    assert_eq!(render.cells.len(), 16 * 48 * 16);
+
+    let full = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    let full_offset = usize::try_from(render.min_y - full.min_y).unwrap() * 16 * 16;
+    assert_eq!(
+        render.cells,
+        full.cells[full_offset..full_offset + render.cells.len()]
+    );
+}
+
+#[test]
+fn render_extraction_keeps_one_empty_section_for_an_empty_neighborhood() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: -32,
+        height: 80,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_sparse_vertical_chunk_packet(None))
+        .unwrap();
+
+    let render = store
+        .extract_terrain_render_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(render.min_y, -32);
+    assert_eq!(render.height, 16);
+    assert!(render
+        .cells
+        .iter()
+        .all(|cell| matches!(cell.material, crate::TerrainMaterialClass::Empty)));
 }

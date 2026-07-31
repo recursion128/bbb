@@ -191,7 +191,7 @@ def equal_load_settings() -> dict[str, Any]:
         "mipmap_levels": 4,
         "cutout_leaves": True,
         "entity_shadows": True,
-        "improved_transparency": False,
+        "improved_transparency": True,
         "weather_radius": 10,
         "max_anisotropy_bit": 1,
         "texture_filtering": "rgss",
@@ -605,7 +605,10 @@ def vanilla_options() -> dict[str, str]:
         "mipmapLevels": "4",
         "cutoutLeaves": "true",
         "entityShadows": "true",
-        "improvedTransparency": "false",
+        # bbb renders the same six sorting targets through the official
+        # `post_effect/transparency.json` graph, so the Vanilla side must use
+        # the matching shader-transparency path as well.
+        "improvedTransparency": "true",
         "weatherRadius": "10",
         "maxAnisotropyBit": "1",
         "textureFiltering": "1",

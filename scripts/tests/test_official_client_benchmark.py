@@ -440,7 +440,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(options["mipmapLevels"], "4")
         self.assertEqual(options["cutoutLeaves"], "true")
         self.assertEqual(options["entityShadows"], "true")
-        self.assertEqual(options["improvedTransparency"], "false")
+        self.assertEqual(options["improvedTransparency"], "true")
         self.assertEqual(options["weatherRadius"], "10")
         self.assertEqual(options["maxAnisotropyBit"], "1")
         self.assertEqual(options["textureFiltering"], "1")

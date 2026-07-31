@@ -14,7 +14,12 @@ use bbb_renderer::terrain::{
 use bbb_world::ChunkPos;
 
 const TERRAIN_MESH_QUEUE_CAPACITY: usize = 4;
-const TERRAIN_MESH_RESULT_CAPACITY: usize = TERRAIN_MESH_QUEUE_CAPACITY + 1;
+// The render thread drains completed results before doing up to one bounded
+// cache-work batch. A job already in flight may finish after that drain, and a
+// fast worker can then finish every job submitted by the same batch before the
+// next frame. Keep exactly that bounded burst instead of assuming completion
+// can never outrun the four-slot input queue.
+const TERRAIN_MESH_RESULT_CAPACITY: usize = super::MAX_TERRAIN_CACHE_WORK_PER_FRAME + 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct TerrainMeshJobKey {
@@ -395,6 +400,37 @@ mod tests {
         assert_eq!(result.key, key);
         assert_eq!(result.sections, [(0, 7)]);
         assert_eq!(result.layers.source_sections, 1);
+    }
+
+    #[test]
+    fn result_capacity_accepts_one_fast_main_thread_work_batch_without_drain() {
+        let mut worker = TerrainMeshWorker::spawn();
+        for index in 0..super::super::MAX_TERRAIN_CACHE_WORK_PER_FRAME {
+            let pos = ChunkPos {
+                x: i32::try_from(index).unwrap(),
+                z: 0,
+            };
+            let mut pending = Some(job(pos, 1, index as i64));
+            loop {
+                match worker.submit(pending.take().expect("pending job")) {
+                    TerrainMeshSubmit::Queued { .. } => break,
+                    TerrainMeshSubmit::Full => {
+                        pending = Some(job(pos, 1, index as i64));
+                        thread::yield_now();
+                    }
+                    TerrainMeshSubmit::AlreadyQueued => panic!("fresh position was queued"),
+                }
+            }
+        }
+
+        let mut completed = 0;
+        while completed < super::super::MAX_TERRAIN_CACHE_WORK_PER_FRAME {
+            if worker.try_recv().is_some() {
+                completed += 1;
+            } else {
+                thread::yield_now();
+            }
+        }
     }
 
     #[test]

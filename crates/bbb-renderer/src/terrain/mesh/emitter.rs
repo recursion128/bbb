@@ -27,40 +27,24 @@ pub(super) fn emit_face(
     ambient_occlusion: [f32; 4],
     cardinal: TerrainCardinalLighting,
 ) {
-    let base = mesh.vertices.len() as u32;
     let uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
-    for (((corner, uv), light), ambient_occlusion) in face
-        .corners
-        .into_iter()
-        .zip(uvs)
-        .zip(vertex_lights)
-        .zip(ambient_occlusion)
-    {
-        mesh.vertices.push(TerrainVertex {
-            position: [
-                x as f32 + corner[0],
-                y as f32 + corner[1],
-                z as f32 + corner[2],
-            ],
-            normal: face.normal,
-            uv: uv_rect.map(uv),
-            light,
-            tint: tint.as_shader_tint(),
-            shade: cardinal.shade(true, face.face),
-            ambient_occlusion,
-            block_state_id,
-        });
-    }
-    mesh.indices
-        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
-    match material {
-        TerrainMaterialClass::Opaque => mesh.opaque_faces += 1,
-        TerrainMaterialClass::Cutout => mesh.cutout_faces += 1,
-        TerrainMaterialClass::Fluid | TerrainMaterialClass::Translucent => {
-            mesh.translucent_faces += 1
-        }
-        _ => {}
-    }
+    emit_custom_quad_with_uvs(
+        mesh,
+        x,
+        y,
+        z,
+        block_state_id,
+        material,
+        tint,
+        uv_rect,
+        face.normal,
+        face.corners,
+        uvs,
+        cardinal.shade(true, face.face),
+        vertex_lights,
+        ambient_occlusion,
+        false,
+    );
 }
 
 pub(super) fn emit_cross(
@@ -294,6 +278,7 @@ pub(super) fn emit_box(
             shade,
             vertex_lights,
             ambient_occlusion,
+            false,
         );
         // Vanilla `FluidRenderer.tesselate` renders fluid faces double-sided via
         // `addFace(..., addBackFace)`, which re-emits the four vertices in reverse
@@ -340,6 +325,7 @@ pub(super) fn emit_box(
                     ambient_occlusion[1],
                     ambient_occlusion[0],
                 ],
+                true,
             );
         }
     }
@@ -495,6 +481,7 @@ pub(super) fn emit_quads(
             ),
             vertex_lights,
             ambient_occlusion,
+            false,
         );
     }
 }
@@ -544,6 +531,7 @@ fn emit_custom_quad(
         shade,
         vertex_lights,
         [1.0; 4],
+        false,
     );
 }
 
@@ -562,6 +550,7 @@ fn emit_custom_quad_with_uvs(
     shade: f32,
     vertex_lights: [[f32; 2]; 4],
     ambient_occlusion: [f32; 4],
+    reverse_winding: bool,
 ) {
     let base = mesh.vertices.len() as u32;
     for (((corner, uv), light), ambient_occlusion) in corners
@@ -586,7 +575,7 @@ fn emit_custom_quad_with_uvs(
         });
     }
     mesh.indices
-        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+        .extend(quad_indices(corners, normal, reverse_winding).map(|index| base + index));
     match material {
         TerrainMaterialClass::Opaque => mesh.opaque_faces += 1,
         TerrainMaterialClass::Cutout => mesh.cutout_faces += 1,
@@ -594,6 +583,32 @@ fn emit_custom_quad_with_uvs(
             mesh.translucent_faces += 1
         }
         _ => {}
+    }
+}
+
+fn quad_indices(corners: [[f32; 3]; 4], normal: [f32; 3], reverse_winding: bool) -> [u32; 6] {
+    let ab = [
+        corners[1][0] - corners[0][0],
+        corners[1][1] - corners[0][1],
+        corners[1][2] - corners[0][2],
+    ];
+    let ac = [
+        corners[2][0] - corners[0][0],
+        corners[2][1] - corners[0][1],
+        corners[2][2] - corners[0][2],
+    ];
+    let geometric_normal = [
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0],
+    ];
+    let dot = geometric_normal[0] * normal[0]
+        + geometric_normal[1] * normal[1]
+        + geometric_normal[2] * normal[2];
+    if (dot < 0.0) == reverse_winding {
+        [0, 1, 2, 0, 2, 3]
+    } else {
+        [0, 2, 1, 0, 3, 2]
     }
 }
 

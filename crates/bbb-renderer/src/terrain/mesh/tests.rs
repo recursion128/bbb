@@ -37,6 +37,15 @@ fn meshes_single_opaque_block_as_six_faces() {
         .vertices
         .iter()
         .any(|vertex| vertex.position[0] >= 33.0 && vertex.position[2] <= -45.0));
+    for triangle in mesh.indices.chunks_exact(3) {
+        let a = mesh.vertices[triangle[0] as usize];
+        let b = mesh.vertices[triangle[1] as usize];
+        let c = mesh.vertices[triangle[2] as usize];
+        assert!(
+            triangle_normal_dot(a, b, c, a.normal) > 0.0,
+            "opaque terrain triangle must face its submitted outward normal: {triangle:?}"
+        );
+    }
 }
 
 #[test]
@@ -294,12 +303,18 @@ fn fluid_side_face_emits_reversed_back_face_for_submerged_view() {
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
-    let north = face_vertices(&layers.translucent[0], 86, [0.0, 0.0, -1.0]);
+    let mesh = &layers.translucent[0];
+    let north: Vec<_> = mesh
+        .vertices
+        .chunks_exact(4)
+        .enumerate()
+        .filter(|(_, quad)| quad[0].block_state_id == 86 && quad[0].normal == [0.0, 0.0, -1.0])
+        .collect();
 
     // Front quad (emitted first) followed by its reversed back quad.
-    assert_eq!(north.len(), 8);
-    let front = &north[0..4];
-    let back = &north[4..8];
+    assert_eq!(north.len(), 2);
+    let (front_quad_index, front) = north[0];
+    let (back_quad_index, back) = north[1];
     for corner in 0..4 {
         assert_eq!(
             back[corner].position,
@@ -309,14 +324,26 @@ fn fluid_side_face_emits_reversed_back_face_for_submerged_view() {
         );
     }
 
-    // The reversed winding flips the geometric facing so the pipeline draws one
-    // quad toward the air neighbor and the other toward the fluid interior.
-    let front_normal_z = triangle_winding_z(front[0], front[1], front[2]);
-    let back_normal_z = triangle_winding_z(back[0], back[1], back[2]);
-    assert!(front_normal_z.abs() > 1e-6 && back_normal_z.abs() > 1e-6);
+    // Assert the indexed triangles consumed by the GPU, not the storage order of
+    // the four vertices. The front follows its submitted outward normal while the
+    // reversed face points toward the fluid interior.
+    let front_triangle = indexed_triangle_for_quad(mesh, front_quad_index);
+    let back_triangle = indexed_triangle_for_quad(mesh, back_quad_index);
     assert!(
-        front_normal_z.signum() != back_normal_z.signum(),
-        "front/back fluid side faces must wind in opposite directions"
+        triangle_normal_dot(
+            front_triangle[0],
+            front_triangle[1],
+            front_triangle[2],
+            front[0].normal
+        ) > 0.0
+    );
+    assert!(
+        triangle_normal_dot(
+            back_triangle[0],
+            back_triangle[1],
+            back_triangle[2],
+            back[0].normal
+        ) < 0.0
     );
 }
 
@@ -1572,7 +1599,7 @@ fn translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla() {
 
     assert_eq!(
         layers.translucent[0].indices,
-        vec![4, 5, 6, 6, 7, 4, 0, 1, 2, 2, 3, 0]
+        vec![4, 5, 6, 4, 6, 7, 0, 2, 1, 0, 3, 2]
     );
 }
 
@@ -1921,12 +1948,44 @@ fn assert_float_eq(actual: f32, expected: f32) {
     );
 }
 
-/// Z component of the `(b - a) x (c - a)` triangle normal, used to compare the
-/// winding direction of a fluid side face against its reversed back face.
-fn triangle_winding_z(a: TerrainVertex, b: TerrainVertex, c: TerrainVertex) -> f32 {
-    let ab = [b.position[0] - a.position[0], b.position[1] - a.position[1]];
-    let ac = [c.position[0] - a.position[0], c.position[1] - a.position[1]];
-    ab[0] * ac[1] - ab[1] * ac[0]
+fn indexed_triangle_for_quad(mesh: &TerrainMesh, quad_index: usize) -> [TerrainVertex; 3] {
+    let base = (quad_index * 4) as u32;
+    let triangle = mesh
+        .indices
+        .chunks_exact(3)
+        .find(|triangle| {
+            triangle
+                .iter()
+                .all(|index| (base..base + 4).contains(index))
+        })
+        .expect("quad has an indexed triangle");
+    std::array::from_fn(|index| mesh.vertices[triangle[index] as usize])
+}
+
+fn triangle_normal_dot(
+    a: TerrainVertex,
+    b: TerrainVertex,
+    c: TerrainVertex,
+    normal: [f32; 3],
+) -> f32 {
+    let ab = [
+        b.position[0] - a.position[0],
+        b.position[1] - a.position[1],
+        b.position[2] - a.position[2],
+    ];
+    let ac = [
+        c.position[0] - a.position[0],
+        c.position[1] - a.position[1],
+        c.position[2] - a.position[2],
+    ];
+    let geometric_normal = [
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0],
+    ];
+    geometric_normal[0] * normal[0]
+        + geometric_normal[1] * normal[1]
+        + geometric_normal[2] * normal[2]
 }
 
 fn assert_uv_eq(actual: [f32; 2], expected: [f32; 2]) {

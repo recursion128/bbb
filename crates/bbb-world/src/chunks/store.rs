@@ -806,12 +806,65 @@ impl WorldStore {
     }
 
     pub fn extract_terrain_chunk(&self, pos: ChunkPos) -> Option<TerrainChunkSnapshot> {
+        let height = usize::try_from(self.dimension.height).ok()?;
+        self.extract_terrain_chunk_y_range(pos, self.dimension.min_y, height)
+    }
+
+    /// Extracts only the vertical span that can affect renderable cells in
+    /// `pos` or its immediate chunk neighbourhood.
+    ///
+    /// Vanilla still treats every loaded section as resident, including empty
+    /// sky sections. Native records that residency separately from this CPU
+    /// snapshot. Keeping one section above and below the neighbourhood's
+    /// non-empty span retains the block/light samples used by face culling and
+    /// ambient occlusion without allocating full-height heavy render cells for
+    /// hundreds of provably empty sections.
+    pub fn extract_terrain_render_chunk(&self, pos: ChunkPos) -> Option<TerrainChunkSnapshot> {
+        self.probe_chunk(pos)?;
+        let section_count = self.dimension.section_count();
+        let mut first_non_empty = None::<usize>;
+        let mut last_non_empty = None::<usize>;
+        for neighbor in chunk_neighborhood(pos).filter_map(|neighbor| self.probe_chunk(neighbor)) {
+            for (section_index, section) in neighbor.sections.iter().enumerate() {
+                if section.non_empty_block_count == 0 && section.fluid_count == 0 {
+                    continue;
+                }
+                first_non_empty =
+                    Some(first_non_empty.map_or(section_index, |first| first.min(section_index)));
+                last_non_empty =
+                    Some(last_non_empty.map_or(section_index, |last| last.max(section_index)));
+            }
+        }
+        let (first_section, last_section) = match (first_non_empty, last_non_empty) {
+            (Some(first), Some(last)) => (
+                first.saturating_sub(1),
+                last.saturating_add(1).min(section_count.saturating_sub(1)),
+            ),
+            (None, None) => (0, 0),
+            _ => return None,
+        };
+        let min_y = self
+            .dimension
+            .min_y
+            .checked_add(i32::try_from(first_section).ok()?.checked_mul(16)?)?;
+        let height = last_section
+            .checked_sub(first_section)?
+            .checked_add(1)?
+            .checked_mul(16)?;
+        self.extract_terrain_chunk_y_range(pos, min_y, height)
+    }
+
+    fn extract_terrain_chunk_y_range(
+        &self,
+        pos: ChunkPos,
+        min_y: i32,
+        height: usize,
+    ) -> Option<TerrainChunkSnapshot> {
         let chunk = self.probe_chunk(pos)?;
 
-        let height = usize::try_from(self.dimension.height).ok()?;
         let mut cells = Vec::with_capacity(16 * height * 16);
         for y_offset in 0..height {
-            let y = self.dimension.min_y + y_offset as i32;
+            let y = min_y.checked_add(i32::try_from(y_offset).ok()?)?;
             let section_y = y.div_euclid(16);
             let section_index = usize::try_from(section_y - self.dimension.min_section_y()).ok()?;
             let section = chunk.sections.get(section_index)?;
@@ -851,7 +904,7 @@ impl WorldStore {
 
         Some(TerrainChunkSnapshot {
             pos,
-            min_y: self.dimension.min_y,
+            min_y,
             height,
             cells,
         })

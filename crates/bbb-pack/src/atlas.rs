@@ -93,6 +93,27 @@ impl AtlasPacker {
     }
 
     pub fn pack(&self, sources: &[SpriteSource]) -> Result<AtlasLayout> {
+        self.pack_aligned(sources, self.padding, 1, false)
+    }
+
+    fn pack_for_mip(&self, sources: &[SpriteSource], mip_level: u32) -> Result<AtlasLayout> {
+        let alignment = 1_u32
+            .checked_shl(mip_level)
+            .ok_or_else(|| anyhow::anyhow!("atlas mip alignment overflow"))?;
+        let padding = self
+            .padding
+            .checked_mul(alignment)
+            .ok_or_else(|| anyhow::anyhow!("atlas mip padding overflow"))?;
+        self.pack_aligned(sources, padding, alignment, true)
+    }
+
+    fn pack_aligned(
+        &self,
+        sources: &[SpriteSource],
+        padding: u32,
+        alignment: u32,
+        power_of_two_dimensions: bool,
+    ) -> Result<AtlasLayout> {
         let mut sprites = Vec::with_capacity(sources.len());
         let mut cursor_x: u32 = 0;
         let mut cursor_y: u32 = 0;
@@ -104,18 +125,22 @@ impl AtlasPacker {
                 bail!("sprite {} has zero-sized dimensions", source.id);
             }
 
-            let gutter = match self.padding.checked_mul(2) {
+            let gutter = match padding.checked_mul(2) {
                 Some(gutter) => gutter,
                 None => bail!("atlas padding overflow"),
             };
-            let padded_width = match source.width.checked_add(gutter) {
+            let raw_padded_width = match source.width.checked_add(gutter) {
                 Some(width) => width,
                 None => bail!("sprite {} padded width overflow", source.id),
             };
-            let padded_height = match source.height.checked_add(gutter) {
+            let raw_padded_height = match source.height.checked_add(gutter) {
                 Some(height) => height,
                 None => bail!("sprite {} padded height overflow", source.id),
             };
+            let padded_width = align_up(raw_padded_width, alignment)
+                .ok_or_else(|| anyhow::anyhow!("sprite {} padded width overflow", source.id))?;
+            let padded_height = align_up(raw_padded_height, alignment)
+                .ok_or_else(|| anyhow::anyhow!("sprite {} padded height overflow", source.id))?;
             if padded_width > self.max_width {
                 bail!(
                     "sprite {} padded width {} exceeds atlas max width {}",
@@ -145,8 +170,8 @@ impl AtlasPacker {
                 height: padded_height,
             };
             let content = AtlasRect {
-                x: cursor_x + self.padding,
-                y: cursor_y + self.padding,
+                x: cursor_x + padding,
+                y: cursor_y + padding,
                 width: source.width,
                 height: source.height,
             };
@@ -170,13 +195,29 @@ impl AtlasPacker {
             used_width = used_width.max(cursor_x);
         }
 
+        let used_height = match cursor_y.checked_add(row_height) {
+            Some(height) => height,
+            None => bail!("atlas height overflow"),
+        };
+        let (width, height) = if power_of_two_dimensions {
+            (
+                checked_next_power_of_two(used_width, "width")?,
+                checked_next_power_of_two(used_height, "height")?,
+            )
+        } else {
+            (used_width, used_height)
+        };
+        if width > self.max_width {
+            bail!(
+                "power-of-two atlas width {} exceeds atlas max width {}",
+                width,
+                self.max_width
+            );
+        }
         Ok(AtlasLayout {
-            width: used_width,
-            height: match cursor_y.checked_add(row_height) {
-                Some(height) => height,
-                None => bail!("atlas height overflow"),
-            },
-            padding: self.padding,
+            width,
+            height,
+            padding,
             sprites,
         })
     }
@@ -252,7 +293,7 @@ impl AtlasPacker {
         mip_level: u32,
     ) -> Result<AtlasMipImage> {
         let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
-        let mut layout = self.pack(&sources)?;
+        let mut layout = self.pack_for_mip(&sources, mip_level)?;
         for (sprite, image) in layout.sprites.iter_mut().zip(images) {
             sprite.transparency = image.transparency;
             sprite.animation = image.animation.clone();
@@ -304,6 +345,22 @@ impl AtlasPacker {
 
         Ok(AtlasMipImage { layout, levels })
     }
+}
+
+fn align_up(value: u32, alignment: u32) -> Option<u32> {
+    debug_assert!(alignment.is_power_of_two());
+    value
+        .checked_add(alignment.checked_sub(1)?)
+        .map(|value| value & !(alignment - 1))
+}
+
+fn checked_next_power_of_two(value: u32, dimension: &str) -> Result<u32> {
+    if value == 0 {
+        bail!("atlas {dimension} must be greater than zero");
+    }
+    value
+        .checked_next_power_of_two()
+        .ok_or_else(|| anyhow::anyhow!("atlas {dimension} power-of-two overflow"))
 }
 
 fn copy_sprite_with_gutter(
@@ -845,23 +902,73 @@ mod tests {
             .unwrap();
 
         assert_eq!(atlas.levels.len(), 2);
-        assert_eq!((atlas.levels[1].width, atlas.levels[1].height), (4, 2));
+        assert_eq!(atlas.layout.padding, 2);
+        assert_eq!((atlas.layout.width, atlas.layout.height), (16, 8));
+        assert_eq!((atlas.levels[1].width, atlas.levels[1].height), (8, 4));
+        let red = &atlas.layout.sprites[0];
+        let blue = &atlas.layout.sprites[1];
         assert_eq!(
-            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 0, 0),
+            pixel(
+                &atlas.levels[1].rgba,
+                atlas.levels[1].width,
+                red.content.x >> 1,
+                red.content.y >> 1,
+            ),
             [200, 0, 0, 255]
         );
         assert_eq!(
-            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 1, 0),
-            [200, 0, 0, 255]
-        );
-        assert_eq!(
-            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 2, 0),
+            pixel(
+                &atlas.levels[1].rgba,
+                atlas.levels[1].width,
+                blue.content.x >> 1,
+                blue.content.y >> 1,
+            ),
             [0, 0, 200, 255]
         );
-        assert_eq!(
-            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 3, 0),
-            [0, 0, 200, 255]
-        );
+    }
+
+    #[test]
+    fn atlas_mip_layout_keeps_base_uvs_inside_the_same_sprite_at_level_four() {
+        let red = SpriteImage::new(
+            "minecraft:block/red",
+            16,
+            16,
+            [200, 0, 0, 255].repeat(16 * 16),
+        )
+        .unwrap();
+        let blue = SpriteImage::new(
+            "minecraft:block/blue",
+            16,
+            16,
+            [0, 0, 200, 255].repeat(16 * 16),
+        )
+        .unwrap();
+
+        let atlas = AtlasPacker::new(128, 1)
+            .unwrap()
+            .stitch_mips(&[red, blue], 4)
+            .unwrap();
+
+        assert_eq!(atlas.layout.padding, 16);
+        assert!(atlas.layout.width.is_power_of_two());
+        assert!(atlas.layout.height.is_power_of_two());
+        let mip = &atlas.levels[4];
+        for (sprite, expected) in atlas
+            .layout
+            .sprites
+            .iter()
+            .zip([[200, 0, 0, 255], [0, 0, 200, 255]])
+        {
+            assert_eq!(sprite.content.x % 16, 0);
+            assert_eq!(sprite.content.y % 16, 0);
+            let base_center_u = (sprite.content.x as f32 + 8.0) / atlas.layout.width as f32;
+            let base_center_v = (sprite.content.y as f32 + 8.0) / atlas.layout.height as f32;
+            let mip_x = (base_center_u * mip.width as f32).floor() as u32;
+            let mip_y = (base_center_v * mip.height as f32).floor() as u32;
+            assert_eq!(mip_x, sprite.content.x >> 4);
+            assert_eq!(mip_y, sprite.content.y >> 4);
+            assert_eq!(pixel(&mip.rgba, mip.width, mip_x, mip_y), expected);
+        }
     }
 
     #[test]
@@ -880,13 +987,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(atlas.mip_level(), 2);
+        assert_eq!(atlas.layout.padding, 4);
         assert_eq!(
             atlas
                 .levels
                 .iter()
                 .map(|level| (level.width, level.height))
                 .collect::<Vec<_>>(),
-            vec![(14, 14), (7, 7), (3, 3)]
+            vec![(32, 32), (16, 16), (8, 8)]
         );
     }
 
