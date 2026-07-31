@@ -81,13 +81,6 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
   owner becomes client-visible on the wire.
-- Implement Vanilla-compatible `hotbar.nbt` interchange for creative hotbar
-  presets. Follow `HotbarManager.load` / `save` and `Hotbar.CODEC`: own a
-  registry-aware persistent `ItemStack.OPTIONAL_CODEC` projection, preserve the
-  fixed nine groups of nine slots plus `DataVersion`, recover an invalid file or
-  row to the same empty scope as Vanilla, keep first-access lazy loading and
-  save-on-store behavior, and migrate the existing bbb JSON store without
-  silently discarding a valid preset.
 
 ## Renderer scene parity
 

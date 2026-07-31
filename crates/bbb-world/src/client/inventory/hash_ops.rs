@@ -138,8 +138,19 @@ const HASH_TAG_INT_ARRAY_END: u8 = 17;
 const HASH_TAG_LONG_ARRAY_START: u8 = 18;
 const HASH_TAG_LONG_ARRAY_END: u8 = 19;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Hash32(u32);
+#[derive(Debug, Clone)]
+struct HashedPersistentValue {
+    hash: u32,
+    nbt: NbtSummaryValue,
+}
+
+impl PartialEq for HashedPersistentValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+}
+
+impl Eq for HashedPersistentValue {}
 
 pub(super) fn hashed_stack_from_summary(
     ctx: InventoryCtx<'_>,
@@ -156,6 +167,33 @@ pub(super) fn hashed_stack_from_summary(
     }))
 }
 
+/// Encodes Vanilla's registry-aware `ItemStack.OPTIONAL_CODEC` NBT shape.
+///
+/// The persistent tree is assembled alongside the HashOps CRC32C projection
+/// below so packet prediction and disk interchange cannot drift onto separate
+/// component schemas.
+pub(super) fn persistent_item_stack_nbt_from_summary(
+    ctx: InventoryCtx<'_>,
+    stack: &ItemStackSummary,
+) -> Option<NbtSummaryValue> {
+    let Some(item_id) = stack.item_id else {
+        return Some(NbtSummaryValue::Compound(Vec::new()));
+    };
+    if !(1..=99).contains(&stack.count) {
+        return None;
+    }
+    validate_data_component_patch_summary(&stack.component_patch).ok()?;
+    let encoded = hash_item_stack_template(
+        ctx,
+        &ItemStackTemplateSummary {
+            item_id,
+            count: stack.count,
+            component_patch: stack.component_patch.clone(),
+        },
+    )?;
+    Some(encoded.nbt)
+}
+
 pub(super) fn hashed_component_patch_from_summary(
     ctx: InventoryCtx<'_>,
     patch: &DataComponentPatchSummary,
@@ -168,12 +206,49 @@ pub(super) fn hashed_component_patch_from_summary(
     let mut added_components = BTreeMap::new();
     for type_id in &patch.added_type_ids {
         let hash = hash_component_value(ctx, patch, *type_id)?;
-        added_components.insert(*type_id, hash.0 as i32);
+        added_components.insert(*type_id, hash.hash as i32);
     }
+    #[cfg(test)]
+    assert_persistent_component_patch_roundtrip(ctx, patch);
     Some(HashedComponentPatch {
         added_components,
         removed_components: patch.removed_type_ids.iter().copied().collect(),
     })
+}
+
+#[cfg(test)]
+fn assert_persistent_component_patch_roundtrip(
+    ctx: InventoryCtx<'_>,
+    source: &DataComponentPatchSummary,
+) {
+    let Some(encoded) = hash_data_component_patch_codec(ctx, source) else {
+        return;
+    };
+    let decoded = crate::client::dialog::decode_persistent_data_component_patch_summary(
+        &encoded.nbt,
+        ctx.registries,
+    )
+    .expect("encoded component patch remains valid persistent NBT")
+    .expect("encoded component patch remains fully projectable");
+    let decoded = crate::component_select_codec_projection(&decoded);
+    let reencoded = hash_data_component_patch_codec(ctx, &decoded)
+        .expect("decoded component patch remains persistently encodable")
+        .nbt;
+    assert_eq!(
+        canonical_snbt_string(&reencoded),
+        canonical_snbt_string(&encoded.nbt),
+        "persistent component patch changed its canonical NBT shape"
+    );
+    assert_eq!(decoded.added_type_ids, source.added_type_ids);
+    assert_eq!(decoded.removed_type_ids, source.removed_type_ids);
+    for type_id in &source.added_type_ids {
+        assert_eq!(
+            hash_component_value(ctx, &decoded, *type_id),
+            hash_component_value(ctx, source, *type_id),
+            "persistent component {} changed across NBT roundtrip",
+            vanilla_data_component_resource_id_for_type_id(*type_id).unwrap_or("unknown")
+        );
+    }
 }
 
 pub(super) fn component_patch_can_be_hashed_from_summary(
@@ -208,7 +283,7 @@ fn hash_component_value(
     ctx: InventoryCtx<'_>,
     patch: &DataComponentPatchSummary,
     type_id: i32,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     if !vanilla_data_component_type_is_persistent(type_id) {
         return None;
     }
@@ -967,7 +1042,11 @@ fn animal_variant_holder_id(patch: &DataComponentPatchSummary, type_id: i32) -> 
     }
 }
 
-fn hash_registry_holder(ctx: InventoryCtx<'_>, registry: &str, holder_id: i32) -> Option<Hash32> {
+fn hash_registry_holder(
+    ctx: InventoryCtx<'_>,
+    registry: &str,
+    holder_id: i32,
+) -> Option<HashedPersistentValue> {
     ctx.registries
         .resource_id_by_holder_id(registry, holder_id)
         .map(hash_string)
@@ -977,7 +1056,7 @@ fn hash_instrument_holder(
     ctx: InventoryCtx<'_>,
     holder_id: Option<i32>,
     direct: Option<&InstrumentSummary>,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match (holder_id, direct) {
         (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:instrument", holder_id),
         (None, Some(instrument)) => Some(hash_record(vec![
@@ -1000,7 +1079,7 @@ fn hash_trim_material_holder(
     ctx: InventoryCtx<'_>,
     holder_id: Option<i32>,
     direct: Option<&TrimMaterialSummary>,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match (holder_id, direct) {
         (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:trim_material", holder_id),
         (None, Some(material)) => {
@@ -1031,7 +1110,7 @@ fn hash_trim_pattern_holder(
     ctx: InventoryCtx<'_>,
     holder_id: Option<i32>,
     direct: Option<&TrimPatternSummary>,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match (holder_id, direct) {
         (Some(holder_id), None) => hash_registry_holder(ctx, "minecraft:trim_pattern", holder_id),
         (None, Some(pattern)) => Some(hash_record(vec![
@@ -1051,7 +1130,7 @@ fn hash_trim_pattern_holder(
 fn hash_banner_pattern_holder(
     ctx: InventoryCtx<'_>,
     layer: &bbb_protocol::packets::BannerPatternLayerSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match (
         layer.registry_id,
         layer.asset_id.as_deref(),
@@ -1073,7 +1152,7 @@ fn hash_registry_holder_set(
     registry: &str,
     holder_ids: &[i32],
     tag: Option<&str>,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     if let Some(tag) = tag {
         if !holder_ids.is_empty() {
             return None;
@@ -1090,7 +1169,7 @@ fn hash_registry_holder_set(
         })
         .collect::<Option<Vec<_>>>()?;
     Some(match holders.as_slice() {
-        [holder] => *holder,
+        [holder] => holder.clone(),
         _ => hash_list(holders),
     })
 }
@@ -1098,7 +1177,7 @@ fn hash_registry_holder_set(
 fn hash_enchantments(
     ctx: InventoryCtx<'_>,
     enchantments: &[ItemEnchantmentSummary],
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     Some(hash_map(
         enchantments
             .iter()
@@ -1117,7 +1196,7 @@ fn hash_enchantments(
 fn hash_item_stack_template(
     ctx: InventoryCtx<'_>,
     item: &ItemStackTemplateSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = vec![(
         "id",
         hash_registry_holder(ctx, "minecraft:item", item.item_id)?,
@@ -1135,11 +1214,11 @@ fn hash_item_stack_template(
 fn hash_data_component_patch_codec(
     ctx: InventoryCtx<'_>,
     patch: &DataComponentPatchSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut entries = Vec::new();
     for type_id in &patch.added_type_ids {
         if !vanilla_data_component_type_is_persistent(*type_id) {
-            continue;
+            return None;
         }
         entries.push((
             hash_string(vanilla_data_component_resource_id_for_type_id(*type_id)?),
@@ -1148,7 +1227,7 @@ fn hash_data_component_patch_codec(
     }
     for type_id in &patch.removed_type_ids {
         if !vanilla_data_component_type_is_persistent(*type_id) {
-            continue;
+            return None;
         }
         entries.push((
             hash_string(&format!(
@@ -1164,7 +1243,7 @@ fn hash_data_component_patch_codec(
 fn hash_adventure_mode_predicate(
     ctx: InventoryCtx<'_>,
     predicate: &AdventureModePredicateDataSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match predicate.predicates.as_slice() {
         // The list branch is wrapped in `ExtraCodecs.nonEmptyList`.
         [] => None,
@@ -1181,7 +1260,7 @@ fn hash_adventure_mode_predicate(
 fn hash_block_predicate(
     ctx: InventoryCtx<'_>,
     predicate: &BlockPredicateSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = Vec::new();
     if let Some(blocks) = &predicate.blocks {
         fields.push((
@@ -1245,7 +1324,7 @@ fn hash_block_predicate(
 fn hash_partial_component_predicates(
     ctx: InventoryCtx<'_>,
     predicates: &[PartialDataComponentPredicateSummary],
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     Some(hash_map(
         predicates
             .iter()
@@ -1279,7 +1358,7 @@ fn hash_concrete_component_predicate(
     ctx: InventoryCtx<'_>,
     type_id: i32,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match type_id {
         VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID => hash_damage_predicate(value),
         VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID
@@ -1347,7 +1426,7 @@ fn hash_concrete_component_predicate(
     }
 }
 
-fn hash_damage_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_damage_predicate(value: &NbtSummaryValue) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["durability", "damage"])?;
     let mut hashed = Vec::new();
     for name in ["durability", "damage"] {
@@ -1362,7 +1441,10 @@ fn hash_damage_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
     Some(hash_record(hashed))
 }
 
-fn hash_enchantments_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_enchantments_predicate(
+    ctx: InventoryCtx<'_>,
+    value: &NbtSummaryValue,
+) -> Option<HashedPersistentValue> {
     let NbtSummaryValue::List(predicates) = value else {
         return None;
     };
@@ -1390,7 +1472,7 @@ fn hash_enchantments_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -
     ))
 }
 
-fn hash_firework_explosion_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_firework_explosion_predicate(value: &NbtSummaryValue) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["shape", "has_twinkle", "has_trail"])?;
     let mut hashed = Vec::new();
     if let Some(shape) = fields.get("shape") {
@@ -1413,7 +1495,7 @@ fn hash_firework_explosion_predicate(value: &NbtSummaryValue) -> Option<Hash32> 
 fn hash_item_collection_component_predicate(
     ctx: InventoryCtx<'_>,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["items"])?;
     let mut hashed = Vec::new();
     if let Some(items) = fields.get("items") {
@@ -1428,7 +1510,7 @@ fn hash_item_collection_component_predicate(
     Some(hash_record(hashed))
 }
 
-fn hash_fireworks_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_fireworks_predicate(value: &NbtSummaryValue) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["explosions", "flight_duration"])?;
     let mut hashed = Vec::new();
     if let Some(explosions) = fields.get("explosions") {
@@ -1446,7 +1528,7 @@ fn hash_fireworks_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
     Some(hash_record(hashed))
 }
 
-fn hash_writable_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_writable_book_predicate(value: &NbtSummaryValue) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["pages"])?;
     let mut hashed = Vec::new();
     if let Some(pages) = fields.get("pages") {
@@ -1463,7 +1545,10 @@ fn hash_writable_book_predicate(value: &NbtSummaryValue) -> Option<Hash32> {
     Some(hash_record(hashed))
 }
 
-fn hash_written_book_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_written_book_predicate(
+    ctx: InventoryCtx<'_>,
+    value: &NbtSummaryValue,
+) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(
         value,
         &["pages", "author", "title", "generation", "resolved"],
@@ -1499,7 +1584,7 @@ fn hash_written_book_predicate(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -
 fn hash_attribute_modifiers_predicate(
     ctx: InventoryCtx<'_>,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["modifiers"])?;
     let mut hashed = Vec::new();
     if let Some(modifiers) = fields.get("modifiers") {
@@ -1516,7 +1601,7 @@ fn hash_attribute_modifiers_predicate(
 fn hash_attribute_modifier_entry_predicate(
     ctx: InventoryCtx<'_>,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["attribute", "id", "amount", "operation", "slot"])?;
     let mut hashed = Vec::new();
     if let Some(attribute) = fields.get("attribute") {
@@ -1560,8 +1645,8 @@ fn hash_attribute_modifier_entry_predicate(
 
 fn hash_collection_predicate(
     value: &NbtSummaryValue,
-    hash_element: impl Fn(&NbtSummaryValue) -> Option<Hash32>,
-) -> Option<Hash32> {
+    hash_element: impl Fn(&NbtSummaryValue) -> Option<HashedPersistentValue>,
+) -> Option<HashedPersistentValue> {
     let fields = nbt_record_fields(value, &["contains", "count", "size"])?;
     let mut hashed = Vec::new();
     if let Some(contains) = fields.get("contains") {
@@ -1608,7 +1693,7 @@ fn hash_persistent_holder_set(
     ctx: InventoryCtx<'_>,
     registry: &str,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let holder_set = ctx
         .registries
         .frozen_access()
@@ -1625,7 +1710,7 @@ fn hash_persistent_holder_set(
                 .map(|entry| hash_string(entry.resource_id))
                 .collect::<Vec<_>>();
             Some(match holders.as_slice() {
-                [holder] => *holder,
+                [holder] => holder.clone(),
                 _ => hash_list(holders),
             })
         }
@@ -1687,7 +1772,7 @@ impl IntBounds {
         self.min.is_none() && self.max.is_none()
     }
 
-    fn hash(self) -> Hash32 {
+    fn hash(self) -> HashedPersistentValue {
         if let (Some(min), Some(max)) = (self.min, self.max) {
             if min == max {
                 return hash_int(min);
@@ -1768,7 +1853,7 @@ impl DoubleBounds {
         self.min.is_none() && self.max.is_none()
     }
 
-    fn hash(self) -> Hash32 {
+    fn hash(self) -> HashedPersistentValue {
         if let (Some(min), Some(max)) = (self.min, self.max) {
             if min == max {
                 return hash_double(min);
@@ -1803,7 +1888,7 @@ fn nbt_f64_bits(value: &NbtSummaryValue) -> Option<u64> {
 fn hash_persistent_item_predicate(
     ctx: InventoryCtx<'_>,
     predicate: &PersistentItemPredicateSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = Vec::new();
     if let Some(items) = &predicate.items {
         fields.push((
@@ -1863,7 +1948,7 @@ fn hash_persistent_item_predicate(
 fn hash_persistent_data_component_value(
     ctx: InventoryCtx<'_>,
     component: &PersistentDataComponentValueSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let patch = crate::client::dialog::decode_persistent_data_component_patch_entry(
         component.component_type_id,
         &component.value,
@@ -1876,7 +1961,7 @@ fn hash_persistent_data_component_value(
 fn hash_attribute_modifiers(
     ctx: InventoryCtx<'_>,
     patch: &DataComponentPatchSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     Some(hash_list(
         patch
             .attribute_modifiers
@@ -1934,7 +2019,7 @@ fn hash_attribute_modifiers(
 fn hash_mob_effect_instance(
     ctx: InventoryCtx<'_>,
     effect: &MobEffectInstanceSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = vec![(
         "id",
         hash_registry_holder(ctx, "minecraft:mob_effect", effect.effect_id)?,
@@ -1952,7 +2037,7 @@ fn hash_mob_effect_instance(
 }
 
 fn append_mob_effect_details<'a>(
-    fields: &mut Vec<(&'a str, Hash32)>,
+    fields: &mut Vec<(&'a str, HashedPersistentValue)>,
     amplifier: i32,
     duration: i32,
     ambient: bool,
@@ -1980,7 +2065,10 @@ fn append_mob_effect_details<'a>(
     }
 }
 
-fn hash_consume_effects(ctx: InventoryCtx<'_>, effects: &[ConsumeEffectSummary]) -> Option<Hash32> {
+fn hash_consume_effects(
+    ctx: InventoryCtx<'_>,
+    effects: &[ConsumeEffectSummary],
+) -> Option<HashedPersistentValue> {
     Some(hash_list(
         effects
             .iter()
@@ -2049,7 +2137,7 @@ fn hash_consume_effects(ctx: InventoryCtx<'_>, effects: &[ConsumeEffectSummary])
     ))
 }
 
-fn hash_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Hash32> {
+fn hash_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<HashedPersistentValue> {
     let mut fields = Vec::new();
     match profile.kind {
         ResolvableProfileKindSummary::GameProfile => {
@@ -2108,7 +2196,7 @@ fn hash_resolvable_profile(profile: &ResolvableProfileSummary) -> Option<Hash32>
     Some(hash_record(fields))
 }
 
-fn hash_filterable_string(raw: &str, filtered: Option<&str>) -> Hash32 {
+fn hash_filterable_string(raw: &str, filtered: Option<&str>) -> HashedPersistentValue {
     let mut fields = vec![("raw", hash_string(raw))];
     if let Some(filtered) = filtered {
         fields.push(("filtered", hash_string(filtered)));
@@ -2120,7 +2208,7 @@ fn hash_filterable_component(
     ctx: InventoryCtx<'_>,
     raw: &NbtSummaryValue,
     filtered: Option<&NbtSummaryValue>,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = vec![("raw", hash_component(ctx, raw)?)];
     if let Some(filtered) = filtered {
         fields.push(("filtered", hash_component(ctx, filtered)?));
@@ -2128,7 +2216,7 @@ fn hash_filterable_component(
     Some(hash_record(fields))
 }
 
-fn hash_component(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash32> {
+fn hash_component(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<HashedPersistentValue> {
     let value = canonical_component_codec_value(value).ok()?;
     hash_canonical_component_value(ctx, &value)
 }
@@ -2136,15 +2224,19 @@ fn hash_component(ctx: InventoryCtx<'_>, value: &NbtSummaryValue) -> Option<Hash
 fn hash_canonical_component_value(
     ctx: InventoryCtx<'_>,
     value: &CanonicalComponentCodecValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match value {
         CanonicalComponentCodecValue::Boolean(value) => Some(hash_boolean(*value)),
-        CanonicalComponentCodecValue::Byte(value) => {
-            Some(hash_tagged_bytes(HASH_TAG_BYTE, &value.to_le_bytes()))
-        }
-        CanonicalComponentCodecValue::Short(value) => {
-            Some(hash_tagged_bytes(HASH_TAG_SHORT, &value.to_le_bytes()))
-        }
+        CanonicalComponentCodecValue::Byte(value) => Some(hash_tagged_nbt(
+            HASH_TAG_BYTE,
+            &value.to_le_bytes(),
+            NbtSummaryValue::Byte(*value),
+        )),
+        CanonicalComponentCodecValue::Short(value) => Some(hash_tagged_nbt(
+            HASH_TAG_SHORT,
+            &value.to_le_bytes(),
+            NbtSummaryValue::Short(*value),
+        )),
         CanonicalComponentCodecValue::Int(value) => Some(hash_int(*value)),
         CanonicalComponentCodecValue::Long(value) => Some(hash_long(*value)),
         CanonicalComponentCodecValue::Float(bits) => Some(hash_float(*bits)),
@@ -2193,7 +2285,7 @@ fn hash_component_owner_value(
     ctx: InventoryCtx<'_>,
     kind: CanonicalComponentOwnerValue,
     value: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     match kind {
         CanonicalComponentOwnerValue::PlayerProfile => {
             let profile =
@@ -2220,7 +2312,7 @@ fn hash_component_owner_value(
     }
 }
 
-fn hash_uuid(uuid: uuid::Uuid) -> Hash32 {
+fn hash_uuid(uuid: uuid::Uuid) -> HashedPersistentValue {
     let value = uuid.as_u128();
     hash_int_array([
         (value >> 96) as u32 as i32,
@@ -2241,7 +2333,10 @@ fn player_name_is_valid(name: &str) -> bool {
     length <= 16
 }
 
-fn hash_sound_event(ctx: InventoryCtx<'_>, sound: &SoundEventSummary) -> Option<Hash32> {
+fn hash_sound_event(
+    ctx: InventoryCtx<'_>,
+    sound: &SoundEventSummary,
+) -> Option<HashedPersistentValue> {
     if let Some(registry_id) = sound.registry_id {
         if sound.sound_id.is_some() || sound.fixed_range_bits.is_some() {
             return None;
@@ -2270,7 +2365,10 @@ fn sound_event_is_registry_resource(
         })
 }
 
-fn hash_tool(ctx: InventoryCtx<'_>, tool: &bbb_protocol::packets::ToolSummary) -> Option<Hash32> {
+fn hash_tool(
+    ctx: InventoryCtx<'_>,
+    tool: &bbb_protocol::packets::ToolSummary,
+) -> Option<HashedPersistentValue> {
     let mut fields = vec![(
         "rules",
         hash_list(
@@ -2316,7 +2414,7 @@ fn hash_tool(ctx: InventoryCtx<'_>, tool: &bbb_protocol::packets::ToolSummary) -
 fn hash_equippable(
     ctx: InventoryCtx<'_>,
     equippable: &bbb_protocol::packets::EquippableSummary,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let mut fields = vec![(
         "slot",
         hash_string(vanilla_equipment_slot_by_id(equippable.slot_id)?.serialized_name),
@@ -2381,7 +2479,10 @@ fn hash_equippable(
     Some(hash_record(fields))
 }
 
-fn hash_blocks_attacks(ctx: InventoryCtx<'_>, blocks: &BlocksAttacksSummary) -> Option<Hash32> {
+fn hash_blocks_attacks(
+    ctx: InventoryCtx<'_>,
+    blocks: &BlocksAttacksSummary,
+) -> Option<HashedPersistentValue> {
     let mut fields = Vec::new();
     push_non_default_float(
         &mut fields,
@@ -2471,7 +2572,7 @@ fn hash_blocks_attacks(ctx: InventoryCtx<'_>, blocks: &BlocksAttacksSummary) -> 
     Some(hash_record(fields))
 }
 
-fn hash_kinetic_condition(condition: KineticWeaponConditionSummary) -> Hash32 {
+fn hash_kinetic_condition(condition: KineticWeaponConditionSummary) -> HashedPersistentValue {
     let mut fields = vec![("max_duration_ticks", hash_int(condition.max_duration_ticks))];
     push_non_default_float(
         &mut fields,
@@ -2488,7 +2589,7 @@ fn hash_kinetic_condition(condition: KineticWeaponConditionSummary) -> Hash32 {
     hash_record(fields)
 }
 
-fn hash_firework_explosion(explosion: &FireworkExplosionSummary) -> Hash32 {
+fn hash_firework_explosion(explosion: &FireworkExplosionSummary) -> HashedPersistentValue {
     let mut fields = vec![("shape", hash_string(explosion.shape.as_str()))];
     if !explosion.colors.is_empty() {
         fields.push((
@@ -2512,7 +2613,7 @@ fn hash_typed_entity_data(
     registry: &str,
     type_id: i32,
     tag: &NbtSummaryValue,
-) -> Option<Hash32> {
+) -> Option<HashedPersistentValue> {
     let NbtSummaryValue::Compound(entries) = tag else {
         return None;
     };
@@ -2532,7 +2633,7 @@ fn hash_typed_entity_data(
 }
 
 fn push_non_default_bool<'a>(
-    fields: &mut Vec<(&'a str, Hash32)>,
+    fields: &mut Vec<(&'a str, HashedPersistentValue)>,
     name: &'a str,
     value: bool,
     default: bool,
@@ -2543,7 +2644,7 @@ fn push_non_default_bool<'a>(
 }
 
 fn push_non_default_int<'a>(
-    fields: &mut Vec<(&'a str, Hash32)>,
+    fields: &mut Vec<(&'a str, HashedPersistentValue)>,
     name: &'a str,
     value: i32,
     default: i32,
@@ -2554,7 +2655,7 @@ fn push_non_default_int<'a>(
 }
 
 fn push_non_default_float<'a>(
-    fields: &mut Vec<(&'a str, Hash32)>,
+    fields: &mut Vec<(&'a str, HashedPersistentValue)>,
     name: &'a str,
     value_bits: u32,
     default_bits: u32,
@@ -2564,7 +2665,7 @@ fn push_non_default_float<'a>(
     }
 }
 
-fn hash_record(fields: Vec<(&str, Hash32)>) -> Hash32 {
+fn hash_record(fields: Vec<(&str, HashedPersistentValue)>) -> HashedPersistentValue {
     hash_map(
         fields
             .into_iter()
@@ -2573,14 +2674,22 @@ fn hash_record(fields: Vec<(&str, Hash32)>) -> Hash32 {
     )
 }
 
-fn hash_nbt(value: &NbtSummaryValue) -> Hash32 {
-    match value {
-        NbtSummaryValue::Byte(value) => hash_tagged_bytes(HASH_TAG_BYTE, &value.to_le_bytes()),
-        NbtSummaryValue::Short(value) => hash_tagged_bytes(HASH_TAG_SHORT, &value.to_le_bytes()),
+fn hash_nbt(value: &NbtSummaryValue) -> HashedPersistentValue {
+    let mut hashed = match value {
+        NbtSummaryValue::Byte(value) => hash_tagged_nbt(
+            HASH_TAG_BYTE,
+            &value.to_le_bytes(),
+            NbtSummaryValue::Byte(*value),
+        ),
+        NbtSummaryValue::Short(value) => hash_tagged_nbt(
+            HASH_TAG_SHORT,
+            &value.to_le_bytes(),
+            NbtSummaryValue::Short(*value),
+        ),
         NbtSummaryValue::Int(value) => hash_int(*value),
-        NbtSummaryValue::Long(value) => hash_tagged_bytes(HASH_TAG_LONG, &value.to_le_bytes()),
+        NbtSummaryValue::Long(value) => hash_long(*value),
         NbtSummaryValue::Float(bits) => hash_float(*bits),
-        NbtSummaryValue::Double(bits) => hash_tagged_bytes(HASH_TAG_DOUBLE, &bits.to_le_bytes()),
+        NbtSummaryValue::Double(bits) => hash_double(*bits),
         NbtSummaryValue::ByteArray(values) => hash_byte_array(values),
         NbtSummaryValue::String(value) => hash_string(value),
         NbtSummaryValue::List(values) => hash_list(values.iter().map(hash_nbt)),
@@ -2592,62 +2701,94 @@ fn hash_nbt(value: &NbtSummaryValue) -> Hash32 {
         ),
         NbtSummaryValue::IntArray(values) => hash_int_array(values.iter().copied()),
         NbtSummaryValue::LongArray(values) => hash_long_array(values),
-    }
+    };
+    hashed.nbt = value.clone();
+    hashed
 }
 
 #[cfg(test)]
 pub(super) fn hash_ops_crc32c_int(value: i32) -> i32 {
-    hash_int(value).0 as i32
+    hash_int(value).hash as i32
 }
 
-fn hash_int(value: i32) -> Hash32 {
-    hash_tagged_bytes(HASH_TAG_INT, &value.to_le_bytes())
-}
-
-fn hash_float(bits: u32) -> Hash32 {
-    hash_tagged_bytes(HASH_TAG_FLOAT, &bits.to_le_bytes())
-}
-
-fn hash_double(bits: u64) -> Hash32 {
-    hash_tagged_bytes(HASH_TAG_DOUBLE, &bits.to_le_bytes())
-}
-
-fn hash_long(value: i64) -> Hash32 {
-    hash_tagged_bytes(HASH_TAG_LONG, &value.to_le_bytes())
-}
-
-fn hash_byte_array(values: &[i8]) -> Hash32 {
-    hash_delimited_bytes(
-        HASH_TAG_BYTE_ARRAY_START,
-        values.iter().map(|value| value.to_le_bytes()[0]),
-        HASH_TAG_BYTE_ARRAY_END,
+fn hash_int(value: i32) -> HashedPersistentValue {
+    hash_tagged_nbt(
+        HASH_TAG_INT,
+        &value.to_le_bytes(),
+        NbtSummaryValue::Int(value),
     )
 }
 
-fn hash_int_array(values: impl IntoIterator<Item = i32>) -> Hash32 {
+fn hash_float(bits: u32) -> HashedPersistentValue {
+    hash_tagged_nbt(
+        HASH_TAG_FLOAT,
+        &bits.to_le_bytes(),
+        NbtSummaryValue::Float(bits),
+    )
+}
+
+fn hash_double(bits: u64) -> HashedPersistentValue {
+    hash_tagged_nbt(
+        HASH_TAG_DOUBLE,
+        &bits.to_le_bytes(),
+        NbtSummaryValue::Double(bits),
+    )
+}
+
+fn hash_long(value: i64) -> HashedPersistentValue {
+    hash_tagged_nbt(
+        HASH_TAG_LONG,
+        &value.to_le_bytes(),
+        NbtSummaryValue::Long(value),
+    )
+}
+
+fn hash_byte_array(values: &[i8]) -> HashedPersistentValue {
+    let hash = hash_delimited_bytes(
+        HASH_TAG_BYTE_ARRAY_START,
+        values.iter().map(|value| value.to_le_bytes()[0]),
+        HASH_TAG_BYTE_ARRAY_END,
+    );
+    HashedPersistentValue {
+        hash: hash.hash,
+        nbt: NbtSummaryValue::ByteArray(values.to_vec()),
+    }
+}
+
+fn hash_int_array(values: impl IntoIterator<Item = i32>) -> HashedPersistentValue {
+    let values = values.into_iter().collect::<Vec<_>>();
     let mut payload = vec![HASH_TAG_INT_ARRAY_START];
-    for value in values {
+    for value in &values {
         payload.extend_from_slice(&value.to_le_bytes());
     }
     payload.push(HASH_TAG_INT_ARRAY_END);
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt: NbtSummaryValue::IntArray(values),
+    }
 }
 
-fn hash_long_array(values: &[i64]) -> Hash32 {
+fn hash_long_array(values: &[i64]) -> HashedPersistentValue {
     let mut payload = Vec::with_capacity(2 + values.len() * 8);
     payload.push(HASH_TAG_LONG_ARRAY_START);
     for value in values {
         payload.extend_from_slice(&value.to_le_bytes());
     }
     payload.push(HASH_TAG_LONG_ARRAY_END);
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt: NbtSummaryValue::LongArray(values.to_vec()),
+    }
 }
 
-fn hash_boolean(value: bool) -> Hash32 {
-    hash_bytes(&[HASH_TAG_BOOLEAN, u8::from(value)])
+fn hash_boolean(value: bool) -> HashedPersistentValue {
+    HashedPersistentValue {
+        hash: hash_bytes(&[HASH_TAG_BOOLEAN, u8::from(value)]).hash,
+        nbt: NbtSummaryValue::Byte(i8::from(value)),
+    }
 }
 
-fn hash_string(value: &str) -> Hash32 {
+fn hash_string(value: &str) -> HashedPersistentValue {
     let units: Vec<_> = value.encode_utf16().collect();
     let mut payload = Vec::with_capacity(5 + units.len() * 2);
     payload.push(HASH_TAG_STRING);
@@ -2655,41 +2796,75 @@ fn hash_string(value: &str) -> Hash32 {
     for unit in units {
         payload.extend_from_slice(&unit.to_le_bytes());
     }
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt: NbtSummaryValue::String(value.to_string()),
+    }
 }
 
-fn hash_map(mut entries: Vec<(Hash32, Hash32)>) -> Hash32 {
-    entries.sort_unstable();
+fn hash_map(
+    mut entries: Vec<(HashedPersistentValue, HashedPersistentValue)>,
+) -> HashedPersistentValue {
+    let nbt_entries = entries
+        .iter()
+        .map(|(key, value)| {
+            let NbtSummaryValue::String(name) = &key.nbt else {
+                unreachable!("persistent codec map key was not a string");
+            };
+            NbtSummaryEntry {
+                name: name.clone(),
+                value: value.nbt.clone(),
+            }
+        })
+        .collect();
+    entries.sort_unstable_by_key(|(key, value)| (key.hash, value.hash));
     let mut payload = Vec::with_capacity(2 + entries.len() * 8);
     payload.push(HASH_TAG_MAP_START);
     for (key, value) in entries {
-        payload.extend_from_slice(&key.0.to_le_bytes());
-        payload.extend_from_slice(&value.0.to_le_bytes());
+        payload.extend_from_slice(&key.hash.to_le_bytes());
+        payload.extend_from_slice(&value.hash.to_le_bytes());
     }
     payload.push(HASH_TAG_MAP_END);
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt: NbtSummaryValue::Compound(nbt_entries),
+    }
 }
 
-fn hash_list(values: impl IntoIterator<Item = Hash32>) -> Hash32 {
-    let values = values.into_iter();
-    let (lower, _) = values.size_hint();
-    let mut payload = Vec::with_capacity(2 + lower * 4);
+fn hash_list(values: impl IntoIterator<Item = HashedPersistentValue>) -> HashedPersistentValue {
+    let values = values.into_iter().collect::<Vec<_>>();
+    let mut payload = Vec::with_capacity(2 + values.len() * 4);
     payload.push(HASH_TAG_LIST_START);
-    for value in values {
-        payload.extend_from_slice(&value.0.to_le_bytes());
+    for value in &values {
+        payload.extend_from_slice(&value.hash.to_le_bytes());
     }
     payload.push(HASH_TAG_LIST_END);
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt: NbtSummaryValue::List(values.into_iter().map(|value| value.nbt).collect()),
+    }
 }
 
-fn hash_tagged_bytes(tag: u8, value: &[u8]) -> Hash32 {
+#[cfg(test)]
+fn hash_tagged_bytes(tag: u8, value: &[u8]) -> HashedPersistentValue {
+    hash_tagged_nbt(tag, value, NbtSummaryValue::Compound(Vec::new()))
+}
+
+fn hash_tagged_nbt(tag: u8, value: &[u8], nbt: NbtSummaryValue) -> HashedPersistentValue {
     let mut payload = Vec::with_capacity(value.len() + 1);
     payload.push(tag);
     payload.extend_from_slice(value);
-    hash_bytes(&payload)
+    HashedPersistentValue {
+        hash: hash_bytes(&payload).hash,
+        nbt,
+    }
 }
 
-fn hash_delimited_bytes(start: u8, values: impl IntoIterator<Item = u8>, end: u8) -> Hash32 {
+fn hash_delimited_bytes(
+    start: u8,
+    values: impl IntoIterator<Item = u8>,
+    end: u8,
+) -> HashedPersistentValue {
     let values = values.into_iter();
     let (lower, _) = values.size_hint();
     let mut payload = Vec::with_capacity(2 + lower);
@@ -2699,8 +2874,11 @@ fn hash_delimited_bytes(start: u8, values: impl IntoIterator<Item = u8>, end: u8
     hash_bytes(&payload)
 }
 
-fn hash_bytes(bytes: &[u8]) -> Hash32 {
-    Hash32(crc32c(bytes))
+fn hash_bytes(bytes: &[u8]) -> HashedPersistentValue {
+    HashedPersistentValue {
+        hash: crc32c(bytes),
+        nbt: NbtSummaryValue::Compound(Vec::new()),
+    }
 }
 
 pub(super) fn crc32c(bytes: &[u8]) -> u32 {
@@ -2808,6 +2986,64 @@ mod tests {
     }
 
     #[test]
+    fn persistent_optional_item_stack_codec_roundtrips_and_rejects_transient_values() {
+        let store = crate::WorldStore::new();
+        let stack = ItemStackSummary {
+            item_id: Some(1),
+            count: 32,
+            component_patch: DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![
+                    VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+                    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+                ],
+                removed_type_ids: vec![VANILLA_DATA_COMPONENT_LORE_TYPE_ID],
+                max_stack_size: Some(64),
+                custom_name: Some("Saved".to_string()),
+                custom_name_styled: Some(vec![StyledTextRun {
+                    text: "Saved".to_string(),
+                    style: ComponentStyle::default(),
+                }]),
+                custom_name_nbt: Some(NbtSummaryValue::String("Saved".to_string())),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+
+        let encoded = store.persistent_item_stack_to_nbt(&stack).unwrap();
+        assert_eq!(
+            store.persistent_item_stack_from_nbt(&encoded).unwrap(),
+            stack
+        );
+        assert_eq!(
+            store
+                .persistent_item_stack_to_nbt(&ItemStackSummary::empty())
+                .unwrap(),
+            NbtSummaryValue::Compound(Vec::new())
+        );
+
+        let transient = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![
+                    bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
+                ],
+                creative_slot_lock: true,
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        assert!(store.persistent_item_stack_to_nbt(&transient).is_err());
+        assert!(store
+            .persistent_item_stack_to_nbt(&ItemStackSummary {
+                item_id: Some(1),
+                count: 100,
+                ..ItemStackSummary::empty()
+            })
+            .is_err());
+    }
+
+    #[test]
     fn hashes_primitive_unit_and_enum_component_codecs() {
         let custom_data = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
             name: "value".to_string(),
@@ -2846,31 +3082,31 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-                    hash_nbt(&custom_data).0 as i32,
+                    hash_nbt(&custom_data).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID,
-                    hash_map(Vec::new()).0 as i32,
+                    hash_map(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
-                    hash_map(Vec::new()).0 as i32,
+                    hash_map(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
-                    hash_string("minecraft:diamond_sword").0 as i32,
+                    hash_string("minecraft:diamond_sword").hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-                    hash_string("rare").0 as i32,
+                    hash_string("rare").hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-                    hash_boolean(true).0 as i32,
+                    hash_boolean(true).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_DYE_TYPE_ID,
-                    hash_string("red").0 as i32,
+                    hash_string("red").hash as i32,
                 ),
             ])
         );
@@ -2942,11 +3178,11 @@ mod tests {
                     VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
                     hash_registry_holder(test_ctx(&store), "minecraft:damage_type", 0)
                         .unwrap()
-                        .0 as i32,
+                        .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
-                    hash_map(vec![(hash_string("example:sharp"), hash_int(3))]).0 as i32,
+                    hash_map(vec![(hash_string("example:sharp"), hash_int(3))]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
@@ -2959,7 +3195,7 @@ mod tests {
                                 .unwrap(),
                         ]),
                     )])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
@@ -2967,7 +3203,7 @@ mod tests {
                         "items",
                         hash_registry_holder(test_ctx(&store), "minecraft:item", 0).unwrap(),
                     )])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
@@ -2975,13 +3211,13 @@ mod tests {
                         hash_string("minecraft:stick"),
                         hash_string("example:custom"),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
                     hash_registry_holder(test_ctx(&store), "minecraft:sound_event", 0)
                         .unwrap()
-                        .0 as i32,
+                        .hash as i32,
                 ),
             ])
         );
@@ -3104,20 +3340,23 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-                    instrument_hash.0 as i32,
+                    instrument_hash.hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
-                    hash_record(vec![("material", material_hash), ("pattern", pattern_hash),]).0
-                        as i32,
+                    hash_record(vec![
+                        ("material", material_hash.clone()),
+                        ("pattern", pattern_hash),
+                    ])
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
-                    material_hash.0 as i32,
+                    material_hash.hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
-                    banner_hash.0 as i32,
+                    banner_hash.hash as i32,
                 ),
             ])
         );
@@ -3266,11 +3505,11 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
-                    hash_record(vec![("rules", hash_list([]))]).0 as i32,
+                    hash_record(vec![("rules", hash_list([]))]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
-                    hash_firework_explosion(&explosion).0 as i32,
+                    hash_firework_explosion(&explosion).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
@@ -3281,7 +3520,7 @@ mod tests {
                             hash_list([hash_firework_explosion(&explosion)])
                         ),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
@@ -3292,15 +3531,15 @@ mod tests {
                             ("pos", hash_int_array([1, 2, 3])),
                         ]),
                     )])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
-                    hash_map(vec![(hash_string("facing"), hash_string("north"))]).0 as i32,
+                    hash_map(vec![(hash_string("facing"), hash_string("north"))]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-                    hash_nbt(&bucket_data).0 as i32,
+                    hash_nbt(&bucket_data).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID,
@@ -3314,7 +3553,7 @@ mod tests {
                             value: NbtSummaryValue::String(entity_id.to_string()),
                         },
                     ]))
-                    .0 as i32,
+                    .hash as i32,
                 ),
             ])
         );
@@ -3408,19 +3647,19 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-                    hash_record(vec![("slot", hash_string("body"))]).0 as i32,
+                    hash_record(vec![("slot", hash_string("body"))]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
-                    hash_record(Vec::new()).0 as i32,
+                    hash_record(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-                    hash_record(Vec::new()).0 as i32,
+                    hash_record(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-                    hash_record(Vec::new()).0 as i32,
+                    hash_record(Vec::new()).hash as i32,
                 ),
             ])
         );
@@ -3518,11 +3757,11 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
-                    hash_record(Vec::new()).0 as i32,
+                    hash_record(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
-                    hash_record(Vec::new()).0 as i32,
+                    hash_record(Vec::new()).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
@@ -3537,11 +3776,11 @@ mod tests {
                             ])]),
                         ),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
-                    hash_list([hash_record(vec![("id", hash_string("minecraft:speed"),)])]).0
+                    hash_list([hash_record(vec![("id", hash_string("minecraft:speed"),)])]).hash
                         as i32,
                 ),
                 (
@@ -3573,7 +3812,7 @@ mod tests {
                             ),
                         ]),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
             ])
         );
@@ -3640,7 +3879,7 @@ mod tests {
 
         assert_eq!(
             hashed.added_components,
-            BTreeMap::from([(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, expected.0 as i32,)])
+            BTreeMap::from([(VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, expected.hash as i32,)])
         );
         let mut full = profile;
         full.kind = ResolvableProfileKindSummary::GameProfile;
@@ -3691,7 +3930,7 @@ mod tests {
                             hash_record(vec![("raw", hash_string("second page"))]),
                         ]),
                     )])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
@@ -3714,7 +3953,7 @@ mod tests {
                         ),
                         ("resolved", hash_boolean(true)),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
             ])
         );
@@ -3758,15 +3997,15 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
-                    hash_string("Custom").0 as i32,
+                    hash_string("Custom").hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-                    hash_string("Item").0 as i32,
+                    hash_string("Item").hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
-                    hash_list([hash_string("First"), hash_string("Second")]).0 as i32,
+                    hash_list([hash_string("First"), hash_string("Second")]).hash as i32,
                 ),
             ])
         );
@@ -3945,11 +4184,18 @@ mod tests {
 
     #[test]
     fn hashes_adventure_mode_and_lock_predicate_codec_shapes() {
-        let store = crate::WorldStore::new();
+        let mut store = crate::WorldStore::new();
         let block_id = store
             .registries
             .holder_id_by_resource_id("minecraft:block", "minecraft:stone")
             .unwrap();
+        store.registries.tags.insert(
+            "minecraft:block".to_string(),
+            crate::RegistryTagState {
+                registry: "minecraft:block".to_string(),
+                tags: BTreeMap::from([("minecraft:mineable/pickaxe".to_string(), vec![block_id])]),
+            },
+        );
         let item_id = store
             .registries
             .holder_id_by_resource_id("minecraft:item", "minecraft:stone")
@@ -4079,9 +4325,9 @@ mod tests {
                             )]),
                         ),
                         ("nbt", hash_string("{name:'a\"b',z:2}")),
-                        ("predicates", partial_hash),
+                        ("predicates", partial_hash.clone()),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
@@ -4091,7 +4337,7 @@ mod tests {
                             ("blocks", hash_string("#minecraft:mineable/pickaxe"),)
                         ]),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
@@ -4103,7 +4349,7 @@ mod tests {
                         ),
                         ("predicates", partial_hash),
                     ])
-                    .0 as i32,
+                    .hash as i32,
                 ),
             ])
         );
@@ -4619,7 +4865,7 @@ mod tests {
         ]);
         assert_eq!(
             hash_persistent_item_predicate(test_ctx(&store), &predicate),
-            Some(predicate_hash)
+            Some(predicate_hash.clone())
         );
         assert_eq!(
             hashed_component_patch_from_summary(
@@ -4634,7 +4880,7 @@ mod tests {
             Some(HashedComponentPatch {
                 added_components: BTreeMap::from([(
                     VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
-                    predicate_hash.0 as i32,
+                    predicate_hash.hash as i32,
                 )]),
                 removed_components: BTreeSet::new(),
             })
@@ -4833,7 +5079,7 @@ mod tests {
                 hash_map(vec![
                     (
                         hash_string("minecraft:provides_trim_material"),
-                        material_hash,
+                        material_hash.clone(),
                     ),
                     (
                         hash_string("minecraft:trim"),
@@ -4902,15 +5148,15 @@ mod tests {
             BTreeMap::from([
                 (
                     VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
-                    template_hash.0 as i32,
+                    template_hash.hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
-                    hash_list([template_hash]).0 as i32,
+                    hash_list([template_hash.clone()]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
-                    hash_list([template_hash]).0 as i32,
+                    hash_list([template_hash.clone()]).hash as i32,
                 ),
                 (
                     VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID,
@@ -4918,7 +5164,7 @@ mod tests {
                         ("slot", hash_int(3)),
                         ("item", template_hash),
                     ])])
-                    .0 as i32,
+                    .hash as i32,
                 ),
             ])
         );

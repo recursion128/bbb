@@ -889,3 +889,6 @@
 - **2026-07-30（Linux x86_64 发布矩阵闭环）**：Wayland/Vulkan/windowed 行现由
   fresh release、build-info、headless/live/quit、backend 与输入/lifecycle receipts
   联合验收；合同与本地 report/stamp 见 `docs/linux-platform-acceptance.md`。
+- **2026-07-31（Vanilla hotbar.nbt 互换工程闭环）**：107 类持久 item component
+  现由点击 HashOps 与磁盘 NBT 共享同一 registry-aware Codec 投影；9×9 懒加载、
+  分层故障恢复、`DataVersion`、逐格编码回退及旧 bbb JSON 非破坏迁移已贯通。

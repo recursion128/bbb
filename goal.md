@@ -314,8 +314,8 @@ membership owner。没有具体文件、事实源与验收测试的手工 grep �
 ### P2：非实体客户端行为 closeout
 
 状态：`active`。packet/registry/item/entity coverage 均无 open row，但
-unsupported 账本重新确认了 inventory 持久化、相机流体/fog 与 trial-spawner
-display 三个 ready 工程；具体合同只由账本维护并按 hardest-ready-first 串行推进。
+unsupported 账本仍有相机流体/fog 与 trial-spawner display 两个 ready 工程；
+具体合同只由账本维护并按 hardest-ready-first 串行推进。
 其余 world/block-entity、movement/interaction、particle/level-event、audio 与跨域
 side-effect 的关闭证据见 archive 对应 milestone 及 playable gate。vertical slice
 仍须贯通 protocol summary、canonical state、runtime effect/counter 与适用

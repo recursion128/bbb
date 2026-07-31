@@ -3084,6 +3084,35 @@ macro_rules! inventory_ctx {
 /// `WorldStore` keeps the public signatures and forwards, splitting off
 /// cross-domain borrows explicitly.
 impl WorldStore {
+    /// Decodes Vanilla's registry-aware `ItemStack.OPTIONAL_CODEC` NBT shape.
+    /// An empty compound is the canonical empty-stack representation.
+    pub fn persistent_item_stack_from_nbt(
+        &self,
+        value: &bbb_protocol::NbtSummaryValue,
+    ) -> Result<ProtocolItemStackSummary, String> {
+        if matches!(
+            value,
+            bbb_protocol::NbtSummaryValue::Compound(entries) if entries.is_empty()
+        ) {
+            return Ok(ProtocolItemStackSummary::empty());
+        }
+        crate::client::decode_command_item_stack_template_summary(
+            value,
+            self.frozen_registry_access(),
+        )
+    }
+
+    /// Encodes Vanilla's registry-aware `ItemStack.OPTIONAL_CODEC` NBT shape.
+    /// Transient components and stale holder ids are rejected so the hotbar
+    /// owner can apply Vanilla's per-cell empty-stack fallback.
+    pub fn persistent_item_stack_to_nbt(
+        &self,
+        stack: &ProtocolItemStackSummary,
+    ) -> Result<bbb_protocol::NbtSummaryValue, String> {
+        hash_ops::persistent_item_stack_nbt_from_summary(inventory_ctx!(self), stack)
+            .ok_or_else(|| "item stack is not persistently encodable".to_string())
+    }
+
     pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) -> bool {
         self.tutorial_on_get_item(&packet.item);
         let applied = self

@@ -11458,7 +11458,7 @@ fn handle_creative_hotbar_preset_key(
     };
     let index = usize::from(slot);
     if load_pressed {
-        let items = store.preset(index);
+        let items = store.preset(index, world);
         let plan = match world.plan_creative_hotbar_preset_load(&items) {
             Ok(plan) => plan,
             Err(CreativeHotbarPresetError::NoInfiniteMaterials) => return false,
@@ -11482,7 +11482,7 @@ fn handle_creative_hotbar_preset_key(
             Ok(items) => items,
             Err(CreativeHotbarPresetError::NoInfiniteMaterials) => return false,
         };
-        if let Err(err) = store.save_preset(index, items) {
+        if let Err(err) = store.save_preset(index, items, world) {
             tracing::warn!(?err, "failed to save hotbar preset");
         }
         world.set_creative_hotbar_preset_saved_overlay(index);

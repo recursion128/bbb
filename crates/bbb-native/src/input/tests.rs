@@ -29041,7 +29041,7 @@ fn hotbar_preset_activators_save_and_load_with_infinite_materials() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let store_path = std::env::temp_dir().join(format!(
-        "bbb-hotbar-preset-input-{}-{}.json",
+        "bbb-hotbar-preset-input-{}-{}.nbt",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -29113,7 +29113,7 @@ fn hotbar_preset_activators_fall_through_to_slot_select_without_instabuild() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let store_path = std::env::temp_dir().join(format!(
-        "bbb-hotbar-preset-fallthrough-{}-{}.json",
+        "bbb-hotbar-preset-fallthrough-{}-{}.nbt",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -29148,7 +29148,7 @@ fn creative_screen_hotbar_keys_swap_hovered_items_even_with_preset_activators() 
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let store_path = std::env::temp_dir().join(format!(
-            "bbb-hotbar-preset-screen-{:?}-{}-{}.json",
+            "bbb-hotbar-preset-screen-{:?}-{}-{}.nbt",
             activator,
             std::process::id(),
             std::time::SystemTime::now()
