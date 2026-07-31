@@ -895,3 +895,6 @@
 - **2026-07-31（Trial Spawner 显示实体工程闭环）**：update-tag
   `spawn_data.entity` 的有界持久投影现按状态缓存并携带当前 session
   registry/equipment 上下文，经共享实体、装备与手持物路径提交。
+- **2026-07-31（相机流体与 Lava fog 工程闭环）**：`Camera.getFluidInCamera`
+  的 Water/近裁剪面 Lava 采样现由 FOV 与 fog 共享；Lava 颜色、sky 抑制及
+  normal/fire-resistance/spectator 距离遵循 26.1 环境优先级。

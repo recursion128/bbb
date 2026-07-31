@@ -90,7 +90,6 @@ pub(crate) struct SimulationCore {
     pub(crate) audio_counters: AudioCounters,
     pub(crate) publisher: SimulationPublisher,
     pub(crate) audio_enabled: bool,
-    pub(crate) render_distance_chunks: u32,
     pub(crate) hide_lightning_flash: bool,
     pub(crate) next_effect_sequence: u64,
 }
@@ -200,7 +199,6 @@ impl SimulationCore {
             &mut self.input_runtime,
             &mut self.level_load_runtime,
             &mut platform_effects,
-            self.render_distance_chunks,
             self.hide_lightning_flash,
             now,
         );

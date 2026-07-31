@@ -284,7 +284,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
 - p1-generated-facts: maintenance
-- p2-non-entity: active
+- p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
 - p4-delivery: maintenance
@@ -313,13 +313,11 @@ membership owner。没有具体文件、事实源与验收测试的手工 grep �
 
 ### P2：非实体客户端行为 closeout
 
-状态：`active`。packet/registry/item/entity coverage 均无 open row，但
-unsupported 账本仍有相机流体/fog 这一项 ready 工程；具体合同只由账本维护并按
-hardest-ready-first 串行推进。
-其余 world/block-entity、movement/interaction、particle/level-event、audio 与跨域
-side-effect 的关闭证据见 archive 对应 milestone 及 playable gate。vertical slice
-仍须贯通 protocol summary、canonical state、runtime effect/counter 与适用
-presentation。
+状态：`maintenance`。packet/registry/item/entity coverage 均无 open row，
+unsupported 账本也无 active 项；world/block-entity、movement/interaction、
+particle/level-event、audio、相机介质与跨域 side-effect 的关闭证据见 archive
+对应 milestone 及 playable gate。后续 vertical slice 仍须贯通 protocol summary、
+canonical state、runtime effect/counter 与适用 presentation。
 
 ### P2：屏幕、HUD、字体与截图
 

@@ -12,6 +12,22 @@ const VANILLA_FLUID_FOV_SCALE: f32 = 0.857_142_87;
 const VANILLA_MAX_DEATH_FOV_TICKS: f32 = 20.0;
 const VANILLA_DEATH_FOV_OFFSET: f32 = 500.0;
 
+/// Vanilla `FogType` subset produced by `Camera.getFluidInCamera` for the
+/// native client's currently supported camera media.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CameraFluid {
+    #[default]
+    None,
+    Water,
+    Lava,
+}
+
+impl CameraFluid {
+    fn modifies_fov(self) -> bool {
+        matches!(self, Self::Water | Self::Lava)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CameraFovFrame {
     pub(crate) world_degrees: f32,
@@ -77,28 +93,24 @@ impl CameraFovTickState {
         self.base_degrees
     }
 
-    pub(crate) fn frame_for_world(
+    pub(crate) fn frame(
         self,
-        world: &WorldStore,
-        camera_pose: Option<CameraPose>,
         camera_hurt_effect: Option<CameraHurtEffect>,
-        viewport: [u32; 2],
+        camera_fluid: CameraFluid,
         partial_tick: f32,
     ) -> CameraFovFrame {
         let partial_tick = partial_tick.clamp(0.0, 1.0);
         let modifier = self.old_modifier + (self.modifier - self.old_modifier) * partial_tick;
-        let in_fov_fluid = camera_pose
-            .is_some_and(|pose| camera_is_in_fov_fluid(world, pose, viewport, self.base_degrees));
         let world_degrees = modify_fov_for_death_and_fluid(
             self.base_degrees * modifier,
             camera_hurt_effect,
-            in_fov_fluid,
+            camera_fluid.modifies_fov(),
             self.effect_scale,
         );
         let hud_degrees = modify_fov_for_death_and_fluid(
             VANILLA_DEFAULT_CAMERA_FOV_DEGREES,
             camera_hurt_effect,
-            in_fov_fluid,
+            camera_fluid.modifies_fov(),
             self.effect_scale,
         );
         CameraFovFrame {
@@ -133,15 +145,17 @@ fn modify_fov_for_death_and_fluid(
     degrees
 }
 
-fn camera_is_in_fov_fluid(
+/// Mirrors Vanilla 26.1 `Camera.getFluidInCamera`: Water is tested only at
+/// the eye, then Lava is tested at the base-FOV near-plane center and corners.
+pub(crate) fn camera_fluid_in_camera(
     world: &WorldStore,
     camera: CameraPose,
     viewport: [u32; 2],
     base_degrees: f32,
-) -> bool {
+) -> CameraFluid {
     let eye = Vec3::from_array(camera.position) + Vec3::Y * camera.eye_height;
     if camera_point_in_fluid(world, eye, TerrainFluidKind::Water, false) {
-        return true;
+        return CameraFluid::Water;
     }
 
     let yaw = camera.y_rot.to_radians();
@@ -172,7 +186,7 @@ fn camera_is_in_fov_fluid(
     let near_forward = forward * VANILLA_CAMERA_NEAR_PLANE;
     let near_left = -right * plane_width;
     let near_up = up * plane_height;
-    [
+    if [
         near_forward,
         near_forward + near_up + near_left,
         near_forward + near_up - near_left,
@@ -181,10 +195,11 @@ fn camera_is_in_fov_fluid(
     ]
     .into_iter()
     .any(|offset| camera_point_in_fluid(world, eye + offset, TerrainFluidKind::Lava, true))
-}
-
-pub(crate) fn camera_eye_in_water(world: &WorldStore, eye: [f32; 3]) -> bool {
-    camera_point_in_fluid(world, Vec3::from_array(eye), TerrainFluidKind::Water, false)
+    {
+        CameraFluid::Lava
+    } else {
+        CameraFluid::None
+    }
 }
 
 fn camera_point_in_fluid(

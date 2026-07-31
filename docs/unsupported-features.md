@@ -93,18 +93,6 @@ Living-entity render state:
   getters directly without partial-tick interpolation. Only `yRot` uses
   `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
 
-## Renderer environment and camera media
-
-Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
-
-- Implement one authoritative camera-fluid sample shared by FOV and fog.
-  Follow `Camera.getFluidInCamera`: Water wins at the eye, Lava samples the
-  near-plane center and four corners against the inclusive fluid surface, and
-  the sampler consumes the actual viewport and base FOV. Project
-  `None`/`Water`/`Lava` into `CameraFogType`; follow
-  `LavaFogEnvironment.setupFog` for normal `0.25..1`, living-camera fire
-  resistance `0..5`, and spectator `-8..renderDistance*0.5` distances.
-
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`

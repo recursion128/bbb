@@ -2704,7 +2704,7 @@ fn renderer_frame_sky_flash_environment_extracts_after_client_level_tick() {
         .find("let lightmap_environment = lightmap_ticks.environment_for_world(world);")
         .expect("pump should extract the lightmap environment");
     let clear_extract = source
-        .find("let clear_color = clear_color_for_world_at_camera_with_water_vision(")
+        .find("let clear_color = clear_color_for_world_with_environment_colors_and_water_vision(")
         .expect("pump should extract the clear color");
     let fog_extract = source
         .find("let fog_environment = if input.debug_fog_enabled()")
@@ -3089,7 +3089,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
     let mut fov = CameraFovTickState::new(90.0, 1.0);
     fov.advance_for_world(1, &world, true, false);
 
-    let frame = fov.frame_for_world(&world, None, None, [1920, 1080], 1.0);
+    let frame = fov.frame(None, CameraFluid::None, 1.0);
 
     assert!((frame.world_degrees - 78.75).abs() < 1.0e-6);
     assert_eq!(frame.culling_degrees, 90.0);
@@ -3097,7 +3097,7 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
 
     let mut disabled_effects = CameraFovTickState::new(90.0, 0.0);
     disabled_effects.advance_for_world(1, &world, true, false);
-    let frame = disabled_effects.frame_for_world(&world, None, None, [1920, 1080], 1.0);
+    let frame = disabled_effects.frame(None, CameraFluid::None, 1.0);
     assert_eq!(frame.world_degrees, 90.0);
     assert_eq!(frame.culling_degrees, 90.0);
     assert_eq!(frame.hud_degrees, 70.0);
@@ -3105,7 +3105,6 @@ fn camera_fov_frame_separates_configured_world_culling_and_hud_angles() {
 
 #[test]
 fn camera_fov_frame_applies_death_to_world_and_fixed_base_hud() {
-    let world = world_with_dimension(0, "minecraft:overworld");
     let fov = CameraFovTickState::new(90.0, 1.0);
     let death = bbb_renderer::CameraHurtEffect {
         hurt_time: 0.0,
@@ -3116,7 +3115,7 @@ fn camera_fov_frame_applies_death_to_world_and_fixed_base_hud() {
         damage_tilt_strength: 1.0,
     };
 
-    let frame = fov.frame_for_world(&world, None, Some(death), [1920, 1080], 1.0);
+    let frame = fov.frame(Some(death), CameraFluid::None, 1.0);
 
     assert!((frame.world_degrees - 83.571_43).abs() < 1.0e-5);
     assert_eq!(frame.culling_degrees, 90.0);
@@ -3134,13 +3133,8 @@ fn camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane() {
         SOURCE_WATER_BLOCK_STATE_ID,
     );
     let water_pose = camera_pose_from_world(&water_world).unwrap();
-    let water_frame = CameraFovTickState::default().frame_for_world(
-        &water_world,
-        Some(water_pose),
-        None,
-        [1920, 1080],
-        1.0,
-    );
+    let water_fluid = camera_fluid_in_camera(&water_world, water_pose, [1920, 1080], 70.0);
+    let water_frame = CameraFovTickState::default().frame(None, water_fluid, 1.0);
     assert!((water_frame.world_degrees - 60.0).abs() < 1.0e-5);
     assert_eq!(water_frame.culling_degrees, 70.0);
     assert!((water_frame.hud_degrees - 60.0).abs() < 1.0e-5);
@@ -3157,16 +3151,87 @@ fn camera_fov_frame_samples_water_at_eye_and_lava_on_base_fov_near_plane() {
         .expect("vanilla source lava state");
     set_lightmap_test_block(&mut lava_world, BlockPos { x: 0, y: 1, z: 1 }, source_lava);
     let lava_pose = camera_pose_from_world(&lava_world).unwrap();
-    let lava_frame = CameraFovTickState::default().frame_for_world(
-        &lava_world,
-        Some(lava_pose),
-        None,
-        [1920, 1080],
-        1.0,
-    );
+    let lava_fluid = camera_fluid_in_camera(&lava_world, lava_pose, [1920, 1080], 70.0);
+    let lava_frame = CameraFovTickState::default().frame(None, lava_fluid, 1.0);
     assert!((lava_frame.world_degrees - 60.0).abs() < 1.0e-5);
     assert_eq!(lava_frame.culling_degrees, 70.0);
     assert!((lava_frame.hud_degrees - 60.0).abs() < 1.0e-5);
+}
+
+#[test]
+fn camera_fluid_sampler_uses_water_priority_viewport_base_fov_and_inclusive_lava_surface() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.97, 0.0, 0.97], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let source_lava = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:lava",
+            &BTreeMap::from([("level".to_string(), "0".to_string())]),
+        )
+        .expect("vanilla source lava state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 1, y: 1, z: 1 }, source_lava);
+    let camera = camera_pose_from_world(&world).unwrap();
+
+    assert_eq!(
+        camera_fluid_in_camera(&world, camera, [1920, 1080], 70.0),
+        CameraFluid::Lava,
+        "a wide base-FOV corner reaches the adjacent lava cell"
+    );
+    assert_eq!(
+        camera_fluid_in_camera(&world, camera, [1, 4], 70.0),
+        CameraFluid::None,
+        "the actual narrow viewport keeps every corner in the camera cell"
+    );
+    assert_eq!(
+        camera_fluid_in_camera(&world, camera, [1920, 1080], 30.0),
+        CameraFluid::None,
+        "Camera.getNearPlane consumes the configured base FOV"
+    );
+
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    assert_eq!(
+        camera_fluid_in_camera(&world, camera, [1920, 1080], 70.0),
+        CameraFluid::Water,
+        "the eye-point water check precedes all near-plane lava samples"
+    );
+
+    let mut boundary_world = world_with_dimension(0, "minecraft:overworld");
+    boundary_world.insert_decoded_chunk(empty_lightmap_test_chunk(boundary_world.dimension()));
+    set_lightmap_test_block(
+        &mut boundary_world,
+        BlockPos { x: 0, y: 1, z: 1 },
+        source_lava,
+    );
+    let surface = (1.0_f64 + 8.0 / 9.0) as f32;
+    let on_surface = CameraPose {
+        position: [0.5, surface, 0.97],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 0.0,
+    };
+    // A zero-height near plane isolates the inclusive surface predicate from
+    // the top/bottom corner offsets already covered above.
+    assert_eq!(
+        camera_fluid_in_camera(&boundary_world, on_surface, [1920, 1080], 0.0),
+        CameraFluid::Lava
+    );
+    let above_surface = CameraPose {
+        position: [
+            on_surface.position[0],
+            f32::from_bits(surface.to_bits() + 1),
+            on_surface.position[2],
+        ],
+        ..on_surface
+    };
+    assert_eq!(
+        camera_fluid_in_camera(&boundary_world, above_surface, [1920, 1080], 0.0),
+        CameraFluid::None
+    );
 }
 
 #[test]
@@ -3178,7 +3243,10 @@ fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
     let hurt = runtime
         .find("let camera_hurt_effect =")
         .expect("camera living-state projection");
-    let fov_owner = "let camera_fov = camera_fov_ticks.frame_for_world(";
+    let fluid_sample = runtime
+        .find("let camera_fluid = camera_pose.map_or(CameraFluid::None")
+        .expect("render-frame camera-fluid sample");
+    let fov_owner = "let camera_fov = camera_fov_ticks.frame(";
     let fov = runtime.find(fov_owner).expect("single camera FOV frame");
     assert_eq!(
         runtime.matches(fov_owner).count(),
@@ -3199,7 +3267,8 @@ fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
         .expect("renderer frame consumes HUD FOV");
     assert!(
         camera_pose < hurt
-            && hurt < fov
+            && hurt < fluid_sample
+            && fluid_sample < fov
             && fov < locator
             && locator < culling
             && culling < world
@@ -3224,6 +3293,21 @@ fn camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner() {
         world_field < hud_field && hud_field < setter && setter < pose,
         "world/HUD FOV must be applied together before the pose refreshes both uniforms"
     );
+}
+
+#[test]
+fn camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers() {
+    let runtime = include_str!("../runtime.rs");
+    let sample = runtime
+        .find("let camera_fluid = camera_pose.map_or(CameraFluid::None")
+        .expect("render extraction should sample Camera.getFluidInCamera once");
+    let fog = runtime
+        .find("camera_environment_colors(world, camera_pose, camera_fluid);")
+        .expect("fog colors should consume the sample");
+    let fov = runtime
+        .find("camera_fov_ticks.frame(camera_hurt_effect, camera_fluid, entity_partial_tick)")
+        .expect("FOV should consume the same render-frame sample");
+    assert!(sample < fog && fog < fov);
 }
 
 #[test]
@@ -8289,7 +8373,8 @@ fn biome_positional_environment_values_override_custom_dimension_base() {
         )],
     );
 
-    let colors = camera_environment_colors(&world, camera_pose_from_world(&world));
+    let colors =
+        camera_environment_colors_for_default_projection(&world, camera_pose_from_world(&world));
     assert_eq!(colors.sky_color, Some([0xa0, 0xb0, 0xc0]));
     assert_eq!(colors.fog_color, Some([0x90, 0x80, 0x70]));
     assert_eq!(colors.water_fog_color, Some([0x60, 0x50, 0x40]));
@@ -9288,6 +9373,74 @@ fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
 }
 
 #[test]
+fn lava_fog_uses_normal_fire_resistance_and_spectator_distance_precedence() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    let colors = CameraEnvironmentColors {
+        fog_type: CameraFogType::Lava,
+        ..CameraEnvironmentColors::default()
+    };
+
+    let normal =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(normal.environmental_start, 0.25);
+    assert_eq!(normal.environmental_end, 1.0);
+    assert_eq!(normal.sky_end, 1.0);
+    assert_eq!(normal.cloud_end, 1.0);
+    assert_eq!(
+        normal.color,
+        clear_color_to_fog_color(clear_color_from_argb(VANILLA_LAVA_FOG_COLOR))
+    );
+
+    assert!(world.apply_update_mob_effect(mob_effect(
+        42,
+        VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID,
+        200,
+    )));
+    let resistant =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(resistant.environmental_start, 0.0);
+    assert_eq!(resistant.environmental_end, 5.0);
+    assert_eq!(resistant.sky_end, 5.0);
+    assert_eq!(resistant.cloud_end, 5.0);
+
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    let spectator =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(spectator.environmental_start, -8.0);
+    assert_eq!(spectator.environmental_end, 96.0);
+    assert_eq!(spectator.sky_end, 96.0);
+    assert_eq!(spectator.cloud_end, 96.0);
+}
+
+#[test]
+fn lava_fog_precedes_mob_effect_distances_and_suppresses_the_sky_pass() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_BLINDNESS_ID, -1,)));
+    let colors = CameraEnvironmentColors {
+        fog_type: CameraFogType::Lava,
+        ..CameraEnvironmentColors::default()
+    };
+
+    let fog =
+        fog_environment_for_world_with_environment_colors(&world, colors, 12, 0.0, 0.0, false);
+    assert_eq!(fog.environmental_start, 0.25);
+    assert_eq!(fog.environmental_end, 1.0);
+    assert_eq!(
+        fog.color,
+        clear_color_to_fog_color(clear_color_from_argb(VANILLA_LAVA_FOG_COLOR))
+    );
+    assert_eq!(
+        sky_environment_for_world_with_environment_colors(&world, colors, false),
+        SkyEnvironment::disabled()
+    );
+}
+
+#[test]
 fn fog_environment_applies_biome_water_fog_end_distance_modifier() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);
@@ -9534,9 +9687,10 @@ fn camera_biome_sky_color_uses_vanilla_gaussian_spatial_weights() {
         Some([100, 200, 250])
     );
 
-    let sky_color = camera_environment_colors(&world, camera_pose_from_world(&world))
-        .sky_color
-        .unwrap();
+    let sky_color =
+        camera_environment_colors_for_default_projection(&world, camera_pose_from_world(&world))
+            .sky_color
+            .unwrap();
 
     assert_eq!(sky_color, [50, 100, 125]);
 }
@@ -9583,7 +9737,7 @@ fn camera_biome_fog_and_water_fog_use_vanilla_gaussian_spatial_weights() {
     );
 
     let camera_pose = camera_pose_from_world(&world);
-    let colors = camera_environment_colors(&world, camera_pose);
+    let colors = camera_environment_colors_for_default_projection(&world, camera_pose);
     let fog_color = colors.fog_color.unwrap();
     let water_fog_color = colors.water_fog_color.unwrap();
 

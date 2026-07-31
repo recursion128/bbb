@@ -1055,12 +1055,13 @@ pub(crate) fn clear_color_for_world_at_camera_with_render_distance(
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, camera_pose),
+        camera_environment_colors_for_default_projection(world, camera_pose),
         render_distance_chunks,
         hide_lightning_flash,
     )
 }
 
+#[cfg(test)]
 pub(crate) fn clear_color_for_world_at_camera_with_water_vision(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
@@ -1070,7 +1071,7 @@ pub(crate) fn clear_color_for_world_at_camera_with_water_vision(
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors_and_water_vision(
         world,
-        camera_environment_colors(world, camera_pose),
+        camera_environment_colors_for_default_projection(world, camera_pose),
         render_distance_chunks,
         water_vision,
         hide_lightning_flash,
@@ -1139,6 +1140,7 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
                 .water_fog_color
                 .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
         )),
+        CameraFogType::Lava => clear_color_from_argb(VANILLA_LAVA_FOG_COLOR),
     };
     let clear = if hide_lightning_flash
         || world.sky_flash_time() == 0
@@ -1181,7 +1183,7 @@ fn apply_camera_mob_effect_fog_color(
         },
     );
     let mut color = clear_color_to_argb(clear);
-    if darkness > 0.0 {
+    if darkness > 0.0 && fog_type != CameraFogType::Lava {
         let brightness = (1.0 - darkness.clamp(0.0, 1.0)).powi(2);
         color = argb_scale_rgb(color, brightness, brightness, brightness);
     }
@@ -1194,16 +1196,17 @@ fn apply_camera_mob_effect_fog_color(
                 1.0
             }
         }
-        CameraFogType::Atmospheric if darkness_effect.is_none() => {
+        CameraFogType::Atmospheric | CameraFogType::Lava if darkness_effect.is_none() => {
             camera_entity_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID)
                 .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
                 .unwrap_or(0.0)
         }
-        CameraFogType::Atmospheric => 0.0,
+        CameraFogType::Atmospheric | CameraFogType::Lava => 0.0,
     };
     clear_color_from_argb(apply_fog_brightening(color, brighten_factor))
 }
 
+#[cfg(test)]
 pub(crate) fn sky_environment_for_world_at_camera(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
@@ -1211,7 +1214,7 @@ pub(crate) fn sky_environment_for_world_at_camera(
 ) -> SkyEnvironment {
     sky_environment_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, camera_pose),
+        camera_environment_colors_for_default_projection(world, camera_pose),
         hide_lightning_flash,
     )
 }
@@ -1225,7 +1228,12 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
     // `LevelRenderer.renderLevel`'s `shouldRenderSky` argument. Boss fog only
     // suppresses the sky pass; atmospheric fog and End-flash light remain
     // separate consumers of the same aggregate property.
-    if world.boss_overlay_should_create_world_fog() || camera_mob_effect_blocks_sky(world) {
+    // `LevelRenderer.addSkyPass` keeps underwater sky visible but rejects
+    // Lava before scheduling any skybox pass.
+    if colors.fog_type == CameraFogType::Lava
+        || world.boss_overlay_should_create_world_fog()
+        || camera_mob_effect_blocks_sky(world)
+    {
         return SkyEnvironment::disabled();
     }
     match world
@@ -1661,6 +1669,7 @@ pub(crate) fn sky_disc_color_for_world_with_environment_colors(
     sky_color
 }
 
+#[cfg(test)]
 pub(crate) fn fog_environment_for_world_at_camera(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
@@ -1671,7 +1680,7 @@ pub(crate) fn fog_environment_for_world_at_camera(
 ) -> FogEnvironment {
     fog_environment_for_world_with_environment_colors(
         world,
-        camera_environment_colors(world, camera_pose),
+        camera_environment_colors_for_default_projection(world, camera_pose),
         render_distance_chunks,
         water_vision,
         rain_fog_multiplier,
@@ -1752,13 +1761,39 @@ pub(crate) fn fog_environment_for_world_with_environment_colors(
                 environmental_end,
             )
         }
+        CameraFogType::Lava => {
+            // Vanilla 26.1 `LavaFogEnvironment.setupFog`: spectator wins over
+            // living-camera fire resistance, followed by the ordinary range.
+            let render_distance_blocks = render_distance_chunks as f32 * 16.0;
+            let (environmental_start, environmental_end) = if camera_entity_is_spectator(world) {
+                (-8.0, render_distance_blocks * 0.5)
+            } else if camera_entity_is_living(world)
+                && camera_entity_effect(world, VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID).is_some()
+            {
+                (0.0, 5.0)
+            } else {
+                (0.25, 1.0)
+            };
+            FogEnvironment::world_with_visibility_ends(
+                color,
+                environmental_start,
+                environmental_end,
+                render_distance_chunks,
+                environmental_end,
+                environmental_end,
+            )
+        }
     };
-    camera_mob_effect_fog_environment(
-        world,
-        base,
-        render_distance_chunks,
-        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
-    )
+    if colors.fog_type == CameraFogType::Lava {
+        base
+    } else {
+        camera_mob_effect_fog_environment(
+            world,
+            base,
+            render_distance_chunks,
+            VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+        )
+    }
 }
 
 fn camera_mob_effect_fog_environment(

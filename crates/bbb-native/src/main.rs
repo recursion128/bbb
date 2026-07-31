@@ -932,7 +932,6 @@ fn main() -> Result<()> {
         audio_counters: audio_status.clone(),
         publisher,
         audio_enabled: audio_runtime.is_some(),
-        render_distance_chunks: args.render_distance_chunks,
         hide_lightning_flash: args.hide_lightning_flash,
         next_effect_sequence: 1,
     };

@@ -78,8 +78,8 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    java_string_hash_code, sign_wood_and_form_for_block_name, BlockPos,
-    CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
+    java_string_hash_code, sign_wood_and_form_for_block_name, vanilla_entity_type_is_living,
+    BlockPos, CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
     EnchantmentTooltipDefinition, EntityClientMovementEffectState, EntityClientTickWork,
     EnvironmentBiomeSampling, EvokerFangsCritParticleState, ItemEquipmentSlot,
     LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState, MerchantOfferState,
@@ -99,7 +99,7 @@ use crate::{
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
     block_entity_visibility::{retain_visible_block_entity_instances, BlockEntityVisibility},
-    camera_fov::{camera_eye_in_water, CameraFovTickState},
+    camera_fov::{camera_fluid_in_camera, CameraFluid, CameraFovTickState},
     camera_pose::{
         camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
         camera_pose_from_world, camera_pose_from_world_at_partial_tick,
@@ -238,9 +238,9 @@ use bbb_protocol::item_types::{
 use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, MobEffectCategory, VANILLA_BEACON_EFFECT_TIERS,
     VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
-    VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_NAUSEA_ID,
-    VANILLA_MOB_EFFECT_NIGHT_VISION_ID, VANILLA_MOB_EFFECT_POISON_ID,
-    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_WITHER_ID,
+    VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID,
+    VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_NAUSEA_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
+    VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_WITHER_ID,
 };
 
 #[cfg(test)]
@@ -308,6 +308,7 @@ const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
 const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
 const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
 const VANILLA_DEFAULT_WATER_FOG_COLOR: [u8; 3] = [0x05, 0x05, 0x33];
+const VANILLA_LAVA_FOG_COLOR: i32 = argb_color(255, 0x99, 0x19, 0x00);
 const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
 const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
 const VANILLA_WEATHER_RAIN_CLOUD_GRAY_BRIGHTNESS: f32 = 0.24;
@@ -2133,6 +2134,27 @@ fn camera_entity_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectS
     camera_entity_id(world).and_then(|entity_id| world.entity_effect(entity_id, effect_id))
 }
 
+fn camera_entity_is_living(world: &WorldStore) -> bool {
+    camera_entity_id(world)
+        .and_then(|entity_id| world.entity_type_id(entity_id))
+        .is_some_and(vanilla_entity_type_is_living)
+}
+
+fn camera_entity_is_spectator(world: &WorldStore) -> bool {
+    let camera = world.local_player().camera;
+    if camera.follows_player {
+        return world.local_player_is_spectator();
+    }
+    let Some(entity_id) = camera.entity_id else {
+        return false;
+    };
+    world.entity_type_id(entity_id) == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+        && world
+            .entity_uuid(entity_id)
+            .and_then(|uuid| world.player_info_entry(uuid))
+            .is_some_and(|info| info.is_spectator())
+}
+
 fn camera_mob_effect_blocks_sky(world: &WorldStore) -> bool {
     camera_entity_effect(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_some()
         || camera_entity_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID).is_some()
@@ -2440,9 +2462,9 @@ pub(crate) struct SimulationFrameState {
     advanced_ticks: u32,
     camera_spinning_ticks: CameraSpinningEffectTickState,
     lightmap_environment: LightmapEnvironment,
-    clear_color: ClearColor,
-    fog_environment: FogEnvironment,
-    sky_environment: SkyEnvironment,
+    water_vision: f32,
+    rain_fog_multiplier: f32,
+    hide_lightning_flash: bool,
     cloud_environment: CloudEnvironment,
     particle_scope_context: Option<ParticleLocalPlayerScopeContext>,
     particle_player_motion_contexts: Vec<ParticlePlayerMotionContext>,
@@ -2528,7 +2550,6 @@ pub(crate) fn advance_simulation(
     input_runtime: &mut crate::simulation::input_commands::SimulationInputRuntime,
     level_load_runtime: &mut LevelLoadRuntime,
     platform_effects: &mut crate::simulation::effects::PlatformEffectCollector<'_>,
-    render_distance_chunks: u32,
     hide_lightning_flash: bool,
     now: Instant,
 ) -> SimulationFrameState {
@@ -2731,27 +2752,6 @@ pub(crate) fn advance_simulation(
         input.camera_type(),
         *camera_eye_height_ticks,
     );
-    let clear_color = clear_color_for_world_at_camera_with_water_vision(
-        world,
-        render_camera_pose,
-        render_distance_chunks,
-        water_vision,
-        hide_lightning_flash,
-    );
-    let fog_environment = if input.debug_fog_enabled() {
-        fog_environment_for_world_at_camera(
-            world,
-            render_camera_pose,
-            render_distance_chunks,
-            water_vision,
-            rain_fog_multiplier,
-            hide_lightning_flash,
-        )
-    } else {
-        FogEnvironment::disabled()
-    };
-    let sky_environment =
-        sky_environment_for_world_at_camera(world, render_camera_pose, hide_lightning_flash);
     let cloud_environment = cloud_environment_for_world(world);
     // Vanilla `GameRenderer.tick` calls `LevelRenderer.tick` before entity and
     // block-entity ticks. Inside `LevelRenderer.tick`, weather sampling precedes
@@ -3082,9 +3082,9 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
         camera_spinning_ticks: *camera_spinning_ticks,
         lightmap_environment,
-        clear_color,
-        fog_environment,
-        sky_environment,
+        water_vision,
+        rain_fog_multiplier,
+        hide_lightning_flash,
         cloud_environment,
         particle_scope_context,
         particle_player_motion_contexts,
@@ -3136,9 +3136,9 @@ pub(crate) fn update_renderer_from_publication(
     let advanced_ticks = state.advanced_ticks;
     let camera_spinning_ticks = state.camera_spinning_ticks;
     let lightmap_environment = state.lightmap_environment;
-    let clear_color = state.clear_color;
-    let fog_environment = state.fog_environment;
-    let sky_environment = state.sky_environment;
+    let water_vision = state.water_vision;
+    let rain_fog_multiplier = state.rain_fog_multiplier;
+    let hide_lightning_flash = state.hide_lightning_flash;
     let cloud_environment = state.cloud_environment;
     let particle_scope_context = state.particle_scope_context;
     let particle_player_motion_contexts = &state.particle_player_motion_contexts;
@@ -3841,13 +3841,43 @@ pub(crate) fn update_renderer_from_publication(
     let camera_view_bob_effect =
         camera_view_bob_effect_from_world(world, entity_partial_tick, view_bobbing);
     let camera_spinning_effect = camera_spinning_ticks.effect_for_world(world, entity_partial_tick);
-    let camera_fov = camera_fov_ticks.frame_for_world(
+    // Vanilla `GameRenderer.extract` samples the current interpolated camera
+    // once per rendered frame, after the client tick. FOV, color, fog, and sky
+    // must consume this same `Camera.getFluidInCamera` result.
+    let camera_fluid = camera_pose.map_or(CameraFluid::None, |camera| {
+        camera_fluid_in_camera(
+            world,
+            camera,
+            [surface_size.width, surface_size.height],
+            camera_fov_ticks.base_degrees(),
+        )
+    });
+    let camera_environment_colors = camera_environment_colors(world, camera_pose, camera_fluid);
+    let clear_color = clear_color_for_world_with_environment_colors_and_water_vision(
         world,
-        camera_pose,
-        camera_hurt_effect,
-        [surface_size.width, surface_size.height],
-        entity_partial_tick,
+        camera_environment_colors,
+        render_distance_chunks,
+        water_vision,
+        hide_lightning_flash,
     );
+    let fog_environment = if input.debug_fog_enabled() {
+        fog_environment_for_world_with_environment_colors(
+            world,
+            camera_environment_colors,
+            render_distance_chunks,
+            water_vision,
+            rain_fog_multiplier,
+            hide_lightning_flash,
+        )
+    } else {
+        FogEnvironment::disabled()
+    };
+    let sky_environment = sky_environment_for_world_with_environment_colors(
+        world,
+        camera_environment_colors,
+        hide_lightning_flash,
+    );
+    let camera_fov = camera_fov_ticks.frame(camera_hurt_effect, camera_fluid, entity_partial_tick);
     let hud_locator_bar = hud_locator_bar_from_world(
         world,
         camera_pose,
@@ -18076,6 +18106,7 @@ enum CameraFogType {
     #[default]
     Atmospheric,
     Water,
+    Lava,
 }
 
 fn apply_weather_cloud_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
@@ -18707,9 +18738,9 @@ fn argb_scale_rgb(color: i32, red: f32, green: f32, blue: f32) -> i32 {
 fn camera_environment_colors(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
+    camera_fluid: CameraFluid,
 ) -> CameraEnvironmentColors {
     let attributes = sampled_environment_attributes_at_camera(world, camera_pose);
-    let eye = camera_pose.map(camera_eye_position);
     CameraEnvironmentColors {
         sky_color: attributes.sky_color,
         fog_color: attributes.fog_color,
@@ -18727,12 +18758,28 @@ fn camera_environment_colors(
         water_fog_start_distance: attributes.water_fog_start_distance,
         water_fog_end_distance: attributes.water_fog_end_distance,
         camera_forward: camera_pose.map(camera_forward_vector),
-        fog_type: if eye.is_some_and(|eye| camera_eye_in_water(world, eye)) {
-            CameraFogType::Water
-        } else {
-            CameraFogType::Atmospheric
+        fog_type: match camera_fluid {
+            CameraFluid::None => CameraFogType::Atmospheric,
+            CameraFluid::Water => CameraFogType::Water,
+            CameraFluid::Lava => CameraFogType::Lava,
         },
     }
+}
+
+#[cfg(test)]
+fn camera_environment_colors_for_default_projection(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+) -> CameraEnvironmentColors {
+    let camera_fluid = camera_pose.map_or(CameraFluid::None, |camera| {
+        camera_fluid_in_camera(
+            world,
+            camera,
+            [1920, 1080],
+            crate::camera_fov::VANILLA_DEFAULT_CAMERA_FOV_DEGREES,
+        )
+    });
+    camera_environment_colors(world, camera_pose, camera_fluid)
 }
 
 fn sampled_environment_attributes_at_camera(
