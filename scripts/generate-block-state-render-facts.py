@@ -325,7 +325,7 @@ def main() -> int:
     )
     facts = parse_facts(source, expected_state_count())
     palette, state_indices = build_palette(facts)
-    probe_sha256 = hashlib.sha256(PROBE_SOURCE.read_bytes()).hexdigest()
+    probe_sha256 = hashlib.sha256(PROBE_SOURCE.read_text().encode()).hexdigest()
     protocol = render_protocol_rust(facts, state_indices, probe_sha256)
     renderer = render_renderer_rust(palette, probe_sha256)
     if args.check:

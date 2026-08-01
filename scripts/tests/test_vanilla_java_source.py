@@ -100,6 +100,7 @@ class VanillaJavaSourceFrontendTests(unittest.TestCase):
                 "generate-block-placement-defaults.py",
                 "generate-block-state-collision-shapes.py",
                 "generate-block-state-fluid-replaceability.py",
+                "generate-block-state-render-facts.py",
                 "generate-block-state-support-facts.py",
                 "generate-item-prototype-components.py",
             },
