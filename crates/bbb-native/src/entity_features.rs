@@ -100,8 +100,8 @@ mod tests {
         assert_eq!(
             textures.sprite_uv_rect(ENTITY_FLAME_FIRE_0_SPRITE),
             TerrainUvRect {
-                min: [16.5 / 64.0, 0.5 / 16.0],
-                max: [31.5 / 64.0, 15.5 / 16.0],
+                min: [16.0 / 64.0, 0.0],
+                max: [32.0 / 64.0, 1.0],
             }
         );
     }
