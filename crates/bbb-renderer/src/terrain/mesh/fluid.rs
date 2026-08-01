@@ -26,6 +26,21 @@ impl FluidCornerHeights {
             south_west: (self.south_west - offset).max(0.0),
         }
     }
+
+    pub(super) fn occlusion_height_for_face(self, face: TerrainFace) -> f32 {
+        match face {
+            TerrainFace::North => self.north_west.max(self.north_east),
+            TerrainFace::South => self.south_west.max(self.south_east),
+            TerrainFace::West => self.north_west.max(self.south_west),
+            TerrainFace::East => self.north_east.max(self.south_east),
+            TerrainFace::Up => self
+                .north_west
+                .min(self.north_east)
+                .min(self.south_west)
+                .min(self.south_east),
+            TerrainFace::Down => 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

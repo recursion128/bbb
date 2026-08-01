@@ -302,6 +302,16 @@ pub struct TerrainSectionMeshOwner {
     pub section_y: i32,
 }
 
+/// Vanilla 26.1 terrain texture filtering modes currently owned by the native renderer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TerrainTextureFiltering {
+    /// Vanilla's `TextureFilteringMethod.NONE` custom nearest-looking shader path.
+    #[default]
+    None,
+    /// Vanilla's four-tap rotated-grid super-sampling shader path.
+    Rgss,
+}
+
 pub struct Renderer {
     pub(super) surface: RenderSurface,
     pub(super) device: wgpu::Device,
@@ -482,11 +492,12 @@ pub struct Renderer {
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
     terrain_section_revisions: BTreeMap<TerrainSectionMeshOwner, u64>,
     terrain_visible_sections: Option<BTreeSet<TerrainSectionMeshOwner>>,
+    terrain_visible_section_order: Option<Vec<TerrainSectionMeshOwner>>,
     // Cross-section back-to-front draw order (far→near) of indices into
-    // `terrain_translucent`. Vanilla draws the TRANSLUCENT layer reversed so
-    // sections render far→near (ChunkSectionsToRender.java:55-56, MC 26.1); we
-    // keep this order sorted by section bounding-box-center distance and refresh
-    // it on every camera change / mesh upload. See
+    // `terrain_translucent`. Vanilla preserves the LevelRenderer visible-section
+    // traversal and reverses that draw list for TRANSLUCENT
+    // (ChunkSectionsToRender.java:55-56, MC 26.1). Keep both the membership set
+    // and that authoritative traversal order; see
     // `rebuild_translucent_section_order`.
     pub(super) terrain_translucent_order: Vec<usize>,
     pub(super) terrain_source_sections: usize,
@@ -661,6 +672,7 @@ pub struct Renderer {
     pub(super) game_test_highlight_text_billboards: Vec<DebugTextBillboard>,
     pub(super) hud_spyglass_scope_texture: Option<HudSpriteGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
+    pub(super) hud_crosshair_visible: bool,
     pub(super) hud_crosshair_attack_indicator_full: Option<HudSpriteGpu>,
     pub(super) hud_crosshair_attack_indicator_background: Option<HudSpriteGpu>,
     pub(super) hud_crosshair_attack_indicator_progress: Option<HudSpriteGpu>,
@@ -1023,15 +1035,17 @@ fn remove_resident_terrain_section(
 #[derive(Debug, Clone)]
 struct TerrainTranslucentSortState {
     centroids: Vec<[f32; 3]>,
+    local_indices: Vec<[u32; 6]>,
     last_camera_position: Option<[f32; 3]>,
 }
 
 impl TerrainTranslucentSortState {
     fn from_vertices(
         vertices: &[terrain::TerrainVertex],
+        indices: &[u32],
         last_camera_position: Option<[f32; 3]>,
     ) -> Option<Self> {
-        if vertices.len() % 4 != 0 {
+        if vertices.len() % 4 != 0 || indices.len() != vertices.len() / 4 * 6 {
             return None;
         }
 
@@ -1044,9 +1058,25 @@ impl TerrainTranslucentSortState {
                     (quad[0].position[2] + quad[2].position[2]) * 0.5,
                 ]
             })
-            .collect();
+            .collect::<Vec<_>>();
+        let mut local_indices = vec![None; centroids.len()];
+        for quad in indices.chunks_exact(6) {
+            let quad_index = (quad[0] / 4) as usize;
+            let base = (quad_index * 4) as u32;
+            if quad_index >= local_indices.len()
+                || quad
+                    .iter()
+                    .any(|index| !(*index >= base && *index < base + 4))
+                || local_indices[quad_index].is_some()
+            {
+                return None;
+            }
+            local_indices[quad_index] = Some(std::array::from_fn(|index| quad[index] - base));
+        }
+        let local_indices = local_indices.into_iter().collect::<Option<Vec<_>>>()?;
         Some(Self {
             centroids,
+            local_indices,
             last_camera_position,
         })
     }
@@ -1082,7 +1112,11 @@ impl TerrainTranslucentSortState {
         let mut indices = Vec::with_capacity(quad_distances.len() * 6);
         for (quad_index, _) in quad_distances {
             let base = (quad_index * 4) as u32;
-            indices.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+            indices.extend(
+                self.local_indices[quad_index]
+                    .into_iter()
+                    .map(|index| base + index),
+            );
         }
         indices
     }
@@ -1127,6 +1161,35 @@ fn translucent_section_draw_order(
     order
 }
 
+/// Map Vanilla's near→far visible-section traversal to resident translucent
+/// mesh indices, then reverse it exactly as `ChunkSectionsToRender.renderGroup`
+/// does for the TRANSLUCENT layer. Meshes outside the visible traversal are appended in
+/// storage order so the result remains a complete permutation; the draw pass
+/// still rejects them through `terrain_mesh_is_visible`.
+fn translucent_section_draw_order_from_visible(
+    owners: &[Option<TerrainSectionMeshOwner>],
+    visible_near_to_far: &[TerrainSectionMeshOwner],
+) -> Vec<usize> {
+    let owner_indices: BTreeMap<_, _> = owners
+        .iter()
+        .enumerate()
+        .filter_map(|(index, owner)| owner.map(|owner| (owner, index)))
+        .collect();
+    let mut included = vec![false; owners.len()];
+    let mut order = Vec::with_capacity(owners.len());
+    for owner in visible_near_to_far.iter().rev() {
+        let Some(&index) = owner_indices.get(owner) else {
+            continue;
+        };
+        if !included[index] {
+            included[index] = true;
+            order.push(index);
+        }
+    }
+    order.extend((0..owners.len()).filter(|&index| !included[index]));
+    order
+}
+
 fn choose_present_mode(
     present_modes: &[wgpu::PresentMode],
     vsync_enabled: bool,
@@ -1166,6 +1229,19 @@ impl Renderer {
     }
 
     pub async fn new_with_vsync(window: &Window, vsync_enabled: bool) -> Result<Self> {
+        Self::new_with_vsync_and_terrain_filtering(
+            window,
+            vsync_enabled,
+            TerrainTextureFiltering::None,
+        )
+        .await
+    }
+
+    pub async fn new_with_vsync_and_terrain_filtering(
+        window: &Window,
+        vsync_enabled: bool,
+        terrain_texture_filtering: TerrainTextureFiltering,
+    ) -> Result<Self> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
@@ -1223,7 +1299,14 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
-        Self::with_gpu(RenderSurface::Window(surface), device, queue, config, size)
+        Self::with_gpu(
+            RenderSurface::Window(surface),
+            device,
+            queue,
+            config,
+            size,
+            terrain_texture_filtering,
+        )
     }
 
     /// Builds the renderer around an already-acquired GPU and frame surface.
@@ -1236,6 +1319,7 @@ impl Renderer {
         queue: wgpu::Queue,
         config: wgpu::SurfaceConfiguration,
         size: PhysicalSize<u32>,
+        terrain_texture_filtering: TerrainTextureFiltering,
     ) -> Result<Self> {
         let format = config.format;
         let screen_blur_bind_group_layout = create_screen_blur_bind_group_layout(&device);
@@ -1331,18 +1415,21 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
+            terrain_texture_filtering,
         );
         let terrain_cutout_pipeline = create_terrain_cutout_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
+            terrain_texture_filtering,
         );
         let terrain_translucent_pipeline = create_terrain_translucent_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
+            terrain_texture_filtering,
         );
         let block_destroy_pipeline =
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
@@ -2032,6 +2119,7 @@ impl Renderer {
             terrain_translucent: Vec::new(),
             terrain_section_revisions: BTreeMap::new(),
             terrain_visible_sections: None,
+            terrain_visible_section_order: None,
             terrain_translucent_order: Vec::new(),
             terrain_source_sections: 0,
             terrain_bounds: None,
@@ -2192,6 +2280,7 @@ impl Renderer {
             game_test_highlight_text_billboards: Vec::new(),
             hud_spyglass_scope_texture: None,
             hud_crosshair: None,
+            hud_crosshair_visible: true,
             hud_crosshair_attack_indicator_full: None,
             hud_crosshair_attack_indicator_background: None,
             hud_crosshair_attack_indicator_progress: None,
@@ -2976,6 +3065,7 @@ impl Renderer {
             self.counters.terrain_full_replacements.saturating_add(1);
         self.terrain_section_revisions.clear();
         self.terrain_visible_sections = None;
+        self.terrain_visible_section_order = None;
         self.terrain_opaque.clear();
         self.terrain_cutout.clear();
         self.terrain_translucent.clear();
@@ -3008,22 +3098,23 @@ impl Renderer {
         self.refresh_terrain_counters();
     }
 
-    /// Replaces the frame-visible terrain section owner set. `None` is the
+    /// Replaces the frame-visible terrain section traversal. `None` is the
     /// conservative fallback used before a valid native occlusion result
-    /// exists; it keeps every resident owner visible.
+    /// exists; it keeps every resident owner visible. The slice order is
+    /// semantically significant because Vanilla reverses that exact traversal
+    /// for the TRANSLUCENT layer.
     pub fn set_terrain_visible_sections(&mut self, sections: Option<&[TerrainSectionMeshOwner]>) {
-        let unchanged = match (&self.terrain_visible_sections, sections) {
+        let unchanged = match (&self.terrain_visible_section_order, sections) {
             (None, None) => true,
-            (Some(current), Some(sections)) => {
-                current.len() == sections.len()
-                    && sections.iter().all(|owner| current.contains(owner))
-            }
+            (Some(current), Some(sections)) => current.as_slice() == sections,
             _ => false,
         };
         if unchanged {
             return;
         }
         self.terrain_visible_sections = sections.map(|sections| sections.iter().copied().collect());
+        self.terrain_visible_section_order = sections.map(<[_]>::to_vec);
+        self.rebuild_translucent_section_order();
         self.refresh_terrain_counters();
     }
 
@@ -3069,6 +3160,7 @@ impl Renderer {
             // The graph is rebuilt after worker results are integrated.
             // Render conservatively until the next frame commits that result.
             self.terrain_visible_sections = None;
+            self.terrain_visible_section_order = None;
         }
 
         self.terrain_source_sections = source_sections;
@@ -3334,6 +3426,7 @@ impl Renderer {
             .then(|| {
                 TerrainTranslucentSortState::from_vertices(
                     &mesh.vertices,
+                    &mesh.indices,
                     translucent_camera_position,
                 )
             })
@@ -3399,28 +3492,35 @@ impl Renderer {
     }
 
     /// Recompute the cross-section back-to-front (far→near) draw order for the
-    /// translucent terrain layer. Kept in lock-step with `terrain_translucent`
-    /// (rebuilt on every mesh upload and every camera change) so the draw pass can
-    /// iterate `terrain_translucent_order` as valid indices. With no camera pose
-    /// yet the natural upload order is retained.
+    /// translucent terrain layer. A valid visible-section traversal is the
+    /// authoritative Vanilla order. Distance ordering only applies while
+    /// native visibility is unavailable and is not performance-comparison
+    /// evidence.
     fn rebuild_translucent_section_order(&mut self) {
-        self.terrain_translucent_order = match self.camera_sort_position() {
-            Some(camera_position) => {
+        self.terrain_translucent_order =
+            if let Some(visible) = self.terrain_visible_section_order.as_deref() {
+                let owners: Vec<_> = self
+                    .terrain_translucent
+                    .iter()
+                    .map(|mesh| mesh.owner)
+                    .collect();
+                translucent_section_draw_order_from_visible(&owners, visible)
+            } else if let Some(camera_position) = self.camera_sort_position() {
                 let centers: Vec<Option<[f32; 3]>> = self
                     .terrain_translucent
                     .iter()
                     .map(|mesh| mesh.bounds.map(|bounds| bounds.center().to_array()))
                     .collect();
                 translucent_section_draw_order(&centers, camera_position)
-            }
-            None => (0..self.terrain_translucent.len()).collect(),
-        };
+            } else {
+                (0..self.terrain_translucent.len()).collect()
+            };
     }
 
     fn resort_translucent_terrain_for_camera(&mut self) {
-        // Segment (cross-section) order tracks the camera every frame, mirroring
-        // vanilla's per-frame `draws.reversed()` for the TRANSLUCENT layer
-        // (ChunkSectionsToRender.java:55-56, MC 26.1).
+        // Rebuild after camera/mesh changes. A committed native visibility
+        // traversal wins; only the provisional pre-visibility order tracks camera
+        // distance.
         self.rebuild_translucent_section_order();
         self.counters.terrain_translucent_resort_owners = 0;
         self.counters.terrain_translucent_resort_index_bytes = 0;
@@ -3765,7 +3865,8 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 #[cfg(test)]
 mod tests {
     use super::{
-        choose_format, choose_present_mode, translucent_section_draw_order, TerrainChunkMeshOwner,
+        choose_format, choose_present_mode, translucent_section_draw_order,
+        translucent_section_draw_order_from_visible, TerrainChunkMeshOwner,
         TerrainSectionMeshOwner, TerrainTranslucentSortState,
     };
     use crate::camera::{CameraPose, TerrainBounds};
@@ -4336,18 +4437,22 @@ mod tests {
             terrain_vertex([1.0, 1.0, 1.0]),
             terrain_vertex([0.0, 1.0, 1.0]),
         ];
+        let indices = vec![
+            0, 2, 1, 0, 3, 2, // first quad uses BBB's reversed local winding
+            4, 5, 6, 4, 6, 7,
+        ];
         let mut sort =
-            TerrainTranslucentSortState::from_vertices(&vertices, Some([0.5, 0.5, -4.0]))
-                .expect("quad vertices create sort state");
+            TerrainTranslucentSortState::from_vertices(&vertices, &indices, Some([0.5, 0.5, -4.0]))
+                .expect("quad vertices and indices create sort state");
 
         assert_eq!(sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]), None);
         assert_eq!(
             sort.indices_for_camera_if_changed([0.5, 0.5, 4.0]),
-            Some(vec![0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4])
+            Some(vec![0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7])
         );
         assert_eq!(
             sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]),
-            Some(vec![4, 5, 6, 6, 7, 4, 0, 1, 2, 2, 3, 0])
+            Some(vec![4, 5, 6, 4, 6, 7, 0, 2, 1, 0, 3, 2])
         );
     }
 
@@ -4386,6 +4491,34 @@ mod tests {
         // nearest (0) last — vanilla reversed TRANSLUCENT order.
         let order = translucent_section_draw_order(&centers, [0.0, 0.0, 5.0]);
         assert_eq!(order, vec![2, 1, 0]);
+    }
+
+    #[test]
+    fn translucent_sections_reverse_the_exact_visible_traversal() {
+        let owner = |chunk_x, section_y| TerrainSectionMeshOwner {
+            chunk: TerrainChunkMeshOwner {
+                level_generation: 7,
+                chunk_x,
+                chunk_z: 0,
+            },
+            section_y,
+        };
+        let near = owner(0, 4);
+        let middle = owner(1, 4);
+        let far = owner(2, 4);
+        let invisible = owner(3, 4);
+
+        // Resident storage order is deliberately unrelated to visibility order.
+        let owners = [Some(middle), Some(invisible), Some(far), Some(near), None];
+        assert_eq!(
+            translucent_section_draw_order_from_visible(&owners, &[near, middle, far]),
+            vec![2, 0, 3, 1, 4]
+        );
+        // The order, not merely set membership, is part of the rendering fact.
+        assert_eq!(
+            translucent_section_draw_order_from_visible(&owners, &[far, middle, near]),
+            vec![3, 0, 2, 1, 4]
+        );
     }
 
     #[test]

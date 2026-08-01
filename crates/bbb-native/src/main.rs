@@ -725,10 +725,13 @@ fn main() -> Result<()> {
     let mut debug_clipboard = NativeDebugClipboard::default();
     spawn_frame_tick(&event_loop);
 
-    let mut renderer = pollster::block_on(bbb_renderer::Renderer::new_with_vsync(
-        &window,
-        args.client_vsync,
-    ))?;
+    let mut renderer = pollster::block_on(
+        bbb_renderer::Renderer::new_with_vsync_and_terrain_filtering(
+            &window,
+            args.client_vsync,
+            args.terrain_texture_filtering.into(),
+        ),
+    )?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_menu_background_blurriness(args.menu_background_blurriness);
     renderer.set_hud_text_background_options(

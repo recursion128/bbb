@@ -3,7 +3,7 @@ use bbb_protocol::{
         VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID,
         VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     },
-    block_state_types::vanilla_block_state_support_facts,
+    block_state_types::{vanilla_block_state_render_facts, vanilla_block_state_support_facts},
     block_types::{
         vanilla_block_type_for_resource_id, VANILLA_BLOCK_COPPER_CHEST_ID,
         VANILLA_BLOCK_COPPER_GOLEM_STATUE_ID, VANILLA_BLOCK_WAXED_OXIDIZED_COPPER_CHEST_ID,
@@ -23,8 +23,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{
-        block_name_is_air, classify_terrain_material, classify_terrain_skip_rendering,
-        terrain_fluid_state,
+        block_name_is_air, classify_terrain_material, terrain_fluid_state,
+        terrain_skip_rendering_from_vanilla_facts,
     },
     BannerPatternsState, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos,
     ChunkProbeSummaryState, ChunkViewState, DecoratedPotSherdsState, RegistrySet, Result,
@@ -883,16 +883,34 @@ impl WorldStore {
                         .biomes
                         .value_at(biome_index)
                         .map(|value| value.global_id);
+                    let support_facts = vanilla_block_state_support_facts(block_value.global_id);
+                    let render_facts = vanilla_block_state_render_facts(block_value.global_id);
                     cells.push(TerrainBlockCell {
                         block_state_id: block_value.global_id,
                         biome_id,
                         material: classify_terrain_material(block_name.as_deref()),
-                        solid_render: vanilla_block_state_support_facts(block_value.global_id)
-                            .is_some_and(|facts| facts.solid_render()),
-                        skip_rendering: classify_terrain_skip_rendering(
-                            block_name.as_deref(),
-                            &block_properties,
-                        ),
+                        solid_render: support_facts.is_some_and(|facts| facts.solid_render()),
+                        can_occlude: support_facts.is_some_and(|facts| facts.can_occlude()),
+                        view_blocking: support_facts.is_some_and(|facts| facts.view_blocking()),
+                        light_dampening: support_facts.map_or(0, |facts| facts.light_dampening()),
+                        shade_brightness: support_facts
+                            .map_or(255, |facts| facts.shade_brightness()),
+                        skip_rendering: render_facts
+                            .map(|facts| {
+                                terrain_skip_rendering_from_vanilla_facts(
+                                    facts,
+                                    self.registry_holder_is_in_tag(
+                                        "minecraft:block",
+                                        "minecraft:bars",
+                                        facts.block_type_id(),
+                                    ),
+                                )
+                            })
+                            .unwrap_or_default(),
+                        face_occlusion_shape_indices: render_facts
+                            .map_or([0; 6], |facts| facts.face_occlusion_shape_indices()),
+                        fluid_overlay_neighbor: render_facts
+                            .is_some_and(|facts| facts.fluid_water_overlay_neighbor()),
                         fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
                         block_name,
                         block_properties,

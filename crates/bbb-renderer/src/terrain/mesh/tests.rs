@@ -66,16 +66,19 @@ fn culls_internal_faces_between_opaque_blocks() {
 #[test]
 fn culls_internal_faces_between_fluid_blocks() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
-    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(86, TerrainMaterialClass::Fluid, 0);
-    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_texture(86, TerrainMaterialClass::Fluid, 0);
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    cells[cell_index(2, 0, 2, 1)] = water_cell(86, 8);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     assert_eq!(layers.translucent.len(), 1);
-    assert_eq!(layers.translucent[0].translucent_faces, 10);
+    // Ten outward quads remain after the shared side is culled in both
+    // directions. Vanilla also emits reversed top/side quads for the submerged
+    // view: four open back faces per block add eight more quads.
+    assert_eq!(layers.translucent[0].translucent_faces, 18);
     assert_eq!(layers.translucent[0].culled_faces, 2);
-    assert_eq!(layers.translucent[0].vertices.len(), 40);
-    assert_eq!(layers.translucent[0].indices.len(), 60);
+    assert_eq!(layers.translucent[0].vertices.len(), 72);
+    assert_eq!(layers.translucent[0].indices.len(), 108);
 }
 
 #[test]
@@ -98,16 +101,14 @@ fn keeps_faces_between_different_fluid_kinds() {
 #[test]
 fn fluid_box_extends_to_above_fluid_without_internal_top_face() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
-    cells[cell_index(1, 0, 2, 2)] =
-        TerrainCell::with_shape(86, TerrainMaterialClass::Fluid, 0, fluid_box_shape(14));
-    cells[cell_index(1, 1, 2, 2)] =
-        TerrainCell::with_shape(87, TerrainMaterialClass::Fluid, 0, fluid_box_shape(14));
+    cells[cell_index(1, 0, 2, 2)] = water_cell(86, 8);
+    cells[cell_index(1, 1, 2, 2)] = water_cell(87, 8);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     let mesh = &layers.translucent[0];
 
-    assert_eq!(mesh.translucent_faces, 10);
+    assert_eq!(mesh.translucent_faces, 19);
     assert_eq!(mesh.culled_faces, 2);
     assert!(mesh
         .vertices
@@ -115,7 +116,7 @@ fn fluid_box_extends_to_above_fluid_without_internal_top_face() {
         .filter(|vertex| vertex.block_state_id == 86)
         .any(|vertex| vertex.position[1] == 1.0));
     let upper_top = face_vertices(mesh, 87, [0.0, 1.0, 0.0]);
-    assert_eq!(upper_top.len(), 4);
+    assert_eq!(upper_top.len(), 8);
     assert!(upper_top
         .iter()
         .all(|vertex| vertex.position[1] > 1.0 && vertex.position[1] < 1.875));
@@ -351,7 +352,11 @@ fn fluid_side_face_emits_reversed_back_face_for_submerged_view() {
 fn water_side_overlay_neighbor_uses_overlay_texture_without_reversed_back_face() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8).with_fluid_overlay_texture(3);
-    cells[cell_index(1, 0, 1, 1)] = TerrainCell::EMPTY.with_fluid_overlay_neighbor();
+    cells[cell_index(1, 0, 1, 1)] = TerrainCell::with_texture(35, TerrainMaterialClass::Opaque, 0)
+        .with_face_transparency([TerrainTransparency::TRANSLUCENT; 6])
+        .with_fluid_overlay_neighbor()
+        .with_can_occlude(false)
+        .with_face_occlusion_shape_indices([0; 6]);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
     let atlas = TerrainTextureAtlas {
         rects: vec![
@@ -377,7 +382,28 @@ fn water_side_overlay_neighbor_uses_overlay_texture_without_reversed_back_face()
     assert!(north
         .iter()
         .all(|vertex| vertex.uv[0] >= 0.5 && vertex.uv[1] >= 0.5));
-    assert_eq!(mesh.translucent_faces, 10);
+    assert_eq!(
+        mesh.vertices
+            .chunks_exact(4)
+            .filter(|quad| quad[0].block_state_id == 86)
+            .count(),
+        10
+    );
+}
+
+#[test]
+fn water_side_is_occluded_by_full_half_transparent_block_that_can_occlude() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8).with_fluid_overlay_texture(3);
+    cells[cell_index(1, 0, 1, 1)] = TerrainCell::with_texture(36, TerrainMaterialClass::Opaque, 0)
+        .with_face_transparency([TerrainTransparency::TRANSLUCENT; 6])
+        .with_fluid_overlay_neighbor();
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let north = face_vertices(&layers.translucent[0], 86, [0.0, 0.0, -1.0]);
+
+    assert!(north.is_empty());
 }
 
 #[test]
@@ -503,7 +529,7 @@ fn culls_fluid_faces_between_adjacent_chunk_snapshots() {
             .iter()
             .map(|mesh| mesh.translucent_faces)
             .sum::<usize>(),
-        10
+        18
     );
     assert_eq!(
         layers
@@ -539,6 +565,41 @@ fn maps_face_uvs_into_texture_atlas_rect() {
     assert_eq!(mesh.vertices[1].uv, [0.5, 0.5]);
     assert_eq!(mesh.vertices[2].uv, [0.5, 0.75]);
     assert_eq!(mesh.vertices[3].uv, [0.25, 0.75]);
+}
+
+#[test]
+fn cube_faces_follow_vanilla_face_info_uv_vertices() {
+    let mut snapshot = single_block_snapshot(0, 0, 1, 0, 2);
+    snapshot.cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_texture(3, TerrainMaterialClass::Opaque, 0);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    for face in TerrainFace::ALL {
+        let normal = match face {
+            TerrainFace::Down => [0.0, -1.0, 0.0],
+            TerrainFace::Up => [0.0, 1.0, 0.0],
+            TerrainFace::North => [0.0, 0.0, -1.0],
+            TerrainFace::South => [0.0, 0.0, 1.0],
+            TerrainFace::West => [-1.0, 0.0, 0.0],
+            TerrainFace::East => [1.0, 0.0, 0.0],
+        };
+        let vertices = face_vertices(&mesh, 3, normal);
+        assert_eq!(vertices.len(), 4);
+        let expected = match face {
+            TerrainFace::Down | TerrainFace::Up => [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            TerrainFace::North | TerrainFace::South | TerrainFace::West | TerrainFace::East => {
+                [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            }
+        };
+        assert_eq!(
+            vertices.iter().map(|vertex| vertex.uv).collect::<Vec<_>>(),
+            expected
+        );
+    }
 }
 
 #[test]
@@ -653,6 +714,11 @@ fn cross_layers_preserve_emissive_light() {
         material: TerrainMaterialClass::Cutout,
         is_air: false,
         solid_render: false,
+        can_occlude: false,
+        face_occlusion_shape_indices: [0; 6],
+        view_blocking: false,
+        light_dampening: 0,
+        shade_brightness: 255,
         fluid: None,
         fluid_texture_indices: [0; 6],
         fluid_overlay_texture_index: None,
@@ -751,18 +817,53 @@ fn box_model_mesh_rotates_face_uv_crop() {
         .next()
         .unwrap();
 
-    assert_eq!(mesh.vertices[0].uv, [0.5, 0.25]);
+    assert_eq!(mesh.vertices[0].uv, [0.25, 0.75]);
     assert_eq!(mesh.vertices[0].shade, 1.0);
-    assert_eq!(mesh.vertices[1].uv, [0.5, 0.75]);
-    assert_eq!(mesh.vertices[2].uv, [0.25, 0.75]);
-    assert_eq!(mesh.vertices[3].uv, [0.25, 0.25]);
+    assert_eq!(mesh.vertices[1].uv, [0.25, 0.25]);
+    assert_eq!(mesh.vertices[2].uv, [0.5, 0.25]);
+    assert_eq!(mesh.vertices[3].uv, [0.5, 0.75]);
+}
+
+#[test]
+fn box_model_vertical_face_uvs_follow_vanilla_face_info_vertices() {
+    let mut face_present = [false; 6];
+    face_present[TerrainFace::North.index()] = true;
+    let mut face_uvs = [[0, 0, 16, 16]; 6];
+    face_uvs[TerrainFace::North.index()] = [2, 3, 10, 15];
+    let shape = TerrainRenderShape::Box {
+        from: [0, 0, 0],
+        to: [16, 16, 16],
+        face_present,
+        face_uvs,
+        face_uv_rotations: [0; 6],
+        face_shade: [false; 6],
+        face_light_emission: [0; 6],
+        face_cull: [None; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 1, shape);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.vertices.len(), 4);
+    assert_eq!(mesh.vertices[0].uv, [2.0 / 16.0, 15.0 / 16.0]);
+    assert_eq!(mesh.vertices[1].uv, [2.0 / 16.0, 3.0 / 16.0]);
+    assert_eq!(mesh.vertices[2].uv, [10.0 / 16.0, 3.0 / 16.0]);
+    assert_eq!(mesh.vertices[3].uv, [10.0 / 16.0, 15.0 / 16.0]);
 }
 
 #[test]
 fn box_model_culls_only_faces_marked_by_cullface() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
-        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes());
     cells[cell_index(1, 0, 1, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
     cells[cell_index(1, 0, 3, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
@@ -783,72 +884,71 @@ fn box_model_culls_only_faces_marked_by_cullface() {
 }
 
 #[test]
-fn face_occludes_reports_full_faces_from_render_cuboids() {
-    // A full cube presents a full occlusion face on every side.
-    for direction in TerrainFace::ALL {
-        assert!(face_occludes(&TerrainRenderShape::Cube, direction));
-    }
+fn face_culling_consumes_vanilla_face_shape_palette_not_render_cuboids() {
+    let masks = super::super::VANILLA_FACE_OCCLUSION_MASKS;
+    assert_eq!(masks[0], [0; 4]);
+    assert_eq!(masks[1], [u64::MAX; 4]);
+    let partial = masks
+        .iter()
+        .position(|mask| *mask != [0; 4] && *mask != [u64::MAX; 4])
+        .unwrap() as u8;
 
-    // A bottom slab only fills its down face.
-    let bottom_slab = box_shape([0, 0, 0], [16, 8, 16]);
-    assert!(face_occludes(&bottom_slab, TerrainFace::Down));
-    for direction in [
-        TerrainFace::Up,
+    assert!(super::super::face_occlusion_culls(partial, 1));
+    assert!(!super::super::face_occlusion_culls(1, partial));
+    assert!(!super::super::face_occlusion_culls(0, partial));
+    assert!(super::super::face_occlusion_culls(0, 1));
+    assert!(!super::super::face_occlusion_culls(1, u8::MAX));
+}
+
+#[test]
+fn fluid_face_occlusion_uses_vanilla_height_and_top_surface_ordering() {
+    let lower_half = face_shape_index([u64::MAX, u64::MAX, 0, 0]);
+    let fifteen_sixteenths =
+        face_shape_index([u64::MAX, u64::MAX, u64::MAX, 0x0000_ffff_ffff_ffff]);
+    let mut neighbor = TerrainCell::EMPTY;
+    neighbor.face_occlusion_shape_indices[TerrainFace::South.index()] = lower_half;
+    assert!(!super::super::fluid_face_occlusion_culls(
+        [0; 6],
         TerrainFace::North,
-        TerrainFace::South,
-        TerrainFace::West,
-        TerrainFace::East,
-    ] {
-        assert!(!face_occludes(&bottom_slab, direction));
-    }
+        &neighbor,
+        8.0 / 9.0,
+    ));
 
-    // A top slab mirrors it, filling only the up face.
-    let top_slab = top_slab_box_shape();
-    assert!(face_occludes(&top_slab, TerrainFace::Up));
-    assert!(!face_occludes(&top_slab, TerrainFace::Down));
+    neighbor.face_occlusion_shape_indices[TerrainFace::South.index()] = fifteen_sixteenths;
+    assert!(super::super::fluid_face_occlusion_culls(
+        [0; 6],
+        TerrainFace::North,
+        &neighbor,
+        8.0 / 9.0,
+    ));
 
-    // A straight stair fills its down face (bottom slab) and its north back face
-    // (only via the union of the bottom slab + upper step — no single box is full
-    // there); every other side stays partial.
-    let stair = stair_boxes_shape();
-    assert!(face_occludes(&stair, TerrainFace::Down));
-    assert!(face_occludes(&stair, TerrainFace::North));
-    for direction in [
+    neighbor.face_occlusion_shape_indices = [1; 6];
+    assert!(!super::super::fluid_face_occlusion_culls(
+        [0; 6],
         TerrainFace::Up,
-        TerrainFace::South,
-        TerrainFace::West,
-        TerrainFace::East,
-    ] {
-        assert!(!face_occludes(&stair, direction));
-    }
-
-    // Foliage and custom / quad shapes never occlude.
-    let cross = TerrainRenderShape::Cross {
-        shade: false,
-        light_emission: 0,
-    };
-    let quad_shape = TerrainRenderShape::Quads(vec![TerrainQuad {
-        corners: [
-            [0.0, 0.0, 0.0],
-            [16.0, 0.0, 0.0],
-            [16.0, 16.0, 0.0],
-            [0.0, 16.0, 0.0],
-        ],
-        normal: [0.0, 0.0, -1.0],
-        uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-        cull: Some(TerrainFace::North),
-        texture_index: 0,
-        tint: TerrainTint::WHITE,
-        transparency: TerrainTransparency::OPAQUE,
-        shade: true,
-        light_emission: 0,
-    }]);
-    let empty_boxes = TerrainRenderShape::Boxes(Vec::new());
-    for direction in TerrainFace::ALL {
-        assert!(!face_occludes(&cross, direction));
-        assert!(!face_occludes(&quad_shape, direction));
-        assert!(!face_occludes(&empty_boxes, direction));
-    }
+        &neighbor,
+        8.0 / 9.0,
+    ));
+    assert!(super::super::fluid_face_occlusion_culls(
+        [0; 6],
+        TerrainFace::Up,
+        &neighbor,
+        1.0,
+    ));
+    let mut own_shapes = [0; 6];
+    own_shapes[TerrainFace::Up.index()] = 1;
+    assert!(super::super::fluid_face_occlusion_culls(
+        own_shapes,
+        TerrainFace::Up,
+        &TerrainCell::EMPTY,
+        8.0 / 9.0,
+    ));
+    assert!(super::super::fluid_face_occlusion_culls(
+        [0; 6],
+        TerrainFace::Down,
+        &neighbor,
+        1.0,
+    ));
 }
 
 #[test]
@@ -857,9 +957,11 @@ fn stacked_slabs_cull_the_filled_middle_boundary() {
     // fully covered by both slabs' full faces, so both middle faces cull.
     let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
     cells[cell_index(1, 0, 2, 2)] =
-        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, top_slab_box_shape());
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, top_slab_box_shape())
+            .with_face_occlusion_shape_indices(top_slab_face_shapes());
     cells[cell_index(1, 1, 2, 2)] =
-        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes());
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
 
     let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
@@ -877,15 +979,17 @@ fn stacked_slabs_cull_the_filled_middle_boundary() {
 }
 
 #[test]
-fn same_orientation_slabs_keep_touching_side_faces() {
-    // Two bottom slabs side by side: each side face is only half-height, so
-    // neither occludes the other (conservative, vanilla keeps the visible faces
-    // regardless — this is the safe over-render for matching partial faces).
+fn same_orientation_slabs_cull_identical_partial_side_faces() {
+    // Vanilla compares both exact face shapes with `ONLY_FIRST`. Identical
+    // half-height slab sides fully cover each other even though neither is a
+    // full block face, so both shared faces cull.
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
-        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes());
     cells[cell_index(2, 0, 2, 1)] =
-        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+        TerrainCell::with_shape(4, TerrainMaterialClass::Opaque, 0, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes());
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
@@ -893,8 +997,8 @@ fn same_orientation_slabs_keep_touching_side_faces() {
         .next()
         .unwrap();
 
-    assert_eq!(mesh.culled_faces, 0);
-    assert_eq!(mesh.opaque_faces, 12);
+    assert_eq!(mesh.culled_faces, 2);
+    assert_eq!(mesh.opaque_faces, 10);
 }
 
 #[test]
@@ -1002,7 +1106,7 @@ fn fast_leaves_skip_shared_face_across_leaf_kinds() {
     .with_skip_rendering(fast_leaves);
 
     assert!(culls_face_between_cells(
-        TerrainMeshMode::CutoutOnly,
+        [0; 6],
         fast_leaves,
         TerrainMaterialClass::Cutout,
         None,
@@ -1010,7 +1114,7 @@ fn fast_leaves_skip_shared_face_across_leaf_kinds() {
         &neighbor,
     ));
     assert!(!culls_face_between_cells(
-        TerrainMeshMode::CutoutOnly,
+        [0; 6],
         TerrainSkipRendering::NONE,
         TerrainMaterialClass::Cutout,
         None,
@@ -1070,6 +1174,43 @@ fn iron_bars_skip_connected_same_tag_faces() {
 }
 
 #[test]
+fn iron_bars_tag_branch_uses_neighbor_property_presence_not_block_class() {
+    let current = iron_bars_skip(20, true, false, false, false, true);
+    let tagged_neighbor = TerrainCell::with_texture(21, TerrainMaterialClass::Cutout, 0)
+        .with_skip_rendering(TerrainSkipRendering {
+            same_block_key: 99,
+            bars_tag: true,
+            west: true,
+            connection_property_mask: 1 << 2,
+            ..TerrainSkipRendering::NONE
+        });
+    assert!(culls_face_between_cells(
+        [0; 6],
+        current,
+        TerrainMaterialClass::Cutout,
+        None,
+        TerrainFace::East,
+        &tagged_neighbor,
+    ));
+
+    let absent_property = TerrainCell {
+        skip_rendering: TerrainSkipRendering {
+            connection_property_mask: 0,
+            ..tagged_neighbor.skip_rendering
+        },
+        ..tagged_neighbor
+    };
+    assert!(!culls_face_between_cells(
+        [0; 6],
+        current,
+        TerrainMaterialClass::Cutout,
+        None,
+        TerrainFace::East,
+        &absent_property,
+    ));
+}
+
+#[test]
 fn iron_bars_keep_unconnected_horizontal_same_block_face() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(20, TerrainMaterialClass::Cutout, 0)
@@ -1121,7 +1262,8 @@ fn cross_chunk_slab_neighbor_keeps_partial_face() {
 
     let mut right_cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     right_cells[cell_index(0, 0, 2, 1)] =
-        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape());
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes());
     let right = TerrainChunkSnapshot::new(1, 0, 0, 1, right_cells);
 
     let meshes = build_opaque_terrain_meshes(&[left, right]);
@@ -1193,6 +1335,11 @@ fn multi_box_model_skips_absent_faces() {
         material: TerrainMaterialClass::Opaque,
         is_air: false,
         solid_render: true,
+        can_occlude: true,
+        face_occlusion_shape_indices: [1; 6],
+        view_blocking: true,
+        light_dampening: 15,
+        shade_brightness: 51,
         fluid: None,
         fluid_texture_indices: [0; 6],
         fluid_overlay_texture_index: None,
@@ -1242,7 +1389,8 @@ fn empty_multi_box_model_emits_no_geometry_or_occlusion() {
         TerrainMaterialClass::Opaque,
         0,
         TerrainRenderShape::Boxes(Vec::new()),
-    );
+    )
+    .with_face_occlusion_shape_indices([0; 6]);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
@@ -1270,6 +1418,11 @@ fn boxes_use_per_box_texture_and_tint() {
         material: TerrainMaterialClass::Opaque,
         is_air: false,
         solid_render: true,
+        can_occlude: true,
+        face_occlusion_shape_indices: [1; 6],
+        view_blocking: true,
+        light_dampening: 15,
+        shade_brightness: 51,
         fluid: None,
         fluid_texture_indices: [0; 6],
         fluid_overlay_texture_index: None,
@@ -1459,9 +1612,12 @@ fn terrain_diffuse_uses_vanilla_nether_cardinal_shade() {
 fn ambient_occlusion_darkens_cubic_face_corners_from_outer_neighbors() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
     cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0);
-    cells[cell_index(0, 1, 2, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
-    cells[cell_index(1, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
-    cells[cell_index(0, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(0, 1, 2, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_ambient_light_facts(true, 15, 51);
+    cells[cell_index(1, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_ambient_light_facts(true, 15, 51);
+    cells[cell_index(0, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_ambient_light_facts(true, 15, 51);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
 
     let mesh = build_opaque_chunk_mesh(&snapshot);
@@ -1476,6 +1632,81 @@ fn ambient_occlusion_darkens_cubic_face_corners_from_outer_neighbors() {
         vertex_at(&top_vertices, [2.0, 1.0, 3.0]).ambient_occlusion,
         1.0,
     );
+}
+
+#[test]
+fn ambient_occlusion_uses_shade_brightness_independently_of_view_blocking() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    let center = (2, 0, 2);
+    cells[cell_index(center.0, center.1, center.2, 2)] =
+        TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0);
+    for dz in -1..=1 {
+        for dx in -1..=1 {
+            if dx == 0 && dz == 0 {
+                continue;
+            }
+            cells[cell_index(
+                (center.0 as i32 + dx) as usize,
+                1,
+                (center.2 as i32 + dz) as usize,
+                2,
+            )] = TerrainCell::with_texture(43, TerrainMaterialClass::Cutout, 0)
+                .with_ambient_light_facts(false, 1, 51);
+        }
+    }
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+    let lookup = TerrainChunkLookup::with_target(&snapshot, []);
+
+    let ambient = face_ambient_occlusion(
+        true,
+        TerrainFace::Up,
+        center.0 as i32,
+        center.1 as i32,
+        center.2 as i32,
+        true,
+        &lookup,
+    );
+
+    for value in ambient {
+        assert_float_eq(value, 0.4);
+    }
+}
+
+#[test]
+fn ambient_occlusion_queries_corner_blockers_beyond_side_brightness_samples() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 3 * 16];
+    let center = (2_i32, 0_i32, 2_i32);
+    cells[cell_index(center.0 as usize, center.1 as usize, center.2 as usize, 3)] =
+        TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0);
+    for (dx, dz) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+        cells[cell_index((center.0 + dx) as usize, 1, (center.2 + dz) as usize, 3)] =
+            TerrainCell::with_texture(43, TerrainMaterialClass::Translucent, 0)
+                .with_ambient_light_facts(false, 0, 255);
+        cells[cell_index((center.0 + dx) as usize, 2, (center.2 + dz) as usize, 3)] =
+            TerrainCell::with_texture(44, TerrainMaterialClass::Opaque, 0)
+                .with_ambient_light_facts(true, 15, 51);
+    }
+    for (dx, dz) in [(-1, -1), (-1, 1), (1, -1), (1, 1)] {
+        cells[cell_index((center.0 + dx) as usize, 1, (center.2 + dz) as usize, 3)] =
+            TerrainCell::with_texture(45, TerrainMaterialClass::Cutout, 0)
+                .with_ambient_light_facts(false, 1, 51);
+    }
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 3, cells);
+    let lookup = TerrainChunkLookup::with_target(&snapshot, []);
+
+    let ambient = face_ambient_occlusion(
+        true,
+        TerrainFace::Up,
+        center.0,
+        center.1,
+        center.2,
+        true,
+        &lookup,
+    );
+
+    for value in ambient {
+        assert_float_eq(value, 1.0);
+    }
 }
 
 #[test]
@@ -1690,11 +1921,18 @@ fn forced_translucent_box_faces_emit_in_translucent_layer() {
 fn waterlogged_block_emits_block_and_fluid_layers() {
     let water_tint = [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6];
     let mut cell = TerrainCell::with_shape(42, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+        .with_face_occlusion_shape_indices(bottom_slab_face_shapes())
         .with_fluid_render_data(
             TerrainFluid::new(TerrainFluidKind::Water, 8, false),
             [9, 9, 10, 10, 10, 10],
             water_tint,
         );
+    assert!(super::super::fluid_face_occlusion_culls(
+        cell.face_occlusion_shape_indices,
+        TerrainFace::Down,
+        &TerrainCell::EMPTY,
+        1.0,
+    ));
     cell.light = TerrainLight { sky: 13, block: 2 };
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = cell;
@@ -1704,9 +1942,9 @@ fn waterlogged_block_emits_block_and_fluid_layers() {
 
     assert_eq!(layers.opaque[0].opaque_faces, 6);
     assert_eq!(layers.cutout[0].vertices.len(), 0);
-    // The waterlogged fluid overlay is a full box (6 faces) with vanilla-shaped
-    // reversed back faces on the open top and each horizontal side: 6 + 1 + 4 = 11.
-    assert_eq!(layers.translucent[0].translucent_faces, 11);
+    // The slab's full down occlusion face hides the internal water bottom.
+    // Five front faces plus the reversed top and four side faces remain.
+    assert_eq!(layers.translucent[0].translucent_faces, 10);
     assert!(layers.translucent[0]
         .vertices
         .iter()
@@ -1720,19 +1958,21 @@ fn adjacent_waterlogged_blocks_cull_internal_fluid_faces() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
         TerrainCell::with_shape(42, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes())
             .with_fluid_render_data(water, [9, 9, 10, 10, 10, 10], water_tint);
     cells[cell_index(2, 0, 2, 1)] =
         TerrainCell::with_shape(43, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+            .with_face_occlusion_shape_indices(bottom_slab_face_shapes())
             .with_fluid_render_data(water, [9, 9, 10, 10, 10, 10], water_tint);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
 
-    // The shared fluid face is culled on both blocks (2 culled). Each block then has
-    // five front faces plus the reversed top back face and one reversed back face per
-    // exposed horizontal side (3 of 4 sides remain): 5 + 1 + 3 = 9 per block = 18.
-    assert_eq!(layers.translucent[0].translucent_faces, 18);
-    assert_eq!(layers.translucent[0].culled_faces, 2);
+    // Each slab hides its fluid bottom and the equal fluid states hide both
+    // shared sides. Four front faces plus four reversed top/side faces remain
+    // per block.
+    assert_eq!(layers.translucent[0].translucent_faces, 16);
+    assert_eq!(layers.translucent[0].culled_faces, 4);
 }
 
 fn single_block_snapshot(
@@ -1755,7 +1995,7 @@ fn single_fluid_snapshot(
     z: usize,
 ) -> TerrainChunkSnapshot {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
-    cells[cell_index(x, y, z, 1)] = TerrainCell::with_texture(86, TerrainMaterialClass::Fluid, 0);
+    cells[cell_index(x, y, z, 1)] = water_cell(86, 8);
     TerrainChunkSnapshot::new(chunk_x, chunk_z, 0, 1, cells)
 }
 
@@ -1778,6 +2018,37 @@ fn slab_box_shape() -> TerrainRenderShape {
         face_cull,
         face_transparency: [TerrainTransparency::OPAQUE; 6],
     }
+}
+
+fn face_shape_index(mask: [u64; 4]) -> u8 {
+    super::super::VANILLA_FACE_OCCLUSION_MASKS
+        .iter()
+        .position(|candidate| *candidate == mask)
+        .expect("Vanilla face-shape palette contains the synthetic test mask") as u8
+}
+
+fn bottom_slab_face_shapes() -> [u8; 6] {
+    let lower_half_side = face_shape_index([0x00ff_00ff_00ff_00ff; 4]);
+    [
+        1,
+        0,
+        lower_half_side,
+        lower_half_side,
+        lower_half_side,
+        lower_half_side,
+    ]
+}
+
+fn top_slab_face_shapes() -> [u8; 6] {
+    let upper_half_side = face_shape_index([0xff00_ff00_ff00_ff00; 4]);
+    [
+        0,
+        1,
+        upper_half_side,
+        upper_half_side,
+        upper_half_side,
+        upper_half_side,
+    ]
 }
 
 fn box_shape(from: [u8; 3], to: [u8; 3]) -> TerrainRenderShape {
@@ -1899,6 +2170,7 @@ fn iron_bars_skip(
         south,
         west,
         east,
+        connection_property_mask: 0b1111,
         ..TerrainSkipRendering::NONE
     }
 }

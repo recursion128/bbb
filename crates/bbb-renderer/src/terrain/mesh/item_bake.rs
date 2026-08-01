@@ -205,7 +205,7 @@ fn push_box(
             continue;
         }
         let corners = box_face_corners(face.face, min, max);
-        let local_uvs = face_uvs_from_crop(face_uvs[index], face_uv_rotations[index]);
+        let local_uvs = face_uvs_from_crop(face.face, face_uvs[index], face_uv_rotations[index]);
         let rect = atlas.rect(texture_indices[index]);
         quads.push(ItemModelQuad {
             corners,

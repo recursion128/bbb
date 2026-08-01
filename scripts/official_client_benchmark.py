@@ -10,6 +10,7 @@ parses common external capture artifacts.
 from __future__ import annotations
 
 import argparse
+import binascii
 import csv
 import grp
 import hashlib
@@ -23,11 +24,13 @@ import shutil
 import signal
 import socket
 import stat
+import struct
 import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ElementTree
 import zipfile
+import zlib
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
@@ -42,6 +45,8 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 COMPOSITOR_WIDTH = 1600
 COMPOSITOR_HEIGHT = 900
+MAX_VISUAL_PNG_BYTES = 16 * 1024 * 1024
+MAX_VISUAL_PNG_PIXELS = COMPOSITOR_WIDTH * COMPOSITOR_HEIGHT
 VIEW_DISTANCE = 12
 SIMULATION_DISTANCE = 12
 SERVER_SEED = "bbb-official-benchmark-26.1"
@@ -101,9 +106,49 @@ MANGOHUD_FILE_SHA256 = {
     ),
 }
 
+# The managed Weston fixture deterministically places the 1280x720 client
+# content at this compositor coordinate. Pixel evidence rejects any capture
+# that no longer satisfies the frozen 1600x900/1280x720 contract.
+WESTON_CLIENT_CONTENT_ORIGIN = (102, 178)
+VISUAL_PIXEL_THRESHOLDS = {
+    "max_mean_channel_delta": 8.0,
+    "max_neighborhood_mae": 12.0,
+    "max_severe_neighborhood_fraction": 0.12,
+    "max_edge_density_delta": 0.03,
+}
+# Coordinates are relative to the client content, not the compositor. Regions
+# intentionally avoid the Vanilla debug text while covering every material in
+# the P0 acceptance matrix. They are frozen before formal cross-client runs.
+VISUAL_ROIS = {
+    "static_orbit": (
+        ("water", (400, 500, 850, 700)),
+        ("ordinary_glass", (800, 330, 1220, 520)),
+        ("glass_water_boundary", (20, 430, 360, 650)),
+        ("armor_stands", (450, 430, 850, 650)),
+    ),
+    "preloaded_flight": (
+        ("leaves", (500, 470, 790, 710)),
+        ("stained_glass", (850, 390, 1050, 690)),
+        ("stone", (550, 120, 760, 390)),
+        ("glowstone", (20, 310, 500, 560)),
+    ),
+    "chunk_boundary_crossing": (
+        ("glass_chunk_boundary", (1030, 40, 1270, 700)),
+        ("stone_chunk_boundary", (420, 80, 980, 600)),
+        ("glowstone", (20, 330, 370, 580)),
+    ),
+}
+
 
 class BenchmarkFailure(RuntimeError):
     """A benchmark contract failure with actionable text."""
+
+
+@dataclass(frozen=True)
+class RgbImage:
+    width: int
+    height: int
+    rgb: bytes
 
 
 @dataclass(frozen=True)
@@ -222,6 +267,365 @@ def file_digest(path: Path, algorithm: str = "sha1") -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _png_chunks(payload: bytes) -> Iterable[tuple[bytes, bytes]]:
+    if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise BenchmarkFailure("visual evidence is not a PNG file")
+    offset = 8
+    while offset < len(payload):
+        if offset + 12 > len(payload):
+            raise BenchmarkFailure("PNG chunk header is truncated")
+        size = struct.unpack(">I", payload[offset : offset + 4])[0]
+        kind = payload[offset + 4 : offset + 8]
+        end = offset + 12 + size
+        if end > len(payload):
+            raise BenchmarkFailure("PNG chunk payload is truncated")
+        data = payload[offset + 8 : offset + 8 + size]
+        expected_crc = struct.unpack(">I", payload[offset + 8 + size : end])[0]
+        actual_crc = binascii.crc32(kind + data) & 0xFFFFFFFF
+        if actual_crc != expected_crc:
+            raise BenchmarkFailure(f"PNG {kind!r} CRC mismatch")
+        yield kind, data
+        offset = end
+        if kind == b"IEND":
+            if offset != len(payload):
+                raise BenchmarkFailure("PNG has trailing data after IEND")
+            return
+    raise BenchmarkFailure("PNG lacks IEND")
+
+
+def read_png_rgb(path: Path) -> RgbImage:
+    try:
+        with path.open("rb") as source:
+            payload = source.read(MAX_VISUAL_PNG_BYTES + 1)
+    except OSError as error:
+        raise BenchmarkFailure(f"cannot read visual evidence PNG {path}: {error}") from error
+    if len(payload) > MAX_VISUAL_PNG_BYTES:
+        raise BenchmarkFailure(
+            f"visual evidence PNG exceeds {MAX_VISUAL_PNG_BYTES} bytes"
+        )
+    width = height = None
+    idat: list[bytes] = []
+    for kind, data in _png_chunks(payload):
+        if kind == b"IHDR":
+            if width is not None or len(data) != 13:
+                raise BenchmarkFailure("PNG has an invalid IHDR")
+            width, height, depth, color, compression, filtering, interlace = struct.unpack(
+                ">IIBBBBB", data
+            )
+            if not width or not height:
+                raise BenchmarkFailure("PNG dimensions must be non-zero")
+            if width * height > MAX_VISUAL_PNG_PIXELS:
+                raise BenchmarkFailure(
+                    "visual evidence PNG dimensions exceed the compositor pixel limit"
+                )
+            if (depth, color, compression, filtering, interlace) != (8, 2, 0, 0, 0):
+                raise BenchmarkFailure(
+                    "visual evidence PNG must be non-interlaced 8-bit RGB"
+                )
+        elif kind == b"IDAT":
+            idat.append(data)
+    if width is None or height is None or not idat:
+        raise BenchmarkFailure("PNG lacks IHDR or IDAT")
+    stride = width * 3
+    expected = height * (stride + 1)
+    try:
+        decompressor = zlib.decompressobj()
+        filtered = decompressor.decompress(b"".join(idat), expected + 1)
+    except zlib.error as error:
+        raise BenchmarkFailure(f"PNG IDAT decompression failed: {error}") from error
+    if (
+        len(filtered) != expected
+        or not decompressor.eof
+        or decompressor.unconsumed_tail
+        or decompressor.unused_data
+    ):
+        raise BenchmarkFailure(
+            f"PNG scanline size mismatch: expected {expected}, got {len(filtered)}"
+        )
+    output = bytearray(width * height * 3)
+    previous = bytearray(stride)
+    source_offset = 0
+    for y in range(height):
+        filter_type = filtered[source_offset]
+        source_offset += 1
+        current = bytearray(filtered[source_offset : source_offset + stride])
+        source_offset += stride
+        if filter_type > 4:
+            raise BenchmarkFailure(f"PNG uses invalid filter {filter_type}")
+        for index in range(stride):
+            left = current[index - 3] if index >= 3 else 0
+            above = previous[index]
+            upper_left = previous[index - 3] if index >= 3 else 0
+            if filter_type == 0:
+                predictor = 0
+            elif filter_type == 1:
+                predictor = left
+            elif filter_type == 2:
+                predictor = above
+            elif filter_type == 3:
+                predictor = (left + above) // 2
+            else:
+                estimate = left + above - upper_left
+                left_error = abs(estimate - left)
+                above_error = abs(estimate - above)
+                upper_left_error = abs(estimate - upper_left)
+                predictor = (
+                    left
+                    if left_error <= above_error and left_error <= upper_left_error
+                    else above
+                    if above_error <= upper_left_error
+                    else upper_left
+                )
+            current[index] = (current[index] + predictor) & 0xFF
+        start = y * stride
+        output[start : start + stride] = current
+        previous = current
+    return RgbImage(width=width, height=height, rgb=bytes(output))
+
+
+def _png_chunk(kind: bytes, payload: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(payload))
+        + kind
+        + payload
+        + struct.pack(">I", binascii.crc32(kind + payload) & 0xFFFFFFFF)
+    )
+
+
+def write_png_rgb(path: Path, image: RgbImage) -> None:
+    expected = image.width * image.height * 3
+    if image.width <= 0 or image.height <= 0 or len(image.rgb) != expected:
+        raise BenchmarkFailure("RGB image dimensions do not match its payload")
+    stride = image.width * 3
+    scanlines = bytearray()
+    for y in range(image.height):
+        scanlines.append(0)
+        start = y * stride
+        scanlines.extend(image.rgb[start : start + stride])
+    payload = b"".join(
+        (
+            b"\x89PNG\r\n\x1a\n",
+            _png_chunk(
+                b"IHDR",
+                struct.pack(">IIBBBBB", image.width, image.height, 8, 2, 0, 0, 0),
+            ),
+            _png_chunk(b"IDAT", zlib.compress(bytes(scanlines), level=9)),
+            _png_chunk(b"IEND", b""),
+        )
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+
+
+def _pixel(image: RgbImage, x: int, y: int) -> tuple[int, int, int]:
+    offset = (y * image.width + x) * 3
+    return (image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2])
+
+
+def _roi_directional_neighborhood_metrics(
+    source: RgbImage,
+    target: RgbImage,
+    bounds: tuple[int, int, int, int],
+) -> tuple[float, float]:
+    x0, y0, x1, y1 = bounds
+    distance_sum = 0.0
+    severe = 0
+    samples = (x1 - x0) * (y1 - y0)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            source_pixel = _pixel(source, x, y)
+            best = float("inf")
+            for target_y in range(max(y0, y - 1), min(y1, y + 2)):
+                for target_x in range(max(x0, x - 1), min(x1, x + 2)):
+                    target_pixel = _pixel(target, target_x, target_y)
+                    distance = sum(
+                        abs(source_pixel[channel] - target_pixel[channel])
+                        for channel in range(3)
+                    ) / 3.0
+                    best = min(best, distance)
+            distance_sum += best
+            severe += best > 32.0
+    return distance_sum / samples, severe / samples
+
+
+def _roi_edge_density(image: RgbImage, bounds: tuple[int, int, int, int]) -> float:
+    x0, y0, x1, y1 = bounds
+    edges = 0
+    samples = max(1, (x1 - x0 - 1) * (y1 - y0 - 1))
+
+    def luminance(x: int, y: int) -> int:
+        red, green, blue = _pixel(image, x, y)
+        return (54 * red + 183 * green + 19 * blue) // 256
+
+    for y in range(y0, y1 - 1):
+        for x in range(x0, x1 - 1):
+            value = luminance(x, y)
+            if max(
+                abs(value - luminance(x + 1, y)),
+                abs(value - luminance(x, y + 1)),
+            ) > 20:
+                edges += 1
+    return edges / samples
+
+
+def compare_visual_roi(
+    vanilla: RgbImage,
+    bbb: RgbImage,
+    bounds: tuple[int, int, int, int],
+) -> dict[str, Any]:
+    x0, y0, x1, y1 = bounds
+    if not (0 <= x0 < x1 <= vanilla.width and 0 <= y0 < y1 <= vanilla.height):
+        raise BenchmarkFailure(f"visual ROI is outside the capture: {bounds}")
+    if (vanilla.width, vanilla.height) != (bbb.width, bbb.height):
+        raise BenchmarkFailure("visual evidence image dimensions differ")
+    samples = (x1 - x0) * (y1 - y0)
+    vanilla_sum = [0, 0, 0]
+    bbb_sum = [0, 0, 0]
+    raw_difference_sum = 0
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            left = _pixel(vanilla, x, y)
+            right = _pixel(bbb, x, y)
+            for channel in range(3):
+                vanilla_sum[channel] += left[channel]
+                bbb_sum[channel] += right[channel]
+                raw_difference_sum += abs(left[channel] - right[channel])
+    mean_channel_delta = max(
+        abs(vanilla_sum[channel] - bbb_sum[channel]) / samples
+        for channel in range(3)
+    )
+    forward_mae, forward_severe = _roi_directional_neighborhood_metrics(
+        vanilla, bbb, bounds
+    )
+    reverse_mae, reverse_severe = _roi_directional_neighborhood_metrics(
+        bbb, vanilla, bounds
+    )
+    neighborhood_mae = max(forward_mae, reverse_mae)
+    severe_fraction = max(forward_severe, reverse_severe)
+    edge_density_delta = abs(
+        _roi_edge_density(vanilla, bounds) - _roi_edge_density(bbb, bounds)
+    )
+    metrics = {
+        "samples": samples,
+        "vanilla_mean_rgb": [round(value / samples, 6) for value in vanilla_sum],
+        "bbb_mean_rgb": [round(value / samples, 6) for value in bbb_sum],
+        "mean_channel_delta": round(mean_channel_delta, 6),
+        "raw_mae": round(raw_difference_sum / (samples * 3), 6),
+        "neighborhood_mae": round(neighborhood_mae, 6),
+        "severe_neighborhood_fraction": round(severe_fraction, 6),
+        "edge_density_delta": round(edge_density_delta, 6),
+    }
+    failures = []
+    for metric, threshold in VISUAL_PIXEL_THRESHOLDS.items():
+        field = metric.removeprefix("max_")
+        if metrics[field] > threshold:
+            failures.append(
+                f"{field}={metrics[field]} exceeds frozen threshold {threshold}"
+            )
+    metrics["status"] = "passed" if not failures else "failed"
+    metrics["failures"] = failures
+    return metrics
+
+
+def analyze_visual_anchor_pairs(
+    screenshots: Mapping[str, Mapping[str, Mapping[str, Any]]],
+    artifact_dir: Path,
+) -> dict[str, Any]:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    origin_x, origin_y = WESTON_CLIENT_CONTENT_ORIGIN
+    region_results = []
+    diff_maps = []
+    failures = []
+    for segment, rois in VISUAL_ROIS.items():
+        pair = screenshots.get(segment)
+        if not isinstance(pair, Mapping):
+            raise BenchmarkFailure(f"visual evidence lacks {segment} screenshot pair")
+        images = {}
+        for client in ("vanilla", "bbb"):
+            screenshot = pair.get(client)
+            if not isinstance(screenshot, Mapping):
+                raise BenchmarkFailure(f"visual evidence lacks {client}/{segment}")
+            path = Path(str(screenshot.get("path", "")))
+            if file_digest(path, "sha256") != screenshot.get("sha256"):
+                raise BenchmarkFailure(f"{client} {segment} screenshot SHA-256 mismatch")
+            image = read_png_rgb(path)
+            if (image.width, image.height) != (
+                COMPOSITOR_WIDTH,
+                COMPOSITOR_HEIGHT,
+            ):
+                raise BenchmarkFailure(
+                    f"{client} {segment} compositor capture dimensions mismatch"
+                )
+            images[client] = image
+        content_bounds = (
+            origin_x,
+            origin_y,
+            origin_x + WINDOW_WIDTH,
+            origin_y + WINDOW_HEIGHT,
+        )
+        difference = bytearray(WINDOW_WIDTH * WINDOW_HEIGHT * 3)
+        for content_y in range(WINDOW_HEIGHT):
+            for content_x in range(WINDOW_WIDTH):
+                vanilla_pixel = _pixel(
+                    images["vanilla"], origin_x + content_x, origin_y + content_y
+                )
+                bbb_pixel = _pixel(
+                    images["bbb"], origin_x + content_x, origin_y + content_y
+                )
+                offset = (content_y * WINDOW_WIDTH + content_x) * 3
+                for channel in range(3):
+                    difference[offset + channel] = min(
+                        255,
+                        abs(vanilla_pixel[channel] - bbb_pixel[channel]) * 4,
+                    )
+        diff_path = artifact_dir / f"{segment}-pixel-diff.png"
+        write_png_rgb(
+            diff_path,
+            RgbImage(WINDOW_WIDTH, WINDOW_HEIGHT, bytes(difference)),
+        )
+        diff_maps.append(
+            {
+                "capture_segment": segment,
+                "path": str(diff_path),
+                "sha256": file_digest(diff_path, "sha256"),
+            }
+        )
+        for material, relative in rois:
+            relative_x0, relative_y0, relative_x1, relative_y1 = relative
+            bounds = (
+                origin_x + relative_x0,
+                origin_y + relative_y0,
+                origin_x + relative_x1,
+                origin_y + relative_y1,
+            )
+            if not (
+                content_bounds[0] <= bounds[0] < bounds[2] <= content_bounds[2]
+                and content_bounds[1] <= bounds[1] < bounds[3] <= content_bounds[3]
+            ):
+                raise BenchmarkFailure(f"{segment}/{material} ROI leaves client content")
+            result = compare_visual_roi(images["vanilla"], images["bbb"], bounds)
+            result.update(
+                {
+                    "capture_segment": segment,
+                    "material": material,
+                    "client_relative_bounds": list(relative),
+                }
+            )
+            region_results.append(result)
+            failures.extend(
+                f"{segment}/{material}: {failure}" for failure in result["failures"]
+            )
+    return {
+        "status": "passed" if not failures else "failed",
+        "content_origin": list(WESTON_CLIENT_CONTENT_ORIGIN),
+        "content_resolution": [WINDOW_WIDTH, WINDOW_HEIGHT],
+        "thresholds": dict(VISUAL_PIXEL_THRESHOLDS),
+        "regions": region_results,
+        "diff_maps": diff_maps,
+        "failures": failures,
+    }
 
 
 def validate_file(
@@ -803,6 +1207,8 @@ def build_bbb_launch_argv(
         "260",
         "--cutout-leaves",
         "true",
+        "--terrain-texture-filtering",
+        "rgss",
         "--entity-shadows",
         "true",
         "--menu-background-blurriness",
@@ -883,10 +1289,11 @@ def default_replay() -> dict[str, Any]:
     frames: list[dict[str, Any]] = []
     segment_ticks = 480
     capture_hold = range(120, 169)
+    anchor_tick = 144
     marker_ticks = {
         0: "segment_start",
-        capture_hold.stop - 2: "capture_start",
-        capture_hold.stop - 1: "anchor",
+        anchor_tick - 1: "capture_start",
+        anchor_tick: "anchor",
         segment_ticks - 1: "capture_end",
     }
 
@@ -2911,8 +3318,12 @@ def summarize_workload_evidence(
     *,
     vanilla: Mapping[str, Any],
     bbb: Mapping[str, Any],
+    vanilla_calibration: Mapping[str, Any],
+    bbb_calibration: Mapping[str, Any],
+    vanilla_debug: Mapping[str, Any] | None = None,
     visual_review_status: str,
     visual_review_note: str,
+    visual_artifact_dir: Path,
 ) -> dict[str, Any]:
     if visual_review_status not in ("match", "mismatch"):
         raise BenchmarkFailure(
@@ -2930,9 +3341,9 @@ def summarize_workload_evidence(
             raise BenchmarkFailure(f"{name} workload smoke did not pass")
         if smoke.get("position_corrections") != 0:
             raise BenchmarkFailure(f"{name} workload observed a position correction")
-    if vanilla.get("workload_debug_profile") is not True:
+    if vanilla.get("workload_debug_profile") is not False:
         raise BenchmarkFailure(
-            "Vanilla workload evidence requires the explicit debug profile"
+            "Vanilla parity anchors must disable the debug profile so HUD workload matches bbb"
         )
 
     contract_keys = (
@@ -2948,6 +3359,54 @@ def summarize_workload_evidence(
         if value is None or value != bbb.get(key):
             raise BenchmarkFailure(f"workload contract {key} mismatch")
         contracts[key] = value
+    calibration_evidence = {}
+    for client, calibration in (
+        ("vanilla", vanilla_calibration),
+        ("bbb", bbb_calibration),
+    ):
+        if (
+            calibration.get("client") != client
+            or calibration.get("status") != "calibrated"
+            or calibration.get("contracts") != contracts
+        ):
+            raise BenchmarkFailure(
+                f"{client} same-client visual calibration is invalid"
+            )
+        pixel_calibration = calibration.get("pixel_evidence")
+        if not isinstance(pixel_calibration, Mapping) or pixel_calibration.get(
+            "status"
+        ) != "passed":
+            raise BenchmarkFailure(
+                f"{client} same-client visual calibration did not pass"
+            )
+        calibration_evidence[client] = {
+            "visual_calibration_hash": calibration.get(
+                "visual_calibration_hash"
+            ),
+            "client_identity": calibration.get("client_identity"),
+            "observed_maxima": calibration.get("observed_maxima"),
+        }
+    debug_evidence = None
+    if vanilla_debug is not None:
+        if (
+            vanilla_debug.get("client") != "vanilla"
+            or vanilla_debug.get("status") != "passed"
+            or vanilla_debug.get("workload_debug_profile") is not True
+        ):
+            raise BenchmarkFailure("Vanilla debug workload evidence is invalid")
+        for key, value in contracts.items():
+            if vanilla_debug.get(key) != value:
+                raise BenchmarkFailure(
+                    f"Vanilla debug workload contract {key} mismatch"
+                )
+        debug_evidence = {
+            "scope": (
+                "supplementary Vanilla-only chunk/entity/particle/player counters; "
+                "excluded from parity screenshots and formal timing"
+            ),
+            "screenshots": vanilla_debug.get("screenshots"),
+            "server_camera_log": vanilla_debug.get("server_camera_log"),
+        }
     vanilla_camera = vanilla.get("server_camera_log")
     bbb_camera = bbb.get("server_camera_log")
     if not isinstance(vanilla_camera, Mapping) or not isinstance(
@@ -2986,6 +3445,7 @@ def summarize_workload_evidence(
     for segment, pair in screenshots.items():
         if pair["vanilla"].get("server_tick") != pair["bbb"].get("server_tick"):
             raise BenchmarkFailure(f"{segment} screenshot tick mismatch")
+    pixel_evidence = analyze_visual_anchor_pairs(screenshots, visual_artifact_dir)
 
     observations = {
         observation.get("capture_segment"): observation
@@ -3064,11 +3524,12 @@ def summarize_workload_evidence(
             },
         }
     )
+    visual_gate_passed = (
+        visual_review_status == "match" and pixel_evidence["status"] == "passed"
+    )
     return {
         "schema": BENCHMARK_SCHEMA,
-        "status": (
-            "matched" if visual_review_status == "match" else "mismatched"
-        ),
+        "status": "matched" if visual_gate_passed else "mismatched",
         "formal_timing_sample": False,
         "workload_evidence_hash": evidence_hash,
         "contracts": contracts,
@@ -3080,6 +3541,8 @@ def summarize_workload_evidence(
             "status": visual_review_status,
             "note": visual_review_note,
         },
+        "pixel_evidence": pixel_evidence,
+        "same_client_calibration": calibration_evidence,
         "screenshot_pairs": [
             {
                 "capture_segment": segment,
@@ -3088,11 +3551,165 @@ def summarize_workload_evidence(
             for segment in segments
         ],
         "bbb_renderer_counters": bbb_render_evidence,
+        "vanilla_debug_evidence": debug_evidence,
         "counter_scope": (
-            "bbb counters are renderer-native evidence; Vanilla chunk/entity/"
-            "particle debug values remain embedded in validation screenshots "
-            "and are not treated as numerically identical counter semantics"
+            "bbb counters are renderer-native evidence; optional Vanilla-only "
+            "debug counters are supplementary and are not treated as numerically "
+            "identical counter semantics"
         ),
+    }
+
+
+def _visual_calibration_client_identity(
+    smoke: Mapping[str, Any], client: str
+) -> dict[str, Any]:
+    launch_path = Path(str(smoke.get("launch_manifest", "")))
+    launch = load_json_object(launch_path, f"{client} launch manifest")
+    if client == "bbb":
+        binary = launch.get("binary")
+        if not isinstance(binary, Mapping):
+            raise BenchmarkFailure("bbb launch manifest lacks binary identity")
+        identity = {
+            "sha256": binary.get("sha256"),
+            "size": binary.get("size"),
+        }
+    elif client == "vanilla":
+        audit = launch.get("audit")
+        official = audit.get("client") if isinstance(audit, Mapping) else None
+        if not isinstance(official, Mapping):
+            raise BenchmarkFailure("Vanilla launch manifest lacks client identity")
+        identity = {
+            "sha1": official.get("sha1"),
+            "size": official.get("size"),
+            "options_hash": launch.get("options_hash"),
+        }
+    else:
+        raise BenchmarkFailure(f"invalid visual calibration client: {client}")
+    if any(value is None for value in identity.values()):
+        raise BenchmarkFailure(f"{client} launch identity is incomplete")
+    return identity
+
+
+def summarize_visual_calibration(
+    *,
+    baseline: Mapping[str, Any],
+    repeat: Mapping[str, Any],
+    client: str,
+    visual_artifact_dir: Path,
+) -> dict[str, Any]:
+    for label, smoke in (("baseline", baseline), ("repeat", repeat)):
+        if smoke.get("client") != client:
+            raise BenchmarkFailure(f"{label} visual calibration client mismatch")
+        if smoke.get("status") != "passed":
+            raise BenchmarkFailure(f"{label} visual calibration smoke did not pass")
+        if smoke.get("position_corrections") != 0:
+            raise BenchmarkFailure(
+                f"{label} visual calibration observed a position correction"
+            )
+        if client == "vanilla" and smoke.get("workload_debug_profile") is not False:
+            raise BenchmarkFailure(
+                "Vanilla visual calibration must disable the debug profile"
+            )
+
+    contract_keys = (
+        "replay_hash",
+        "world_hash",
+        "resource_hash",
+        "settings_hash",
+        "scene_contract_hash",
+    )
+    contracts = {}
+    for key in contract_keys:
+        value = baseline.get(key)
+        if value is None or value != repeat.get(key):
+            raise BenchmarkFailure(f"visual calibration {key} mismatch")
+        contracts[key] = value
+
+    baseline_identity = _visual_calibration_client_identity(baseline, client)
+    repeat_identity = _visual_calibration_client_identity(repeat, client)
+    if baseline_identity != repeat_identity:
+        raise BenchmarkFailure("visual calibration client binary identity mismatch")
+
+    baseline_camera = baseline.get("server_camera_log")
+    repeat_camera = repeat.get("server_camera_log")
+    if not isinstance(baseline_camera, Mapping) or not isinstance(
+        repeat_camera, Mapping
+    ):
+        raise BenchmarkFailure("visual calibration lacks a server camera log")
+    if (
+        baseline_camera.get("sha256") != repeat_camera.get("sha256")
+        or baseline_camera.get("markers") != repeat_camera.get("markers")
+    ):
+        raise BenchmarkFailure("visual calibration server camera logs differ")
+
+    segments = tuple(VISUAL_ROIS)
+    screenshots: dict[str, dict[str, Any]] = {}
+    for label, smoke in (("vanilla", baseline), ("bbb", repeat)):
+        by_segment = {
+            screenshot.get("capture_segment"): screenshot
+            for screenshot in smoke.get("screenshots", ())
+            if isinstance(screenshot, Mapping)
+        }
+        if set(by_segment) != set(segments):
+            raise BenchmarkFailure(
+                f"{label} visual calibration screenshots do not cover all segments"
+            )
+        for segment in segments:
+            screenshot = by_segment[segment]
+            if not screenshot.get("sha256") or not screenshot.get("path"):
+                raise BenchmarkFailure(
+                    f"{label} visual calibration {segment} lacks content evidence"
+                )
+            screenshots.setdefault(segment, {})[label] = dict(screenshot)
+    for segment, pair in screenshots.items():
+        if pair["vanilla"].get("server_tick") != pair["bbb"].get("server_tick"):
+            raise BenchmarkFailure(f"visual calibration {segment} tick mismatch")
+
+    pixel_evidence = analyze_visual_anchor_pairs(
+        screenshots, visual_artifact_dir
+    )
+    fields = (
+        "raw_mae",
+        *(threshold.removeprefix("max_") for threshold in VISUAL_PIXEL_THRESHOLDS),
+    )
+    observed_maxima = {
+        field: max(float(region[field]) for region in pixel_evidence["regions"])
+        for field in fields
+    }
+    evidence_hash = canonical_sha256(
+        {
+            "client": client,
+            "contracts": contracts,
+            "client_identity": baseline_identity,
+            "server_camera_log": {
+                "sha256": baseline_camera.get("sha256"),
+                "markers": baseline_camera.get("markers"),
+            },
+            "screenshots": screenshots,
+            "observed_maxima": observed_maxima,
+        }
+    )
+    return {
+        "schema": BENCHMARK_SCHEMA,
+        "status": (
+            "calibrated" if pixel_evidence["status"] == "passed" else "failed"
+        ),
+        "client": client,
+        "scope": (
+            "same-client, same-binary repeated anchor noise calibration; "
+            "the frozen cross-client thresholds are not derived or loosened here"
+        ),
+        "formal_timing_sample": False,
+        "contracts": contracts,
+        "client_identity": baseline_identity,
+        "server_camera_log": {
+            "sha256": baseline_camera.get("sha256"),
+            "markers": baseline_camera.get("markers"),
+        },
+        "comparison_labels": {"vanilla": "baseline", "bbb": "repeat"},
+        "observed_maxima": observed_maxima,
+        "pixel_evidence": pixel_evidence,
+        "visual_calibration_hash": evidence_hash,
     }
 
 
@@ -3855,6 +4472,7 @@ def run_official_smoke(
     weston_renderer: str,
     renderdoccmd: Path | None,
     renderdoc_control: Path | None,
+    renderdoc_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     if weston_renderer not in ("gl", "pixman"):
         raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
@@ -3862,6 +4480,8 @@ def run_official_smoke(
         raise BenchmarkFailure(
             "RenderDoc validation and MangoHud timing must use separate runs"
         )
+    if renderdoc_segments is not None and renderdoccmd is None:
+        raise BenchmarkFailure("RenderDoc segment selection requires RenderDoc")
     if perf_path is not None and mangohud_root is None:
         raise BenchmarkFailure(
             "perf normalization requires a simultaneous MangoHud frame capture"
@@ -3994,6 +4614,9 @@ def run_official_smoke(
         "screenshot": None,
         "screenshots": [],
         "renderdoc_captures": [],
+        "renderdoc_segments": (
+            sorted(renderdoc_segments) if renderdoc_segments is not None else None
+        ),
         "wayland_display": wayland_display,
         "x_display": x_display,
         "window_system": "x11" if x_display is not None else "wayland",
@@ -4188,7 +4811,14 @@ def run_official_smoke(
                 )
                 if marker_frame["marker"] != "anchor":
                     continue
-                if renderdoc_ident is not None and renderdoc_control is not None:
+                if (
+                    renderdoc_ident is not None
+                    and renderdoc_control is not None
+                    and (
+                        renderdoc_segments is None
+                        or marker_frame["capture_segment"] in renderdoc_segments
+                    )
+                ):
                     result["renderdoc_captures"].append(
                         _capture_renderdoc_anchor(
                             control_path=renderdoc_control,
@@ -4405,9 +5035,7 @@ def _control_request(
     return decoded.get("result")
 
 
-def require_bbb_terrain_residency(
-    renderer: Mapping[str, Any], *, capture_segment: str
-) -> dict[str, Any]:
+def bbb_terrain_residency_evidence(renderer: Mapping[str, Any]) -> dict[str, Any]:
     fields = {
         name: int(renderer.get(name, 0))
         for name in (
@@ -4421,19 +5049,25 @@ def require_bbb_terrain_residency(
         )
     }
     ready = renderer.get("terrain_cache_ready") is True
+    return {**fields, "terrain_cache_ready": ready}
+
+
+def require_bbb_terrain_residency(
+    renderer: Mapping[str, Any], *, capture_segment: str
+) -> dict[str, Any]:
+    evidence = bbb_terrain_residency_evidence(renderer)
     valid = (
-        ready
-        and fields["terrain_selected_chunks"] > 0
-        and fields["terrain_selected_chunks"]
-        == fields["terrain_resident_chunks"]
-        and fields["terrain_selected_sections"] > 0
-        and fields["terrain_selected_sections"]
-        == fields["terrain_resident_sections"]
-        == fields["uploaded_sections"]
-        and fields["terrain_pending_jobs"] == 0
-        and fields["terrain_mesh_queue_depth"] == 0
+        evidence["terrain_cache_ready"]
+        and evidence["terrain_selected_chunks"] > 0
+        and evidence["terrain_selected_chunks"]
+        == evidence["terrain_resident_chunks"]
+        and evidence["terrain_selected_sections"] > 0
+        and evidence["terrain_selected_sections"]
+        == evidence["terrain_resident_sections"]
+        == evidence["uploaded_sections"]
+        and evidence["terrain_pending_jobs"] == 0
+        and evidence["terrain_mesh_queue_depth"] == 0
     )
-    evidence = {**fields, "terrain_cache_ready": ready}
     if not valid:
         evidence.update(
             {
@@ -4462,6 +5096,22 @@ def require_bbb_terrain_residency(
     return evidence
 
 
+def bbb_renderdoc_residency_evidence(
+    renderer: Mapping[str, Any],
+    *,
+    capture_segment: str,
+    renderdoc_segments: frozenset[str] | None,
+) -> dict[str, Any]:
+    if renderdoc_segments is None or capture_segment in renderdoc_segments:
+        return require_bbb_terrain_residency(
+            renderer, capture_segment=capture_segment
+        )
+    return {
+        **bbb_terrain_residency_evidence(renderer),
+        "validation_scope": "observed-only; another segment owns this RenderDoc run",
+    }
+
+
 def run_bbb_smoke(
     *,
     replay: Mapping[str, Any],
@@ -4484,6 +5134,7 @@ def run_bbb_smoke(
     renderdoccmd: Path | None,
     renderdoc_control: Path | None,
     extra_library_path: Path | None,
+    renderdoc_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     if weston_renderer not in ("gl", "pixman"):
         raise BenchmarkFailure(f"unsupported Weston renderer: {weston_renderer}")
@@ -4491,6 +5142,8 @@ def run_bbb_smoke(
         raise BenchmarkFailure(
             "RenderDoc validation and MangoHud timing must use separate runs"
         )
+    if renderdoc_segments is not None and renderdoccmd is None:
+        raise BenchmarkFailure("RenderDoc segment selection requires RenderDoc")
     if perf_path is not None and mangohud_root is None:
         raise BenchmarkFailure(
             "perf normalization requires a simultaneous MangoHud frame capture"
@@ -4596,6 +5249,9 @@ def run_bbb_smoke(
         "screenshots": [],
         "anchor_observations": [],
         "renderdoc_captures": [],
+        "renderdoc_segments": (
+            sorted(renderdoc_segments) if renderdoc_segments is not None else None
+        ),
     }
     server_group: ProcessGroup | None = None
     client_group: ProcessGroup | None = None
@@ -4792,10 +5448,6 @@ def run_bbb_smoke(
             first_residency = _control_request(
                 ("127.0.0.1", control_port), "renderer.counters"
             )
-            require_bbb_terrain_residency(
-                first_residency,
-                capture_segment=str(first_capture_start["capture_segment"]),
-            )
             if weston_debug_path is not None:
                 timeline_session = WestonTimelineSession(
                     weston_debug_path=weston_debug_path,
@@ -4825,11 +5477,12 @@ def run_bbb_smoke(
                 {
                     "capture_segment": first_capture_start["capture_segment"],
                     "server_tick": first_capture_start["server_tick"],
-                    "renderer": require_bbb_terrain_residency(
+                    "renderer": bbb_renderdoc_residency_evidence(
                         first_residency,
                         capture_segment=str(
                             first_capture_start["capture_segment"]
                         ),
+                        renderdoc_segments=renderdoc_segments,
                     ),
                 }
             ]
@@ -4854,18 +5507,26 @@ def run_bbb_smoke(
                         {
                             "capture_segment": marker_frame["capture_segment"],
                             "server_tick": marker_frame["server_tick"],
-                            "renderer": require_bbb_terrain_residency(
+                            "renderer": bbb_renderdoc_residency_evidence(
                                 renderer_counters,
                                 capture_segment=str(
                                     marker_frame["capture_segment"]
                                 ),
+                                renderdoc_segments=renderdoc_segments,
                             ),
                         }
                     )
                     continue
                 if marker_frame["marker"] != "anchor":
                     continue
-                if renderdoc_ident is not None and renderdoc_control is not None:
+                if (
+                    renderdoc_ident is not None
+                    and renderdoc_control is not None
+                    and (
+                        renderdoc_segments is None
+                        or marker_frame["capture_segment"] in renderdoc_segments
+                    )
+                ):
                     result["renderdoc_captures"].append(
                         _capture_renderdoc_anchor(
                             control_path=renderdoc_control,
@@ -4880,9 +5541,10 @@ def run_bbb_smoke(
                 renderer_counters = _control_request(
                     ("127.0.0.1", control_port), "renderer.counters"
                 )
-                require_bbb_terrain_residency(
+                bbb_renderdoc_residency_evidence(
                     renderer_counters,
                     capture_segment=str(marker_frame["capture_segment"]),
+                    renderdoc_segments=renderdoc_segments,
                 )
                 result["anchor_observations"].append(
                     {
@@ -5172,6 +5834,9 @@ def _command_run_official_smoke(args: argparse.Namespace) -> None:
         renderdoc_control=(
             Path(args.renderdoc_control) if args.renderdoc_control else None
         ),
+        renderdoc_segments=(
+            frozenset(args.renderdoc_segment) if args.renderdoc_segment else None
+        ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
@@ -5210,6 +5875,9 @@ def _command_run_bbb_smoke(args: argparse.Namespace) -> None:
             Path(args.extra_library_path)
             if args.extra_library_path
             else None
+        ),
+        renderdoc_segments=(
+            frozenset(args.renderdoc_segment) if args.renderdoc_segment else None
         ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
@@ -5257,11 +5925,39 @@ def _command_summarize_blocked(args: argparse.Namespace) -> None:
 def _command_summarize_workload(args: argparse.Namespace) -> None:
     vanilla = load_json_object(Path(args.vanilla_smoke), "vanilla smoke")
     bbb = load_json_object(Path(args.bbb_smoke), "bbb smoke")
+    vanilla_calibration = load_json_object(
+        Path(args.vanilla_calibration), "Vanilla visual calibration"
+    )
+    bbb_calibration = load_json_object(
+        Path(args.bbb_calibration), "bbb visual calibration"
+    )
+    vanilla_debug = (
+        load_json_object(Path(args.vanilla_debug_smoke), "vanilla debug smoke")
+        if args.vanilla_debug_smoke is not None
+        else None
+    )
     summary = summarize_workload_evidence(
         vanilla=vanilla,
         bbb=bbb,
+        vanilla_calibration=vanilla_calibration,
+        bbb_calibration=bbb_calibration,
+        vanilla_debug=vanilla_debug,
         visual_review_status=args.visual_review_status,
         visual_review_note=args.visual_review_note,
+        visual_artifact_dir=Path(args.visual_artifact_dir),
+    )
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(canonical_json_bytes(summary))
+    print(output)
+
+
+def _command_summarize_visual_calibration(args: argparse.Namespace) -> None:
+    summary = summarize_visual_calibration(
+        baseline=load_json_object(Path(args.baseline_smoke), "baseline smoke"),
+        repeat=load_json_object(Path(args.repeat_smoke), "repeat smoke"),
+        client=args.client,
+        visual_artifact_dir=Path(args.visual_artifact_dir),
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -5349,6 +6045,11 @@ def build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--renderdoccmd")
     smoke.add_argument("--renderdoc-control")
     smoke.add_argument(
+        "--renderdoc-segment",
+        action="append",
+        choices=tuple(VISUAL_ROIS),
+    )
+    smoke.add_argument(
         "--weston-renderer",
         choices=("gl", "pixman"),
         default="gl",
@@ -5382,6 +6083,11 @@ def build_parser() -> argparse.ArgumentParser:
     bbb_smoke.add_argument("--weston")
     bbb_smoke.add_argument("--renderdoccmd")
     bbb_smoke.add_argument("--renderdoc-control")
+    bbb_smoke.add_argument(
+        "--renderdoc-segment",
+        action="append",
+        choices=tuple(VISUAL_ROIS),
+    )
     bbb_smoke.add_argument("--extra-library-path")
     bbb_smoke.add_argument(
         "--weston-renderer",
@@ -5415,15 +6121,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     workload = subparsers.add_parser("summarize-workload")
     workload.add_argument("--vanilla-smoke", required=True)
+    workload.add_argument("--vanilla-debug-smoke")
     workload.add_argument("--bbb-smoke", required=True)
+    workload.add_argument("--vanilla-calibration", required=True)
+    workload.add_argument("--bbb-calibration", required=True)
     workload.add_argument(
         "--visual-review-status",
         choices=("match", "mismatch"),
         required=True,
     )
     workload.add_argument("--visual-review-note", required=True)
+    workload.add_argument("--visual-artifact-dir", required=True)
     workload.add_argument("--output", required=True)
     workload.set_defaults(handler=_command_summarize_workload)
+
+    calibration = subparsers.add_parser("summarize-visual-calibration")
+    calibration.add_argument("--baseline-smoke", required=True)
+    calibration.add_argument("--repeat-smoke", required=True)
+    calibration.add_argument("--client", choices=("vanilla", "bbb"), required=True)
+    calibration.add_argument("--visual-artifact-dir", required=True)
+    calibration.add_argument("--output", required=True)
+    calibration.set_defaults(handler=_command_summarize_visual_calibration)
 
     renderdoc = subparsers.add_parser("summarize-renderdoc")
     renderdoc.add_argument("--manifest", required=True)

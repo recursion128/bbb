@@ -29,7 +29,7 @@ fn extracts_terrain_chunk_summary() {
 }
 
 #[test]
-fn extracted_terrain_carries_exact_solid_render_facts() {
+fn extracted_terrain_carries_exact_render_occlusion_facts() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -37,14 +37,63 @@ fn extracted_terrain_carries_exact_solid_render_facts() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
-    for (x, resource_id, expected) in [
-        (34, "minecraft:stone", true),
-        (35, "minecraft:glass", false),
+    for (
+        x,
+        resource_id,
+        properties,
+        expected_solid_render,
+        expected_can_occlude,
+        expected_view_blocking,
+        expected_light_dampening,
+        expected_shade_brightness,
+        expected_face_occlusion_shapes,
+        expected_fluid_overlay_neighbor,
+    ) in [
+        (
+            34,
+            "minecraft:stone",
+            &[][..],
+            true,
+            true,
+            true,
+            15,
+            51,
+            [1; 6],
+            false,
+        ),
+        (
+            35,
+            "minecraft:glass",
+            &[][..],
+            false,
+            false,
+            false,
+            0,
+            255,
+            [0; 6],
+            true,
+        ),
+        (
+            36,
+            "minecraft:oak_leaves",
+            &[
+                ("distance", "1"),
+                ("persistent", "true"),
+                ("waterlogged", "true"),
+            ][..],
+            false,
+            false,
+            false,
+            1,
+            51,
+            [0; 6],
+            true,
+        ),
     ] {
         assert!(
             store.apply_block_update(bbb_protocol::packets::BlockUpdate {
                 pos: bbb_protocol::packets::BlockPos { x, y: 1, z: -45 },
-                block_state_id: test_block_state_id(resource_id, &[]),
+                block_state_id: test_block_state_id(resource_id, properties),
             })
         );
         let cell = store
@@ -54,7 +103,22 @@ fn extracted_terrain_carries_exact_solid_render_facts() {
             .into_iter()
             .find(|cell| cell.block_name.as_deref() == Some(resource_id))
             .unwrap();
-        assert_eq!(cell.solid_render, expected);
+        assert_eq!(cell.solid_render, expected_solid_render);
+        assert_eq!(cell.can_occlude, expected_can_occlude);
+        assert_eq!(cell.view_blocking, expected_view_blocking);
+        assert_eq!(cell.light_dampening, expected_light_dampening);
+        assert_eq!(cell.shade_brightness, expected_shade_brightness);
+        assert_eq!(
+            cell.face_occlusion_shape_indices,
+            expected_face_occlusion_shapes
+        );
+        assert_eq!(cell.fluid_overlay_neighbor, expected_fluid_overlay_neighbor);
+        if resource_id == "minecraft:glass" {
+            assert!(cell.skip_rendering.same_block_culls_all_faces);
+        }
+        if resource_id == "minecraft:oak_leaves" {
+            assert!(cell.skip_rendering.leaves_block);
+        }
         assert_eq!(
             store
                 .probe_block(BlockPos { x, y: 1, z: -45 })
@@ -64,6 +128,65 @@ fn extracted_terrain_carries_exact_solid_render_facts() {
             Some(resource_id)
         );
     }
+}
+
+#[test]
+fn terrain_skip_rendering_uses_current_session_bars_tag_membership() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = bbb_protocol::packets::BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    assert!(
+        store.apply_block_update(bbb_protocol::packets::BlockUpdate {
+            pos,
+            block_state_id: test_block_state_id(
+                "minecraft:copper_bars",
+                &[
+                    ("east", "true"),
+                    ("north", "false"),
+                    ("south", "false"),
+                    ("waterlogged", "false"),
+                    ("west", "true"),
+                ],
+            ),
+        })
+    );
+
+    let extract = |store: &WorldStore| {
+        store
+            .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .cells
+            .into_iter()
+            .find(|cell| cell.block_name.as_deref() == Some("minecraft:copper_bars"))
+            .unwrap()
+            .skip_rendering
+    };
+    let before = extract(&store);
+    assert!(before.iron_bars_block);
+    assert!(!before.bars_tag);
+    assert!(before.east);
+    assert!(before.west);
+
+    store.apply_update_tags(bbb_protocol::packets::UpdateTags {
+        registries: vec![bbb_protocol::packets::RegistryTags {
+            registry: "minecraft:block".to_string(),
+            tags: vec![bbb_protocol::packets::TagNetworkPayload {
+                tag: "minecraft:bars".to_string(),
+                entries: vec![bbb_protocol::block_types::VANILLA_BLOCK_COPPER_BARS_ID],
+            }],
+        }],
+    });
+
+    assert!(extract(&store).bars_tag);
 }
 
 #[test]

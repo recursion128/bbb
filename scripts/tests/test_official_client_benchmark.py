@@ -503,6 +503,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
+        self.assertEqual(argv[argv.index("--terrain-texture-filtering") + 1], "rgss")
         settings = benchmark.equal_load_settings()
         self.assertEqual(settings["window"], {
             "width": 1280,
@@ -577,8 +578,8 @@ class ReplayTests(unittest.TestCase):
                 for index, frame in enumerate(frames)
                 if frame["marker"] == "anchor"
             )
-            self.assertEqual(capture_index, 167)
-            self.assertEqual(anchor_index, 168)
+            self.assertEqual(capture_index, 143)
+            self.assertEqual(anchor_index, 144)
             capture_pose = {
                 key: frames[capture_index][key]
                 for key in ("x", "y", "z", "yaw", "pitch")
@@ -588,7 +589,7 @@ class ReplayTests(unittest.TestCase):
                 for key in ("x", "y", "z", "yaw", "pitch")
             }
             self.assertEqual(capture_pose, anchor_pose)
-            for frame in frames[anchor_index - 48 : anchor_index + 1]:
+            for frame in frames[anchor_index - 24 : anchor_index + 25]:
                 self.assertEqual(
                     {key: frame[key] for key in anchor_pose}, anchor_pose
                 )
@@ -619,7 +620,7 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(fixture, benchmark.default_replay())
         self.assertEqual(
             benchmark.replay_hash(fixture),
-            "da7850e8e79eb22506985386889e8ec16141b82ce62db56a8adaa1cb545d8f4c",
+            "5992be03875b60f39b9d73caf41e95689dd4e4d30668e036e4ae001d1aef1d92",
         )
 
     def test_replay_rejects_noncontiguous_ticks(self):
@@ -958,6 +959,21 @@ class CaptureTests(unittest.TestCase):
                 {**ready, "terrain_resident_chunks": 49},
                 capture_segment="static_orbit",
             )
+        disturbed = {**ready, "terrain_resident_chunks": 49}
+        observed = benchmark.bbb_renderdoc_residency_evidence(
+            disturbed,
+            capture_segment="static_orbit",
+            renderdoc_segments=frozenset(("preloaded_flight",)),
+        )
+        self.assertIn("observed-only", observed["validation_scope"])
+        with self.assertRaisesRegex(
+            benchmark.BenchmarkFailure, "not fully resident"
+        ):
+            benchmark.bbb_renderdoc_residency_evidence(
+                disturbed,
+                capture_segment="static_orbit",
+                renderdoc_segments=frozenset(("static_orbit",)),
+            )
 
     def test_mangohud_control_starts_and_stops_logging_without_input(self):
         process_pid = os.getpid()
@@ -1207,6 +1223,23 @@ class CaptureTests(unittest.TestCase):
         )
 
     def test_workload_evidence_requires_common_contract_and_draws(self):
+        visual_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(visual_directory.cleanup)
+        visual_root = Path(visual_directory.name)
+        screenshot_path = visual_root / "anchor.png"
+        benchmark.write_png_rgb(
+            screenshot_path,
+            benchmark.RgbImage(
+                benchmark.COMPOSITOR_WIDTH,
+                benchmark.COMPOSITOR_HEIGHT,
+                bytes(
+                    [64, 96, 128]
+                    * benchmark.COMPOSITOR_WIDTH
+                    * benchmark.COMPOSITOR_HEIGHT
+                ),
+            ),
+        )
+        screenshot_sha256 = benchmark.file_digest(screenshot_path, "sha256")
         segments = (
             "static_orbit",
             "preloaded_flight",
@@ -1225,8 +1258,8 @@ class CaptureTests(unittest.TestCase):
                 {
                     "capture_segment": segment,
                     "server_tick": index * 480 + 240,
-                    "path": f"/tmp/{segment}.png",
-                    "sha256": str(index + 1) * 64,
+                    "path": str(screenshot_path),
+                    "sha256": screenshot_sha256,
                 }
                 for index, segment in enumerate(segments)
             ],
@@ -1258,6 +1291,11 @@ class CaptureTests(unittest.TestCase):
         vanilla = {
             **common,
             "client": "vanilla",
+            "workload_debug_profile": False,
+        }
+        vanilla_debug = {
+            **common,
+            "client": "vanilla",
             "workload_debug_profile": True,
         }
         bbb = {
@@ -1268,15 +1306,42 @@ class CaptureTests(unittest.TestCase):
                 for segment in segments
             ],
         }
+        contracts = {
+            key: common[key]
+            for key in (
+                "replay_hash",
+                "world_hash",
+                "resource_hash",
+                "settings_hash",
+                "scene_contract_hash",
+            )
+        }
+
+        def calibration(client):
+            return {
+                "client": client,
+                "status": "calibrated",
+                "contracts": contracts,
+                "pixel_evidence": {"status": "passed"},
+                "visual_calibration_hash": f"{client}-calibration",
+                "client_identity": {"digest": client},
+                "observed_maxima": {"raw_mae": 0.0},
+            }
+
         summary = benchmark.summarize_workload_evidence(
             vanilla=vanilla,
             bbb=bbb,
+            vanilla_calibration=calibration("vanilla"),
+            bbb_calibration=calibration("bbb"),
+            vanilla_debug=vanilla_debug,
             visual_review_status="match",
             visual_review_note="fixture landmarks match",
+            visual_artifact_dir=visual_root / "diffs",
         )
         self.assertEqual(summary["status"], "matched")
         self.assertFalse(summary["formal_timing_sample"])
         self.assertEqual(len(summary["screenshot_pairs"]), 3)
+        self.assertIsNotNone(summary["vanilla_debug_evidence"])
         self.assertEqual(
             summary["bbb_renderer_counters"]["preloaded_flight"][
                 "entity_scene_draw_calls"
@@ -1291,9 +1356,162 @@ class CaptureTests(unittest.TestCase):
             benchmark.summarize_workload_evidence(
                 vanilla=vanilla,
                 bbb=bad_bbb,
+                vanilla_calibration=calibration("vanilla"),
+                bbb_calibration=calibration("bbb"),
                 visual_review_status="match",
                 visual_review_note="fixture landmarks match",
+                visual_artifact_dir=visual_root / "bad-diffs",
             )
+
+    def test_png_round_trip_and_visual_roi_rejects_material_shift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "fixture.png"
+            source = benchmark.RgbImage(
+                4,
+                3,
+                bytes((index * 17) % 256 for index in range(4 * 3 * 3)),
+            )
+            benchmark.write_png_rgb(path, source)
+            self.assertEqual(benchmark.read_png_rgb(path), source)
+
+            dark = benchmark.RgbImage(4, 3, bytes([0, 0, 0] * 12))
+            bright = benchmark.RgbImage(4, 3, bytes([64, 64, 64] * 12))
+            metrics = benchmark.compare_visual_roi(dark, bright, (0, 0, 4, 3))
+            self.assertEqual(metrics["status"], "failed")
+            self.assertTrue(
+                any("mean_channel_delta" in failure for failure in metrics["failures"])
+            )
+
+    def test_png_reader_rejects_oversized_dimensions_before_decompression(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "oversized.png"
+            payload = b"".join(
+                (
+                    b"\x89PNG\r\n\x1a\n",
+                    benchmark._png_chunk(
+                        b"IHDR",
+                        benchmark.struct.pack(
+                            ">IIBBBBB",
+                            benchmark.COMPOSITOR_WIDTH + 1,
+                            benchmark.COMPOSITOR_HEIGHT,
+                            8,
+                            2,
+                            0,
+                            0,
+                            0,
+                        ),
+                    ),
+                    benchmark._png_chunk(b"IDAT", benchmark.zlib.compress(b"")),
+                    benchmark._png_chunk(b"IEND", b""),
+                )
+            )
+            path.write_bytes(payload)
+
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "compositor pixel limit"
+            ):
+                benchmark.read_png_rgb(path)
+
+    def test_png_reader_bounds_decompressed_scanlines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "decompression-bomb.png"
+            payload = b"".join(
+                (
+                    b"\x89PNG\r\n\x1a\n",
+                    benchmark._png_chunk(
+                        b"IHDR",
+                        benchmark.struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0),
+                    ),
+                    benchmark._png_chunk(
+                        b"IDAT", benchmark.zlib.compress(b"\x00" * 4096)
+                    ),
+                    benchmark._png_chunk(b"IEND", b""),
+                )
+            )
+            path.write_bytes(payload)
+
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "PNG scanline size mismatch"
+            ):
+                benchmark.read_png_rgb(path)
+
+    def test_same_client_visual_calibration_requires_identical_binary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            screenshot = root / "anchor.png"
+            benchmark.write_png_rgb(
+                screenshot,
+                benchmark.RgbImage(
+                    benchmark.COMPOSITOR_WIDTH,
+                    benchmark.COMPOSITOR_HEIGHT,
+                    bytes(
+                        [64, 96, 128]
+                        * benchmark.COMPOSITOR_WIDTH
+                        * benchmark.COMPOSITOR_HEIGHT
+                    ),
+                ),
+            )
+            screenshot_sha256 = benchmark.file_digest(screenshot, "sha256")
+            launches = []
+            for name in ("baseline", "repeat"):
+                launch = root / f"{name}-launch.json"
+                launch.write_text(
+                    json.dumps(
+                        {
+                            "binary": {
+                                "sha256": "bbb-binary",
+                                "size": 123,
+                            }
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                launches.append(launch)
+            segments = tuple(benchmark.VISUAL_ROIS)
+            common = {
+                "client": "bbb",
+                "status": "passed",
+                "position_corrections": 0,
+                "replay_hash": "r",
+                "world_hash": "w",
+                "resource_hash": "a",
+                "settings_hash": "s",
+                "scene_contract_hash": "scene",
+                "server_camera_log": {"sha256": "camera", "markers": 12},
+                "screenshots": [
+                    {
+                        "capture_segment": segment,
+                        "server_tick": index * 480 + 144,
+                        "path": str(screenshot),
+                        "sha256": screenshot_sha256,
+                    }
+                    for index, segment in enumerate(segments)
+                ],
+            }
+            summary = benchmark.summarize_visual_calibration(
+                baseline={**common, "launch_manifest": str(launches[0])},
+                repeat={**common, "launch_manifest": str(launches[1])},
+                client="bbb",
+                visual_artifact_dir=root / "diffs",
+            )
+            self.assertEqual(summary["status"], "calibrated")
+            self.assertEqual(summary["observed_maxima"]["raw_mae"], 0.0)
+
+            launches[1].write_text(
+                json.dumps(
+                    {"binary": {"sha256": "different", "size": 123}}
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                benchmark.BenchmarkFailure, "binary identity mismatch"
+            ):
+                benchmark.summarize_visual_calibration(
+                    baseline={**common, "launch_manifest": str(launches[0])},
+                    repeat={**common, "launch_manifest": str(launches[1])},
+                    client="bbb",
+                    visual_artifact_dir=root / "bad-diffs",
+                )
 
     def test_formal_evidence_links_contract_camera_and_anchor_ticks(self):
         contracts = {

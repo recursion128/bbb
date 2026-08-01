@@ -24,6 +24,12 @@ use crate::biome_tint::{
 };
 
 const VANILLA_DEFAULT_MIPMAP_LEVELS: u32 = 4;
+// Vanilla 26.1's `Stitcher` resolves the consumed blocks atlas to 2048x2048
+// for the mip-4 vanilla pack (confirmed by the official client's atlas log).
+// Keeping the same width is observable in `terrain.fsh`: RGSS derives its LOD
+// from the atlas dimensions, so the previous 4096x1024 shelf changed filtering
+// even though every sprite and mip payload was otherwise identical.
+const VANILLA_26_1_BLOCK_ATLAS_WIDTH: u32 = 2048;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TerrainTextureState {
@@ -1911,7 +1917,7 @@ pub(crate) fn try_load_terrain_textures(
             None
         }
     };
-    let packer = AtlasPacker::new(4096, 1)?;
+    let packer = AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, 1)?;
     let atlas = packer.stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)?;
     let mip_rgba = atlas.rgba_slices();
     renderer.upload_terrain_texture_atlas_mips(
@@ -1956,8 +1962,11 @@ fn terrain_uv_rect(layout: &AtlasLayout, sprite: &bbb_pack::AtlasSprite) -> Terr
     let x1 = (sprite.content.x + sprite.content.width) as f32;
     let y1 = (sprite.content.y + sprite.content.height) as f32;
     TerrainUvRect {
-        min: [(x0 + 0.5) / width, (y0 + 0.5) / height],
-        max: [(x1 - 0.5) / width, (y1 - 0.5) / height],
+        // Vanilla `TextureAtlasSprite` exposes the exact content edges. The
+        // mip-aligned replicated gutter prevents atlas bleed; shrinking every
+        // 16x16 sprite by one texel changes glass borders and leaf cutouts.
+        min: [x0 / width, y0 / height],
+        max: [x1 / width, y1 / height],
     }
 }
 

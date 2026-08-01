@@ -288,7 +288,7 @@ fn element_quads(
             face,
             corners,
             normal,
-            uvs: face_uvs_from_crop_f32(uv, uv_rotation),
+            uvs: face_uvs_from_crop_f32(face, uv, uv_rotation),
             cull: raw_face
                 .cullface
                 .as_deref()
@@ -326,6 +326,7 @@ fn box_to_quads(model_box: &BlockModelBox) -> Vec<BlockModelQuad> {
             corners,
             normal: face_normal(face),
             uvs: face_uvs_from_crop(
+                face,
                 model_box.face_uvs[index],
                 model_box.face_uv_rotations[index],
             ),
@@ -357,25 +358,31 @@ fn quantize_uv_0_16(values: [f32; 4]) -> Option<[u8; 4]> {
     ])
 }
 
-fn face_uvs_from_crop(uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
+fn face_uvs_from_crop(face: BlockModelFace, uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
     face_uvs_from_crop_f32(
+        face,
         [uv[0] as f32, uv[1] as f32, uv[2] as f32, uv[3] as f32],
         rotation,
     )
 }
 
-fn face_uvs_from_crop_f32(uv: [f32; 4], rotation: u8) -> [[f32; 2]; 4] {
-    let min_u = uv[0].min(uv[2]) / 16.0;
-    let min_v = uv[1].min(uv[3]) / 16.0;
-    let max_u = uv[0].max(uv[2]) / 16.0;
-    let max_v = uv[1].max(uv[3]) / 16.0;
-    let uvs = [
-        [min_u, min_v],
-        [max_u, min_v],
-        [max_u, max_v],
-        [min_u, max_v],
-    ];
-    std::array::from_fn(|index| uvs[(index + rotation as usize) % uvs.len()])
+fn face_uvs_from_crop_f32(face: BlockModelFace, uv: [f32; 4], rotation: u8) -> [[f32; 2]; 4] {
+    let u0 = uv[0] / 16.0;
+    let v0 = uv[1] / 16.0;
+    let u1 = uv[2] / 16.0;
+    let v1 = uv[3] / 16.0;
+    let vanilla_vertex_uvs = [[u0, v0], [u0, v1], [u1, v1], [u1, v0]];
+    let vanilla_vertex_for_corner = match face {
+        BlockModelFace::Down | BlockModelFace::Up => [0, 3, 2, 1],
+        BlockModelFace::North
+        | BlockModelFace::South
+        | BlockModelFace::West
+        | BlockModelFace::East => [1, 0, 3, 2],
+    };
+    std::array::from_fn(|corner| {
+        vanilla_vertex_uvs
+            [(vanilla_vertex_for_corner[corner] + rotation as usize) % vanilla_vertex_uvs.len()]
+    })
 }
 
 fn default_face_uv(from: [u8; 3], to: [u8; 3], face: BlockModelFace) -> [u8; 4] {

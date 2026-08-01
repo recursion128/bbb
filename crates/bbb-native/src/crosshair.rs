@@ -46,6 +46,13 @@ pub(crate) fn selection_outline_from_camera(
     pose: Option<CameraPose>,
 ) -> Option<SelectionOutline> {
     let hit = crosshair_block_hit_from_camera(world, pose)?;
+    // Vanilla `GameRenderer.shouldRenderBlockOutline` narrows spectator block
+    // hits to states with a live `MenuProvider`. bbb's ordinary block-selection
+    // owner is not that provider projection, so it must not leak into spectator
+    // rendering.
+    if world.local_player_is_spectator() {
+        return None;
+    }
     if world.local_player_is_adventure()
         && !world.local_selected_main_hand_can_break_block_in_adventure_mode(hit.pos)
         && !world.local_selected_main_hand_can_place_on_block_in_adventure_mode(hit.pos)
@@ -1986,6 +1993,30 @@ mod tests {
 
         set_selected_can_place_on(&mut world, "minecraft:grass_block");
         assert!(selection_outline_from_camera(&world, pose).is_some());
+    }
+
+    #[test]
+    fn spectator_mode_does_not_leak_the_ordinary_block_selection_outline() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+            })
+        );
+        world.apply_game_event(GameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+
+        assert_eq!(
+            selection_outline_from_camera(&world, Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0))),
+            None
+        );
     }
 
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {

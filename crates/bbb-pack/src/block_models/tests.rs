@@ -1516,7 +1516,7 @@ fn block_model_catalog_bakes_rotated_elements_to_quads() {
     assert_close(north.corners[0], [9.0, 1.0, 6.5857863]);
     assert_close(north.normal, [0.0, 0.70710677, -0.70710677]);
     assert_eq!(north.texture.as_deref(), Some("minecraft:block/oak_planks"));
-    assert_eq!(north.uvs[0], [7.0 / 16.0, 6.0 / 16.0]);
+    assert_eq!(north.uvs[0], [7.0 / 16.0, 1.0]);
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"

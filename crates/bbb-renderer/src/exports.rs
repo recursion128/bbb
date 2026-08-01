@@ -227,6 +227,7 @@ pub use crate::player_skin::{
 pub use crate::renderer::LifecycleSoakSurfaceError;
 pub use crate::renderer::{
     Renderer, RendererFrameProfile, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
+    TerrainTextureFiltering,
 };
 pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,

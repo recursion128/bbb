@@ -15,8 +15,9 @@ use self::{
     geometry::FACES,
 };
 use super::{
-    TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainFluid, TerrainMaterialClass,
-    TerrainMesh, TerrainRenderShape, TerrainSectionMesh, TerrainSkipRendering, TerrainTextureAtlas,
+    face_occlusion_culls, TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainFluid,
+    TerrainMaterialClass, TerrainMesh, TerrainRenderShape, TerrainSectionMesh,
+    TerrainSkipRendering, TerrainTextureAtlas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -35,19 +36,6 @@ impl TerrainMeshMode {
             Self::TranslucentOnly => material.is_meshed_translucent(),
             Self::OpaqueCutout => material.is_meshed_terrain(),
         }
-    }
-
-    fn is_occluded_by(self, material: TerrainMaterialClass) -> bool {
-        match self {
-            Self::OpaqueOnly => material.occludes_opaque(),
-            Self::CutoutOnly => material.occludes_terrain(),
-            Self::TranslucentOnly => material.occludes_terrain(),
-            Self::OpaqueCutout => material.occludes_terrain(),
-        }
-    }
-
-    fn is_occluded_by_cell(self, cell: &TerrainCell) -> bool {
-        render_shape_has_geometry(&cell.render_shape) && self.is_occluded_by(cell.material)
     }
 }
 
@@ -195,6 +183,7 @@ fn build_chunk_mesh_range_with_lookup(
                             cell.block_state_id,
                             cell.material,
                             cell.skip_rendering,
+                            cell.face_occlusion_shape_indices,
                             cell.fluid,
                             cell.light,
                             cell.tint,
@@ -227,6 +216,7 @@ fn build_chunk_mesh_range_with_lookup(
                                 cell.block_state_id,
                                 cell.material,
                                 cell.skip_rendering,
+                                cell.face_occlusion_shape_indices,
                                 cell.fluid,
                                 cell.light,
                                 model_box.tint,
@@ -259,6 +249,7 @@ fn build_chunk_mesh_range_with_lookup(
                             cell.block_state_id,
                             cell.material,
                             cell.skip_rendering,
+                            cell.face_occlusion_shape_indices,
                             cell.light,
                             model_quads,
                             atlas,
@@ -284,7 +275,7 @@ fn build_chunk_mesh_range_with_lookup(
                     if neighbor
                         .map(|neighbor| {
                             culls_face_between_cells(
-                                mode,
+                                cell.face_occlusion_shape_indices,
                                 cell.skip_rendering,
                                 face_material,
                                 cell.fluid,
@@ -317,7 +308,6 @@ fn build_chunk_mesh_range_with_lookup(
                             cell.light,
                             0,
                             lookup,
-                            mode,
                         ),
                         face_ambient_occlusion(
                             cell.ambient_occlusion,
@@ -327,7 +317,6 @@ fn build_chunk_mesh_range_with_lookup(
                             world_z,
                             true,
                             lookup,
-                            mode,
                         ),
                         cardinal,
                     );
@@ -439,6 +428,7 @@ fn emit_fluid_overlay(
         cell.block_state_id,
         TerrainMaterialClass::Fluid,
         TerrainSkipRendering::NONE,
+        cell.face_occlusion_shape_indices,
         cell.fluid,
         cell.light,
         cell.fluid_tint,
@@ -462,7 +452,7 @@ fn emit_fluid_overlay(
 }
 
 pub(super) fn culls_face_between_cells(
-    mode: TerrainMeshMode,
+    current_face_occlusion_shape_indices: [u8; 6],
     current_skip: TerrainSkipRendering,
     current: TerrainMaterialClass,
     current_fluid: Option<TerrainFluid>,
@@ -472,9 +462,6 @@ pub(super) fn culls_face_between_cells(
     if matches!(current, TerrainMaterialClass::Fluid) {
         if let (Some(current), Some(neighbor)) = (current_fluid, neighbor.fluid) {
             return current.kind == neighbor.kind;
-        }
-        if matches!(neighbor.material, TerrainMaterialClass::Fluid) {
-            return true;
         }
     }
     let neighbor_skip = neighbor.skip_rendering;
@@ -492,8 +479,9 @@ pub(super) fn culls_face_between_cells(
     }
     if current_skip.iron_bars_block {
         let same_block = current_skip.is_same_block(neighbor_skip);
-        let bars_pair =
-            current_skip.bars_tag && neighbor_skip.bars_tag && neighbor_skip.iron_bars_block;
+        let bars_pair = current_skip.bars_tag
+            && neighbor_skip.bars_tag
+            && neighbor_skip.has_connection_property(direction.opposite());
         if same_block || bars_pair {
             if !direction.is_horizontal() {
                 return true;
@@ -502,117 +490,10 @@ pub(super) fn culls_face_between_cells(
                 && neighbor_skip.is_connected(direction.opposite());
         }
     }
-    // Vanilla `Block.shouldRenderFace` (Block.java:304): the current face at the
-    // shared boundary is culled when the neighbour's occlusion shape on the
-    // opposite side fully covers it. bbb models occlusion conservatively as a
-    // per-direction "is this face a full 1×1" test derived from the render
-    // cuboids: when the neighbour presents a full opaque occlusion face,
-    // `Shapes.joinIsNotEmpty(own, occluder, ONLY_FIRST)` is empty for any own
-    // face, so the cull decision collapses to a one-way neighbour-full check.
-    // Partial neighbour faces are never treated as occluders (safe over-render,
-    // matching vanilla's own-face-empty / partial-join render paths).
-    mode.is_occluded_by(neighbor.material)
-        && face_occludes(&neighbor.render_shape, direction.opposite())
-}
-
-/// Analogue of vanilla `Block.isFaceFull(state.getOcclusionShape(), direction)`
-/// (`state.getFaceOcclusionShape(direction)` being a full block face — see
-/// `BlockBehaviour` occlusion-shape-per-face cache and `Shapes.blockOccludes`):
-/// reports whether `shape` presents a face that covers the entire 1×1 cell
-/// boundary in `direction`, derived purely from the render cuboids. This is the
-/// exact per-face union test for box-based shapes (a stair's full back face is
-/// full only via the union of its two boxes, not any single box), so it is a
-/// strict subset of vanilla occlusion and never culls a face vanilla keeps.
-/// `Cross`/`Crosses`/`Quads` contribute no occlusion (vanilla foliage / custom
-/// models likewise have an empty occlusion shape).
-fn face_occludes(shape: &TerrainRenderShape, direction: TerrainFace) -> bool {
-    match shape {
-        TerrainRenderShape::Cube => true,
-        TerrainRenderShape::Cross { .. }
-        | TerrainRenderShape::Crosses(_)
-        | TerrainRenderShape::Quads(_) => false,
-        TerrainRenderShape::Box { from, to, .. } => cuboid_face_full(*from, *to, direction),
-        TerrainRenderShape::Boxes(boxes) => {
-            // Fast path: any single cuboid already spans the full face.
-            if boxes
-                .iter()
-                .any(|model_box| cuboid_face_full(model_box.from, model_box.to, direction))
-            {
-                return true;
-            }
-            // Otherwise rasterise the union of every boundary-touching cuboid's
-            // cross-section onto the 16×16 boundary grid and require full cover
-            // (stacked stair boxes, split walls, …).
-            let mut covered = [[false; 16]; 16];
-            for model_box in boxes {
-                mark_boundary_cross_section(model_box.from, model_box.to, direction, &mut covered);
-            }
-            covered.iter().flatten().all(|cell| *cell)
-        }
-    }
-}
-
-/// The two axes perpendicular to `direction` (the face plane) and whether a
-/// boundary-touching cuboid must reach `0` (`false`) or `16` (`true`) on the
-/// face axis.
-fn face_axes(direction: TerrainFace) -> (usize, usize, usize, bool) {
-    match direction {
-        TerrainFace::Down => (1, 0, 2, false),
-        TerrainFace::Up => (1, 0, 2, true),
-        TerrainFace::North => (2, 0, 1, false),
-        TerrainFace::South => (2, 0, 1, true),
-        TerrainFace::West => (0, 1, 2, false),
-        TerrainFace::East => (0, 1, 2, true),
-    }
-}
-
-/// Whether the `[from, to]` cuboid (in 0..=16 block-sixteenths) touches the cell
-/// boundary in `direction` and spans the full `16×16` perpendicular
-/// cross-section (a single-cuboid full face: slabs, box bottoms/backs).
-fn cuboid_face_full(from: [u8; 3], to: [u8; 3], direction: TerrainFace) -> bool {
-    let (face_axis, axis_a, axis_b, positive) = face_axes(direction);
-    let touches = if positive {
-        to[face_axis] == 16
-    } else {
-        from[face_axis] == 0
-    };
-    touches && from[axis_a] == 0 && to[axis_a] == 16 && from[axis_b] == 0 && to[axis_b] == 16
-}
-
-/// Marks the `16×16` cells covered by the cuboid's cross-section when it touches
-/// the cell boundary in `direction`; a no-op when the cuboid does not reach the
-/// boundary (mirroring vanilla `getFaceShape` slicing at the boundary plane).
-fn mark_boundary_cross_section(
-    from: [u8; 3],
-    to: [u8; 3],
-    direction: TerrainFace,
-    covered: &mut [[bool; 16]; 16],
-) {
-    let (face_axis, axis_a, axis_b, positive) = face_axes(direction);
-    let touches = if positive {
-        to[face_axis] == 16
-    } else {
-        from[face_axis] == 0
-    };
-    if !touches {
-        return;
-    }
-    for a in from[axis_a]..to[axis_a] {
-        for b in from[axis_b]..to[axis_b] {
-            covered[a as usize][b as usize] = true;
-        }
-    }
-}
-
-fn render_shape_has_geometry(shape: &TerrainRenderShape) -> bool {
-    match shape {
-        TerrainRenderShape::Boxes(boxes) => !boxes.is_empty(),
-        TerrainRenderShape::Crosses(crosses) => !crosses.is_empty(),
-        TerrainRenderShape::Quads(quads) => !quads.is_empty(),
-        TerrainRenderShape::Cube
-        | TerrainRenderShape::Cross { .. }
-        | TerrainRenderShape::Box { .. } => true,
-    }
+    face_occlusion_culls(
+        current_face_occlusion_shape_indices[direction.index()],
+        neighbor.face_occlusion_shape_indices[direction.opposite().index()],
+    )
 }
 
 fn is_opaque_transparency(transparency: super::TerrainTransparency) -> bool {

@@ -160,6 +160,39 @@ fn terrain_particle_sprite_uvs_use_block_atlas_content_rects() {
 }
 
 #[test]
+fn terrain_uv_rect_uses_vanilla_sprite_content_edges_without_half_texel_shrink() {
+    let glass = bbb_pack::SpriteImage::new(
+        "minecraft:block/glass",
+        16,
+        16,
+        [255, 255, 255, 255].repeat(16 * 16),
+    )
+    .unwrap();
+    let atlas = bbb_pack::AtlasPacker::new(64, 1)
+        .unwrap()
+        .stitch_mips(&[glass], 4)
+        .unwrap();
+    let sprite = &atlas.layout.sprites[0];
+
+    assert_eq!(sprite.content.width, 16);
+    assert_eq!(sprite.content.height, 16);
+    assert_eq!(atlas.layout.padding, 16);
+    assert_eq!(
+        terrain_uv_rect(&atlas.layout, sprite),
+        TerrainUvRect {
+            min: [
+                sprite.content.x as f32 / atlas.layout.width as f32,
+                sprite.content.y as f32 / atlas.layout.height as f32,
+            ],
+            max: [
+                (sprite.content.x + 16) as f32 / atlas.layout.width as f32,
+                (sprite.content.y + 16) as f32 / atlas.layout.height as f32,
+            ],
+        }
+    );
+}
+
+#[test]
 fn terrain_particle_sprite_id_uses_block_model_particle_texture() {
     let root = unique_temp_dir("terrain-particle-sprite-id");
     let asset_root = root

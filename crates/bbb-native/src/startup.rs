@@ -13,10 +13,10 @@ use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
 use bbb_renderer::{
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
-    VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
-    VANILLA_MAX_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
-    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    TerrainTextureFiltering, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
+    VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{PlayerReportEnvironment, TutorialStep};
 use clap::{ArgAction, Parser, ValueEnum};
@@ -197,6 +197,8 @@ pub(crate) struct Args {
     pub(crate) client_framerate_limit: u32,
     #[arg(long = "client-vsync", default_value_t = true, action = ArgAction::Set)]
     pub(crate) client_vsync: bool,
+    #[arg(long = "terrain-texture-filtering", value_enum, default_value = "none")]
+    pub(crate) terrain_texture_filtering: TerrainTextureFilteringArg,
     #[arg(
         long = "text-background-opacity",
         default_value_t = VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
@@ -364,6 +366,21 @@ pub(crate) enum ClientParticleStatusArg {
     All,
     Decreased,
     Minimal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum TerrainTextureFilteringArg {
+    None,
+    Rgss,
+}
+
+impl From<TerrainTextureFilteringArg> for TerrainTextureFiltering {
+    fn from(value: TerrainTextureFilteringArg) -> Self {
+        match value {
+            TerrainTextureFilteringArg::None => Self::None,
+            TerrainTextureFilteringArg::Rgss => Self::Rgss,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -1231,6 +1248,22 @@ mod tests {
 
         let disabled = Args::try_parse_from(["bbb-native", "--client-vsync", "false"]).unwrap();
         assert!(!disabled.client_vsync);
+    }
+
+    #[test]
+    fn args_accept_explicit_vanilla_terrain_texture_filtering() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.terrain_texture_filtering,
+            TerrainTextureFilteringArg::None
+        );
+
+        let rgss =
+            Args::try_parse_from(["bbb-native", "--terrain-texture-filtering", "rgss"]).unwrap();
+        assert_eq!(
+            TerrainTextureFiltering::from(rgss.terrain_texture_filtering),
+            TerrainTextureFiltering::Rgss
+        );
     }
 
     #[test]

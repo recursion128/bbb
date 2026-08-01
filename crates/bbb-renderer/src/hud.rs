@@ -5756,6 +5756,12 @@ impl Renderer {
         };
     }
 
+    /// Applies Vanilla `Gui.extractCrosshair`'s camera/game-mode/interactive
+    /// target gate without discarding the uploaded sprite owner.
+    pub fn set_hud_crosshair_visible(&mut self, visible: bool) {
+        self.hud_crosshair_visible = visible;
+    }
+
     /// Applies Vanilla's transient F1 `Options.hideGui` presentation policy.
     ///
     /// The renderer retains every latest HUD, screen, toast, and first-person
@@ -6594,7 +6600,11 @@ impl Renderer {
                 surface_size,
                 debug_crosshair,
             );
-        } else if let Some(crosshair) = self.hud_crosshair.as_ref().filter(|_| !self.hide_gui) {
+        } else if let Some(crosshair) = self
+            .hud_crosshair
+            .as_ref()
+            .filter(|_| !self.hide_gui && self.hud_crosshair_visible)
+        {
             push_hud_draw(
                 &mut vertices,
                 &mut commands,
@@ -21851,6 +21861,24 @@ mod tests {
             renderer.collect_hud_draws().commands.len() > toast_commands,
             "unchanged crosshair state returns immediately when F1 is disabled"
         );
+    }
+
+    #[test]
+    fn crosshair_visibility_gate_retains_the_uploaded_sprite() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_crosshair(2, 2, &[255, 0, 0, 255].repeat(4))
+            .expect("crosshair");
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
+
+        renderer.set_hud_crosshair_visible(false);
+        assert!(renderer.collect_hud_draws().commands.is_empty());
+        assert!(renderer.hud_crosshair.is_some());
+
+        renderer.set_hud_crosshair_visible(true);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
     }
 
     #[test]

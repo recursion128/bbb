@@ -13,10 +13,7 @@ use bbb_renderer::{
     CameraFrustum, CameraPose, TerrainChunkMeshOwner, TerrainMeshWorkerCounters,
     TerrainSectionMeshOwner,
 };
-use bbb_world::{
-    block_name_is_half_transparent, block_name_is_leaves, ChunkPos, WorldCardinalLighting,
-    WorldStore,
-};
+use bbb_world::{ChunkPos, WorldCardinalLighting, WorldStore};
 
 use crate::biome_tint::{block_wants_biome_blend, build_biome_blend, BiomeBlend};
 use crate::camera_pose::camera_pose_from_world;
@@ -1075,10 +1072,15 @@ fn convert_terrain_snapshot(
                 block_state_id: cell.block_state_id,
                 is_air: matches!(cell.material, bbb_world::TerrainMaterialClass::Empty),
                 solid_render: cell.solid_render,
+                can_occlude: cell.can_occlude,
+                face_occlusion_shape_indices: cell.face_occlusion_shape_indices,
+                view_blocking: cell.view_blocking,
+                light_dampening: cell.light_dampening,
+                shade_brightness: cell.shade_brightness,
                 fluid,
                 fluid_texture_indices,
                 fluid_overlay_texture_index,
-                fluid_overlay_neighbor: block_uses_fluid_water_overlay(cell.block_name.as_deref()),
+                fluid_overlay_neighbor: cell.fluid_overlay_neighbor,
                 fluid_tint,
                 texture_indices,
                 render_shape,
@@ -1136,6 +1138,7 @@ fn renderer_skip_rendering(
         south: skip_rendering.south,
         west: skip_rendering.west,
         east: skip_rendering.east,
+        connection_property_mask: skip_rendering.connection_property_mask,
     }
 }
 
@@ -1145,13 +1148,6 @@ fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
         bbb_world::TerrainFluidKind::Lava => TerrainFluidKind::Lava,
     };
     TerrainFluid::new(kind, fluid.amount, fluid.falling)
-}
-
-fn block_uses_fluid_water_overlay(block_name: Option<&str>) -> bool {
-    let Some(block_name) = block_name else {
-        return false;
-    };
-    block_name_is_half_transparent(block_name) || block_name_is_leaves(block_name)
 }
 
 #[cfg(test)]
@@ -1199,6 +1195,7 @@ mod tests {
             south: false,
             west: true,
             east: false,
+            connection_property_mask: 0b1111,
         };
 
         assert_eq!(
@@ -1214,47 +1211,10 @@ mod tests {
                 south: false,
                 west: true,
                 east: false,
+                connection_property_mask: 0b1111,
             }
         );
         assert!(!renderer_skip_rendering(skip, true).culls_with_leaves);
-    }
-
-    #[test]
-    fn fluid_water_overlay_neighbors_follow_vanilla_half_transparent_and_leaves_blocks() {
-        for block_name in [
-            "minecraft:glass",
-            "minecraft:tinted_glass",
-            "minecraft:white_stained_glass",
-            "minecraft:ice",
-            "minecraft:frosted_ice",
-            "minecraft:blue_ice",
-            "minecraft:slime_block",
-            "minecraft:honey_block",
-            "minecraft:copper_grate",
-            "minecraft:weathered_copper_grate",
-            "minecraft:waxed_oxidized_copper_grate",
-            "minecraft:oak_leaves",
-            "minecraft:flowering_azalea_leaves",
-        ] {
-            assert!(
-                block_uses_fluid_water_overlay(Some(block_name)),
-                "{block_name} should use water overlay"
-            );
-        }
-
-        for block_name in [
-            None,
-            Some("stone"),
-            Some("minecraft:stone"),
-            Some("minecraft:packed_ice"),
-            Some("minecraft:glass_pane"),
-            Some("minecraft:white_stained_glass_pane"),
-        ] {
-            assert!(
-                !block_uses_fluid_water_overlay(block_name),
-                "{block_name:?} should not use water overlay"
-            );
-        }
     }
 
     #[test]

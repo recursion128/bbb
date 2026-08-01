@@ -584,12 +584,6 @@ pub(super) const VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES: &[super::TorchAnimateP
     ),
 ];
 
-pub(super) const VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
-    &["minecraft:powder_snow"];
-
-pub(super) const VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS: &[&str] =
-    &["minecraft:mangrove_roots"];
-
 pub(super) const VANILLA_FLOOR_TORCH_BLOCKS: &[&str] = &[
     "minecraft:torch",
     "minecraft:redstone_torch",
@@ -2451,14 +2445,6 @@ mod tests {
         assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);
         assert_eq!(VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES.len(), 11);
         assert_eq!(VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES.len(), 6);
-        assert_eq!(
-            VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-            &["minecraft:powder_snow"]
-        );
-        assert_eq!(
-            VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
-            &["minecraft:mangrove_roots"]
-        );
         assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);
         assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);
         assert_eq!(VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.len(), 126);
@@ -2564,8 +2550,6 @@ mod tests {
                         "VANILLA_NO_COLLISION_BLOCKS",
                         "VANILLA_AIR_BLOCKS",
                         "VANILLA_FIRE_FLAMMABLE_BLOCKS",
-                        "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
-                        "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
                         "VANILLA_FLOOR_TORCH_BLOCKS",
                         "VANILLA_WALL_TORCH_BLOCKS",
                         "VANILLA_IRON_BARS_CLASS_BLOCKS",
@@ -2653,14 +2637,6 @@ mod tests {
                         (
                             "VANILLA_FIRE_FLAMMABLE_BLOCKS",
                             VANILLA_FIRE_FLAMMABLE_BLOCKS,
-                        ),
-                        (
-                            "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
-                            VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-                        ),
-                        (
-                            "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
-                            VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
                         ),
                         ("VANILLA_FLOOR_TORCH_BLOCKS", VANILLA_FLOOR_TORCH_BLOCKS),
                         ("VANILLA_WALL_TORCH_BLOCKS", VANILLA_WALL_TORCH_BLOCKS),

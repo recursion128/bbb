@@ -29,6 +29,18 @@ impl Renderer {
     /// `None` when the machine has no usable GPU adapter or device (callers
     /// skip rather than fail, matching the existing readback-test pattern).
     pub(crate) fn new_offscreen(width: u32, height: u32) -> Option<Self> {
+        Self::new_offscreen_with_terrain_filtering(
+            width,
+            height,
+            crate::renderer::TerrainTextureFiltering::None,
+        )
+    }
+
+    fn new_offscreen_with_terrain_filtering(
+        width: u32,
+        height: u32,
+        terrain_texture_filtering: crate::renderer::TerrainTextureFiltering,
+    ) -> Option<Self> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             ..Default::default()
@@ -86,6 +98,7 @@ impl Renderer {
                 queue,
                 config,
                 size,
+                terrain_texture_filtering,
             )
             .expect("offscreen renderer construction"),
         )
@@ -134,6 +147,21 @@ mod tests {
 
     const WIDTH: u32 = 320;
     const HEIGHT: u32 = 240;
+
+    #[test]
+    fn offscreen_rgss_terrain_pipeline_compiles_and_renders() {
+        let Some(mut renderer) = Renderer::new_offscreen_with_terrain_filtering(
+            16,
+            16,
+            crate::renderer::TerrainTextureFiltering::Rgss,
+        ) else {
+            return;
+        };
+
+        renderer
+            .render_offscreen_frame()
+            .expect("RGSS terrain pipeline frame");
+    }
 
     /// Harness acceptance: a whole `render()` frame runs headless and the
     /// readback shows a known HUD element (centered crosshair) over the clear

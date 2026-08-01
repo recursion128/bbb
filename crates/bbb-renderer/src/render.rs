@@ -1716,11 +1716,11 @@ impl Renderer {
                 stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                // Draw sections far→near via `terrain_translucent_order`, the
-                // camera-sorted permutation of `terrain_translucent` that mirrors
-                // vanilla's reversed TRANSLUCENT draw list
+                // Draw sections via `terrain_translucent_order`: the exact
+                // reversed native visible-section traversal that mirrors
+                // Vanilla's TRANSLUCENT draw list
                 // (ChunkSectionsToRender.java:55-56, MC 26.1). The order is kept
-                // in lock-step with the mesh set, but fall back to storage order
+                // in lock-step with the mesh set, but falls back to storage order
                 // if it is ever stale so no section is silently dropped.
                 let ordered =
                     self.terrain_translucent_order.len() == self.terrain_translucent.len();

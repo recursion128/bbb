@@ -7,6 +7,7 @@ use serde::Deserialize;
 mod collision_shapes_26_1;
 mod fluid_replaceability_26_1;
 mod placement_defaults_26_1;
+mod render_facts_26_1;
 mod support_facts_26_1;
 
 use collision_shapes_26_1::{
@@ -18,11 +19,16 @@ use placement_defaults_26_1::{
     VANILLA_BLOCK_DEFAULT_STATE_IDS, VANILLA_BLOCK_NOTE_INSTRUMENT_INDICES,
     VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
+use render_facts_26_1::{
+    VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES, VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS,
+    VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS,
+};
 use support_facts_26_1::{
-    VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_LIQUID_BITS,
-    VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
+    VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_LIGHT_DAMPENING,
+    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS,
+    VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
     VANILLA_BLOCK_STATE_SUFFOCATING_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
-    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE, VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS,
 };
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
@@ -92,6 +98,94 @@ pub fn vanilla_block_state_static_collision_shape(id: i32) -> Option<VanillaBloc
     let end = start.checked_add(usize::from(count))?;
     Some(VanillaBlockCollisionShape {
         boxes: VANILLA_BLOCK_COLLISION_BOX_PALETTE.get(start..end)?,
+    })
+}
+
+/// Renderer-visible Vanilla state which is independent from the baked model
+/// and chunk render layer.
+///
+/// The checked-in facts come from the live 26.1 block registry. In particular,
+/// block identity and class/tag relations are not reconstructed from resource
+/// names, and face occlusion is not reconstructed from baked model cuboids.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaBlockStateRenderFacts {
+    block_type_id: u16,
+    behavior_bits: u16,
+    face_occlusion_shape_indices: [u8; 6],
+}
+
+impl VanillaBlockStateRenderFacts {
+    pub const fn block_type_id(self) -> i32 {
+        self.block_type_id as i32
+    }
+
+    /// Stable non-zero identity for `neighborState.is(this)` comparisons.
+    pub const fn block_identity(self) -> u64 {
+        self.block_type_id as u64 + 1
+    }
+
+    /// Vanilla `FluidRenderer`'s `HalfTransparentBlock || LeavesBlock`
+    /// neighbor relation for the water-overlay sprite.
+    pub const fn fluid_water_overlay_neighbor(self) -> bool {
+        self.behavior_bits & 1 != 0
+    }
+
+    pub const fn leaves_block(self) -> bool {
+        self.behavior_bits & (1 << 1) != 0
+    }
+
+    pub const fn same_block_culls_all_faces(self) -> bool {
+        self.behavior_bits & (1 << 2) != 0
+    }
+
+    pub const fn same_block_culls_vertical_faces(self) -> bool {
+        self.behavior_bits & (1 << 3) != 0
+    }
+
+    pub const fn iron_bars_block(self) -> bool {
+        self.behavior_bits & (1 << 4) != 0
+    }
+
+    pub const fn liquid_block(self) -> bool {
+        self.behavior_bits & (1 << 6) != 0
+    }
+
+    pub const fn north(self) -> bool {
+        self.behavior_bits & (1 << 7) != 0
+    }
+
+    pub const fn south(self) -> bool {
+        self.behavior_bits & (1 << 8) != 0
+    }
+
+    pub const fn west(self) -> bool {
+        self.behavior_bits & (1 << 9) != 0
+    }
+
+    pub const fn east(self) -> bool {
+        self.behavior_bits & (1 << 10) != 0
+    }
+
+    pub const fn connection_property_mask(self) -> u8 {
+        ((self.behavior_bits >> 11) & 0x0f) as u8
+    }
+
+    pub const fn face_occlusion_shape_index(self, direction: VanillaBlockSupportDirection) -> u8 {
+        self.face_occlusion_shape_indices[direction.index() as usize]
+    }
+
+    pub const fn face_occlusion_shape_indices(self) -> [u8; 6] {
+        self.face_occlusion_shape_indices
+    }
+}
+
+/// Returns exact Vanilla renderer mechanism facts for one built-in 26.1 state.
+pub fn vanilla_block_state_render_facts(id: i32) -> Option<VanillaBlockStateRenderFacts> {
+    let id = usize::try_from(vanilla_block_state_id(id)?).ok()?;
+    Some(VanillaBlockStateRenderFacts {
+        block_type_id: *VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS.get(id)?,
+        behavior_bits: *VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS.get(id)?,
+        face_occlusion_shape_indices: *VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES.get(id)?,
     })
 }
 
@@ -167,8 +261,8 @@ impl VanillaBlockSupportType {
 }
 
 /// Runtime-generated support, collision, occlusion-face, replaceable,
-/// can-occlude, solid-render, redstone-conductor, suffocating, and legacy
-/// liquid facts for one built-in Vanilla 26.1 block state.
+/// can-occlude, solid-render, redstone-conductor, suffocating, AO-lighting,
+/// and legacy liquid facts for one built-in Vanilla 26.1 block state.
 ///
 /// Support and collision-face results are exact state-cache facts when
 /// `dynamic_shape` is false. Dynamic shapes require a live world query instead
@@ -180,6 +274,9 @@ pub struct VanillaBlockStateSupportFacts {
     solid_render: bool,
     redstone_conductor: bool,
     suffocating: bool,
+    view_blocking: bool,
+    light_dampening: u8,
+    shade_brightness: u8,
     liquid: bool,
 }
 
@@ -206,6 +303,21 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn suffocating(self) -> bool {
         self.suffocating
+    }
+
+    pub const fn view_blocking(self) -> bool {
+        self.view_blocking
+    }
+
+    pub const fn light_dampening(self) -> u8 {
+        self.light_dampening
+    }
+
+    /// Vanilla `BlockState.getShadeBrightness()` encoded on an exact 0..=255
+    /// scalar. Vanilla 26.1's built-in states report values representable by
+    /// this scale (`0.2` is 51 and `1.0` is 255).
+    pub const fn shade_brightness(self) -> u8 {
+        self.shade_brightness
     }
 
     pub const fn liquid(self) -> bool {
@@ -259,6 +371,11 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
         suffocating: VANILLA_BLOCK_STATE_SUFFOCATING_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        view_blocking: VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        light_dampening: *VANILLA_BLOCK_STATE_LIGHT_DAMPENING.get(id)?,
+        shade_brightness: *VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS.get(id)?,
         liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
@@ -594,6 +711,76 @@ mod tests {
     }
 
     #[test]
+    fn render_facts_project_vanilla_state_classes_and_face_shapes() {
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let state_id = |name: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| state.name == name)
+                .unwrap()
+                .id
+        };
+
+        assert_eq!(
+            VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert!(VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES
+            .iter()
+            .flatten()
+            .all(|index| *index < 126));
+
+        let air = vanilla_block_state_render_facts(state_id("minecraft:air")).unwrap();
+        assert_eq!(air.face_occlusion_shape_indices(), [0; 6]);
+        let stone = vanilla_block_state_render_facts(state_id("minecraft:stone")).unwrap();
+        assert_eq!(stone.face_occlusion_shape_indices(), [1; 6]);
+
+        let glass = vanilla_block_state_render_facts(state_id("minecraft:glass")).unwrap();
+        assert!(glass.fluid_water_overlay_neighbor());
+        assert!(glass.same_block_culls_all_faces());
+        assert!(!glass.leaves_block());
+        assert_eq!(glass.face_occlusion_shape_indices(), [0; 6]);
+        assert_ne!(glass.block_identity(), stone.block_identity());
+        let white_glass =
+            vanilla_block_state_render_facts(state_id("minecraft:white_stained_glass")).unwrap();
+        assert_ne!(glass.block_identity(), white_glass.block_identity());
+
+        let leaves = vanilla_block_state_render_facts(state_id("minecraft:oak_leaves")).unwrap();
+        assert!(leaves.fluid_water_overlay_neighbor());
+        assert!(leaves.leaves_block());
+        assert!(!leaves.same_block_culls_all_faces());
+        let powder = vanilla_block_state_render_facts(state_id("minecraft:powder_snow")).unwrap();
+        assert!(powder.same_block_culls_all_faces());
+        let roots = vanilla_block_state_render_facts(state_id("minecraft:mangrove_roots")).unwrap();
+        assert!(roots.same_block_culls_vertical_faces());
+
+        let pane = vanilla_block_state_render_facts(state_id("minecraft:white_stained_glass_pane"))
+            .unwrap();
+        assert!(pane.iron_bars_block());
+        let bars = vanilla_block_state_render_facts(state_id("minecraft:copper_bars")).unwrap();
+        assert!(bars.iron_bars_block());
+        assert_eq!(
+            bars.block_type_id(),
+            crate::block_types::VANILLA_BLOCK_COPPER_BARS_ID
+        );
+        let water = vanilla_block_state_render_facts(state_id("minecraft:water")).unwrap();
+        assert!(water.liquid_block());
+
+        assert!(vanilla_block_state_render_facts(-1).is_none());
+        assert!(vanilla_block_state_render_facts(VANILLA_BLOCK_STATE_COUNT).is_none());
+    }
+
+    #[test]
     fn support_facts_use_the_runtime_generated_state_palette() {
         let report: BlockStateReport =
             serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
@@ -630,6 +817,18 @@ mod tests {
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
         assert_eq!(
+            VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_LIGHT_DAMPENING.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
             VANILLA_BLOCK_STATE_LIQUID_BITS.len(),
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
@@ -641,6 +840,9 @@ mod tests {
         assert!(!air.solid_render());
         assert!(!air.redstone_conductor());
         assert!(!air.suffocating());
+        assert!(!air.view_blocking());
+        assert_eq!(air.light_dampening(), 0);
+        assert_eq!(air.shade_brightness(), 255);
         assert!(!air.liquid());
         assert!(!air.face_sturdy(
             VanillaBlockSupportDirection::Up,
@@ -657,6 +859,9 @@ mod tests {
         assert!(stone.solid_render());
         assert!(stone.redstone_conductor());
         assert!(stone.suffocating());
+        assert!(stone.view_blocking());
+        assert_eq!(stone.light_dampening(), 15);
+        assert_eq!(stone.shade_brightness(), 51);
         assert!(!stone.liquid());
         assert!(stone.occlusion_face_full(VanillaBlockSupportDirection::Up));
         assert!(!stone.replaceable());
@@ -690,6 +895,14 @@ mod tests {
                 .unwrap()
                 .redstone_conductor()
         );
+        let glass = vanilla_block_state_support_facts(state_id("minecraft:glass")).unwrap();
+        assert!(!glass.view_blocking());
+        assert_eq!(glass.light_dampening(), 0);
+        assert_eq!(glass.shade_brightness(), 255);
+        let leaves = vanilla_block_state_support_facts(state_id("minecraft:oak_leaves")).unwrap();
+        assert!(!leaves.view_blocking());
+        assert_eq!(leaves.light_dampening(), 1);
+        assert_eq!(leaves.shade_brightness(), 51);
         assert!(
             vanilla_block_state_support_facts(state_id("minecraft:soul_sand"))
                 .unwrap()

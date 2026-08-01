@@ -1634,8 +1634,11 @@ mod tests {
         let images = roots.load_block_texture_images().unwrap();
         assert_eq!(images.len(), 1_122);
 
-        let packer = AtlasPacker::new(4096, 1).unwrap();
+        // Mirrors the official 26.1 `blocks.png-atlas` creation log. The
+        // dimensions are shader-observable through terrain RGSS LOD selection.
+        let packer = AtlasPacker::new(2048, 1).unwrap();
         let atlas = packer.stitch_mips_with_max_level(&images, 4).unwrap();
+        assert_eq!((atlas.layout.width, atlas.layout.height), (2048, 2048));
         assert_eq!(atlas.levels.len(), atlas.mip_level() as usize + 1);
         assert!(atlas.mip_level() > 0);
         assert!(atlas.mip_level() <= 4);

@@ -21,12 +21,19 @@ const TERRAIN_PIPELINE_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
     Some(wgpu::BlendState::ALPHA_BLENDING);
 const TERRAIN_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED: bool = true;
-const TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = false;
+// Vanilla `RenderPipelines.TRANSLUCENT_TERRAIN` inherits
+// `GENERIC_BLOCKS_SNIPPET` -> `DepthStencilState.DEFAULT`, whose writeDepth is
+// true. Blending does not disable depth writes for chunk translucent terrain.
+const TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = true;
 const TERRAIN_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
 const TERRAIN_ALPHA_CUTOUT_PLACEHOLDER: &str = "    // __BBB_ALPHA_CUTOUT__";
+const TERRAIN_SAMPLE_PLACEHOLDER: &str = "    // __BBB_TERRAIN_SAMPLE__";
 const TERRAIN_CUTOUT_ALPHA_THRESHOLD: &str = "0.5";
 const TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD: &str = "0.01";
+const TERRAIN_ATLAS_MAG_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
+const TERRAIN_ATLAS_MIN_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
+const TERRAIN_ATLAS_MIPMAP_FILTER: wgpu::FilterMode = wgpu::FilterMode::Linear;
 
 const TERRAIN_SHADER: &str = r#"
 struct Camera {
@@ -120,6 +127,81 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
 }
 
+fn sample_terrain_nearest_with_derivatives(
+    uv: vec2<f32>,
+    pixel_size: vec2<f32>,
+    du: vec2<f32>,
+    dv: vec2<f32>,
+    texel_screen_size: vec2<f32>,
+) -> vec4<f32> {
+    let uv_texel_coords = uv / pixel_size;
+    let texel_center = round(uv_texel_coords) - vec2<f32>(0.5);
+    var texel_offset = uv_texel_coords - texel_center;
+    texel_offset = (texel_offset - vec2<f32>(0.5)) * pixel_size / texel_screen_size
+        + vec2<f32>(0.5);
+    texel_offset = clamp(texel_offset, vec2<f32>(0.0), vec2<f32>(1.0));
+    let sample_uv = (texel_center + texel_offset) * pixel_size;
+    return textureSampleGrad(terrain_atlas, terrain_sampler, sample_uv, du, dv);
+}
+
+fn sample_terrain_nearest(uv: vec2<f32>, pixel_size: vec2<f32>) -> vec4<f32> {
+    let du = dpdx(uv);
+    let dv = dpdy(uv);
+    let texel_screen_size = sqrt(du * du + dv * dv);
+    return sample_terrain_nearest_with_derivatives(
+        uv,
+        pixel_size,
+        du,
+        dv,
+        texel_screen_size,
+    );
+}
+
+fn sample_terrain_rgss(uv: vec2<f32>, pixel_size: vec2<f32>) -> vec4<f32> {
+    let du = dpdx(uv);
+    let dv = dpdy(uv);
+    let texel_screen_size = sqrt(du * du + dv * dv);
+    let max_texel_size = max(texel_screen_size.x, texel_screen_size.y);
+    let min_pixel_size = min(pixel_size.x, pixel_size.y);
+    let blend_factor = smoothstep(min_pixel_size, min_pixel_size * 2.0, max_texel_size);
+
+    let du_length = length(du);
+    let dv_length = length(dv);
+    let effective_derivative = sqrt(min(du_length, dv_length) * max(du_length, dv_length));
+    let mip_level_exact = max(0.0, log2(effective_derivative / min_pixel_size));
+    let mip_level_low = floor(mip_level_exact);
+    let mip_level_high = mip_level_low + 1.0;
+    let mip_blend = fract(mip_level_exact);
+
+    // Naga 0.19 requires constant indexing for function-local value arrays, so
+    // keep Vanilla's four rotated-grid offsets explicit rather than looping.
+    let sample_uv_0 = uv + vec2<f32>(0.125, 0.375) * pixel_size;
+    let sample_uv_1 = uv + vec2<f32>(-0.125, -0.375) * pixel_size;
+    let sample_uv_2 = uv + vec2<f32>(0.375, -0.125) * pixel_size;
+    let sample_uv_3 = uv + vec2<f32>(-0.375, 0.125) * pixel_size;
+    let rgss_color_low = (
+        textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_0, mip_level_low)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_1, mip_level_low)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_2, mip_level_low)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_3, mip_level_low)
+    ) * 0.25;
+    let rgss_color_high = (
+        textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_0, mip_level_high)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_1, mip_level_high)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_2, mip_level_high)
+        + textureSampleLevel(terrain_atlas, terrain_sampler, sample_uv_3, mip_level_high)
+    ) * 0.25;
+    let rgss_color = mix(rgss_color_low, rgss_color_high, mip_blend);
+    let nearest_color = sample_terrain_nearest_with_derivatives(
+        uv,
+        pixel_size,
+        du,
+        dv,
+        texel_screen_size,
+    );
+    return mix(nearest_color, rgss_color, blend_factor);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -138,7 +220,8 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(terrain_atlas, terrain_sampler, input.uv);
+    let atlas_size = vec2<f32>(textureDimensions(terrain_atlas));
+    // __BBB_TERRAIN_SAMPLE__
     // __BBB_ALPHA_CUTOUT__
     let base = texel.rgb * input.tint;
     let light_color = sample_lightmap(input.light);
@@ -304,13 +387,11 @@ pub(super) fn create_terrain_atlas_mips_gpu(
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: if mip_level_count > 1 {
-            wgpu::FilterMode::Linear
-        } else {
-            wgpu::FilterMode::Nearest
-        },
+        // Vanilla 26.1's chunk-layer sampler is LINEAR/LINEAR; its terrain
+        // shader implements both nearest-looking and RGSS sampling explicitly.
+        mag_filter: TERRAIN_ATLAS_MAG_FILTER,
+        min_filter: TERRAIN_ATLAS_MIN_FILTER,
+        mipmap_filter: TERRAIN_ATLAS_MIPMAP_FILTER,
         ..Default::default()
     });
     Ok(TerrainAtlasGpu {
@@ -454,6 +535,7 @@ pub(super) fn create_terrain_solid_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
         device,
@@ -464,6 +546,7 @@ pub(super) fn create_terrain_solid_pipeline(
         TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_OPAQUE_BLEND,
         None,
+        texture_filtering,
     )
 }
 
@@ -472,6 +555,7 @@ pub(super) fn create_terrain_cutout_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
         device,
@@ -482,6 +566,7 @@ pub(super) fn create_terrain_cutout_pipeline(
         TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_OPAQUE_BLEND,
         Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD),
+        texture_filtering,
     )
 }
 
@@ -490,6 +575,7 @@ pub(super) fn create_terrain_translucent_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
         device,
@@ -500,6 +586,7 @@ pub(super) fn create_terrain_translucent_pipeline(
         TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_TRANSLUCENT_BLEND,
         Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD),
+        texture_filtering,
     )
 }
 
@@ -512,8 +599,9 @@ fn create_terrain_pipeline_with_options(
     depth_write_enabled: bool,
     blend: Option<wgpu::BlendState>,
     alpha_cutout: Option<&str>,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
-    let shader = terrain_shader(alpha_cutout);
+    let shader = terrain_shader(alpha_cutout, texture_filtering);
     RenderPipelineBuilder::new(device, label)
         .shader("bbb-terrain-shader", &shader)
         .layout(
@@ -531,11 +619,24 @@ fn create_terrain_pipeline_with_options(
         .build()
 }
 
-fn terrain_shader(alpha_cutout: Option<&str>) -> String {
+fn terrain_shader(
+    alpha_cutout: Option<&str>,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
+) -> String {
     let alpha_cutout = alpha_cutout.map_or_else(String::new, |threshold| {
         format!("    if texel.a < {threshold} {{\n        discard;\n    }}")
     });
-    TERRAIN_SHADER.replace(TERRAIN_ALPHA_CUTOUT_PLACEHOLDER, &alpha_cutout)
+    let terrain_sample = match texture_filtering {
+        crate::renderer::TerrainTextureFiltering::None => {
+            "    let texel = sample_terrain_nearest(input.uv, vec2<f32>(1.0) / atlas_size);"
+        }
+        crate::renderer::TerrainTextureFiltering::Rgss => {
+            "    let texel = sample_terrain_rgss(input.uv, vec2<f32>(1.0) / atlas_size);"
+        }
+    };
+    TERRAIN_SHADER
+        .replace(TERRAIN_SAMPLE_PLACEHOLDER, terrain_sample)
+        .replace(TERRAIN_ALPHA_CUTOUT_PLACEHOLDER, &alpha_cutout)
 }
 
 fn terrain_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -588,7 +689,7 @@ mod tests {
     fn terrain_pipeline_state_matches_vanilla_terrain_render_pipelines() {
         assert_eq!(TERRAIN_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
         assert!(TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED);
-        assert!(!TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED);
+        assert!(TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED);
         assert_eq!(
             TERRAIN_PIPELINE_DEPTH_COMPARE,
             wgpu::CompareFunction::LessEqual
@@ -617,9 +718,15 @@ mod tests {
 
     #[test]
     fn terrain_shaders_match_vanilla_layer_alpha_cutoffs() {
-        let solid = terrain_shader(None);
-        let cutout = terrain_shader(Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD));
-        let translucent = terrain_shader(Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD));
+        let solid = terrain_shader(None, crate::renderer::TerrainTextureFiltering::None);
+        let cutout = terrain_shader(
+            Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD),
+            crate::renderer::TerrainTextureFiltering::None,
+        );
+        let translucent = terrain_shader(
+            Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD),
+            crate::renderer::TerrainTextureFiltering::None,
+        );
 
         assert!(!solid.contains("discard"));
         assert!(cutout.contains("if texel.a < 0.5"));
@@ -632,6 +739,32 @@ mod tests {
         assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
         assert!(TERRAIN_SHADER.contains("let shade = input.shade * input.ambient_occlusion"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));
+    }
+
+    #[test]
+    fn terrain_shader_matches_vanilla_none_and_rgss_sampling_paths() {
+        let nearest = terrain_shader(None, crate::renderer::TerrainTextureFiltering::None);
+        let rgss = terrain_shader(None, crate::renderer::TerrainTextureFiltering::Rgss);
+
+        assert!(nearest
+            .contains("let texel = sample_terrain_nearest(input.uv, vec2<f32>(1.0) / atlas_size)"));
+        assert!(
+            rgss.contains("let texel = sample_terrain_rgss(input.uv, vec2<f32>(1.0) / atlas_size)")
+        );
+        for offset in [
+            "vec2<f32>(0.125, 0.375)",
+            "vec2<f32>(-0.125, -0.375)",
+            "vec2<f32>(0.375, -0.125)",
+            "vec2<f32>(-0.375, 0.125)",
+        ] {
+            assert!(rgss.contains(offset));
+        }
+        assert!(rgss.contains("textureSampleLevel("));
+        assert!(rgss.contains("textureSampleGrad("));
+        assert!(rgss.contains("smoothstep(min_pixel_size, min_pixel_size * 2.0"));
+        assert_eq!(TERRAIN_ATLAS_MAG_FILTER, wgpu::FilterMode::Linear);
+        assert_eq!(TERRAIN_ATLAS_MIN_FILTER, wgpu::FilterMode::Linear);
+        assert_eq!(TERRAIN_ATLAS_MIPMAP_FILTER, wgpu::FilterMode::Linear);
     }
 
     #[test]

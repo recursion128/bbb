@@ -1,7 +1,8 @@
 use super::super::{
-    TerrainCardinalLighting, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight,
-    TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainSkipRendering, TerrainTextureAtlas,
-    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    fluid_face_occlusion_culls, TerrainCardinalLighting, TerrainCell, TerrainFace, TerrainFluid,
+    TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad,
+    TerrainSkipRendering, TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
+    TerrainVertex,
 };
 use super::{
     culls_face_between_cells,
@@ -27,7 +28,11 @@ pub(super) fn emit_face(
     ambient_occlusion: [f32; 4],
     cardinal: TerrainCardinalLighting,
 ) {
-    let uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+    // `BlockModelShape::Cube` intentionally omits redundant per-face UV data,
+    // but it still follows FaceBakery's FaceInfo vertex order. Keep that
+    // ordering here instead of treating the renderer's winding order as UV
+    // order; otherwise every full-cube vertical texture is rotated 90 degrees.
+    let uvs = face_uvs_from_crop(face.face, [0, 0, 16, 16], 0);
     emit_custom_quad_with_uvs(
         mesh,
         x,
@@ -94,6 +99,7 @@ pub(super) fn emit_box(
     block_state_id: i32,
     material: TerrainMaterialClass,
     skip_rendering: TerrainSkipRendering,
+    face_occlusion_shape_indices: [u8; 6],
     fluid: Option<TerrainFluid>,
     light: TerrainLight,
     tint: [TerrainTint; 6],
@@ -133,6 +139,8 @@ pub(super) fn emit_box(
     } else {
         None
     };
+    let base_fluid_heights = is_fluid
+        .then(|| fluid_corner_heights(x, y, z, max[1], fluid.map(|fluid| fluid.kind), lookup));
     let fluid_top_offset = if is_fluid
         && box_face_will_render(
             TerrainFace::Up,
@@ -143,8 +151,10 @@ pub(super) fn emit_box(
             face_transparency,
             face_cull,
             skip_rendering,
+            face_occlusion_shape_indices,
             material,
             fluid,
+            base_fluid_heights,
             mode,
             lookup,
         ) {
@@ -162,8 +172,10 @@ pub(super) fn emit_box(
             face_transparency,
             face_cull,
             skip_rendering,
+            face_occlusion_shape_indices,
             material,
             fluid,
+            base_fluid_heights,
             mode,
             lookup,
         ) {
@@ -184,19 +196,29 @@ pub(super) fn emit_box(
         if let Some(cull_face) = face_cull[face_index] {
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
-            if neighbor
-                .map(|neighbor| {
-                    culls_face_between_cells(
-                        mode,
-                        skip_rendering,
-                        face_material,
-                        fluid,
-                        cull_face,
-                        neighbor,
-                    )
-                })
-                .unwrap_or(false)
-            {
+            let culled = if is_fluid {
+                fluid_face_culled(
+                    cull_face,
+                    face_occlusion_shape_indices,
+                    fluid,
+                    base_fluid_heights,
+                    neighbor.unwrap_or(&TerrainCell::EMPTY),
+                )
+            } else {
+                neighbor
+                    .map(|neighbor| {
+                        culls_face_between_cells(
+                            face_occlusion_shape_indices,
+                            skip_rendering,
+                            face_material,
+                            fluid,
+                            cull_face,
+                            neighbor,
+                        )
+                    })
+                    .unwrap_or(false)
+            };
+            if culled {
                 mesh.culled_faces += 1;
                 continue;
             }
@@ -204,10 +226,8 @@ pub(super) fn emit_box(
 
         let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
-        let fluid_heights = is_fluid.then(|| {
-            fluid_corner_heights(x, y, z, max[1], fluid.map(|fluid| fluid.kind), lookup)
-                .with_top_offset(fluid_top_offset)
-        });
+        let fluid_heights =
+            base_fluid_heights.map(|heights| heights.with_top_offset(fluid_top_offset));
         let fluid_side_overlay_texture_index = is_fluid
             .then(|| {
                 fluid_side_overlay_texture_index(
@@ -227,7 +247,7 @@ pub(super) fn emit_box(
         let ambient_occlusion = if is_fluid {
             [1.0; 4]
         } else {
-            face_ambient_occlusion(smooth_light, face.face, x, y, z, face_cubic, lookup, mode)
+            face_ambient_occlusion(smooth_light, face.face, x, y, z, face_cubic, lookup)
         };
         let vertex_lights = if is_fluid {
             fluid_face_vertex_lights(
@@ -250,7 +270,6 @@ pub(super) fn emit_box(
                 light,
                 face_light_emission[face_index],
                 lookup,
-                mode,
             )
         };
         let corners = fluid_heights
@@ -259,7 +278,11 @@ pub(super) fn emit_box(
         let uvs = fluid_heights
             .map(|heights| fluid_face_uvs(face.face, heights, fluid_flow))
             .unwrap_or_else(|| {
-                face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
+                face_uvs_from_crop(
+                    face.face,
+                    face_uvs[face_index],
+                    face_uv_rotations[face_index],
+                )
             });
         let uv_rect = atlas.rect(texture_index);
         let shade = cardinal.shade(face_shade[face_index], face.face);
@@ -365,8 +388,10 @@ fn box_face_will_render(
     face_transparency: [TerrainTransparency; 6],
     face_cull: [Option<TerrainFace>; 6],
     skip_rendering: TerrainSkipRendering,
+    face_occlusion_shape_indices: [u8; 6],
     material: TerrainMaterialClass,
     fluid: Option<TerrainFluid>,
+    fluid_heights: Option<super::fluid::FluidCornerHeights>,
     mode: TerrainMeshMode,
     lookup: &TerrainChunkLookup<'_>,
 ) -> bool {
@@ -380,20 +405,52 @@ fn box_face_will_render(
     }
     if let Some(cull_face) = face_cull[face_index] {
         let (dx, dy, dz) = cull_offset(cull_face);
-        if lookup.cell(x + dx, y + dy, z + dz).is_some_and(|neighbor| {
-            culls_face_between_cells(
-                mode,
-                skip_rendering,
-                face_material,
-                fluid,
+        let neighbor = lookup.cell(x + dx, y + dy, z + dz);
+        let culled = if matches!(material, TerrainMaterialClass::Fluid) {
+            fluid_face_culled(
                 cull_face,
-                neighbor,
+                face_occlusion_shape_indices,
+                fluid,
+                fluid_heights,
+                neighbor.unwrap_or(&TerrainCell::EMPTY),
             )
-        }) {
+        } else {
+            neighbor.is_some_and(|neighbor| {
+                culls_face_between_cells(
+                    face_occlusion_shape_indices,
+                    skip_rendering,
+                    face_material,
+                    fluid,
+                    cull_face,
+                    neighbor,
+                )
+            })
+        };
+        if culled {
             return false;
         }
     }
     true
+}
+
+fn fluid_face_culled(
+    face: TerrainFace,
+    current_face_indices: [u8; 6],
+    fluid: Option<TerrainFluid>,
+    heights: Option<super::fluid::FluidCornerHeights>,
+    neighbor: &TerrainCell,
+) -> bool {
+    if let (Some(current), Some(neighbor_fluid)) = (fluid, neighbor.fluid) {
+        if current.kind == neighbor_fluid.kind {
+            return true;
+        }
+    }
+    fluid_face_occlusion_culls(
+        current_face_indices,
+        face,
+        neighbor,
+        heights.map_or(1.0, |heights| heights.occlusion_height_for_face(face)),
+    )
 }
 
 pub(super) fn emit_quads(
@@ -404,6 +461,7 @@ pub(super) fn emit_quads(
     block_state_id: i32,
     material: TerrainMaterialClass,
     skip_rendering: TerrainSkipRendering,
+    face_occlusion_shape_indices: [u8; 6],
     light: TerrainLight,
     quads: &[TerrainQuad],
     atlas: &TerrainTextureAtlas,
@@ -423,7 +481,7 @@ pub(super) fn emit_quads(
             if neighbor
                 .map(|neighbor| {
                     culls_face_between_cells(
-                        mode,
+                        face_occlusion_shape_indices,
                         skip_rendering,
                         face_material,
                         None,
@@ -442,7 +500,7 @@ pub(super) fn emit_quads(
         let ambient_occlusion = quad
             .cull
             .filter(|_| smooth_light)
-            .map(|face| face_ambient_occlusion(true, face, x, y, z, true, lookup, mode))
+            .map(|face| face_ambient_occlusion(true, face, x, y, z, true, lookup))
             .unwrap_or([1.0; 4]);
         let vertex_lights = quad
             .cull
@@ -458,7 +516,6 @@ pub(super) fn emit_quads(
                     light,
                     quad.light_emission,
                     lookup,
-                    mode,
                 )
             })
             .unwrap_or([shader_light_with_emission(light, quad.light_emission); 4]);
@@ -649,7 +706,6 @@ pub(super) fn face_vertex_lights(
     light: TerrainLight,
     light_emission: u8,
     lookup: &TerrainChunkLookup<'_>,
-    mode: TerrainMeshMode,
 ) -> [[f32; 2]; 4] {
     if !enabled {
         return [shader_light_with_emission(light, light_emission); 4];
@@ -675,7 +731,7 @@ pub(super) fn face_vertex_lights(
             base.2 + side_a.2,
             center_light,
             lookup,
-            mode,
+            normal,
         );
         let (side_b_occludes, side_b_light) = light_sample(
             base.0 + side_b.0,
@@ -683,7 +739,7 @@ pub(super) fn face_vertex_lights(
             base.2 + side_b.2,
             center_light,
             lookup,
-            mode,
+            normal,
         );
         let corner_light = if side_a_occludes && side_b_occludes {
             side_a_light
@@ -694,7 +750,7 @@ pub(super) fn face_vertex_lights(
                 base.2 + side_a.2 + side_b.2,
                 center_light,
                 lookup,
-                mode,
+                normal,
             )
             .1
         };
@@ -711,12 +767,17 @@ fn light_sample(
     z: i32,
     fallback: TerrainLight,
     lookup: &TerrainChunkLookup<'_>,
-    mode: TerrainMeshMode,
+    blocker_offset: (i32, i32, i32),
 ) -> (bool, TerrainLight) {
-    lookup
-        .cell(x, y, z)
-        .map(|cell| (mode.is_occluded_by_cell(cell), cell.light))
-        .unwrap_or((false, fallback))
+    let blocks_diagonal = lookup
+        .cell(
+            x + blocker_offset.0,
+            y + blocker_offset.1,
+            z + blocker_offset.2,
+        )
+        .is_some_and(blocks_ambient_light_corner);
+    let light = lookup.cell(x, y, z).map_or(fallback, |cell| cell.light);
+    (blocks_diagonal, light)
 }
 
 fn sample_light(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> Option<TerrainLight> {
@@ -808,7 +869,6 @@ pub(super) fn face_ambient_occlusion(
     z: i32,
     face_cubic: bool,
     lookup: &TerrainChunkLookup<'_>,
-    mode: TerrainMeshMode,
 ) -> [f32; 4] {
     if !enabled {
         return [1.0; 4];
@@ -820,9 +880,10 @@ pub(super) fn face_ambient_occlusion(
         (0, 0, 0)
     };
     let base = (x + normal.0, y + normal.1, z + normal.2);
+    let center_brightness = shade_brightness_at(base.0, base.1, base.2, lookup);
     std::array::from_fn(|corner| {
         let (side_a, side_b) = face_corner_sides(face, corner);
-        vertex_ambient_occlusion(base, side_a, side_b, lookup, mode)
+        vertex_ambient_occlusion(base, side_a, side_b, normal, center_brightness, lookup)
     })
 }
 
@@ -830,22 +891,23 @@ fn vertex_ambient_occlusion(
     base: (i32, i32, i32),
     side_a: (i32, i32, i32),
     side_b: (i32, i32, i32),
+    blocker_offset: (i32, i32, i32),
+    center_brightness: f32,
     lookup: &TerrainChunkLookup<'_>,
-    mode: TerrainMeshMode,
 ) -> f32 {
     let (side_a_occludes, side_a_brightness) = ambient_sample(
         base.0 + side_a.0,
         base.1 + side_a.1,
         base.2 + side_a.2,
         lookup,
-        mode,
+        blocker_offset,
     );
     let (side_b_occludes, side_b_brightness) = ambient_sample(
         base.0 + side_b.0,
         base.1 + side_b.1,
         base.2 + side_b.2,
         lookup,
-        mode,
+        blocker_offset,
     );
     let corner_brightness = if side_a_occludes && side_b_occludes {
         side_a_brightness
@@ -855,12 +917,12 @@ fn vertex_ambient_occlusion(
             base.1 + side_a.1 + side_b.1,
             base.2 + side_a.2 + side_b.2,
             lookup,
-            mode,
+            blocker_offset,
         )
         .1
     };
 
-    (side_a_brightness + side_b_brightness + corner_brightness + 1.0) * 0.25
+    (side_a_brightness + side_b_brightness + corner_brightness + center_brightness) * 0.25
 }
 
 fn ambient_sample(
@@ -868,13 +930,26 @@ fn ambient_sample(
     y: i32,
     z: i32,
     lookup: &TerrainChunkLookup<'_>,
-    mode: TerrainMeshMode,
+    blocker_offset: (i32, i32, i32),
 ) -> (bool, f32) {
-    let occludes = lookup
+    let blocks_diagonal = lookup
+        .cell(
+            x + blocker_offset.0,
+            y + blocker_offset.1,
+            z + blocker_offset.2,
+        )
+        .is_some_and(blocks_ambient_light_corner);
+    (blocks_diagonal, shade_brightness_at(x, y, z, lookup))
+}
+
+fn blocks_ambient_light_corner(cell: &TerrainCell) -> bool {
+    cell.view_blocking && cell.light_dampening != 0
+}
+
+fn shade_brightness_at(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> f32 {
+    lookup
         .cell(x, y, z)
-        .map(|cell| mode.is_occluded_by_cell(cell))
-        .unwrap_or(false);
-    (occludes, if occludes { 0.2 } else { 1.0 })
+        .map_or(1.0, |cell| f32::from(cell.shade_brightness) / 255.0)
 }
 
 fn box_face_is_cubic(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> bool {

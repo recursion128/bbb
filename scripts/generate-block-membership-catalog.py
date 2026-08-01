@@ -151,16 +151,6 @@ BLOCK_TAG_UNION_CATALOGS = (
 
 CONSTRUCTOR_FAMILY_CATALOGS = (
     (
-        "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
-        frozenset({"PowderSnowBlock"}),
-        1,
-    ),
-    (
-        "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
-        frozenset({"MangroveRootsBlock"}),
-        1,
-    ),
-    (
         "VANILLA_FLOOR_TORCH_BLOCKS",
         frozenset({"TorchBlock", "RedstoneTorchBlock"}),
         4,
@@ -517,8 +507,6 @@ def generate(source_root: Path) -> str:
             "        assert_eq!(VANILLA_BLOCK_SPEED_FACTOR_OVERRIDES.len(), 2);",
             "        assert_eq!(VANILLA_LEAF_ANIMATE_PARTICLE_PROFILES.len(), 11);",
             "        assert_eq!(VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES.len(), 6);",
-            '        assert_eq!(VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:powder_snow"]);',
-            '        assert_eq!(VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, &["minecraft:mangrove_roots"]);',
             "        assert_eq!(VANILLA_FLOOR_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_WALL_TORCH_BLOCKS.len(), 4);",
             "        assert_eq!(VANILLA_BLOCK_ANIMATE_TICK_BLOCKS.len(), 126);",

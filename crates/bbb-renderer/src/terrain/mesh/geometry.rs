@@ -175,16 +175,25 @@ pub(crate) fn box_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) 
     }
 }
 
-pub(super) fn face_uvs_from_crop(uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
-    let min_u = uv[0] as f32 / 16.0;
-    let min_v = uv[1] as f32 / 16.0;
-    let max_u = uv[2] as f32 / 16.0;
-    let max_v = uv[3] as f32 / 16.0;
-    let uvs = [
-        [min_u, min_v],
-        [max_u, min_v],
-        [max_u, max_v],
-        [min_u, max_v],
-    ];
-    std::array::from_fn(|index| uvs[(index + rotation as usize) % uvs.len()])
+pub(super) fn face_uvs_from_crop(face: TerrainFace, uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
+    let u0 = uv[0] as f32 / 16.0;
+    let v0 = uv[1] as f32 / 16.0;
+    let u1 = uv[2] as f32 / 16.0;
+    let v1 = uv[3] as f32 / 16.0;
+    // `CuboidFace.UVs.getVertexU/V` in Vanilla FaceBakery order. Preserve
+    // reversed explicit UV ranges instead of normalizing them away.
+    let vanilla_vertex_uvs = [[u0, v0], [u0, v1], [u1, v1], [u1, v0]];
+    // BBB keeps a winding chosen for wgpu's viewport convention. Map each BBB
+    // corner back to its Vanilla `FaceInfo` vertex before applying Quadrant's
+    // `(vertex + shift) % 4` UV rotation.
+    let vanilla_vertex_for_corner = match face {
+        TerrainFace::Down | TerrainFace::Up => [0, 3, 2, 1],
+        TerrainFace::North | TerrainFace::South | TerrainFace::West | TerrainFace::East => {
+            [1, 0, 3, 2]
+        }
+    };
+    std::array::from_fn(|corner| {
+        vanilla_vertex_uvs
+            [(vanilla_vertex_for_corner[corner] + rotation as usize) % vanilla_vertex_uvs.len()]
+    })
 }

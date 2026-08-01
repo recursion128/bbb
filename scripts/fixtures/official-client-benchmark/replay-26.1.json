@@ -1460,7 +1460,7 @@
       "yaw": 116.672854,
       "pitch": 0.0,
       "capture_segment": "static_orbit",
-      "marker": null
+      "marker": "capture_start"
     },
     {
       "server_tick": 144,
@@ -1470,7 +1470,7 @@
       "yaw": 116.672854,
       "pitch": 0.0,
       "capture_segment": "static_orbit",
-      "marker": null
+      "marker": "anchor"
     },
     {
       "server_tick": 145,
@@ -1700,7 +1700,7 @@
       "yaw": 116.672854,
       "pitch": 0.0,
       "capture_segment": "static_orbit",
-      "marker": "capture_start"
+      "marker": null
     },
     {
       "server_tick": 168,
@@ -1710,7 +1710,7 @@
       "yaw": 116.672854,
       "pitch": 0.0,
       "capture_segment": "static_orbit",
-      "marker": "anchor"
+      "marker": null
     },
     {
       "server_tick": 169,
@@ -6260,7 +6260,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "preloaded_flight",
-      "marker": null
+      "marker": "capture_start"
     },
     {
       "server_tick": 624,
@@ -6270,7 +6270,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "preloaded_flight",
-      "marker": null
+      "marker": "anchor"
     },
     {
       "server_tick": 625,
@@ -6500,7 +6500,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "preloaded_flight",
-      "marker": "capture_start"
+      "marker": null
     },
     {
       "server_tick": 648,
@@ -6510,7 +6510,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "preloaded_flight",
-      "marker": "anchor"
+      "marker": null
     },
     {
       "server_tick": 649,
@@ -11060,7 +11060,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "chunk_boundary_crossing",
-      "marker": null
+      "marker": "capture_start"
     },
     {
       "server_tick": 1104,
@@ -11070,7 +11070,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "chunk_boundary_crossing",
-      "marker": null
+      "marker": "anchor"
     },
     {
       "server_tick": 1105,
@@ -11300,7 +11300,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "chunk_boundary_crossing",
-      "marker": "capture_start"
+      "marker": null
     },
     {
       "server_tick": 1128,
@@ -11310,7 +11310,7 @@
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "chunk_boundary_crossing",
-      "marker": "anchor"
+      "marker": null
     },
     {
       "server_tick": 1129,

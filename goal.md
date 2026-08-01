@@ -240,8 +240,9 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
 
 ## P0 重新打开条件与 audit 分类
 
-只有出现以下任一情况才开 P0 slice（普通视觉精度、长尾功能缺口和未进入正式
-交付合同的性能优化不算）：
+只有出现以下任一情况才开 P0 slice（未进入正式交付合同的普通视觉精度、长尾
+功能缺口和开放式性能优化不算；下方已冻结的官方同载渲染机制与可见 workload
+等价合同属于正式 P0）：
 
 - vanilla 26.1 合法 offline-mode session 无法完成 login/configuration/play handoff，
   或既有 playable smoke 在连接、spawn、chunk、movement、inventory、interaction、
@@ -276,56 +277,126 @@ clean 时不等待确认，也不因历史 ledger 文字重开 P0。无 ready �
 P0 完成标准：触发回退有最小复现和对应 semantic/integration regression test；修复后
 完整 gate 与适用的 playable/security smoke 通过。renderer 问题断言完整 submission
 metadata；协议/world/runtime 问题断言状态转换、ordering、canonical state 与 side
-effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；开放式
-视觉 parity 留在对应优先级。
+effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
+进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
 ### 当前 P0 工程：官方 26.1 同载渲染与性能闭环
 
-这是一个高风险工程 slice，单一语义目标是恢复并满足“相同实际画面负载下 bbb 的
-稳定帧性能不劣于官方 Vanilla 26.1”。渲染一致性是性能比较的真实性前置，不是并行
-feature。完成必须同时满足：
-
-- replay 每个 frame 只在一个真实 server tick 执行，marker 时间与生成顺序可由日志
-  机械证明；场景分段按实际 marker 时间而不是 `frame ordinal / 20` 推导；
-- 两边使用同一 camera/world/resource/settings hash；bbb 在 capture 前 resident 所有
-  server 已加载的共同视距 chunk/section，terrain worker/cache 无待完成锚点工作；
-- Vanilla `TextureFormat.RGBA8` / OpenGL `GL_RGBA8` 数值颜色合同贯穿 bbb 的资源
-  texture、lightmap、世界中间 target、surface 与 screenshot readback；天空、雾、
-  terrain、cutout、translucent 与实体锚点通过确定性像素/结构比较；
-- 三场景各至少四次有效 capture，保持 Java → bbb → bbb → Java 的两轮 ABBA；bbb
-  application-frame p50/p95 均不劣于 Vanilla，p99 不恶化，且没有 Vanilla 不存在的
-  `>=33.333 ms` hitch；共同 `perf stat` 仍只报告每 presented frame 的进程均值；
-- 最终机器可解析 summary 保留每次 run、无效原因、截图/marker/residency、MangoHud、
-  perf 与工具版本/校验；`HEAD` 通过 full gate，适用的 live playable stamp 刷新。
+这是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla 26.1 渲染机制与
+可见 workload 等价”，再在相同实际画面负载下使 bbb 的稳定帧性能不劣于官方客户端。
+这里的等价不是截图“大致相似”：任何可见几何、材质、光照、透明面或
+resident/visible workload 不一致，都会使对应性能 run 作废。渲染一致性门禁是正式
+性能比较的强制前置，不能作为与性能并行推进的第二个 feature；本工程关闭前也不能
+启动其它完整 feature。
 
 非目标：不 patch/mod 官方 jar，不改协议/服务器玩法，不通过 view distance、resident
 cap、实体/粒子/HUD/透明层删减或较低图形设置换取性能，不把 MangoHud interval 称为
-CPU/GPU duration，不把本工程扩成通用 renderer 重写或 GPU-only ftrace 工程。
+CPU/GPU duration，不把本工程扩成无界通用 renderer 重写或 GPU-only ftrace 工程。
 
-边界与权威依据：benchmark/replay/capture parser 归
-`scripts/official_client_benchmark.py`；chunk snapshot/mesh/readiness 归
-`bbb-native::terrain_runtime`；GPU texture/target/submit 归 `bbb-renderer`；canonical
-chunk/world 仍归 `bbb-world`。关键 Vanilla 依据是 `MainTarget`、`RenderTarget`、
-`TextureFormat`、`GlConst`、`TextureAtlas`、`Lightmap`、`LevelRenderer`、
-`SkyRenderer`、`FogRenderer`、`ClientboundPlayerPositionPacket` 与 teleport 路径。
+边界：benchmark/replay/capture parser 归 `scripts/official_client_benchmark.py`；
+权威 block-state 渲染事实归 `bbb-protocol`，canonical chunk/world projection 归
+`bbb-world`，chunk snapshot/mesh/readiness 归 `bbb-native::terrain_runtime`，GPU
+texture/target/submit 归 `bbb-renderer`。外部客户端、assets、world、capture 与工具
+产物只留外部目录，不提交仓库。
 
-串行阶段与 focused tests：
+#### P0 渲染机制权威原则
 
-1. 修 replay dispatch/marker 分段及 parser，运行 scripts benchmark unittest；
-2. 修 RGBA8 数值颜色合同与 deterministic readback，运行 bbb-renderer sky/terrain/
-   offscreen/screenshot tests；
-3. 移除 49-chunk cap，建立全 loaded-resident readiness barrier 与结构证据，运行
-   bbb-native terrain/runtime tests 和两边 workload smoke；
-4. 在有效共同 workload 上以 phase counters、marker-window `perf record -g` 和相同
-   `perf stat` 定位 dominant owner；每轮只改当前证据指向的 owner并复测；
-5. 通过截图/RenderDoc workload checkpoint 后重跑正式 ABBA，更新唯一 benchmark
-   文档、账本和 machine-readable summary。
+所有关键渲染行为必须逐项重新对照本地
+`~/Work/mc-code/sources/26.1/`，复刻 Vanilla 的决策输入、查询坐标、判断顺序与
+fallback；不能从最终截图反向调常量。最低权威矩阵包括 `BlockModelLighter`、
+`BlockBehaviour` / `BlockState`、`Block.shouldRenderFace`、`ModelBlockRenderer`、
+`TextureAtlas` / `TextureAtlasSprite`、terrain shader 与 RGSS、chunk render-layer
+routing、fluid renderer、translucent sorting 与 blend state；共同 replay 还须对照
+`ClientboundPlayerPositionPacket` 与 teleport 路径，颜色链须对照 `MainTarget`、
+`RenderTarget`、`TextureFormat`、`GlConst`、`Lightmap`、`LevelRenderer`、
+`SkyRenderer` 与 `FogRenderer`。
 
-基线 full gate 已在开工前关闭。阶段 1～3 合并为第一个真实性里程碑并 full gate；
-之后每累计四个提交、跨核心 owner、准备正式 capture 或停止时 full gate；最终 HEAD
-必须 full-gated。任一阶段失败均 fix-forward；安全停止点只允许位于干净提交且文档
-明确仍为 active 的 checkpoint。外部客户端/assets/world/capture/tool 产物只留外部
-目录，不提交仓库。
+禁止默认用 `Opaque` / `Cutout` / `Translucent`、渲染形状或方块名称有损推导彼此
+独立的 `canOcclude`、`isSolidRender`、`isViewBlocking`、`getLightDampening`、
+`getShadeBrightness`、collision/occlusion shape、`skipRendering` 与 fluid overlay
+关系。这些事实必须由 protocol/world 的权威 block-state projection 携带到 renderer；
+只有对 Vanilla 26.1 全状态空间做过机械验证的等价推导才允许替代。缺少事实时必须
+补 projection 和 focused tests，不能在 renderer 以材质类别或 block-name 特判兜底。
+
+#### 冻结串行阶段
+
+1. **Phase A — 几何与面剔除等价**：锁定 collision/occlusion shape、
+   `canOcclude`、`skipRendering`、跨 chunk 邻接和内/背面；运行 protocol facts、world
+   projection 与 terrain mesh focused tests。
+2. **Phase B — AO 与方块光照等价**：锁定 `BlockModelLighter` 的查询坐标、
+   `isViewBlocking`、light dampening、shade brightness、light sampling、AO 与
+   cardinal shade；运行 block-state facts、world projection 与 mesh-lighting tests。
+3. **Phase C — texture sampling 与 render-layer 等价**：锁定 atlas 尺寸、sprite UV、
+   mipmap、RGSS、cutout 与 translucent routing；运行 pack/native texture、shader 与
+   offscreen pipeline tests。
+4. **Phase D — 关键透明交界**：逐项关闭水/普通玻璃/染色玻璃/叶子交界、fluid
+   overlay、depth/blend 与 translucent sorting 差异；运行 fluid/terrain tests 和局部
+   ROI 锚点复验。
+5. **Phase E — 共同 workload 证据**：建立同 tick replay 锚点、全 loaded-resident
+   readiness、visible/resident chunk/section、实体与透明面结构证据，以及共同
+   draw/frame evidence；运行 benchmark parser tests 与两边 workload smoke。
+6. **Phase F — 性能采样、定位与优化**：只在 A～E 全部通过后，以 phase counters、
+   marker-window `perf record -g`、共同 frame capture 和相同 `perf stat` 定位 dominant
+   owner；每轮只改证据指向的 owner，并重跑关键视觉锚点与 workload gate。
+7. **Phase G — 正式交付**：按 Java → bbb → bbb → Java 完成两轮 ABBA 正式
+   capture，生成完整机器可解析报告，更新账本，运行 per-commit checks 与 full gate。
+
+各阶段严格串行；失败必须 fix-forward 并重复本阶段验证，不得跳过失败阶段发布性能
+结论。基线 full gate 已在开工前关闭；A～E 的每个跨核心 owner/真实性里程碑、累计
+四个提交、准备正式 capture、停止或交付时均 full gate，最终 `HEAD` 必须
+full-gated。安全停止点只允许位于干净提交、文档仍明确 active 的 checkpoint，或有
+可复现且经过验证的精确外部 blocker。
+
+#### 渲染一致性门禁与 focused acceptance matrix
+
+每个 replay 场景必须保存同 tick 的 Vanilla/BBB 静止锚点，并机械验证：replay、
+world 与 resource-pack hash 一致；玩家 position/yaw/pitch 和相机状态一致；分辨率、
+FOV、graphics、mipmap、粒子、云与 HUD 一致；loaded、resident、visible
+chunk/section 数量符合冻结 workload 合同；实体、block entity、粒子与透明面场景
+一致；没有缺块、缺面、额外内部面或错误边界；保存共同 draw/frame evidence。
+
+截图 hash 不同本身不能直接判失败，因为 OpenGL/Vulkan 允许细微光栅差异；全图
+平均误差也不能掩盖局部错误。每个锚点必须同时保存并审查：几何/可见面断言、
+material-specific ROI、像素差分图、在 run manifest 中预先冻结的机器可解析阈值，
+以及人工完整 diff review。结构错误容忍度为零；像素阈值须先由同客户端重复 capture
+噪声标定后冻结，看到跨客户端结果后不得放宽。关键 ROI 中出现缺失方块、错误面、
+错误透明交界或明显亮度级差时，无论全图指标如何都失败。
+
+P0 focused acceptance matrix 至少覆盖 `static_orbit`、`preloaded_flight` 与
+`chunk_boundary_crossing` 的静止锚点，并逐项验证：
+
+- 叶子：cutout、mipmap、biome tint 与 AO；不得明显比 Vanilla 发黑；
+- 普通/染色玻璃：不得丢失外表面或显示错误内部面；
+- 玻璃与水：不得出现 Vanilla 不存在的交界线；
+- 水：顶面、侧面、overlay、tint、depth 与透明 blend 正确；
+- 石材及其他完整方块：AO 与 cardinal shade 对齐；
+- 发光石：texture mip 与发光/邻接光照正确；
+- armor stand 及装备：位置、材质、光照与 overlay 一致；
+- chunk 边界：没有缺面、接缝或错误透明排序。
+
+#### 性能结论与完成条件
+
+渲染一致性门禁通过前，不得发布 Vanilla/BBB 正式性能倍数；已有数据一律标记
+`diagnostic/invalid-for-comparison`。不得通过降低 bbb view distance、resident cap、
+实体数、透明面或粒子量取得优势，也不得把更少 draw workload 称作 renderer 优化。
+一致后每个性能修复都必须重跑关键视觉锚点和 workload gate，破坏画面合同的优化
+立即作废并 fix-forward。
+
+正式采样时，三场景每个客户端各至少四次有效 capture（强于最低三次要求），保持
+两轮 ABBA；bbb application-frame p50/p95 均不劣于 Vanilla，p99 不恶化，且没有
+Vanilla 不存在的 `>=33.333 ms` hitch。共同 `perf stat` 只报告每 presented frame 的
+进程 task-clock/cycles/instructions 均值；MangoHud present interval 只报告端到端
+frame p50/p95/p99、1% low 与 hitch，不能宣称纯 CPU/GPU frame duration。最终
+machine-readable summary 必须保留每次 run、无效原因、截图/marker/residency、
+MangoHud、perf、共同 draw/frame evidence及工具版本/校验。
+
+当前 P0 slice 只有同时满足以下条件才能关闭：Vanilla 机制证据已记录；focused
+unit/integration tests 通过；三个场景关键锚点通过；可见 workload 与共同 draw
+evidence 通过；每客户端至少三次有效正式 capture 且上述两轮 ABBA 完成；完整 diff
+review、docs lint、fmt、diff check 与 per-commit checks 通过；最终 `HEAD` 通过 full
+gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-features.md`
+反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
+停止点。
 
 ## 客户端差异优先级
 

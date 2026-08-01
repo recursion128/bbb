@@ -3256,7 +3256,13 @@ pub(crate) fn update_renderer_from_publication(
     // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
     // the `Options.hideGui` branch and does not partial-tick interpolate it.
     let hud_sleep_overlay = hud_sleep_overlay_from_world(world);
-    let hud_food = local_player.health.map(|health| health.food);
+    // `Gui.extractHotbarAndDecorations` reaches `extractFood` only through
+    // `GameMode.canHurtPlayer`; spectator/creative HUDs must not retain the
+    // ordinary food row merely because synced health is still present.
+    let hud_food = game_mode_can_hurt_player
+        .then_some(local_player.health)
+        .flatten()
+        .map(|health| health.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
     let hud_armor = Some(world.local_player_armor_value());
@@ -4018,6 +4024,12 @@ pub(crate) fn update_renderer_from_publication(
         input.camera_type().is_first_person() && !world.local_player_is_spectator(),
         world.local_player_crosshair_attack_indicator_state(targeted_entity_id),
     );
+    // Vanilla `Gui.extractCrosshair` hides the ordinary first-person crosshair
+    // for spectators unless the current hit is an interactive MenuProvider.
+    // The controlled replay has no such target, so its normal build crosshair
+    // must remain hidden just like the selection outline.
+    let hud_crosshair_visible =
+        input.camera_type().is_first_person() && !world.local_player_is_spectator();
     let entity_name_tag_surfaces = entity_name_tag_surfaces(
         visible_entity_name_tag_render_sources(entity_render_extraction),
         &entity_instances,
@@ -4471,6 +4483,7 @@ pub(crate) fn update_renderer_from_publication(
             sky_environment,
             cloud_environment,
             hide_gui: input.hide_gui(),
+            hud_crosshair_visible,
             hud_crosshair_attack_indicator,
             hud_player_health,
             hud_sleep_overlay,

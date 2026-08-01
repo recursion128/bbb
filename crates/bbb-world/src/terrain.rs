@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use bbb_protocol::registry_data_types::VanillaFluidIdentity;
+use bbb_protocol::{
+    block_state_types::VanillaBlockStateRenderFacts, registry_data_types::VanillaFluidIdentity,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{BlockPos, ChunkPos, PaletteKind};
@@ -27,11 +29,10 @@ use generated_26_1::{
     VANILLA_LEAVES_BLOCKS, VANILLA_LIGHTNING_ROD_BLOCKS, VANILLA_LOG_BLOCKS,
     VANILLA_NO_COLLISION_BLOCKS, VANILLA_NO_TERRAIN_PARTICLE_BLOCKS, VANILLA_ORE_BLOCKS,
     VANILLA_PALE_OAK_LOG_BLOCKS, VANILLA_PLANK_BLOCKS, VANILLA_PRESSURE_PLATE_BLOCKS,
-    VANILLA_RAIL_BLOCKS, VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
-    VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS, VANILLA_SAPLING_BLOCKS,
-    VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS, VANILLA_SLAB_BLOCKS,
-    VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS, VANILLA_STANDING_SIGN_BLOCKS,
-    VANILLA_TERRACOTTA_BLOCKS, VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES, VANILLA_TRAPDOOR_BLOCKS,
+    VANILLA_RAIL_BLOCKS, VANILLA_SAPLING_BLOCKS, VANILLA_SHELF_BLOCKS, VANILLA_SHULKER_BOX_BLOCKS,
+    VANILLA_SLAB_BLOCKS, VANILLA_SOUL_FIRE_BASE_BLOCKS, VANILLA_STAIR_BLOCKS,
+    VANILLA_STANDING_SIGN_BLOCKS, VANILLA_TERRACOTTA_BLOCKS,
+    VANILLA_TORCH_ANIMATE_PARTICLE_PROFILES, VANILLA_TRAPDOOR_BLOCKS,
     VANILLA_TRIGGERS_AMBIENT_DESERT_DRY_VEGETATION_BLOCK_SOUNDS,
     VANILLA_TRIGGERS_AMBIENT_DESERT_SAND_BLOCK_SOUNDS,
     VANILLA_TRIGGERS_AMBIENT_DRIED_GHAST_BLOCK_SOUNDS, VANILLA_WALL_BLOCKS,
@@ -182,10 +183,37 @@ pub struct TerrainBlockCell {
     /// client section visibility flood fill.
     #[serde(default)]
     pub solid_render: bool,
+    /// Exact Vanilla 26.1 `BlockState.canOcclude()` fact. Render-shape geometry
+    /// alone cannot distinguish a full cube from `noOcclusion` glass/leaves.
+    #[serde(default)]
+    pub can_occlude: bool,
+    /// Exact Vanilla 26.1 `BlockState.isViewBlocking()` fact used by smooth
+    /// block-model lighting's diagonal-corner selection.
+    #[serde(default)]
+    pub view_blocking: bool,
+    /// Exact Vanilla 26.1 `BlockState.getLightDampening()` fact paired with
+    /// `view_blocking` by `BlockModelLighter`.
+    #[serde(default)]
+    pub light_dampening: u8,
+    /// Exact Vanilla `getShadeBrightness()` encoded on 0..=255.
+    #[serde(default = "full_shade_brightness")]
+    pub shade_brightness: u8,
     #[serde(default)]
     pub skip_rendering: TerrainSkipRendering,
+    /// Exact Vanilla `getFaceOcclusionShape` palette indices in
+    /// Down/Up/North/South/West/East order.
+    #[serde(default)]
+    pub face_occlusion_shape_indices: [u8; 6],
+    /// Exact `HalfTransparentBlock || LeavesBlock` class relation consumed by
+    /// `FluidRenderer`'s water-overlay side material selection.
+    #[serde(default)]
+    pub fluid_overlay_neighbor: bool,
     pub fluid: Option<TerrainFluidState>,
     pub light: TerrainLight,
+}
+
+const fn full_shade_brightness() -> u8 {
+    255
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -202,6 +230,8 @@ pub struct TerrainSkipRendering {
     pub south: bool,
     pub west: bool,
     pub east: bool,
+    #[serde(default)]
+    pub connection_property_mask: u8,
 }
 
 impl TerrainSkipRendering {
@@ -216,20 +246,8 @@ impl TerrainSkipRendering {
         south: false,
         west: false,
         east: false,
+        connection_property_mask: 0,
     };
-
-    fn with_same_block_key(mut self, block_name: &str) -> Self {
-        self.same_block_key = stable_block_name_key(block_name);
-        self
-    }
-
-    fn with_connections(mut self, properties: &BTreeMap<String, String>) -> Self {
-        self.north = block_property_is_true(properties, "north");
-        self.south = block_property_is_true(properties, "south");
-        self.west = block_property_is_true(properties, "west");
-        self.east = block_property_is_true(properties, "east");
-        self
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -379,43 +397,53 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
     }
 }
 
-pub fn classify_terrain_skip_rendering(
+pub fn terrain_skip_rendering_from_vanilla_facts(
+    facts: VanillaBlockStateRenderFacts,
+    bars_tag: bool,
+) -> TerrainSkipRendering {
+    TerrainSkipRendering {
+        same_block_key: facts.block_identity(),
+        same_block_culls_all_faces: facts.same_block_culls_all_faces(),
+        same_block_culls_vertical_faces: facts.same_block_culls_vertical_faces(),
+        leaves_block: facts.leaves_block(),
+        iron_bars_block: facts.iron_bars_block(),
+        bars_tag,
+        north: facts.north(),
+        south: facts.south(),
+        west: facts.west(),
+        east: facts.east(),
+        connection_property_mask: facts.connection_property_mask(),
+    }
+}
+
+#[cfg(test)]
+fn classify_terrain_skip_rendering(
     block_name: Option<&str>,
     properties: &BTreeMap<String, String>,
 ) -> TerrainSkipRendering {
-    let Some(name) = block_name else {
+    let Some(block_name) = block_name else {
         return TerrainSkipRendering::NONE;
     };
-    if block_name_is_leaves(name) {
-        return TerrainSkipRendering {
-            leaves_block: true,
-            ..TerrainSkipRendering::NONE
-        };
-    }
-    if is_half_transparent_skip_rendering_block_name(name)
-        || VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS.contains(&name)
-    {
-        return TerrainSkipRendering {
-            same_block_culls_all_faces: true,
-            ..TerrainSkipRendering::NONE.with_same_block_key(name)
-        };
-    }
-    if VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS.contains(&name) {
-        return TerrainSkipRendering {
-            same_block_culls_vertical_faces: true,
-            ..TerrainSkipRendering::NONE.with_same_block_key(name)
-        };
-    }
-    if is_iron_bars_block_name(name) {
-        return TerrainSkipRendering {
-            iron_bars_block: true,
-            bars_tag: is_bars_tag_block_name(name),
-            ..TerrainSkipRendering::NONE
-                .with_same_block_key(name)
-                .with_connections(properties)
-        };
-    }
-    TerrainSkipRendering::NONE
+    static REPORT: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    let report = REPORT.get_or_init(|| {
+        serde_json::from_str(bbb_protocol::block_state_types::VANILLA_BLOCK_STATES_26_1_JSON)
+            .expect("embedded Vanilla block-state report is valid")
+    });
+    report["states"]
+        .as_array()
+        .and_then(|states| {
+            states.iter().find(|state| {
+                state["name"].as_str() == Some(block_name)
+                    && properties.iter().all(|(name, value)| {
+                        state["properties"][name].as_str() == Some(value.as_str())
+                    })
+            })
+        })
+        .and_then(|state| state["id"].as_i64())
+        .and_then(|id| i32::try_from(id).ok())
+        .and_then(bbb_protocol::block_state_types::vanilla_block_state_render_facts)
+        .map(|facts| terrain_skip_rendering_from_vanilla_facts(facts, false))
+        .unwrap_or_default()
 }
 
 pub fn block_name_is_air(name: &str) -> bool {
@@ -767,35 +795,6 @@ pub(crate) fn block_name_has_empty_collision_shape(name: &str) -> bool {
 #[cfg(test)]
 pub(crate) fn vanilla_block_collision_shape_override_names() -> &'static [&'static str] {
     VANILLA_BLOCK_COLLISION_SHAPE_OVERRIDE_BLOCKS
-}
-
-fn is_bars_tag_block_name(name: &str) -> bool {
-    VANILLA_BARS_BLOCKS.contains(&name)
-}
-
-fn is_iron_bars_block_name(name: &str) -> bool {
-    is_bars_tag_block_name(name) || VANILLA_IRON_BARS_CLASS_BLOCKS.contains(&name)
-}
-
-fn is_half_transparent_skip_rendering_block_name(name: &str) -> bool {
-    block_name_is_half_transparent(name)
-}
-
-fn block_property_is_true(properties: &BTreeMap<String, String>, key: &str) -> bool {
-    properties.get(key).is_some_and(|value| value == "true")
-}
-
-fn stable_block_name_key(name: &str) -> u64 {
-    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-    let hash = name.as_bytes().iter().fold(FNV_OFFSET, |hash, byte| {
-        (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
-    });
-    if hash == 0 {
-        1
-    } else {
-        hash
-    }
 }
 
 #[cfg(test)]
@@ -1202,12 +1201,17 @@ mod tests {
             classify_terrain_skip_rendering(Some("minecraft:mangrove_roots"), &BTreeMap::new());
         assert!(mangrove_roots.same_block_culls_vertical_faces);
         assert!(!mangrove_roots.same_block_culls_all_faces);
+        let muddy_mangrove_roots = classify_terrain_skip_rendering(
+            Some("minecraft:muddy_mangrove_roots"),
+            &BTreeMap::new(),
+        );
+        assert_ne!(muddy_mangrove_roots.same_block_key, 0);
         assert_eq!(
-            classify_terrain_skip_rendering(
-                Some("minecraft:muddy_mangrove_roots"),
-                &BTreeMap::new()
-            ),
-            TerrainSkipRendering::NONE
+            muddy_mangrove_roots,
+            TerrainSkipRendering {
+                same_block_key: muddy_mangrove_roots.same_block_key,
+                ..TerrainSkipRendering::NONE
+            }
         );
 
         let pane = classify_terrain_skip_rendering(
@@ -1242,15 +1246,22 @@ mod tests {
             ]),
         );
         assert!(bars.iron_bars_block);
-        assert!(bars.bars_tag);
+        // Tag membership is session-owned and is injected by chunk extraction,
+        // not frozen into the built-in state classifier.
+        assert!(!bars.bars_tag);
         assert!(!bars.north);
         assert!(bars.south);
         assert!(bars.west);
         assert!(!bars.east);
 
+        let stone = classify_terrain_skip_rendering(Some("minecraft:stone"), &BTreeMap::new());
+        assert_ne!(stone.same_block_key, 0);
         assert_eq!(
-            classify_terrain_skip_rendering(Some("minecraft:stone"), &BTreeMap::new()),
-            TerrainSkipRendering::NONE
+            stone,
+            TerrainSkipRendering {
+                same_block_key: stone.same_block_key,
+                ..TerrainSkipRendering::NONE
+            }
         );
         assert_eq!(
             classify_terrain_skip_rendering(None, &BTreeMap::new()),
@@ -1502,7 +1513,13 @@ mod tests {
             biome_id: None,
             material,
             solid_render: false,
+            can_occlude: false,
+            view_blocking: false,
+            light_dampening: 0,
+            shade_brightness: 255,
             skip_rendering: TerrainSkipRendering::NONE,
+            face_occlusion_shape_indices: [0; 6],
+            fluid_overlay_neighbor: false,
             fluid,
             light: TerrainLight::FULL_BRIGHT,
         }

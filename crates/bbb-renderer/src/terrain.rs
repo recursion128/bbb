@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+mod face_occlusion_26_1;
 pub(crate) mod mesh;
+
+use face_occlusion_26_1::VANILLA_FACE_OCCLUSION_MASKS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainMaterialClass {
@@ -26,10 +29,6 @@ impl TerrainMaterialClass {
 
     fn is_meshed_terrain(self) -> bool {
         self.is_meshed_opaque() || self.is_meshed_cutout() || self.is_meshed_translucent()
-    }
-
-    fn occludes_opaque(self) -> bool {
-        matches!(self, Self::Opaque)
     }
 
     fn occludes_terrain(self) -> bool {
@@ -166,6 +165,26 @@ pub struct TerrainCell {
     /// Exact Vanilla 26.1 `BlockState.isSolidRender()` input for `VisGraph`.
     #[serde(default)]
     pub solid_render: bool,
+    /// Exact Vanilla `BlockState.canOcclude()`. A full-cube render model is not
+    /// necessarily an occluder (`TransparentBlock` and `LeavesBlock` use
+    /// `noOcclusion`).
+    #[serde(default)]
+    pub can_occlude: bool,
+    /// Exact Vanilla `getFaceOcclusionShape` palette indices in
+    /// Down/Up/North/South/West/East order.
+    #[serde(default)]
+    pub face_occlusion_shape_indices: [u8; 6],
+    /// Exact `BlockState.isViewBlocking()` input for Vanilla's smooth block
+    /// model lighting corner selection.
+    #[serde(default)]
+    pub view_blocking: bool,
+    /// Exact `BlockState.getLightDampening()` input paired with
+    /// `view_blocking` by Vanilla's `BlockModelLighter`.
+    #[serde(default)]
+    pub light_dampening: u8,
+    /// Exact `BlockState.getShadeBrightness()` encoded on 0..=255.
+    #[serde(default = "full_shade_brightness")]
+    pub shade_brightness: u8,
     pub fluid: Option<TerrainFluid>,
     pub fluid_texture_indices: [u32; 6],
     pub fluid_overlay_texture_index: Option<u32>,
@@ -195,6 +214,12 @@ pub struct TerrainSkipRendering {
     pub south: bool,
     pub west: bool,
     pub east: bool,
+    #[serde(default)]
+    pub connection_property_mask: u8,
+}
+
+const fn full_shade_brightness() -> u8 {
+    255
 }
 
 impl TerrainSkipRendering {
@@ -209,6 +234,7 @@ impl TerrainSkipRendering {
         south: false,
         west: false,
         east: false,
+        connection_property_mask: 0,
     };
 
     fn is_same_block(self, neighbor: Self) -> bool {
@@ -223,6 +249,17 @@ impl TerrainSkipRendering {
             TerrainFace::East => self.east,
             TerrainFace::Down | TerrainFace::Up => false,
         }
+    }
+
+    fn has_connection_property(self, face: TerrainFace) -> bool {
+        let bit = match face {
+            TerrainFace::North => 0,
+            TerrainFace::South => 1,
+            TerrainFace::West => 2,
+            TerrainFace::East => 3,
+            TerrainFace::Down | TerrainFace::Up => return false,
+        };
+        self.connection_property_mask & (1 << bit) != 0
     }
 }
 
@@ -303,6 +340,11 @@ impl TerrainCell {
         material: TerrainMaterialClass::Empty,
         is_air: true,
         solid_render: false,
+        can_occlude: false,
+        face_occlusion_shape_indices: [0; 6],
+        view_blocking: false,
+        light_dampening: 0,
+        shade_brightness: 255,
         fluid: None,
         fluid_texture_indices: [0; 6],
         fluid_overlay_texture_index: None,
@@ -327,6 +369,15 @@ impl TerrainCell {
             material,
             is_air: matches!(material, TerrainMaterialClass::Empty),
             solid_render: material.occludes_terrain(),
+            can_occlude: material.occludes_terrain(),
+            face_occlusion_shape_indices: if material.occludes_terrain() {
+                [1; 6]
+            } else {
+                [0; 6]
+            },
+            view_blocking: false,
+            light_dampening: 0,
+            shade_brightness: 255,
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
             fluid_overlay_texture_index: None,
@@ -353,6 +404,15 @@ impl TerrainCell {
             material,
             is_air: matches!(material, TerrainMaterialClass::Empty),
             solid_render: material.occludes_terrain(),
+            can_occlude: material.occludes_terrain(),
+            face_occlusion_shape_indices: if material.occludes_terrain() {
+                [1; 6]
+            } else {
+                [0; 6]
+            },
+            view_blocking: false,
+            light_dampening: 0,
+            shade_brightness: 255,
             fluid: None,
             fluid_texture_indices: [texture_index; 6],
             fluid_overlay_texture_index: None,
@@ -399,6 +459,28 @@ impl TerrainCell {
 
     pub fn with_fluid_overlay_neighbor(mut self) -> Self {
         self.fluid_overlay_neighbor = true;
+        self
+    }
+
+    pub fn with_can_occlude(mut self, can_occlude: bool) -> Self {
+        self.can_occlude = can_occlude;
+        self
+    }
+
+    pub fn with_face_occlusion_shape_indices(mut self, indices: [u8; 6]) -> Self {
+        self.face_occlusion_shape_indices = indices;
+        self
+    }
+
+    pub fn with_ambient_light_facts(
+        mut self,
+        view_blocking: bool,
+        light_dampening: u8,
+        shade_brightness: u8,
+    ) -> Self {
+        self.view_blocking = view_blocking;
+        self.light_dampening = light_dampening;
+        self.shade_brightness = shade_brightness;
         self
     }
 
@@ -568,6 +650,102 @@ impl TerrainFace {
     pub(crate) fn is_horizontal(self) -> bool {
         matches!(self, Self::North | Self::South | Self::West | Self::East)
     }
+}
+
+fn face_occlusion_mask(index: u8) -> Option<[u64; 4]> {
+    VANILLA_FACE_OCCLUSION_MASKS
+        .get(usize::from(index))
+        .copied()
+}
+
+/// Exact `Block.shouldRenderFace` face-shape decision after
+/// `BlockState.skipRendering` has returned false.
+fn face_occlusion_culls(own_index: u8, occluder_index: u8) -> bool {
+    let Some(occluder) = face_occlusion_mask(occluder_index) else {
+        return false;
+    };
+    if occluder.iter().all(|word| *word == u64::MAX) {
+        return true;
+    }
+    if occluder.iter().all(|word| *word == 0) {
+        return false;
+    }
+    let Some(own) = face_occlusion_mask(own_index) else {
+        return false;
+    };
+    if own.iter().all(|word| *word == 0) {
+        return false;
+    }
+    own.into_iter()
+        .zip(occluder)
+        .all(|(own, occluder)| own & !occluder == 0)
+}
+
+fn fluid_face_required_mask(direction: TerrainFace, height: f32) -> [u64; 4] {
+    if matches!(direction, TerrainFace::Down | TerrainFace::Up) {
+        return [u64::MAX; 4];
+    }
+    let height_cells = ((height * 16.0 - 1.0e-6).ceil() as i32).clamp(0, 16) as usize;
+    let mut required = [0; 4];
+    for second_axis in 0..16 {
+        for first_axis in 0..16 {
+            let vertical_axis = match direction {
+                TerrainFace::North | TerrainFace::South => second_axis,
+                TerrainFace::West | TerrainFace::East => first_axis,
+                TerrainFace::Down | TerrainFace::Up => unreachable!(),
+            };
+            if vertical_axis < height_cells {
+                let bit = second_axis * 16 + first_axis;
+                required[bit / 64] |= 1 << (bit % 64);
+            }
+        }
+    }
+    required
+}
+
+fn face_occlusion_covers_fluid_face(index: u8, direction: TerrainFace, height: f32) -> bool {
+    // `Shapes.blockOccludes(Shapes.box(0, 0, 0, 1, height, 1), occluder,
+    // UP)` has no boundary face until the fluid box reaches y=1. DOWN always
+    // touches y=0, while horizontal faces cover only their current height.
+    if matches!(direction, TerrainFace::Up) && height < 1.0 {
+        return false;
+    }
+    let Some(occluder) = face_occlusion_mask(index) else {
+        return false;
+    };
+    let required = fluid_face_required_mask(direction, height);
+    required
+        .into_iter()
+        .zip(occluder)
+        .all(|(required, occluder)| required & !occluder == 0)
+}
+
+/// Vanilla `FluidRenderer.isFaceOccludedBySelf` followed by
+/// `isFaceOccludedByNeighbor`. Same-fluid suppression remains a distinct
+/// fluid-state decision at the caller.
+fn fluid_face_occlusion_culls(
+    current_face_indices: [u8; 6],
+    direction: TerrainFace,
+    neighbor: &TerrainCell,
+    height: f32,
+) -> bool {
+    if face_occlusion_covers_fluid_face(
+        current_face_indices[direction.index()],
+        direction.opposite(),
+        1.0,
+    ) {
+        return true;
+    }
+    let neighbor_height = if matches!(direction, TerrainFace::Down) {
+        0.888_888_9
+    } else {
+        height
+    };
+    face_occlusion_covers_fluid_face(
+        neighbor.face_occlusion_shape_indices[direction.opposite().index()],
+        direction,
+        neighbor_height,
+    )
 }
 
 #[repr(C)]
