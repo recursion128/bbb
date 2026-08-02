@@ -408,7 +408,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
-- p1-generated-facts: maintenance
+- p1-generated-facts: active
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: active
@@ -428,13 +428,32 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### P1：可机械推导的 vanilla 事实
 
-状态：`maintenance`。中文机制 Wiki、Vanilla 26.1 parity matrix、全 Markdown
-inventory 与可执行 docs lint 已闭环。`docs/` 只允许 Wiki、入口、紧凑 milestone
-索引和缺口 ledger；完成合同/取证正文由 Git history 保留，layout lint 防止历史目录、
-顶层 legacy 文档或双 canonical owner 回流。生成物、共享 Tree-sitter frontend、反向
-source guard 与文档 canonical ownership 继续作为结构不变量。只有目标版本、生成
-输入/模板、具体第二事实源或 Wiki/layout lint 回退时才开有界 slice；宽泛手工审计不在
-active=0 时生成工作。
+状态：`active`。当前只推进下列 coverage census；不在同一 slice 实现其发现的 gap。
+
+#### 工程合同：Vanilla 26.1 外部客户端机制 coverage census
+
+- 边界/完成：CLI 外部多人客户端的 startup→session→resource/world/render/input/UI/audio/
+  lifecycle/security/diagnostics；IntegratedServer、单人、Realms、telemetry/options UI 仍进入
+  inventory 并附 owner、not-needed 依据和精确 reopen。完成要求 generated inventory 的
+  unmapped owner=0，matrix/ledger/goal route 双向为 0，existing equivalent 全部重审。
+- inventory 方法/粒度：只用共享 `scripts/vanilla_java_source.py` Tree-sitter frontend，复用
+  packet/registry/entity coverage；按一个 Vanilla class/method 决策或同质 lifecycle、一个 BBB
+  projection、一组 evidence/route 拆分。禁止 regex/括号扫描和手写可生成表。
+- evidence owner：允许唯一版本化 `docs/vanilla-client-mechanism-inventory-26.1.json` 保存稳定排序
+  source owners/mapping/hash；Markdown 仍只有 parity matrix，gap 仍只有 unsupported ledger，
+  长期机制事实仍进对应 Wiki。
+- Phase A：从 GameProtocols/listeners、ClientPacketListener/ClientLevel/LocalPlayer/
+  MultiPlayerGameMode、registries、entity/renderer/layer/block-entity/particle providers、
+  MenuScreens、Minecraft reload listeners、Gui/GameRenderer/LevelRenderer、language/font/sound、
+  keyboard/mouse/platform/serverbound call sites 与范围外 top owners 构造 inventory/schema。
+- Phase B：逐域映射 owner，拆分 broad row，重审 equivalent；证据不足降级并登记 ledger，
+  不实现 gap。Phase C：扩展 docs lint/coverage 做 ID/status/evidence/BBB path、inventory→matrix、
+  ledger↔matrix、stale-input/output 双向检查及 missing/duplicate/broken-route fixtures。
+- Phase D：运行 extractor/fixtures、coverage-status、docs-lint、fmt/diff-check，完整 diff review、
+  正常提交并 full gate；产品行为不变，不刷新 playable。
+- 非目标/安全：不改 runtime feature，不联网，不提交官方源码/asset/capture；本地 Vanilla tree
+  缺失按现有显式降级规则。开工 HEAD `efa5d2f6d` 已 full/live-gated；只在完整 census 干净提交
+  且 full gate 后停止，或 source/tool 外部 blocker 经复现并保持 ledger active。
 
 ### P2：非实体客户端行为 closeout
 
