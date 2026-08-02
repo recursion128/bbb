@@ -142,6 +142,41 @@ deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
 `cargo check` 一条不可省：只跑 `cargo test` 会漏掉非测试（交付 bin）构建的
 unused/dead-code lint。
 
+## 当前 active 工程：shader resource generation 单一提交边界
+
+目标是不改变产品资源行为，将 shader source、static core pipeline 与 post-effect graph
+收敛为一个 CPU generation 和一个 renderer commit API。完成时 native 的 startup/reload
+都不再拆分或重复提交 core/post，旧生产路径被删除，且失败仍精确保留旧 generation。
+
+- Vanilla 依据：`ShaderManager.prepare` 一次构造包含 `shaderSources` 与 `postChains` 的
+  `ShaderManager.Configs`；`apply` 用该 Configs 构造单一 `CompilationCache`，预编译必需
+  static pipelines 成功后才替换旧 cache。
+- 唯一 owner 与方向：`bbb-pack::PostEffectCatalog` 持有同 generation 的
+  `ShaderSourceCatalog`；不可变投影经 `bbb-render-types` 到 `bbb-renderer`；`bbb-native`
+  只编排 prepare/transaction，renderer 不得读 pack。
+- 决策合同：selected/startup/server pack priority、filter、import、budget 和 fallback 不变；
+  core 在 post graph 之前编译；projection 内外 generation 必须相同；每次 native
+  commit 只能调用一次统一 API。
+- 生命周期：pack 负责 bounded CPU prepare，native 在 render thread 开启 barrier，renderer
+  prepare GPU handles 并原子 swap；任一 core/post/后续资源 commit 失败都 rollback，stale
+  server generation 仍由 simulation ack 拒绝。
+- API/删除：将 `reload_core_shaders`/`reload_post_effect_graphs` 收窄为 renderer-crate 内部，
+  新建唯一跨 crate shader-generation commit；删除 native 二元 prepare 结果、平行
+  `shader_sources` 字段/投影与全部直接 commit 调用。
+- 非目标：不改 GLSL adapter、pipeline state、post-effect lazy lookup、pack resolver、renderer
+  pass 或其他 reload listener；不处理 HUD manifest、simulation projection 或通用 GLSL builder 候选。
+- 串行阶段：A 完成只读候选审计并冻结本合同；B 收敛 pack/render-types 投影；
+  C 建立 renderer 单一 commit 与原子 rollback；D 迁移 startup/reload 后删除旧路径；
+  E focused/real-local 验收、Wiki/ledger 收口、diff review、提交与 full gate。
+- Focused：`bbb-render-types`、`bbb-pack` shader/post-effect、`bbb-renderer` core/post/resource-reload、
+  `bbb-native` resource-reload tests；19 项 ignored 真实 selected/filter GPU 验收；source guard 强制
+  native 旧 API 调用为 0、统一 commit 正好两个且每处一次、renderer 内 core/post 各一次。
+- Checkpoint：基线 `7bb954b72` 已 full-gated/playable；合同文档独立清洁提交，
+  B–D 作为一个架构提交，E 收口提交后在最终 HEAD 运行 full gate。无产品行为
+  变化，因此 playable 仅在 focused/live 发现行为差异时刷新。
+- 安全停止点：只允许在合同已提交且 ledger 仍明确 active 的干净 Phase A，
+  或最终 full-gated 清洁 HEAD；blocker 必须有可重现命令、外部 owner 与精确重启条件。
+
 ## Slice 工作流（每轮）
 
 有 ready 工作时选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0
