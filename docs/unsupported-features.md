@@ -68,7 +68,7 @@ Matrix route: `resources-reload-listeners`
   bounded `PeriodicNotificationCatalog`; priority/filter/import, malformed-empty
   fallback and generation evidence are covered. Host-country schedule/system-toast
   apply/reset is wired after the shared rollback barrier, and selected/filterable
-  `core/terrain` plus all 13 current entity surface variants now own one atomic
+  `core/terrain` plus all 14 current entity surface variants now own one atomic
   pipeline generation. Remaining active work is the rest of the current
   static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.

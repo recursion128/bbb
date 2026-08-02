@@ -65,6 +65,10 @@ impl Renderer {
                     next.textured_cull,
                 ),
                 solid: std::mem::replace(&mut self.entity_model_solid_pipeline, next.solid),
+                dissolve: std::mem::replace(
+                    &mut self.entity_model_dissolve_pipeline,
+                    next.dissolve,
+                ),
                 solid_z_offset_forward: std::mem::replace(
                     &mut self.entity_model_solid_z_offset_forward_pipeline,
                     next.solid_z_offset_forward,
@@ -113,6 +117,7 @@ impl Renderer {
                     renderer.entity_model_textured_pipeline = previous.textured;
                     renderer.entity_model_textured_cull_pipeline = previous.textured_cull;
                     renderer.entity_model_solid_pipeline = previous.solid;
+                    renderer.entity_model_dissolve_pipeline = previous.dissolve;
                     renderer.entity_model_solid_z_offset_forward_pipeline =
                         previous.solid_z_offset_forward;
                     renderer.entity_model_cutout_z_offset_pipeline = previous.cutout_z_offset;

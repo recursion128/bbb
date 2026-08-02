@@ -2232,6 +2232,7 @@ pub(crate) struct EntityCorePipelineGeneration {
     pub(crate) textured: wgpu::RenderPipeline,
     pub(crate) textured_cull: wgpu::RenderPipeline,
     pub(crate) solid: wgpu::RenderPipeline,
+    pub(crate) dissolve: wgpu::RenderPipeline,
     pub(crate) solid_z_offset_forward: wgpu::RenderPipeline,
     pub(crate) cutout_z_offset: wgpu::RenderPipeline,
     pub(crate) armor_cutout: wgpu::RenderPipeline,
@@ -2266,6 +2267,12 @@ pub(crate) fn create_entity_core_pipeline_generation(
                 lightmap_bind_group_layout,
             ),
             solid: create_entity_model_solid_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            dissolve: create_entity_model_dissolve_pipeline(
                 device,
                 format,
                 bind_group_layout,
@@ -2348,6 +2355,7 @@ pub(crate) fn create_entity_core_pipeline_generation(
             depth_compare,
             cull_mode,
             uses_lightmap,
+            false,
         )
     };
     let alpha = Some("0.1");
@@ -2377,6 +2385,25 @@ pub(crate) fn create_entity_core_pipeline_generation(
             true,
             ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
             ENTITY_MODEL_SURFACE_CULL_MODE,
+            true,
+        )?,
+        dissolve: create_selected_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-entity-cutout-dissolve",
+            &shaders,
+            &[
+                ("ALPHA_CUTOUT", alpha),
+                ("PER_FACE_LIGHTING", None),
+                ("DISSOLVE", None),
+            ],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+            true,
             true,
         )?,
         solid_z_offset_forward: build(
@@ -2511,18 +2538,24 @@ fn create_selected_entity_pipeline(
     depth_compare: wgpu::CompareFunction,
     cull_mode: Option<wgpu::Face>,
     uses_lightmap: bool,
+    dissolve: bool,
 ) -> Result<wgpu::RenderPipeline> {
+    let (vertex_source, fragment_source) = if dissolve {
+        (&shaders.dissolve_vertex, &shaders.dissolve_fragment)
+    } else {
+        (&shaders.vertex, &shaders.fragment)
+    };
     let vertex = crate::post_effect_graph::create_glsl_module(
         device,
         "bbb-selected-entity-vertex-shader",
-        crate::core_shaders::shader_with_defines(&shaders.vertex, defines),
+        crate::core_shaders::shader_with_defines(vertex_source, defines),
         wgpu::naga::ShaderStage::Vertex,
     )
     .with_context(|| format!("compile selected entity vertex for {label}"))?;
     let fragment = crate::post_effect_graph::create_glsl_module(
         device,
         "bbb-selected-entity-fragment-shader",
-        crate::core_shaders::shader_with_defines(&shaders.fragment, defines),
+        crate::core_shaders::shader_with_defines(fragment_source, defines),
         wgpu::naga::ShaderStage::Fragment,
     )
     .with_context(|| format!("compile selected entity fragment for {label}"))?;
@@ -2543,7 +2576,11 @@ fn create_selected_entity_pipeline(
             vertex: wgpu::VertexState {
                 module: &vertex,
                 entry_point: "main",
-                buffers: &[entity_model_textured_vertex_layout()],
+                buffers: &[if dissolve {
+                    entity_model_dissolve_vertex_layout()
+                } else {
+                    entity_model_textured_vertex_layout()
+                }],
             },
             primitive: wgpu::PrimitiveState {
                 cull_mode,

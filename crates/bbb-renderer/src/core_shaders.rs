@@ -17,6 +17,8 @@ pub(crate) struct AdaptedTerrainShaders {
 pub(crate) struct AdaptedEntityShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
+    pub(crate) dissolve_vertex: String,
+    pub(crate) dissolve_fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -51,11 +53,15 @@ pub(crate) fn adapt_selected_entity_shaders(
     if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
         return Ok(None);
     }
+    let vertex =
+        adapt_entity_stage(&vertex.source, true).context("adapt selected entity vertex shader")?;
+    let fragment = adapt_entity_stage(&fragment.source, false)
+        .context("adapt selected entity fragment shader")?;
     Ok(Some(AdaptedEntityShaders {
-        vertex: adapt_entity_stage(&vertex.source, true)
-            .context("adapt selected entity vertex shader")?,
-        fragment: adapt_entity_stage(&fragment.source, false)
-            .context("adapt selected entity fragment shader")?,
+        dissolve_vertex: adapt_entity_dissolve_vertex(&vertex)?,
+        dissolve_fragment: adapt_entity_dissolve_fragment(&fragment)?,
+        vertex,
+        fragment,
     }))
 }
 
@@ -137,6 +143,50 @@ fn adapt_entity_stage(source: &str, vertex_stage: bool) -> Result<String> {
             },
         ],
     )
+}
+
+fn adapt_entity_dissolve_vertex(source: &str) -> Result<String> {
+    let source = source
+        .replace(
+            "layout(location = 2) in vec4 Color;",
+            "layout(location = 3) in vec4 Color;",
+        )
+        .replace(
+            "layout(location = 3) in vec2 UV2;",
+            "layout(location = 4) in vec2 UV2;",
+        )
+        .replace(
+            "layout(location = 4) in vec2 UV1;",
+            "layout(location = 5) in vec2 UV1;",
+        )
+        .replace(
+            "layout(location = 5) in vec3 Normal;",
+            "layout(location = 6) in vec3 Normal;",
+        );
+    let source = insert_after_version(
+        &source,
+        "layout(location = 2) in vec2 BbbDissolveMaskUv;\nlayout(location = 7) out vec2 bbbDissolveMaskUv;\n",
+    )?;
+    let main_end = source
+        .rfind('}')
+        .context("adapted entity dissolve vertex shader has no main terminator")?;
+    Ok(format!(
+        "{}    bbbDissolveMaskUv = BbbDissolveMaskUv;\n{}",
+        &source[..main_end],
+        &source[main_end..]
+    ))
+}
+
+fn adapt_entity_dissolve_fragment(source: &str) -> Result<String> {
+    let source = insert_after_version(source, "layout(location = 7) in vec2 bbbDissolveMaskUv;\n")?;
+    let mask_sample = "texture(sampler2D(bbb_post_texture_2, bbb_post_sampler_2), texCoord0)";
+    if !source.contains(mask_sample) {
+        bail!("selected entity dissolve fragment does not sample DissolveMaskSampler at texCoord0");
+    }
+    Ok(source.replace(
+        mask_sample,
+        "texture(sampler2D(bbb_post_texture_2, bbb_post_sampler_2), bbbDissolveMaskUv)",
+    ))
 }
 
 fn adapt_entity_lightmap(source: &str) -> Result<String> {
@@ -695,6 +745,9 @@ in vec4 lightMapColor;
 in vec4 overlayColor;
 #endif
 in vec2 texCoord0;
+#ifdef DISSOLVE
+uniform sampler2D DissolveMaskSampler;
+#endif
 out vec4 fragColor;
 void main() {
     float keep = sphericalVertexDistance + cylindricalVertexDistance + texCoord0.x;
@@ -708,6 +761,9 @@ void main() {
 #endif
 #ifndef NO_OVERLAY
     keep += overlayColor.x;
+#endif
+#ifdef DISSOLVE
+    keep += texture(DissolveMaskSampler, texCoord0).a;
 #endif
     fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
 }

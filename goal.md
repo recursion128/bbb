@@ -430,7 +430,7 @@ icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合�
 2. **Phase B — bounded prepare（完成）**：补齐缺失的 core-shader/include 与 periodic-notification
    catalog；复用 pack priority/filter，限制资源数、单项/累计 bytes、include 深度/环和
    notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
-3. **Phase C — 原子 consumer**：regional toast、`core/terrain` 与 13 个 current entity surface
+3. **Phase C — 原子 consumer**：regional toast、`core/terrain` 与 14 个 current entity surface
    variant 已进入统一 projection/barrier；继续迁移其余 current static pipeline，逐 stage
    失败须保留旧 GPU/HUD/audio/simulation/schedule。
 4. **Phase D — 真实验收与收口**：以本地 26.1 source/default assets 和 selected/server
