@@ -1379,9 +1379,27 @@ pub(crate) fn create_resident_item_model_solid_no_cutout_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout, lightmap_bind_group_layout],
+            "bbb-selected-resident-item-model-solid-no-cutout",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[resident_vertex_layout(), instance_vertex_layout()],
+            Some(wgpu::BlendState::REPLACE),
+            wgpu::ColorWrites::ALL,
+            true,
+            wgpu::CompareFunction::LessEqual,
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+        );
+    }
     let shader = resident_no_alpha_cutout_shader();
-    create_resident_item_model_pipeline_with_blend(
+    Ok(create_resident_item_model_pipeline_with_blend(
         device,
         format,
         bind_group_layout,
@@ -1389,7 +1407,7 @@ pub(crate) fn create_resident_item_model_solid_no_cutout_pipeline(
         &shader,
         "bbb-item-model-resident-solid-no-cutout-pipeline",
         wgpu::BlendState::REPLACE,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(

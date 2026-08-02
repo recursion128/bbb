@@ -593,7 +593,7 @@ pub(crate) fn replace_identifier(source: &str, from: &str, to: &str) -> Result<S
         .into_owned())
 }
 
-fn wrap_vertex_main_for_webgpu(source: &str) -> Result<String> {
+pub(crate) fn wrap_vertex_main_for_webgpu(source: &str) -> Result<String> {
     const ORIGINAL_MAIN: &str = "bbb_post_original_main";
     if Regex::new(&format!(r"\b{ORIGINAL_MAIN}\b"))
         .context("compile post-effect vertex wrapper collision regex")?

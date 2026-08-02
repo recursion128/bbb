@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::gpu::{DepthTarget, DEPTH_FORMAT};
 use crate::pipeline_builder::RenderPipelineBuilder;
 
@@ -383,8 +385,45 @@ pub(super) fn create_entity_outline_composite_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_outline_fullscreen_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        let (vertex, fragment) = crate::core_shaders::compile_selected_shader_pair(
+            device,
+            "bbb-selected-entity-outline-composite",
+            shaders,
+        )?;
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("bbb-selected-entity-outline-composite-layout"),
+            bind_group_layouts: &[bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        return Ok(
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("bbb-selected-entity-outline-composite-pipeline"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &vertex,
+                    entry_point: "main",
+                    buffers: &[],
+                },
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &fragment,
+                    entry_point: "main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(ENTITY_OUTLINE_COMPOSITE_BLEND),
+                        write_mask: ENTITY_OUTLINE_COMPOSITE_WRITE_MASK,
+                    })],
+                }),
+                multiview: None,
+            }),
+        );
+    }
+    Ok(create_entity_outline_fullscreen_pipeline(
         device,
         format,
         bind_group_layout,
@@ -394,7 +433,7 @@ pub(super) fn create_entity_outline_composite_pipeline(
         ENTITY_OUTLINE_COMPOSITE_SHADER,
         Some(ENTITY_OUTLINE_COMPOSITE_BLEND),
         ENTITY_OUTLINE_COMPOSITE_WRITE_MASK,
-    )
+    ))
 }
 
 fn create_entity_outline_fullscreen_pipeline(

@@ -96,7 +96,7 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
-| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；73 个 current pipeline（含 portal、outline、beam、lightning、line、text、cloud、lightmap、sky、GUI_TEXTURED、entity-special family）驱动同一原子 generation，其余 static pipeline 仍待迁移 | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；全部 77 个有一对一 Vanilla static owner 的 current pipeline 驱动同一原子 generation；其余 10 个是有精确依据的 post-effect/internal 或 BBB-only fallback | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
 | 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
 | 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
 | 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
@@ -135,8 +135,8 @@ core pipeline 的 GPU 准备集由 renderer 内部唯一私有
 reload API 与 pack → render-types → renderer 依赖方向不变。glint 的 scale、view-offset-Z、
 resident instance/decal UV 与 HUD clip/mask 只在 renderer 的共享 adapter 中形成窄 GPU
 projection；各 family consumer 不再分别解析 selected shader，也不能独立发布 generation。
-renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：73 个已在统一 core
-generation、4 个仍映射到 Vanilla static pipeline/core shader、10 个无一对一 static owner。
+renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：全部 77 个有一对一 Vanilla
+static pipeline/core shader 的 owner 已在统一 core generation，10 个无一对一 static owner。
 后者只有 8 个已由 `PostEffectGraphRuntime` 拥有 selected path 的 default/内部 copy，以及
 Vanilla registry 中不存在的 BBB colored-entity / billboard-item fallback；它们不会冒充
 selected core consumer。独立 `core/rendertype_text_background` source 现在通过同一 atlas/lightmap
@@ -147,10 +147,13 @@ adapter，并复用既有 camera/texture/dynamic bind-group ownership；同一�
 `core/position_tex_color` source 只解析一次，再分别投影到 end-sky、ordinary HUD 和 vignette 的既有
 输入与 bind-group 边界。dragon-rays depth、leash、water-mask 与 entity-shadow 也由一个
 entity-special prepare family 统一发布，同时保留各自 vertex/lightmap/sampler/write-mask/depth/cull
-状态。下一组是最后 4 个 static owner。
+状态。crumbling、world-border、resident `core/block` 和 entity-outline blit 也通过最后一个
+static family 进入同一 prepare/swap/rollback 映射；它们继续使用既有 atlas、instance、fullscreen
+projection 与 blend/depth/cull/write-mask state。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
-推进 elapsed。剩余 ShaderManager 工作只来自上述 4 个机械分类 owner。
+推进 elapsed。ShaderManager 的 77 个一对一 static owner 已闭合，剩余工作是 Phase D 的真实
+默认资源/selected/filter acceptance 与整个 20-listener generation 的收口验收。
 
 ## BBB 实现映射
 

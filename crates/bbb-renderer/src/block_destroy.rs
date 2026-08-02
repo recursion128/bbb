@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
 
@@ -167,25 +168,82 @@ pub(super) fn create_block_destroy_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     terrain_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-block-destroy-overlay-pipeline")
-        .shader("bbb-block-destroy-overlay-shader", BLOCK_DESTROY_SHADER)
-        .layout(
-            "bbb-block-destroy-overlay-pipeline-layout",
-            &[terrain_bind_group_layout],
-        )
-        .vertex_buffers(&[block_destroy_vertex_layout()])
-        .color_target(format, Some(BLOCK_DESTROY_CRUMBLING_BLEND))
-        .cull_mode(BLOCK_DESTROY_CULL_MODE)
-        .depth_stencil(wgpu::DepthStencilState {
-            bias: BLOCK_DESTROY_DEPTH_BIAS,
-            ..depth_stencil_state(
-                DEPTH_FORMAT,
-                BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
-                BLOCK_DESTROY_DEPTH_COMPARE,
+) -> Result<wgpu::RenderPipeline> {
+    create_block_destroy_pipeline_with_shaders(device, format, terrain_bind_group_layout, None)
+}
+
+pub(crate) fn create_block_destroy_pipeline_with_shaders(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    terrain_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        let (vertex, fragment) = crate::core_shaders::compile_selected_shader_pair(
+            device,
+            "bbb-selected-block-destroy",
+            shaders,
+        )?;
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("bbb-selected-block-destroy-layout"),
+            bind_group_layouts: &[terrain_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        return Ok(
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("bbb-selected-block-destroy-pipeline"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &vertex,
+                    entry_point: "main",
+                    buffers: &[block_destroy_vertex_layout()],
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: BLOCK_DESTROY_CULL_MODE,
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    bias: BLOCK_DESTROY_DEPTH_BIAS,
+                    ..depth_stencil_state(
+                        DEPTH_FORMAT,
+                        BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
+                        BLOCK_DESTROY_DEPTH_COMPARE,
+                    )
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &fragment,
+                    entry_point: "main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(BLOCK_DESTROY_CRUMBLING_BLEND),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview: None,
+            }),
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-block-destroy-overlay-pipeline")
+            .shader("bbb-block-destroy-overlay-shader", BLOCK_DESTROY_SHADER)
+            .layout(
+                "bbb-block-destroy-overlay-pipeline-layout",
+                &[terrain_bind_group_layout],
             )
-        })
-        .build()
+            .vertex_buffers(&[block_destroy_vertex_layout()])
+            .color_target(format, Some(BLOCK_DESTROY_CRUMBLING_BLEND))
+            .cull_mode(BLOCK_DESTROY_CULL_MODE)
+            .depth_stencil(wgpu::DepthStencilState {
+                bias: BLOCK_DESTROY_DEPTH_BIAS,
+                ..depth_stencil_state(
+                    DEPTH_FORMAT,
+                    BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
+                    BLOCK_DESTROY_DEPTH_COMPARE,
+                )
+            })
+            .build(),
+    )
 }
 
 #[repr(C)]

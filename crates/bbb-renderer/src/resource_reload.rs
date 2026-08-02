@@ -502,6 +502,49 @@ struct GuiCorePipelines {
     vignette: wgpu::RenderPipeline,
 }
 
+struct StaticCorePipelines {
+    block_destroy: wgpu::RenderPipeline,
+    world_border: wgpu::RenderPipeline,
+    resident_block: wgpu::RenderPipeline,
+    entity_outline_blit: wgpu::RenderPipeline,
+}
+
+impl StaticCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: &crate::core_shaders::AdaptedStaticCoreShaders,
+    ) -> Result<Self> {
+        Ok(Self {
+            block_destroy: crate::block_destroy::create_block_destroy_pipeline_with_shaders(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders.crumbling.as_ref(),
+            )?,
+            world_border: crate::world_border::create_world_border_pipeline_with_shaders(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders.world_border.as_ref(),
+            )?,
+            resident_block:
+                crate::item_models::create_resident_item_model_solid_no_cutout_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders.resident_block.as_ref(),
+                )?,
+            entity_outline_blit: crate::outline::create_entity_outline_composite_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.entity_outline_bind_group_layout,
+                shaders.entity_outline_blit.as_ref(),
+            )?,
+        })
+    }
+}
+
 impl GuiCorePipelines {
     fn prepare(
         renderer: &Renderer,
@@ -553,6 +596,7 @@ struct CorePipelineGeneration {
     lightmap: Option<wgpu::RenderPipeline>,
     sky: Option<SkyCorePipelines>,
     gui: Option<GuiCorePipelines>,
+    static_core: Option<StaticCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -757,6 +801,13 @@ impl CorePipelineGeneration {
         let gui = (!startup_without_sources)
             .then(|| GuiCorePipelines::prepare(renderer, position_tex_color_shaders.as_ref()))
             .transpose()?;
+        let static_core_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_static_core_shaders(resources))
+            .transpose()?;
+        let static_core = static_core_shaders
+            .as_ref()
+            .map(|shaders| StaticCorePipelines::prepare(renderer, shaders))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -780,6 +831,7 @@ impl CorePipelineGeneration {
             lightmap,
             sky,
             gui,
+            static_core,
         })
     }
 
@@ -1046,6 +1098,24 @@ impl CorePipelineGeneration {
         if let Some(gui) = self.gui.as_mut() {
             std::mem::swap(&mut gui.hud, &mut renderer.hud_pipeline);
             std::mem::swap(&mut gui.vignette, &mut renderer.vignette_pipeline);
+        }
+        if let Some(static_core) = self.static_core.as_mut() {
+            std::mem::swap(
+                &mut static_core.block_destroy,
+                &mut renderer.block_destroy_pipeline,
+            );
+            std::mem::swap(
+                &mut static_core.world_border,
+                &mut renderer.world_border_pipeline,
+            );
+            std::mem::swap(
+                &mut static_core.resident_block,
+                &mut renderer.resident_item_model_solid_no_cutout_pipeline,
+            );
+            std::mem::swap(
+                &mut static_core.entity_outline_blit,
+                &mut renderer.entity_outline_composite_pipeline,
+            );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -2004,8 +2074,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            74,
-            "73 GPU handles plus the publication generation must share one mapping"
+            78,
+            "77 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -2117,6 +2187,13 @@ mod tests {
             1,
             "all current glint consumers must share one selected-source adapter"
         );
+        assert_eq!(
+            production
+                .matches("adapt_selected_static_core_shaders(resources)")
+                .count(),
+            1,
+            "the four final static owners must share one family adapter"
+        );
 
         let core_reload = production
             .split_once("    pub fn reload_core_shaders(")
@@ -2199,15 +2276,9 @@ mod tests {
             .filter(|owner| owner.ends_with("_pipeline"))
             .collect::<BTreeSet<_>>();
 
-        // These current surfaces map to a Vanilla static RenderPipeline and therefore must be
-        // migrated into CorePipelineGeneration. The value is the exact Java owner / core shader.
-        #[rustfmt::skip]
-        let pending = [
-            ("block_destroy_pipeline", "CRUMBLING/core/rendertype_crumbling"),
-            ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
-            ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
-            ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
-        ];
+        // Every current surface with a Vanilla static RenderPipeline is now selected and swapped
+        // by CorePipelineGeneration. A new entry here is therefore a mechanically open migration.
+        let pending: [(&str, &str); 0] = [];
         // These handles have no one-to-one Vanilla static core owner: eight are exact/default
         // post-graph or renderer-internal copies whose selected path is PostEffectGraphRuntime;
         // two are BBB fallback presentation lanes absent from Vanilla's pipeline registry.
@@ -2226,10 +2297,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 73, "selected core generation changed");
+        assert_eq!(selected.len(), 77, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            4,
+            0,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

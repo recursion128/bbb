@@ -1491,7 +1491,7 @@ impl Renderer {
             terrain_texture_filtering,
         );
         let block_destroy_pipeline =
-            create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
+            create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout)?;
         let debug_filled_box_pipeline =
             create_debug_filled_box_pipeline(&device, format, &terrain_bind_group_layout);
         let debug_text_pipeline = create_debug_text_pipeline(
@@ -1722,7 +1722,7 @@ impl Renderer {
         let lightning_pipeline =
             create_lightning_pipeline(&device, format, &terrain_bind_group_layout, None)?;
         let world_border_pipeline =
-            create_world_border_pipeline(&device, format, &terrain_bind_group_layout);
+            create_world_border_pipeline(&device, format, &terrain_bind_group_layout)?;
         let item_entity_pipeline = create_item_entity_pipeline(
             &device,
             format,
@@ -1790,7 +1790,8 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_z_offset_forward_pipeline =
             create_resident_item_model_z_offset_forward_pipeline(
                 &device,
@@ -1907,7 +1908,8 @@ impl Renderer {
             &device,
             format,
             &entity_outline_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_outline_target = create_entity_outline_target(
             &device,
             &entity_outline_bind_group_layout,

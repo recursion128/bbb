@@ -3,7 +3,8 @@ use bbb_render_types::{CoreShaderSourceProjection, ShaderStage};
 use regex::Regex;
 
 use crate::post_effect_graph::glsl::{
-    adapt_combined_samplers, require_webgpu_glsl_version, SamplerBinding,
+    adapt_combined_samplers, replace_identifier, require_webgpu_glsl_version,
+    wrap_vertex_main_for_webgpu, SamplerBinding,
 };
 
 const TERRAIN_SHADER_ID: &str = "minecraft:core/terrain";
@@ -31,6 +32,10 @@ const POSITION_SHADER_ID: &str = "minecraft:core/position";
 const LEASH_SHADER_ID: &str = "minecraft:core/rendertype_leash";
 const WATER_MASK_SHADER_ID: &str = "minecraft:core/rendertype_water_mask";
 const ENTITY_SHADOW_SHADER_ID: &str = "minecraft:core/rendertype_entity_shadow";
+const CRUMBLING_SHADER_ID: &str = "minecraft:core/rendertype_crumbling";
+const WORLD_BORDER_SHADER_ID: &str = "minecraft:core/rendertype_world_border";
+const BLOCK_SHADER_ID: &str = "minecraft:core/block";
+const BLIT_SCREEN_SHADER_ID: &str = "minecraft:core/blit_screen";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -147,6 +152,13 @@ pub(crate) struct AdaptedEntitySpecialShaders {
     pub(crate) leash: Option<AdaptedShaderPair>,
     pub(crate) water_mask: Option<AdaptedShaderPair>,
     pub(crate) shadow: Option<AdaptedShaderPair>,
+}
+
+pub(crate) struct AdaptedStaticCoreShaders {
+    pub(crate) crumbling: Option<AdaptedShaderPair>,
+    pub(crate) world_border: Option<AdaptedShaderPair>,
+    pub(crate) resident_block: Option<AdaptedShaderPair>,
+    pub(crate) entity_outline_blit: Option<AdaptedShaderPair>,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -644,6 +656,72 @@ pub(crate) fn adapt_selected_entity_special_shaders(
             EntitySpecialShaderKind::Shadow,
         )?,
     })
+}
+
+pub(crate) fn adapt_selected_static_core_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<AdaptedStaticCoreShaders> {
+    Ok(AdaptedStaticCoreShaders {
+        crumbling: adapt_selected_static_pair(
+            resources,
+            CRUMBLING_SHADER_ID,
+            CRUMBLING_SHADER_ID,
+            StaticCoreShaderKind::Crumbling,
+        )?,
+        world_border: adapt_selected_static_pair(
+            resources,
+            WORLD_BORDER_SHADER_ID,
+            WORLD_BORDER_SHADER_ID,
+            StaticCoreShaderKind::WorldBorder,
+        )?,
+        resident_block: adapt_selected_static_pair(
+            resources,
+            BLOCK_SHADER_ID,
+            BLOCK_SHADER_ID,
+            StaticCoreShaderKind::ResidentBlock,
+        )?,
+        entity_outline_blit: adapt_selected_static_pair(
+            resources,
+            SCREEN_QUAD_SHADER_ID,
+            BLIT_SCREEN_SHADER_ID,
+            StaticCoreShaderKind::EntityOutlineBlit,
+        )?,
+    })
+}
+
+#[derive(Clone, Copy)]
+enum StaticCoreShaderKind {
+    Crumbling,
+    WorldBorder,
+    ResidentBlock,
+    EntityOutlineBlit,
+}
+
+fn adapt_selected_static_pair(
+    resources: &CoreShaderSourceProjection,
+    vertex_shader_id: &str,
+    fragment_shader_id: &str,
+    kind: StaticCoreShaderKind,
+) -> Result<Option<AdaptedShaderPair>> {
+    let vertex = resources
+        .source_by_id(vertex_shader_id, ShaderStage::Vertex)
+        .with_context(|| {
+            format!("prepared core shaders are missing {vertex_shader_id} vertex stage")
+        })?;
+    let fragment = resources
+        .source_by_id(fragment_shader_id, ShaderStage::Fragment)
+        .with_context(|| {
+            format!("prepared core shaders are missing {fragment_shader_id} fragment stage")
+        })?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedShaderPair {
+        vertex: adapt_static_core_stage(&vertex.source, true, kind)
+            .with_context(|| format!("adapt selected {vertex_shader_id} vertex shader"))?,
+        fragment: adapt_static_core_stage(&fragment.source, false, kind)
+            .with_context(|| format!("adapt selected {fragment_shader_id} fragment shader"))?,
+    }))
 }
 
 #[derive(Clone, Copy)]
@@ -1360,6 +1438,177 @@ fn adapt_entity_special_stage(
     adapt_combined_samplers(&source, &bindings)
 }
 
+fn adapt_static_core_stage(
+    source: &str,
+    vertex_stage: bool,
+    kind: StaticCoreShaderKind,
+) -> Result<String> {
+    match kind {
+        StaticCoreShaderKind::Crumbling => adapt_crumbling_stage(source, vertex_stage),
+        StaticCoreShaderKind::WorldBorder => adapt_world_border_stage(source, vertex_stage),
+        StaticCoreShaderKind::ResidentBlock => adapt_resident_block_stage(source, vertex_stage),
+        StaticCoreShaderKind::EntityOutlineBlit => {
+            adapt_entity_outline_blit_stage(source, vertex_stage)
+        }
+    }
+}
+
+fn adapt_crumbling_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = adapt_terrain_stage(source, vertex_stage, false)?;
+    if vertex_stage {
+        let source = [
+            "layout(location = 1) in vec4 Color;",
+            "layout(location = 3) in ivec2 UV2;",
+            "in vec3 Normal;",
+        ]
+        .into_iter()
+        .try_fold(source, |source, declaration| {
+            replace_required(
+                &source,
+                declaration,
+                "",
+                "selected crumbling unused vertex input",
+            )
+        })?;
+        let source = insert_after_version(
+            &source,
+            "layout(location = 3) in vec2 BbbUvRectMin;\nlayout(location = 4) in vec2 BbbUvRectSize;\nlayout(location = 4) out vec2 bbbUvRectMin;\nlayout(location = 5) out vec2 bbbUvRectSize;\n",
+        )?;
+        let source = replace_required(
+            &source,
+            "vertexColor = Color;",
+            "vertexColor = vec4(1.0);",
+            "selected crumbling baked vertex color",
+        )?;
+        replace_required(
+            &source,
+            "texCoord0 = UV0;",
+            "texCoord0 = UV0;\n    bbbUvRectMin = BbbUvRectMin;\n    bbbUvRectSize = BbbUvRectSize;",
+            "selected crumbling atlas projection",
+        )
+    } else {
+        let source = insert_after_version(
+            &source,
+            "layout(location = 4) in vec2 bbbUvRectMin;\nlayout(location = 5) in vec2 bbbUvRectSize;\n",
+        )?;
+        replace_required(
+            &source,
+            "texture(sampler2D(bbb_post_texture_0, bbb_post_sampler_0), texCoord0)",
+            "texture(sampler2D(bbb_post_texture_0, bbb_post_sampler_0), bbbUvRectMin + fract(texCoord0) * bbbUvRectSize)",
+            "selected crumbling atlas sample",
+        )
+    }
+}
+
+fn adapt_world_border_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        let source = insert_after_version(
+            &source,
+            "layout(location = 2) in vec4 BbbColor;\nlayout(location = 1) out vec4 bbbVertexColor;\n",
+        )?;
+        replace_required(
+            &source,
+            "texCoord0 = (TextureMat * vec4(UV0, 0.0, 1.0)).xy;",
+            "texCoord0 = (TextureMat * vec4(UV0, 0.0, 1.0)).xy;\n    bbbVertexColor = BbbColor;",
+            "selected world-border baked color",
+        )?
+    } else {
+        let source =
+            insert_after_version(&source, "layout(location = 1) in vec4 bbbVertexColor;\n")?;
+        replace_required(
+            &source,
+            "#define ColorModulator vec4(1.0)",
+            "#define ColorModulator bbbVertexColor",
+            "selected world-border color modulator",
+        )?
+    };
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "vec2", "texCoord0", 0, true),
+        ]
+    } else {
+        &[
+            ("in", "vec2", "texCoord0", 0, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    let source = declarations
+        .iter()
+        .try_fold(source, |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })?;
+    let source = hoist_combined_sampler_declarations(&source)?;
+    adapt_combined_samplers(
+        &source,
+        &[SamplerBinding {
+            source_name: "Sampler0".to_string(),
+            texture_group: 0,
+            texture_binding: 1,
+            sampler_group: 0,
+            sampler_binding: 2,
+        }],
+    )
+}
+
+fn adapt_resident_block_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = adapt_item_stage(source, vertex_stage)?;
+    if !vertex_stage {
+        return Ok(source);
+    }
+    let source = replace_required(
+        &source,
+        "layout(location = 3) in vec2 UV2;",
+        "",
+        "selected resident block UV2 declaration",
+    )?;
+    let source = replace_required(
+        &source,
+        "layout(location = 2) in vec4 Color;",
+        "layout(location = 2) in vec4 BbbVertexColor;",
+        "selected resident block vertex color declaration",
+    )?;
+    let source = insert_after_version(
+        &source,
+        &format!("{RESIDENT_ITEM_INSTANCE_INPUTS}#define Color (BbbVertexColor * BbbTint)\n"),
+    )?;
+    let source = replace_required(
+        &source,
+        "vec3 pos = Position + ModelOffset;\n    gl_Position = ProjMat * ModelViewMat * vec4(pos, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    vec4 bbbWorld = bbbModel * vec4(Position, 1.0);\n    vec3 pos = bbbWorld.xyz;\n    gl_Position = ProjMat * bbbWorld;",
+        "selected resident block world transform",
+    )?;
+    Ok(source.replace(
+        "sample_lightmap(UV2)",
+        "sample_lightmap(BbbLightOverlay.xy)",
+    ))
+}
+
+fn adapt_entity_outline_blit_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = require_webgpu_glsl_version(source);
+    if vertex_stage {
+        let source = bind_optional_declaration(&source, ("out", "vec2", "texCoord", 0, true))?;
+        let source = replace_identifier(&source, "gl_VertexID", "gl_VertexIndex")?;
+        wrap_vertex_main_for_webgpu(&source)
+    } else {
+        let source = bind_optional_declaration(&source, ("in", "vec2", "texCoord", 0, true))?;
+        let source = bind_optional_declaration(&source, ("out", "vec4", "fragColor", 0, true))?;
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "InSampler".to_string(),
+                texture_group: 0,
+                texture_binding: 0,
+                sampler_group: 0,
+                sampler_binding: 1,
+            }],
+        )
+    }
+}
+
 fn project_sky_dynamic_uniform(source: &str, dynamic_group: u32) -> Result<String> {
     let source = replace_required(
         source,
@@ -1675,6 +1924,28 @@ layout(location = 3) out vec2 bbbUvRectSize;
 const BEACON_BEAM_ATLAS_FRAGMENT_IO: &str = r#"layout(location = 2) in vec2 bbbUvRectMin;
 layout(location = 3) in vec2 bbbUvRectSize;
 "#;
+
+pub(crate) fn compile_selected_shader_pair(
+    device: &wgpu::Device,
+    label: &str,
+    shaders: &AdaptedShaderPair,
+) -> Result<(wgpu::ShaderModule, wgpu::ShaderModule)> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        &format!("{label}-vertex"),
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected vertex shader for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        &format!("{label}-fragment"),
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected fragment shader for {label}"))?;
+    Ok((vertex, fragment))
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_selected_position_color_pipeline(
@@ -3700,6 +3971,88 @@ void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModu
     }
 
     #[test]
+    fn final_static_core_adapters_project_existing_bbb_inputs_without_changing_pipeline_state() {
+        let crumbling_vertex = r#"#version 330
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+in ivec2 UV2;
+in vec3 Normal;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    vertexColor = Color;
+    texCoord0 = UV0;
+}
+"#;
+        let crumbling = adapt_crumbling_stage(crumbling_vertex, true)
+            .expect("crumbling atlas/input projection");
+        assert!(crumbling.contains("layout(location = 2) in vec2 UV0"));
+        assert!(crumbling.contains("layout(location = 3) in vec2 BbbUvRectMin"));
+        assert!(crumbling.contains("bbbUvRectSize = BbbUvRectSize"));
+        assert!(crumbling.contains("vertexColor = vec4(1.0)"));
+        assert!(!crumbling.contains("in vec4 Color"));
+        assert!(!crumbling.contains("in vec3 Normal"));
+
+        let world_border_fragment = r#"#version 330
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
+"#;
+        let world_border = adapt_world_border_stage(world_border_fragment, false)
+            .expect("world-border color/sampler projection");
+        assert!(world_border.contains("#define ColorModulator bbbVertexColor"));
+        assert!(world_border.contains("layout(location = 1) in vec4 bbbVertexColor"));
+        assert!(world_border.contains("layout(set = 0, binding = 1) uniform texture2D"));
+
+        let block_vertex = r#"#version 330
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+in ivec2 UV2;
+uniform sampler2D Sampler2;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    vec3 pos = Position + ModelOffset;
+    gl_Position = ProjMat * ModelViewMat * vec4(pos, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(pos);
+    cylindricalVertexDistance = fog_cylindrical_distance(pos);
+    vertexColor = Color * sample_lightmap(Sampler2, UV2);
+    texCoord0 = UV0;
+}
+"#;
+        let block = adapt_resident_block_stage(block_vertex, true)
+            .expect("resident block instance/lightmap projection");
+        assert!(block.contains("mat4 bbbModel = mat4(BbbModel0"));
+        assert!(block.contains("#define Color (BbbVertexColor * BbbTint)"));
+        assert!(block.contains("Color * sample_lightmap(BbbLightOverlay.xy)"));
+        assert!(!block.contains("layout(location = 3) in vec2 UV2"));
+
+        let screenquad = r#"#version 330
+out vec2 texCoord;
+void main() {
+    vec2 uv = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    gl_Position = vec4(uv * vec2(2, 2) + vec2(-1, -1), 0, 1);
+    texCoord = uv;
+}
+"#;
+        let outline = adapt_entity_outline_blit_stage(screenquad, true)
+            .expect("outline screenquad WebGPU projection");
+        assert!(outline.contains("gl_VertexIndex"));
+        assert!(outline.contains("gl_Position.y = -gl_Position.y"));
+        assert!(outline.contains("layout(location = 0) out vec2 texCoord"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -4078,6 +4431,21 @@ void main() {
                 id: id.to_string(),
                 stage,
             })
+        })
+        .collect::<Vec<_>>();
+        let static_core_keys = [
+            (CRUMBLING_SHADER_ID, ShaderStage::Vertex),
+            (CRUMBLING_SHADER_ID, ShaderStage::Fragment),
+            (WORLD_BORDER_SHADER_ID, ShaderStage::Vertex),
+            (WORLD_BORDER_SHADER_ID, ShaderStage::Fragment),
+            (BLOCK_SHADER_ID, ShaderStage::Vertex),
+            (BLOCK_SHADER_ID, ShaderStage::Fragment),
+            (BLIT_SCREEN_SHADER_ID, ShaderStage::Fragment),
+        ]
+        .into_iter()
+        .map(|(id, stage)| ShaderSourceKey {
+            id: id.to_string(),
+            stage,
         })
         .collect::<Vec<_>>();
         let mut sources = BTreeMap::from([
@@ -4502,6 +4870,27 @@ void main() { gl_Position = vec4(Position, 1.0); }
                 ),
         ]);
         for key in entity_special_keys {
+            let extension = match key.stage {
+                ShaderStage::Vertex => "vsh",
+                ShaderStage::Fragment => "fsh",
+            };
+            let shader_path = key
+                .id
+                .strip_prefix("minecraft:core/")
+                .expect("fixture shader namespace")
+                .to_string();
+            sources.insert(
+                key.clone(),
+                ShaderSource {
+                    key,
+                    resource_id: format!("minecraft:shaders/core/{shader_path}.{extension}"),
+                    pack_id: "vanilla".to_string(),
+                    source: String::new(),
+                    imports: Vec::new(),
+                },
+            );
+        }
+        for key in static_core_keys {
             let extension = match key.stage {
                 ShaderStage::Vertex => "vsh",
                 ShaderStage::Fragment => "fsh",
@@ -5701,6 +6090,122 @@ void main() { fragColor = texture(Sampler0, clamp(texCoord0, 0.0, 1.0)) * vertex
             .expect_err("filtering required entity-special stages must reject the generation");
         assert!(error.to_string().contains("core/position"));
         assert_eq!(renderer.core_shader_generation(), Some(171));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_final_static_core_family_preloads_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-final-static-core");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_crumbling.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor + vec4((sphericalVertexDistance + cylindricalVertexDistance) * 0.0); }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_world_border.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/block.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModulator + vec4((sphericalVertexDistance + cylindricalVertexDistance) * 0.0); }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/blit_screen.fsh"),
+            r#"#version 330
+uniform sampler2D InSampler;
+in vec2 texCoord;
+out vec4 fragColor;
+void main() { fragColor = texture(InSampler, texCoord); }
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected final-static shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(181, selected)
+            .expect("selected final-static generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        for shader_id in [
+            CRUMBLING_SHADER_ID,
+            WORLD_BORDER_SHADER_ID,
+            BLOCK_SHADER_ID,
+            BLIT_SCREEN_SHADER_ID,
+        ] {
+            assert_eq!(
+                catalog
+                    .source_by_id(shader_id, ShaderStage::Fragment)
+                    .expect("selected final-static fragment")
+                    .pack_id,
+                "startup/0"
+            );
+        }
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected crumbling, world-border, resident-block, and outline-blit pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(181));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/(?:rendertype_crumbling|rendertype_world_border|block|screenquad|blit_screen)\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected final-static filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(182, filtered)
+            .expect("filtered final-static generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required final-static stages must reject the generation");
+        assert!([
+            "rendertype_crumbling",
+            "rendertype_world_border",
+            "core/block",
+            "blit_screen",
+            "screenquad",
+        ]
+        .iter()
+        .any(|needle| error.to_string().contains(needle)));
+        assert_eq!(renderer.core_shader_generation(), Some(181));
 
         std::fs::remove_dir_all(root).unwrap();
     }

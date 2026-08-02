@@ -196,21 +196,77 @@ pub(crate) fn create_world_border_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-world-border-pipeline")
-        .shader("bbb-world-border-shader", WORLD_BORDER_SHADER)
-        .layout("bbb-world-border-pipeline-layout", &[bind_group_layout])
-        .vertex_buffers(&[world_border_vertex_layout()])
-        .color_target(format, Some(WORLD_BORDER_BLEND))
-        .cull_mode(WORLD_BORDER_CULL_MODE)
-        .depth_stencil(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: WORLD_BORDER_DEPTH_WRITE_ENABLED,
-            depth_compare: WORLD_BORDER_DEPTH_COMPARE,
-            stencil: wgpu::StencilState::default(),
-            bias: WORLD_BORDER_DEPTH_BIAS,
-        })
-        .build()
+) -> Result<wgpu::RenderPipeline> {
+    create_world_border_pipeline_with_shaders(device, format, bind_group_layout, None)
+}
+
+pub(crate) fn create_world_border_pipeline_with_shaders(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        let (vertex, fragment) = crate::core_shaders::compile_selected_shader_pair(
+            device,
+            "bbb-selected-world-border",
+            shaders,
+        )?;
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("bbb-selected-world-border-layout"),
+            bind_group_layouts: &[bind_group_layout],
+            push_constant_ranges: &[],
+        });
+        return Ok(
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("bbb-selected-world-border-pipeline"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &vertex,
+                    entry_point: "main",
+                    buffers: &[world_border_vertex_layout()],
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: WORLD_BORDER_CULL_MODE,
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: WORLD_BORDER_DEPTH_WRITE_ENABLED,
+                    depth_compare: WORLD_BORDER_DEPTH_COMPARE,
+                    stencil: wgpu::StencilState::default(),
+                    bias: WORLD_BORDER_DEPTH_BIAS,
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &fragment,
+                    entry_point: "main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(WORLD_BORDER_BLEND),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview: None,
+            }),
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-world-border-pipeline")
+            .shader("bbb-world-border-shader", WORLD_BORDER_SHADER)
+            .layout("bbb-world-border-pipeline-layout", &[bind_group_layout])
+            .vertex_buffers(&[world_border_vertex_layout()])
+            .color_target(format, Some(WORLD_BORDER_BLEND))
+            .cull_mode(WORLD_BORDER_CULL_MODE)
+            .depth_stencil(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: WORLD_BORDER_DEPTH_WRITE_ENABLED,
+                depth_compare: WORLD_BORDER_DEPTH_COMPARE,
+                stencil: wgpu::StencilState::default(),
+                bias: WORLD_BORDER_DEPTH_BIAS,
+            })
+            .build(),
+    )
 }
 
 pub(crate) struct WorldBorderTextureGpu {
