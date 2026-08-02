@@ -1332,6 +1332,47 @@ fn stable_block_entity_cache_uses_exact_revision_filter_and_resource_keys() {
 }
 
 #[test]
+fn dynamic_block_entity_presence_cache_follows_render_revision_and_resource_epoch() {
+    let mut scratch = NonEntityRenderExtractionScratch::default();
+    let builds = Cell::new(0);
+    let revision = bbb_world::StableBlockEntityRenderRevision {
+        client_level_generation: 4,
+        terrain: 7,
+        block_entity_data: 9,
+    };
+    let build = || {
+        builds.set(builds.get() + 1);
+        DynamicBlockEntityPresence {
+            chest: true,
+            skull: true,
+            ..DynamicBlockEntityPresence::default()
+        }
+    };
+
+    let first = scratch.dynamic_block_entity_presence(revision, build);
+    assert!(first.chest && first.skull && !first.banner);
+    assert_eq!(
+        scratch.dynamic_block_entity_presence(revision, build),
+        first
+    );
+    assert_eq!(builds.get(), 1);
+
+    let changed = bbb_world::StableBlockEntityRenderRevision {
+        terrain: 8,
+        ..revision
+    };
+    assert_eq!(scratch.dynamic_block_entity_presence(changed, build), first);
+    assert_eq!(builds.get(), 2);
+
+    scratch.invalidate_resources();
+    assert_eq!(scratch.dynamic_block_entity_presence(changed, build), first);
+    assert_eq!(builds.get(), 3);
+    assert_eq!(scratch.observation().cache_hits, 10);
+    assert_eq!(scratch.observation().cache_misses, 30);
+    assert_eq!(scratch.observation().rebuilt_owners, 30);
+}
+
+#[test]
 fn game_test_highlight_cache_rebuilds_only_for_level_or_marker_revision() {
     let mut scratch = NonEntityRenderExtractionScratch::default();
     let builds = Cell::new(0);

@@ -536,6 +536,9 @@ mod tests {
 
         renderer.set_debug_filled_boxes(Vec::new());
         assert!(renderer.debug_filled_boxes.is_empty());
+        // Keep the unrelated tick-owned lightmap pass equal across both frames;
+        // this assertion is specifically about the removed debug-box draw.
+        renderer.lightmap_dirty = true;
         let without_box = renderer
             .render_offscreen_frame()
             .expect("cleared debug box frame readback");

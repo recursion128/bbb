@@ -38,6 +38,7 @@ mod entity_scene;
 mod entity_variant_textures;
 mod environment_animate_runtime;
 mod environment_audio_runtime;
+mod frame_diagnostics;
 mod game_test_highlights;
 mod hotbar_presets;
 mod hud_assets;
@@ -89,6 +90,7 @@ use debug_profiler::{
 use entity_assets::load_entity_model_textures;
 use entity_scene::EntityRenderExtractionScratch;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
+use frame_diagnostics::{FramePhaseDiagnostics, FramePhaseSample};
 use hud_assets::load_hud_textures;
 use input::{ClientInputState, DebugClipboard};
 use item_texture_animation::{maybe_upload_item_texture_animation, ItemTextureAnimationState};
@@ -842,6 +844,7 @@ fn main() -> Result<()> {
         input::DEBUG_PROFILING_RESULTS_RELATIVE_DIR,
         args.server.clone(),
     );
+    let mut frame_phase_diagnostics = FramePhaseDiagnostics::default();
     let mut last_profiled_simulation_generation = None;
     let mut latest_simulation_profile_sections = Vec::<runtime::SimulationProfileSection>::new();
     let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
@@ -1110,6 +1113,7 @@ fn main() -> Result<()> {
                                 .local_player_has_reduced_debug_info(),
                         );
                     renderer.set_gpu_timing_enabled(gpu_timing_enabled);
+                    frame_phase_diagnostics.set_enabled(gpu_timing_enabled);
                     let dynamic_texture_resource_generation = item_runtime
                         .as_ref()
                         .map_or(0, NativeItemRuntime::dynamic_texture_resource_generation);
@@ -1154,6 +1158,7 @@ fn main() -> Result<()> {
                             debug_sky_light_section_cache: &mut debug_sky_light_section_cache,
                             remote_debug_selection_cache: &mut remote_debug_selection_cache,
                             render_distance_chunks: args.render_distance_chunks,
+                            cloud_range_chunks: args.cloud_range_chunks,
                             client_framerate_limit: args.client_framerate_limit,
                             client_vsync: args.client_vsync,
                             damage_tilt_strength: args.damage_tilt_strength,
@@ -1405,6 +1410,19 @@ fn main() -> Result<()> {
                     );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_work_duration = profiler_frame_started_at.elapsed();
+                    frame_phase_diagnostics.record(FramePhaseSample {
+                        frame_interval: renderer_frame_profile.frame_interval,
+                        frame_work: profiler_frame_work_duration,
+                        update: profiler_update_duration,
+                        extract: native_render_profile.extract,
+                        render_call: profiler_render_duration,
+                        surface_acquire: renderer_frame_profile.surface_acquire,
+                        render_encode: renderer_frame_profile.render,
+                        queue_submit: renderer_frame_profile.present,
+                        swap_buffers: renderer_frame_profile.swap_buffers,
+                        gpu_poll: renderer_frame_profile.gpu_async,
+                        publish: profiler_publish_duration,
+                    });
                     let profiler_frame_duration = renderer_frame_profile
                         .frame_interval
                         .max(profiler_frame_work_duration);
@@ -1480,6 +1498,11 @@ fn main() -> Result<()> {
                             DebugProfilerSectionSample {
                                 path: &["frame", "extract"],
                                 duration: native_render_profile.extract,
+                                record_in_report: true,
+                            },
+                            DebugProfilerSectionSample {
+                                path: &["frame", "surfaceAcquire"],
+                                duration: renderer_frame_profile.surface_acquire,
                                 record_in_report: true,
                             },
                             DebugProfilerSectionSample {

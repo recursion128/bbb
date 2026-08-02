@@ -22,6 +22,7 @@ image = { workspace = true }
 pollster = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
+sha2 = { workspace = true }
 tracing = { workspace = true }
 wgpu = { workspace = true, features = ["glsl", "naga-ir"] }
 winit = { workspace = true }

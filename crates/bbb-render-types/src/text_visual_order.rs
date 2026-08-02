@@ -33,6 +33,14 @@ pub fn visual_order<T: Clone + PartialEq>(
     if logical.is_empty() {
         return Vec::new();
     }
+    // Vanilla caches `Component.getVisualOrderText()` and chat stores already
+    // split `FormattedCharSequence` lines. Preserve the exact ICU path for
+    // every value that can shape or reorder, while avoiding that work for an
+    // LTR ASCII line: with an LTR paragraph base, ASCII contributes no RTL,
+    // isolate, embedding, or Arabic-shaping input, so UAX #9 is the identity.
+    if !default_right_to_left && logical.iter().all(|(ch, _)| ch.is_ascii()) {
+        return logical.to_vec();
+    }
 
     let mut logical_units = Vec::new();
     let mut metadata = Vec::new();
@@ -488,6 +496,17 @@ mod tests {
         );
         assert_eq!(visual_string("א[ב]", false), "[ב]א");
         assert_eq!(visual_string("א\u{0301}ב", false), "ב\u{0301}א");
+    }
+
+    #[test]
+    fn ltr_ascii_identity_path_preserves_controls_punctuation_and_metadata() {
+        let logical = "ABC 123\t[](){}<>+-=*/_\r\n"
+            .chars()
+            .enumerate()
+            .map(|(index, ch)| (ch, index))
+            .collect::<Vec<_>>();
+        assert_eq!(visual_order(&logical, false), logical);
+        assert_eq!(visual_string("123-", true), "-123");
     }
 
     #[test]

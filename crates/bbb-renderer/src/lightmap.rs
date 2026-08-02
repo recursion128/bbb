@@ -163,7 +163,7 @@ pub(super) fn create_lightmap_sample_bind_group_layout(
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Texture {
                     sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::D2,
@@ -173,7 +173,7 @@ pub(super) fn create_lightmap_sample_bind_group_layout(
             },
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
@@ -428,6 +428,34 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn lightmap_pass_is_consumed_once_per_environment_change() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            eprintln!("skipping lightmap dirty GPU test without a compatible adapter");
+            return;
+        };
+
+        renderer
+            .render_offscreen_frame()
+            .expect("initial lightmap frame");
+        let initial_draws = renderer.counters().draw_calls;
+        renderer
+            .render_offscreen_frame()
+            .expect("unchanged lightmap frame");
+        let unchanged_draws = renderer.counters().draw_calls;
+        assert_eq!(
+            unchanged_draws + 1,
+            initial_draws,
+            "only the dirty frame contains the standalone lightmap draw"
+        );
+
+        renderer.set_lightmap_brightness_factor(0.75);
+        renderer
+            .render_offscreen_frame()
+            .expect("changed lightmap frame");
+        assert_eq!(renderer.counters().draw_calls, initial_draws);
     }
 
     fn render_lightmap_pixels(

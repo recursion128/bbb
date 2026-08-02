@@ -8450,20 +8450,21 @@ fn entity_model_instances_project_armor_stand_flags_and_pose_without_pose_lerp()
 
     assert_eq!(
         instances,
-        aged(
-            vec![EntityModelInstance::armor_stand_with_marker(
-                5,
-                [1.0, 64.0, -2.0],
-                0.0,
-                true,
-                true,
-                true,
-                false,
-                pose,
-            )
-            .with_age_scale(0.5),],
-            1.0,
+        vec![EntityModelInstance::armor_stand_with_marker(
+            5,
+            [1.0, 64.0, -2.0],
+            0.0,
+            true,
+            true,
+            true,
+            false,
+            pose,
         )
+        .with_age_scale(0.5),]
+    );
+    assert_eq!(
+        instances[0].render_state.age_in_ticks, 0.0,
+        "ArmorStandModel and its layers do not consume the generic age field"
     );
 }
 

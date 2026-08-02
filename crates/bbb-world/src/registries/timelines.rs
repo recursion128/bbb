@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::{borrow::Cow, collections::BTreeSet};
 
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
@@ -146,17 +146,26 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<TimelineDefinition>, TimelineProjectionError> {
+        self.synchronized_timeline_definition_ref(holder_id)
+            .map(|definition| definition.map(Cow::into_owned))
+    }
+
+    fn synchronized_timeline_definition_ref(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<Cow<'_, TimelineDefinition>>, TimelineProjectionError> {
         let registry_access = self.frozen_registry_access();
         let Some(entry) = registry_access.entry_by_holder_id(TIMELINE_REGISTRY, holder_id) else {
             return Ok(None);
         };
         if let Some(definition) = self.registries.typed.timelines.get(entry.resource_id) {
-            return Ok(Some(definition.clone()));
+            return Ok(Some(Cow::Borrowed(definition)));
         }
         let Some(data) = entry.element_data else {
             return Ok(None);
         };
         decode_timeline_definition(entry.resource_id, data.source, &data.value, registry_access)
+            .map(Cow::Owned)
             .map(Some)
     }
 
@@ -168,7 +177,7 @@ impl WorldStore {
         };
         let dimension = self
             .registries
-            .dimension_type_client_projection(level.dimension_type_id);
+            .dimension_type_client_projection_ref(level.dimension_type_id);
         let mut value = dimension
             .as_ref()
             .and_then(|projection| projection.environment_attributes.sky_light_factor)
@@ -189,7 +198,7 @@ impl WorldStore {
                     &mut sampled,
                     &track.attribute,
                     track.modifier.environment_modifier(),
-                    argument,
+                    argument.as_ref(),
                 )
                 .map_err(|error| track_error(&timeline, track, "modifier", error.to_string()))?;
                 value = sampled.sky_light_factor.unwrap_or(value);
@@ -201,13 +210,13 @@ impl WorldStore {
 
     pub(super) fn resolved_dimension_timelines(
         &self,
-    ) -> Result<Vec<(TimelineDefinition, i64)>, TimelineProjectionError> {
+    ) -> Result<Vec<(Cow<'_, TimelineDefinition>, i64)>, TimelineProjectionError> {
         let Some(level) = self.level_info() else {
             return Ok(Vec::new());
         };
         let dimension = self
             .registries
-            .dimension_type_client_projection(level.dimension_type_id);
+            .dimension_type_client_projection_ref(level.dimension_type_id);
         let timeline_resource_ids = dimension
             .as_ref()
             .map(|projection| projection.timeline_resource_ids.as_slice())
@@ -225,7 +234,7 @@ impl WorldStore {
                         )
                     })?;
                 let timeline = self
-                    .synchronized_timeline_definition(holder_id)?
+                    .synchronized_timeline_definition_ref(holder_id)?
                     .ok_or_else(|| {
                         error(
                             timeline_resource_id,
@@ -245,6 +254,53 @@ impl WorldStore {
                 Ok((timeline, total_ticks))
             })
             .collect()
+    }
+
+    pub(super) fn visit_resolved_dimension_timelines(
+        &self,
+        mut visitor: impl FnMut(&TimelineDefinition, i64) -> Result<(), TimelineProjectionError>,
+    ) -> Result<(), TimelineProjectionError> {
+        let Some(level) = self.level_info() else {
+            return Ok(());
+        };
+        let dimension = self
+            .registries
+            .dimension_type_client_projection_ref(level.dimension_type_id);
+        let timeline_resource_ids = dimension
+            .as_ref()
+            .map(|projection| projection.timeline_resource_ids.as_slice())
+            .unwrap_or_else(|| level.timeline_resource_ids());
+        for timeline_resource_id in timeline_resource_ids {
+            let holder_id = self
+                .registry_holder_id_by_resource_id(TIMELINE_REGISTRY, timeline_resource_id)
+                .ok_or_else(|| {
+                    error(
+                        timeline_resource_id,
+                        "<holder>",
+                        "timeline is absent from the current session registry",
+                    )
+                })?;
+            let timeline = self
+                .synchronized_timeline_definition_ref(holder_id)?
+                .ok_or_else(|| {
+                    error(
+                        timeline_resource_id,
+                        "<root>",
+                        "timeline has no synchronized typed value",
+                    )
+                })?;
+            let total_ticks = self
+                .world_time()
+                .and_then(|time| {
+                    time.clock_updates
+                        .iter()
+                        .find(|clock| clock.clock_id == timeline.clock.holder_id)
+                })
+                .map(|clock| clock.total_ticks)
+                .unwrap_or(0);
+            visitor(timeline.as_ref(), total_ticks)?;
+        }
+        Ok(())
     }
 }
 
@@ -274,23 +330,18 @@ pub(super) fn apply_environment_track(
         attributes,
         &track.attribute,
         track.modifier.environment_modifier(),
-        argument,
+        argument.as_ref(),
     )
     .map_err(|error| track_error(timeline, track, "modifier", error.to_string()))
 }
 
-fn sample_track_argument(
+fn sample_track_argument<'a>(
     timeline: &TimelineDefinition,
-    track: &TimelineTrackDefinition,
+    track: &'a TimelineTrackDefinition,
     total_ticks: i64,
-) -> Result<EnvironmentTrackArgument, TimelineProjectionError> {
-    let values = track
-        .keyframes
-        .iter()
-        .map(|keyframe| keyframe.argument.clone())
-        .collect::<Vec<_>>();
-    if values.len() == 1 {
-        return Ok(values[0].clone());
+) -> Result<Cow<'a, EnvironmentTrackArgument>, TimelineProjectionError> {
+    if track.keyframes.len() == 1 {
+        return Ok(Cow::Borrowed(&track.keyframes[0].argument));
     }
     let sample_ticks = timeline
         .period_ticks
@@ -328,7 +379,7 @@ fn sample_track_argument(
             )
         }
     } else if sample_ticks < i64::from(first.ticks) {
-        return Ok(values[0].clone());
+        return Ok(Cow::Borrowed(&first.argument));
     } else if let Some(index) = track
         .keyframes
         .windows(2)
@@ -341,22 +392,22 @@ fn sample_track_argument(
             i64::from(track.keyframes[index + 1].ticks),
         )
     } else {
-        return Ok(values[last_index].clone());
+        return Ok(Cow::Borrowed(&last.argument));
     };
     if sample_ticks <= from_ticks {
-        return Ok(values[from_index].clone());
+        return Ok(Cow::Borrowed(&track.keyframes[from_index].argument));
     }
     if sample_ticks >= to_ticks {
-        return Ok(values[to_index].clone());
+        return Ok(Cow::Borrowed(&track.keyframes[to_index].argument));
     }
     let alpha = (sample_ticks - from_ticks) as f32 / (to_ticks - from_ticks) as f32;
     let alpha = apply_easing(timeline, track, alpha)?;
-    Ok(interpolate_timeline_argument(
+    Ok(Cow::Owned(interpolate_timeline_argument(
         &track.attribute,
-        &values[from_index],
-        &values[to_index],
+        &track.keyframes[from_index].argument,
+        &track.keyframes[to_index].argument,
         alpha,
-    ))
+    )))
 }
 
 fn apply_easing(
@@ -1172,7 +1223,21 @@ mod tests {
             Some(RegistryElementSource::KnownPackJson)
         );
 
+        assert!(matches!(
+            store.synchronized_timeline_definition_ref(1).unwrap(),
+            Some(Cow::Owned(_))
+        ));
+
         let timeline = store.synchronized_timeline_definition(0).unwrap().unwrap();
+        store
+            .registries
+            .typed
+            .timelines
+            .insert(timeline.resource_id.clone(), timeline.clone());
+        assert!(matches!(
+            store.synchronized_timeline_definition_ref(0).unwrap(),
+            Some(Cow::Borrowed(_))
+        ));
         assert_eq!(timeline.resource_id, "example:visuals");
         assert_eq!(timeline.clock.holder_id, 0);
         assert_eq!(timeline.clock.resource_id, "example:clock");
@@ -1375,6 +1440,17 @@ mod tests {
                 rate: 1.0,
             }],
         });
+
+        let override_timeline = store.synchronized_timeline_definition(0).unwrap().unwrap();
+        assert!(matches!(
+            sample_track_argument(&override_timeline, &override_timeline.tracks[0], 250).unwrap(),
+            Cow::Owned(_)
+        ));
+        let multiply_timeline = store.synchronized_timeline_definition(1).unwrap().unwrap();
+        assert!(matches!(
+            sample_track_argument(&multiply_timeline, &multiply_timeline.tracks[0], 250).unwrap(),
+            Cow::Borrowed(_)
+        ));
 
         let sampled = store.sampled_client_environment_attributes().unwrap();
         assert_eq!(sampled.sky_light_factor, Some(0.25));

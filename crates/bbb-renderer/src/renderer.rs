@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     time::{Duration, Instant},
 };
 
@@ -66,8 +66,9 @@ use crate::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
         create_terrain_cutout_pipeline, create_terrain_solid_pipeline,
-        create_terrain_translucent_pipeline, write_terrain_atlas_gpu, write_terrain_atlas_mips_gpu,
-        DepthTarget, TerrainAtlasGpu,
+        create_terrain_translucent_pipeline, write_terrain_atlas_gpu,
+        write_terrain_atlas_mip_patches_gpu, write_terrain_atlas_mips_gpu, DepthTarget,
+        TerrainAtlasGpu,
     },
     gpu_timing::{optional_gpu_timing_features, GpuFrameTiming},
     hud::{
@@ -136,6 +137,7 @@ use crate::{
         SkyDiscGpu, SkyEnvironment, StarGpu,
     },
     terrain,
+    terrain_animation::TerrainAtlasAnimationGpu,
     transparency::{
         create_item_entity_target, create_main_target, create_particle_target,
         create_translucent_target, create_transparency_blit_bind_group_layout,
@@ -284,19 +286,20 @@ impl FrameTarget {
 pub struct RendererFrameProfile {
     pub frame_interval: Duration,
     pub gpu_async: Duration,
+    pub surface_acquire: Duration,
     pub render: Duration,
     pub present: Duration,
     pub swap_buffers: Duration,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TerrainChunkMeshOwner {
     pub level_generation: u64,
     pub chunk_x: i32,
     pub chunk_z: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TerrainSectionMeshOwner {
     pub chunk: TerrainChunkMeshOwner,
     pub section_y: i32,
@@ -449,6 +452,7 @@ pub struct Renderer {
     pub(super) chunk_border_always_on_top_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
+    pub(super) lightmap_dirty: bool,
     pub(super) lightmap_hud_bind_group: wgpu::BindGroup,
     pub(super) _lightmap_hud_sampler: wgpu::Sampler,
     pub(super) lightmap_sample_bind_group_layout: wgpu::BindGroupLayout,
@@ -483,6 +487,7 @@ pub struct Renderer {
     pub(super) hud3d_camera_buffer: wgpu::Buffer,
     pub(super) gui_item_camera_buffer: wgpu::Buffer,
     pub(super) terrain_atlas: TerrainAtlasGpu,
+    pub(super) terrain_atlas_animation: Option<TerrainAtlasAnimationGpu>,
     pub(super) terrain_bind_group: wgpu::BindGroup,
     pub(super) hud3d_terrain_bind_group: wgpu::BindGroup,
     pub(super) gui_item_bind_group: wgpu::BindGroup,
@@ -490,8 +495,8 @@ pub struct Renderer {
     pub(super) terrain_opaque: Vec<ResidentTerrainMesh>,
     pub(super) terrain_cutout: Vec<ResidentTerrainMesh>,
     pub(super) terrain_translucent: Vec<ResidentTerrainMesh>,
-    terrain_section_revisions: BTreeMap<TerrainSectionMeshOwner, u64>,
-    terrain_visible_sections: Option<BTreeSet<TerrainSectionMeshOwner>>,
+    terrain_section_revisions: HashMap<TerrainSectionMeshOwner, u64>,
+    terrain_visible_sections: Option<HashSet<TerrainSectionMeshOwner>>,
     terrain_visible_section_order: Option<Vec<TerrainSectionMeshOwner>>,
     // Cross-section back-to-front draw order (far→near) of indices into
     // `terrain_translucent`. Vanilla preserves the LevelRenderer visible-section
@@ -500,6 +505,8 @@ pub struct Renderer {
     // and that authoritative traversal order; see
     // `rebuild_translucent_section_order`.
     pub(super) terrain_translucent_order: Vec<usize>,
+    last_translucent_sort_block_position: Option<[i32; 3]>,
+    translucency_resort_iteration_index: usize,
     pub(super) terrain_source_sections: usize,
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) entity_model_bounds: Option<TerrainBounds>,
@@ -1013,7 +1020,7 @@ pub(super) struct ResidentTerrainMesh {
 
 fn retain_resident_terrain_sections(
     meshes: &mut Vec<ResidentTerrainMesh>,
-    desired_sections: &BTreeSet<TerrainSectionMeshOwner>,
+    desired_sections: &HashSet<TerrainSectionMeshOwner>,
 ) -> usize {
     let before = meshes.len();
     meshes.retain(|mesh| {
@@ -1036,14 +1043,14 @@ fn remove_resident_terrain_section(
 struct TerrainTranslucentSortState {
     centroids: Vec<[f32; 3]>,
     local_indices: Vec<[u32; 6]>,
-    last_camera_position: Option<[f32; 3]>,
+    last_point_of_view: Option<[i8; 3]>,
 }
 
 impl TerrainTranslucentSortState {
     fn from_vertices(
         vertices: &[terrain::TerrainVertex],
         indices: &[u32],
-        last_camera_position: Option<[f32; 3]>,
+        last_point_of_view: Option<[i8; 3]>,
     ) -> Option<Self> {
         if vertices.len() % 4 != 0 || indices.len() != vertices.len() / 4 * 6 {
             return None;
@@ -1077,15 +1084,23 @@ impl TerrainTranslucentSortState {
         Some(Self {
             centroids,
             local_indices,
-            last_camera_position,
+            last_point_of_view,
         })
     }
 
-    fn indices_for_camera_if_changed(&mut self, camera_position: [f32; 3]) -> Option<Vec<u32>> {
-        if self.last_camera_position == Some(camera_position) {
+    fn indices_for_camera_if_needed(
+        &mut self,
+        camera_position: [f32; 3],
+        point_of_view: [i8; 3],
+        block_position_changed: bool,
+        nearby: bool,
+    ) -> Option<Vec<u32>> {
+        let point_of_view_changed = self.last_point_of_view != Some(point_of_view);
+        let axis_aligned = point_of_view.into_iter().any(|coordinate| coordinate == 0);
+        if !point_of_view_changed && !(block_position_changed && (axis_aligned || nearby)) {
             return None;
         }
-        self.last_camera_position = Some(camera_position);
+        self.last_point_of_view = Some(point_of_view);
         Some(self.sorted_indices(camera_position))
     }
 
@@ -1120,6 +1135,36 @@ impl TerrainTranslucentSortState {
         }
         indices
     }
+}
+
+fn camera_block_position(camera_position: [f32; 3]) -> [i32; 3] {
+    camera_position.map(|coordinate| coordinate.floor() as i32)
+}
+
+fn camera_section_position(camera_position: [f32; 3]) -> [i32; 3] {
+    camera_block_position(camera_position).map(|coordinate| coordinate.div_euclid(16))
+}
+
+fn translucency_point_of_view(
+    camera_position: [f32; 3],
+    owner: TerrainSectionMeshOwner,
+) -> [i8; 3] {
+    let camera_section = camera_section_position(camera_position);
+    [
+        (camera_section[0] - owner.chunk.chunk_x).clamp(-1, 1) as i8,
+        (camera_section[1] - owner.section_y).clamp(-1, 1) as i8,
+        (camera_section[2] - owner.chunk.chunk_z).clamp(-1, 1) as i8,
+    ]
+}
+
+fn translucent_section_is_nearby(
+    camera_position: [f32; 3],
+    owner: TerrainSectionMeshOwner,
+) -> bool {
+    let camera_section = camera_section_position(camera_position);
+    (i64::from(camera_section[0]) - i64::from(owner.chunk.chunk_x)).abs() <= 2
+        && (i64::from(camera_section[1]) - i64::from(owner.section_y)).abs() <= 2
+        && (i64::from(camera_section[2]) - i64::from(owner.chunk.chunk_z)).abs() <= 2
 }
 
 /// Back-to-front (far→near) draw order for translucent terrain *sections*.
@@ -1282,6 +1327,12 @@ impl Renderer {
         let caps = surface.get_capabilities(&adapter);
         let format = choose_format(&caps.formats)?;
         let present_mode = choose_present_mode(&caps.present_modes, vsync_enabled)?;
+        tracing::info!(
+            ?present_mode,
+            supported_present_modes = ?caps.present_modes,
+            desired_maximum_frame_latency = 2,
+            "renderer surface presentation selected"
+        );
         let alpha_mode = caps
             .alpha_modes
             .first()
@@ -1296,6 +1347,9 @@ impl Renderer {
             present_mode,
             alpha_mode,
             view_formats: vec![],
+            // Keep wgpu's default queue-depth hint. VSync-off selection still maps to the
+            // platform's immediate present path, while a larger hint did not improve the
+            // common-X11 benchmark and would add an unproven behavioral variable.
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
@@ -2076,6 +2130,7 @@ impl Renderer {
             chunk_border_always_on_top_pipeline,
             lightmap_pipeline,
             lightmap,
+            lightmap_dirty: true,
             lightmap_hud_bind_group,
             _lightmap_hud_sampler: lightmap_hud_sampler,
             lightmap_sample_bind_group_layout,
@@ -2110,6 +2165,7 @@ impl Renderer {
             hud3d_camera_buffer,
             gui_item_camera_buffer,
             terrain_atlas,
+            terrain_atlas_animation: None,
             terrain_bind_group,
             hud3d_terrain_bind_group,
             gui_item_bind_group,
@@ -2117,10 +2173,12 @@ impl Renderer {
             terrain_opaque: Vec::new(),
             terrain_cutout: Vec::new(),
             terrain_translucent: Vec::new(),
-            terrain_section_revisions: BTreeMap::new(),
+            terrain_section_revisions: HashMap::new(),
             terrain_visible_sections: None,
             terrain_visible_section_order: None,
             terrain_translucent_order: Vec::new(),
+            last_translucent_sort_block_position: None,
+            translucency_resort_iteration_index: 0,
             terrain_source_sections: 0,
             terrain_bounds: None,
             entity_model_bounds: None,
@@ -2789,7 +2847,10 @@ impl Renderer {
         }
         self.camera_pose = pose;
         self.resort_translucent_terrain_for_camera();
-        if self.entity_model_texture_atlas.is_some() && !self.entity_model_instances.is_empty() {
+        if self.entity_model_texture_atlas.is_some()
+            && !self.entity_model_instances.is_empty()
+            && self.entity_model_meshes_depend_on_camera()
+        {
             self.rebuild_entity_model_meshes();
         }
         self.update_camera();
@@ -3134,33 +3195,32 @@ impl Renderer {
         >,
     ) {
         let chunks: Vec<_> = chunks.into_iter().collect();
-        let desired_sections: BTreeSet<_> = chunks
-            .iter()
-            .flat_map(|(chunk, revisions, _, _)| {
-                revisions
-                    .iter()
-                    .map(|&(section_y, _)| TerrainSectionMeshOwner {
-                        chunk: *chunk,
-                        section_y,
-                    })
-            })
-            .collect();
-        let visibility_stale = self.terrain_section_revisions.len() != desired_sections.len()
-            || chunks.iter().any(|(chunk, revisions, _, _)| {
-                revisions.iter().any(|&(section_y, revision)| {
-                    self.terrain_section_revisions
-                        .get(&TerrainSectionMeshOwner {
-                            chunk: *chunk,
-                            section_y,
-                        })
-                        != Some(&revision)
-                })
-            });
+        let mut desired_sections = HashSet::with_capacity(source_sections);
+        let mut visibility_stale = false;
+        for (chunk, revisions, _, _) in &chunks {
+            for &(section_y, revision) in *revisions {
+                let owner = TerrainSectionMeshOwner {
+                    chunk: *chunk,
+                    section_y,
+                };
+                visibility_stale |= self.terrain_section_revisions.get(&owner) != Some(&revision);
+                desired_sections.insert(owner);
+            }
+        }
+        visibility_stale |= self.terrain_section_revisions.len() != desired_sections.len();
         if visibility_stale {
-            // The graph is rebuilt after worker results are integrated.
-            // Render conservatively until the next frame commits that result.
-            self.terrain_visible_sections = None;
-            self.terrain_visible_section_order = None;
+            // Vanilla keeps the current SectionOcclusionGraph while
+            // `schedulePropagationFrom` incrementally admits newly compiled sections. Preserve
+            // that graph result here: dropping it would make the upload frame draw every
+            // resident section. Prune owners which left residency now; changed owners are added
+            // below as the conservative one-frame bridge until native publishes the rebuilt
+            // authoritative traversal.
+            if let Some(visible) = self.terrain_visible_sections.as_mut() {
+                visible.retain(|owner| desired_sections.contains(owner));
+            }
+            if let Some(order) = self.terrain_visible_section_order.as_mut() {
+                order.retain(|owner| desired_sections.contains(owner));
+            }
         }
 
         self.terrain_source_sections = source_sections;
@@ -3189,6 +3249,15 @@ impl Renderer {
                     continue;
                 }
                 self.counters.terrain_changed_owners += 1;
+                let newly_visible = self
+                    .terrain_visible_sections
+                    .as_mut()
+                    .is_some_and(|visible| visible.insert(owner));
+                if newly_visible {
+                    if let Some(order) = self.terrain_visible_section_order.as_mut() {
+                        order.push(owner);
+                    }
+                }
                 self.counters.terrain_removed_owners +=
                     remove_resident_terrain_section(&mut self.terrain_opaque, owner);
                 self.counters.terrain_removed_owners +=
@@ -3244,6 +3313,127 @@ impl Renderer {
 
         self.resort_translucent_terrain_for_camera();
         self.update_camera();
+        self.refresh_terrain_counters();
+    }
+
+    /// Applies Vanilla-style recently-compiled section deltas without walking
+    /// every resident section. Full synchronization remains the owner for
+    /// level/view-area replacement; ordinary compile completion updates only
+    /// the stable section owners named here.
+    pub fn update_terrain_section_mesh_layer_refs<'a>(
+        &mut self,
+        source_sections: usize,
+        changes: impl IntoIterator<
+            Item = (
+                TerrainSectionMeshOwner,
+                u64,
+                &'a terrain::TerrainSectionMeshLayers,
+                [f32; 3],
+            ),
+        >,
+        removed: impl IntoIterator<Item = TerrainSectionMeshOwner>,
+    ) {
+        self.terrain_source_sections = source_sections;
+        self.counters.queued_sections = source_sections;
+        self.counters.meshed_sections = source_sections;
+        self.counters.upload_bytes = 0;
+        self.counters.terrain_changed_owners = 0;
+        self.counters.terrain_uploaded_owners = 0;
+        self.counters.terrain_removed_owners = 0;
+        self.counters.terrain_vertex_upload_bytes = 0;
+        self.counters.terrain_index_upload_bytes = 0;
+
+        let mut translucent_changed = false;
+        for owner in removed {
+            self.terrain_section_revisions.remove(&owner);
+            if let Some(visible) = self.terrain_visible_sections.as_mut() {
+                visible.remove(&owner);
+            }
+            if let Some(order) = self.terrain_visible_section_order.as_mut() {
+                order.retain(|candidate| *candidate != owner);
+            }
+            self.counters.terrain_removed_owners +=
+                remove_resident_terrain_section(&mut self.terrain_opaque, owner);
+            self.counters.terrain_removed_owners +=
+                remove_resident_terrain_section(&mut self.terrain_cutout, owner);
+            let removed_translucent =
+                remove_resident_terrain_section(&mut self.terrain_translucent, owner);
+            self.counters.terrain_removed_owners += removed_translucent;
+            translucent_changed |= removed_translucent != 0;
+        }
+
+        for (owner, revision, layers, mesh_camera_position) in changes {
+            if self.terrain_section_revisions.get(&owner) == Some(&revision) {
+                continue;
+            }
+            self.counters.terrain_changed_owners += 1;
+            let newly_visible = self
+                .terrain_visible_sections
+                .as_mut()
+                .is_some_and(|visible| visible.insert(owner));
+            if newly_visible {
+                if let Some(order) = self.terrain_visible_section_order.as_mut() {
+                    order.push(owner);
+                }
+            }
+            self.counters.terrain_removed_owners +=
+                remove_resident_terrain_section(&mut self.terrain_opaque, owner);
+            self.counters.terrain_removed_owners +=
+                remove_resident_terrain_section(&mut self.terrain_cutout, owner);
+            let removed_translucent =
+                remove_resident_terrain_section(&mut self.terrain_translucent, owner);
+            self.counters.terrain_removed_owners += removed_translucent;
+            translucent_changed |= removed_translucent != 0;
+
+            if let Some(section) = layers
+                .opaque
+                .iter()
+                .find(|section| section.section_y == owner.section_y)
+            {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
+                    self.terrain_opaque.push(resident);
+                    self.counters.terrain_uploaded_owners += 1;
+                }
+            }
+            if let Some(section) = layers
+                .cutout
+                .iter()
+                .find(|section| section.section_y == owner.section_y)
+            {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
+                    self.terrain_cutout.push(resident);
+                    self.counters.terrain_uploaded_owners += 1;
+                }
+            }
+            if let Some(section) = layers
+                .translucent
+                .iter()
+                .find(|section| section.section_y == owner.section_y)
+            {
+                if let Some(resident) = self.create_resident_terrain_mesh(
+                    &section.mesh,
+                    Some(owner),
+                    Some(mesh_camera_position),
+                ) {
+                    self.terrain_translucent.push(resident);
+                    self.counters.terrain_uploaded_owners += 1;
+                    translucent_changed = true;
+                }
+            }
+            self.terrain_section_revisions.insert(owner, revision);
+        }
+
+        if translucent_changed {
+            self.resort_translucent_terrain_for_camera();
+        }
         self.refresh_terrain_counters();
     }
 
@@ -3322,6 +3512,43 @@ impl Renderer {
         write_terrain_atlas_mips_gpu(&self.queue, &self.terrain_atlas, mip_rgba)
     }
 
+    pub fn update_terrain_texture_atlas_mip_patches(
+        &mut self,
+        patches: &[bbb_pack::AtlasMipPatch],
+    ) -> Result<()> {
+        write_terrain_atlas_mip_patches_gpu(&self.queue, &self.terrain_atlas, patches)
+    }
+
+    pub fn upload_terrain_texture_animation(
+        &mut self,
+        plan: Option<bbb_pack::AtlasGpuAnimationPlan>,
+    ) -> Result<()> {
+        let animation = plan
+            .map(|plan| TerrainAtlasAnimationGpu::new(&self.device, &self.queue, plan))
+            .transpose()?;
+        if animation
+            .as_ref()
+            .is_some_and(|animation| !animation.matches_atlas(&self.terrain_atlas))
+        {
+            anyhow::bail!("terrain texture animation plan does not match the resident atlas");
+        }
+        if self.resource_reload_in_progress() {
+            let previous = std::mem::replace(&mut self.terrain_atlas_animation, animation);
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.terrain_atlas_animation = previous;
+            }));
+        } else {
+            self.terrain_atlas_animation = animation;
+        }
+        Ok(())
+    }
+
+    pub fn advance_terrain_texture_animation(&mut self, previous_tick: u64, tick: u64) {
+        if let Some(animation) = self.terrain_atlas_animation.as_mut() {
+            animation.advance(&self.queue, previous_tick, tick);
+        }
+    }
+
     pub(super) fn surface_size(&self) -> PhysicalSize<u32> {
         PhysicalSize::new(self.config.width.max(1), self.config.height.max(1))
     }
@@ -3341,9 +3568,9 @@ impl Renderer {
                 if self.terrain_section_revisions.is_empty() {
                     self.counters.uploaded_sections
                 } else {
-                    self.terrain_section_revisions
-                        .keys()
-                        .filter(|owner| visible.contains(owner))
+                    visible
+                        .iter()
+                        .filter(|owner| self.terrain_section_revisions.contains_key(owner))
                         .count()
                 }
             },
@@ -3422,16 +3649,25 @@ impl Renderer {
         }
 
         let bounds = TerrainBounds::from_vertices(&mesh.vertices);
+        let last_point_of_view = owner
+            .zip(translucent_camera_position)
+            .map(|(owner, camera_position)| translucency_point_of_view(camera_position, owner));
         let translucent_sort = (mesh.translucent_faces > 0)
             .then(|| {
                 TerrainTranslucentSortState::from_vertices(
                     &mesh.vertices,
                     &mesh.indices,
-                    translucent_camera_position,
+                    last_point_of_view,
                 )
             })
             .flatten();
-        let vertex_bytes = bytemuck::cast_slice(&mesh.vertices);
+        let gpu_vertices = mesh
+            .vertices
+            .iter()
+            .copied()
+            .map(super::gpu::TerrainGpuVertex::from)
+            .collect::<Vec<_>>();
+        let vertex_bytes = bytemuck::cast_slice(&gpu_vertices);
         let index_bytes = bytemuck::cast_slice(&mesh.indices);
         let vertex_buffer = self
             .device
@@ -3528,12 +3764,64 @@ impl Renderer {
         let Some(camera_position) = self.camera_sort_position() else {
             return;
         };
+        let camera_block = camera_block_position(camera_position);
+        let block_position_changed =
+            self.last_translucent_sort_block_position != Some(camera_block);
+
+        // Vanilla 26.1 schedules every nearby visible section, then advances a
+        // round-robin window of max(visible / 8, 15) sections. Preserve that
+        // candidate order here; the per-section point-of-view check below
+        // decides whether an index rewrite is actually required.
+        let scheduled = if let Some(visible) = self.terrain_visible_section_order.as_deref() {
+            if visible.is_empty() {
+                return;
+            }
+            let mut scheduled = visible
+                .iter()
+                .copied()
+                .filter(|owner| translucent_section_is_nearby(camera_position, *owner))
+                .collect::<Vec<_>>();
+            self.translucency_resort_iteration_index %= visible.len();
+            let resorts = (visible.len() / 8).max(15);
+            for _ in 0..resorts {
+                let owner = visible[self.translucency_resort_iteration_index % visible.len()];
+                self.translucency_resort_iteration_index =
+                    self.translucency_resort_iteration_index.saturating_add(1);
+                if !scheduled.contains(&owner) {
+                    scheduled.push(owner);
+                }
+            }
+            Some(scheduled)
+        } else {
+            None
+        };
+
         let queue = &self.queue;
         for mesh in &mut self.terrain_translucent {
+            let (point_of_view, nearby) = match mesh.owner {
+                Some(owner) => {
+                    if scheduled
+                        .as_ref()
+                        .is_some_and(|scheduled| !scheduled.contains(&owner))
+                    {
+                        continue;
+                    }
+                    (
+                        translucency_point_of_view(camera_position, owner),
+                        translucent_section_is_nearby(camera_position, owner),
+                    )
+                }
+                None => ([0, 0, 0], true),
+            };
             let Some(sort) = &mut mesh.translucent_sort else {
                 continue;
             };
-            let Some(indices) = sort.indices_for_camera_if_changed(camera_position) else {
+            let Some(indices) = sort.indices_for_camera_if_needed(
+                camera_position,
+                point_of_view,
+                block_position_changed,
+                nearby,
+            ) else {
                 continue;
             };
             let index_bytes = bytemuck::cast_slice(&indices);
@@ -3544,6 +3832,7 @@ impl Renderer {
                 .terrain_translucent_resort_index_bytes
                 .saturating_add(index_bytes.len() as u64);
         }
+        self.last_translucent_sort_block_position = Some(camera_block);
     }
 
     pub(crate) fn update_camera(&self) {
@@ -3616,17 +3905,30 @@ impl Renderer {
     }
 
     pub fn set_lightmap_brightness_factor(&mut self, factor: f32) {
-        self.lightmap_environment.brightness_factor = sanitize_lightmap_brightness_factor(factor);
-        self.update_camera();
+        let mut environment = self.lightmap_environment;
+        environment.brightness_factor = sanitize_lightmap_brightness_factor(factor);
+        self.set_lightmap_environment(environment);
     }
 
     pub fn set_lightmap_block_factor(&mut self, factor: f32) {
-        self.lightmap_environment.block_factor = sanitize_lightmap_block_factor(factor);
-        self.update_camera();
+        let mut environment = self.lightmap_environment;
+        environment.block_factor = sanitize_lightmap_block_factor(factor);
+        self.set_lightmap_environment(environment);
     }
 
     pub fn set_lightmap_environment(&mut self, environment: LightmapEnvironment) {
-        self.lightmap_environment = environment.sanitized();
+        let environment = environment.sanitized();
+        if self.lightmap_environment == environment {
+            return;
+        }
+        self.lightmap_environment = environment;
+        // Vanilla 26.1 `LightmapRenderStateExtractor.tick` dirties the
+        // lightmap once per client tick, and `Lightmap.render` consumes that
+        // state once. The native simulation publication carries that complete
+        // tick-owned projection, so repeated presentation of the same
+        // publication must keep sampling the resident 16x16 texture rather
+        // than redrawing it every frame.
+        self.lightmap_dirty = true;
         self.update_camera();
     }
 
@@ -3829,6 +4131,7 @@ impl Renderer {
         write_cloud_uniform(
             &self.queue,
             &self.cloud_uniform_buffer,
+            self.cloud_environment,
             self.cloud_frame,
             self.cloud_texture.as_ref(),
         );
@@ -3865,11 +4168,12 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 #[cfg(test)]
 mod tests {
     use super::{
-        choose_format, choose_present_mode, translucent_section_draw_order,
-        translucent_section_draw_order_from_visible, TerrainChunkMeshOwner,
-        TerrainSectionMeshOwner, TerrainTranslucentSortState,
+        choose_format, choose_present_mode, translucency_point_of_view,
+        translucent_section_draw_order, translucent_section_draw_order_from_visible,
+        translucent_section_is_nearby, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
+        TerrainTranslucentSortState,
     };
-    use crate::camera::{CameraPose, TerrainBounds};
+    use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
         TerrainMesh, TerrainSectionMesh, TerrainSectionMeshLayers, TerrainVertex,
     };
@@ -3972,6 +4276,36 @@ mod tests {
     }
 
     #[test]
+    fn lightmap_dirty_state_tracks_tick_owned_environment_changes() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        assert!(
+            renderer.lightmap_dirty,
+            "the initial resident texture requires one update"
+        );
+
+        renderer.lightmap_dirty = false;
+        renderer.set_lightmap_environment(LightmapEnvironment::default());
+        assert!(
+            !renderer.lightmap_dirty,
+            "presenting the same simulation publication must reuse the resident lightmap"
+        );
+
+        renderer.set_lightmap_brightness_factor(0.75);
+        assert!(renderer.lightmap_dirty);
+        renderer.lightmap_dirty = false;
+        renderer.set_lightmap_brightness_factor(0.75);
+        assert!(
+            !renderer.lightmap_dirty,
+            "replaying an unchanged option value must not redraw the lightmap"
+        );
+
+        renderer.set_lightmap_block_factor(1.25);
+        assert!(renderer.lightmap_dirty);
+    }
+
+    #[test]
     fn borrowed_terrain_upload_keeps_cpu_mesh_cache_available() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
             return;
@@ -4060,7 +4394,6 @@ mod tests {
             chunk_x: 0,
             chunk_z: 0,
         };
-
         renderer.synchronize_terrain_section_mesh_layer_refs(
             2,
             [
@@ -4132,6 +4465,78 @@ mod tests {
     }
 
     #[test]
+    fn recently_compiled_terrain_delta_does_not_scan_or_replace_sibling_owner() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let layers = TerrainSectionMeshLayers {
+            opaque: vec![TerrainSectionMesh {
+                section_y: 4,
+                mesh: TerrainMesh {
+                    vertices: vec![
+                        terrain_vertex([0.0, 64.0, 0.0]),
+                        terrain_vertex([1.0, 64.0, 0.0]),
+                        terrain_vertex([0.0, 65.0, 0.0]),
+                    ],
+                    indices: vec![0, 1, 2],
+                    source_sections: 1,
+                    opaque_faces: 1,
+                    ..TerrainMesh::default()
+                },
+            }],
+            source_sections: 1,
+            ..TerrainSectionMeshLayers::default()
+        };
+        let west = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: -1,
+            chunk_z: 0,
+        };
+        let east = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: 0,
+            chunk_z: 0,
+        };
+        let west_section = TerrainSectionMeshOwner {
+            chunk: west,
+            section_y: 4,
+        };
+        let east_section = TerrainSectionMeshOwner {
+            chunk: east,
+            section_y: 4,
+        };
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            2,
+            [
+                (west, &[(4, 1)][..], &layers, [0.0; 3]),
+                (east, &[(4, 1)][..], &layers, [0.0; 3]),
+            ],
+        );
+        renderer.set_terrain_visible_sections(Some(&[east_section]));
+
+        renderer.update_terrain_section_mesh_layer_refs(
+            2,
+            [(west_section, 2, &layers, [0.0; 3])],
+            [],
+        );
+        assert_eq!(renderer.counters().terrain_changed_owners, 1);
+        assert_eq!(renderer.counters().terrain_uploaded_owners, 1);
+        assert_eq!(renderer.counters().terrain_removed_owners, 1);
+        assert_eq!(renderer.counters().visible_sections, 2);
+        assert_eq!(renderer.terrain_opaque.len(), 2);
+        assert_eq!(
+            renderer.terrain_section_revisions.get(&east_section),
+            Some(&1)
+        );
+
+        renderer.update_terrain_section_mesh_layer_refs(1, std::iter::empty(), [east_section]);
+        assert_eq!(renderer.counters().terrain_changed_owners, 0);
+        assert_eq!(renderer.counters().terrain_removed_owners, 1);
+        assert_eq!(renderer.counters().visible_sections, 1);
+        assert_eq!(renderer.terrain_opaque.len(), 1);
+    }
+
+    #[test]
     fn terrain_visibility_filter_limits_resident_section_draws_and_counter() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
             return;
@@ -4164,12 +4569,18 @@ mod tests {
             chunk_x: 0,
             chunk_z: 0,
         };
+        let north = TerrainChunkMeshOwner {
+            level_generation: 7,
+            chunk_x: 0,
+            chunk_z: -1,
+        };
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
-            2,
+            3,
             [
                 (west, &[(4, 1)][..], &layers, [0.0; 3]),
                 (east, &[(4, 1)][..], &layers, [0.0; 3]),
+                (north, &[(4, 1)][..], &layers, [0.0; 3]),
             ],
         );
         renderer.set_terrain_visible_sections(Some(&[TerrainSectionMeshOwner {
@@ -4177,7 +4588,7 @@ mod tests {
             section_y: 4,
         }]));
 
-        assert_eq!(renderer.counters().uploaded_sections, 2);
+        assert_eq!(renderer.counters().uploaded_sections, 3);
         assert_eq!(renderer.counters().visible_sections, 1);
         assert_eq!(
             renderer
@@ -4199,10 +4610,11 @@ mod tests {
             .is_some_and(|mesh| !renderer.terrain_mesh_is_visible(mesh)));
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
-            2,
+            3,
             [
                 (west, &[(4, 1)][..], &layers, [0.0; 3]),
                 (east, &[(4, 1)][..], &layers, [0.0; 3]),
+                (north, &[(4, 1)][..], &layers, [0.0; 3]),
             ],
         );
         assert_eq!(
@@ -4212,17 +4624,28 @@ mod tests {
         );
 
         renderer.synchronize_terrain_section_mesh_layer_refs(
-            2,
+            3,
             [
                 (west, &[(4, 2)][..], &layers, [0.0; 3]),
                 (east, &[(4, 1)][..], &layers, [0.0; 3]),
+                (north, &[(4, 1)][..], &layers, [0.0; 3]),
             ],
         );
         assert_eq!(renderer.counters().visible_sections, 2);
+        assert_eq!(
+            renderer
+                .terrain_opaque
+                .iter()
+                .filter(|mesh| renderer.terrain_mesh_is_visible(mesh))
+                .count(),
+            2,
+            "the changed owner is conservatively admitted without exposing every resident owner"
+        );
         assert!(renderer
             .terrain_opaque
             .iter()
-            .all(|mesh| renderer.terrain_mesh_is_visible(mesh)));
+            .find(|mesh| mesh.owner.is_some_and(|owner| owner.chunk == north))
+            .is_some_and(|mesh| !renderer.terrain_mesh_is_visible(mesh)));
     }
 
     #[test]
@@ -4442,18 +4865,73 @@ mod tests {
             4, 5, 6, 4, 6, 7,
         ];
         let mut sort =
-            TerrainTranslucentSortState::from_vertices(&vertices, &indices, Some([0.5, 0.5, -4.0]))
+            TerrainTranslucentSortState::from_vertices(&vertices, &indices, Some([0, 0, -1]))
                 .expect("quad vertices and indices create sort state");
 
-        assert_eq!(sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]), None);
         assert_eq!(
-            sort.indices_for_camera_if_changed([0.5, 0.5, 4.0]),
+            sort.indices_for_camera_if_needed([0.5, 0.5, -4.0], [0, 0, -1], false, true,),
+            None
+        );
+        assert_eq!(
+            sort.indices_for_camera_if_needed([0.5, 0.5, 4.0], [0, 0, 1], true, true),
             Some(vec![0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7])
         );
         assert_eq!(
-            sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]),
+            sort.indices_for_camera_if_needed([0.5, 0.5, -4.0], [0, 0, -1], true, true),
             Some(vec![4, 5, 6, 4, 6, 7, 0, 2, 1, 0, 3, 2])
         );
+    }
+
+    #[test]
+    fn translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers() {
+        let vertices = vec![
+            terrain_vertex([0.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 1.0, 0.0]),
+            terrain_vertex([0.0, 1.0, 0.0]),
+        ];
+        let mut sort = TerrainTranslucentSortState::from_vertices(
+            &vertices,
+            &[0, 1, 2, 2, 3, 0],
+            Some([1, 1, 1]),
+        )
+        .expect("one translucent quad");
+
+        assert_eq!(
+            sort.indices_for_camera_if_needed([0.25, 0.5, 0.5], [1, 1, 1], false, true),
+            None,
+            "sub-block interpolation alone does not schedule a Vanilla resort"
+        );
+        assert_eq!(
+            sort.indices_for_camera_if_needed([1.25, 0.5, 0.5], [1, 1, 1], true, false),
+            None,
+            "far, non-axis-aligned sections wait for their round-robin point-of-view change"
+        );
+        assert!(sort
+            .indices_for_camera_if_needed([1.25, 0.5, 0.5], [0, 1, 1], true, false)
+            .is_some());
+        assert!(sort
+            .indices_for_camera_if_needed([2.25, 0.5, 0.5], [0, 1, 1], true, false)
+            .is_some());
+    }
+
+    #[test]
+    fn translucent_point_of_view_and_nearby_match_section_coordinates() {
+        let owner = TerrainSectionMeshOwner {
+            chunk: TerrainChunkMeshOwner {
+                level_generation: 1,
+                chunk_x: -2,
+                chunk_z: 4,
+            },
+            section_y: 7,
+        };
+
+        assert_eq!(
+            translucency_point_of_view([-31.5, 127.9, 64.0], owner),
+            [0, 0, 0]
+        );
+        assert!(translucent_section_is_nearby([-0.1, 159.9, 96.0], owner));
+        assert!(!translucent_section_is_nearby([16.0, 159.9, 96.0], owner));
     }
 
     fn terrain_vertex(position: [f32; 3]) -> TerrainVertex {

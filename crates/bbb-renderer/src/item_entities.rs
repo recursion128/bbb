@@ -1,6 +1,7 @@
 use std::mem;
 
 use anyhow::{anyhow, bail, Result};
+use bbb_pack::AtlasMipPatch;
 use glam::Vec3;
 
 use crate::{
@@ -372,6 +373,21 @@ fn update_item_entity_atlas_gpu(
     Ok(())
 }
 
+fn update_item_entity_atlas_gpu_patches(
+    queue: &wgpu::Queue,
+    atlas: &ItemEntityAtlasGpu,
+    patches: &[AtlasMipPatch],
+) -> Result<()> {
+    crate::gpu::write_texture_atlas_mip_patches_gpu(
+        queue,
+        &atlas.texture,
+        atlas.width,
+        atlas.height,
+        1,
+        patches,
+    )
+}
+
 impl Renderer {
     pub fn upload_item_entity_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         let atlas = create_item_entity_atlas_gpu(
@@ -395,6 +411,13 @@ impl Renderer {
             return Ok(());
         };
         update_item_entity_atlas_gpu(&self.queue, atlas, rgba)
+    }
+
+    pub fn update_item_entity_atlas_patches(&mut self, patches: &[AtlasMipPatch]) -> Result<()> {
+        let Some(atlas) = self.item_entity_atlas.as_ref() else {
+            return Ok(());
+        };
+        update_item_entity_atlas_gpu_patches(&self.queue, atlas, patches)
     }
 
     pub fn set_item_entity_billboards(&mut self, billboards: Vec<ItemEntityBillboard>) {

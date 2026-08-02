@@ -15,11 +15,13 @@ use bbb_world::ChunkPos;
 
 const TERRAIN_MESH_QUEUE_CAPACITY: usize = 4;
 // The render thread drains completed results before doing up to one bounded
-// cache-work batch. A job already in flight may finish after that drain, and a
-// fast worker can then finish every job submitted by the same batch before the
-// next frame. Keep exactly that bounded burst instead of assuming completion
-// can never outrun the four-slot input queue.
-const TERRAIN_MESH_RESULT_CAPACITY: usize = super::MAX_TERRAIN_CACHE_WORK_PER_FRAME + 1;
+// cache-work batch. `try_recv` can observe Empty immediately before the worker
+// publishes its current job, while the four-slot input queue is still full. A
+// fast worker can then finish those pre-existing jobs plus every job submitted
+// by the new batch before the next render-thread drain. Keep that exact bounded
+// burst; `batch + 1` is insufficient because it omits the queued jobs.
+const TERRAIN_MESH_RESULT_CAPACITY: usize =
+    super::MAX_TERRAIN_CACHE_WORK_PER_FRAME + TERRAIN_MESH_QUEUE_CAPACITY + 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct TerrainMeshJobKey {
@@ -403,9 +405,9 @@ mod tests {
     }
 
     #[test]
-    fn result_capacity_accepts_one_fast_main_thread_work_batch_without_drain() {
+    fn result_capacity_accepts_preexisting_queue_plus_one_fast_work_batch_without_drain() {
         let mut worker = TerrainMeshWorker::spawn();
-        for index in 0..super::super::MAX_TERRAIN_CACHE_WORK_PER_FRAME {
+        for index in 0..TERRAIN_MESH_RESULT_CAPACITY {
             let pos = ChunkPos {
                 x: i32::try_from(index).unwrap(),
                 z: 0,
@@ -424,7 +426,7 @@ mod tests {
         }
 
         let mut completed = 0;
-        while completed < super::super::MAX_TERRAIN_CACHE_WORK_PER_FRAME {
+        while completed < TERRAIN_MESH_RESULT_CAPACITY {
             if worker.try_recv().is_some() {
                 completed += 1;
             } else {

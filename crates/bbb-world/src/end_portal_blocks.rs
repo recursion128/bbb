@@ -127,6 +127,10 @@ impl WorldStore {
     /// Advances `TheEndGatewayBlockEntity.beamAnimationTick`: `age++` every
     /// client tick and `teleportCooldown--` while cooling down.
     pub fn advance_end_gateway_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().end_gateway {
+            self.end_gateways.clear();
+            return;
+        }
         let sources = self.end_portal_block_sources();
         let gateway_sources: Vec<_> = sources
             .into_iter()

@@ -2875,6 +2875,10 @@ pub(crate) struct NonEntityRenderExtractionScratch {
     christmas_chest_textures: crate::chest_scene::ChristmasChestTextures,
     stable_world: Option<Arc<WorldStore>>,
     stable_block_entities: Option<CachedStableBlockEntityProjection>,
+    dynamic_block_entity_presence: Option<(
+        bbb_world::StableBlockEntityRenderRevision,
+        DynamicBlockEntityPresence,
+    )>,
     game_test_highlight_key: Option<(u64, u64)>,
     debug_buffers: DebugRenderExtractionBuffers,
     item_registry_keys: CachedItemRegistryKeys,
@@ -2886,6 +2890,24 @@ pub(crate) struct NonEntityRenderExtractionScratch {
 pub(crate) struct StableBlockEntityCacheKey {
     pub(crate) revision: bbb_world::StableBlockEntityRenderRevision,
     pub(crate) text_filtering_enabled: bool,
+}
+
+/// Dynamic block-entity renderer families present in the current terrain / BE
+/// generation. The source state itself is still rebuilt every frame for
+/// partial-tick animation; this cache only rejects renderer families whose
+/// authoritative source projection is empty.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct DynamicBlockEntityPresence {
+    pub(crate) chest: bool,
+    pub(crate) bell: bool,
+    pub(crate) shulker_box: bool,
+    pub(crate) decorated_pot: bool,
+    pub(crate) banner: bool,
+    pub(crate) enchanting_table: bool,
+    pub(crate) conduit: bool,
+    pub(crate) end_portal: bool,
+    pub(crate) skull: bool,
+    pub(crate) spawner: bool,
 }
 
 #[derive(Debug)]
@@ -2985,7 +3007,26 @@ impl NonEntityRenderExtractionScratch {
     pub(crate) fn invalidate_resources(&mut self) {
         self.stable_world = None;
         self.stable_block_entities = None;
+        self.dynamic_block_entity_presence = None;
         self.map_textures.clear();
+    }
+
+    pub(crate) fn dynamic_block_entity_presence(
+        &mut self,
+        revision: bbb_world::StableBlockEntityRenderRevision,
+        build: impl FnOnce() -> DynamicBlockEntityPresence,
+    ) -> DynamicBlockEntityPresence {
+        if let Some((cached_revision, presence)) = self.dynamic_block_entity_presence {
+            if cached_revision == revision {
+                self.observation.cache_hits = self.observation.cache_hits.saturating_add(10);
+                return presence;
+            }
+        }
+        let presence = build();
+        self.dynamic_block_entity_presence = Some((revision, presence));
+        self.observation.cache_misses = self.observation.cache_misses.saturating_add(10);
+        self.observation.rebuilt_owners = self.observation.rebuilt_owners.saturating_add(10);
+        presence
     }
 
     pub(crate) fn stable_block_entity_frame(

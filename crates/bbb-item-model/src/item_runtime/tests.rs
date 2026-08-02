@@ -612,7 +612,7 @@ fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
 }
 
 #[test]
-fn item_texture_animation_stitches_the_selected_frame_at_tick() {
+fn item_texture_animation_patches_only_the_selected_sprite_region() {
     let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
     let mut animated =
         SpriteImage::new("custom:item/animated", 1, 1, vec![255, 0, 0, 255]).unwrap();
@@ -627,14 +627,32 @@ fn item_texture_animation_stitches_the_selected_frame_at_tick() {
     });
     animated.animation_frames_rgba = vec![vec![255, 0, 0, 255], vec![0, 255, 0, 255]];
 
-    let state = ItemTextureState::from_images(vec![missing, animated]).unwrap();
+    let images = vec![missing, animated];
+    let expected = AtlasPacker::new(ITEM_ATLAS_MAX_WIDTH, 1)
+        .unwrap()
+        .stitch_animation_frame(&images, 1)
+        .unwrap()
+        .rgba;
+    let state = ItemTextureState::from_images(images).unwrap();
     assert!(state.has_animation());
-    let tick_zero = state.animation_atlas_rgba(0).unwrap().unwrap();
-    let tick_one = state.animation_atlas_rgba(1).unwrap().unwrap();
+    let patches = state.animation_atlas_patches(0, 1).unwrap().unwrap();
+    let mut patched = state.atlas.rgba.clone();
+    for patch in &patches {
+        assert_eq!(patch.level, 0);
+        for row in 0..patch.rect.height {
+            let source_start = (row * patch.rect.width * 4) as usize;
+            let destination_start =
+                (((patch.rect.y + row) * state.atlas.layout.width + patch.rect.x) * 4) as usize;
+            let byte_count = (patch.rect.width * 4) as usize;
+            patched[destination_start..destination_start + byte_count]
+                .copy_from_slice(&patch.rgba[source_start..source_start + byte_count]);
+        }
+    }
+    assert_eq!(patched, expected);
+
     let sprite = &state.atlas.layout.sprites[state.texture_index("custom:item/animated") as usize];
     let offset = ((sprite.content.y * state.atlas.layout.width + sprite.content.x) * 4) as usize;
-    assert_eq!(&tick_zero[offset..offset + 4], &[255, 0, 0, 255]);
-    assert_eq!(&tick_one[offset..offset + 4], &[0, 255, 0, 255]);
+    assert_eq!(&patched[offset..offset + 4], &[0, 255, 0, 255]);
 }
 
 #[test]

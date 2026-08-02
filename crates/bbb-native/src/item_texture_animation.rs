@@ -20,23 +20,23 @@ pub(crate) fn maybe_upload_item_texture_animation(
     if !items.has_texture_animation() {
         return;
     }
-    let Some(tick) =
+    let Some((previous_tick, tick)) =
         advance_item_texture_animation_tick(state, items.resource_generation(), Instant::now())
     else {
         return;
     };
-    let rgba = match items.texture_animation_atlas_rgba(tick) {
-        Ok(Some(rgba)) => rgba,
+    let patches = match items.texture_animation_atlas_patches(previous_tick, tick) {
+        Ok(Some(patches)) => patches,
         Ok(None) => return,
         Err(err) => {
-            tracing::warn!(?err, "failed to stitch animated item texture atlas frame");
+            tracing::warn!(?err, "failed to build animated item texture atlas patches");
             return;
         }
     };
-    if let Err(err) = renderer.update_hud_item_atlas(&rgba) {
+    if let Err(err) = renderer.update_hud_item_atlas_patches(&patches) {
         tracing::warn!(?err, "failed to update animated HUD item texture atlas");
     }
-    if let Err(err) = renderer.update_item_entity_atlas(&rgba) {
+    if let Err(err) = renderer.update_item_entity_atlas_patches(&patches) {
         tracing::warn!(
             ?err,
             "failed to update animated model/entity item texture atlas"
@@ -48,7 +48,7 @@ fn advance_item_texture_animation_tick(
     state: &mut ItemTextureAnimationState,
     resource_generation: u64,
     now: Instant,
-) -> Option<u64> {
+) -> Option<(u64, u64)> {
     if state.resource_generation != Some(resource_generation) {
         state.resource_generation = Some(resource_generation);
         state.tick = 0;
@@ -63,12 +63,13 @@ fn advance_item_texture_animation_tick(
     }
 
     let ticks = u64::try_from(ticks).unwrap_or(u64::MAX);
+    let previous_tick = state.tick;
     state.tick = state.tick.saturating_add(ticks);
     let advanced = Duration::from_millis(
         ticks.saturating_mul(ITEM_TEXTURE_ANIMATION_INTERVAL.as_millis() as u64),
     );
     state.last_advance_at = last.checked_add(advanced).or(Some(now));
-    Some(state.tick)
+    Some((previous_tick, state.tick))
 }
 
 #[cfg(test)]
@@ -90,11 +91,11 @@ mod tests {
         );
         assert_eq!(
             advance_item_texture_animation_tick(&mut state, 7, start + Duration::from_millis(50)),
-            Some(1)
+            Some((0, 1))
         );
         assert_eq!(
             advance_item_texture_animation_tick(&mut state, 7, start + Duration::from_millis(199)),
-            Some(3)
+            Some((1, 3))
         );
         assert_eq!(state.tick, 3);
 
@@ -105,7 +106,7 @@ mod tests {
         assert_eq!(state.tick, 0);
         assert_eq!(
             advance_item_texture_animation_tick(&mut state, 8, start + Duration::from_millis(250)),
-            Some(1)
+            Some((0, 1))
         );
     }
 }

@@ -6,9 +6,9 @@ use std::{
 
 use anyhow::Result;
 use bbb_pack::{
-    AtlasLayout, AtlasMipImage, AtlasPacker, BiomeColorCatalog, BiomeColorProfile,
-    BiomeTemperatureModifier, BlockFaceTextures, BlockModelCatalog, BlockModelFace,
-    BlockModelShape, GrassColorModifier, PackRoots, SpriteImage, TerrainColorMaps,
+    AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier,
+    BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier,
+    PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::{
     terrain::{
@@ -44,7 +44,6 @@ pub(crate) struct TerrainTextureState {
     sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
     cutout_leaves: bool,
-    animation: Option<TerrainTextureAnimation>,
     block_item_default_quads: RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
     block_item_property_quads: RefCell<
         HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
@@ -83,7 +82,6 @@ impl Default for TerrainTextureState {
             sprite_alphas: HashMap::new(),
             fallback_index: 0,
             cutout_leaves: true,
-            animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
@@ -106,34 +104,6 @@ struct SpriteAlpha {
     height: u32,
     transparency: TerrainTransparency,
     alpha: Vec<TerrainTransparency>,
-}
-
-#[derive(Debug, Clone)]
-struct TerrainTextureAnimation {
-    packer: AtlasPacker,
-    images: Vec<SpriteImage>,
-    max_mipmap_levels: u32,
-}
-
-impl TerrainTextureAnimation {
-    fn new(packer: AtlasPacker, images: Vec<SpriteImage>, max_mipmap_levels: u32) -> Option<Self> {
-        images
-            .iter()
-            .any(|image| image.animation.is_some())
-            .then_some(Self {
-                packer,
-                images,
-                max_mipmap_levels,
-            })
-    }
-
-    fn stitch_frame(&self, tick: u64) -> Result<AtlasMipImage> {
-        self.packer.stitch_animation_frame_mips_with_max_level(
-            &self.images,
-            tick,
-            self.max_mipmap_levels,
-        )
-    }
 }
 
 impl SpriteAlpha {
@@ -269,17 +239,12 @@ impl TerrainTextureState {
             sprite_alphas,
             fallback_index,
             cutout_leaves: true,
-            animation: None,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
             block_display_property_quads: RefCell::new(HashMap::new()),
             item_frame_border_quads: RefCell::new(HashMap::new()),
         }
-    }
-
-    pub(super) fn has_texture_animation(&self) -> bool {
-        self.animation.is_some()
     }
 
     pub(crate) fn with_cutout_leaves(mut self, cutout_leaves: bool) -> Self {
@@ -306,13 +271,6 @@ impl TerrainTextureState {
         }
         *face_transparency = [TerrainTransparency::OPAQUE; 6];
         render_shape.force_opaque();
-    }
-
-    pub(super) fn animation_atlas_frame(&self, tick: u64) -> Result<Option<AtlasMipImage>> {
-        self.animation
-            .as_ref()
-            .map(|animation| animation.stitch_frame(tick))
-            .transpose()
     }
 
     fn texture_index(&self, texture_id: &str) -> u32 {
@@ -1919,12 +1877,16 @@ pub(crate) fn try_load_terrain_textures(
     };
     let packer = AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, 1)?;
     let atlas = packer.stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)?;
+    let animation_plan = atlas
+        .layout
+        .prepare_gpu_animation_plan(&images, atlas.mip_level())?;
     let mip_rgba = atlas.rgba_slices();
     renderer.upload_terrain_texture_atlas_mips(
         atlas.layout.width,
         atlas.layout.height,
         &mip_rgba,
     )?;
+    renderer.upload_terrain_texture_animation(animation_plan)?;
     renderer.set_terrain_particle_sprite_uvs(terrain_particle_sprite_uvs(&atlas.layout));
     let animated_sprites = images
         .iter()
@@ -1941,7 +1903,7 @@ pub(crate) fn try_load_terrain_textures(
         biome_colors = biome_colors.as_ref().map_or(0, |colors| colors.len()),
         "loaded terrain texture atlas"
     );
-    let mut textures = TerrainTextureState::from_layout_and_images(
+    let textures = TerrainTextureState::from_layout_and_images(
         &atlas.layout,
         &images,
         Some(block_models),
@@ -1949,8 +1911,6 @@ pub(crate) fn try_load_terrain_textures(
         biome_colors,
     )
     .with_cutout_leaves(cutout_leaves);
-    textures.animation =
-        TerrainTextureAnimation::new(packer, images, VANILLA_DEFAULT_MIPMAP_LEVELS);
     Ok(textures)
 }
 

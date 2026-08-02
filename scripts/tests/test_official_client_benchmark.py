@@ -500,6 +500,7 @@ class LaunchPlanTests(unittest.TestCase):
         self.assertEqual(argv[argv.index("--username") + 1], "bbb-benchmark")
         self.assertEqual(argv[argv.index("--client-view-distance") + 1], "12")
         self.assertEqual(argv[argv.index("--render-distance") + 1], "12")
+        self.assertEqual(argv[argv.index("--cloud-range") + 1], "64")
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
         self.assertEqual(argv[argv.index("--client-vsync") + 1], "false")
         self.assertEqual(argv[argv.index("--client-framerate-limit") + 1], "260")
@@ -589,6 +590,10 @@ class ReplayTests(unittest.TestCase):
                 for key in ("x", "y", "z", "yaw", "pitch")
             }
             self.assertEqual(capture_pose, anchor_pose)
+            for frame in frames[80 : anchor_index + 1]:
+                self.assertEqual(
+                    {key: frame[key] for key in anchor_pose}, anchor_pose
+                )
             for frame in frames[anchor_index - 24 : anchor_index + 25]:
                 self.assertEqual(
                     {key: frame[key] for key in anchor_pose}, anchor_pose
@@ -620,7 +625,7 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(fixture, benchmark.default_replay())
         self.assertEqual(
             benchmark.replay_hash(fixture),
-            "5992be03875b60f39b9d73caf41e95689dd4e4d30668e036e4ae001d1aef1d92",
+            "5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388",
         )
 
     def test_replay_rejects_noncontiguous_ticks(self):
@@ -934,6 +939,28 @@ class CaptureTests(unittest.TestCase):
             benchmark.split_mangohud_capture_by_replay(
                 capture, replay, []
             )
+
+    def test_formal_overall_excludes_inter_segment_transition_frames(self):
+        aggregate = {
+            segment: {"frame_ms": [], "gpu_load": []}
+            for segment in ("overall", *benchmark.FORMAL_CAPTURE_SEGMENTS)
+        }
+        split = {
+            "static_orbit": {"frame_ms": [4.0], "gpu_load": [90.0]},
+            "preloaded_flight": {"frame_ms": [3.0], "gpu_load": [95.0]},
+            "chunk_boundary_crossing": {
+                "frame_ms": [5.0],
+                "gpu_load": [99.0],
+            },
+        }
+        benchmark.append_formal_segment_samples(
+            aggregate, split, ("frame_ms", "gpu_load")
+        )
+        self.assertEqual(aggregate["overall"]["frame_ms"], [4.0, 3.0, 5.0])
+        self.assertNotIn(40.0, aggregate["overall"]["frame_ms"])
+        self.assertEqual(
+            aggregate["chunk_boundary_crossing"]["gpu_load"], [99.0]
+        )
 
     def test_bbb_terrain_residency_requires_full_loaded_section_coverage(self):
         ready = {

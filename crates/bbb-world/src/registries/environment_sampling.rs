@@ -1,4 +1,4 @@
-use crate::{BlockPos, ClientEnvironmentAttributes, WorldStore};
+use crate::{BlockPos, ClientAmbientParticle, ClientEnvironmentAttributes, WorldStore};
 
 use super::environment_attributes::{
     apply_spatial_environment_attribute_maps, sanitize_environment_attributes,
@@ -7,6 +7,7 @@ use super::environment_attributes::{
 use super::timelines::{apply_environment_track, TimelineProjectionError};
 
 const GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
+const AMBIENT_PARTICLES_ATTRIBUTE: &str = "minecraft:visual/ambient_particles";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnvironmentBiomeSampling {
@@ -15,6 +16,45 @@ pub enum EnvironmentBiomeSampling {
 }
 
 impl WorldStore {
+    /// Samples only Vanilla's `AMBIENT_PARTICLES` value for `ClientLevel.doAnimateTick`.
+    ///
+    /// Vanilla bakes one sampler per environment attribute and does not project every unrelated
+    /// visual/audio/gameplay value for each of the 1,334 random animate-tick positions. Preserve
+    /// the same dimension -> biome -> timeline order while keeping this hot query field-local.
+    pub fn sampled_client_ambient_particles_at(
+        &self,
+        position: [f64; 3],
+    ) -> Result<Vec<ClientAmbientParticle>, TimelineProjectionError> {
+        let Some(level) = self.level_info() else {
+            return Ok(Vec::new());
+        };
+        let dimension = self
+            .registries
+            .dimension_type_client_projection_ref(level.dimension_type_id);
+        let ambient_particles = match dimension.as_ref() {
+            Some(projection) => projection.environment_attributes.ambient_particles.clone(),
+            None => level.environment_attributes.ambient_particles.clone(),
+        };
+        let mut attributes = ClientEnvironmentAttributes {
+            ambient_particles,
+            ..ClientEnvironmentAttributes::default()
+        };
+        self.environment_attribute_map_at_position(position)
+            .apply_attribute_to(AMBIENT_PARTICLES_ATTRIBUTE, &mut attributes)
+            .map_err(environment_sampling_error)?;
+        self.visit_resolved_dimension_timelines(|timeline, total_ticks| {
+            for track in timeline
+                .tracks
+                .iter()
+                .filter(|track| track.attribute == AMBIENT_PARTICLES_ATTRIBUTE)
+            {
+                apply_environment_track(&mut attributes, timeline, track, total_ticks)?;
+            }
+            Ok(())
+        })?;
+        Ok(attributes.ambient_particles.unwrap_or_default())
+    }
+
     /// Samples Vanilla's positional `WATER_EVAPORATES` environment attribute.
     ///
     /// Legacy sessions without synchronized dimension-type contents retain the
@@ -85,8 +125,8 @@ impl WorldStore {
         let level = self.level_info()?;
         Some(
             self.registries
-                .dimension_type_client_projection(level.dimension_type_id)
-                .map(|projection| projection.environment_attributes)
+                .dimension_type_client_projection_ref(level.dimension_type_id)
+                .map(|projection| projection.environment_attributes.clone())
                 .unwrap_or_else(|| level.environment_attributes()),
         )
     }
@@ -200,7 +240,7 @@ fn environment_sampling_error(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, sync::Arc};
 
     use bbb_protocol::packets::{ChunkBiomeData, ChunkPos as ProtocolChunkPos, ChunksBiomes};
     use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
@@ -208,11 +248,12 @@ mod tests {
     use super::*;
     use crate::{
         BiomeClientProjection, BiomeGrassColorModifier, BiomeTemperatureModifier, ChunkColumn,
-        ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-        PalettedContainerData, RegistryContentState, RegistryElementSource, RegistryEntrySource,
-        RegistryPacketEntry, TimelineClockReference, TimelineDefinition, TimelineEasing,
-        TimelineKeyframe, TimelineModifier, TimelineTrackDefinition, WorldCardinalLighting,
-        WorldDimension, WorldDimensionTypeProperties, WorldLevelInfo, WorldSkybox,
+        ChunkPos, ChunkSection, ChunkState, ClientAmbientParticle, ClientParticleOptions,
+        LightData, PaletteDomain, PaletteKind, PalettedContainerData, RegistryContentState,
+        RegistryElementSource, RegistryEntrySource, RegistryPacketEntry, TimelineClockReference,
+        TimelineDefinition, TimelineEasing, TimelineKeyframe, TimelineModifier,
+        TimelineTrackDefinition, WorldCardinalLighting, WorldDimension,
+        WorldDimensionTypeProperties, WorldLevelInfo, WorldSkybox,
     };
 
     use super::super::environment_attributes::{
@@ -299,6 +340,36 @@ mod tests {
             })
             .unwrap();
         assert_eq!(sample(&world), 210.0);
+    }
+
+    #[test]
+    fn ambient_particle_query_matches_full_projection_order() {
+        let mut world = environment_world();
+        world.level.as_mut().unwrap().timeline_resource_ids.clear();
+        let position = [8.0, 32.0, 8.0];
+        let full_biome = world
+            .sampled_client_environment_attributes_at(position, EnvironmentBiomeSampling::Direct)
+            .unwrap()
+            .ambient_particles
+            .unwrap();
+        assert_eq!(
+            world.sampled_client_ambient_particles_at(position).unwrap(),
+            full_biome
+        );
+        assert_eq!(full_biome[0].particle.resource_id, "minecraft:white_ash");
+
+        world.level.as_mut().unwrap().timeline_resource_ids =
+            vec!["example:environment".to_string()];
+        let full_timeline = world
+            .sampled_client_environment_attributes_at(position, EnvironmentBiomeSampling::Direct)
+            .unwrap()
+            .ambient_particles
+            .unwrap();
+        assert_eq!(
+            world.sampled_client_ambient_particles_at(position).unwrap(),
+            full_timeline
+        );
+        assert_eq!(full_timeline[0].particle.resource_id, "minecraft:ash");
     }
 
     #[test]
@@ -414,6 +485,10 @@ mod tests {
                 "multiply",
                 NbtSummaryValue::Float(2.0_f32.to_bits()),
             ),
+            entry(
+                "minecraft:visual/ambient_particles",
+                ambient_particles_value("minecraft:crimson_spore", 0.25),
+            ),
         ]);
         let right = environment_map([
             modifier(
@@ -437,6 +512,10 @@ mod tests {
                 "minecraft:visual/sky_light_factor",
                 "multiply",
                 NbtSummaryValue::Float(2.0_f32.to_bits()),
+            ),
+            entry(
+                "minecraft:visual/ambient_particles",
+                ambient_particles_value("minecraft:white_ash", 0.5),
             ),
         ]);
         let entries = vec![
@@ -479,16 +558,30 @@ mod tests {
                     source: RegistryEntrySource::Server,
                 },
                 period_ticks: None,
-                tracks: vec![TimelineTrackDefinition {
-                    attribute: "minecraft:visual/water_fog_end_distance".to_string(),
-                    modifier: TimelineModifier::Add,
-                    keyframes: vec![TimelineKeyframe {
-                        ticks: 0,
-                        value: NbtSummaryValue::Float(10.0_f32.to_bits()),
-                        argument: EnvironmentTrackArgument::Float(10.0),
-                    }],
-                    easing: TimelineEasing::Simple("linear".to_string()),
-                }],
+                tracks: vec![
+                    TimelineTrackDefinition {
+                        attribute: "minecraft:visual/water_fog_end_distance".to_string(),
+                        modifier: TimelineModifier::Add,
+                        keyframes: vec![TimelineKeyframe {
+                            ticks: 0,
+                            value: NbtSummaryValue::Float(10.0_f32.to_bits()),
+                            argument: EnvironmentTrackArgument::Float(10.0),
+                        }],
+                        easing: TimelineEasing::Simple("linear".to_string()),
+                    },
+                    TimelineTrackDefinition {
+                        attribute: AMBIENT_PARTICLES_ATTRIBUTE.to_string(),
+                        modifier: TimelineModifier::Override,
+                        keyframes: vec![TimelineKeyframe {
+                            ticks: 0,
+                            value: ambient_particles_value("minecraft:ash", 0.75),
+                            argument: EnvironmentTrackArgument::AmbientParticles(Arc::from([
+                                ambient_particle("minecraft:ash", 0.75),
+                            ])),
+                        }],
+                        easing: TimelineEasing::Simple("linear".to_string()),
+                    },
+                ],
                 time_markers: Vec::new(),
             },
         );
@@ -603,6 +696,33 @@ mod tests {
                 entry("argument", argument),
             ]),
         )
+    }
+
+    fn ambient_particle(resource_id: &str, probability: f32) -> ClientAmbientParticle {
+        ClientAmbientParticle {
+            particle: ClientParticleOptions {
+                resource_id: resource_id.to_string(),
+                fields: vec![entry(
+                    "type",
+                    NbtSummaryValue::String(resource_id.to_string()),
+                )],
+                option: Default::default(),
+            },
+            probability_bits: probability.to_bits(),
+        }
+    }
+
+    fn ambient_particles_value(resource_id: &str, probability: f32) -> NbtSummaryValue {
+        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+            entry(
+                "particle",
+                NbtSummaryValue::Compound(vec![entry(
+                    "type",
+                    NbtSummaryValue::String(resource_id.to_string()),
+                )]),
+            ),
+            entry("probability", NbtSummaryValue::Float(probability.to_bits())),
+        ])])
     }
 
     fn entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {

@@ -114,6 +114,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) debug_sky_light_section_cache: &'a mut DebugSkyLightSectionCache,
     pub(crate) remote_debug_selection_cache: &'a mut RemoteDebugSelectionCache,
     pub(crate) render_distance_chunks: u32,
+    pub(crate) cloud_range_chunks: u32,
     pub(crate) client_framerate_limit: u32,
     pub(crate) client_vsync: bool,
     pub(crate) damage_tilt_strength: f32,

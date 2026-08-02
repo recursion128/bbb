@@ -1,5 +1,7 @@
 pub use crate::atlas::{
-    AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasPacker, AtlasRect, AtlasSprite,
+    AtlasAnimationMipCache, AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite,
+    AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasMipPatch, AtlasPacker, AtlasRect,
+    AtlasSprite,
 };
 pub use crate::block_destroy_profiles::{BlockDestroyProfile, BlockDestroyProfileCatalog};
 pub use crate::block_models::{

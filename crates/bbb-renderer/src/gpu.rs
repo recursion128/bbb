@@ -1,6 +1,7 @@
 use std::mem;
 
 use anyhow::{anyhow, bail, Result};
+use bbb_pack::AtlasMipPatch;
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -9,13 +10,19 @@ use crate::{
     terrain,
 };
 
-pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+// Vanilla 26.1 allocates both the main target and every fabulous-transparency
+// target as `TextureFormat.DEPTH32` (`RenderTarget.allocateDepthAttachment` and
+// `MainTarget.allocateDepthAttachment`). Keep the sampled depth values feeding
+// `transparency.fsh` at the same precision instead of accepting wgpu's
+// implementation-defined 24-bit-or-greater alternative.
+pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages = wgpu::TextureUsages::RENDER_ATTACHMENT
     .union(wgpu::TextureUsages::TEXTURE_BINDING)
     .union(wgpu::TextureUsages::COPY_SRC)
     .union(wgpu::TextureUsages::COPY_DST);
 
-const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
+const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Unorm8x4, 2 => Float32x2, 3 => Sint16x2];
 const TERRAIN_PIPELINE_OPAQUE_BLEND: Option<wgpu::BlendState> = Some(wgpu::BlendState::REPLACE);
 const TERRAIN_PIPELINE_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
     Some(wgpu::BlendState::ALPHA_BLENDING);
@@ -67,25 +74,17 @@ var lightmap_sampler: sampler;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
+    @location(1) color: vec4<f32>,
     @location(2) uv: vec2<f32>,
-    @location(3) light: vec2<f32>,
-    @location(4) tint: vec3<f32>,
-    @location(5) shade: f32,
-    @location(6) ambient_occlusion: f32,
-    @location(7) block_state_id: i32,
+    @location(3) light: vec2<i32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
-    @location(0) normal: vec3<f32>,
+    @location(0) vertex_color: vec4<f32>,
     @location(1) uv: vec2<f32>,
-    @location(2) light: vec2<f32>,
-    @location(3) tint: vec3<f32>,
-    @location(4) shade: f32,
-    @location(5) ambient_occlusion: f32,
-    @location(6) spherical_distance: f32,
-    @location(7) cylindrical_distance: f32,
+    @location(2) spherical_distance: f32,
+    @location(3) cylindrical_distance: f32,
 };
 
 fn fog_spherical_distance(pos: vec3<f32>) -> f32 {
@@ -118,13 +117,13 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
     return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
 }
 
-fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+fn sample_lightmap(light: vec2<i32>) -> vec3<f32> {
     let uv = clamp(
-        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(light) / 256.0 + vec2<f32>(0.5 / 16.0),
         vec2<f32>(0.5 / 16.0),
         vec2<f32>(15.5 / 16.0),
     );
-    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+    return textureSampleLevel(lightmap_texture, lightmap_sampler, uv, 0.0).rgb;
 }
 
 fn sample_terrain_nearest_with_derivatives(
@@ -206,12 +205,8 @@ fn sample_terrain_rgss(uv: vec2<f32>, pixel_size: vec2<f32>) -> vec4<f32> {
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
-    out.normal = input.normal;
+    out.vertex_color = input.color * vec4<f32>(sample_lightmap(input.light), 1.0);
     out.uv = input.uv;
-    out.light = input.light;
-    out.tint = input.tint;
-    out.shade = input.shade;
-    out.ambient_occlusion = input.ambient_occlusion;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = fog_spherical_distance(fog_pos);
     out.cylindrical_distance = fog_cylindrical_distance(fog_pos);
@@ -223,12 +218,48 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let atlas_size = vec2<f32>(textureDimensions(terrain_atlas));
     // __BBB_TERRAIN_SAMPLE__
     // __BBB_ALPHA_CUTOUT__
-    let base = texel.rgb * input.tint;
-    let light_color = sample_lightmap(input.light);
-    let shade = input.shade * input.ambient_occlusion;
-    return apply_fog(vec4<f32>(base * light_color * shade, texel.a), input.spherical_distance, input.cylindrical_distance);
+    let color = texel * input.vertex_color;
+    return apply_fog(color, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct TerrainGpuVertex {
+    position: [f32; 3],
+    color: [u8; 4],
+    uv: [f32; 2],
+    light: [i16; 2],
+}
+
+impl From<terrain::TerrainVertex> for TerrainGpuVertex {
+    fn from(vertex: terrain::TerrainVertex) -> Self {
+        let ambient = float_color_channel(vertex.ambient_occlusion);
+        let shaded = (f32::from(ambient) * vertex.shade.clamp(0.0, 1.0)).floor() as u8;
+        let color = std::array::from_fn(|channel| {
+            if channel == 3 {
+                255
+            } else {
+                let tint = (vertex.tint[channel].clamp(0.0, 1.0) * 255.0).round() as u16;
+                (u16::from(shaded) * tint / 255) as u8
+            }
+        });
+        let light = vertex.light.map(|value| {
+            let level = (value.clamp(0.0, 1.0) * 15.0).round() as i16;
+            level * 16
+        });
+        Self {
+            position: vertex.position,
+            color,
+            uv: vertex.uv,
+            light,
+        }
+    }
+}
+
+fn float_color_channel(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).floor() as u8
+}
 
 pub(super) struct DepthTarget {
     pub(super) _texture: wgpu::Texture,
@@ -236,12 +267,12 @@ pub(super) struct DepthTarget {
 }
 
 pub(super) struct TerrainAtlasGpu {
-    texture: wgpu::Texture,
+    pub(super) texture: wgpu::Texture,
     view: wgpu::TextureView,
     sampler: wgpu::Sampler,
-    width: u32,
-    height: u32,
-    mip_level_count: u32,
+    pub(super) width: u32,
+    pub(super) height: u32,
+    pub(super) mip_level_count: u32,
 }
 
 impl TerrainAtlasGpu {
@@ -373,7 +404,10 @@ pub(super) fn create_terrain_atlas_mips_gpu(
         // Vanilla 26.1 `TextureAtlas` uses `TextureFormat.RGBA8`, mapped by
         // `GlConst.toGlInternalId` to `GL_RGBA8`, not an sRGB texture.
         format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::RENDER_ATTACHMENT,
         view_formats: &[],
     });
     for (level, (rgba, (mip_width, mip_height))) in
@@ -446,6 +480,98 @@ pub(super) fn write_terrain_atlas_mips_gpu(
         );
     }
     Ok(())
+}
+
+pub(super) fn write_terrain_atlas_mip_patches_gpu(
+    queue: &wgpu::Queue,
+    atlas: &TerrainAtlasGpu,
+    patches: &[AtlasMipPatch],
+) -> Result<()> {
+    write_texture_atlas_mip_patches_gpu(
+        queue,
+        &atlas.texture,
+        atlas.width,
+        atlas.height,
+        atlas.mip_level_count,
+        patches,
+    )
+}
+
+pub(super) fn write_texture_atlas_mip_patches_gpu(
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    mip_level_count: u32,
+    patches: &[AtlasMipPatch],
+) -> Result<()> {
+    for patch in patches {
+        validate_atlas_mip_patch(width, height, mip_level_count, patch)?;
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture,
+                mip_level: patch.level,
+                origin: wgpu::Origin3d {
+                    x: patch.rect.x,
+                    y: patch.rect.y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            &patch.rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(patch.rect.width * 4),
+                rows_per_image: Some(patch.rect.height),
+            },
+            wgpu::Extent3d {
+                width: patch.rect.width,
+                height: patch.rect.height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    Ok(())
+}
+
+fn validate_atlas_mip_patch(
+    width: u32,
+    height: u32,
+    mip_level_count: u32,
+    patch: &AtlasMipPatch,
+) -> Result<()> {
+    if patch.level >= mip_level_count {
+        bail!(
+            "atlas patch mip level {} exceeds level count {}",
+            patch.level,
+            mip_level_count
+        );
+    }
+    let mip_width = width.checked_shr(patch.level).unwrap_or(0);
+    let mip_height = height.checked_shr(patch.level).unwrap_or(0);
+    let right = patch
+        .rect
+        .x
+        .checked_add(patch.rect.width)
+        .ok_or_else(|| anyhow!("atlas patch width overflow"))?;
+    let bottom = patch
+        .rect
+        .y
+        .checked_add(patch.rect.height)
+        .ok_or_else(|| anyhow!("atlas patch height overflow"))?;
+    if right > mip_width || bottom > mip_height {
+        bail!(
+            "atlas patch {}x{} at {},{} exceeds mip {} dimensions {}x{}",
+            patch.rect.width,
+            patch.rect.height,
+            patch.rect.x,
+            patch.rect.y,
+            patch.level,
+            mip_width,
+            mip_height
+        );
+    }
+    validate_terrain_atlas_rgba(patch.rect.width, patch.rect.height, &patch.rgba)
 }
 
 fn validate_terrain_atlas_mips(
@@ -641,7 +767,7 @@ fn terrain_shader(
 
 fn terrain_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
-        array_stride: mem::size_of::<terrain::TerrainVertex>() as wgpu::BufferAddress,
+        array_stride: mem::size_of::<TerrainGpuVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &TERRAIN_VERTEX_ATTRIBUTES,
     }
@@ -652,28 +778,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn terrain_vertex_layout_exposes_ambient_occlusion_before_block_state_id() {
+    fn terrain_vertex_layout_matches_vanilla_block_format() {
         let layout = terrain_vertex_layout();
 
+        assert_eq!(layout.array_stride, 28);
+        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES.len(), 4);
         assert_eq!(
-            layout.array_stride,
-            mem::size_of::<terrain::TerrainVertex>() as wgpu::BufferAddress
+            TERRAIN_VERTEX_ATTRIBUTES[1].format,
+            wgpu::VertexFormat::Unorm8x4
         );
-        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES.len(), 8);
-        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES[6].shader_location, 6);
         assert_eq!(
-            TERRAIN_VERTEX_ATTRIBUTES[6].format,
-            wgpu::VertexFormat::Float32
-        );
-        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES[7].shader_location, 7);
-        assert_eq!(
-            TERRAIN_VERTEX_ATTRIBUTES[7].format,
-            wgpu::VertexFormat::Sint32
+            TERRAIN_VERTEX_ATTRIBUTES[3].format,
+            wgpu::VertexFormat::Sint16x2
         );
     }
 
     #[test]
+    fn terrain_gpu_vertex_packs_vanilla_color_and_light_coordinates() {
+        let packed = TerrainGpuVertex::from(terrain::TerrainVertex {
+            position: [1.0, 2.0, 3.0],
+            normal: [0.0, 1.0, 0.0],
+            uv: [0.25, 0.75],
+            light: [2.0 / 15.0, 13.0 / 15.0],
+            tint: [128.0 / 255.0, 1.0, 64.0 / 255.0],
+            shade: 0.8,
+            ambient_occlusion: 0.75,
+            block_state_id: 42,
+        });
+
+        // ARGB.gray(AO), cardinal scale, then tint multiplication all truncate.
+        assert_eq!(packed.color, [76, 152, 38, 255]);
+        assert_eq!(packed.light, [32, 208]);
+        assert_eq!(std::mem::size_of::<TerrainGpuVertex>(), 28);
+    }
+
+    #[test]
     fn depth_targets_are_bindable_for_vanilla_transparency_depth_inputs() {
+        assert_eq!(
+            DEPTH_FORMAT,
+            wgpu::TextureFormat::Depth32Float,
+            "Vanilla 26.1 RenderTarget and MainTarget allocate DEPTH32 attachments"
+        );
         assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::RENDER_ATTACHMENT));
         assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::TEXTURE_BINDING));
         assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::COPY_SRC));
@@ -735,9 +880,11 @@ mod tests {
     }
 
     #[test]
-    fn terrain_shader_multiplies_shade_by_vertex_ambient_occlusion() {
-        assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
-        assert!(TERRAIN_SHADER.contains("let shade = input.shade * input.ambient_occlusion"));
+    fn terrain_shader_consumes_prepacked_vanilla_vertex_color() {
+        assert!(TERRAIN_SHADER.contains("@location(1) color: vec4<f32>"));
+        assert!(TERRAIN_SHADER.contains("let color = texel * input.vertex_color"));
+        assert!(!TERRAIN_SHADER.contains("ambient_occlusion"));
+        assert!(!TERRAIN_SHADER.contains("input.shade"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));
     }
 
@@ -773,14 +920,20 @@ mod tests {
         assert!(TERRAIN_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
         assert!(TERRAIN_SHADER.contains("@group(1) @binding(1)"));
         assert!(TERRAIN_SHADER.contains("var lightmap_sampler: sampler"));
-        assert!(TERRAIN_SHADER.contains("fn sample_lightmap(light: vec2<f32>) -> vec3<f32>"));
-        assert!(TERRAIN_SHADER.contains("light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0)"));
+        assert!(TERRAIN_SHADER.contains("fn sample_lightmap(light: vec2<i32>) -> vec3<f32>"));
+        assert!(TERRAIN_SHADER.contains("vec2<f32>(light) / 256.0 + vec2<f32>(0.5 / 16.0)"));
         assert!(TERRAIN_SHADER.contains("vec2<f32>(15.5 / 16.0)"));
-        assert!(
-            TERRAIN_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
+        assert!(TERRAIN_SHADER
+            .contains("textureSampleLevel(lightmap_texture, lightmap_sampler, uv, 0.0).rgb"));
+        assert!(TERRAIN_SHADER.contains(
+            "out.vertex_color = input.color * vec4<f32>(sample_lightmap(input.light), 1.0)"
+        ));
+        assert_eq!(
+            TERRAIN_SHADER
+                .matches("sample_lightmap(input.light)")
+                .count(),
+            1
         );
-        assert!(TERRAIN_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-        assert!(TERRAIN_SHADER.contains("base * light_color * shade"));
         assert!(!TERRAIN_SHADER.contains("fn lightmap_brightness"));
         assert!(!TERRAIN_SHADER.contains("camera.lightmap_factors.y"));
     }
@@ -823,5 +976,39 @@ mod tests {
         assert!(too_deep
             .to_string()
             .contains("mip level 1 has zero-sized dimensions"));
+    }
+
+    #[test]
+    fn terrain_atlas_mip_patch_validation_rejects_wrong_level_bounds_and_bytes() {
+        let valid = AtlasMipPatch {
+            level: 1,
+            rect: bbb_pack::AtlasRect {
+                x: 2,
+                y: 3,
+                width: 4,
+                height: 2,
+            },
+            rgba: vec![0; 4 * 2 * 4],
+        };
+        validate_atlas_mip_patch(16, 16, 3, &valid).unwrap();
+
+        let mut invalid = valid.clone();
+        invalid.level = 3;
+        assert!(validate_atlas_mip_patch(16, 16, 3, &invalid)
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds level count"));
+        invalid = valid.clone();
+        invalid.rect.x = 5;
+        assert!(validate_atlas_mip_patch(16, 16, 3, &invalid)
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds mip 1 dimensions"));
+        invalid = valid;
+        invalid.rgba.pop();
+        assert!(validate_atlas_mip_patch(16, 16, 3, &invalid)
+            .unwrap_err()
+            .to_string()
+            .contains("expected 32"));
     }
 }

@@ -10,7 +10,8 @@ pub use crate::camera::{
 };
 pub use crate::clouds::{
     CloudEnvironment, CloudFrame, CloudShape, CloudTextureImage, VANILLA_DEFAULT_CLOUD_COLOR,
-    VANILLA_DEFAULT_CLOUD_HEIGHT,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
+    VANILLA_MAX_CLOUD_RANGE_CHUNKS, VANILLA_MIN_CLOUD_RANGE_CHUNKS,
 };
 pub use crate::counters::{RendererCounters, TerrainMeshWorkerCounters};
 pub use crate::debug_filled_boxes::{DebugCuboidFace, DebugFilledBox, DebugFilledRect};

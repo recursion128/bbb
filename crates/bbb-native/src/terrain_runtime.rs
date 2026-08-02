@@ -25,7 +25,9 @@ use mesh_worker::{
     TerrainMeshJob, TerrainMeshJobKey, TerrainMeshResult, TerrainMeshSubmit, TerrainMeshWorker,
 };
 use occlusion::{
-    ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainSectionOcclusionGraph,
+    ChunkSectionDebugGizmos, ResidentSection, SectionPosition, TerrainCoordinateMap,
+    TerrainCoordinateSet, TerrainOcclusionJob, TerrainOcclusionWorker,
+    TerrainSectionOcclusionGraph,
 };
 pub(crate) use textures::{
     load_terrain_textures, terrain_particle_biome_blend_center, try_load_terrain_textures,
@@ -51,6 +53,33 @@ struct CachedTerrainMesh {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TerrainOcclusionRebuildKey {
+    level_generation: u64,
+    camera_cell: [i32; 3],
+    render_distance_chunks: u32,
+    min_section_y: i32,
+    section_count: usize,
+    smart_cull: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TerrainOcclusionInputKey {
+    level_generation: u64,
+    world_revision: u64,
+    resident_revision: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TerrainFrustumVisibilityKey {
+    graph_key: Option<TerrainOcclusionRebuildKey>,
+    graph_valid: bool,
+    resident_revision: u64,
+    camera_rotation_bucket: Option<[i32; 2]>,
+    surface_size: [u32; 2],
+    camera_fov_bits: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TerrainCacheWork {
     RefreshSnapshot(ChunkPos),
     QueueMesh(ChunkPos),
@@ -70,11 +99,23 @@ pub(crate) struct TerrainUploadState {
     mesh_worker: Option<TerrainMeshWorker>,
     mesh_atlas: Option<Arc<TerrainTextureAtlas>>,
     mesh_worker_counters: TerrainMeshWorkerCounters,
+    cache_ready: bool,
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
     compiled_and_visible_sections: HashSet<(i32, i32, i32)>,
     occlusion_graph: TerrainSectionOcclusionGraph,
+    occlusion_rebuild_key: Option<TerrainOcclusionRebuildKey>,
+    pending_occlusion_rebuild_key: Option<TerrainOcclusionRebuildKey>,
+    occlusion_input_key: Option<TerrainOcclusionInputKey>,
+    occlusion_graph_input_key: Option<TerrainOcclusionInputKey>,
+    pending_occlusion_input_key: Option<TerrainOcclusionInputKey>,
+    occlusion_section_updates:
+        TerrainCoordinateMap<SectionPosition, Option<TerrainSectionVisibility>>,
+    occlusion_sections: Arc<[ResidentSection]>,
+    occlusion_loaded_chunks: Arc<TerrainCoordinateSet<ChunkPos>>,
+    occlusion_worker: Option<TerrainOcclusionWorker>,
+    frustum_visibility_key: Option<TerrainFrustumVisibilityKey>,
     renderer_visible_sections: Option<Vec<TerrainSectionMeshOwner>>,
     reported_readiness: Option<(u64, bool)>,
 }
@@ -117,8 +158,13 @@ impl TerrainVisibilityContext {
 }
 
 impl TerrainUploadState {
-    pub(crate) fn refresh_frame_visibility(&mut self, context: TerrainVisibilityContext) {
+    pub(crate) fn refresh_frame_visibility(&mut self, context: TerrainVisibilityContext) -> bool {
+        let key = terrain_frustum_visibility_key(self, context);
+        if self.frustum_visibility_key == Some(key) {
+            return false;
+        }
         publish_terrain_frustum_visibility(self, context);
+        true
     }
 
     pub(crate) fn renderer_visible_sections(&self) -> Option<&[TerrainSectionMeshOwner]> {
@@ -241,32 +287,18 @@ mod readiness_tests {
 pub(crate) fn maybe_upload_terrain_texture_animation(
     renderer: &mut bbb_renderer::Renderer,
     upload: &mut TerrainUploadState,
-    textures: &TerrainTextureState,
+    _textures: &mut TerrainTextureState,
 ) {
-    if !textures.has_texture_animation() {
-        return;
-    }
-    let Some(tick) = advance_texture_animation_tick(upload, Instant::now()) else {
+    let Some((previous_tick, tick)) = advance_texture_animation_tick(upload, Instant::now()) else {
         return;
     };
-    match textures.animation_atlas_frame(tick) {
-        Ok(Some(atlas)) => {
-            let mip_rgba = atlas.rgba_slices();
-            if let Err(err) = renderer.update_terrain_texture_atlas_mips(&mip_rgba) {
-                tracing::warn!(?err, "failed to update animated terrain texture atlas");
-            }
-        }
-        Ok(None) => {}
-        Err(err) => {
-            tracing::warn!(
-                ?err,
-                "failed to stitch animated terrain texture atlas frame"
-            );
-        }
-    }
+    renderer.advance_terrain_texture_animation(previous_tick, tick);
 }
 
-fn advance_texture_animation_tick(upload: &mut TerrainUploadState, now: Instant) -> Option<u64> {
+fn advance_texture_animation_tick(
+    upload: &mut TerrainUploadState,
+    now: Instant,
+) -> Option<(u64, u64)> {
     let Some(last) = upload.last_texture_animation_at else {
         upload.last_texture_animation_at = Some(now);
         return None;
@@ -278,12 +310,13 @@ fn advance_texture_animation_tick(upload: &mut TerrainUploadState, now: Instant)
     }
 
     let ticks = u64::try_from(ticks).unwrap_or(u64::MAX);
+    let previous_tick = upload.texture_animation_tick;
     upload.texture_animation_tick = upload.texture_animation_tick.saturating_add(ticks);
     let advanced = Duration::from_millis(
         ticks.saturating_mul(TERRAIN_TEXTURE_ANIMATION_INTERVAL.as_millis() as u64),
     );
     upload.last_texture_animation_at = last.checked_add(advanced).or(Some(now));
-    Some(upload.texture_animation_tick)
+    Some((previous_tick, upload.texture_animation_tick))
 }
 
 pub(crate) fn maybe_upload_decoded_terrain(
@@ -293,16 +326,36 @@ pub(crate) fn maybe_upload_decoded_terrain(
     textures: &TerrainTextureState,
     visibility: TerrainVisibilityContext,
 ) {
+    let mesh_worker_counters_before = upload.mesh_worker_counters;
     let mut renderer_dirty = drain_terrain_mesh_results(world, upload);
+    let mesh_worker_counters_changed = upload.mesh_worker_counters != mesh_worker_counters_before;
+    let level_generation_changed =
+        upload.observed_level_generation != world.client_level_generation();
     let level_changed =
         synchronize_terrain_level_generation(upload, world.client_level_generation());
     if world.chunk_count() == 0 {
         let terrain_cleared = synchronize_empty_terrain_upload(upload, world.terrain_revision());
         if renderer_dirty || level_changed || terrain_cleared {
-            upload_cached_terrain(renderer, upload);
+            upload_cached_terrain(renderer, upload, true);
         }
         refresh_terrain_visibility(world, upload, visibility);
         publish_mesh_worker_counters(world, renderer, upload);
+        return;
+    }
+
+    if terrain_cache_selection_is_stable(world, upload, level_changed) {
+        if renderer_dirty {
+            upload_cached_terrain(renderer, upload, false);
+        }
+        refresh_terrain_visibility(world, upload, visibility);
+        // `cache_ready` is established only after the selected/resident/pending scan below.
+        // With the same level generation and terrain revision, no reload request and no
+        // mesh-worker counter change, those inputs are unchanged. Preserve the already-
+        // published counters instead of walking every selected chunk and resident section
+        // per frame. A late stale result still republishes its diagnostic counters.
+        if mesh_worker_counters_changed {
+            publish_mesh_worker_counters(world, renderer, upload);
+        }
         return;
     }
 
@@ -318,6 +371,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
         .collect();
 
     renderer_dirty |= level_changed;
+    let renderer_full_sync = level_generation_changed || upload.reload_all_chunks_requested;
     if upload.reload_all_chunks_requested {
         renderer_dirty |= !upload.meshes.is_empty();
         cancel_queued_terrain_mesh_jobs(upload);
@@ -327,12 +381,34 @@ pub(crate) fn maybe_upload_decoded_terrain(
         upload.meshes.clear();
         upload.compiled_and_visible_sections.clear();
         upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+        upload.occlusion_rebuild_key = None;
+        upload.pending_occlusion_rebuild_key = None;
+        clear_terrain_occlusion_inputs(upload);
         upload.renderer_visible_sections = None;
+        upload.cache_ready = false;
         upload.reload_all_chunks_requested = false;
     }
     upload
         .snapshots
         .retain(|pos, _| required_snapshots.contains(pos));
+    let removed_sections = upload
+        .meshes
+        .iter()
+        .filter(|(pos, _)| !selected.contains(pos))
+        .flat_map(|(pos, cached)| {
+            cached
+                .resident_revisions
+                .iter()
+                .map(move |&(section_y, _)| SectionPosition {
+                    x: pos.x,
+                    y: section_y,
+                    z: pos.z,
+                })
+        })
+        .collect::<Vec<_>>();
+    for position in removed_sections {
+        upload.occlusion_section_updates.insert(position, None);
+    }
     let resident_before = upload.meshes.len();
     upload.meshes.retain(|pos, _| selected.contains(pos));
     renderer_dirty |= upload.meshes.len() != resident_before;
@@ -355,11 +431,22 @@ pub(crate) fn maybe_upload_decoded_terrain(
     }
 
     if renderer_dirty {
-        upload_cached_terrain(renderer, upload);
+        upload_cached_terrain(renderer, upload, renderer_full_sync);
     }
     refresh_terrain_visibility(world, upload, visibility);
     publish_mesh_worker_counters(world, renderer, upload);
     upload.observed_world_revision = world.terrain_revision();
+}
+
+fn terrain_cache_selection_is_stable(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+    level_changed: bool,
+) -> bool {
+    !level_changed
+        && !upload.reload_all_chunks_requested
+        && upload.cache_ready
+        && upload.observed_world_revision == world.terrain_revision()
 }
 
 fn synchronize_terrain_level_generation(
@@ -379,7 +466,11 @@ fn synchronize_terrain_level_generation(
     upload.reload_all_chunks_requested = false;
     upload.compiled_and_visible_sections.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+    upload.occlusion_rebuild_key = None;
+    upload.pending_occlusion_rebuild_key = None;
+    clear_terrain_occlusion_inputs(upload);
     upload.renderer_visible_sections = None;
+    upload.cache_ready = false;
     clear_renderer
 }
 
@@ -393,7 +484,11 @@ fn synchronize_empty_terrain_upload(upload: &mut TerrainUploadState, world_revis
     upload.reload_all_chunks_requested = false;
     upload.compiled_and_visible_sections.clear();
     upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+    upload.occlusion_rebuild_key = None;
+    upload.pending_occlusion_rebuild_key = None;
+    clear_terrain_occlusion_inputs(upload);
     upload.renderer_visible_sections = None;
+    upload.cache_ready = false;
     clear_renderer
 }
 
@@ -528,6 +623,18 @@ fn queue_terrain_chunk_mesh(
         upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
         let resident_revision = upload.next_resident_revision;
         let section_mesh_revisions = terrain_section_mesh_revisions(world, pos);
+        for &(section_y, _) in &section_mesh_revisions {
+            upload.occlusion_section_updates.insert(
+                SectionPosition {
+                    x: pos.x,
+                    y: section_y,
+                    z: pos.z,
+                },
+                Some(TerrainSectionVisibility::all_visible(
+                    section_y, false, false,
+                )),
+            );
+        }
         upload.meshes.insert(
             pos,
             CachedTerrainMesh {
@@ -670,6 +777,17 @@ fn accept_terrain_mesh_result(
     upload.next_resident_revision = upload.next_resident_revision.saturating_add(1);
     let resident_revision = upload.next_resident_revision;
     let current_sections = terrain_section_mesh_revisions(world, result.key.pos);
+    let previous_section_ys = upload
+        .meshes
+        .get(&result.key.pos)
+        .map(|cached| {
+            cached
+                .resident_revisions
+                .iter()
+                .map(|&(section_y, _)| section_y)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
     let dirty_section_ys = result
         .sections
         .iter()
@@ -714,6 +832,57 @@ fn accept_terrain_mesh_result(
         .resident_revisions
         .sort_unstable_by_key(|(section_y, _)| *section_y);
     cached.camera_position = result.camera_position;
+    let mut section_updates = dirty_section_ys
+        .iter()
+        .filter(|section_y| {
+            cached
+                .resident_revisions
+                .iter()
+                .any(|(resident_y, _)| resident_y == *section_y)
+        })
+        .map(|&section_y| {
+            let visibility = cached
+                .layers
+                .visibility
+                .iter()
+                .find(|visibility| visibility.section_y == section_y)
+                .copied()
+                .unwrap_or_else(|| TerrainSectionVisibility::all_visible(section_y, false, false));
+            (
+                SectionPosition {
+                    x: result.key.pos.x,
+                    y: section_y,
+                    z: result.key.pos.z,
+                },
+                Some(visibility),
+            )
+        })
+        .collect::<Vec<_>>();
+    section_updates.extend(
+        previous_section_ys
+            .into_iter()
+            .filter(|section_y| {
+                !cached
+                    .resident_revisions
+                    .iter()
+                    .any(|(resident_y, _)| resident_y == section_y)
+            })
+            .map(|section_y| {
+                (
+                    SectionPosition {
+                        x: result.key.pos.x,
+                        y: section_y,
+                        z: result.key.pos.z,
+                    },
+                    None,
+                )
+            }),
+    );
+    for (position, visibility) in section_updates {
+        upload
+            .occlusion_section_updates
+            .insert(position, visibility);
+    }
     true
 }
 
@@ -782,9 +951,11 @@ fn update_mesh_worker_queue_depth(upload: &mut TerrainUploadState) {
 fn publish_mesh_worker_counters(
     world: &WorldStore,
     renderer: &mut bbb_renderer::Renderer,
-    upload: &TerrainUploadState,
+    upload: &mut TerrainUploadState,
 ) {
-    renderer.set_terrain_mesh_worker_counters(terrain_residency_counters(world, upload));
+    let counters = terrain_residency_counters(world, upload);
+    upload.cache_ready = counters.cache_ready;
+    renderer.set_terrain_mesh_worker_counters(counters);
 }
 
 fn terrain_residency_counters(
@@ -817,7 +988,11 @@ fn terrain_residency_counters(
     counters
 }
 
-fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut TerrainUploadState) {
+fn upload_cached_terrain(
+    renderer: &mut bbb_renderer::Renderer,
+    upload: &mut TerrainUploadState,
+    full_sync: bool,
+) {
     let cached: Vec<_> = upload
         .selected_chunks
         .iter()
@@ -827,39 +1002,205 @@ fn upload_cached_terrain(renderer: &mut bbb_renderer::Renderer, upload: &mut Ter
         .iter()
         .map(|(_, cached)| cached.layers.source_sections)
         .sum();
-    renderer.synchronize_terrain_section_mesh_layer_refs(
-        source_sections,
-        cached.iter().map(|(pos, cached)| {
-            (
-                TerrainChunkMeshOwner {
-                    level_generation: upload.observed_level_generation,
-                    chunk_x: pos.x,
-                    chunk_z: pos.z,
-                },
-                cached.resident_revisions.as_slice(),
-                &cached.layers,
-                cached.camera_position,
-            )
-        }),
-    );
+    if full_sync {
+        renderer.synchronize_terrain_section_mesh_layer_refs(
+            source_sections,
+            cached.iter().map(|(pos, cached)| {
+                (
+                    TerrainChunkMeshOwner {
+                        level_generation: upload.observed_level_generation,
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                    },
+                    cached.resident_revisions.as_slice(),
+                    &cached.layers,
+                    cached.camera_position,
+                )
+            }),
+        );
+        return;
+    }
+
+    let mut changes = Vec::new();
+    let mut removed = Vec::new();
+    for (&position, &visibility) in &upload.occlusion_section_updates {
+        let owner = TerrainSectionMeshOwner {
+            chunk: TerrainChunkMeshOwner {
+                level_generation: upload.observed_level_generation,
+                chunk_x: position.x,
+                chunk_z: position.z,
+            },
+            section_y: position.y,
+        };
+        if visibility.is_none() {
+            removed.push(owner);
+            continue;
+        }
+        let pos = ChunkPos {
+            x: position.x,
+            z: position.z,
+        };
+        let Some(cached) = upload.meshes.get(&pos) else {
+            removed.push(owner);
+            continue;
+        };
+        let Some((_, revision)) = cached
+            .resident_revisions
+            .iter()
+            .find(|(section_y, _)| *section_y == position.y)
+        else {
+            removed.push(owner);
+            continue;
+        };
+        changes.push((owner, *revision, &cached.layers, cached.camera_position));
+    }
+    renderer.update_terrain_section_mesh_layer_refs(source_sections, changes, removed);
 }
 
 fn refresh_terrain_visibility(
     world: &WorldStore,
     upload: &mut TerrainUploadState,
     context: TerrainVisibilityContext,
-) {
+) -> bool {
     let Some(camera_pose) = context.camera_pose else {
         upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+        upload.occlusion_rebuild_key = None;
+        upload.pending_occlusion_rebuild_key = None;
+        upload.occlusion_graph_input_key = None;
+        upload.pending_occlusion_input_key = None;
         publish_terrain_frustum_visibility(upload, context);
-        return;
+        return true;
     };
     let camera_position = [
         f64::from(camera_pose.position[0]),
         f64::from(camera_pose.position[1] + camera_pose.eye_height),
         f64::from(camera_pose.position[2]),
     ];
-    let resident_sections = upload
+    let Some(rebuild_key) = terrain_occlusion_rebuild_key(world, upload, context, camera_position)
+    else {
+        upload.occlusion_graph = TerrainSectionOcclusionGraph::default();
+        upload.occlusion_rebuild_key = None;
+        upload.pending_occlusion_rebuild_key = None;
+        upload.occlusion_graph_input_key = None;
+        upload.pending_occlusion_input_key = None;
+        publish_terrain_frustum_visibility(upload, context);
+        return true;
+    };
+    let current_input_key = terrain_occlusion_input_key(world, upload);
+
+    let pending_key = upload.pending_occlusion_rebuild_key;
+    let mut accepted_result = None;
+    if let Some(worker) = upload.occlusion_worker.as_mut() {
+        while let Some(result) = worker.try_recv() {
+            if pending_key == Some(result.key) {
+                accepted_result = Some(result);
+            }
+        }
+    }
+    let graph_changed = accepted_result.is_some();
+    if let Some(result) = accepted_result {
+        upload.occlusion_graph = result.graph;
+        upload.occlusion_rebuild_key = Some(result.key);
+        upload.occlusion_graph_input_key = upload.pending_occlusion_input_key.take();
+        upload.pending_occlusion_rebuild_key = None;
+    }
+    let partial_changed = upload.occlusion_graph.is_valid()
+        && upload.occlusion_graph_input_key != Some(current_input_key);
+    if partial_changed {
+        let loaded_chunks = world.chunk_positions().into_iter().collect();
+        upload.occlusion_graph.update_sections(
+            upload
+                .occlusion_section_updates
+                .iter()
+                .map(|(&position, &visibility)| (position, visibility)),
+            &loaded_chunks,
+            camera_position,
+            i32::try_from(context.render_distance_chunks).unwrap_or(i32::MAX),
+            world.dimension().min_section_y(),
+            world.dimension().section_count(),
+            context.smart_cull,
+        );
+        upload.occlusion_graph_input_key = Some(current_input_key);
+        if upload.pending_occlusion_rebuild_key.is_none() {
+            upload.occlusion_section_updates.clear();
+        }
+    }
+    let graph_changed = graph_changed || partial_changed;
+    if upload.occlusion_rebuild_key == Some(rebuild_key)
+        && (upload.occlusion_graph.is_valid()
+            || upload.occlusion_graph_input_key == Some(current_input_key))
+    {
+        // `update_renderer_from_publication` already traversed the current graph with this
+        // frame's frustum before extracting entities and block entities. The upload tail only
+        // needs to republish when it rebuilt or partially propagated that graph.
+        if graph_changed {
+            publish_terrain_frustum_visibility(upload, context);
+        }
+        return graph_changed;
+    }
+    if upload.pending_occlusion_rebuild_key.is_none() {
+        refresh_terrain_occlusion_inputs(world, upload, current_input_key);
+        upload
+            .occlusion_worker
+            .get_or_insert_with(TerrainOcclusionWorker::spawn)
+            .submit(TerrainOcclusionJob {
+                key: rebuild_key,
+                sections: Arc::clone(&upload.occlusion_sections),
+                loaded_chunks: Arc::clone(&upload.occlusion_loaded_chunks),
+                camera_position,
+                view_distance: i32::try_from(context.render_distance_chunks).unwrap_or(i32::MAX),
+                min_section_y: world.dimension().min_section_y(),
+                section_count: world.dimension().section_count(),
+                smart_cull: context.smart_cull,
+            });
+        // The immutable full-build snapshot contains every update through
+        // `current_input_key`; retain only changes arriving while it runs.
+        upload.occlusion_section_updates.clear();
+        upload.pending_occlusion_rebuild_key = Some(rebuild_key);
+        upload.pending_occlusion_input_key = Some(current_input_key);
+    }
+
+    if graph_changed {
+        publish_terrain_frustum_visibility(upload, context);
+        true
+    } else if upload.occlusion_graph.is_valid() {
+        false
+    } else {
+        publish_terrain_frustum_visibility(upload, context);
+        true
+    }
+}
+
+fn clear_terrain_occlusion_inputs(upload: &mut TerrainUploadState) {
+    upload.occlusion_input_key = None;
+    upload.occlusion_graph_input_key = None;
+    upload.pending_occlusion_input_key = None;
+    upload.occlusion_section_updates.clear();
+    upload.occlusion_sections = Arc::default();
+    upload.occlusion_loaded_chunks = Arc::default();
+    upload.frustum_visibility_key = None;
+}
+
+fn terrain_occlusion_input_key(
+    world: &WorldStore,
+    upload: &TerrainUploadState,
+) -> TerrainOcclusionInputKey {
+    TerrainOcclusionInputKey {
+        level_generation: world.client_level_generation(),
+        world_revision: world.terrain_revision(),
+        resident_revision: upload.next_resident_revision,
+    }
+}
+
+fn refresh_terrain_occlusion_inputs(
+    world: &WorldStore,
+    upload: &mut TerrainUploadState,
+    input_key: TerrainOcclusionInputKey,
+) {
+    if upload.occlusion_input_key == Some(input_key) {
+        return;
+    }
+    upload.occlusion_sections = upload
         .selected_chunks
         .iter()
         .filter_map(|pos| upload.meshes.get(pos).map(|cached| (*pos, cached)))
@@ -887,33 +1228,59 @@ fn refresh_terrain_visibility(
                     }
                 })
         })
-        .collect::<Vec<_>>();
-    let loaded_chunks = world.chunk_positions().into_iter().collect();
-    upload.occlusion_graph.rebuild(
-        resident_sections,
-        &loaded_chunks,
-        camera_position,
-        i32::try_from(context.render_distance_chunks).unwrap_or(i32::MAX),
-        world.dimension().min_section_y(),
-        world.dimension().section_count(),
-        context.smart_cull,
-    );
-    publish_terrain_frustum_visibility(upload, context);
+        .collect::<Vec<_>>()
+        .into();
+    upload.occlusion_loaded_chunks = Arc::new(world.chunk_positions().into_iter().collect());
+    upload.occlusion_input_key = Some(input_key);
+}
+
+fn terrain_occlusion_rebuild_key(
+    world: &WorldStore,
+    _upload: &TerrainUploadState,
+    context: TerrainVisibilityContext,
+    camera_position: [f64; 3],
+) -> Option<TerrainOcclusionRebuildKey> {
+    let camera_cell = camera_position.map(|coordinate| {
+        coordinate
+            .is_finite()
+            .then(|| (coordinate / 8.0).floor() as i32)
+    });
+    let [Some(camera_x), Some(camera_y), Some(camera_z)] = camera_cell else {
+        return None;
+    };
+    Some(TerrainOcclusionRebuildKey {
+        level_generation: world.client_level_generation(),
+        camera_cell: [camera_x, camera_y, camera_z],
+        render_distance_chunks: context.render_distance_chunks,
+        min_section_y: world.dimension().min_section_y(),
+        section_count: world.dimension().section_count(),
+        smart_cull: context.smart_cull,
+    })
 }
 
 fn publish_terrain_frustum_visibility(
     upload: &mut TerrainUploadState,
     context: TerrainVisibilityContext,
 ) {
+    let visibility_key = terrain_frustum_visibility_key(upload, context);
     let Some(frustum) = context
         .frustum()
         .filter(|_| upload.occlusion_graph.is_valid())
     else {
         upload.compiled_and_visible_sections = selected_resident_sections(upload);
         upload.renderer_visible_sections = None;
+        upload.frustum_visibility_key = Some(visibility_key);
         return;
     };
-    let visible = upload.occlusion_graph.visible_sections(frustum);
+    // Like Vanilla's stable ViewArea graph, partial propagation is monotonic until
+    // the next full invalidation. Do not publish stale graph leaves whose current
+    // resident mesh has already been removed or remapped.
+    let visible = upload
+        .occlusion_graph
+        .visible_sections(frustum)
+        .into_iter()
+        .filter(|position| has_resident_section(upload, *position))
+        .collect::<Vec<_>>();
     upload.compiled_and_visible_sections = visible
         .iter()
         .map(|position| (position.x, position.y, position.z))
@@ -931,6 +1298,27 @@ fn publish_terrain_frustum_visibility(
             })
             .collect(),
     );
+    upload.frustum_visibility_key = Some(visibility_key);
+}
+
+fn terrain_frustum_visibility_key(
+    upload: &TerrainUploadState,
+    context: TerrainVisibilityContext,
+) -> TerrainFrustumVisibilityKey {
+    let camera_rotation_bucket = context.camera_pose.map(|pose| {
+        [
+            (pose.x_rot / 2.0).floor() as i32,
+            (pose.y_rot / 2.0).floor() as i32,
+        ]
+    });
+    TerrainFrustumVisibilityKey {
+        graph_key: upload.occlusion_rebuild_key,
+        graph_valid: upload.occlusion_graph.is_valid(),
+        resident_revision: upload.next_resident_revision,
+        camera_rotation_bucket,
+        surface_size: context.surface_size,
+        camera_fov_bits: context.camera_fov_degrees.to_bits(),
+    }
 }
 
 fn selected_resident_sections(upload: &TerrainUploadState) -> HashSet<(i32, i32, i32)> {
@@ -945,6 +1333,21 @@ fn selected_resident_sections(upload: &TerrainUploadState) -> HashSet<(i32, i32,
                 .map(move |&(section_y, _)| (pos.x, section_y, pos.z))
         })
         .collect()
+}
+
+fn has_resident_section(upload: &TerrainUploadState, position: SectionPosition) -> bool {
+    upload
+        .meshes
+        .get(&ChunkPos {
+            x: position.x,
+            z: position.z,
+        })
+        .is_some_and(|cached| {
+            cached
+                .resident_revisions
+                .iter()
+                .any(|&(section_y, _)| section_y == position.y)
+        })
 }
 
 fn terrain_camera_position(world: &WorldStore) -> [f32; 3] {
@@ -1229,15 +1632,15 @@ mod tests {
         );
         assert_eq!(
             advance_texture_animation_tick(&mut upload, start + Duration::from_millis(50)),
-            Some(1)
+            Some((0, 1))
         );
         assert_eq!(
             advance_texture_animation_tick(&mut upload, start + Duration::from_millis(149)),
-            Some(2)
+            Some((1, 2))
         );
         assert_eq!(
             advance_texture_animation_tick(&mut upload, start + Duration::from_millis(250)),
-            Some(5)
+            Some((2, 5))
         );
         assert_eq!(
             advance_texture_animation_tick(&mut upload, start + Duration::from_millis(299)),
@@ -1246,11 +1649,299 @@ mod tests {
     }
 
     #[test]
+    fn occlusion_rebuild_key_matches_vanilla_eight_block_invalidation() {
+        let world = WorldStore::new();
+        let mut upload = TerrainUploadState {
+            next_resident_revision: 7,
+            ..Default::default()
+        };
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [0.25, 64.0, 7.75],
+                y_rot: 10.0,
+                x_rot: -5.0,
+                eye_height: 1.5,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        let key =
+            terrain_occlusion_rebuild_key(&world, &upload, context, [0.25, 65.5, 7.75]).unwrap();
+
+        let rotated_and_resized = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [7.99, 64.25, 0.01],
+                y_rot: 179.0,
+                x_rot: 45.0,
+                eye_height: 1.25,
+            }),
+            [720, 1280],
+            110.0,
+            12,
+            true,
+        );
+        assert_eq!(
+            terrain_occlusion_rebuild_key(&world, &upload, rotated_and_resized, [7.99, 65.5, 0.01],),
+            Some(key),
+            "rotation, FOV and surface changes only require per-frame frustum traversal",
+        );
+
+        let crossed_cell =
+            terrain_occlusion_rebuild_key(&world, &upload, context, [8.0, 65.5, 7.75]).unwrap();
+        assert_ne!(crossed_cell, key);
+
+        upload.next_resident_revision += 1;
+        assert_eq!(
+            terrain_occlusion_rebuild_key(&world, &upload, context, [0.25, 65.5, 7.75]),
+            Some(key),
+            "Vanilla schedules propagation from recompiled sections instead of invalidating the graph",
+        );
+        let different_view = TerrainVisibilityContext {
+            render_distance_chunks: 13,
+            ..context
+        };
+        assert_ne!(
+            terrain_occlusion_rebuild_key(
+                &world,
+                &TerrainUploadState {
+                    next_resident_revision: 7,
+                    ..Default::default()
+                },
+                different_view,
+                [0.25, 65.5, 7.75],
+            ),
+            Some(key),
+        );
+        assert!(
+            terrain_occlusion_rebuild_key(&world, &upload, context, [f64::NAN, 65.5, 7.75],)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn upload_tail_reuses_visibility_already_published_for_the_frame() {
+        let world = WorldStore::new();
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [4.0, 64.0, 4.0],
+                y_rot: 35.0,
+                x_rot: -10.0,
+                eye_height: 1.62,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        let mut upload = TerrainUploadState::default();
+        let eye = [4.0, 65.62, 4.0];
+        upload.occlusion_rebuild_key = terrain_occlusion_rebuild_key(&world, &upload, context, eye);
+        upload.occlusion_graph_input_key = Some(terrain_occlusion_input_key(&world, &upload));
+
+        assert!(!refresh_terrain_visibility(&world, &mut upload, context));
+
+        upload.occlusion_rebuild_key = None;
+        assert!(refresh_terrain_visibility(&world, &mut upload, context));
+        assert!(upload.pending_occlusion_rebuild_key.is_some());
+
+        while upload.occlusion_rebuild_key.is_none() {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+        assert!(upload.pending_occlusion_rebuild_key.is_none());
+        assert!(!refresh_terrain_visibility(&world, &mut upload, context));
+    }
+
+    #[test]
+    fn camera_cell_rebuild_reuses_immutable_occlusion_inputs() {
+        let world = WorldStore::new();
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [4.0, 64.0, 4.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 1.62,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        let mut upload = TerrainUploadState::default();
+        assert!(refresh_terrain_visibility(&world, &mut upload, context));
+        let sections = Arc::clone(&upload.occlusion_sections);
+        let loaded_chunks = Arc::clone(&upload.occlusion_loaded_chunks);
+
+        while upload.pending_occlusion_rebuild_key.is_some() {
+            refresh_terrain_visibility(&world, &mut upload, context);
+            std::thread::yield_now();
+        }
+
+        let next_cell = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [12.0, 64.0, 4.0],
+                ..context.camera_pose.unwrap()
+            }),
+            context.surface_size,
+            context.camera_fov_degrees,
+            context.render_distance_chunks,
+            context.smart_cull,
+        );
+        refresh_terrain_visibility(&world, &mut upload, next_cell);
+        assert!(upload.pending_occlusion_rebuild_key.is_some());
+        assert!(Arc::ptr_eq(&sections, &upload.occlusion_sections));
+        assert!(Arc::ptr_eq(&loaded_chunks, &upload.occlusion_loaded_chunks));
+    }
+
+    #[test]
+    fn published_partial_graph_filters_sections_without_resident_meshes() {
+        let resident_pos = ChunkPos { x: 0, z: 0 };
+        let mut upload = TerrainUploadState {
+            observed_level_generation: 4,
+            selected_chunks: vec![resident_pos],
+            ..Default::default()
+        };
+        upload.meshes.insert(
+            resident_pos,
+            CachedTerrainMesh {
+                revision: 1,
+                section_mesh_revisions: vec![(0, 1)],
+                resident_revisions: vec![(0, 1)],
+                camera_position: [0.0; 3],
+                layers: TerrainSectionMeshLayers::default(),
+            },
+        );
+        let loaded = (-2..=2)
+            .flat_map(|z| (-2..=2).map(move |x| ChunkPos { x, z }))
+            .collect::<TerrainCoordinateSet<_>>();
+        upload.occlusion_graph.rebuild(
+            [
+                ResidentSection {
+                    position: SectionPosition { x: 0, y: 0, z: 0 },
+                    visibility: TerrainSectionVisibility::all_visible(0, true, false),
+                },
+                ResidentSection {
+                    position: SectionPosition { x: 0, y: 0, z: 1 },
+                    visibility: TerrainSectionVisibility::all_visible(0, true, false),
+                },
+            ],
+            &loaded,
+            [8.0, 8.0, 8.0],
+            2,
+            0,
+            1,
+            false,
+        );
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [8.0, 0.0, 8.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 8.0,
+            }),
+            [1280, 720],
+            120.0,
+            2,
+            false,
+        );
+
+        publish_terrain_frustum_visibility(&mut upload, context);
+
+        assert_eq!(
+            upload.renderer_visible_sections.as_deref(),
+            Some(
+                [TerrainSectionMeshOwner {
+                    chunk: TerrainChunkMeshOwner {
+                        level_generation: 4,
+                        chunk_x: 0,
+                        chunk_z: 0,
+                    },
+                    section_y: 0,
+                }]
+                .as_slice()
+            )
+        );
+    }
+
+    #[test]
+    fn frame_visibility_matches_vanilla_two_degree_rotation_gate() {
+        let mut upload = TerrainUploadState::default();
+        let context = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [4.0, 64.0, 4.0],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 1.62,
+            }),
+            [1280, 720],
+            70.0,
+            12,
+            true,
+        );
+        assert!(upload.refresh_frame_visibility(context));
+        assert!(!upload.refresh_frame_visibility(context));
+
+        let within_camera_cell = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                position: [7.5, 64.0, 7.5],
+                y_rot: 1.99,
+                ..context.camera_pose.unwrap()
+            }),
+            context.surface_size,
+            context.camera_fov_degrees,
+            context.render_distance_chunks,
+            context.smart_cull,
+        );
+        assert!(!upload.refresh_frame_visibility(within_camera_cell));
+
+        let next_rotation_bucket = TerrainVisibilityContext::new(
+            Some(CameraPose {
+                y_rot: 2.0,
+                ..within_camera_cell.camera_pose.unwrap()
+            }),
+            within_camera_cell.surface_size,
+            within_camera_cell.camera_fov_degrees,
+            within_camera_cell.render_distance_chunks,
+            within_camera_cell.smart_cull,
+        );
+        assert!(upload.refresh_frame_visibility(next_rotation_bucket));
+
+        let resized = TerrainVisibilityContext::new(
+            next_rotation_bucket.camera_pose,
+            [1920, 1080],
+            next_rotation_bucket.camera_fov_degrees,
+            next_rotation_bucket.render_distance_chunks,
+            next_rotation_bucket.smart_cull,
+        );
+        assert!(upload.refresh_frame_visibility(resized));
+    }
+
+    #[test]
     fn terrain_reload_request_marks_all_cached_chunks_for_rebuild() {
         let mut upload = TerrainUploadState::default();
         assert!(!upload.reload_all_chunks_requested());
         upload.request_reload_all_chunks();
         assert!(upload.reload_all_chunks_requested());
+    }
+
+    #[test]
+    fn ready_unchanged_terrain_reuses_resident_selection() {
+        let world = WorldStore::new();
+        let mut upload = TerrainUploadState {
+            observed_world_revision: world.terrain_revision(),
+            cache_ready: true,
+            ..Default::default()
+        };
+
+        assert!(terrain_cache_selection_is_stable(&world, &upload, false));
+        assert!(!terrain_cache_selection_is_stable(&world, &upload, true));
+        upload.reload_all_chunks_requested = true;
+        assert!(!terrain_cache_selection_is_stable(&world, &upload, false));
+        upload.reload_all_chunks_requested = false;
+        upload.cache_ready = false;
+        assert!(!terrain_cache_selection_is_stable(&world, &upload, false));
     }
 
     #[test]
@@ -1338,6 +2029,18 @@ mod tests {
             selected_resident_sections(&upload),
             HashSet::from([(-1, -4, 2), (-1, 3, 2)])
         );
+        assert!(has_resident_section(
+            &upload,
+            SectionPosition { x: -1, y: 3, z: 2 }
+        ));
+        assert!(!has_resident_section(
+            &upload,
+            SectionPosition { x: -1, y: 4, z: 2 }
+        ));
+        assert!(!has_resident_section(
+            &upload,
+            SectionPosition { x: 3, y: 3, z: 2 }
+        ));
     }
 
     #[test]
@@ -1443,6 +2146,17 @@ mod tests {
         assert_eq!(upload.mesh_worker_counters.completed_sections, 1);
         assert_eq!(upload.mesh_worker_counters.recent_build_sections, 1);
         assert_eq!(upload.mesh_worker_counters.peak_build_sections, 1);
+        assert_eq!(upload.occlusion_section_updates.len(), 1);
+        assert_eq!(
+            upload.occlusion_section_updates.get(&SectionPosition {
+                x: pos.x,
+                y: dirty_y,
+                z: pos.z,
+            }),
+            Some(&Some(TerrainSectionVisibility::all_visible(
+                dirty_y, false, false,
+            )))
+        );
     }
 
     #[test]

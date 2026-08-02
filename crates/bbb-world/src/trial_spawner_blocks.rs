@@ -84,6 +84,10 @@ impl WorldStore {
     /// display projection. Once created, the projection remains cached across
     /// later update tags exactly like Vanilla's `displayEntity` field.
     pub fn advance_trial_spawner_block_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().trial_spawner {
+            self.trial_spawner_blocks.clear();
+            return;
+        }
         let sources = self.trial_spawner_block_sources();
         let mut states = std::mem::take(&mut self.trial_spawner_blocks);
         states.retain(|state| sources.iter().any(|source| source.pos == state.pos));

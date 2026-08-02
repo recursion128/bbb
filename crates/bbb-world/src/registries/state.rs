@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     fmt,
     sync::Arc,
@@ -409,15 +410,24 @@ impl RegistrySet {
         &self,
         holder_id: i32,
     ) -> Option<DimensionTypeClientProjection> {
+        self.dimension_type_client_projection_ref(holder_id)
+            .map(Cow::into_owned)
+    }
+
+    pub(crate) fn dimension_type_client_projection_ref(
+        &self,
+        holder_id: i32,
+    ) -> Option<Cow<'_, DimensionTypeClientProjection>> {
         let entry = self.entry_by_holder_id(super::DIMENSION_TYPE_REGISTRY, holder_id)?;
         self.typed
             .dimension_types
             .get(&entry.id)
-            .cloned()
+            .map(Cow::Borrowed)
             .or_else(|| {
                 // Direct insertion is retained for focused fixtures. Real
                 // configuration revisions always take the predecoded branch.
                 dimension_type_client_projection_from_registry(Some(entry), self.frozen_access())
+                    .map(Cow::Owned)
             })
     }
 

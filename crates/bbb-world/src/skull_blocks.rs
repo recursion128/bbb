@@ -133,6 +133,10 @@ impl WorldStore {
     /// `animationTickCount++`; otherwise the counter is retained and
     /// `isAnimating = false`.
     pub fn advance_skull_block_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().skull {
+            self.skull_blocks.clear();
+            return;
+        }
         let mut sources = self.skull_block_sources();
         sources.sort_by_key(|source| (source.pos.y, source.pos.z, source.pos.x));
 

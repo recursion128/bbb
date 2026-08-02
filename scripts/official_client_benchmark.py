@@ -138,6 +138,7 @@ VISUAL_ROIS = {
         ("glowstone", (20, 330, 370, 580)),
     ),
 }
+FORMAL_CAPTURE_SEGMENTS = tuple(VISUAL_ROIS)
 
 
 class BenchmarkFailure(RuntimeError):
@@ -1197,6 +1198,8 @@ def build_bbb_launch_argv(
         str(VIEW_DISTANCE),
         "--render-distance",
         str(VIEW_DISTANCE),
+        "--cloud-range",
+        "64",
         "--client-particles",
         "minimal",
         "--tutorial-step",
@@ -1288,7 +1291,13 @@ def validate_replay(replay: Mapping[str, Any]) -> None:
 def default_replay() -> dict[str, Any]:
     frames: list[dict[str, Any]] = []
     segment_ticks = 480
-    capture_hold = range(120, 169)
+    # Reach the reviewed camera pose four seconds before capture and then hold
+    # it through the anchor. Both clients can finish their asynchronous chunk
+    # compilation/occlusion publications without changing the measured motion
+    # after the hold. The previous 24-tick pre-anchor settle admitted different
+    # valid-but-stale BBB visibility graphs at the same screenshot tick.
+    capture_hold = range(80, 169)
+    capture_motion_tick = 120
     anchor_tick = 144
     marker_ticks = {
         0: "segment_start",
@@ -1300,10 +1309,10 @@ def default_replay() -> dict[str, Any]:
     def motion_tick(offset: int) -> int:
         """Collapse settle holds without introducing a post-hold camera jump."""
         if offset < capture_hold.start:
-            return offset
+            return round(offset * capture_motion_tick / capture_hold.start)
         if offset < capture_hold.stop:
-            return capture_hold.start
-        return offset - (len(capture_hold) - 1)
+            return capture_motion_tick
+        return capture_motion_tick + offset - (capture_hold.stop - 1)
 
     final_motion_tick = motion_tick(segment_ticks - 1)
 
@@ -2394,6 +2403,30 @@ def summarize_mangohud_logs(
         },
         "presented_frames": len(capture["frame_ms"]),
     }
+
+
+def append_formal_segment_samples(
+    aggregate: dict[str, dict[str, list[float]]],
+    split: Mapping[str, Mapping[str, Sequence[float]]],
+    metric_names: Sequence[str],
+) -> None:
+    """Append only replay capture segments to formal frame distributions.
+
+    MangoHud logging spans the server's step/hold transitions between capture
+    segments. Those frames remain in the raw artifact and in the perf process
+    totals, but they are not part of any frozen visible workload and therefore
+    must not influence formal frame percentiles or hitch counts.
+    """
+    for segment in FORMAL_CAPTURE_SEGMENTS:
+        values = split.get(segment)
+        if not isinstance(values, Mapping):
+            raise BenchmarkFailure(
+                f"formal frame capture lacks segment {segment}"
+            )
+        for name in metric_names:
+            samples = values.get(name, ())
+            aggregate[segment][name].extend(samples)
+            aggregate["overall"][name].extend(samples)
 
 
 def percentile(values: Sequence[float], percent: float) -> float:
@@ -4147,12 +4180,7 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
     ] = {
         client: {
             segment: {name: [] for name in metric_names}
-            for segment in (
-                "overall",
-                "static_orbit",
-                "preloaded_flight",
-                "chunk_boundary_crossing",
-            )
+            for segment in ("overall", *FORMAL_CAPTURE_SEGMENTS)
         }
         for client in ("vanilla", "bbb")
     }
@@ -4198,15 +4226,9 @@ def summarize_formal_comparison(manifest: Mapping[str, Any]) -> dict[str, Any]:
         split = split_mangohud_capture_by_replay(
             capture, replay, marker_timeline
         )
-        for name in metric_names:
-            aggregate_captures[client]["overall"][name].extend(
-                capture.get(name, ())
-            )
-        for segment, values in split.items():
-            for name in metric_names:
-                aggregate_captures[client][segment][name].extend(
-                    values.get(name, ())
-                )
+        append_formal_segment_samples(
+            aggregate_captures[client], split, metric_names
+        )
         presented[client] += len(capture["frame_ms"])
 
         perf = run.get("perf_stat", {}).get("events")

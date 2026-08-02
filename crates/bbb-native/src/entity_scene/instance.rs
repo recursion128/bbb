@@ -612,6 +612,16 @@ pub(super) fn entity_model_instance(
     let fishing_line_origin_offset = world
         .fishing_hook_render_source_at_partial_tick(source.entity_id, entity_partial_tick)
         .map(fishing_hook_third_person_line_origin_offset);
+    // Vanilla still fills `LivingEntityRenderState.ageInTicks` for armor stands, but
+    // `ArmorStandModel.setupAnim` consumes only the six synced `Rotations` poses and its armor,
+    // hand, wings and head layers do not use age. Canonicalize that renderer-irrelevant field so
+    // a settled, stationary stand keeps the same baked mesh across render partial ticks. The
+    // independently projected `< 5` hit wiggle remains time-varying below.
+    let mesh_age_in_ticks = if matches!(kind, EntityModelKind::ArmorStand { .. }) {
+        0.0
+    } else {
+        source.age_ticks as f32 + entity_partial_tick
+    };
     Some(entity_render_state_passthrough!(
         EntityModelInstance::new(
             source.entity_id,
@@ -645,7 +655,7 @@ pub(super) fn entity_model_instance(
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
         .with_worn_head_animation_pos(source.worn_head_animation_position)
         .with_is_riding(source.is_passenger)
-        .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
+        .with_age_in_ticks(mesh_age_in_ticks)
         .with_minecart_hurt_time(source.boat_hurt_time)
         .with_minecart_hurt_dir(source.boat_hurt_dir)
         .with_minecart_damage_time(source.boat_damage_time)

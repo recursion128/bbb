@@ -34,16 +34,6 @@
     },
     {
       "server_tick": 1,
-      "x": 23.999819,
-      "y": 72.0,
-      "z": 0.093106,
-      "yaw": 90.222274,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 2,
       "x": 23.999278,
       "y": 72.0,
       "z": 0.18621,
@@ -53,7 +43,7 @@
       "marker": null
     },
     {
-      "server_tick": 3,
+      "server_tick": 2,
       "x": 23.998375,
       "y": 72.0,
       "z": 0.279311,
@@ -63,7 +53,7 @@
       "marker": null
     },
     {
-      "server_tick": 4,
+      "server_tick": 3,
       "x": 23.99711,
       "y": 72.0,
       "z": 0.372408,
@@ -73,17 +63,7 @@
       "marker": null
     },
     {
-      "server_tick": 5,
-      "x": 23.995485,
-      "y": 72.0,
-      "z": 0.4655,
-      "yaw": 91.111369,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 6,
+      "server_tick": 4,
       "x": 23.993499,
       "y": 72.0,
       "z": 0.558585,
@@ -93,17 +73,7 @@
       "marker": null
     },
     {
-      "server_tick": 7,
-      "x": 23.991151,
-      "y": 72.0,
-      "z": 0.651661,
-      "yaw": 91.555916,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 8,
+      "server_tick": 5,
       "x": 23.988443,
       "y": 72.0,
       "z": 0.744727,
@@ -113,7 +83,7 @@
       "marker": null
     },
     {
-      "server_tick": 9,
+      "server_tick": 6,
       "x": 23.985373,
       "y": 72.0,
       "z": 0.837782,
@@ -123,7 +93,7 @@
       "marker": null
     },
     {
-      "server_tick": 10,
+      "server_tick": 7,
       "x": 23.981942,
       "y": 72.0,
       "z": 0.930825,
@@ -133,17 +103,7 @@
       "marker": null
     },
     {
-      "server_tick": 11,
-      "x": 23.978151,
-      "y": 72.0,
-      "z": 1.023853,
-      "yaw": 92.445012,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 12,
+      "server_tick": 8,
       "x": 23.973999,
       "y": 72.0,
       "z": 1.116866,
@@ -153,17 +113,7 @@
       "marker": null
     },
     {
-      "server_tick": 13,
-      "x": 23.969485,
-      "y": 72.0,
-      "z": 1.209863,
-      "yaw": 92.889559,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 14,
+      "server_tick": 9,
       "x": 23.964612,
       "y": 72.0,
       "z": 1.302841,
@@ -173,7 +123,7 @@
       "marker": null
     },
     {
-      "server_tick": 15,
+      "server_tick": 10,
       "x": 23.959377,
       "y": 72.0,
       "z": 1.395799,
@@ -183,7 +133,7 @@
       "marker": null
     },
     {
-      "server_tick": 16,
+      "server_tick": 11,
       "x": 23.953782,
       "y": 72.0,
       "z": 1.488737,
@@ -193,17 +143,7 @@
       "marker": null
     },
     {
-      "server_tick": 17,
-      "x": 23.947826,
-      "y": 72.0,
-      "z": 1.581652,
-      "yaw": 93.778654,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 18,
+      "server_tick": 12,
       "x": 23.94151,
       "y": 72.0,
       "z": 1.674543,
@@ -213,17 +153,7 @@
       "marker": null
     },
     {
-      "server_tick": 19,
-      "x": 23.934834,
-      "y": 72.0,
-      "z": 1.767409,
-      "yaw": 94.223202,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 20,
+      "server_tick": 13,
       "x": 23.927797,
       "y": 72.0,
       "z": 1.860249,
@@ -233,7 +163,7 @@
       "marker": null
     },
     {
-      "server_tick": 21,
+      "server_tick": 14,
       "x": 23.9204,
       "y": 72.0,
       "z": 1.95306,
@@ -243,7 +173,7 @@
       "marker": null
     },
     {
-      "server_tick": 22,
+      "server_tick": 15,
       "x": 23.912644,
       "y": 72.0,
       "z": 2.045842,
@@ -253,17 +183,7 @@
       "marker": null
     },
     {
-      "server_tick": 23,
-      "x": 23.904527,
-      "y": 72.0,
-      "z": 2.138594,
-      "yaw": 95.112297,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 24,
+      "server_tick": 16,
       "x": 23.896051,
       "y": 72.0,
       "z": 2.231313,
@@ -273,17 +193,7 @@
       "marker": null
     },
     {
-      "server_tick": 25,
-      "x": 23.887215,
-      "y": 72.0,
-      "z": 2.323998,
-      "yaw": 95.556845,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 26,
+      "server_tick": 17,
       "x": 23.878019,
       "y": 72.0,
       "z": 2.416649,
@@ -293,7 +203,7 @@
       "marker": null
     },
     {
-      "server_tick": 27,
+      "server_tick": 18,
       "x": 23.868465,
       "y": 72.0,
       "z": 2.509263,
@@ -303,7 +213,7 @@
       "marker": null
     },
     {
-      "server_tick": 28,
+      "server_tick": 19,
       "x": 23.85855,
       "y": 72.0,
       "z": 2.601839,
@@ -313,17 +223,7 @@
       "marker": null
     },
     {
-      "server_tick": 29,
-      "x": 23.848277,
-      "y": 72.0,
-      "z": 2.694377,
-      "yaw": 96.44594,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 30,
+      "server_tick": 20,
       "x": 23.837645,
       "y": 72.0,
       "z": 2.786873,
@@ -333,17 +233,7 @@
       "marker": null
     },
     {
-      "server_tick": 31,
-      "x": 23.826655,
-      "y": 72.0,
-      "z": 2.879328,
-      "yaw": 96.890487,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 32,
+      "server_tick": 21,
       "x": 23.815305,
       "y": 72.0,
       "z": 2.97174,
@@ -353,7 +243,7 @@
       "marker": null
     },
     {
-      "server_tick": 33,
+      "server_tick": 22,
       "x": 23.803597,
       "y": 72.0,
       "z": 3.064106,
@@ -363,7 +253,7 @@
       "marker": null
     },
     {
-      "server_tick": 34,
+      "server_tick": 23,
       "x": 23.791531,
       "y": 72.0,
       "z": 3.156427,
@@ -373,17 +263,7 @@
       "marker": null
     },
     {
-      "server_tick": 35,
-      "x": 23.779107,
-      "y": 72.0,
-      "z": 3.2487,
-      "yaw": 97.779582,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 36,
+      "server_tick": 24,
       "x": 23.766325,
       "y": 72.0,
       "z": 3.340924,
@@ -393,17 +273,7 @@
       "marker": null
     },
     {
-      "server_tick": 37,
-      "x": 23.753186,
-      "y": 72.0,
-      "z": 3.433098,
-      "yaw": 98.22413,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 38,
+      "server_tick": 25,
       "x": 23.739689,
       "y": 72.0,
       "z": 3.525221,
@@ -413,7 +283,7 @@
       "marker": null
     },
     {
-      "server_tick": 39,
+      "server_tick": 26,
       "x": 23.725834,
       "y": 72.0,
       "z": 3.61729,
@@ -423,7 +293,7 @@
       "marker": null
     },
     {
-      "server_tick": 40,
+      "server_tick": 27,
       "x": 23.711623,
       "y": 72.0,
       "z": 3.709305,
@@ -433,17 +303,7 @@
       "marker": null
     },
     {
-      "server_tick": 41,
-      "x": 23.697055,
-      "y": 72.0,
-      "z": 3.801263,
-      "yaw": 99.113225,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 42,
+      "server_tick": 28,
       "x": 23.68213,
       "y": 72.0,
       "z": 3.893165,
@@ -453,17 +313,7 @@
       "marker": null
     },
     {
-      "server_tick": 43,
-      "x": 23.666848,
-      "y": 72.0,
-      "z": 3.985008,
-      "yaw": 99.557773,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 44,
+      "server_tick": 29,
       "x": 23.651211,
       "y": 72.0,
       "z": 4.076792,
@@ -473,7 +323,7 @@
       "marker": null
     },
     {
-      "server_tick": 45,
+      "server_tick": 30,
       "x": 23.635217,
       "y": 72.0,
       "z": 4.168513,
@@ -483,7 +333,7 @@
       "marker": null
     },
     {
-      "server_tick": 46,
+      "server_tick": 31,
       "x": 23.618868,
       "y": 72.0,
       "z": 4.260172,
@@ -493,17 +343,7 @@
       "marker": null
     },
     {
-      "server_tick": 47,
-      "x": 23.602163,
-      "y": 72.0,
-      "z": 4.351767,
-      "yaw": 100.446868,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 48,
+      "server_tick": 32,
       "x": 23.585104,
       "y": 72.0,
       "z": 4.443297,
@@ -513,17 +353,7 @@
       "marker": null
     },
     {
-      "server_tick": 49,
-      "x": 23.567689,
-      "y": 72.0,
-      "z": 4.53476,
-      "yaw": 100.891415,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 50,
+      "server_tick": 33,
       "x": 23.549919,
       "y": 72.0,
       "z": 4.626154,
@@ -533,7 +363,7 @@
       "marker": null
     },
     {
-      "server_tick": 51,
+      "server_tick": 34,
       "x": 23.531795,
       "y": 72.0,
       "z": 4.717479,
@@ -543,7 +373,7 @@
       "marker": null
     },
     {
-      "server_tick": 52,
+      "server_tick": 35,
       "x": 23.513317,
       "y": 72.0,
       "z": 4.808732,
@@ -553,17 +383,7 @@
       "marker": null
     },
     {
-      "server_tick": 53,
-      "x": 23.494485,
-      "y": 72.0,
-      "z": 4.899914,
-      "yaw": 101.78051,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 54,
+      "server_tick": 36,
       "x": 23.4753,
       "y": 72.0,
       "z": 4.991021,
@@ -573,17 +393,7 @@
       "marker": null
     },
     {
-      "server_tick": 55,
-      "x": 23.455761,
-      "y": 72.0,
-      "z": 5.082054,
-      "yaw": 102.225058,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 56,
+      "server_tick": 37,
       "x": 23.435869,
       "y": 72.0,
       "z": 5.17301,
@@ -593,7 +403,7 @@
       "marker": null
     },
     {
-      "server_tick": 57,
+      "server_tick": 38,
       "x": 23.415625,
       "y": 72.0,
       "z": 5.263888,
@@ -603,7 +413,7 @@
       "marker": null
     },
     {
-      "server_tick": 58,
+      "server_tick": 39,
       "x": 23.395028,
       "y": 72.0,
       "z": 5.354687,
@@ -613,17 +423,7 @@
       "marker": null
     },
     {
-      "server_tick": 59,
-      "x": 23.374079,
-      "y": 72.0,
-      "z": 5.445405,
-      "yaw": 103.114153,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 60,
+      "server_tick": 40,
       "x": 23.352778,
       "y": 72.0,
       "z": 5.536042,
@@ -633,17 +433,7 @@
       "marker": null
     },
     {
-      "server_tick": 61,
-      "x": 23.331126,
-      "y": 72.0,
-      "z": 5.626595,
-      "yaw": 103.558701,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 62,
+      "server_tick": 41,
       "x": 23.309122,
       "y": 72.0,
       "z": 5.717063,
@@ -653,7 +443,7 @@
       "marker": null
     },
     {
-      "server_tick": 63,
+      "server_tick": 42,
       "x": 23.286768,
       "y": 72.0,
       "z": 5.807446,
@@ -663,7 +453,7 @@
       "marker": null
     },
     {
-      "server_tick": 64,
+      "server_tick": 43,
       "x": 23.264064,
       "y": 72.0,
       "z": 5.897741,
@@ -673,17 +463,7 @@
       "marker": null
     },
     {
-      "server_tick": 65,
-      "x": 23.241009,
-      "y": 72.0,
-      "z": 5.987947,
-      "yaw": 104.447796,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 66,
+      "server_tick": 44,
       "x": 23.217604,
       "y": 72.0,
       "z": 6.078063,
@@ -693,17 +473,7 @@
       "marker": null
     },
     {
-      "server_tick": 67,
-      "x": 23.19385,
-      "y": 72.0,
-      "z": 6.168088,
-      "yaw": 104.892343,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 68,
+      "server_tick": 45,
       "x": 23.169747,
       "y": 72.0,
       "z": 6.258019,
@@ -713,7 +483,7 @@
       "marker": null
     },
     {
-      "server_tick": 69,
+      "server_tick": 46,
       "x": 23.145296,
       "y": 72.0,
       "z": 6.347857,
@@ -723,7 +493,7 @@
       "marker": null
     },
     {
-      "server_tick": 70,
+      "server_tick": 47,
       "x": 23.120496,
       "y": 72.0,
       "z": 6.437599,
@@ -733,17 +503,7 @@
       "marker": null
     },
     {
-      "server_tick": 71,
-      "x": 23.095348,
-      "y": 72.0,
-      "z": 6.527244,
-      "yaw": 105.781439,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 72,
+      "server_tick": 48,
       "x": 23.069852,
       "y": 72.0,
       "z": 6.616791,
@@ -753,17 +513,7 @@
       "marker": null
     },
     {
-      "server_tick": 73,
-      "x": 23.044009,
-      "y": 72.0,
-      "z": 6.706239,
-      "yaw": 106.225986,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 74,
+      "server_tick": 49,
       "x": 23.01782,
       "y": 72.0,
       "z": 6.795585,
@@ -773,7 +523,7 @@
       "marker": null
     },
     {
-      "server_tick": 75,
+      "server_tick": 50,
       "x": 22.991284,
       "y": 72.0,
       "z": 6.884829,
@@ -783,7 +533,7 @@
       "marker": null
     },
     {
-      "server_tick": 76,
+      "server_tick": 51,
       "x": 22.964402,
       "y": 72.0,
       "z": 6.97397,
@@ -793,17 +543,7 @@
       "marker": null
     },
     {
-      "server_tick": 77,
-      "x": 22.937174,
-      "y": 72.0,
-      "z": 7.063005,
-      "yaw": 107.115081,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 78,
+      "server_tick": 52,
       "x": 22.909601,
       "y": 72.0,
       "z": 7.151935,
@@ -813,17 +553,7 @@
       "marker": null
     },
     {
-      "server_tick": 79,
-      "x": 22.881684,
-      "y": 72.0,
-      "z": 7.240756,
-      "yaw": 107.559629,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 80,
+      "server_tick": 53,
       "x": 22.853422,
       "y": 72.0,
       "z": 7.329469,
@@ -833,7 +563,7 @@
       "marker": null
     },
     {
-      "server_tick": 81,
+      "server_tick": 54,
       "x": 22.824816,
       "y": 72.0,
       "z": 7.418072,
@@ -843,7 +573,7 @@
       "marker": null
     },
     {
-      "server_tick": 82,
+      "server_tick": 55,
       "x": 22.795866,
       "y": 72.0,
       "z": 7.506562,
@@ -853,17 +583,7 @@
       "marker": null
     },
     {
-      "server_tick": 83,
-      "x": 22.766574,
-      "y": 72.0,
-      "z": 7.59494,
-      "yaw": 108.448724,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 84,
+      "server_tick": 56,
       "x": 22.736939,
       "y": 72.0,
       "z": 7.683204,
@@ -873,17 +593,7 @@
       "marker": null
     },
     {
-      "server_tick": 85,
-      "x": 22.706961,
-      "y": 72.0,
-      "z": 7.771351,
-      "yaw": 108.893271,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 86,
+      "server_tick": 57,
       "x": 22.676642,
       "y": 72.0,
       "z": 7.859382,
@@ -893,7 +603,7 @@
       "marker": null
     },
     {
-      "server_tick": 87,
+      "server_tick": 58,
       "x": 22.645982,
       "y": 72.0,
       "z": 7.947295,
@@ -903,7 +613,7 @@
       "marker": null
     },
     {
-      "server_tick": 88,
+      "server_tick": 59,
       "x": 22.614981,
       "y": 72.0,
       "z": 8.035088,
@@ -913,17 +623,7 @@
       "marker": null
     },
     {
-      "server_tick": 89,
-      "x": 22.583639,
-      "y": 72.0,
-      "z": 8.12276,
-      "yaw": 109.782367,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 90,
+      "server_tick": 60,
       "x": 22.551958,
       "y": 72.0,
       "z": 8.21031,
@@ -933,17 +633,7 @@
       "marker": null
     },
     {
-      "server_tick": 91,
-      "x": 22.519937,
-      "y": 72.0,
-      "z": 8.297736,
-      "yaw": 110.226914,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 92,
+      "server_tick": 61,
       "x": 22.487578,
       "y": 72.0,
       "z": 8.385038,
@@ -953,7 +643,7 @@
       "marker": null
     },
     {
-      "server_tick": 93,
+      "server_tick": 62,
       "x": 22.454879,
       "y": 72.0,
       "z": 8.472213,
@@ -963,7 +653,7 @@
       "marker": null
     },
     {
-      "server_tick": 94,
+      "server_tick": 63,
       "x": 22.421843,
       "y": 72.0,
       "z": 8.559261,
@@ -973,17 +663,7 @@
       "marker": null
     },
     {
-      "server_tick": 95,
-      "x": 22.38847,
-      "y": 72.0,
-      "z": 8.646179,
-      "yaw": 111.116009,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 96,
+      "server_tick": 64,
       "x": 22.354759,
       "y": 72.0,
       "z": 8.732968,
@@ -993,17 +673,7 @@
       "marker": null
     },
     {
-      "server_tick": 97,
-      "x": 22.320712,
-      "y": 72.0,
-      "z": 8.819625,
-      "yaw": 111.560557,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 98,
+      "server_tick": 65,
       "x": 22.28633,
       "y": 72.0,
       "z": 8.90615,
@@ -1013,7 +683,7 @@
       "marker": null
     },
     {
-      "server_tick": 99,
+      "server_tick": 66,
       "x": 22.251611,
       "y": 72.0,
       "z": 8.992541,
@@ -1023,7 +693,7 @@
       "marker": null
     },
     {
-      "server_tick": 100,
+      "server_tick": 67,
       "x": 22.216558,
       "y": 72.0,
       "z": 9.078796,
@@ -1033,17 +703,7 @@
       "marker": null
     },
     {
-      "server_tick": 101,
-      "x": 22.181171,
-      "y": 72.0,
-      "z": 9.164914,
-      "yaw": 112.449652,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 102,
+      "server_tick": 68,
       "x": 22.14545,
       "y": 72.0,
       "z": 9.250895,
@@ -1053,17 +713,7 @@
       "marker": null
     },
     {
-      "server_tick": 103,
-      "x": 22.109395,
-      "y": 72.0,
-      "z": 9.336737,
-      "yaw": 112.8942,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 104,
+      "server_tick": 69,
       "x": 22.073008,
       "y": 72.0,
       "z": 9.422437,
@@ -1073,7 +723,7 @@
       "marker": null
     },
     {
-      "server_tick": 105,
+      "server_tick": 70,
       "x": 22.036288,
       "y": 72.0,
       "z": 9.507997,
@@ -1083,7 +733,7 @@
       "marker": null
     },
     {
-      "server_tick": 106,
+      "server_tick": 71,
       "x": 21.999237,
       "y": 72.0,
       "z": 9.593413,
@@ -1093,17 +743,7 @@
       "marker": null
     },
     {
-      "server_tick": 107,
-      "x": 21.961855,
-      "y": 72.0,
-      "z": 9.678684,
-      "yaw": 113.783295,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 108,
+      "server_tick": 72,
       "x": 21.924142,
       "y": 72.0,
       "z": 9.76381,
@@ -1113,17 +753,7 @@
       "marker": null
     },
     {
-      "server_tick": 109,
-      "x": 21.886099,
-      "y": 72.0,
-      "z": 9.848789,
-      "yaw": 114.227842,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 110,
+      "server_tick": 73,
       "x": 21.847727,
       "y": 72.0,
       "z": 9.93362,
@@ -1133,7 +763,7 @@
       "marker": null
     },
     {
-      "server_tick": 111,
+      "server_tick": 74,
       "x": 21.809027,
       "y": 72.0,
       "z": 10.018301,
@@ -1143,7 +773,7 @@
       "marker": null
     },
     {
-      "server_tick": 112,
+      "server_tick": 75,
       "x": 21.769997,
       "y": 72.0,
       "z": 10.102832,
@@ -1153,17 +783,7 @@
       "marker": null
     },
     {
-      "server_tick": 113,
-      "x": 21.730641,
-      "y": 72.0,
-      "z": 10.18721,
-      "yaw": 115.116937,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 114,
+      "server_tick": 76,
       "x": 21.690957,
       "y": 72.0,
       "z": 10.271436,
@@ -1173,17 +793,7 @@
       "marker": null
     },
     {
-      "server_tick": 115,
-      "x": 21.650947,
-      "y": 72.0,
-      "z": 10.355506,
-      "yaw": 115.561485,
-      "pitch": 0.0,
-      "capture_segment": "static_orbit",
-      "marker": null
-    },
-    {
-      "server_tick": 116,
+      "server_tick": 77,
       "x": 21.610611,
       "y": 72.0,
       "z": 10.439421,
@@ -1193,7 +803,7 @@
       "marker": null
     },
     {
-      "server_tick": 117,
+      "server_tick": 78,
       "x": 21.569949,
       "y": 72.0,
       "z": 10.523179,
@@ -1203,7 +813,7 @@
       "marker": null
     },
     {
-      "server_tick": 118,
+      "server_tick": 79,
       "x": 21.528963,
       "y": 72.0,
       "z": 10.606778,
@@ -1213,11 +823,401 @@
       "marker": null
     },
     {
-      "server_tick": 119,
-      "x": 21.487653,
+      "server_tick": 80,
+      "x": 21.44602,
       "y": 72.0,
-      "z": 10.690218,
-      "yaw": 116.45058,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 81,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 82,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 83,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 84,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 85,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 86,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 87,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 88,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 89,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 90,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 91,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 92,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 93,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 94,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 95,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 96,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 97,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 98,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 99,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 100,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 101,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 102,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 103,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 104,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 105,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 106,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 107,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 108,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 109,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 110,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 111,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 112,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 113,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 114,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 115,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 116,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 117,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 118,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
+      "pitch": 0.0,
+      "capture_segment": "static_orbit",
+      "marker": null
+    },
+    {
+      "server_tick": 119,
+      "x": 21.44602,
+      "y": 72.0,
+      "z": 10.773496,
+      "yaw": 116.672854,
       "pitch": 0.0,
       "capture_segment": "static_orbit",
       "marker": null
@@ -4834,16 +4834,6 @@
     },
     {
       "server_tick": 481,
-      "x": -11.944316,
-      "y": 92.0,
-      "z": 128.058304,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 482,
       "x": -11.888631,
       "y": 92.0,
       "z": 128.116559,
@@ -4853,7 +4843,7 @@
       "marker": null
     },
     {
-      "server_tick": 483,
+      "server_tick": 482,
       "x": -11.832947,
       "y": 92.0,
       "z": 128.174715,
@@ -4863,7 +4853,7 @@
       "marker": null
     },
     {
-      "server_tick": 484,
+      "server_tick": 483,
       "x": -11.777262,
       "y": 92.0,
       "z": 128.232722,
@@ -4873,17 +4863,7 @@
       "marker": null
     },
     {
-      "server_tick": 485,
-      "x": -11.721578,
-      "y": 92.0,
-      "z": 128.290531,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 486,
+      "server_tick": 484,
       "x": -11.665893,
       "y": 92.0,
       "z": 128.348094,
@@ -4893,17 +4873,7 @@
       "marker": null
     },
     {
-      "server_tick": 487,
-      "x": -11.610209,
-      "y": 92.0,
-      "z": 128.40536,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 488,
+      "server_tick": 485,
       "x": -11.554524,
       "y": 92.0,
       "z": 128.462282,
@@ -4913,7 +4883,7 @@
       "marker": null
     },
     {
-      "server_tick": 489,
+      "server_tick": 486,
       "x": -11.49884,
       "y": 92.0,
       "z": 128.518811,
@@ -4923,7 +4893,7 @@
       "marker": null
     },
     {
-      "server_tick": 490,
+      "server_tick": 487,
       "x": -11.443155,
       "y": 92.0,
       "z": 128.574899,
@@ -4933,17 +4903,7 @@
       "marker": null
     },
     {
-      "server_tick": 491,
-      "x": -11.387471,
-      "y": 92.0,
-      "z": 128.630499,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 492,
+      "server_tick": 488,
       "x": -11.331787,
       "y": 92.0,
       "z": 128.685562,
@@ -4953,17 +4913,7 @@
       "marker": null
     },
     {
-      "server_tick": 493,
-      "x": -11.276102,
-      "y": 92.0,
-      "z": 128.740043,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 494,
+      "server_tick": 489,
       "x": -11.220418,
       "y": 92.0,
       "z": 128.793894,
@@ -4973,7 +4923,7 @@
       "marker": null
     },
     {
-      "server_tick": 495,
+      "server_tick": 490,
       "x": -11.164733,
       "y": 92.0,
       "z": 128.847071,
@@ -4983,7 +4933,7 @@
       "marker": null
     },
     {
-      "server_tick": 496,
+      "server_tick": 491,
       "x": -11.109049,
       "y": 92.0,
       "z": 128.899528,
@@ -4993,17 +4943,7 @@
       "marker": null
     },
     {
-      "server_tick": 497,
-      "x": -11.053364,
-      "y": 92.0,
-      "z": 128.95122,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 498,
+      "server_tick": 492,
       "x": -10.99768,
       "y": 92.0,
       "z": 129.002103,
@@ -5013,17 +4953,7 @@
       "marker": null
     },
     {
-      "server_tick": 499,
-      "x": -10.941995,
-      "y": 92.0,
-      "z": 129.052135,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 500,
+      "server_tick": 493,
       "x": -10.886311,
       "y": 92.0,
       "z": 129.101272,
@@ -5033,7 +4963,7 @@
       "marker": null
     },
     {
-      "server_tick": 501,
+      "server_tick": 494,
       "x": -10.830626,
       "y": 92.0,
       "z": 129.149474,
@@ -5043,7 +4973,7 @@
       "marker": null
     },
     {
-      "server_tick": 502,
+      "server_tick": 495,
       "x": -10.774942,
       "y": 92.0,
       "z": 129.196698,
@@ -5053,17 +4983,7 @@
       "marker": null
     },
     {
-      "server_tick": 503,
-      "x": -10.719258,
-      "y": 92.0,
-      "z": 129.242905,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 504,
+      "server_tick": 496,
       "x": -10.663573,
       "y": 92.0,
       "z": 129.288055,
@@ -5073,17 +4993,7 @@
       "marker": null
     },
     {
-      "server_tick": 505,
-      "x": -10.607889,
-      "y": 92.0,
-      "z": 129.332111,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 506,
+      "server_tick": 497,
       "x": -10.552204,
       "y": 92.0,
       "z": 129.375034,
@@ -5093,7 +5003,7 @@
       "marker": null
     },
     {
-      "server_tick": 507,
+      "server_tick": 498,
       "x": -10.49652,
       "y": 92.0,
       "z": 129.416788,
@@ -5103,7 +5013,7 @@
       "marker": null
     },
     {
-      "server_tick": 508,
+      "server_tick": 499,
       "x": -10.440835,
       "y": 92.0,
       "z": 129.457338,
@@ -5113,17 +5023,7 @@
       "marker": null
     },
     {
-      "server_tick": 509,
-      "x": -10.385151,
-      "y": 92.0,
-      "z": 129.49665,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 510,
+      "server_tick": 500,
       "x": -10.329466,
       "y": 92.0,
       "z": 129.534689,
@@ -5133,17 +5033,7 @@
       "marker": null
     },
     {
-      "server_tick": 511,
-      "x": -10.273782,
-      "y": 92.0,
-      "z": 129.571423,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 512,
+      "server_tick": 501,
       "x": -10.218097,
       "y": 92.0,
       "z": 129.606822,
@@ -5153,7 +5043,7 @@
       "marker": null
     },
     {
-      "server_tick": 513,
+      "server_tick": 502,
       "x": -10.162413,
       "y": 92.0,
       "z": 129.640855,
@@ -5163,7 +5053,7 @@
       "marker": null
     },
     {
-      "server_tick": 514,
+      "server_tick": 503,
       "x": -10.106729,
       "y": 92.0,
       "z": 129.673493,
@@ -5173,17 +5063,7 @@
       "marker": null
     },
     {
-      "server_tick": 515,
-      "x": -10.051044,
-      "y": 92.0,
-      "z": 129.704709,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 516,
+      "server_tick": 504,
       "x": -9.99536,
       "y": 92.0,
       "z": 129.734475,
@@ -5193,17 +5073,7 @@
       "marker": null
     },
     {
-      "server_tick": 517,
-      "x": -9.939675,
-      "y": 92.0,
-      "z": 129.762768,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 518,
+      "server_tick": 505,
       "x": -9.883991,
       "y": 92.0,
       "z": 129.789561,
@@ -5213,7 +5083,7 @@
       "marker": null
     },
     {
-      "server_tick": 519,
+      "server_tick": 506,
       "x": -9.828306,
       "y": 92.0,
       "z": 129.814834,
@@ -5223,7 +5093,7 @@
       "marker": null
     },
     {
-      "server_tick": 520,
+      "server_tick": 507,
       "x": -9.772622,
       "y": 92.0,
       "z": 129.838564,
@@ -5233,17 +5103,7 @@
       "marker": null
     },
     {
-      "server_tick": 521,
-      "x": -9.716937,
-      "y": 92.0,
-      "z": 129.860731,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 522,
+      "server_tick": 508,
       "x": -9.661253,
       "y": 92.0,
       "z": 129.881317,
@@ -5253,17 +5113,7 @@
       "marker": null
     },
     {
-      "server_tick": 523,
-      "x": -9.605568,
-      "y": 92.0,
-      "z": 129.900303,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 524,
+      "server_tick": 509,
       "x": -9.549884,
       "y": 92.0,
       "z": 129.917674,
@@ -5273,7 +5123,7 @@
       "marker": null
     },
     {
-      "server_tick": 525,
+      "server_tick": 510,
       "x": -9.4942,
       "y": 92.0,
       "z": 129.933415,
@@ -5283,7 +5133,7 @@
       "marker": null
     },
     {
-      "server_tick": 526,
+      "server_tick": 511,
       "x": -9.438515,
       "y": 92.0,
       "z": 129.947512,
@@ -5293,17 +5143,7 @@
       "marker": null
     },
     {
-      "server_tick": 527,
-      "x": -9.382831,
-      "y": 92.0,
-      "z": 129.959954,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 528,
+      "server_tick": 512,
       "x": -9.327146,
       "y": 92.0,
       "z": 129.97073,
@@ -5313,17 +5153,7 @@
       "marker": null
     },
     {
-      "server_tick": 529,
-      "x": -9.271462,
-      "y": 92.0,
-      "z": 129.979831,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 530,
+      "server_tick": 513,
       "x": -9.215777,
       "y": 92.0,
       "z": 129.987249,
@@ -5333,7 +5163,7 @@
       "marker": null
     },
     {
-      "server_tick": 531,
+      "server_tick": 514,
       "x": -9.160093,
       "y": 92.0,
       "z": 129.992978,
@@ -5343,7 +5173,7 @@
       "marker": null
     },
     {
-      "server_tick": 532,
+      "server_tick": 515,
       "x": -9.104408,
       "y": 92.0,
       "z": 129.997012,
@@ -5353,17 +5183,7 @@
       "marker": null
     },
     {
-      "server_tick": 533,
-      "x": -9.048724,
-      "y": 92.0,
-      "z": 129.999349,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 534,
+      "server_tick": 516,
       "x": -8.993039,
       "y": 92.0,
       "z": 129.999987,
@@ -5373,17 +5193,7 @@
       "marker": null
     },
     {
-      "server_tick": 535,
-      "x": -8.937355,
-      "y": 92.0,
-      "z": 129.998924,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 536,
+      "server_tick": 517,
       "x": -8.881671,
       "y": 92.0,
       "z": 129.996163,
@@ -5393,7 +5203,7 @@
       "marker": null
     },
     {
-      "server_tick": 537,
+      "server_tick": 518,
       "x": -8.825986,
       "y": 92.0,
       "z": 129.991704,
@@ -5403,7 +5213,7 @@
       "marker": null
     },
     {
-      "server_tick": 538,
+      "server_tick": 519,
       "x": -8.770302,
       "y": 92.0,
       "z": 129.985553,
@@ -5413,17 +5223,7 @@
       "marker": null
     },
     {
-      "server_tick": 539,
-      "x": -8.714617,
-      "y": 92.0,
-      "z": 129.977713,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 540,
+      "server_tick": 520,
       "x": -8.658933,
       "y": 92.0,
       "z": 129.968193,
@@ -5433,17 +5233,7 @@
       "marker": null
     },
     {
-      "server_tick": 541,
-      "x": -8.603248,
-      "y": 92.0,
-      "z": 129.957,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 542,
+      "server_tick": 521,
       "x": -8.547564,
       "y": 92.0,
       "z": 129.944143,
@@ -5453,7 +5243,7 @@
       "marker": null
     },
     {
-      "server_tick": 543,
+      "server_tick": 522,
       "x": -8.491879,
       "y": 92.0,
       "z": 129.929633,
@@ -5463,7 +5253,7 @@
       "marker": null
     },
     {
-      "server_tick": 544,
+      "server_tick": 523,
       "x": -8.436195,
       "y": 92.0,
       "z": 129.913483,
@@ -5473,17 +5263,7 @@
       "marker": null
     },
     {
-      "server_tick": 545,
-      "x": -8.38051,
-      "y": 92.0,
-      "z": 129.895707,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 546,
+      "server_tick": 524,
       "x": -8.324826,
       "y": 92.0,
       "z": 129.87632,
@@ -5493,17 +5273,7 @@
       "marker": null
     },
     {
-      "server_tick": 547,
-      "x": -8.269142,
-      "y": 92.0,
-      "z": 129.855337,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 548,
+      "server_tick": 525,
       "x": -8.213457,
       "y": 92.0,
       "z": 129.832777,
@@ -5513,7 +5283,7 @@
       "marker": null
     },
     {
-      "server_tick": 549,
+      "server_tick": 526,
       "x": -8.157773,
       "y": 92.0,
       "z": 129.80866,
@@ -5523,7 +5293,7 @@
       "marker": null
     },
     {
-      "server_tick": 550,
+      "server_tick": 527,
       "x": -8.102088,
       "y": 92.0,
       "z": 129.783005,
@@ -5533,17 +5303,7 @@
       "marker": null
     },
     {
-      "server_tick": 551,
-      "x": -8.046404,
-      "y": 92.0,
-      "z": 129.755834,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 552,
+      "server_tick": 528,
       "x": -7.990719,
       "y": 92.0,
       "z": 129.727171,
@@ -5553,17 +5313,7 @@
       "marker": null
     },
     {
-      "server_tick": 553,
-      "x": -7.935035,
-      "y": 92.0,
-      "z": 129.69704,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 554,
+      "server_tick": 529,
       "x": -7.87935,
       "y": 92.0,
       "z": 129.665466,
@@ -5573,7 +5323,7 @@
       "marker": null
     },
     {
-      "server_tick": 555,
+      "server_tick": 530,
       "x": -7.823666,
       "y": 92.0,
       "z": 129.632476,
@@ -5583,7 +5333,7 @@
       "marker": null
     },
     {
-      "server_tick": 556,
+      "server_tick": 531,
       "x": -7.767981,
       "y": 92.0,
       "z": 129.598099,
@@ -5593,17 +5343,7 @@
       "marker": null
     },
     {
-      "server_tick": 557,
-      "x": -7.712297,
-      "y": 92.0,
-      "z": 129.562364,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 558,
+      "server_tick": 532,
       "x": -7.656613,
       "y": 92.0,
       "z": 129.5253,
@@ -5613,17 +5353,7 @@
       "marker": null
     },
     {
-      "server_tick": 559,
-      "x": -7.600928,
-      "y": 92.0,
-      "z": 129.48694,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 560,
+      "server_tick": 533,
       "x": -7.545244,
       "y": 92.0,
       "z": 129.447316,
@@ -5633,7 +5363,7 @@
       "marker": null
     },
     {
-      "server_tick": 561,
+      "server_tick": 534,
       "x": -7.489559,
       "y": 92.0,
       "z": 129.406461,
@@ -5643,7 +5373,7 @@
       "marker": null
     },
     {
-      "server_tick": 562,
+      "server_tick": 535,
       "x": -7.433875,
       "y": 92.0,
       "z": 129.364411,
@@ -5653,17 +5383,7 @@
       "marker": null
     },
     {
-      "server_tick": 563,
-      "x": -7.37819,
-      "y": 92.0,
-      "z": 129.321202,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 564,
+      "server_tick": 536,
       "x": -7.322506,
       "y": 92.0,
       "z": 129.276869,
@@ -5673,17 +5393,7 @@
       "marker": null
     },
     {
-      "server_tick": 565,
-      "x": -7.266821,
-      "y": 92.0,
-      "z": 129.231451,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 566,
+      "server_tick": 537,
       "x": -7.211137,
       "y": 92.0,
       "z": 129.184986,
@@ -5693,7 +5403,7 @@
       "marker": null
     },
     {
-      "server_tick": 567,
+      "server_tick": 538,
       "x": -7.155452,
       "y": 92.0,
       "z": 129.137513,
@@ -5703,7 +5413,7 @@
       "marker": null
     },
     {
-      "server_tick": 568,
+      "server_tick": 539,
       "x": -7.099768,
       "y": 92.0,
       "z": 129.089074,
@@ -5713,17 +5423,7 @@
       "marker": null
     },
     {
-      "server_tick": 569,
-      "x": -7.044084,
-      "y": 92.0,
-      "z": 129.039709,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 570,
+      "server_tick": 540,
       "x": -6.988399,
       "y": 92.0,
       "z": 128.989461,
@@ -5733,17 +5433,7 @@
       "marker": null
     },
     {
-      "server_tick": 571,
-      "x": -6.932715,
-      "y": 92.0,
-      "z": 128.938371,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 572,
+      "server_tick": 541,
       "x": -6.87703,
       "y": 92.0,
       "z": 128.886484,
@@ -5753,7 +5443,7 @@
       "marker": null
     },
     {
-      "server_tick": 573,
+      "server_tick": 542,
       "x": -6.821346,
       "y": 92.0,
       "z": 128.833843,
@@ -5763,7 +5453,7 @@
       "marker": null
     },
     {
-      "server_tick": 574,
+      "server_tick": 543,
       "x": -6.765661,
       "y": 92.0,
       "z": 128.780493,
@@ -5773,17 +5463,7 @@
       "marker": null
     },
     {
-      "server_tick": 575,
-      "x": -6.709977,
-      "y": 92.0,
-      "z": 128.72648,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 576,
+      "server_tick": 544,
       "x": -6.654292,
       "y": 92.0,
       "z": 128.671849,
@@ -5793,17 +5473,7 @@
       "marker": null
     },
     {
-      "server_tick": 577,
-      "x": -6.598608,
-      "y": 92.0,
-      "z": 128.616647,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 578,
+      "server_tick": 545,
       "x": -6.542923,
       "y": 92.0,
       "z": 128.560921,
@@ -5813,7 +5483,7 @@
       "marker": null
     },
     {
-      "server_tick": 579,
+      "server_tick": 546,
       "x": -6.487239,
       "y": 92.0,
       "z": 128.504719,
@@ -5823,7 +5493,7 @@
       "marker": null
     },
     {
-      "server_tick": 580,
+      "server_tick": 547,
       "x": -6.431555,
       "y": 92.0,
       "z": 128.448087,
@@ -5833,17 +5503,7 @@
       "marker": null
     },
     {
-      "server_tick": 581,
-      "x": -6.37587,
-      "y": 92.0,
-      "z": 128.391074,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 582,
+      "server_tick": 548,
       "x": -6.320186,
       "y": 92.0,
       "z": 128.333729,
@@ -5853,17 +5513,7 @@
       "marker": null
     },
     {
-      "server_tick": 583,
-      "x": -6.264501,
-      "y": 92.0,
-      "z": 128.2761,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 584,
+      "server_tick": 549,
       "x": -6.208817,
       "y": 92.0,
       "z": 128.218237,
@@ -5873,7 +5523,7 @@
       "marker": null
     },
     {
-      "server_tick": 585,
+      "server_tick": 550,
       "x": -6.153132,
       "y": 92.0,
       "z": 128.160188,
@@ -5883,7 +5533,7 @@
       "marker": null
     },
     {
-      "server_tick": 586,
+      "server_tick": 551,
       "x": -6.097448,
       "y": 92.0,
       "z": 128.102003,
@@ -5893,17 +5543,7 @@
       "marker": null
     },
     {
-      "server_tick": 587,
-      "x": -6.041763,
-      "y": 92.0,
-      "z": 128.043731,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 588,
+      "server_tick": 552,
       "x": -5.986079,
       "y": 92.0,
       "z": 127.985422,
@@ -5913,17 +5553,7 @@
       "marker": null
     },
     {
-      "server_tick": 589,
-      "x": -5.930394,
-      "y": 92.0,
-      "z": 127.927125,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 590,
+      "server_tick": 553,
       "x": -5.87471,
       "y": 92.0,
       "z": 127.868891,
@@ -5933,7 +5563,7 @@
       "marker": null
     },
     {
-      "server_tick": 591,
+      "server_tick": 554,
       "x": -5.819026,
       "y": 92.0,
       "z": 127.810767,
@@ -5943,7 +5573,7 @@
       "marker": null
     },
     {
-      "server_tick": 592,
+      "server_tick": 555,
       "x": -5.763341,
       "y": 92.0,
       "z": 127.752805,
@@ -5953,17 +5583,7 @@
       "marker": null
     },
     {
-      "server_tick": 593,
-      "x": -5.707657,
-      "y": 92.0,
-      "z": 127.695053,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 594,
+      "server_tick": 556,
       "x": -5.651972,
       "y": 92.0,
       "z": 127.63756,
@@ -5973,17 +5593,7 @@
       "marker": null
     },
     {
-      "server_tick": 595,
-      "x": -5.596288,
-      "y": 92.0,
-      "z": 127.580375,
-      "yaw": -90.0,
-      "pitch": 0.0,
-      "capture_segment": "preloaded_flight",
-      "marker": null
-    },
-    {
-      "server_tick": 596,
+      "server_tick": 557,
       "x": -5.540603,
       "y": 92.0,
       "z": 127.523547,
@@ -5993,7 +5603,7 @@
       "marker": null
     },
     {
-      "server_tick": 597,
+      "server_tick": 558,
       "x": -5.484919,
       "y": 92.0,
       "z": 127.467123,
@@ -6003,7 +5613,7 @@
       "marker": null
     },
     {
-      "server_tick": 598,
+      "server_tick": 559,
       "x": -5.429234,
       "y": 92.0,
       "z": 127.411153,
@@ -6013,10 +5623,400 @@
       "marker": null
     },
     {
-      "server_tick": 599,
-      "x": -5.37355,
+      "server_tick": 560,
+      "x": -5.317865,
       "y": 92.0,
-      "z": 127.355683,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 561,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 562,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 563,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 564,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 565,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 566,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 567,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 568,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 569,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 570,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 571,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 572,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 573,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 574,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 575,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 576,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 577,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 578,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 579,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 580,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 581,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 582,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 583,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 584,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 585,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 586,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 587,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 588,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 589,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 590,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 591,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 592,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 593,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 594,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 595,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 596,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 597,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 598,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
+      "yaw": -90.0,
+      "pitch": 0.0,
+      "capture_segment": "preloaded_flight",
+      "marker": null
+    },
+    {
+      "server_tick": 599,
+      "x": -5.317865,
+      "y": 92.0,
+      "z": 127.300761,
       "yaw": -90.0,
       "pitch": 0.0,
       "capture_segment": "preloaded_flight",
@@ -9774,7 +9774,7 @@
     },
     {
       "server_tick": 975,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9784,7 +9784,7 @@
     },
     {
       "server_tick": 976,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9794,7 +9794,7 @@
     },
     {
       "server_tick": 977,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9804,7 +9804,7 @@
     },
     {
       "server_tick": 978,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9814,7 +9814,7 @@
     },
     {
       "server_tick": 979,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9824,7 +9824,7 @@
     },
     {
       "server_tick": 980,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9834,7 +9834,7 @@
     },
     {
       "server_tick": 981,
-      "x": -8.5,
+      "x": 7.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9914,7 +9914,7 @@
     },
     {
       "server_tick": 989,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9924,7 +9924,7 @@
     },
     {
       "server_tick": 990,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9934,7 +9934,7 @@
     },
     {
       "server_tick": 991,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9944,7 +9944,7 @@
     },
     {
       "server_tick": 992,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9954,7 +9954,7 @@
     },
     {
       "server_tick": 993,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9964,7 +9964,7 @@
     },
     {
       "server_tick": 994,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9974,7 +9974,7 @@
     },
     {
       "server_tick": 995,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9984,7 +9984,7 @@
     },
     {
       "server_tick": 996,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -9994,7 +9994,7 @@
     },
     {
       "server_tick": 997,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10004,7 +10004,7 @@
     },
     {
       "server_tick": 998,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10014,7 +10014,7 @@
     },
     {
       "server_tick": 999,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10024,7 +10024,7 @@
     },
     {
       "server_tick": 1000,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10034,7 +10034,7 @@
     },
     {
       "server_tick": 1001,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10044,7 +10044,7 @@
     },
     {
       "server_tick": 1002,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10054,7 +10054,7 @@
     },
     {
       "server_tick": 1003,
-      "x": 7.5,
+      "x": 15.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10064,7 +10064,7 @@
     },
     {
       "server_tick": 1004,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10074,7 +10074,7 @@
     },
     {
       "server_tick": 1005,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10084,7 +10084,7 @@
     },
     {
       "server_tick": 1006,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10094,7 +10094,7 @@
     },
     {
       "server_tick": 1007,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10104,7 +10104,7 @@
     },
     {
       "server_tick": 1008,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10114,7 +10114,7 @@
     },
     {
       "server_tick": 1009,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10124,7 +10124,7 @@
     },
     {
       "server_tick": 1010,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10134,7 +10134,7 @@
     },
     {
       "server_tick": 1011,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10144,7 +10144,7 @@
     },
     {
       "server_tick": 1012,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10154,7 +10154,7 @@
     },
     {
       "server_tick": 1013,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10164,7 +10164,7 @@
     },
     {
       "server_tick": 1014,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10174,7 +10174,7 @@
     },
     {
       "server_tick": 1015,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10184,7 +10184,7 @@
     },
     {
       "server_tick": 1016,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10194,7 +10194,7 @@
     },
     {
       "server_tick": 1017,
-      "x": 15.5,
+      "x": 16.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10204,7 +10204,7 @@
     },
     {
       "server_tick": 1018,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10214,7 +10214,7 @@
     },
     {
       "server_tick": 1019,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10224,7 +10224,7 @@
     },
     {
       "server_tick": 1020,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10234,7 +10234,7 @@
     },
     {
       "server_tick": 1021,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10244,7 +10244,7 @@
     },
     {
       "server_tick": 1022,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10254,7 +10254,7 @@
     },
     {
       "server_tick": 1023,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10264,7 +10264,7 @@
     },
     {
       "server_tick": 1024,
-      "x": 15.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10274,7 +10274,7 @@
     },
     {
       "server_tick": 1025,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10284,7 +10284,7 @@
     },
     {
       "server_tick": 1026,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10294,7 +10294,7 @@
     },
     {
       "server_tick": 1027,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10304,7 +10304,7 @@
     },
     {
       "server_tick": 1028,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10314,7 +10314,7 @@
     },
     {
       "server_tick": 1029,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10324,7 +10324,7 @@
     },
     {
       "server_tick": 1030,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10334,7 +10334,7 @@
     },
     {
       "server_tick": 1031,
-      "x": 16.5,
+      "x": 31.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10344,7 +10344,7 @@
     },
     {
       "server_tick": 1032,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10354,7 +10354,7 @@
     },
     {
       "server_tick": 1033,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10364,7 +10364,7 @@
     },
     {
       "server_tick": 1034,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10374,7 +10374,7 @@
     },
     {
       "server_tick": 1035,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10384,7 +10384,7 @@
     },
     {
       "server_tick": 1036,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10394,7 +10394,7 @@
     },
     {
       "server_tick": 1037,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10404,7 +10404,7 @@
     },
     {
       "server_tick": 1038,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10414,7 +10414,7 @@
     },
     {
       "server_tick": 1039,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10424,7 +10424,7 @@
     },
     {
       "server_tick": 1040,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10434,7 +10434,7 @@
     },
     {
       "server_tick": 1041,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10444,7 +10444,7 @@
     },
     {
       "server_tick": 1042,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10454,7 +10454,7 @@
     },
     {
       "server_tick": 1043,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10464,7 +10464,7 @@
     },
     {
       "server_tick": 1044,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10474,7 +10474,7 @@
     },
     {
       "server_tick": 1045,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10484,7 +10484,7 @@
     },
     {
       "server_tick": 1046,
-      "x": 16.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10494,7 +10494,7 @@
     },
     {
       "server_tick": 1047,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10504,7 +10504,7 @@
     },
     {
       "server_tick": 1048,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10514,7 +10514,7 @@
     },
     {
       "server_tick": 1049,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10524,7 +10524,7 @@
     },
     {
       "server_tick": 1050,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10534,7 +10534,7 @@
     },
     {
       "server_tick": 1051,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10544,7 +10544,7 @@
     },
     {
       "server_tick": 1052,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10554,7 +10554,7 @@
     },
     {
       "server_tick": 1053,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10564,7 +10564,7 @@
     },
     {
       "server_tick": 1054,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10574,7 +10574,7 @@
     },
     {
       "server_tick": 1055,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10584,7 +10584,7 @@
     },
     {
       "server_tick": 1056,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10594,7 +10594,7 @@
     },
     {
       "server_tick": 1057,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10604,7 +10604,7 @@
     },
     {
       "server_tick": 1058,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10614,7 +10614,7 @@
     },
     {
       "server_tick": 1059,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10624,7 +10624,7 @@
     },
     {
       "server_tick": 1060,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10634,7 +10634,7 @@
     },
     {
       "server_tick": 1061,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10644,7 +10644,7 @@
     },
     {
       "server_tick": 1062,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10654,7 +10654,7 @@
     },
     {
       "server_tick": 1063,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10664,7 +10664,7 @@
     },
     {
       "server_tick": 1064,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10674,7 +10674,7 @@
     },
     {
       "server_tick": 1065,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10684,7 +10684,7 @@
     },
     {
       "server_tick": 1066,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,
@@ -10694,7 +10694,7 @@
     },
     {
       "server_tick": 1067,
-      "x": 31.5,
+      "x": 32.5,
       "y": 88.0,
       "z": -48.5,
       "yaw": -90.0,

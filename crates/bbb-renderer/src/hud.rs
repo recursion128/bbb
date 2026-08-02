@@ -3439,6 +3439,16 @@ impl Renderer {
         gpu::update_hud_sprite_gpu(&self.queue, atlas, rgba)
     }
 
+    pub fn update_hud_item_atlas_patches(
+        &mut self,
+        patches: &[bbb_pack::AtlasMipPatch],
+    ) -> Result<()> {
+        let Some(atlas) = self.hud_item_atlas.as_ref() else {
+            return Ok(());
+        };
+        gpu::update_hud_sprite_gpu_patches(&self.queue, atlas, patches)
+    }
+
     pub fn upload_hud_digit_atlas(
         &mut self,
         width: u32,
@@ -19152,11 +19162,7 @@ fn push_hud_styled_text_pass<'a>(
             *tint,
         ));
         let end = vertices.len() as u32;
-        commands.push(HudDrawCommand::Sprite {
-            sprite: font_atlas,
-            start,
-            end,
-        });
+        push_hud_sprite_batch(commands, font_atlas, start, end);
     }
     for (rect, tint) in &geometry.effect_rects {
         let start = vertices.len() as u32;
@@ -19175,12 +19181,34 @@ fn push_hud_styled_text_pass<'a>(
             *tint,
         ));
         let end = vertices.len() as u32;
-        commands.push(HudDrawCommand::Sprite {
-            sprite: white_pixel,
-            start,
-            end,
-        });
+        push_hud_sprite_batch(commands, white_pixel, start, end);
     }
+}
+
+/// Extends the current GUI mesh when consecutive vertices use the same
+/// texture. Vanilla 26.1's `GuiRenderer.addElementToMesh` keeps one
+/// `BufferBuilder` until scissor, pipeline, or `TextureSetup` changes; glyphs
+/// from the same font atlas therefore form one draw rather than one draw per
+/// quad. A non-sprite command or texture transition remains an ordering
+/// boundary.
+fn push_hud_sprite_batch<'a>(
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    sprite: &'a HudSpriteGpu,
+    start: u32,
+    end: u32,
+) {
+    if let Some(HudDrawCommand::Sprite {
+        sprite: previous_sprite,
+        end: previous_end,
+        ..
+    }) = commands.last_mut()
+    {
+        if std::ptr::eq(*previous_sprite, sprite) && *previous_end == start {
+            *previous_end = end;
+            return;
+        }
+    }
+    commands.push(HudDrawCommand::Sprite { sprite, start, end });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -29484,8 +29512,19 @@ mod tests {
                 .iter()
                 .filter(|command| matches!(command, HudDrawCommand::Sprite { .. }))
                 .count(),
-            5,
-            "three glyphs, one focused underline, and one caret"
+            3,
+            "one batched glyph draw, one focused underline, and one caret"
+        );
+        assert_eq!(
+            draws
+                .commands
+                .iter()
+                .filter_map(|command| match command {
+                    HudDrawCommand::Sprite { start, end, .. } => Some(end - start),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            [18, 6, 6]
         );
         assert_eq!(draws.vertices.len(), 5 * 6);
     }

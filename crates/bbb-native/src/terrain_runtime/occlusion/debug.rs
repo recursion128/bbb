@@ -173,13 +173,11 @@ fn color_channel(value: f32) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-
     use bbb_renderer::{terrain::TerrainSectionVisibility, CameraPose};
     use bbb_world::ChunkPos;
 
     use super::*;
-    use crate::terrain_runtime::occlusion::ResidentSection;
+    use crate::terrain_runtime::occlusion::{ResidentSection, TerrainCoordinateSet};
 
     fn section(x: i32, y: i32, z: i32, visibility: TerrainSectionVisibility) -> ResidentSection {
         ResidentSection {
@@ -188,7 +186,7 @@ mod tests {
         }
     }
 
-    fn loaded_square(radius: i32) -> HashSet<ChunkPos> {
+    fn loaded_square(radius: i32) -> TerrainCoordinateSet<ChunkPos> {
         (-radius..=radius)
             .flat_map(|z| (-radius..=radius).map(move |x| ChunkPos { x, z }))
             .collect()

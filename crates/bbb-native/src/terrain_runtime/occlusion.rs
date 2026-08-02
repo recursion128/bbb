@@ -1,6 +1,14 @@
 //! Vanilla-compatible chunk-section visibility propagation and octree traversal.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::{BuildHasher, Hasher},
+    sync::{
+        mpsc::{self, Receiver, Sender, SyncSender, TryRecvError, TrySendError},
+        Arc,
+    },
+    thread::{self, JoinHandle},
+};
 
 use bbb_renderer::{
     terrain::{TerrainFace, TerrainSectionVisibility},
@@ -8,11 +16,177 @@ use bbb_renderer::{
 };
 use bbb_world::ChunkPos;
 
+use super::TerrainOcclusionRebuildKey;
+
 mod debug;
 pub(crate) use debug::ChunkSectionDebugGizmos;
 
 const MINIMUM_ADVANCED_CULLING_SECTION_DISTANCE: i32 = 60_i32.div_euclid(16);
 const CEILED_SECTION_DIAGONAL: f64 = 28.0;
+
+/// Vanilla's occlusion graph uses packed-long fastutil maps/sets. These keys
+/// are renderer-owned coordinates rather than attacker-controlled strings, so
+/// a compact deterministic hasher avoids paying SipHash for every graph edge
+/// while retaining the same collision-safe map semantics.
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct TerrainCoordinateBuildHasher;
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct TerrainCoordinateHasher(u64);
+
+impl BuildHasher for TerrainCoordinateBuildHasher {
+    type Hasher = TerrainCoordinateHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        TerrainCoordinateHasher(0xcbf2_9ce4_8422_2325)
+    }
+}
+
+impl Hasher for TerrainCoordinateHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for byte in bytes {
+            self.0 ^= u64::from(*byte);
+            self.0 = self.0.wrapping_mul(0x1000_0000_01b3);
+        }
+    }
+}
+
+pub(super) type TerrainCoordinateMap<K, V> = HashMap<K, V, TerrainCoordinateBuildHasher>;
+pub(super) type TerrainCoordinateSet<K> = HashSet<K, TerrainCoordinateBuildHasher>;
+
+#[derive(Debug)]
+pub(super) struct TerrainOcclusionJob {
+    pub(super) key: TerrainOcclusionRebuildKey,
+    pub(super) sections: Arc<[ResidentSection]>,
+    pub(super) loaded_chunks: Arc<TerrainCoordinateSet<ChunkPos>>,
+    pub(super) camera_position: [f64; 3],
+    pub(super) view_distance: i32,
+    pub(super) min_section_y: i32,
+    pub(super) section_count: usize,
+    pub(super) smart_cull: bool,
+}
+
+#[derive(Debug)]
+pub(super) struct TerrainOcclusionResult {
+    pub(super) key: TerrainOcclusionRebuildKey,
+    pub(super) graph: TerrainSectionOcclusionGraph,
+}
+
+#[derive(Debug)]
+pub(super) struct TerrainOcclusionWorker {
+    job_tx: Option<SyncSender<TerrainOcclusionJob>>,
+    result_rx: Receiver<TerrainOcclusionResult>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl TerrainOcclusionWorker {
+    pub(super) fn spawn() -> Self {
+        let (job_tx, job_rx) = mpsc::sync_channel(1);
+        let (result_tx, result_rx) = mpsc::channel();
+        let handle = thread::Builder::new()
+            .name("bbb-terrain-occlusion".to_owned())
+            .spawn(move || run_occlusion_worker(job_rx, result_tx))
+            .expect("failed to spawn terrain occlusion worker");
+        Self {
+            job_tx: Some(job_tx),
+            result_rx,
+            handle: Some(handle),
+        }
+    }
+
+    pub(super) fn submit(&mut self, job: TerrainOcclusionJob) {
+        self.propagate_panic();
+        match self
+            .job_tx
+            .as_ref()
+            .expect("live terrain occlusion worker has a sender")
+            .try_send(job)
+        {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => {
+                panic!("terrain occlusion worker accepted more than one pending rebuild")
+            }
+            Err(TrySendError::Disconnected(_)) => {
+                self.propagate_panic();
+                panic!("terrain occlusion worker disconnected without a panic payload")
+            }
+        }
+    }
+
+    pub(super) fn try_recv(&mut self) -> Option<TerrainOcclusionResult> {
+        self.propagate_panic();
+        match self.result_rx.try_recv() {
+            Ok(result) => Some(result),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                self.propagate_panic();
+                panic!("terrain occlusion worker disconnected without a panic payload")
+            }
+        }
+    }
+
+    fn propagate_panic(&mut self) {
+        let Some(handle) = self.handle.as_ref() else {
+            return;
+        };
+        if !handle.is_finished() {
+            return;
+        }
+        let handle = self
+            .handle
+            .take()
+            .expect("finished occlusion worker handle exists");
+        match handle.join() {
+            Ok(()) => panic!("terrain occlusion worker exited before shutdown"),
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
+    }
+}
+
+impl Drop for TerrainOcclusionWorker {
+    fn drop(&mut self) {
+        self.job_tx.take();
+        let Some(handle) = self.handle.take() else {
+            return;
+        };
+        if let Err(payload) = handle.join() {
+            if !thread::panicking() {
+                std::panic::resume_unwind(payload);
+            }
+        }
+    }
+}
+
+fn run_occlusion_worker(
+    job_rx: Receiver<TerrainOcclusionJob>,
+    result_tx: Sender<TerrainOcclusionResult>,
+) {
+    while let Ok(job) = job_rx.recv() {
+        let mut graph = TerrainSectionOcclusionGraph::default();
+        graph.rebuild(
+            job.sections.iter().copied(),
+            job.loaded_chunks.as_ref(),
+            job.camera_position,
+            job.view_distance,
+            job.min_section_y,
+            job.section_count,
+            job.smart_cull,
+        );
+        if result_tx
+            .send(TerrainOcclusionResult {
+                key: job.key,
+                graph,
+            })
+            .is_err()
+        {
+            return;
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(super) struct SectionPosition {
@@ -123,9 +297,9 @@ pub(super) struct OctreeVisit {
 
 #[derive(Debug, Default)]
 pub(super) struct TerrainSectionOcclusionGraph {
-    nodes: BTreeMap<SectionPosition, OcclusionNode>,
-    section_visibility: BTreeMap<SectionPosition, TerrainSectionVisibility>,
-    reachable_sections: BTreeSet<SectionPosition>,
+    nodes: TerrainCoordinateMap<SectionPosition, OcclusionNode>,
+    section_visibility: TerrainCoordinateMap<SectionPosition, TerrainSectionVisibility>,
+    reachable_sections: TerrainCoordinateSet<SectionPosition>,
     octree: Option<SectionOctree>,
     valid: bool,
 }
@@ -135,7 +309,7 @@ impl TerrainSectionOcclusionGraph {
     pub(super) fn rebuild(
         &mut self,
         sections: impl IntoIterator<Item = ResidentSection>,
-        loaded_chunks: &HashSet<ChunkPos>,
+        loaded_chunks: &TerrainCoordinateSet<ChunkPos>,
         camera_position: [f64; 3],
         view_distance: i32,
         min_section_y: i32,
@@ -225,19 +399,119 @@ impl TerrainSectionOcclusionGraph {
         for node in queue.iter().copied() {
             self.nodes.insert(node.position, node);
         }
-        let mut octree = SectionOctree::new(
+        self.octree = Some(SectionOctree::new(
             camera_section,
             view_distance,
             section_count,
             min_section_y.saturating_mul(16),
+        ));
+        self.propagate(
+            queue,
+            loaded_chunks,
+            camera_position,
+            view_distance,
+            min_section_y,
+            section_count,
+            smart_cull,
         );
+        self.valid = true;
+    }
+
+    /// Mirrors Vanilla's `schedulePropagationFrom` + `runPartialUpdate`: a newly
+    /// compiled section updates the current mesh visibility in place, then the
+    /// existing graph nodes continue propagating without rebuilding the graph.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn update_sections(
+        &mut self,
+        updates: impl IntoIterator<Item = (SectionPosition, Option<TerrainSectionVisibility>)>,
+        loaded_chunks: &TerrainCoordinateSet<ChunkPos>,
+        camera_position: [f64; 3],
+        view_distance: i32,
+        min_section_y: i32,
+        section_count: usize,
+        smart_cull: bool,
+    ) {
+        if !self.valid {
+            return;
+        }
+
+        let mut changed = Vec::new();
+        for (position, visibility) in updates {
+            let previous = match visibility {
+                Some(visibility) => self.section_visibility.insert(position, visibility),
+                None => self.section_visibility.remove(&position),
+            };
+            if previous != visibility {
+                changed.push(position);
+            }
+        }
+        changed.sort_unstable();
+        changed.dedup();
+
+        let mut scheduled = Vec::with_capacity(changed.len().saturating_mul(7));
+        for position in changed {
+            if self.nodes.contains_key(&position) {
+                scheduled.push(position);
+            }
+            for direction in TerrainFace::ALL {
+                let neighbor = position.relative(direction);
+                if self.nodes.contains_key(&neighbor) {
+                    scheduled.push(neighbor);
+                }
+            }
+        }
+        // Vanilla retains nodes whose chunks were waiting for their eight
+        // horizontal neighbors, then queues them when those neighbors arrive.
+        scheduled.extend(self.nodes.iter().filter_map(|(&position, _)| {
+            (!self.reachable_sections.contains(&position)
+                && has_all_neighbors(position.chunk(), loaded_chunks))
+            .then_some(position)
+        }));
+        scheduled.sort_unstable();
+        scheduled.dedup();
+        let queue = scheduled
+            .into_iter()
+            .filter_map(|position| self.nodes.get(&position).copied())
+            .collect();
+        self.propagate(
+            queue,
+            loaded_chunks,
+            camera_position,
+            view_distance,
+            min_section_y,
+            section_count,
+            smart_cull,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn propagate(
+        &mut self,
+        mut queue: VecDeque<OcclusionNode>,
+        loaded_chunks: &TerrainCoordinateSet<ChunkPos>,
+        camera_position: [f64; 3],
+        view_distance: i32,
+        min_section_y: i32,
+        section_count: usize,
+        smart_cull: bool,
+    ) {
+        let Some(camera_section) = SectionPosition::from_block_position(camera_position) else {
+            return;
+        };
+        let view_distance = view_distance.max(0);
+        let max_section_y = min_section_y
+            .saturating_add(i32::try_from(section_count).unwrap_or(i32::MAX))
+            .saturating_sub(1);
         while let Some(node) = queue.pop_front() {
-            let Some(section_visibility) = sections.get(&node.position).copied() else {
+            let Some(section_visibility) = self.section_visibility.get(&node.position).copied()
+            else {
                 continue;
             };
             self.reachable_sections.insert(node.position);
             if !section_visibility.loaded_empty {
-                octree.add(node.position);
+                if let Some(octree) = self.octree.as_mut() {
+                    octree.add(node.position);
+                }
             }
             let distant_from_camera = (node.position.x - camera_section.x).abs()
                 > MINIMUM_ADVANCED_CULLING_SECTION_DISTANCE
@@ -247,7 +521,7 @@ impl TerrainSectionOcclusionGraph {
                     > MINIMUM_ADVANCED_CULLING_SECTION_DISTANCE;
             for direction in TerrainFace::ALL {
                 let relative = node.position.relative(direction);
-                if !sections.contains_key(&relative)
+                if !self.section_visibility.contains_key(&relative)
                     || !is_in_view_distance(camera_section, relative, view_distance)
                     || (relative.y - camera_section.y).abs() > view_distance
                     || (smart_cull && node.has_direction(direction.opposite()))
@@ -291,15 +565,13 @@ impl TerrainSectionOcclusionGraph {
                 }
             }
         }
-        self.octree = Some(octree);
-        self.valid = true;
     }
 
     pub(super) fn is_valid(&self) -> bool {
         self.valid
     }
 
-    pub(super) fn reachable_sections(&self) -> &BTreeSet<SectionPosition> {
+    pub(super) fn reachable_sections(&self) -> &TerrainCoordinateSet<SectionPosition> {
         &self.reachable_sections
     }
 
@@ -338,7 +610,7 @@ fn is_in_view_distance(
     i64::from(delta_x).pow(2) + i64::from(delta_z).pow(2) < i64::from(view_distance).pow(2)
 }
 
-fn has_all_neighbors(chunk: ChunkPos, loaded_chunks: &HashSet<ChunkPos>) -> bool {
+fn has_all_neighbors(chunk: ChunkPos, loaded_chunks: &TerrainCoordinateSet<ChunkPos>) -> bool {
     (-1..=1).all(|dz| {
         (-1..=1).all(|dx| {
             (dx == 0 && dz == 0)
@@ -358,7 +630,7 @@ fn distant_path_is_continuous(
     camera_position: [f64; 3],
     min_section_y: i32,
     max_section_y: i32,
-    nodes: &BTreeMap<SectionPosition, OcclusionNode>,
+    nodes: &TerrainCoordinateMap<SectionPosition, OcclusionNode>,
 ) -> bool {
     let origin = section.origin();
     let camera_center = camera_section.center();
@@ -791,7 +1063,7 @@ mod tests {
         }
     }
 
-    fn loaded_square(radius: i32) -> HashSet<ChunkPos> {
+    fn loaded_square(radius: i32) -> TerrainCoordinateSet<ChunkPos> {
         (-radius..=radius)
             .flat_map(|z| (-radius..=radius).map(move |x| ChunkPos { x, z }))
             .collect()
@@ -867,6 +1139,46 @@ mod tests {
         assert!(graph
             .reachable_sections()
             .contains(&SectionPosition { x: 0, y: 0, z: 2 }));
+    }
+
+    #[test]
+    fn terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild() {
+        let initial = [
+            section(0, 0, 0, false),
+            blocked_section(0, 0, 1),
+            section(0, 0, 2, false),
+            blocked_section(1, 0, 0),
+            section(2, 0, 0, false),
+        ];
+        let mut graph = TerrainSectionOcclusionGraph::default();
+        let loaded = loaded_square(3);
+        graph.rebuild(initial, &loaded, [8.0, 8.0, 8.0], 3, 0, 1, true);
+        assert!(!graph
+            .reachable_sections()
+            .contains(&SectionPosition { x: 0, y: 0, z: 2 }));
+        assert!(!graph
+            .reachable_sections()
+            .contains(&SectionPosition { x: 2, y: 0, z: 0 }));
+
+        graph.update_sections(
+            [(
+                SectionPosition { x: 0, y: 0, z: 1 },
+                Some(section(0, 0, 1, false).visibility),
+            )],
+            &loaded,
+            [8.0, 8.0, 8.0],
+            3,
+            0,
+            1,
+            true,
+        );
+
+        assert!(graph
+            .reachable_sections()
+            .contains(&SectionPosition { x: 0, y: 0, z: 2 }));
+        assert!(!graph
+            .reachable_sections()
+            .contains(&SectionPosition { x: 2, y: 0, z: 0 }));
     }
 
     #[test]

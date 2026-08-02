@@ -282,25 +282,31 @@ pub(super) struct ItemTextureState {
 
 #[derive(Debug, Clone)]
 struct ItemTextureAnimation {
-    packer: AtlasPacker,
-    images: Vec<SpriteImage>,
+    frames: bbb_pack::AtlasAnimationMipCache,
 }
 
 impl ItemTextureAnimation {
-    fn new(packer: AtlasPacker, images: Vec<SpriteImage>) -> Option<Self> {
-        images
-            .iter()
-            .any(|image| {
-                image
-                    .animation
-                    .as_ref()
-                    .is_some_and(|animation| animation.frames.len() > 1)
-            })
-            .then_some(Self { packer, images })
+    fn new(layout: &AtlasLayout, images: &[SpriteImage]) -> Result<Option<Self>> {
+        if !images.iter().any(|image| {
+            image
+                .animation
+                .as_ref()
+                .is_some_and(|animation| animation.frames.len() > 1)
+        }) {
+            return Ok(None);
+        }
+        Ok(Some(Self {
+            frames: layout.prepare_animation_mip_cache(images, 0)?,
+        }))
     }
 
-    fn atlas_rgba_at_tick(&self, tick: u64) -> Result<Vec<u8>> {
-        Ok(self.packer.stitch_animation_frame(&self.images, tick)?.rgba)
+    fn atlas_patches(
+        &self,
+        layout: &AtlasLayout,
+        previous_tick: u64,
+        tick: u64,
+    ) -> Result<Vec<bbb_pack::AtlasMipPatch>> {
+        self.frames.frame_mip_patches(layout, previous_tick, tick)
     }
 }
 
@@ -329,7 +335,7 @@ impl ItemTextureState {
             .zip(&images)
             .map(|(sprite, image)| sprite_alpha_mask(sprite, image))
             .collect::<Result<Vec<_>>>()?;
-        let animation = ItemTextureAnimation::new(packer, images);
+        let animation = ItemTextureAnimation::new(&atlas.layout, &images)?;
         Ok(Self {
             atlas,
             texture_indices,
@@ -356,10 +362,14 @@ impl ItemTextureState {
         self.animation.is_some()
     }
 
-    pub(super) fn animation_atlas_rgba(&self, tick: u64) -> Result<Option<Vec<u8>>> {
+    pub(super) fn animation_atlas_patches(
+        &self,
+        previous_tick: u64,
+        tick: u64,
+    ) -> Result<Option<Vec<bbb_pack::AtlasMipPatch>>> {
         self.animation
             .as_ref()
-            .map(|animation| animation.atlas_rgba_at_tick(tick))
+            .map(|animation| animation.atlas_patches(&self.atlas.layout, previous_tick, tick))
             .transpose()
     }
 

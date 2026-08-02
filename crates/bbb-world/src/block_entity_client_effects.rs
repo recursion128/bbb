@@ -143,6 +143,10 @@ impl VaultBlockState {
 impl WorldStore {
     /// Advances `VaultClientData.updateDisplayItemSpin` for every loaded vault.
     pub fn advance_vault_block_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().vault {
+            self.vault_blocks.clear();
+            return;
+        }
         let positions = self.vault_positions();
         let mut states = std::mem::take(&mut self.vault_blocks);
         states.retain(|state| positions.binary_search(&state.pos).is_ok());

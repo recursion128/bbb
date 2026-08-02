@@ -34,6 +34,47 @@ pub struct StableBlockEntityRenderRevision {
     pub block_entity_data: u64,
 }
 
+/// Runtime-only palette presence used by the client block-entity tickers.
+/// Vanilla keeps a loaded block-entity collection and therefore does O(1)
+/// work when a ticker family is absent. bbb derives those owners from chunk
+/// block states, so cache the equivalent presence behind the exact terrain
+/// revision instead of rescanning every loaded section once per family/tick.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct ClientTickingBlockEntityPresence {
+    pub(crate) enchanting_table: bool,
+    pub(crate) conduit: bool,
+    pub(crate) end_gateway: bool,
+    pub(crate) skull: bool,
+    pub(crate) spawner: bool,
+    pub(crate) trial_spawner: bool,
+    pub(crate) vault: bool,
+}
+
+impl ClientTickingBlockEntityPresence {
+    fn is_complete(self) -> bool {
+        self.enchanting_table
+            && self.conduit
+            && self.end_gateway
+            && self.skull
+            && self.spawner
+            && self.trial_spawner
+            && self.vault
+    }
+
+    fn record_block_name(&mut self, name: &str) {
+        match name {
+            "minecraft:enchanting_table" => self.enchanting_table = true,
+            "minecraft:conduit" => self.conduit = true,
+            "minecraft:end_gateway" => self.end_gateway = true,
+            "minecraft:spawner" => self.spawner = true,
+            "minecraft:trial_spawner" => self.trial_spawner = true,
+            "minecraft:vault" => self.vault = true,
+            name if crate::skull_blocks::is_skull_block_name(name) => self.skull = true,
+            _ => {}
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorldStore {
     pub(crate) dimension: WorldDimension,
@@ -99,6 +140,11 @@ pub struct WorldStore {
     /// `terrain_revision`.
     #[serde(skip)]
     pub(crate) block_entity_render_revision: u64,
+    #[serde(skip)]
+    pub(crate) client_ticking_block_entity_presence: Option<(
+        StableBlockEntityRenderRevision,
+        ClientTickingBlockEntityPresence,
+    )>,
     #[serde(default)]
     pub(crate) first_chunk: Option<ChunkPos>,
     #[serde(default)]
@@ -275,6 +321,51 @@ impl WorldStore {
             terrain: self.terrain_revision,
             block_entity_data: self.block_entity_render_revision,
         }
+    }
+
+    pub(crate) fn client_ticking_block_entity_presence(
+        &mut self,
+    ) -> ClientTickingBlockEntityPresence {
+        let revision = self.stable_block_entity_render_revision();
+        if let Some((cached_revision, presence)) = self.client_ticking_block_entity_presence {
+            if cached_revision == revision {
+                return presence;
+            }
+        }
+
+        let mut presence = ClientTickingBlockEntityPresence::default();
+        'chunks: for chunk in &self.chunks {
+            for section in &chunk.sections {
+                let block_states = &section.block_states;
+                match block_states.palette_kind {
+                    crate::PaletteKind::SingleValue | crate::PaletteKind::Local => {
+                        for global_id in &block_states.palette_global_ids {
+                            if let Some(state) = self.registries.block_state(*global_id) {
+                                presence.record_block_name(&state.name);
+                            }
+                            if presence.is_complete() {
+                                break 'chunks;
+                            }
+                        }
+                    }
+                    crate::PaletteKind::Global => {
+                        for index in 0..block_states.entry_count {
+                            let Some(value) = block_states.value_at(index) else {
+                                continue;
+                            };
+                            if let Some(state) = self.registries.block_state(value.global_id) {
+                                presence.record_block_name(&state.name);
+                            }
+                            if presence.is_complete() {
+                                break 'chunks;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.client_ticking_block_entity_presence = Some((revision, presence));
+        presence
     }
 
     /// `Level.isRaining()` (`canHaveWeather && getRainLevel(1.0F) > 0.2`) plus

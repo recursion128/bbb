@@ -17,7 +17,7 @@ use super::{
     catalog::{
         EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
         EntityDynamicPlayerTextureAtlasEntry, EntityDynamicPlayerTextureAtlasLayout,
-        EntityModelOwnedTextureAtlasEntry, EntityModelOwnedTextureImage,
+        EntityModelKind, EntityModelOwnedTextureAtlasEntry, EntityModelOwnedTextureImage,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect, FirstPersonPlayerArm,
     },
@@ -38,6 +38,17 @@ use super::{
     },
 };
 
+fn entity_model_instances_have_camera_billboards(instances: &[EntityModelInstance]) -> bool {
+    instances.iter().any(|instance| {
+        matches!(
+            instance.kind,
+            EntityModelKind::ExperienceOrb { .. }
+                | EntityModelKind::DragonFireball
+                | EntityModelKind::FishingHook
+        )
+    })
+}
+
 pub(crate) struct EntityModelMeshGpu {
     pub(crate) vertex_buffer: wgpu::Buffer,
     pub(crate) index_buffer: wgpu::Buffer,
@@ -50,6 +61,8 @@ pub(crate) struct EntityModelTexturedMeshGpu {
     pub(crate) index_buffer: wgpu::Buffer,
     pub(crate) index_count: u32,
     pub(crate) bounds: Option<TerrainBounds>,
+    vertex_capacity: u64,
+    index_capacity: u64,
 }
 
 pub(crate) struct EntityModelScrollMeshGpu {
@@ -3188,6 +3201,13 @@ fn pipeline_bind_group_layouts<'a>(
 }
 
 impl Renderer {
+    pub(crate) fn entity_model_meshes_depend_on_camera(&self) -> bool {
+        entity_model_instances_have_camera_billboards(&self.entity_model_instances)
+            || !self.entity_model_sorted_main_translucent_draws.is_empty()
+            || !self.entity_model_sorted_translucent_draws.is_empty()
+            || !self.entity_model_sorted_item_entity_draws.is_empty()
+    }
+
     /// Selects the exact resource/session owner for runtime entity textures.
     /// Any edge invalidates the CPU images and GPU atlases before downloads or
     /// pack-backed variants from the new generation are admitted.
@@ -3470,18 +3490,24 @@ impl Renderer {
                 meshes.sorted_main_translucent_draws.clone();
             self.entity_model_sorted_translucent_draws = meshes.sorted_translucent_draws.clone();
             self.entity_model_sorted_item_entity_draws = meshes.sorted_item_entity_draws.clone();
-            self.entity_model_solid_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_solid_mesh,
                 meshes.solid,
                 "bbb-entity-model-solid",
             );
-            self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_textured_mesh,
                 meshes.cutout,
                 "bbb-entity-model-textured",
             );
-            self.entity_model_textured_cull_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_textured_cull_mesh,
                 meshes.cutout_cull,
                 "bbb-entity-model-textured-cull",
             );
@@ -3490,36 +3516,45 @@ impl Renderer {
                 meshes.dissolve,
                 "bbb-entity-model-dissolve",
             );
-            self.entity_model_solid_z_offset_forward_mesh =
-                create_entity_model_textured_mesh_gpu_from_mesh(
-                    &self.device,
-                    meshes.solid_z_offset_forward,
-                    "bbb-entity-model-solid-z-offset-forward",
-                );
-            self.entity_model_cutout_z_offset_mesh =
-                create_entity_model_textured_mesh_gpu_from_mesh(
-                    &self.device,
-                    meshes.cutout_z_offset,
-                    "bbb-entity-model-cutout-z-offset",
-                );
-            self.entity_model_armor_cutout_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_solid_z_offset_forward_mesh,
+                meshes.solid_z_offset_forward,
+                "bbb-entity-model-solid-z-offset-forward",
+            );
+            update_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                &self.queue,
+                &mut self.entity_model_cutout_z_offset_mesh,
+                meshes.cutout_z_offset,
+                "bbb-entity-model-cutout-z-offset",
+            );
+            update_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                &self.queue,
+                &mut self.entity_model_armor_cutout_mesh,
                 meshes.armor_cutout,
                 "bbb-entity-model-armor-cutout",
             );
-            self.entity_model_armor_trim_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_armor_trim_mesh,
                 meshes.armor_trim,
                 "bbb-entity-model-armor-trim",
             );
-            self.entity_model_armor_trim_decal_mesh =
-                create_entity_model_textured_mesh_gpu_from_mesh(
-                    &self.device,
-                    meshes.armor_trim_decal,
-                    "bbb-entity-model-armor-trim-decal",
-                );
-            self.entity_model_eyes_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_armor_trim_decal_mesh,
+                meshes.armor_trim_decal,
+                "bbb-entity-model-armor-trim-decal",
+            );
+            update_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                &self.queue,
+                &mut self.entity_model_eyes_mesh,
                 meshes.eyes,
                 "bbb-entity-model-eyes",
             );
@@ -3558,17 +3593,20 @@ impl Renderer {
                 meshes.outline_cull,
                 "bbb-entity-model-outline-cull",
             );
-            self.entity_model_translucent_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+            update_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
+                &self.queue,
+                &mut self.entity_model_translucent_mesh,
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
-            self.entity_model_armor_translucent_mesh =
-                create_entity_model_textured_mesh_gpu_from_mesh(
-                    &self.device,
-                    meshes.armor_translucent,
-                    "bbb-entity-model-armor-translucent",
-                );
+            update_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                &self.queue,
+                &mut self.entity_model_armor_translucent_mesh,
+                meshes.armor_translucent,
+                "bbb-entity-model-armor-translucent",
+            );
             self.entity_model_translucent_emissive_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -4880,20 +4918,85 @@ fn create_entity_model_textured_mesh_gpu_from_mesh(
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some(vertex_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.vertices),
-        usage: wgpu::BufferUsages::VERTEX,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some(index_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.indices),
-        usage: wgpu::BufferUsages::INDEX,
+        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
     });
+    let vertex_capacity = bytemuck::cast_slice::<_, u8>(&mesh.vertices).len() as u64;
+    let index_capacity = bytemuck::cast_slice::<_, u8>(&mesh.indices).len() as u64;
 
     Some(EntityModelTexturedMeshGpu {
         vertex_buffer,
         index_buffer,
         index_count: mesh.indices.len() as u32,
         bounds,
+        vertex_capacity,
+        index_capacity,
     })
+}
+
+/// Streams one dynamic entity lane through persistent buffers. Vanilla's
+/// submit-node batcher rebuilds dynamic vertex contents without allocating a
+/// fresh GPU owner for every frame; retain the same ownership here whenever
+/// the current capacity is sufficient.
+fn update_entity_model_textured_mesh_gpu_from_mesh(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    target: &mut Option<EntityModelTexturedMeshGpu>,
+    mesh: EntityModelTexturedMesh,
+    label_prefix: &str,
+) -> bool {
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        *target = None;
+        return false;
+    }
+    let vertex_bytes = bytemuck::cast_slice(&mesh.vertices);
+    let index_bytes = bytemuck::cast_slice(&mesh.indices);
+    let vertex_len = vertex_bytes.len() as u64;
+    let index_len = index_bytes.len() as u64;
+    let bounds = TerrainBounds::from_points(
+        mesh.vertices
+            .iter()
+            .map(|vertex| Vec3::from_array(vertex.position)),
+    );
+    if let Some(resident) = target.as_mut().filter(|resident| {
+        resident.vertex_capacity >= vertex_len && resident.index_capacity >= index_len
+    }) {
+        queue.write_buffer(&resident.vertex_buffer, 0, vertex_bytes);
+        queue.write_buffer(&resident.index_buffer, 0, index_bytes);
+        resident.index_count = mesh.indices.len() as u32;
+        resident.bounds = bounds;
+        return false;
+    }
+
+    let vertex_capacity = vertex_len.next_power_of_two();
+    let index_capacity = index_len.next_power_of_two();
+    let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(&format!("{label_prefix}-vertices")),
+        size: vertex_capacity,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(&format!("{label_prefix}-indices")),
+        size: index_capacity,
+        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    queue.write_buffer(&vertex_buffer, 0, vertex_bytes);
+    queue.write_buffer(&index_buffer, 0, index_bytes);
+    *target = Some(EntityModelTexturedMeshGpu {
+        vertex_buffer,
+        index_buffer,
+        index_count: mesh.indices.len() as u32,
+        bounds,
+        vertex_capacity,
+        index_capacity,
+    });
+    true
 }
 
 pub(crate) fn upload_elder_guardian_particle_textured_mesh(
@@ -5089,6 +5192,8 @@ fn create_entity_model_dissolve_mesh_gpu_from_mesh(
         index_buffer,
         index_count: mesh.indices.len() as u32,
         bounds,
+        vertex_capacity: bytemuck::cast_slice::<_, u8>(&mesh.vertices).len() as u64,
+        index_capacity: bytemuck::cast_slice::<_, u8>(&mesh.indices).len() as u64,
     })
 }
 
@@ -5127,18 +5232,20 @@ fn create_entity_model_portal_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
+        entity_model_cutout_z_offset_shader, entity_model_glint_shader,
+        entity_model_instances_have_camera_billboards, entity_model_portal_shader,
         entity_model_solid_shader, entity_model_solid_z_offset_forward_shader,
-        entity_model_tiled_entity_shader, win_screen_end_portal_shader,
-        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
-        ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
-        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
-        ENTITY_MODEL_BEACON_BEAM_SHADER, ENTITY_MODEL_BEAM_DEPTH_COMPARE,
-        ENTITY_MODEL_BEAM_OPAQUE_BLEND, ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND, ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_DISSOLVE_SHADER, ENTITY_MODEL_DRAGON_RAYS_BLEND,
-        ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        entity_model_tiled_entity_shader, update_entity_model_textured_mesh_gpu_from_mesh,
+        win_screen_end_portal_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE,
+        ENTITY_MODEL_ARMOR_CUTOUT_BLEND, ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
+        ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_SHADER, ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_BEACON_BEAM_CULL_MODE, ENTITY_MODEL_BEACON_BEAM_SHADER,
+        ENTITY_MODEL_BEAM_DEPTH_COMPARE, ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+        ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_DISSOLVE_SHADER,
+        ENTITY_MODEL_DRAGON_RAYS_BLEND, ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_END_GATEWAY_LAYERS,
@@ -5161,6 +5268,74 @@ mod tests {
         ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
         ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
+    use crate::entity_models::geometry::{EntityModelTexturedMesh, EntityModelTexturedVertex};
+    use crate::{EntityModelInstance, EntityModelKind};
+    use bytemuck::Zeroable;
+
+    #[test]
+    fn only_camera_billboard_entity_kinds_force_camera_mesh_rebuilds() {
+        let armor_stand = EntityModelInstance::armor_stand(
+            1,
+            [0.0; 3],
+            0.0,
+            false,
+            true,
+            true,
+            crate::DEFAULT_ARMOR_STAND_MODEL_POSE,
+        );
+        assert!(!entity_model_instances_have_camera_billboards(&[
+            armor_stand
+        ]));
+        for kind in [
+            EntityModelKind::ExperienceOrb { icon: 0 },
+            EntityModelKind::DragonFireball,
+            EntityModelKind::FishingHook,
+        ] {
+            assert!(entity_model_instances_have_camera_billboards(&[
+                EntityModelInstance::new(2, kind, [0.0; 3], 0.0)
+            ]));
+        }
+    }
+
+    #[test]
+    fn dynamic_entity_lane_reuses_sufficient_gpu_buffer_capacity() {
+        let Some(renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            eprintln!("skipping offscreen renderer test without a compatible adapter");
+            return;
+        };
+        let mesh = || EntityModelTexturedMesh {
+            vertices: vec![EntityModelTexturedVertex::zeroed(); 4],
+            indices: vec![0, 1, 2, 2, 3, 0],
+            cutout_faces: 1,
+        };
+        let mut resident = None;
+
+        assert!(update_entity_model_textured_mesh_gpu_from_mesh(
+            &renderer.device,
+            &renderer.queue,
+            &mut resident,
+            mesh(),
+            "bbb-test-dynamic-entity-lane",
+        ));
+        let first_capacities = resident
+            .as_ref()
+            .map(|resident| (resident.vertex_capacity, resident.index_capacity))
+            .unwrap();
+        assert!(!update_entity_model_textured_mesh_gpu_from_mesh(
+            &renderer.device,
+            &renderer.queue,
+            &mut resident,
+            mesh(),
+            "bbb-test-dynamic-entity-lane",
+        ));
+        assert_eq!(
+            resident
+                .as_ref()
+                .map(|resident| (resident.vertex_capacity, resident.index_capacity))
+                .unwrap(),
+            first_capacities
+        );
+    }
 
     #[test]
     fn special_item_owned_entity_atlas_keeps_owned_identity_and_logical_size() {

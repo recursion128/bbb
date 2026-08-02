@@ -159,10 +159,13 @@ pub(super) enum EnvironmentTrackArgument {
     Argb(u32),
     BlendToGray { brightness: f32, factor: f32 },
     MoonPhase(ClientMoonPhase),
-    Particle(ClientParticleOptions),
-    AmbientParticles(Vec<ClientAmbientParticle>),
-    BackgroundMusic(ClientBackgroundMusic),
-    AmbientSounds(ClientAmbientSounds),
+    // Vanilla's baked attribute tracks retain object references; sampling a scalar track does
+    // not copy storage sized for the largest audio/particle payload. Keep the same property in
+    // the tagged Rust projection so interpolated float/color tracks stay register-sized.
+    Particle(Arc<ClientParticleOptions>),
+    AmbientParticles(Arc<[ClientAmbientParticle]>),
+    BackgroundMusic(Arc<ClientBackgroundMusic>),
+    AmbientSounds(Arc<ClientAmbientSounds>),
     FilteredNonSyncable,
 }
 
@@ -193,12 +196,7 @@ impl ClientEnvironmentAttributeMap {
         attributes: &mut ClientEnvironmentAttributes,
     ) -> Result<(), EnvironmentAttributeProjectionError> {
         for entry in self.entries.iter() {
-            apply_environment_argument(
-                attributes,
-                entry.field,
-                entry.modifier,
-                entry.argument.clone(),
-            )?;
+            apply_environment_argument(attributes, entry.field, entry.modifier, &entry.argument)?;
         }
         Ok(())
     }
@@ -215,9 +213,20 @@ impl ClientEnvironmentAttributeMap {
                     attributes,
                     entry.field,
                     entry.modifier,
-                    entry.argument.clone(),
+                    &entry.argument,
                 )?;
             }
+        }
+        Ok(())
+    }
+
+    pub(super) fn apply_attribute_to(
+        &self,
+        attribute: &str,
+        attributes: &mut ClientEnvironmentAttributes,
+    ) -> Result<(), EnvironmentAttributeProjectionError> {
+        for entry in self.entries.iter().filter(|entry| entry.field == attribute) {
+            apply_environment_argument(attributes, entry.field, entry.modifier, &entry.argument)?;
         }
         Ok(())
     }
@@ -256,15 +265,15 @@ impl ClientEnvironmentAttributeMap {
         };
         match base_value {
             SpatialEnvironmentValue::Float(value) => {
-                apply_float_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                apply_float_modifier(value, entry.modifier, &entry.argument, entry.field)
                     .map(SpatialEnvironmentValue::Float)
             }
             SpatialEnvironmentValue::Rgb(value) => {
-                apply_color_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                apply_color_modifier(value, entry.modifier, &entry.argument, entry.field)
                     .map(SpatialEnvironmentValue::Rgb)
             }
             SpatialEnvironmentValue::Argb(value) => {
-                apply_color_modifier(value, entry.modifier, entry.argument.clone(), entry.field)
+                apply_color_modifier(value, entry.modifier, &entry.argument, entry.field)
                     .map(SpatialEnvironmentValue::Argb)
             }
         }
@@ -486,7 +495,7 @@ pub(super) fn apply_timeline_argument(
     attributes: &mut ClientEnvironmentAttributes,
     attribute: &str,
     modifier: EnvironmentModifier,
-    argument: EnvironmentTrackArgument,
+    argument: &EnvironmentTrackArgument,
 ) -> Result<(), EnvironmentAttributeProjectionError> {
     let Some((field, _)) = syncable_attribute(attribute) else {
         return Err(error(
@@ -543,10 +552,10 @@ pub(super) fn validate_timeline_argument_references(
     let mut attributes = ClientEnvironmentAttributes::default();
     match argument {
         EnvironmentTrackArgument::BackgroundMusic(value) => {
-            attributes.background_music = Some(value.clone())
+            attributes.background_music = Some(value.as_ref().clone())
         }
         EnvironmentTrackArgument::AmbientSounds(value) => {
-            attributes.ambient_sounds = Some(value.clone())
+            attributes.ambient_sounds = Some(value.as_ref().clone())
         }
         _ => return Ok(()),
     }
@@ -635,17 +644,21 @@ fn decode_modifier_argument(
             .map(EnvironmentTrackArgument::MoonPhase)
             .ok_or_else(|| error(field, "unknown moon phase")),
         (AttributeKind::Particle, M::Override) => parse_particle(value, registry_access)
+            .map(Arc::new)
             .map(EnvironmentTrackArgument::Particle)
             .ok_or_else(|| error(field, "invalid particle options")),
         (AttributeKind::AmbientParticles, M::Override) => {
             parse_ambient_particles(value, registry_access)
+                .map(Arc::from)
                 .map(EnvironmentTrackArgument::AmbientParticles)
                 .ok_or_else(|| error(field, "invalid ambient particle list"))
         }
         (AttributeKind::BackgroundMusic, M::Override) => parse_background_music(value)
+            .map(Arc::new)
             .map(EnvironmentTrackArgument::BackgroundMusic)
             .ok_or_else(|| error(field, "invalid background music")),
         (AttributeKind::AmbientSounds, M::Override) => parse_ambient_sounds(value)
+            .map(Arc::new)
             .map(EnvironmentTrackArgument::AmbientSounds)
             .ok_or_else(|| error(field, "invalid ambient sounds")),
         (AttributeKind::TriState, M::Override) => parse_tri_state(value)
@@ -665,7 +678,7 @@ fn apply_environment_argument(
     attributes: &mut ClientEnvironmentAttributes,
     field: &'static str,
     modifier: EnvironmentModifier,
-    argument: EnvironmentTrackArgument,
+    argument: &EnvironmentTrackArgument,
 ) -> Result<(), EnvironmentAttributeProjectionError> {
     macro_rules! apply_float {
         ($slot:expr, $default:expr) => {{
@@ -747,7 +760,7 @@ fn apply_environment_argument(
             if modifier != EnvironmentModifier::Override {
                 return Err(error(field, "modifier is not allowed for moon phase"));
             }
-            attributes.moon_phase = Some(value);
+            attributes.moon_phase = Some(*value);
         }
         "minecraft:visual/star_brightness" => apply_float!(attributes.star_brightness, 0.0),
         "minecraft:visual/block_light_tint" => {
@@ -791,26 +804,26 @@ fn apply_environment_argument(
             let EnvironmentTrackArgument::Particle(value) = argument else {
                 return Err(error(field, "particle argument type mismatch"));
             };
-            attributes.default_dripstone_particle = Some(value);
+            attributes.default_dripstone_particle = Some(value.as_ref().clone());
         }
         "minecraft:visual/ambient_particles" => {
             let EnvironmentTrackArgument::AmbientParticles(value) = argument else {
                 return Err(error(field, "ambient particles argument type mismatch"));
             };
-            attributes.ambient_particles = Some(value);
+            attributes.ambient_particles = Some(value.to_vec());
         }
         "minecraft:audio/background_music" => {
             let EnvironmentTrackArgument::BackgroundMusic(value) = argument else {
                 return Err(error(field, "background music argument type mismatch"));
             };
-            attributes.background_music = Some(value);
+            attributes.background_music = Some(value.as_ref().clone());
         }
         "minecraft:audio/music_volume" => apply_float!(attributes.music_volume, 1.0),
         "minecraft:audio/ambient_sounds" => {
             let EnvironmentTrackArgument::AmbientSounds(value) = argument else {
                 return Err(error(field, "ambient sounds argument type mismatch"));
             };
-            attributes.ambient_sounds = Some(value);
+            attributes.ambient_sounds = Some(value.as_ref().clone());
         }
         "minecraft:audio/firefly_bush_sounds" => {
             apply_bool!(attributes.firefly_bush_sounds, false)
@@ -828,23 +841,23 @@ fn apply_environment_argument(
 fn apply_float_modifier(
     base: f32,
     modifier: EnvironmentModifier,
-    argument: EnvironmentTrackArgument,
+    argument: &EnvironmentTrackArgument,
     field: &'static str,
 ) -> Result<f32, EnvironmentAttributeProjectionError> {
     let value = match (modifier, argument) {
         (
             EnvironmentModifier::AlphaBlend,
             EnvironmentTrackArgument::FloatWithAlpha { value, alpha },
-        ) => base + alpha * (value - base),
-        (EnvironmentModifier::Override, EnvironmentTrackArgument::Float(value)) => value,
-        (EnvironmentModifier::Add, EnvironmentTrackArgument::Float(value)) => base + value,
-        (EnvironmentModifier::Subtract, EnvironmentTrackArgument::Float(value)) => base - value,
-        (EnvironmentModifier::Multiply, EnvironmentTrackArgument::Float(value)) => base * value,
+        ) => base + *alpha * (*value - base),
+        (EnvironmentModifier::Override, EnvironmentTrackArgument::Float(value)) => *value,
+        (EnvironmentModifier::Add, EnvironmentTrackArgument::Float(value)) => base + *value,
+        (EnvironmentModifier::Subtract, EnvironmentTrackArgument::Float(value)) => base - *value,
+        (EnvironmentModifier::Multiply, EnvironmentTrackArgument::Float(value)) => base * *value,
         (EnvironmentModifier::Minimum, EnvironmentTrackArgument::Float(value)) => {
-            java_float_min(base, value)
+            java_float_min(base, *value)
         }
         (EnvironmentModifier::Maximum, EnvironmentTrackArgument::Float(value)) => {
-            java_float_max(base, value)
+            java_float_max(base, *value)
         }
         _ => return Err(error(field, "float modifier argument type mismatch")),
     };
@@ -854,20 +867,20 @@ fn apply_float_modifier(
 fn apply_boolean_modifier(
     base: bool,
     modifier: EnvironmentModifier,
-    argument: EnvironmentTrackArgument,
+    argument: &EnvironmentTrackArgument,
     field: &'static str,
 ) -> Result<bool, EnvironmentAttributeProjectionError> {
     let EnvironmentTrackArgument::Boolean(argument) = argument else {
         return Err(error(field, "boolean modifier argument type mismatch"));
     };
     Ok(match modifier {
-        EnvironmentModifier::Override => argument,
-        EnvironmentModifier::And => argument && base,
-        EnvironmentModifier::Nand => !argument || !base,
-        EnvironmentModifier::Or => argument || base,
-        EnvironmentModifier::Nor => !argument && !base,
-        EnvironmentModifier::Xor => argument ^ base,
-        EnvironmentModifier::Xnor => argument == base,
+        EnvironmentModifier::Override => *argument,
+        EnvironmentModifier::And => *argument && base,
+        EnvironmentModifier::Nand => !*argument || !base,
+        EnvironmentModifier::Or => *argument || base,
+        EnvironmentModifier::Nor => !*argument && !base,
+        EnvironmentModifier::Xor => *argument ^ base,
+        EnvironmentModifier::Xnor => *argument == base,
         _ => return Err(error(field, "modifier is not allowed for boolean")),
     })
 }
@@ -875,31 +888,33 @@ fn apply_boolean_modifier(
 fn apply_color_modifier(
     base: u32,
     modifier: EnvironmentModifier,
-    argument: EnvironmentTrackArgument,
+    argument: &EnvironmentTrackArgument,
     field: &'static str,
 ) -> Result<u32, EnvironmentAttributeProjectionError> {
     Ok(match (modifier, argument) {
-        (EnvironmentModifier::Override, EnvironmentTrackArgument::Rgb(value)) => value,
-        (EnvironmentModifier::Override, EnvironmentTrackArgument::Argb(value)) => value,
+        (EnvironmentModifier::Override, EnvironmentTrackArgument::Rgb(value)) => *value,
+        (EnvironmentModifier::Override, EnvironmentTrackArgument::Argb(value)) => *value,
         (EnvironmentModifier::AlphaBlend, EnvironmentTrackArgument::Argb(value)) => {
-            alpha_blend(base, value)
+            alpha_blend(base, *value)
         }
         (EnvironmentModifier::Add, EnvironmentTrackArgument::Rgb(value))
-        | (EnvironmentModifier::Add, EnvironmentTrackArgument::Argb(value)) => add_rgb(base, value),
+        | (EnvironmentModifier::Add, EnvironmentTrackArgument::Argb(value)) => {
+            add_rgb(base, *value)
+        }
         (EnvironmentModifier::Subtract, EnvironmentTrackArgument::Rgb(value))
         | (EnvironmentModifier::Subtract, EnvironmentTrackArgument::Argb(value)) => {
-            subtract_rgb(base, value)
+            subtract_rgb(base, *value)
         }
         (EnvironmentModifier::Multiply, EnvironmentTrackArgument::Rgb(value))
         | (EnvironmentModifier::Multiply, EnvironmentTrackArgument::Argb(value)) => {
-            multiply_argb(base, value)
+            multiply_argb(base, *value)
         }
         (
             EnvironmentModifier::BlendToGray,
             EnvironmentTrackArgument::BlendToGray { brightness, factor },
         ) => {
             let gray = greyscale(base);
-            srgb_lerp(factor, base, scale_rgb(gray, brightness))
+            srgb_lerp(*factor, base, scale_rgb(gray, *brightness))
         }
         _ => return Err(error(field, "color modifier argument type mismatch")),
     })

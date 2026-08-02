@@ -53,6 +53,64 @@ pub struct AtlasMipLevel {
     pub rgba: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AtlasMipPatch {
+    pub level: u32,
+    pub rect: AtlasRect,
+    pub rgba: Vec<u8>,
+}
+
+/// Immutable, GPU-ready source frames and scheduling metadata for one atlas.
+///
+/// Vanilla 26.1 uploads every unique animated sprite frame (including its
+/// complete mip chain) once, then renders the current frame into the atlas on
+/// client ticks. This projection deliberately contains source frames rather
+/// than runtime atlas patches so the renderer can preserve that mechanism.
+#[derive(Debug, Clone)]
+pub struct AtlasGpuAnimationPlan {
+    pub atlas_width: u32,
+    pub atlas_height: u32,
+    pub padding: u32,
+    pub mip_level: u32,
+    pub sprites: Vec<AtlasGpuAnimationSprite>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AtlasGpuAnimationSprite {
+    pub id: String,
+    pub destination: AtlasRect,
+    pub content_width: u32,
+    pub content_height: u32,
+    pub animation: SpriteAnimation,
+    pub frames: Vec<AtlasGpuAnimationFrame>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AtlasGpuAnimationFrame {
+    pub index: u32,
+    pub mips: Vec<SpriteMipLevel>,
+}
+
+/// Precomputed source-frame mip chains for an atlas' animated sprites.
+///
+/// Vanilla 26.1 builds one GPU texture containing every mip for each unique
+/// animation frame when the atlas is uploaded. Runtime animation then blits a
+/// frame, or interpolates two already-mipped frames, into each atlas mip. Keep
+/// the same ordering here so a client tick never regenerates mipmaps from the
+/// interpolated base level.
+#[derive(Debug, Clone)]
+pub struct AtlasAnimationMipCache {
+    sprites: Vec<Option<AtlasSpriteAnimationMipCache>>,
+    mip_level: u32,
+}
+
+#[derive(Debug, Clone)]
+struct AtlasSpriteAnimationMipCache {
+    id: String,
+    animation: SpriteAnimation,
+    frames: Vec<Option<Vec<SpriteMipLevel>>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtlasMipImage {
     pub layout: AtlasLayout,
@@ -76,6 +134,443 @@ impl AtlasMipImage {
     pub fn mip_level(&self) -> u32 {
         self.levels.len().saturating_sub(1) as u32
     }
+
+    /// Applies dirty atlas regions to the CPU mirror and returns an exact-pixel
+    /// upload plan with horizontally compatible regions coalesced.
+    ///
+    /// The coalesced rectangles may include unchanged texels between dirty
+    /// regions, but those bytes are read back from the updated CPU mirror. The
+    /// resulting atlas is therefore byte-identical to applying every input
+    /// patch in order. `max_overdraw` bounds the uploaded area of each merged
+    /// rectangle relative to the dirty regions it contains.
+    pub fn apply_and_coalesce_patches(
+        &mut self,
+        patches: &[AtlasMipPatch],
+        max_overdraw: u32,
+    ) -> Result<Vec<AtlasMipPatch>> {
+        if max_overdraw == 0 {
+            bail!("atlas patch max overdraw must be greater than zero");
+        }
+        for patch in patches {
+            validate_mip_patch(self, patch)?;
+        }
+        for patch in patches {
+            apply_mip_patch(self, patch);
+        }
+
+        let mut dirty = patches
+            .iter()
+            .map(|patch| (patch.level, patch.rect))
+            .collect::<Vec<_>>();
+        dirty.sort_by_key(|(level, rect)| (*level, rect.y, rect.height, rect.x, rect.width));
+
+        let mut merged = Vec::<(u32, AtlasRect, u64)>::new();
+        for (level, rect) in dirty {
+            let dirty_area = u64::from(rect.width) * u64::from(rect.height);
+            let Some((merged_level, merged_rect, merged_dirty_area)) = merged.last_mut() else {
+                merged.push((level, rect, dirty_area));
+                continue;
+            };
+            let compatible_row = *merged_level == level
+                && merged_rect.y == rect.y
+                && merged_rect.height == rect.height;
+            let merged_right = u64::from(merged_rect.x) + u64::from(merged_rect.width);
+            let rect_right = u64::from(rect.x) + u64::from(rect.width);
+            let union_left = u64::from(merged_rect.x.min(rect.x));
+            let union_right = merged_right.max(rect_right);
+            let union_area = union_right
+                .saturating_sub(union_left)
+                .saturating_mul(u64::from(rect.height));
+            let combined_dirty_area = merged_dirty_area.saturating_add(dirty_area);
+            if compatible_row
+                && union_area <= combined_dirty_area.saturating_mul(u64::from(max_overdraw))
+            {
+                merged_rect.x = u32::try_from(union_left).unwrap_or(u32::MAX);
+                merged_rect.width = u32::try_from(union_right - union_left).unwrap_or(u32::MAX);
+                *merged_dirty_area = combined_dirty_area;
+            } else {
+                merged.push((level, rect, dirty_area));
+            }
+        }
+
+        merged
+            .into_iter()
+            .map(|(level, rect, _)| mip_patch_from_current_level(self, level, rect))
+            .collect()
+    }
+}
+
+fn validate_mip_patch(atlas: &AtlasMipImage, patch: &AtlasMipPatch) -> Result<()> {
+    let Some(level) = atlas.levels.iter().find(|level| level.level == patch.level) else {
+        bail!("atlas patch references missing mip level {}", patch.level);
+    };
+    if patch.rect.width == 0 || patch.rect.height == 0 {
+        bail!("atlas patch dimensions must be greater than zero");
+    }
+    let right = patch
+        .rect
+        .x
+        .checked_add(patch.rect.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas patch width overflow"))?;
+    let bottom = patch
+        .rect
+        .y
+        .checked_add(patch.rect.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas patch height overflow"))?;
+    if right > level.width || bottom > level.height {
+        bail!(
+            "atlas patch {}x{} at {},{} exceeds mip {} dimensions {}x{}",
+            patch.rect.width,
+            patch.rect.height,
+            patch.rect.x,
+            patch.rect.y,
+            patch.level,
+            level.width,
+            level.height
+        );
+    }
+    let expected_len = rgba_len(patch.rect.width, patch.rect.height)?;
+    if patch.rgba.len() != expected_len {
+        bail!(
+            "atlas patch rgba length {} does not match {}x{} dimensions",
+            patch.rgba.len(),
+            patch.rect.width,
+            patch.rect.height
+        );
+    }
+    Ok(())
+}
+
+fn apply_mip_patch(atlas: &mut AtlasMipImage, patch: &AtlasMipPatch) {
+    let level = atlas
+        .levels
+        .iter_mut()
+        .find(|level| level.level == patch.level)
+        .expect("validated atlas mip patch level");
+    for row in 0..patch.rect.height {
+        let source_start = (row * patch.rect.width * 4) as usize;
+        let source_end = source_start + (patch.rect.width * 4) as usize;
+        let target_start = (((patch.rect.y + row) * level.width + patch.rect.x) * 4) as usize;
+        let target_end = target_start + (patch.rect.width * 4) as usize;
+        level.rgba[target_start..target_end].copy_from_slice(&patch.rgba[source_start..source_end]);
+    }
+}
+
+fn mip_patch_from_current_level(
+    atlas: &AtlasMipImage,
+    level_index: u32,
+    rect: AtlasRect,
+) -> Result<AtlasMipPatch> {
+    let level = atlas
+        .levels
+        .iter()
+        .find(|level| level.level == level_index)
+        .ok_or_else(|| anyhow::anyhow!("missing atlas mip level {level_index}"))?;
+    let mut rgba = Vec::with_capacity(rgba_len(rect.width, rect.height)?);
+    for row in 0..rect.height {
+        let start = (((rect.y + row) * level.width + rect.x) * 4) as usize;
+        let end = start + (rect.width * 4) as usize;
+        rgba.extend_from_slice(&level.rgba[start..end]);
+    }
+    Ok(AtlasMipPatch {
+        level: level_index,
+        rect,
+        rgba,
+    })
+}
+
+impl AtlasLayout {
+    pub fn prepare_gpu_animation_plan(
+        &self,
+        images: &[SpriteImage],
+        mip_level: u32,
+    ) -> Result<Option<AtlasGpuAnimationPlan>> {
+        let cache = self.prepare_animation_mip_cache(images, mip_level)?;
+        cache.into_gpu_plan(self)
+    }
+
+    pub fn prepare_animation_mip_cache(
+        &self,
+        images: &[SpriteImage],
+        mip_level: u32,
+    ) -> Result<AtlasAnimationMipCache> {
+        if images.len() != self.sprites.len() {
+            bail!(
+                "atlas animation has {} images for {} sprites",
+                images.len(),
+                self.sprites.len()
+            );
+        }
+        let mut sprites = Vec::with_capacity(images.len());
+        for (sprite, image) in self.sprites.iter().zip(images) {
+            if sprite.id != image.id {
+                bail!(
+                    "atlas animation sprite order mismatch: layout {}, image {}",
+                    sprite.id,
+                    image.id
+                );
+            }
+            let Some(animation) = image.animation.as_ref() else {
+                sprites.push(None);
+                continue;
+            };
+            let frame_count = usize::try_from(animation.frame_count).map_err(|_| {
+                anyhow::anyhow!("animated sprite {} frame count overflow", image.id)
+            })?;
+            let mut frames = vec![None; frame_count];
+            for frame in &animation.frames {
+                let frame_index = usize::try_from(frame.index).map_err(|_| {
+                    anyhow::anyhow!("animated sprite {} frame index overflow", image.id)
+                })?;
+                let Some(slot) = frames.get_mut(frame_index) else {
+                    bail!(
+                        "animated sprite {} frame {} exceeds declared frame count {}",
+                        image.id,
+                        frame.index,
+                        animation.frame_count
+                    );
+                };
+                if slot.is_some() {
+                    continue;
+                }
+                let source_rgba = image.frame_rgba(frame.index).ok_or_else(|| {
+                    anyhow::anyhow!("animated sprite {} missing frame {}", image.id, frame.index)
+                })?;
+                *slot = Some(generate_sprite_rgba_mip_levels(
+                    &image.id,
+                    image.width,
+                    image.height,
+                    source_rgba,
+                    image.texture_metadata,
+                    image.transparency,
+                    mip_level,
+                )?);
+            }
+            sprites.push(Some(AtlasSpriteAnimationMipCache {
+                id: image.id.clone(),
+                animation: animation.clone(),
+                frames,
+            }));
+        }
+        Ok(AtlasAnimationMipCache { sprites, mip_level })
+    }
+
+    /// Builds only the animated sprite regions whose visual contents changed.
+    ///
+    /// Vanilla 26.1's `TextureAtlas.cycleAnimationFrames` draws dirty (or
+    /// interpolated) `AnimationState`s into each atlas mip instead of
+    /// rebuilding the complete atlas. The returned rectangles include the
+    /// mip-aligned replicated gutter used by this packer, so applying every
+    /// patch produces the same bytes as a full animated-frame stitch.
+    pub fn animation_frame_mip_patches(
+        &self,
+        images: &[SpriteImage],
+        previous_tick: u64,
+        tick: u64,
+        mip_level: u32,
+    ) -> Result<Vec<AtlasMipPatch>> {
+        if images.len() != self.sprites.len() {
+            bail!(
+                "atlas animation has {} images for {} sprites",
+                images.len(),
+                self.sprites.len()
+            );
+        }
+        let mut patches = Vec::new();
+        for (sprite, image) in self.sprites.iter().zip(images) {
+            if sprite.id != image.id {
+                bail!(
+                    "atlas animation sprite order mismatch: layout {}, image {}",
+                    sprite.id,
+                    image.id
+                );
+            }
+            let Some(animation) = image.animation.as_ref() else {
+                continue;
+            };
+            let previous_frame = animation.frame_index_at_tick(previous_tick);
+            let current_frame = animation.frame_index_at_tick(tick);
+            if !animation.interpolate && previous_frame == current_frame {
+                continue;
+            }
+            let source_rgba = image.frame_rgba_at_tick(tick)?;
+            let mips = generate_sprite_rgba_mip_levels(
+                &image.id,
+                image.width,
+                image.height,
+                source_rgba.as_ref(),
+                image.texture_metadata,
+                image.transparency,
+                mip_level,
+            )?;
+            for (level, mip) in mips.iter().enumerate() {
+                patches.push(sprite_mip_patch(sprite, level as u32, mip)?);
+            }
+        }
+        Ok(patches)
+    }
+}
+
+impl AtlasAnimationMipCache {
+    fn into_gpu_plan(self, layout: &AtlasLayout) -> Result<Option<AtlasGpuAnimationPlan>> {
+        if self.sprites.len() != layout.sprites.len() {
+            bail!(
+                "atlas animation cache has {} sprites for {} layout sprites",
+                self.sprites.len(),
+                layout.sprites.len()
+            );
+        }
+        let mut sprites = Vec::new();
+        for (sprite, cached) in layout.sprites.iter().zip(self.sprites) {
+            let Some(cached) = cached else {
+                continue;
+            };
+            if sprite.id != cached.id {
+                bail!(
+                    "atlas animation cache order mismatch: layout {}, cache {}",
+                    sprite.id,
+                    cached.id
+                );
+            }
+            let frames = cached
+                .frames
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, mips)| {
+                    mips.map(|mips| AtlasGpuAnimationFrame {
+                        index: index as u32,
+                        mips,
+                    })
+                })
+                .collect::<Vec<_>>();
+            sprites.push(AtlasGpuAnimationSprite {
+                id: cached.id,
+                destination: sprite.padded,
+                content_width: sprite.content.width,
+                content_height: sprite.content.height,
+                animation: cached.animation,
+                frames,
+            });
+        }
+        if sprites.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(AtlasGpuAnimationPlan {
+            atlas_width: layout.width,
+            atlas_height: layout.height,
+            padding: layout.padding,
+            mip_level: self.mip_level,
+            sprites,
+        }))
+    }
+
+    pub fn frame_mip_patches(
+        &self,
+        layout: &AtlasLayout,
+        previous_tick: u64,
+        tick: u64,
+    ) -> Result<Vec<AtlasMipPatch>> {
+        if self.sprites.len() != layout.sprites.len() {
+            bail!(
+                "atlas animation cache has {} sprites for {} layout sprites",
+                self.sprites.len(),
+                layout.sprites.len()
+            );
+        }
+        let mut patches = Vec::new();
+        for (sprite, cached) in layout.sprites.iter().zip(&self.sprites) {
+            let Some(cached) = cached else {
+                continue;
+            };
+            if sprite.id != cached.id {
+                bail!(
+                    "atlas animation cache order mismatch: layout {}, cache {}",
+                    sprite.id,
+                    cached.id
+                );
+            }
+            let previous_frame = cached.animation.frame_index_at_tick(previous_tick);
+            let current = cached
+                .animation
+                .frame_at_tick(tick)
+                .ok_or_else(|| anyhow::anyhow!("animated sprite {} has no frames", cached.id))?;
+            if !cached.animation.interpolate && previous_frame == Some(current.frame_index) {
+                continue;
+            }
+            let current_mips = cached.frame_mips(current.frame_index)?;
+            if cached.animation.interpolate {
+                let next_mips = cached.frame_mips(current.next_frame_index)?;
+                let progress = vanilla_animation_progress(current.frame_progress);
+                for (level, (current_mip, next_mip)) in
+                    current_mips.iter().zip(next_mips).enumerate()
+                {
+                    let mip = interpolate_sprite_mip(current_mip, next_mip, progress)?;
+                    patches.push(sprite_mip_patch(sprite, level as u32, &mip)?);
+                }
+            } else {
+                for (level, mip) in current_mips.iter().enumerate() {
+                    patches.push(sprite_mip_patch(sprite, level as u32, mip)?);
+                }
+            }
+        }
+        Ok(patches)
+    }
+
+    pub fn mip_level(&self) -> u32 {
+        self.mip_level
+    }
+}
+
+impl AtlasSpriteAnimationMipCache {
+    fn frame_mips(&self, frame_index: u32) -> Result<&[SpriteMipLevel]> {
+        self.frames
+            .get(frame_index as usize)
+            .and_then(Option::as_deref)
+            .ok_or_else(|| {
+                anyhow::anyhow!("animated sprite {} missing frame {}", self.id, frame_index)
+            })
+    }
+}
+
+fn vanilla_animation_progress(progress: f32) -> f32 {
+    // `AnimationState.drawToAtlas` truncates progress to an integer in
+    // thousandths and encodes it in `gl_VertexID` before the shader mix.
+    ((progress.clamp(0.0, 1.0) * 1000.0) as u32) as f32 / 1000.0
+}
+
+fn interpolate_sprite_mip(
+    current: &SpriteMipLevel,
+    next: &SpriteMipLevel,
+    progress: f32,
+) -> Result<SpriteMipLevel> {
+    if (current.width, current.height, current.rgba.len())
+        != (next.width, next.height, next.rgba.len())
+    {
+        bail!(
+            "animated sprite mip mismatch: {}x{} ({} bytes) vs {}x{} ({} bytes)",
+            current.width,
+            current.height,
+            current.rgba.len(),
+            next.width,
+            next.height,
+            next.rgba.len()
+        );
+    }
+    let rgba = current
+        .rgba
+        .iter()
+        .zip(&next.rgba)
+        .map(|(current, next)| {
+            let current = f32::from(*current);
+            let next = f32::from(*next);
+            (current + (next - current) * progress).round() as u8
+        })
+        .collect();
+    Ok(SpriteMipLevel {
+        width: current.width,
+        height: current.height,
+        rgba,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -459,6 +954,77 @@ fn copy_sprite_mip_with_gutter(
     )
 }
 
+fn sprite_mip_patch(
+    sprite: &AtlasSprite,
+    level: u32,
+    mip: &SpriteMipLevel,
+) -> Result<AtlasMipPatch> {
+    let content = AtlasRect {
+        x: sprite.content.x.checked_shr(level).unwrap_or(0),
+        y: sprite.content.y.checked_shr(level).unwrap_or(0),
+        width: mip.width,
+        height: mip.height,
+    };
+    let mut padded = mip_rect(sprite.padded, level)?;
+    let content_right = content
+        .x
+        .checked_add(content.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip patch content width overflow"))?;
+    let content_bottom = content
+        .y
+        .checked_add(content.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip patch content height overflow"))?;
+    if content.x < padded.x || content.y < padded.y {
+        bail!(
+            "sprite {} mip level {} patch content is outside padding",
+            sprite.id,
+            level
+        );
+    }
+    let padded_right = padded
+        .x
+        .checked_add(padded.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip patch padded width overflow"))?;
+    let padded_bottom = padded
+        .y
+        .checked_add(padded.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip patch padded height overflow"))?;
+    if content_right > padded_right {
+        padded.width = content_right - padded.x;
+    }
+    if content_bottom > padded_bottom {
+        padded.height = content_bottom - padded.y;
+    }
+    let patch_content = AtlasRect {
+        x: content.x - padded.x,
+        y: content.y - padded.y,
+        width: content.width,
+        height: content.height,
+    };
+    let patch_bounds = AtlasRect {
+        x: 0,
+        y: 0,
+        width: padded.width,
+        height: padded.height,
+    };
+    let mut rgba = vec![0; rgba_len(padded.width, padded.height)?];
+    copy_sprite_rect_rgba_with_gutter(
+        &mut rgba,
+        padded.width,
+        &sprite.id,
+        patch_content,
+        patch_bounds,
+        mip.width,
+        mip.height,
+        &mip.rgba,
+    )?;
+    Ok(AtlasMipPatch {
+        level,
+        rect: padded,
+        rgba,
+    })
+}
+
 fn copy_sprite_rect_rgba_with_gutter(
     atlas: &mut [u8],
     atlas_width: u32,
@@ -552,7 +1118,7 @@ fn floor_log2(value: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{AtlasPacker, AtlasRect};
+    use super::{AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasMipPatch, AtlasPacker, AtlasRect};
     use crate::{
         SpriteAnimation, SpriteAnimationFrame, SpriteGuiMetadata, SpriteGuiScaling, SpriteImage,
         SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource, SpriteTextureMetadata,
@@ -876,6 +1442,358 @@ mod tests {
     }
 
     #[test]
+    fn animated_mip_patches_match_full_atlas_rebuild_bytes() {
+        let static_image =
+            SpriteImage::new("minecraft:block/stone", 2, 2, [90, 90, 90, 255].repeat(4)).unwrap();
+        let animated_image = SpriteImage {
+            id: "minecraft:block/water_still".to_string(),
+            width: 2,
+            height: 2,
+            transparency: SpriteTransparency::default(),
+            animation: Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: false,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 2 },
+                    SpriteAnimationFrame { index: 1, time: 1 },
+                ],
+            }),
+            texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
+            animation_frames_rgba: vec![
+                [10, 20, 30, 255].repeat(4),
+                [110, 120, 130, 255].repeat(4),
+            ],
+            rgba: [10, 20, 30, 255].repeat(4),
+        };
+        let images = vec![static_image, animated_image];
+        let packer = AtlasPacker::new(32, 1).unwrap();
+        let mut patched = packer.stitch_animation_frame_mips(&images, 0, 1).unwrap();
+
+        assert!(patched
+            .layout
+            .animation_frame_mip_patches(&images, 0, 1, 1)
+            .unwrap()
+            .is_empty());
+        let patches = patched
+            .layout
+            .animation_frame_mip_patches(&images, 0, 2, 1)
+            .unwrap();
+        assert_eq!(patches.len(), 2);
+        for patch in &patches {
+            apply_mip_patch(&mut patched.levels[patch.level as usize], patch);
+        }
+        let rebuilt = packer.stitch_animation_frame_mips(&images, 2, 1).unwrap();
+        assert_eq!(patched.levels, rebuilt.levels);
+    }
+
+    #[test]
+    fn interpolated_animation_emits_patch_without_frame_index_change() {
+        let image = SpriteImage {
+            id: "minecraft:block/sculk".to_string(),
+            width: 1,
+            height: 1,
+            transparency: SpriteTransparency::default(),
+            animation: Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 4 },
+                    SpriteAnimationFrame { index: 1, time: 4 },
+                ],
+            }),
+            texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
+            animation_frames_rgba: vec![vec![0, 0, 100, 255], vec![100, 40, 0, 127]],
+            rgba: vec![0, 0, 100, 255],
+        };
+        let images = [image];
+        let atlas = AtlasPacker::new(8, 1)
+            .unwrap()
+            .stitch_animation_frame_mips(&images, 0, 0)
+            .unwrap();
+
+        let patches = atlas
+            .layout
+            .animation_frame_mip_patches(&images, 0, 1, 0)
+            .unwrap();
+        assert_eq!(patches.len(), 1);
+        assert_eq!(
+            pixel(&patches[0].rgba, patches[0].rect.width, 1, 1),
+            [25, 10, 75, 223]
+        );
+    }
+
+    #[test]
+    fn prepared_animation_cache_interpolates_precomputed_mips_like_vanilla() {
+        let frame_zero = vec![0, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255];
+        let frame_one = vec![
+            255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255,
+        ];
+        let image = SpriteImage {
+            id: "minecraft:block/interpolated_mips".to_string(),
+            width: 2,
+            height: 2,
+            transparency: SpriteTransparency::default(),
+            animation: Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 3 },
+                    SpriteAnimationFrame { index: 1, time: 3 },
+                ],
+            }),
+            texture_metadata: SpriteTextureMetadata {
+                mipmap_strategy: SpriteMipmapStrategy::Mean,
+                ..SpriteTextureMetadata::default()
+            },
+            gui_metadata: SpriteGuiMetadata::default(),
+            animation_frames_rgba: vec![frame_zero.clone(), frame_one.clone()],
+            rgba: frame_zero.clone(),
+        };
+        let images = [image.clone()];
+        let atlas = AtlasPacker::new(16, 1)
+            .unwrap()
+            .stitch_animation_frame_mips(&images, 0, 1)
+            .unwrap();
+        let cache = atlas
+            .layout
+            .prepare_animation_mip_cache(&images, 1)
+            .unwrap();
+        let patches = cache.frame_mip_patches(&atlas.layout, 0, 1).unwrap();
+        let mip_one_patch = patches.iter().find(|patch| patch.level == 1).unwrap();
+
+        let current_mips = super::generate_sprite_rgba_mip_levels(
+            &image.id,
+            image.width,
+            image.height,
+            &frame_zero,
+            image.texture_metadata,
+            image.transparency,
+            1,
+        )
+        .unwrap();
+        let next_mips = super::generate_sprite_rgba_mip_levels(
+            &image.id,
+            image.width,
+            image.height,
+            &frame_one,
+            image.texture_metadata,
+            image.transparency,
+            1,
+        )
+        .unwrap();
+        let progress = super::vanilla_animation_progress(1.0 / 3.0);
+        assert_eq!(progress, 0.333);
+        let expected = std::array::from_fn(|channel| {
+            let current = f32::from(current_mips[1].rgba[channel]);
+            let next = f32::from(next_mips[1].rgba[channel]);
+            (current + (next - current) * progress).round() as u8
+        });
+        let sprite = &atlas.layout.sprites[0];
+        let local_x = (sprite.content.x >> 1) - mip_one_patch.rect.x;
+        let local_y = (sprite.content.y >> 1) - mip_one_patch.rect.y;
+        assert_eq!(
+            pixel(
+                &mip_one_patch.rgba,
+                mip_one_patch.rect.width,
+                local_x,
+                local_y
+            ),
+            expected
+        );
+    }
+
+    #[test]
+    fn gpu_animation_plan_preserves_unique_frame_mips_and_atlas_destination() {
+        let image = SpriteImage {
+            id: "minecraft:block/water_still".to_string(),
+            width: 2,
+            height: 2,
+            transparency: SpriteTransparency::default(),
+            animation: Some(SpriteAnimation {
+                frame_count: 3,
+                default_frame_time: 1,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 2 },
+                    SpriteAnimationFrame { index: 2, time: 3 },
+                    SpriteAnimationFrame { index: 0, time: 1 },
+                ],
+            }),
+            texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
+            animation_frames_rgba: vec![
+                [10, 20, 30, 255].repeat(4),
+                [40, 50, 60, 255].repeat(4),
+                [70, 80, 90, 255].repeat(4),
+            ],
+            rgba: [10, 20, 30, 255].repeat(4),
+        };
+        let images = [image];
+        let atlas = AtlasPacker::new(32, 1)
+            .unwrap()
+            .stitch_animation_frame_mips(&images, 0, 1)
+            .unwrap();
+        let plan = atlas
+            .layout
+            .prepare_gpu_animation_plan(&images, 1)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(plan.atlas_width, atlas.layout.width);
+        assert_eq!(plan.atlas_height, atlas.layout.height);
+        assert_eq!(plan.padding, atlas.layout.padding);
+        assert_eq!(plan.mip_level, 1);
+        assert_eq!(plan.sprites.len(), 1);
+        let sprite = &plan.sprites[0];
+        assert_eq!(sprite.destination, atlas.layout.sprites[0].padded);
+        assert_eq!((sprite.content_width, sprite.content_height), (2, 2));
+        assert!(sprite.animation.interpolate);
+        assert_eq!(
+            sprite
+                .frames
+                .iter()
+                .map(|frame| frame.index)
+                .collect::<Vec<_>>(),
+            vec![0, 2]
+        );
+        assert!(sprite.frames.iter().all(|frame| frame.mips.len() == 2));
+    }
+
+    #[test]
+    fn coalesced_mip_patches_preserve_exact_sequential_result() {
+        let initial_rgba = (0_u8..=255).cycle().take(16 * 4 * 4).collect::<Vec<_>>();
+        let mut atlas = AtlasMipImage {
+            layout: AtlasLayout {
+                width: 16,
+                height: 4,
+                padding: 0,
+                sprites: Vec::new(),
+            },
+            levels: vec![AtlasMipLevel {
+                level: 0,
+                width: 16,
+                height: 4,
+                rgba: initial_rgba.clone(),
+            }],
+        };
+        let patches = vec![
+            AtlasMipPatch {
+                level: 0,
+                rect: AtlasRect {
+                    x: 0,
+                    y: 0,
+                    width: 2,
+                    height: 2,
+                },
+                rgba: [10, 20, 30, 255].repeat(4),
+            },
+            AtlasMipPatch {
+                level: 0,
+                rect: AtlasRect {
+                    x: 4,
+                    y: 0,
+                    width: 2,
+                    height: 2,
+                },
+                rgba: [110, 120, 130, 255].repeat(4),
+            },
+            AtlasMipPatch {
+                level: 0,
+                rect: AtlasRect {
+                    x: 8,
+                    y: 3,
+                    width: 1,
+                    height: 1,
+                },
+                rgba: vec![210, 220, 230, 255],
+            },
+        ];
+
+        let coalesced = atlas.apply_and_coalesce_patches(&patches, 2).unwrap();
+        assert_eq!(coalesced.len(), 2);
+        assert_eq!(
+            coalesced[0].rect,
+            AtlasRect {
+                x: 0,
+                y: 0,
+                width: 6,
+                height: 2,
+            }
+        );
+
+        let mut sequential = AtlasMipLevel {
+            level: 0,
+            width: 16,
+            height: 4,
+            rgba: initial_rgba.clone(),
+        };
+        for patch in &patches {
+            apply_mip_patch(&mut sequential, patch);
+        }
+        let mut batched = AtlasMipLevel {
+            level: 0,
+            width: 16,
+            height: 4,
+            rgba: initial_rgba,
+        };
+        for patch in &coalesced {
+            apply_mip_patch(&mut batched, patch);
+        }
+        assert_eq!(batched, sequential);
+        assert_eq!(atlas.levels[0], sequential);
+    }
+
+    #[test]
+    fn coalesced_mip_patches_respect_overdraw_bound() {
+        let mut atlas = AtlasMipImage {
+            layout: AtlasLayout {
+                width: 16,
+                height: 2,
+                padding: 0,
+                sprites: Vec::new(),
+            },
+            levels: vec![AtlasMipLevel {
+                level: 0,
+                width: 16,
+                height: 2,
+                rgba: vec![0; 16 * 2 * 4],
+            }],
+        };
+        let patches = [
+            AtlasMipPatch {
+                level: 0,
+                rect: AtlasRect {
+                    x: 0,
+                    y: 0,
+                    width: 1,
+                    height: 1,
+                },
+                rgba: vec![255; 4],
+            },
+            AtlasMipPatch {
+                level: 0,
+                rect: AtlasRect {
+                    x: 3,
+                    y: 0,
+                    width: 1,
+                    height: 1,
+                },
+                rgba: vec![255; 4],
+            },
+        ];
+
+        assert_eq!(
+            atlas.apply_and_coalesce_patches(&patches, 1).unwrap().len(),
+            2
+        );
+    }
+
+    #[test]
     fn atlas_mips_are_generated_per_sprite_without_cross_sprite_blending() {
         let red = SpriteImage::new(
             "minecraft:block/red",
@@ -996,6 +1914,17 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![(32, 32), (16, 16), (8, 8)]
         );
+    }
+
+    fn apply_mip_patch(level: &mut AtlasMipLevel, patch: &AtlasMipPatch) {
+        for row in 0..patch.rect.height {
+            let source_start = (row * patch.rect.width * 4) as usize;
+            let source_end = source_start + (patch.rect.width * 4) as usize;
+            let target_start = (((patch.rect.y + row) * level.width + patch.rect.x) * 4) as usize;
+            let target_end = target_start + (patch.rect.width * 4) as usize;
+            level.rgba[target_start..target_end]
+                .copy_from_slice(&patch.rgba[source_start..source_end]);
+        }
     }
 
     fn pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {

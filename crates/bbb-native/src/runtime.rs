@@ -3117,6 +3117,7 @@ pub(crate) fn update_renderer_from_publication(
         debug_sky_light_section_cache,
         remote_debug_selection_cache,
         render_distance_chunks,
+        cloud_range_chunks,
         client_framerate_limit,
         client_vsync,
         damage_tilt_strength,
@@ -3139,7 +3140,9 @@ pub(crate) fn update_renderer_from_publication(
     let water_vision = state.water_vision;
     let rain_fog_multiplier = state.rain_fog_multiplier;
     let hide_lightning_flash = state.hide_lightning_flash;
-    let cloud_environment = state.cloud_environment;
+    let cloud_environment = state
+        .cloud_environment
+        .with_range_chunks(cloud_range_chunks);
     let particle_scope_context = state.particle_scope_context;
     let particle_player_motion_contexts = &state.particle_player_motion_contexts;
     let particle_entity_target_contexts = &state.particle_entity_target_contexts;
@@ -3909,8 +3912,9 @@ pub(crate) fn update_renderer_from_publication(
         render_distance_chunks,
         input.debug_smart_cull_enabled(),
     );
-    // Vanilla traverses the asynchronously published graph with this frame's
-    // frustum before block/entity visibility extraction and gizmo emission.
+    // Vanilla `LevelRenderer.cullTerrain` applies the asynchronously published
+    // graph when it changes or camera rotation crosses a two-degree bucket.
+    // The terrain owner additionally invalidates on viewport/FOV changes.
     terrain_upload.refresh_frame_visibility(terrain_visibility_context);
     let renderer_counters = renderer.counters();
     let gpu_utilization = renderer.gpu_utilization();
@@ -4082,6 +4086,25 @@ pub(crate) fn update_renderer_from_publication(
         camera_fov.culling_degrees,
     );
     let christmas_chest_textures = non_entity_render_extraction.christmas_chest_textures();
+    let block_entity_revision = world.stable_block_entity_render_revision();
+    let dynamic_block_entities =
+        non_entity_render_extraction.dynamic_block_entity_presence(block_entity_revision, || {
+            DynamicBlockEntityPresence {
+                chest: !world.chest_model_source_states(0.0).is_empty(),
+                bell: !world.bell_model_source_states(0.0).is_empty(),
+                shulker_box: !world.shulker_box_model_source_states(0.0).is_empty(),
+                decorated_pot: !world.decorated_pot_model_source_states(0.0).is_empty(),
+                banner: !world.banner_model_source_states(0.0).is_empty(),
+                enchanting_table: !world.enchanting_table_book_source_states().is_empty(),
+                conduit: !world.conduit_model_source_states(0.0).is_empty(),
+                end_portal: !world.end_portal_model_source_states(0.0).is_empty(),
+                skull: !world.skull_model_source_states(0.0).is_empty(),
+                spawner: !world.spawner_display_entity_source_states(0.0).is_empty()
+                    || !world
+                        .trial_spawner_display_entity_source_states(0.0)
+                        .is_empty(),
+            }
+        });
     let StableBlockEntityFrame {
         sign_instances,
         bed_instances,
@@ -4089,7 +4112,7 @@ pub(crate) fn update_renderer_from_publication(
         sign_text_surfaces,
     } = non_entity_render_extraction.stable_block_entity_frame(
         StableBlockEntityCacheKey {
-            revision: world.stable_block_entity_render_revision(),
+            revision: block_entity_revision,
             text_filtering_enabled: input.client_text_filtering_enabled(),
         },
         || {
@@ -4111,11 +4134,13 @@ pub(crate) fn update_renderer_from_publication(
         .collect();
     // Chest block-entity models join the same single entity-model submission
     // stream after held-item baking (they have no hands to bake).
-    entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-        christmas_chest_textures,
-    ));
+    if dynamic_block_entities.chest {
+        entity_instances.extend(chest_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+            christmas_chest_textures,
+        ));
+    }
     // Sign block-entity models ride the same stream; their face text bakes
     // into world-space glyph quads drawn with the map-label font atlas.
     entity_instances.extend_from_slice(sign_instances);
@@ -4123,70 +4148,88 @@ pub(crate) fn update_renderer_from_publication(
     // per-half meshes, bells carry the shake ticks for the renderer-side
     // `BellModel.setupAnim` swing.
     entity_instances.extend_from_slice(bed_instances);
-    entity_instances.extend(bell_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
+    if dynamic_block_entities.bell {
+        entity_instances.extend(bell_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+        ));
+    }
     // Shulker box and decorated pot block-entity models ride the same stream:
     // boxes carry the lerped lid progress, pots their sherd patterns and the
     // wobble style/progress.
-    entity_instances.extend(shulker_box_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
-    entity_instances.extend(decorated_pot_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
-    // Banners carry their base color, tinted pattern stack, and flag swing
-    // phase.
-    entity_instances.extend(banner_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-        Some(entity_variant_textures),
-    ));
-    // The enchanting-table hovering book (animated, nearest-player-facing) and
-    // the lectern's static open book share the same `BookModel` in the stream.
-    entity_instances.extend(
-        enchanting_table_book_model_instances_from_world_at_partial_tick(
+    if dynamic_block_entities.shulker_box {
+        entity_instances.extend(shulker_box_model_instances_from_world_at_partial_tick(
             world,
             entity_partial_tick,
-        ),
-    );
+        ));
+    }
+    if dynamic_block_entities.decorated_pot {
+        entity_instances.extend(decorated_pot_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+        ));
+    }
+    // Banners carry their base color, tinted pattern stack, and flag swing
+    // phase.
+    if dynamic_block_entities.banner {
+        entity_instances.extend(banner_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+            Some(entity_variant_textures),
+        ));
+    }
+    // The enchanting-table hovering book (animated, nearest-player-facing) and
+    // the lectern's static open book share the same `BookModel` in the stream.
+    if dynamic_block_entities.enchanting_table {
+        entity_instances.extend(
+            enchanting_table_book_model_instances_from_world_at_partial_tick(
+                world,
+                entity_partial_tick,
+            ),
+        );
+    }
     entity_instances.extend_from_slice(lectern_instances);
-    entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(
-        world,
-        camera_pose,
-        entity_partial_tick,
-    ));
-    entity_instances.extend(end_portal_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-    ));
-    entity_instances.extend(skull_model_instances_from_world_at_partial_tick(
-        world,
-        entity_partial_tick,
-        item_runtime,
-    ));
-    for submission in spawner_display_entity_submissions_from_world_at_partial_tick(
-        world,
-        item_runtime,
-        Some(entity_variant_textures),
-        entity_partial_tick,
-    ) {
-        if !block_entity_visibility.is_visible(&submission.instance, world, terrain_upload) {
-            continue;
+    if dynamic_block_entities.conduit {
+        entity_instances.extend(conduit_model_instances_from_world_at_partial_tick(
+            world,
+            camera_pose,
+            entity_partial_tick,
+        ));
+    }
+    if dynamic_block_entities.end_portal {
+        entity_instances.extend(end_portal_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+        ));
+    }
+    if dynamic_block_entities.skull {
+        entity_instances.extend(skull_model_instances_from_world_at_partial_tick(
+            world,
+            entity_partial_tick,
+            item_runtime,
+        ));
+    }
+    if dynamic_block_entities.spawner {
+        for submission in spawner_display_entity_submissions_from_world_at_partial_tick(
+            world,
+            item_runtime,
+            Some(entity_variant_textures),
+            entity_partial_tick,
+        ) {
+            if !block_entity_visibility.is_visible(&submission.instance, world, terrain_upload) {
+                continue;
+            }
+            if let Some(entity_world) = submission.entity_world.as_ref() {
+                held_item_models.append(held_item_models_with_variant_textures(
+                    std::slice::from_ref(&submission.instance),
+                    entity_world,
+                    item_runtime,
+                    terrain_textures,
+                    Some(entity_variant_textures),
+                ));
+            }
+            entity_instances.push(submission.instance);
         }
-        if let Some(entity_world) = submission.entity_world.as_ref() {
-            held_item_models.append(held_item_models_with_variant_textures(
-                std::slice::from_ref(&submission.instance),
-                entity_world,
-                item_runtime,
-                terrain_textures,
-                Some(entity_variant_textures),
-            ));
-        }
-        entity_instances.push(submission.instance);
     }
     retain_visible_block_entity_instances(
         &mut entity_instances,

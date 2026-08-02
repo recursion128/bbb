@@ -355,6 +355,14 @@ fn compiles_all_local_vanilla_post_effect_graphs() {
         return;
     };
     renderer.reload_post_effect_graphs(&catalog).unwrap();
+    assert!(
+        renderer
+            .post_effect_graphs
+            .as_ref()
+            .unwrap()
+            .uses_vanilla_transparency_direct_path(),
+        "the direct-depth path is gated by the exact Vanilla 26.1 graph and shader hashes"
+    );
     renderer
         .render_offscreen_frame()
         .expect("official transparency graph executes with all six color/depth owners");
@@ -374,6 +382,14 @@ fn selected_generation_drives_live_camera_graph_instead_of_fixed_shader() {
     write_live_catalog(&root, [1.0, 0.0, 0.0, 1.0]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
     renderer.reload_post_effect_graphs(&catalog).unwrap();
+    assert!(
+        !renderer
+            .post_effect_graphs
+            .as_ref()
+            .unwrap()
+            .uses_vanilla_transparency_direct_path(),
+        "a resource-pack graph override must retain generic graph execution"
+    );
     assert_eq!(renderer.post_effect_graph_generation(), Some(0));
     renderer.set_clear_color(ClearColor {
         r: 0.0,

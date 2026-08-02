@@ -134,6 +134,9 @@
 # resident terrain owner visible; this is a conservative visibility state, not
 # a renderer placeholder or unsupported canonical-state fallback.
 ^crates/bbb-renderer/src/renderer[.]rs$	conservative fallback used before a valid native occlusion result
+# wgpu's adapter request field is an upstream API name. These GPU-backed tests
+# deliberately require the normal hardware adapter and never opt into it.
+^crates/bbb-renderer/src/(clouds|gpu_timing|terrain_animation)[.]rs$	^[[:space:]]*force_fallback_adapter: false,$
 # This atlas test proves GUI special-pattern sprites have a pack-owned texture
 # when no live dynamic atlas handle is available; it exercises the canonical
 # residency upload path and does not introduce a textured submission bypass.

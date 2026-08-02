@@ -64,6 +64,10 @@ impl WorldStore {
     /// prismarine/water shape every 40 game ticks, and advance
     /// `activeRotation` only while active.
     pub fn advance_conduit_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().conduit {
+            self.conduit_blocks.clear();
+            return;
+        }
         let mut positions = self.conduit_positions();
         positions.sort_by_key(|pos| (pos.y, pos.z, pos.x));
 

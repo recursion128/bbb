@@ -548,6 +548,9 @@ mod tests {
             "inactive effect must preserve the blue frame, got {inactive_corner:?}"
         );
         assert_eq!(renderer.counters.post_effect_draw_calls, 0);
+        renderer
+            .render_offscreen_frame()
+            .expect("settled inactive camera post-effect frame");
         let baseline_draw_calls = renderer.counters.draw_calls;
         let baseline_pipeline_switches = renderer.counters.pipeline_switches;
 

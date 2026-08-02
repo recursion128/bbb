@@ -178,6 +178,10 @@ impl WorldStore {
     /// stays reproducible (vanilla ticks in block-entity insertion order off a
     /// wall-clock random).
     pub fn advance_enchanting_table_book_ticks(&mut self, ticks: u32) {
+        if !self.client_ticking_block_entity_presence().enchanting_table {
+            self.enchanting_table_books.clear();
+            return;
+        }
         // Reconcile the tracked set with the loaded enchanting tables even when
         // no ticks elapse, so the render projection sees fresh tables.
         let mut positions = self.enchanting_table_positions();
@@ -620,6 +624,45 @@ mod tests {
         assert_eq!(states.len(), 1);
         assert_eq!(states[0].pos, b);
         assert_eq!(states[0].time, 2);
+    }
+
+    #[test]
+    fn client_ticking_presence_cache_invalidates_on_terrain_revision() {
+        let mut world = world_with_air_chunk();
+        let pos = BlockPos { x: 3, y: 4, z: 5 };
+
+        assert!(
+            !world
+                .client_ticking_block_entity_presence()
+                .enchanting_table
+        );
+        let empty_revision = world
+            .client_ticking_block_entity_presence
+            .expect("empty presence is cached")
+            .0;
+
+        set_block(&mut world, pos, "minecraft:enchanting_table");
+        assert_ne!(
+            world.stable_block_entity_render_revision(),
+            empty_revision,
+            "accepted block updates must invalidate the palette presence owner"
+        );
+        assert!(
+            world
+                .client_ticking_block_entity_presence()
+                .enchanting_table
+        );
+        world.advance_enchanting_table_book_ticks(1);
+        assert_eq!(world.enchanting_table_book_states().len(), 1);
+
+        set_block(&mut world, pos, "minecraft:air");
+        world.advance_enchanting_table_book_ticks(1);
+        assert!(world.enchanting_table_book_states().is_empty());
+        assert!(
+            !world
+                .client_ticking_block_entity_presence()
+                .enchanting_table
+        );
     }
 
     #[test]

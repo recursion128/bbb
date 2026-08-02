@@ -70,31 +70,29 @@ struct LayerStack {
     active_count: u32,
 };
 
-fn try_insert(stack: LayerStack, color: vec4<f32>, depth: f32) -> LayerStack {
-    var out = stack;
+fn try_insert(stack: ptr<function, LayerStack>, color: vec4<f32>, depth: f32) {
     if (color.a == 0.0) {
-        return out;
+        return;
     }
 
-    out.colors[out.active_count] = color;
-    out.depths[out.active_count] = depth;
+    let active_count = (*stack).active_count;
+    (*stack).colors[active_count] = color;
+    (*stack).depths[active_count] = depth;
 
-    var jj = out.active_count;
-    out.active_count = out.active_count + 1u;
-    while (jj > 0u && out.depths[jj] > out.depths[jj - 1u]) {
+    var jj = active_count;
+    (*stack).active_count = active_count + 1u;
+    while (jj > 0u && (*stack).depths[jj] > (*stack).depths[jj - 1u]) {
         let ii = jj - 1u;
-        let depth_temp = out.depths[ii];
-        out.depths[ii] = out.depths[jj];
-        out.depths[jj] = depth_temp;
+        let depth_temp = (*stack).depths[ii];
+        (*stack).depths[ii] = (*stack).depths[jj];
+        (*stack).depths[jj] = depth_temp;
 
-        let color_temp = out.colors[ii];
-        out.colors[ii] = out.colors[jj];
-        out.colors[jj] = color_temp;
+        let color_temp = (*stack).colors[ii];
+        (*stack).colors[ii] = (*stack).colors[jj];
+        (*stack).colors[jj] = color_temp;
 
         jj = ii;
     }
-
-    return out;
 }
 
 @fragment
@@ -120,28 +118,28 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         1u,
     );
 
-    stack = try_insert(
-        stack,
+    try_insert(
+        &stack,
         textureLoad(translucent_texture, pixel, 0),
         textureLoad(translucent_depth, pixel, 0),
     );
-    stack = try_insert(
-        stack,
+    try_insert(
+        &stack,
         textureLoad(item_entity_texture, pixel, 0),
         textureLoad(item_entity_depth, pixel, 0),
     );
-    stack = try_insert(
-        stack,
+    try_insert(
+        &stack,
         textureLoad(particles_texture, pixel, 0),
         textureLoad(particles_depth, pixel, 0),
     );
-    stack = try_insert(
-        stack,
+    try_insert(
+        &stack,
         textureLoad(weather_texture, pixel, 0),
         textureLoad(weather_depth, pixel, 0),
     );
-    stack = try_insert(
-        stack,
+    try_insert(
+        &stack,
         textureLoad(clouds_texture, pixel, 0),
         textureLoad(clouds_depth, pixel, 0),
     );
@@ -430,7 +428,13 @@ pub(super) fn create_transparency_final_target(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        // Vanilla's MainTarget is both the GUI presentation owner and a post-chain copy
+        // source. The embedded transparency fallback assumes the same role when no resource
+        // graph is loaded, so camera/screen effects must be able to snapshot it before their
+        // in-place result pass.
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+            | wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -882,10 +886,12 @@ mod tests {
 
     #[test]
     fn transparency_combine_uses_vanilla_depth_order_and_premultiplied_layer_blend() {
+        assert!(TRANSPARENCY_COMBINE_SHADER
+            .contains("while (jj > 0u && (*stack).depths[jj] > (*stack).depths[jj - 1u])"));
+        assert!(TRANSPARENCY_COMBINE_SHADER.contains("while (ii < stack.active_count)"));
         assert!(
-            TRANSPARENCY_COMBINE_SHADER
-                .contains("while (jj > 0u && out.depths[jj] > out.depths[jj - 1u])"),
-            "vanilla transparency sorting inserts larger depth values before nearer layers"
+            TRANSPARENCY_COMBINE_SHADER.contains("ptr<function, LayerStack>"),
+            "Vanilla mutates its layer arrays in place instead of copying the full stack per insert"
         );
         assert!(
             TRANSPARENCY_COMBINE_SHADER

@@ -599,12 +599,7 @@ impl EnvironmentAnimateRuntime {
             return handled;
         }
         let particles = world
-            .sampled_client_environment_attributes_at(
-                block_position(pos),
-                EnvironmentBiomeSampling::Direct,
-            )
-            .ok()
-            .and_then(|attributes| attributes.ambient_particles)
+            .sampled_client_ambient_particles_at(block_position(pos))
             .unwrap_or_default();
         append_ambient_particle_spawns(&mut self.level_random, pos, particles, spawns);
         handled

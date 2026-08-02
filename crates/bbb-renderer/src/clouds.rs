@@ -7,18 +7,26 @@ use crate::pipeline_builder::{depth_stencil_state, RenderPipelineBuilder};
 
 pub const VANILLA_DEFAULT_CLOUD_COLOR: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
 pub const VANILLA_DEFAULT_CLOUD_HEIGHT: f32 = 192.33;
+pub const VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS: u32 = 128;
+pub const VANILLA_MIN_CLOUD_RANGE_CHUNKS: u32 = 2;
+pub const VANILLA_MAX_CLOUD_RANGE_CHUNKS: u32 = 128;
 
 const CLOUD_CELL_SIZE_IN_BLOCKS: f32 = 12.0;
 const CLOUD_TICKS_PER_CELL: i64 = 400;
 const CLOUD_BLOCKS_PER_TICK: f64 = 0.030000001;
-const CLOUD_PRESENTATION_HALF_EXTENT: f32 = 2048.0;
+#[cfg(test)]
+const CLOUD_PRESENTATION_HALF_EXTENT: f32 = VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS as f32 * 16.0;
 const CLOUD_FANCY_HEIGHT_IN_BLOCKS: f32 = 4.0;
 const CLOUD_Z_OFFSET_BLOCKS: f64 = 3.96;
 const VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD: u8 = 10;
 
+#[cfg(test)]
 const CLOUD_BOTTOM_FACE_TINT: f32 = 0.7;
+#[cfg(test)]
 const CLOUD_TOP_FACE_TINT: f32 = 1.0;
+#[cfg(test)]
 const CLOUD_NORTH_SOUTH_FACE_TINT: f32 = 0.8;
+#[cfg(test)]
 const CLOUD_WEST_EAST_FACE_TINT: f32 = 0.9;
 
 pub(super) const CLOUD_TARGET_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
@@ -26,6 +34,11 @@ const CLOUD_FLAT_PIPELINE_CULL_MODE: Option<wgpu::Face> = None;
 const CLOUD_FANCY_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const CLOUD_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
 const CLOUD_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const CLOUD_FLAG_INSIDE_FACE: u8 = 1 << 4;
+const CLOUD_FLAG_USE_TOP_COLOR: u8 = 1 << 5;
+const CLOUD_FLAG_EXTRA_Z: u8 = 1 << 6;
+const CLOUD_FLAG_EXTRA_X: u8 = 1 << 7;
+const CLOUD_QUAD_INDICES: [u16; 6] = [0, 1, 2, 2, 3, 0];
 
 const CLOUD_SHADER: &str = r#"
 struct Camera {
@@ -46,15 +59,17 @@ struct Camera {
 var<uniform> camera: Camera;
 
 struct CloudInfo {
+    color: vec4<f32>,
     offset: vec4<f32>,
+    cell_size: vec4<f32>,
 };
 
 @group(1) @binding(0)
 var<uniform> cloud_info: CloudInfo;
 
 struct VertexIn {
-    @location(0) position: vec3<f32>,
-    @location(1) color: vec4<f32>,
+    @builtin(vertex_index) vertex_index: u32,
+    @location(0) packed_face: u32,
 };
 
 struct VertexOut {
@@ -73,16 +88,53 @@ fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
     return (vertex_distance - fog_start) / (fog_end - fog_start);
 }
 
+fn signed_byte(value: u32) -> i32 {
+    let byte = i32(value & 255u);
+    return select(byte, byte - 256, byte >= 128);
+}
+
+fn face_vertex(direction: u32, vertex: u32) -> vec3<f32> {
+    let half = f32(vertex / 2u);
+    let middle = select(0.0, 1.0, vertex == 1u || vertex == 2u);
+    switch direction {
+        case 0u: { return vec3<f32>(1.0 - half, 0.0, middle); }
+        case 1u: { return vec3<f32>(half, 1.0, middle); }
+        case 2u: { return vec3<f32>(half, middle, 0.0); }
+        case 3u: { return vec3<f32>(1.0 - half, middle, 1.0); }
+        case 4u: { return vec3<f32>(0.0, middle, 1.0 - half); }
+        default: { return vec3<f32>(1.0, middle, half); }
+    }
+}
+
+fn face_tint(direction: u32) -> f32 {
+    switch direction {
+        case 0u: { return 0.7; }
+        case 1u: { return 1.0; }
+        case 2u, 3u: { return 0.8; }
+        default: { return 0.9; }
+    }
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    let world_position = vec3<f32>(
-        input.position.x + cloud_info.offset.x + camera.camera_position.x,
-        input.position.y,
-        input.position.z + cloud_info.offset.y + camera.camera_position.z,
-    );
+    let packed = input.packed_face;
+    let flags = (packed >> 16u) & 255u;
+    let direction = flags & 7u;
+    let inside_face = (flags & 16u) != 0u;
+    let use_top_color = (flags & 32u) != 0u;
+    let cell_x = signed_byte(packed) * 2 + i32((flags >> 7u) & 1u);
+    let cell_z = signed_byte(packed >> 8u) * 2 + i32((flags >> 6u) & 1u);
+    let vertex = input.vertex_index;
+    let directed_vertex = select(vertex, 3u - vertex, inside_face);
+    let position_in_cell = face_vertex(direction, directed_vertex);
+    let world_position = position_in_cell * cloud_info.cell_size.xyz
+        + vec3<f32>(f32(cell_x) * cloud_info.cell_size.x, 0.0,
+                    f32(cell_z) * cloud_info.cell_size.z)
+        + cloud_info.offset.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
-    out.color = input.color;
+    let tint = select(face_tint(direction), 1.0, use_top_color);
+    out.color = vec4<f32>(cloud_info.color.rgb * tint, cloud_info.color.a);
     out.fog_position = world_position - camera.camera_position.xyz;
     return out;
 }
@@ -103,6 +155,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub struct CloudEnvironment {
     pub color: [f32; 4],
     pub height: f32,
+    pub range_chunks: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,6 +194,7 @@ impl CloudEnvironment {
         Self {
             color: [0.0, 0.0, 0.0, 0.0],
             height: VANILLA_DEFAULT_CLOUD_HEIGHT,
+            range_chunks: VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
         }
     }
 
@@ -148,11 +202,22 @@ impl CloudEnvironment {
         Self {
             color: VANILLA_DEFAULT_CLOUD_COLOR,
             height: VANILLA_DEFAULT_CLOUD_HEIGHT,
+            range_chunks: VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
         }
     }
 
     pub fn with_color_and_height(color: [f32; 4], height: f32) -> Self {
-        Self { color, height }.sanitized()
+        Self {
+            color,
+            height,
+            range_chunks: VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
+        }
+        .sanitized()
+    }
+
+    pub fn with_range_chunks(mut self, range_chunks: u32) -> Self {
+        self.range_chunks = range_chunks;
+        self.sanitized()
     }
 
     pub fn sanitized(self) -> Self {
@@ -164,6 +229,10 @@ impl CloudEnvironment {
                 sanitize_unit(self.color[3]),
             ],
             height: sanitize_height(self.height),
+            range_chunks: self.range_chunks.clamp(
+                VANILLA_MIN_CLOUD_RANGE_CHUNKS,
+                VANILLA_MAX_CLOUD_RANGE_CHUNKS,
+            ),
         }
     }
 
@@ -220,6 +289,12 @@ pub struct CloudTextureImage {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+struct CloudFaceRecord {
+    packed: u32,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct CloudVertex {
     position: [f32; 3],
     color: [f32; 4],
@@ -228,7 +303,9 @@ struct CloudVertex {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 struct CloudUniform {
+    color: [f32; 4],
     offset: [f32; 4],
+    cell_size: [f32; 4],
 }
 
 #[derive(Debug)]
@@ -271,8 +348,9 @@ enum CloudFace {
 }
 
 pub(super) struct CloudGpu {
-    pub(super) vertex_buffer: wgpu::Buffer,
-    pub(super) vertex_count: u32,
+    pub(super) face_buffer: wgpu::Buffer,
+    pub(super) quad_index_buffer: wgpu::Buffer,
+    pub(super) face_count: u32,
     pub(super) mesh_key: Option<CloudMeshKey>,
 }
 
@@ -300,9 +378,9 @@ pub(super) fn create_cloud_pipeline(
             &[bind_group_layout, cloud_bind_group_layout],
         )
         .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<CloudVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+            array_stride: std::mem::size_of::<CloudFaceRecord>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &wgpu::vertex_attr_array![0 => Uint32],
         }])
         .color_target(format, Some(CLOUD_TARGET_BLEND))
         .cull_mode(cull_mode)
@@ -417,13 +495,14 @@ pub(super) fn create_cloud_bind_group(
 pub(super) fn write_cloud_uniform(
     queue: &wgpu::Queue,
     uniform_buffer: &wgpu::Buffer,
+    environment: CloudEnvironment,
     frame: CloudFrame,
     texture: Option<&CloudTextureData>,
 ) {
     queue.write_buffer(
         uniform_buffer,
         0,
-        bytemuck::bytes_of(&cloud_uniform(frame, texture)),
+        bytemuck::bytes_of(&cloud_uniform(environment, frame, texture)),
     );
 }
 
@@ -434,19 +513,25 @@ pub(super) fn create_cloud_gpu(
     frame: CloudFrame,
     shape: CloudShape,
 ) -> Option<CloudGpu> {
-    let vertices = cloud_vertices(environment, texture, frame, shape);
-    if vertices.is_empty() {
+    let faces = cloud_face_records(environment, texture, frame, shape);
+    if faces.is_empty() {
         return None;
     }
     let mesh_key = cloud_mesh_key(environment, texture, frame, shape);
-    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-cloud-vertices"),
-        contents: bytemuck::cast_slice(&vertices),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+    let face_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-cloud-faces"),
+        contents: bytemuck::cast_slice(&faces),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let quad_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-cloud-quad-indices"),
+        contents: bytemuck::cast_slice(&CLOUD_QUAD_INDICES),
+        usage: wgpu::BufferUsages::INDEX,
     });
     Some(CloudGpu {
-        vertex_buffer,
-        vertex_count: vertices.len() as u32,
+        face_buffer,
+        quad_index_buffer,
+        face_count: faces.len() as u32,
         mesh_key,
     })
 }
@@ -476,6 +561,29 @@ pub(super) fn cloud_mesh_key(
     texture.map(|texture| cloud_placement(environment, texture, frame, shape).mesh_key)
 }
 
+fn cloud_face_records(
+    environment: CloudEnvironment,
+    texture: Option<&CloudTextureData>,
+    frame: CloudFrame,
+    shape: CloudShape,
+) -> Vec<CloudFaceRecord> {
+    let environment = environment.sanitized();
+    if !environment.is_visible() {
+        return Vec::new();
+    }
+
+    if let Some(texture) = texture {
+        let placement = cloud_placement(environment, texture, frame, shape);
+        return match shape {
+            CloudShape::Flat => flat_cloud_cell_face_records(texture, placement.mesh_key),
+            CloudShape::Fancy => fancy_cloud_cell_face_records(texture, placement.mesh_key),
+        };
+    }
+
+    vec![encode_cloud_face(0, 0, CloudFace::Down, false, true)]
+}
+
+#[cfg(test)]
 fn cloud_vertices(
     environment: CloudEnvironment,
     texture: Option<&CloudTextureData>,
@@ -486,23 +594,20 @@ fn cloud_vertices(
     if !environment.is_visible() {
         return Vec::new();
     }
-
-    if let Some(texture) = texture {
-        let placement = cloud_placement(environment, texture, frame, shape);
-        return match shape {
-            CloudShape::Flat => flat_cloud_cell_vertices(environment, texture, placement.mesh_key),
-            CloudShape::Fancy => {
-                fancy_cloud_cell_vertices(environment, texture, placement.mesh_key)
-            }
-        };
+    let Some(texture) = texture else {
+        return basic_cloud_plane_vertices(environment);
+    };
+    let placement = cloud_placement(environment, texture, frame, shape);
+    match shape {
+        CloudShape::Flat => flat_cloud_cell_vertices(environment, texture, placement.mesh_key),
+        CloudShape::Fancy => fancy_cloud_cell_vertices(environment, texture, placement.mesh_key),
     }
-
-    basic_cloud_plane_vertices(environment)
 }
 
+#[cfg(test)]
 fn basic_cloud_plane_vertices(environment: CloudEnvironment) -> Vec<CloudVertex> {
     let y = environment.height;
-    let extent = CLOUD_PRESENTATION_HALF_EXTENT;
+    let extent = cloud_range_blocks(environment);
     let quad = [
         CloudVertex {
             position: [-extent, y, -extent],
@@ -524,13 +629,24 @@ fn basic_cloud_plane_vertices(environment: CloudEnvironment) -> Vec<CloudVertex>
     vec![quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]
 }
 
+#[cfg(test)]
 fn flat_cloud_cell_vertices(
     environment: CloudEnvironment,
     texture: &CloudTextureData,
     mesh_key: CloudMeshKey,
 ) -> Vec<CloudVertex> {
+    expand_cloud_faces(
+        environment,
+        &flat_cloud_cell_face_records(texture, mesh_key),
+    )
+}
+
+fn flat_cloud_cell_face_records(
+    texture: &CloudTextureData,
+    mesh_key: CloudMeshKey,
+) -> Vec<CloudFaceRecord> {
     let radius_cells = mesh_key.radius_cells.max(0);
-    let mut vertices = Vec::new();
+    let mut faces = Vec::new();
     for ring in 0..=2 * radius_cells {
         for relative_cell_x in -ring..=ring {
             let relative_cell_z = ring - relative_cell_x.abs();
@@ -541,8 +657,7 @@ fn flat_cloud_cell_vertices(
             {
                 if relative_cell_z != 0 {
                     append_flat_cloud_cell_if_non_empty(
-                        &mut vertices,
-                        environment,
+                        &mut faces,
                         texture,
                         mesh_key,
                         relative_cell_x,
@@ -550,8 +665,7 @@ fn flat_cloud_cell_vertices(
                     );
                 }
                 append_flat_cloud_cell_if_non_empty(
-                    &mut vertices,
-                    environment,
+                    &mut faces,
                     texture,
                     mesh_key,
                     relative_cell_x,
@@ -560,19 +674,30 @@ fn flat_cloud_cell_vertices(
             }
         }
     }
-    vertices
+    faces
 }
 
+#[cfg(test)]
 fn fancy_cloud_cell_vertices(
     environment: CloudEnvironment,
     texture: &CloudTextureData,
     mesh_key: CloudMeshKey,
 ) -> Vec<CloudVertex> {
+    expand_cloud_faces(
+        environment,
+        &fancy_cloud_cell_face_records(texture, mesh_key),
+    )
+}
+
+fn fancy_cloud_cell_face_records(
+    texture: &CloudTextureData,
+    mesh_key: CloudMeshKey,
+) -> Vec<CloudFaceRecord> {
     let radius_cells = mesh_key.radius_cells.max(0);
     let relative_camera_pos = mesh_key
         .relative_camera_pos
         .unwrap_or(CloudRelativeCameraPos::InsideClouds);
-    let mut vertices = Vec::new();
+    let mut faces = Vec::new();
     for ring in 0..=2 * radius_cells {
         for relative_cell_x in -ring..=ring {
             let relative_cell_z = ring - relative_cell_x.abs();
@@ -583,8 +708,7 @@ fn fancy_cloud_cell_vertices(
             {
                 if relative_cell_z != 0 {
                     append_fancy_cloud_cell_if_non_empty(
-                        &mut vertices,
-                        environment,
+                        &mut faces,
                         texture,
                         mesh_key,
                         relative_camera_pos,
@@ -593,8 +717,7 @@ fn fancy_cloud_cell_vertices(
                     );
                 }
                 append_fancy_cloud_cell_if_non_empty(
-                    &mut vertices,
-                    environment,
+                    &mut faces,
                     texture,
                     mesh_key,
                     relative_camera_pos,
@@ -604,12 +727,11 @@ fn fancy_cloud_cell_vertices(
             }
         }
     }
-    vertices
+    faces
 }
 
 fn append_flat_cloud_cell_if_non_empty(
-    vertices: &mut Vec<CloudVertex>,
-    environment: CloudEnvironment,
+    faces: &mut Vec<CloudFaceRecord>,
     texture: &CloudTextureData,
     mesh_key: CloudMeshKey,
     relative_cell_x: i32,
@@ -623,35 +745,17 @@ fn append_flat_cloud_cell_if_non_empty(
     ) {
         return;
     }
-    let x0 = relative_cell_x as f32 * CLOUD_CELL_SIZE_IN_BLOCKS;
-    let z0 = relative_cell_z as f32 * CLOUD_CELL_SIZE_IN_BLOCKS;
-    let x1 = x0 + CLOUD_CELL_SIZE_IN_BLOCKS;
-    let z1 = z0 + CLOUD_CELL_SIZE_IN_BLOCKS;
-    let y = environment.height;
-    let quad = [
-        CloudVertex {
-            position: [x1, y, z0],
-            color: environment.color,
-        },
-        CloudVertex {
-            position: [x1, y, z1],
-            color: environment.color,
-        },
-        CloudVertex {
-            position: [x0, y, z1],
-            color: environment.color,
-        },
-        CloudVertex {
-            position: [x0, y, z0],
-            color: environment.color,
-        },
-    ];
-    vertices.extend([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
+    faces.push(encode_cloud_face(
+        relative_cell_x,
+        relative_cell_z,
+        CloudFace::Down,
+        false,
+        true,
+    ));
 }
 
 fn append_fancy_cloud_cell_if_non_empty(
-    vertices: &mut Vec<CloudVertex>,
-    environment: CloudEnvironment,
+    faces: &mut Vec<CloudFaceRecord>,
     texture: &CloudTextureData,
     mesh_key: CloudMeshKey,
     relative_camera_pos: CloudRelativeCameraPos,
@@ -669,8 +773,7 @@ fn append_fancy_cloud_cell_if_non_empty(
 
     if relative_camera_pos != CloudRelativeCameraPos::BelowClouds {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::Up,
@@ -679,8 +782,7 @@ fn append_fancy_cloud_cell_if_non_empty(
     }
     if relative_camera_pos != CloudRelativeCameraPos::AboveClouds {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::Down,
@@ -697,8 +799,7 @@ fn append_fancy_cloud_cell_if_non_empty(
     ) && relative_cell_z > 0
     {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::North,
@@ -715,8 +816,7 @@ fn append_fancy_cloud_cell_if_non_empty(
     ) && relative_cell_z < 0
     {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::South,
@@ -733,8 +833,7 @@ fn append_fancy_cloud_cell_if_non_empty(
     ) && relative_cell_x > 0
     {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::West,
@@ -751,8 +850,7 @@ fn append_fancy_cloud_cell_if_non_empty(
     ) && relative_cell_x < 0
     {
         append_cloud_face(
-            vertices,
-            environment,
+            faces,
             relative_cell_x,
             relative_cell_z,
             CloudFace::East,
@@ -762,33 +860,80 @@ fn append_fancy_cloud_cell_if_non_empty(
 
     if relative_cell_x.abs() <= 1 && relative_cell_z.abs() <= 1 {
         for face in CloudFace::ALL {
-            append_cloud_face(
-                vertices,
-                environment,
-                relative_cell_x,
-                relative_cell_z,
-                face,
-                true,
-            );
+            append_cloud_face(faces, relative_cell_x, relative_cell_z, face, true);
         }
     }
 }
 
 fn append_cloud_face(
-    vertices: &mut Vec<CloudVertex>,
-    environment: CloudEnvironment,
+    faces: &mut Vec<CloudFaceRecord>,
     relative_cell_x: i32,
     relative_cell_z: i32,
     face: CloudFace,
     inside_face: bool,
 ) {
-    let mut quad = cloud_face_quad(environment, relative_cell_x, relative_cell_z, face);
-    if inside_face {
-        quad.reverse();
-    }
-    vertices.extend([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
+    faces.push(encode_cloud_face(
+        relative_cell_x,
+        relative_cell_z,
+        face,
+        inside_face,
+        false,
+    ));
 }
 
+fn encode_cloud_face(
+    cell_x: i32,
+    cell_z: i32,
+    face: CloudFace,
+    inside_face: bool,
+    use_top_color: bool,
+) -> CloudFaceRecord {
+    debug_assert!((-256..=255).contains(&cell_x));
+    debug_assert!((-256..=255).contains(&cell_z));
+    let mut flags = face.direction_id();
+    if inside_face {
+        flags |= CLOUD_FLAG_INSIDE_FACE;
+    }
+    if use_top_color {
+        flags |= CLOUD_FLAG_USE_TOP_COLOR;
+    }
+    flags |= (cell_x as u8 & 1) * CLOUD_FLAG_EXTRA_X;
+    flags |= (cell_z as u8 & 1) * CLOUD_FLAG_EXTRA_Z;
+    let cell_x_high = (cell_x >> 1) as i8 as u8;
+    let cell_z_high = (cell_z >> 1) as i8 as u8;
+    CloudFaceRecord {
+        packed: u32::from(cell_x_high) | (u32::from(cell_z_high) << 8) | (u32::from(flags) << 16),
+    }
+}
+
+#[cfg(test)]
+fn expand_cloud_faces(
+    environment: CloudEnvironment,
+    faces: &[CloudFaceRecord],
+) -> Vec<CloudVertex> {
+    let mut vertices = Vec::with_capacity(faces.len() * 6);
+    for record in faces {
+        let cell_x_high = record.packed as u8 as i8 as i32;
+        let cell_z_high = (record.packed >> 8) as u8 as i8 as i32;
+        let flags = (record.packed >> 16) as u8;
+        let cell_x = (cell_x_high << 1) | i32::from(flags & CLOUD_FLAG_EXTRA_X != 0);
+        let cell_z = (cell_z_high << 1) | i32::from(flags & CLOUD_FLAG_EXTRA_Z != 0);
+        let face = CloudFace::from_direction_id(flags & 7);
+        let mut quad = cloud_face_quad(environment, cell_x, cell_z, face);
+        if flags & CLOUD_FLAG_USE_TOP_COLOR != 0 {
+            for vertex in &mut quad {
+                vertex.color = environment.color;
+            }
+        }
+        if flags & CLOUD_FLAG_INSIDE_FACE != 0 {
+            quad.reverse();
+        }
+        vertices.extend([quad[0], quad[1], quad[2], quad[2], quad[3], quad[0]]);
+    }
+    vertices
+}
+
+#[cfg(test)]
 fn cloud_face_quad(
     environment: CloudEnvironment,
     relative_cell_x: i32,
@@ -813,6 +958,7 @@ fn cloud_face_quad(
     positions.map(|position| CloudVertex { position, color })
 }
 
+#[cfg(test)]
 fn cloud_face_color(environment: CloudEnvironment, face: CloudFace) -> [f32; 4] {
     let tint = match face {
         CloudFace::Down => CLOUD_BOTTOM_FACE_TINT,
@@ -868,12 +1014,43 @@ impl CloudFace {
         CloudFace::West,
         CloudFace::East,
     ];
+
+    fn direction_id(self) -> u8 {
+        match self {
+            Self::Down => 0,
+            Self::Up => 1,
+            Self::North => 2,
+            Self::South => 3,
+            Self::West => 4,
+            Self::East => 5,
+        }
+    }
+
+    #[cfg(test)]
+    fn from_direction_id(direction: u8) -> Self {
+        match direction {
+            0 => Self::Down,
+            1 => Self::Up,
+            2 => Self::North,
+            3 => Self::South,
+            4 => Self::West,
+            5 => Self::East,
+            _ => panic!("invalid cloud direction {direction}"),
+        }
+    }
 }
 
 impl Default for CloudUniform {
     fn default() -> Self {
         Self {
+            color: [0.0, 0.0, 0.0, 0.0],
             offset: [0.0, 0.0, 0.0, 0.0],
+            cell_size: [
+                CLOUD_CELL_SIZE_IN_BLOCKS,
+                CLOUD_FANCY_HEIGHT_IN_BLOCKS,
+                CLOUD_CELL_SIZE_IN_BLOCKS,
+                0.0,
+            ],
         }
     }
 }
@@ -882,20 +1059,45 @@ fn vanilla_cloud_radius_cells(radius_blocks: f32) -> i32 {
     (radius_blocks / CLOUD_CELL_SIZE_IN_BLOCKS).ceil() as i32
 }
 
-fn cloud_uniform(frame: CloudFrame, texture: Option<&CloudTextureData>) -> CloudUniform {
-    let offset = texture
-        .map(|texture| {
-            cloud_placement(
-                CloudEnvironment::overworld_default(),
-                texture,
-                frame,
-                CloudShape::Flat,
-            )
-            .offset
-        })
-        .unwrap_or([0.0, 0.0]);
+fn cloud_uniform(
+    environment: CloudEnvironment,
+    frame: CloudFrame,
+    texture: Option<&CloudTextureData>,
+) -> CloudUniform {
+    let environment = environment.sanitized();
+    let frame = frame.sanitized();
+    let (offset, cell_size) = if let Some(texture) = texture {
+        let placement = cloud_placement(environment, texture, frame, CloudShape::Flat);
+        (
+            [
+                frame.camera_position[0] + placement.offset[0],
+                environment.height,
+                frame.camera_position[2] + placement.offset[1],
+                0.0,
+            ],
+            [
+                CLOUD_CELL_SIZE_IN_BLOCKS,
+                CLOUD_FANCY_HEIGHT_IN_BLOCKS,
+                CLOUD_CELL_SIZE_IN_BLOCKS,
+                0.0,
+            ],
+        )
+    } else {
+        let extent = cloud_range_blocks(environment);
+        (
+            [
+                frame.camera_position[0] - extent,
+                environment.height,
+                frame.camera_position[2] - extent,
+                0.0,
+            ],
+            [extent * 2.0, 0.0, extent * 2.0, 0.0],
+        )
+    };
     CloudUniform {
-        offset: [offset[0], offset[1], 0.0, 0.0],
+        color: environment.color,
+        offset,
+        cell_size,
     }
 }
 
@@ -928,7 +1130,7 @@ fn cloud_placement(
         mesh_key: CloudMeshKey {
             center_cell_x,
             center_cell_z,
-            radius_cells: vanilla_cloud_radius_cells(CLOUD_PRESENTATION_HALF_EXTENT),
+            radius_cells: vanilla_cloud_radius_cells(cloud_range_blocks(environment)),
             shape,
             relative_camera_pos: match shape {
                 CloudShape::Flat => None,
@@ -952,6 +1154,10 @@ fn cloud_relative_camera_pos(
     } else {
         CloudRelativeCameraPos::InsideClouds
     }
+}
+
+fn cloud_range_blocks(environment: CloudEnvironment) -> f32 {
+    environment.range_chunks as f32 * 16.0
 }
 
 fn wrap_cloud_coordinate(value: f64, period: f64) -> f64 {
@@ -1012,16 +1218,40 @@ mod tests {
 
     use super::{
         basic_cloud_plane_vertices, cloud_placement, cloud_uniform, cloud_vertices,
-        create_cloud_texture_data, fancy_cloud_cell_vertices, flat_cloud_cell_vertices,
-        vanilla_cloud_radius_cells, CloudEnvironment, CloudFrame, CloudMeshKey,
-        CloudRelativeCameraPos, CloudShape, CloudTextureImage, CLOUD_BLOCKS_PER_TICK,
-        CLOUD_BOTTOM_FACE_TINT, CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_FANCY_HEIGHT_IN_BLOCKS,
-        CLOUD_FANCY_PIPELINE_CULL_MODE, CLOUD_FLAT_PIPELINE_CULL_MODE, CLOUD_NORTH_SOUTH_FACE_TINT,
-        CLOUD_PIPELINE_DEPTH_COMPARE, CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
-        CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER, CLOUD_TARGET_BLEND, CLOUD_TOP_FACE_TINT,
-        CLOUD_Z_OFFSET_BLOCKS, DEPTH_TARGET_USAGE, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD,
-        VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+        create_cloud_bind_group_layout, create_cloud_pipeline, create_cloud_texture_data,
+        encode_cloud_face, fancy_cloud_cell_vertices, flat_cloud_cell_vertices, CloudEnvironment,
+        CloudFace, CloudFaceRecord, CloudFrame, CloudMeshKey, CloudRelativeCameraPos, CloudShape,
+        CloudTextureImage, CLOUD_BLOCKS_PER_TICK, CLOUD_BOTTOM_FACE_TINT,
+        CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_FANCY_HEIGHT_IN_BLOCKS, CLOUD_FANCY_PIPELINE_CULL_MODE,
+        CLOUD_FLAT_PIPELINE_CULL_MODE, CLOUD_NORTH_SOUTH_FACE_TINT, CLOUD_PIPELINE_DEPTH_COMPARE,
+        CLOUD_PIPELINE_DEPTH_WRITE_ENABLED, CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_QUAD_INDICES,
+        CLOUD_SHADER, CLOUD_TARGET_BLEND, CLOUD_TOP_FACE_TINT, CLOUD_Z_OFFSET_BLOCKS,
+        DEPTH_TARGET_USAGE, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
+        VANILLA_DEFAULT_CLOUD_HEIGHT,
     };
+
+    fn request_test_device() -> Option<wgpu::Device> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))?;
+        pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-cloud-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits:
+                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            },
+            None,
+        ))
+        .ok()
+        .map(|(device, _queue)| device)
+    }
 
     #[test]
     fn cloud_environment_uses_vanilla_overworld_defaults() {
@@ -1058,6 +1288,23 @@ mod tests {
         assert_eq!(
             CLOUD_TARGET_BLEND.alpha.dst_factor,
             wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+    }
+
+    #[test]
+    fn cloud_packed_face_pipeline_validates_wgsl_on_wgpu_device() {
+        let Some(device) = request_test_device() else {
+            return;
+        };
+        let terrain_layout = crate::gpu::create_terrain_bind_group_layout(&device);
+        let cloud_layout = create_cloud_bind_group_layout(&device);
+
+        let _pipeline = create_cloud_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &terrain_layout,
+            &cloud_layout,
+            CloudShape::Fancy,
         );
     }
 
@@ -1214,10 +1461,23 @@ mod tests {
     }
 
     #[test]
-    fn vanilla_cloud_radius_matches_cloud_renderer_cell_size() {
+    fn vanilla_cloud_radius_matches_configured_chunk_range_and_cell_size() {
+        let environment = CloudEnvironment::overworld_default().with_range_chunks(64);
         assert_eq!(
-            vanilla_cloud_radius_cells(CLOUD_PRESENTATION_HALF_EXTENT),
-            (CLOUD_PRESENTATION_HALF_EXTENT / CLOUD_CELL_SIZE_IN_BLOCKS).ceil() as i32
+            cloud_placement(
+                environment,
+                &create_cloud_texture_data(&CloudTextureImage {
+                    width: 1,
+                    height: 1,
+                    rgba: vec![0, 0, 0, 255],
+                })
+                .unwrap(),
+                CloudFrame::default(),
+                CloudShape::Fancy,
+            )
+            .mesh_key
+            .radius_cells,
+            (64.0 * 16.0_f32 / CLOUD_CELL_SIZE_IN_BLOCKS).ceil() as i32
         );
     }
 
@@ -1278,16 +1538,13 @@ mod tests {
     }
 
     #[test]
-    fn cloud_vertices_keep_basic_plane_extent_constant() {
-        let vertices = basic_cloud_plane_vertices(CloudEnvironment::overworld_default());
+    fn cloud_vertices_keep_basic_plane_extent_equal_to_configured_range() {
+        let vertices =
+            basic_cloud_plane_vertices(CloudEnvironment::overworld_default().with_range_chunks(64));
 
         assert_eq!(
             vertices[0].position,
-            [
-                -CLOUD_PRESENTATION_HALF_EXTENT,
-                VANILLA_DEFAULT_CLOUD_HEIGHT,
-                -CLOUD_PRESENTATION_HALF_EXTENT,
-            ]
+            [-(64.0 * 16.0), VANILLA_DEFAULT_CLOUD_HEIGHT, -(64.0 * 16.0),]
         );
     }
 
@@ -1442,8 +1699,13 @@ mod tests {
             -((12.0 + (-5.0 + CLOUD_Z_OFFSET_BLOCKS) as f32) % 12.0),
         );
         assert_eq!(
-            cloud_uniform(frame, Some(&texture)).offset,
-            [placement.offset[0], placement.offset[1], 0.0, 0.0]
+            cloud_uniform(CloudEnvironment::overworld_default(), frame, Some(&texture)).offset,
+            [
+                frame.camera_position[0] + placement.offset[0],
+                VANILLA_DEFAULT_CLOUD_HEIGHT,
+                frame.camera_position[2] + placement.offset[1],
+                0.0
+            ]
         );
 
         let vertices = flat_cloud_cell_vertices(
@@ -1492,11 +1754,23 @@ mod tests {
     }
 
     #[test]
+    fn cloud_face_record_preserves_vanilla_three_byte_encoding() {
+        let record = encode_cloud_face(-3, 4, CloudFace::East, true, false);
+
+        assert_eq!(std::mem::size_of::<CloudFaceRecord>(), 4);
+        assert_eq!(record.packed.to_le_bytes(), [0xfe, 0x02, 0x95, 0x00]);
+        let flat = encode_cloud_face(2, -1, CloudFace::Down, false, true);
+        assert_eq!(flat.packed.to_le_bytes(), [0x01, 0xff, 0x60, 0x00]);
+        assert_eq!(CLOUD_QUAD_INDICES, [0, 1, 2, 2, 3, 0]);
+    }
+
+    #[test]
     fn cloud_shader_consumes_vanilla_cloud_fog_end_slot() {
         assert!(CLOUD_SHADER.contains("let cloud_end = camera.fog_visibility_ends.y;"));
         assert!(CLOUD_SHADER.contains("@group(1) @binding(0)"));
-        assert!(CLOUD_SHADER.contains("input.position.x + cloud_info.offset.x"));
-        assert!(CLOUD_SHADER.contains("input.position.z + cloud_info.offset.y"));
+        assert!(CLOUD_SHADER.contains("@location(0) packed_face: u32"));
+        assert!(CLOUD_SHADER.contains("let directed_vertex = select("));
+        assert!(CLOUD_SHADER.contains("+ cloud_info.offset.xyz"));
         assert!(CLOUD_SHADER.contains(
             "color.a *= 1.0 - linear_fog_value(length(input.fog_position), 0.0, cloud_end);"
         ));

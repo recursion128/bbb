@@ -971,8 +971,12 @@ impl NativeItemRuntime {
         self.textures.has_animation()
     }
 
-    pub fn texture_animation_atlas_rgba(&self, tick: u64) -> Result<Option<Vec<u8>>> {
-        self.textures.animation_atlas_rgba(tick)
+    pub fn texture_animation_atlas_patches(
+        &self,
+        previous_tick: u64,
+        tick: u64,
+    ) -> Result<Option<Vec<bbb_pack::AtlasMipPatch>>> {
+        self.textures.animation_atlas_patches(previous_tick, tick)
     }
 
     pub fn atlas_sprite_uvs(&self) -> Vec<ItemAtlasSpriteUv> {

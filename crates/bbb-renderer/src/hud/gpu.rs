@@ -1,6 +1,7 @@
 use std::mem;
 
 use anyhow::{anyhow, bail, Result};
+use bbb_pack::AtlasMipPatch;
 
 use super::HudVertex;
 use crate::pipeline_builder::RenderPipelineBuilder;
@@ -362,6 +363,21 @@ pub(crate) fn update_hud_sprite_gpu(
         },
     );
     Ok(())
+}
+
+pub(crate) fn update_hud_sprite_gpu_patches(
+    queue: &wgpu::Queue,
+    sprite: &HudSpriteGpu,
+    patches: &[AtlasMipPatch],
+) -> Result<()> {
+    crate::gpu::write_texture_atlas_mip_patches_gpu(
+        queue,
+        &sprite.texture,
+        sprite.width,
+        sprite.height,
+        1,
+        patches,
+    )
 }
 
 fn validate_hud_sprite_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {

@@ -13,10 +13,12 @@ use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
 use bbb_renderer::{
-    TerrainTextureFiltering, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
-    VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    TerrainTextureFiltering, VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
+    VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
+    VANILLA_MAX_CLOUD_RANGE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_CLOUD_RANGE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{PlayerReportEnvironment, TutorialStep};
 use clap::{ArgAction, Parser, ValueEnum};
@@ -189,6 +191,12 @@ pub(crate) struct Args {
         value_parser = parse_render_distance
     )]
     pub(crate) render_distance_chunks: u32,
+    #[arg(
+        long = "cloud-range",
+        default_value_t = VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS,
+        value_parser = parse_cloud_range
+    )]
+    pub(crate) cloud_range_chunks: u32,
     #[arg(
         long = "client-framerate-limit",
         default_value_t = VANILLA_UNLIMITED_FRAMERATE_LIMIT,
@@ -809,6 +817,19 @@ fn parse_client_framerate_limit(value: &str) -> std::result::Result<u32, String>
     }
 }
 
+fn parse_cloud_range(value: &str) -> std::result::Result<u32, String> {
+    let range = value
+        .parse::<u32>()
+        .map_err(|_| format!("cloud range must be an integer: {value}"))?;
+    if (VANILLA_MIN_CLOUD_RANGE_CHUNKS..=VANILLA_MAX_CLOUD_RANGE_CHUNKS).contains(&range) {
+        Ok(range)
+    } else {
+        Err(format!(
+            "cloud range must be between {VANILLA_MIN_CLOUD_RANGE_CHUNKS} and {VANILLA_MAX_CLOUD_RANGE_CHUNKS} chunks"
+        ))
+    }
+}
+
 pub(crate) fn client_framerate_limit_interval(client_framerate_limit: u32) -> Option<Duration> {
     if !(1..=250).contains(&client_framerate_limit) {
         return None;
@@ -1239,6 +1260,20 @@ mod tests {
         );
 
         assert!(Args::try_parse_from(["bbb-native", "--client-framerate-limit", "251"]).is_err());
+    }
+
+    #[test]
+    fn cloud_range_matches_vanilla_option_bounds() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.cloud_range_chunks,
+            VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS
+        );
+
+        let fancy = Args::try_parse_from(["bbb-native", "--cloud-range", "64"]).unwrap();
+        assert_eq!(fancy.cloud_range_chunks, 64);
+        assert!(Args::try_parse_from(["bbb-native", "--cloud-range", "1"]).is_err());
+        assert!(Args::try_parse_from(["bbb-native", "--cloud-range", "129"]).is_err());
     }
 
     #[test]
