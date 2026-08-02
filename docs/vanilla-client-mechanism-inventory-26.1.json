@@ -1,5 +1,23 @@
 {
   "generated_by": "scripts/generate-client-mechanism-inventory.py",
+  "generator_inputs": [
+    {
+      "path": "scripts/client_mechanism_inventory.py",
+      "sha256": "6701509630025211ab744f20ad7dcb3e214c03bbac7b70c09daac85c6b0c3030"
+    },
+    {
+      "path": "scripts/generate-client-mechanism-inventory.py",
+      "sha256": "5c8b5eade40c6d9ad4ef4474469843477cc4c3f177d7ade41030c31b1064088b"
+    },
+    {
+      "path": "scripts/packet_catalog_extractor.py",
+      "sha256": "563bc0bff9679b25857f7889ffc020c82132fa4a1edee3d035a69d11071808f9"
+    },
+    {
+      "path": "scripts/vanilla_java_source.py",
+      "sha256": "891e79a0af2045a37c5cb824b5ec00d62486a92c47303b4f95ce39e05b05a2a0"
+    }
+  ],
   "mechanisms": {
     "audio-sound-manager-engine": {
       "bbb_evidence": [

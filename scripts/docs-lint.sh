@@ -226,6 +226,26 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
+# The checked JSON is an exact generated artifact, not merely a collection of
+# independently valid hashes. Re-render it when the local Vanilla tree and the
+# repo-owned generator are both available; source-absent environments retain
+# the structural/hash validation in docs_wiki_lint.py and skip this comparison
+# explicitly.
+vanilla_source_root=${BBB_DOCS_LINT_VANILLA_SOURCE_ROOT:-${HOME}/Work/mc-code/sources/26.1}
+client_inventory_generator="$repo_root/scripts/generate-client-mechanism-inventory.py"
+client_inventory_output="$repo_root/docs/vanilla-client-mechanism-inventory-26.1.json"
+if [ -d "$vanilla_source_root" ] && [ -f "$client_inventory_generator" ]; then
+  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+    "$client_inventory_generator" \
+    --source-root "$vanilla_source_root" \
+    --output "$client_inventory_output" \
+    --check; then
+    failed=1
+  fi
+else
+  echo "docs lint: client inventory exact-output check skipped (Vanilla tree or repo generator absent)"
+fi
+
 if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
   failed=1
 fi

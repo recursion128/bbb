@@ -40,5 +40,15 @@ focused evidence。发现 product gap 时只更新 ledger/goal route，不在 do
 [`document-inventory.md`](document-inventory.md)覆盖所有受维护 Markdown。docs lint 检查
 Wiki 入口、相对链接、孤儿页、唯一 mechanism id、合法状态、未关闭状态 route、
 inventory 覆盖、repo-local path、允许的 `docs/` Markdown 布局、陈旧完成语言和中文正文。
-本地 Vanilla tree 存在时校验记录的关键类；不存在时打印明确降级，不使 CI 依赖个人
-绝对路径。
+
+外部客户端 census 的唯一生成 evidence 是
+`docs/vanilla-client-mechanism-inventory-26.1.json`。它不保存状态或任务，只保存共享
+Tree-sitter Java frontend 提取的稳定 owner id、源码位置/哈希、mechanism 映射和可定位 BBB
+evidence。`scripts/generate-client-mechanism-inventory.py --check` 对完整输出做字节级 stale
+检查；Wiki lint 还独立检查 owner/mechanism 唯一性、稳定排序、汇总计数、BBB 路径、
+inventory→matrix 映射和 ledger↔matrix 双向 route。矩阵的 `equivalent` 行必须通过该
+inventory 或本地链接/路径指向可执行、可定位证据，不能只写“已有测试”。
+
+本地 Vanilla tree 存在时，门禁重跑 extractor 并校验全部 source hashes；不存在时明确
+打印 exact-output/source-hash 降级，但仍检查版本化 JSON 的 schema、generator-input hash、
+repo-owned evidence 和双向 route，因此离线 CI 不依赖个人绝对路径，也不会静默接受断链。

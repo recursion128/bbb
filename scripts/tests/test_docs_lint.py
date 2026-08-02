@@ -1,4 +1,6 @@
 import os
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -68,11 +70,15 @@ class DocsLintTests(unittest.TestCase):
 
 ## Deferred owner
 
+Matrix routes: `fixture-deferred`
+
 - A bounded gap is `deferred`. Reopen when its exact owner exists.
 
 # Not needed
 
 ## Vanilla exclusions
+
+Matrix routes: `fixture-not-needed`
 
 - Vanilla `ExampleOwner.method` has no client behavior.
 """,
@@ -107,15 +113,71 @@ class DocsLintTests(unittest.TestCase):
 | Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `fixture-valid` | 测试 | `Owner.method` | fixture | value | `equivalent` | fixture | 版本变化时重开 |
+| `fixture-deferred` | 测试 | `Owner.deferred` | fixture | value | `deferred-external` | fixture | [ledger](../../unsupported-features.md) |
+| `fixture-not-needed` | 测试 | `Owner.excluded` | fixture | value | `not-needed` | fixture | [ledger](../../unsupported-features.md) |
 """,
+            encoding="utf-8",
+        )
+        glossary = repo / "docs" / "wiki" / "glossary.md"
+        (repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json").write_text(
+            json.dumps(
+                {
+                    "generated_by": "fixture",
+                    "generator_inputs": [
+                        {
+                            "path": "docs/wiki/glossary.md",
+                            "sha256": hashlib.sha256(glossary.read_bytes()).hexdigest(),
+                        }
+                    ],
+                    "mechanisms": {
+                        "fixture-valid": {
+                            "bbb_evidence": ["docs/wiki/glossary.md"],
+                            "owner_count": 1,
+                        }
+                    },
+                    "owners": [
+                        {
+                            "category": "fixture",
+                            "domain": "fixture",
+                            "kind": "method",
+                            "mechanism_id": "fixture-valid",
+                            "owner_id": "method:fixture.Owner#method()",
+                            "scope": "external-client",
+                            "source": {"line": 1, "path": "fixture/Owner.java"},
+                            "vanilla_owner": "fixture.Owner#method()",
+                        }
+                    ],
+                    "schema_version": 1,
+                    "selection_contract": {"policy": "fixture"},
+                    "source_files": [
+                        {"path": "fixture/Owner.java", "sha256": "0" * 64}
+                    ],
+                    "summary": {
+                        "by_category": {"fixture": 1},
+                        "by_domain": {"fixture": 1},
+                        "mapped_owner_count": 1,
+                        "owner_count": 1,
+                        "unmapped_owner_count": 0,
+                    },
+                    "vanilla_version": "26.1",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
             encoding="utf-8",
         )
         self.sync_inventory(repo)
         return repo
 
-    def run_lint(self, repo: Path) -> subprocess.CompletedProcess[str]:
+    def run_lint(
+        self, repo: Path, vanilla_source_root: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["BBB_DOCS_LINT_REPO_ROOT"] = str(repo)
+        env["BBB_DOCS_LINT_VANILLA_SOURCE_ROOT"] = str(
+            vanilla_source_root or repo / "missing-vanilla"
+        )
         return subprocess.run(
             ["sh", str(DOCS_LINT)],
             cwd=repo,
@@ -324,6 +386,109 @@ class DocsLintTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("invalid open-state route", result.stdout)
+
+    def test_inventory_owner_without_mapping_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["owners"][0]["mechanism_id"] = "fixture-unmapped"
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("unmapped Vanilla owner", result.stdout)
+
+    def test_inventory_mechanism_without_matrix_row_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["mechanisms"]["fixture-unmapped"] = {
+                "bbb_evidence": ["docs/wiki/glossary.md"],
+                "owner_count": 0,
+            }
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("unmapped inventory mechanism id fixture-unmapped", result.stdout)
+
+    def test_duplicate_inventory_owner_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["owners"].append(dict(value["owners"][0]))
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("duplicate Vanilla owner ids", result.stdout)
+
+    def test_stale_inventory_generator_input_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            glossary = repo / "docs" / "wiki" / "glossary.md"
+            glossary.write_text(glossary.read_text(encoding="utf-8") + "\n发生变化。\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("generator input is stale", result.stdout)
+
+    def test_stale_inventory_source_hash_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            source_root = repo / "vanilla"
+            source = source_root / "fixture" / "Owner.java"
+            source.parent.mkdir(parents=True)
+            source.write_text("class Owner { void changed() {} }\n", encoding="utf-8")
+            result = self.run_lint(repo, source_root)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("inventory source is stale", result.stdout)
+
+    def test_stale_bbb_evidence_path_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["mechanisms"]["fixture-valid"]["bbb_evidence"] = ["crates/missing.rs"]
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("stale BBB evidence path", result.stdout)
+
+    def test_ledger_route_to_unknown_matrix_id_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            ledger = repo / "docs" / "unsupported-features.md"
+            ledger.write_text(
+                ledger.read_text(encoding="utf-8").replace(
+                    "Matrix routes: `fixture-deferred`",
+                    "Matrix routes: `fixture-unknown`",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("ledger route references unknown mechanism id", result.stdout)
+
+    def test_equivalent_row_without_locatable_evidence_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            matrix = repo / "docs" / "wiki" / "parity" / "vanilla-26.1-matrix.md"
+            matrix.write_text(
+                matrix.read_text(encoding="utf-8")
+                + "| `fixture-no-evidence` | 测试 | owner | bbb | state | `equivalent` | prose only | version |\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("lacks locatable evidence", result.stdout)
 
 
 if __name__ == "__main__":

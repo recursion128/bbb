@@ -5,6 +5,9 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, deque
+import hashlib
+import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -20,10 +23,15 @@ ALLOWED_STATUSES = {
     "unverified",
 }
 OPEN_STATUSES = {"partial", "missing", "active", "deferred-external", "unverified"}
+ROUTED_STATUSES = OPEN_STATUSES | {"not-needed"}
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 CODE_RE = re.compile(r"`([^`\n]+)`")
 MECHANISM_RE = re.compile(r"^机制 ID：`([a-z0-9]+(?:-[a-z0-9]+)*)`\s*$", re.MULTILINE)
 INVENTORY_RE = re.compile(r"^\| `([^`]+\.md)` \|", re.MULTILINE)
+LEDGER_ROUTE_RE = re.compile(
+    r"^Matrix routes?:\s*((?:`[a-z0-9]+(?:-[a-z0-9]+)*`(?:,?\s*)?)+)\s*$",
+    re.MULTILINE,
+)
 
 
 class WikiLint:
@@ -142,12 +150,13 @@ class WikiLint:
                 rendered = ", ".join(str(path.relative_to(self.repo)) for path in paths)
                 self.fail(f"duplicate mechanism id {mechanism_id}: {rendered}")
 
-    def check_parity(self) -> None:
+    def check_parity(self) -> dict[str, dict[str, str]]:
         matrix = self.repo / "docs" / "wiki" / "parity" / "vanilla-26.1-matrix.md"
         if not matrix.is_file():
             self.fail("parity matrix missing: docs/wiki/parity/vanilla-26.1-matrix.md")
-            return
+            return {}
         seen: set[str] = set()
+        rows: dict[str, dict[str, str]] = {}
         for line_number, line in enumerate(
             matrix.read_text(encoding="utf-8").splitlines(), start=1
         ):
@@ -158,6 +167,8 @@ class WikiLint:
                 self.fail(f"malformed parity row at {matrix.relative_to(self.repo)}:{line_number}")
                 continue
             mechanism_id = cells[0].strip("`")
+            if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", mechanism_id) is None:
+                self.fail(f"illegal parity mechanism id {mechanism_id!r}")
             if mechanism_id in seen:
                 self.fail(f"duplicate parity mechanism id {mechanism_id}")
             seen.add(mechanism_id)
@@ -167,13 +178,258 @@ class WikiLint:
                 self.fail(
                     f"illegal parity status {status or cells[5]!r} for {mechanism_id}"
                 )
-            if status in OPEN_STATUSES and not re.search(
-                r"unsupported-features\.md|goal\.md", " ".join(cells[6:8])
+            if status in ROUTED_STATUSES and not re.search(
+                r"unsupported-features\.md", " ".join(cells[6:8])
             ):
                 self.fail(
                     f"invalid open-state route for {mechanism_id}: "
-                    "link goal.md or docs/unsupported-features.md"
+                    "link docs/unsupported-features.md"
                 )
+            rows[mechanism_id] = {
+                "bbb_owner": cells[3],
+                "evidence": cells[6],
+                "route": cells[7],
+                "status": status,
+            }
+        return rows
+
+    @staticmethod
+    def strict_json(path: Path) -> object:
+        def object_pairs(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError(f"duplicate JSON key {key!r}")
+                value[key] = item
+            return value
+
+        return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=object_pairs)
+
+    def check_client_mechanism_inventory(
+        self, rows: dict[str, dict[str, str]]
+    ) -> str:
+        relative = Path("docs/vanilla-client-mechanism-inventory-26.1.json")
+        path = self.repo / relative
+        if not path.is_file():
+            self.fail(f"client mechanism inventory missing: {relative}")
+            return "client mechanism inventory missing"
+        try:
+            value = self.strict_json(path)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            self.fail(f"invalid client mechanism inventory: {error}")
+            return "client mechanism inventory invalid"
+        if not isinstance(value, dict) or value.get("schema_version") != 1:
+            self.fail("invalid client mechanism inventory schema")
+            return "client mechanism inventory invalid"
+        if value.get("vanilla_version") != "26.1":
+            self.fail("client mechanism inventory has the wrong Vanilla version")
+
+        owners = value.get("owners")
+        mechanisms = value.get("mechanisms")
+        source_files = value.get("source_files")
+        generator_inputs = value.get("generator_inputs")
+        summary = value.get("summary")
+        if not isinstance(owners, list) or not isinstance(mechanisms, dict):
+            self.fail("client mechanism inventory owners/mechanisms are malformed")
+            return "client mechanism inventory invalid"
+        if not isinstance(source_files, list) or not isinstance(generator_inputs, list):
+            self.fail("client mechanism inventory source hash lists are malformed")
+            return "client mechanism inventory invalid"
+
+        owner_ids: list[str] = []
+        owner_mechanisms: Counter[str] = Counter()
+        owner_categories: Counter[str] = Counter()
+        owner_domains: Counter[str] = Counter()
+        declared_sources: set[str] = set()
+        for item in source_files:
+            if not isinstance(item, dict):
+                self.fail("client mechanism inventory source entry is malformed")
+                continue
+            source_path = item.get("path")
+            digest = item.get("sha256")
+            if (
+                not isinstance(source_path, str)
+                or Path(source_path).is_absolute()
+                or ".." in Path(source_path).parts
+                or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            ):
+                self.fail(f"invalid client mechanism source hash entry: {item!r}")
+                continue
+            if source_path in declared_sources:
+                self.fail(f"duplicate client mechanism source path {source_path}")
+            declared_sources.add(source_path)
+
+        for item in owners:
+            if not isinstance(item, dict):
+                self.fail("client mechanism inventory owner is malformed")
+                continue
+            owner_id = item.get("owner_id")
+            mechanism_id = item.get("mechanism_id")
+            source = item.get("source")
+            category = item.get("category")
+            domain = item.get("domain")
+            scope = item.get("scope")
+            vanilla_owner = item.get("vanilla_owner")
+            if not isinstance(owner_id, str) or not owner_id:
+                self.fail(f"client mechanism inventory owner lacks a stable id: {item!r}")
+                continue
+            owner_ids.append(owner_id)
+            if not isinstance(mechanism_id, str) or mechanism_id not in mechanisms:
+                self.fail(f"unmapped Vanilla owner {owner_id}: {mechanism_id!r}")
+            else:
+                owner_mechanisms[mechanism_id] += 1
+            if isinstance(category, str):
+                owner_categories[category] += 1
+            if isinstance(domain, str):
+                owner_domains[domain] += 1
+            if scope not in {"external-client", "out-of-scope"}:
+                self.fail(f"invalid scope for Vanilla owner {owner_id}: {scope!r}")
+            if not isinstance(vanilla_owner, str) or not vanilla_owner:
+                self.fail(f"Vanilla owner {owner_id} lacks a source-derived owner label")
+            if (
+                not isinstance(source, dict)
+                or source.get("path") not in declared_sources
+                or not isinstance(source.get("line"), int)
+                or source.get("line", 0) < 1
+            ):
+                self.fail(f"invalid source locator for Vanilla owner {owner_id}")
+
+        duplicates = sorted(owner_id for owner_id, count in Counter(owner_ids).items() if count != 1)
+        if duplicates:
+            self.fail("duplicate Vanilla owner ids: " + ", ".join(duplicates[:10]))
+        if owner_ids != sorted(owner_ids):
+            self.fail("client mechanism inventory owners are not stably sorted")
+
+        for mechanism_id, mechanism in mechanisms.items():
+            if mechanism_id not in rows:
+                self.fail(f"unmapped inventory mechanism id {mechanism_id}")
+            if not isinstance(mechanism, dict):
+                self.fail(f"malformed inventory mechanism {mechanism_id}")
+                continue
+            if mechanism.get("owner_count") != owner_mechanisms[mechanism_id]:
+                self.fail(f"stale owner count for inventory mechanism {mechanism_id}")
+            evidence = mechanism.get("bbb_evidence")
+            if not isinstance(evidence, list) or not evidence:
+                self.fail(f"inventory mechanism {mechanism_id} lacks BBB evidence")
+                continue
+            for evidence_path in evidence:
+                if (
+                    not isinstance(evidence_path, str)
+                    or Path(evidence_path).is_absolute()
+                    or ".." in Path(evidence_path).parts
+                    or not (self.repo / evidence_path.split("#", 1)[0]).exists()
+                ):
+                    self.fail(
+                        f"stale BBB evidence path for inventory mechanism "
+                        f"{mechanism_id}: {evidence_path!r}"
+                    )
+
+        expected_summary = {
+            "by_category": dict(sorted(owner_categories.items())),
+            "by_domain": dict(sorted(owner_domains.items())),
+            "mapped_owner_count": len(owner_ids),
+            "owner_count": len(owner_ids),
+            "unmapped_owner_count": 0,
+        }
+        if summary != expected_summary:
+            self.fail("client mechanism inventory summary is stale or inconsistent")
+
+        for item in generator_inputs:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                self.fail("client mechanism generator input is malformed")
+                continue
+            input_path = item["path"]
+            candidate = self.repo / input_path
+            expected = item.get("sha256")
+            if not candidate.is_file():
+                self.fail(f"client mechanism generator input missing: {input_path}")
+            elif hashlib.sha256(candidate.read_bytes()).hexdigest() != expected:
+                self.fail(f"client mechanism inventory generator input is stale: {input_path}")
+
+        source_root_value = os.environ.get("BBB_DOCS_LINT_VANILLA_SOURCE_ROOT")
+        source_root = (
+            Path(source_root_value)
+            if source_root_value
+            else Path.home() / "Work" / "mc-code" / "sources" / "26.1"
+        )
+        checked_sources = 0
+        if source_root.is_dir():
+            for item in source_files:
+                if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                    continue
+                source_path = item["path"]
+                candidate = source_root / source_path
+                if not candidate.is_file():
+                    self.fail(f"client mechanism Vanilla source missing: {source_path}")
+                    continue
+                checked_sources += 1
+                if hashlib.sha256(candidate.read_bytes()).hexdigest() != item.get("sha256"):
+                    self.fail(f"client mechanism inventory source is stale: {source_path}")
+            source_message = f"{checked_sources} source hashes checked"
+        else:
+            source_message = "local Vanilla tree absent; source hashes skipped"
+
+        routed_ids: set[str] = set()
+        ledger = self.repo / "docs" / "unsupported-features.md"
+        if ledger.is_file():
+            ledger_text = ledger.read_text(encoding="utf-8")
+            for match in LEDGER_ROUTE_RE.finditer(ledger_text):
+                routed_ids.update(CODE_RE.findall(match.group(1)))
+            for mechanism_id in sorted(routed_ids - set(rows)):
+                self.fail(f"ledger route references unknown mechanism id {mechanism_id}")
+            for mechanism_id, row in rows.items():
+                if row["status"] in ROUTED_STATUSES and mechanism_id not in routed_ids:
+                    self.fail(f"parity row {mechanism_id} has no bilateral ledger route")
+
+            top = ""
+            section = ""
+            section_has_item = False
+            section_has_route = False
+
+            def flush_section() -> None:
+                if top in {"Todo", "Not needed"} and section_has_item and not section_has_route:
+                    self.fail(f"ledger section lacks Matrix routes: {top} / {section}")
+
+            for line in ledger_text.splitlines():
+                if line.startswith("# "):
+                    flush_section()
+                    top = line[2:].strip()
+                    section = ""
+                    section_has_item = False
+                    section_has_route = False
+                elif line.startswith("## "):
+                    flush_section()
+                    section = line[3:].strip()
+                    section_has_item = False
+                    section_has_route = False
+                elif line.startswith("- ") and top in {"Todo", "Not needed"}:
+                    section_has_item = True
+                elif LEDGER_ROUTE_RE.fullmatch(line):
+                    section_has_route = True
+            flush_section()
+
+        for mechanism_id, row in rows.items():
+            if row["status"] != "equivalent":
+                continue
+            mechanism = mechanisms.get(mechanism_id)
+            inventory_evidence = (
+                isinstance(mechanism, dict)
+                and isinstance(mechanism.get("bbb_evidence"), list)
+                and bool(mechanism["bbb_evidence"])
+            )
+            locatable_cell = any(
+                (self.repo / token.split("#", 1)[0]).exists()
+                for token in CODE_RE.findall(row["evidence"])
+                if token.startswith(("docs/", "scripts/", "crates/"))
+            ) or bool(LINK_RE.search(row["evidence"]))
+            if not inventory_evidence and not locatable_cell:
+                self.fail(f"equivalent parity row {mechanism_id} lacks locatable evidence")
+
+        return (
+            f"client inventory {len(owner_ids)} owners/{len(mechanisms)} mechanisms, "
+            f"unmapped 0, {source_message}"
+        )
 
     def check_inventory(self, all_markdown: list[Path]) -> None:
         inventory = (
@@ -267,7 +523,8 @@ class WikiLint:
         self.check_links(all_markdown)
         self.check_orphans(wiki)
         self.check_mechanisms(wiki)
-        self.check_parity()
+        parity_rows = self.check_parity()
+        client_inventory_message = self.check_client_mechanism_inventory(parity_rows)
         self.check_inventory(all_markdown)
         self.check_repo_paths(wiki)
         self.check_chinese_and_stale_text(wiki)
@@ -280,7 +537,7 @@ class WikiLint:
         print(
             f"wiki lint: {len(wiki)} reachable Chinese pages, "
             f"{len(all_markdown)} inventoried Markdown files, links/ids/status/routes valid; "
-            f"{source_message}"
+            f"{source_message}; {client_inventory_message}"
         )
         return 0
 

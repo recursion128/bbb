@@ -41,6 +41,8 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `scripts` + `docs/wiki` + all semantic crate owners
 
+Matrix route: `coverage-external-client-census`
+
 - **Vanilla 26.1 external-client coverage census is `active`.** Rebuild a
   source-derived inventory for protocol/listener decisions, registries,
   entity/render/provider/menu/reload/input/lifecycle surfaces and explicit
@@ -51,9 +53,121 @@ Owner: `scripts` + `docs/wiki` + all semantic crate owners
   generated inventory reports zero unmapped owners and matrix/ledger routes are
   mechanically bidirectional.
 
+## Client runtime lifecycle and diagnostics
+
+Owner: `bbb-native` + `bbb-control`
+
+Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
+
+- **The complete external-session runtime/crash lifecycle is `active`.** The
+  live gate proves the happy login-to-disconnect path, but the source-derived
+  `Minecraft`/`CrashReport` surface is not yet backed by decision-level evidence
+  for every close, delayed-crash, recovery, report, shutdown, and stale-session
+  branch. Split the generated owners into homogeneous lifecycle decisions,
+  implement any missing projections, and close only with deterministic failure
+  and recovery acceptance in addition to the happy live path.
+
+## Resource reload-listener consumer closure
+
+Owner: `bbb-pack` + `bbb-native` + `bbb-renderer` + `bbb-audio`
+
+Matrix route: `resources-reload-listeners`
+
+- **All 20 Vanilla reload-listener owner families are `active`.** The shared
+  pack generation and language/font/sound consumers are closed, but the census
+  has not proven a prepare/apply/rollback projection for every registered
+  texture, shader, atlas, color, model, equipment, entity, block-entity,
+  particle, waypoint, level/cloud, GPU-warning and regional-compliance owner.
+  Classify each against current external surfaces, implement the required
+  consumers, and retain the previous immutable generation on any failure.
+
+## ClientLevel world and effect decision surface
+
+Owner: `bbb-world` + `bbb-native` + `bbb-renderer` + `bbb-audio`
+
+Matrix route: `world-client-level-decisions`
+
+- **The source-derived `ClientLevel` decision surface is `active`.** Packet,
+  entity and registry coverage closes many inputs, but the census cannot infer
+  complete chunk/global/map/time/weather/border/block-entity/effect/audio and
+  dimension-lifecycle consumers from canonical state alone. Split the 121
+  generated owners by homogeneous lifecycle, preserve one world source of
+  truth, and require state→runtime→presentation evidence for every in-scope
+  family.
+
+## Local-player and multiplayer game-mode decisions
+
+Owner: `bbb-world` + `bbb-native` + `bbb-net` + `bbb-protocol`
+
+Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
+
+- **`LocalPlayer` and `MultiPlayerGameMode` decision parity is `active`.** The
+  packet catalog and current movement/interaction tests do not by themselves
+  prove every prediction, teleport, ability, collision, pose, respawn,
+  block-breaking, use/attack/pick, carried-item, creative and spectator branch.
+  Audit the 104 local-player and 39 game-mode owners against their actual
+  command/state/presentation paths and close only after the applicable live
+  interaction cases pass.
+
+## Render-step, HUD and block-entity presentation closure
+
+Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
+
+Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-step-surface`
+
+- **The registered block-entity and frame/HUD step surfaces are `active`.**
+  Existing focused and pixel tests cover many branches, but do not yet provide
+  one mechanically reachable evidence cell for every 27 block-entity
+  registration, 70 GUI owner, 46 game-renderer owner and 77 level-renderer
+  owner, including pass order, translucent/post/lightmap/weather consumers and
+  exact no-surface classifications. Split only by semantic owner and preserve
+  the single frame-extract/submission path.
+
+## Multiplayer menu and screen surface closure
+
+Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
+
+Matrix routes: `ui-menu-screen-registration`, `ui-multiplayer-screen-surface`
+
+- **All externally reachable menu/screen mappings are `active`.** The census
+  found 25 `MenuScreens` registrations plus chat, death, disconnect and pause
+  decision owners; current code existence does not prove every menu's state,
+  layout, input transaction, fallback and lifecycle. Classify official mappings
+  by external-session reachability, implement every reachable gap, and use
+  precise owner/reopen evidence for exclusions rather than a broad “all UI” row.
+
+## Native input, accessibility and window lifecycle closure
+
+Owner: `bbb-native` + `bbb-renderer` + `bbb-control`
+
+Matrix routes: `input-keyboard-routing`, `input-mouse-routing`, `input-key-mapping`, `ui-accessibility-surface`, `platform-window-lifecycle`
+
+- **Keyboard, mouse, key-mapping, narrator/clipboard/IME and window semantic
+  parity is `active`.** Unit tests and the Wayland live gate do not close every
+  focus/grab/repeat/text/scroll/fullscreen/DPI/resize/icon/accessibility branch.
+  Implement all repo-owned semantic gaps and keep the separately recorded
+  X11/interactive-seat and macOS/Windows runner limitations external; absence
+  of those runners must not hide an internally testable mechanism.
+
+## Persistence, profile and secure-session closure
+
+Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
+
+Matrix routes: `persistence-client-files`, `identity-profile-skins`, `security-secure-chat-reporting`
+
+- **Client persistence, profile presentation and secure-chat/social/reporting
+  decisions are `active`.** Existing server-list, skin and reporting code has
+  focused coverage, but the census has not proven the complete 158 persistence,
+  16 identity and 21 security owners, their atomic recovery, session-generation
+  invalidation, online/offline service boundary and live consumer behavior.
+  Split by one canonical owner, implement missing external-session paths, and
+  keep launcher token acquisition outside the client.
+
 ## Runtime performance parity and stable frame tails
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
+
+Matrix route: `performance-gpu-execution-duration`
 
 - API-neutral per-client GPU execution duration is `deferred`: the current
   kernel exposes `dma_fence:dma_fence_signaled` instead of the requested
@@ -67,6 +181,8 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 ## P4 lifecycle, soak, and supported-platform release gates
 
 Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
+
+Matrix routes: `platform-linux-x11-seat-matrix`, `platform-macos-windows-release`
 
 - Linux X11, live DPI-transition/fullscreen, and compositor-originated
   focus/keyboard/mouse/clipboard/IME release validation is `deferred`: the
@@ -86,6 +202,8 @@ Owner: `bbb-native` + `bbb-net` + `bbb-renderer` + `bbb-audio` + `bbb-control`
 
 Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 
+Matrix route: `interaction-server-authority-exclusions`
+
 - Bottle dragon-breath client prediction is `not-needed`: `AreaEffectCloud.owner`
   is absent from both `ClientboundAddEntityPacket` and synchronized metadata, so
   the remote 26.1 client leaves that branch server-authoritative. Reopen if the
@@ -94,6 +212,8 @@ Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 ## Renderer scene parity
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
+
+Matrix route: `rendering-official-noop-surfaces`
 
 Living-entity render state:
 
@@ -105,6 +225,8 @@ Living-entity render state:
 ## HUD overlay and screen render surfaces
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
+
+Matrix routes: `debug-integrated-server-mirrors`, `movement-remote-type-exceptions`
 
 - `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
   `ChunkDebugRenderer.emitGizmos` refreshes data only when
@@ -133,6 +255,8 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 
 Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 
+Matrix routes: `ui-context-entity-type`, `ui-local-time-icu`, `items-server-owned-effects`
+
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
 
@@ -160,6 +284,8 @@ resolver by adding a value provider. No new selection machinery is required.
 
 Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 
+Matrix route: `interaction-server-authority-exclusions`
+
 - Client-owned animal ambient/step/eat and cat/wolf state-trigger loops are
   `not-needed`: vanilla `Entity.playSound` delegates through
   `Level.playSound(null, ...)`, `ClientLevel.playSeededSound` only submits when
@@ -172,6 +298,8 @@ Audio unit tests must remain independent of an audio device.
 ## Official 26.1 resource-pack coverage
 
 Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
+
+Matrix route: `resources-window-icons`
 
 Loader invariants (not todos): keep the local vanilla coverage tests
 (`loads_all_local_vanilla_atlases`, `loads_local_vanilla_item_model_catalog`,
@@ -193,6 +321,8 @@ fixture fails them; keep precedence/filter tests next to the loaders.
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`
 
+Matrix route: `registries-unsynchronized-fixed-identities`
+
 Lifecycle invariants (not todos): vanilla, startup and server packs share one
 validated low-to-high selected stack and immutable generation; CPU consumers
 prepare from that stack, renderer/audio owners commit atomically, and control
@@ -209,6 +339,8 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
+Matrix route: `ui-container-server-authority-exclusions`
+
 - A matching-id authority check for ContainerClose is `not-needed`: vanilla
   26.1 carries an id but closes the current menu unconditionally.
 - A synthetic menu fallback for mismatched ContainerSetData is `not-needed`:
@@ -224,6 +356,8 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 
+Matrix route: `debug-integrated-server-mirrors`
+
 - **Client-only debug entries with no HUD line** are `not-needed`:
   LocalDifficulty, EntitySpawnCounts, and ChunkGenerationStats read an
   integrated local-server mirror (`ServerLevel`,
@@ -233,6 +367,8 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-audio`
 ## Entity models and animation
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+
+Matrix route: `rendering-official-noop-surfaces`
 
 ### Model and animation details
 
@@ -256,6 +392,8 @@ Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 
+Matrix route: `rendering-particle-provider-registration`
+
 Routing invariant: terrain/item atlas rendering, block-entity client-effect
 presentation, and audio-device/runtime parity stay with their owning domains;
 the `LevelEventHandler` switch itself is not a second owner.
@@ -269,6 +407,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Packet canonical state
 
+Matrix routes: `scope-telemetry-upload`, `protocol-framing-no-world-state`
+
 - **Mojang client telemetry callbacks.** `bbb` has no external telemetry sender.
   Vanilla `WorldSessionTelemetryManager.onServerBrandReceived` only stores the
   brand on `WorldLoadEvent` and attempts a Mojang telemetry send; server-brand
@@ -281,6 +421,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Target-version item-model surface
 
+Matrix route: `items-versioned-property-surface`
+
 - **Additional ambient-context numeric `range_dispatch` properties.** Vanilla
   26.1 `RangeSelectItemModelProperties.bootstrap` registers exactly
   custom-model-data, bundle fullness, damage, cooldown, time, compass,
@@ -289,6 +431,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   registration list differs.
 
 ## Resource and screen surface
+
+Matrix routes: `resources-indexed-panorama`, `resources-indexed-built-in-packs`, `resources-indexed-realms`, `resources-world-list-favicons`, `scope-title-screen`, `scope-realms`
 
 - **Indexed title panorama assets.** Vanilla 26.1 `GuiRenderer` owns a
   `CubeMap("textures/gui/title/background/panorama")` and `Panorama` owns the
@@ -316,6 +460,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Non-player movement authority
 
+Matrix route: `movement-remote-type-exceptions`
+
 - **`POWDER_SNOW_WALKABLE_MOBS` collision exceptions.** Vanilla 26.1's tag
   contains only rabbit, endermite, silverfish and fox. None is a locally
   client-authoritative ridden type in the current client, so their collision is
@@ -333,6 +479,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   either exact type gains local movement authority.
 
 ## Entity models and layers
+
+Matrix routes: `rendering-entity-renderer-registration`, `rendering-entity-layer-registration`, `rendering-official-noop-surfaces`
 
 ### Entity coverage matrix vanilla noop renderers
 
@@ -399,6 +547,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Rendering and screenshots
 
+Matrix route: `rendering-nondeterministic-golden-exclusions`
+
 - **Exact golden pixel parity to vanilla screenshots.** No golden PNG or
   full-frame hash: driver and float jitter make it unreliable.
 - **Item-pipeline overlay-texture (`Sampler1`) sampling.** Vanilla's
@@ -408,6 +558,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Lightning sky flash tinting water fog.** Vanilla does not tint it.
 
 ## Block entities
+
+Matrix routes: `rendering-block-entity-registration`, `rendering-official-noop-surfaces`
 
 - **Sign `is_waxed` render effect.** Vanilla has none; it gates editing.
 - **Banner item / shield pattern path** (`Sheets.SHIELD_PATTERN_BASE`,
@@ -422,6 +574,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 
 ## Particles
 
+Matrix routes: `rendering-particle-provider-registration`, `rendering-official-noop-surfaces`
+
 - **Spawn-filtering for `minecraft:block_marker`.** Vanilla `BlockMarker.Provider`
   does not reject air, `moving_piston`, or `shouldSpawnTerrainParticles=false`
   states the way `TerrainParticle.createTerrainParticle` does.
@@ -432,6 +586,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   `GustSeedParticle.Provider` child still feeds child xAux `age / lifetime`.
 
 ## Input, movement, and interaction
+
+Matrix route: `interaction-server-authority-exclusions`
 
 - **Server-owned FishingHook catching/removal outcomes.** The bbb client tick
   owns Vanilla flight, Bobbing, hooked-target following, collision/deflection,
@@ -458,6 +614,8 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   snapback interpolation `:146-158`) and bbb has no touch input mode or plan.
 
 ## HUD and configuration
+
+Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-ui`, `scope-singleplayer-integrated`, `debug-integrated-server-mirrors`
 
 - **Shift-local F3+I server-private entity save residuals.** Not needed on an
   external client: ordinary F3+I queries the authoritative server tag, while

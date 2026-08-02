@@ -19,6 +19,13 @@ from packet_catalog_extractor import packet_resource_ids, registered_packets
 from vanilla_java_source import JavaMethod, JavaSource, descendants, parse_source
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+GENERATOR_INPUTS = (
+    "scripts/client_mechanism_inventory.py",
+    "scripts/generate-client-mechanism-inventory.py",
+    "scripts/packet_catalog_extractor.py",
+    "scripts/vanilla_java_source.py",
+)
 PROTOCOL_ROOT = Path("net/minecraft/network/protocol")
 PROTOCOL_SPECS = (
     ("handshake", "handshake/HandshakeProtocols.java", ("serverbound",)),
@@ -471,6 +478,13 @@ class InventoryBuilder:
         by_mechanism = Counter(str(item["mechanism_id"]) for item in self.owners)
         return {
             "generated_by": "scripts/generate-client-mechanism-inventory.py",
+            "generator_inputs": [
+                {
+                    "path": path,
+                    "sha256": hashlib.sha256((REPO_ROOT / path).read_bytes()).hexdigest(),
+                }
+                for path in GENERATOR_INPUTS
+            ],
             "mechanisms": {
                 mechanism_id: {
                     "bbb_evidence": list(MECHANISM_EVIDENCE[mechanism_id]),

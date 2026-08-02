@@ -1,16 +1,28 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 import client_mechanism_inventory as inventory  # noqa: E402
+
+
+GENERATOR_SPEC = importlib.util.spec_from_file_location(
+    "generate_client_mechanism_inventory",
+    SCRIPTS / "generate-client-mechanism-inventory.py",
+)
+assert GENERATOR_SPEC is not None and GENERATOR_SPEC.loader is not None
+generator = importlib.util.module_from_spec(GENERATOR_SPEC)
+GENERATOR_SPEC.loader.exec_module(generator)
 
 
 class ClientMechanismInventoryTests(unittest.TestCase):
@@ -122,6 +134,32 @@ public class Actions {
             sorted(item["vanilla_owner"].split(" -> ")[-1] for item in builder.owners),
             ["ServerboundConfigurationAcknowledgedPacket", "ServerboundUseItemPacket"],
         )
+
+    def test_generator_check_rejects_stale_exact_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "inventory.json"
+            output.write_text("stale\n", encoding="utf-8")
+            args = SimpleNamespace(source_root=root, output=output, check=True)
+            with mock.patch.object(generator, "parse_args", return_value=args), mock.patch.object(
+                generator, "render_inventory", return_value="current\n"
+            ):
+                result = generator.main()
+
+        self.assertEqual(result, 1)
+
+    def test_generator_check_accepts_exact_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "inventory.json"
+            output.write_text("current\n", encoding="utf-8")
+            args = SimpleNamespace(source_root=root, output=output, check=True)
+            with mock.patch.object(generator, "parse_args", return_value=args), mock.patch.object(
+                generator, "render_inventory", return_value="current\n"
+            ):
+                result = generator.main()
+
+        self.assertEqual(result, 0)
 
 
 if __name__ == "__main__":
