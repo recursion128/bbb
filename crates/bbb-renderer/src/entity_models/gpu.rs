@@ -3450,8 +3450,25 @@ pub(crate) fn create_entity_model_beacon_beam_opaque_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth_and_cull(
+    shaders: Option<&crate::core_shaders::AdaptedBeaconBeamShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-beacon-beam-opaque",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[entity_model_scroll_vertex_layout()],
+            ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+            ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth_and_cull(
         device,
         format,
         bind_group_layout,
@@ -3462,15 +3479,32 @@ pub(crate) fn create_entity_model_beacon_beam_opaque_pipeline(
         ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_BEAM_DEPTH_COMPARE,
         ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_beacon_beam_translucent_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth_and_cull(
+    shaders: Option<&crate::core_shaders::AdaptedBeaconBeamShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-beacon-beam-translucent",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[entity_model_scroll_vertex_layout()],
+            ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND,
+            ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+            ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth_and_cull(
         device,
         format,
         bind_group_layout,
@@ -3481,7 +3515,7 @@ pub(crate) fn create_entity_model_beacon_beam_translucent_pipeline(
         ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_BEAM_DEPTH_COMPARE,
         ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_entity_glint_pipeline(

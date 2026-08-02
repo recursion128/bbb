@@ -1663,13 +1663,15 @@ impl Renderer {
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let entity_model_beacon_beam_translucent_pipeline =
             create_entity_model_beacon_beam_translucent_pipeline(
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let entity_model_entity_glint_pipeline = create_entity_model_entity_glint_pipeline(
             &device,
             format,

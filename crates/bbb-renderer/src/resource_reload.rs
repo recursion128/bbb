@@ -247,6 +247,34 @@ impl OutlineCorePipelines {
     }
 }
 
+struct BeaconBeamCorePipelines {
+    opaque: wgpu::RenderPipeline,
+    translucent: wgpu::RenderPipeline,
+}
+
+impl BeaconBeamCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedBeaconBeamShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            opaque: crate::entity_models::create_entity_model_beacon_beam_opaque_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            translucent:
+                crate::entity_models::create_entity_model_beacon_beam_translucent_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    shaders,
+                )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -266,6 +294,7 @@ struct CorePipelineGeneration {
     glint: Option<GlintCorePipelines>,
     end_portal: Option<EndPortalCorePipelines>,
     outline: Option<OutlineCorePipelines>,
+    beacon_beam: Option<BeaconBeamCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -384,6 +413,13 @@ impl CorePipelineGeneration {
         let outline = (!startup_without_sources)
             .then(|| OutlineCorePipelines::prepare(renderer, outline_shaders.as_ref()))
             .transpose()?;
+        let beacon_beam_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_beacon_beam_shaders(resources))
+            .transpose()?
+            .flatten();
+        let beacon_beam = (!startup_without_sources)
+            .then(|| BeaconBeamCorePipelines::prepare(renderer, beacon_beam_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -397,6 +433,7 @@ impl CorePipelineGeneration {
             glint,
             end_portal,
             outline,
+            beacon_beam,
         })
     }
 
@@ -591,6 +628,16 @@ impl CorePipelineGeneration {
             std::mem::swap(
                 &mut outline.resident_item,
                 &mut renderer.resident_item_model_outline_pipeline,
+            );
+        }
+        if let Some(beacon_beam) = self.beacon_beam.as_mut() {
+            std::mem::swap(
+                &mut beacon_beam.opaque,
+                &mut renderer.entity_model_beacon_beam_opaque_pipeline,
+            );
+            std::mem::swap(
+                &mut beacon_beam.translucent,
+                &mut renderer.entity_model_beacon_beam_translucent_pipeline,
             );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
@@ -1550,8 +1597,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            50,
-            "49 GPU handles plus the publication generation must share one mapping"
+            52,
+            "51 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1578,6 +1625,13 @@ mod tests {
                 .count(),
             1,
             "all current outline consumers must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_beacon_beam_shaders(resources)")
+                .count(),
+            1,
+            "both beacon-beam consumers must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1685,8 +1739,6 @@ mod tests {
             ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
             ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
-            ("entity_model_beacon_beam_opaque_pipeline", "BEACON_BEAM_OPAQUE/core/rendertype_beacon_beam"),
-            ("entity_model_beacon_beam_translucent_pipeline", "BEACON_BEAM_TRANSLUCENT/core/rendertype_beacon_beam"),
             ("lightning_pipeline", "LIGHTNING/core/rendertype_lightning"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
@@ -1726,10 +1778,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 49, "selected core generation changed");
+        assert_eq!(selected.len(), 51, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            28,
+            26,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

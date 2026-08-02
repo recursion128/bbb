@@ -14,6 +14,7 @@ const POSITION_COLOR_SHADER_ID: &str = "minecraft:core/position_color";
 const GLINT_SHADER_ID: &str = "minecraft:core/glint";
 const END_PORTAL_SHADER_ID: &str = "minecraft:core/rendertype_end_portal";
 const OUTLINE_SHADER_ID: &str = "minecraft:core/rendertype_outline";
+const BEACON_BEAM_SHADER_ID: &str = "minecraft:core/rendertype_beacon_beam";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -67,6 +68,11 @@ pub(crate) struct AdaptedEndPortalShaders {
 pub(crate) struct AdaptedOutlineShaders {
     pub(crate) vertex: String,
     pub(crate) resident_vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedBeaconBeamShaders {
+    pub(crate) vertex: String,
     pub(crate) fragment: String,
 }
 
@@ -286,6 +292,32 @@ pub(crate) fn adapt_selected_outline_shaders(
     Ok(Some(AdaptedOutlineShaders {
         resident_vertex: adapt_resident_outline_vertex(&vertex)?,
         vertex,
+        fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_beacon_beam_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedBeaconBeamShaders>> {
+    let vertex = resources
+        .source_by_id(BEACON_BEAM_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_beacon_beam vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(BEACON_BEAM_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_beacon_beam fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let vertex = adapt_beacon_beam_stage(&vertex.source, true)
+        .context("adapt selected beacon-beam vertex shader")?;
+    let fragment = adapt_beacon_beam_stage(&fragment.source, false)
+        .context("adapt selected beacon-beam fragment shader")?;
+    Ok(Some(AdaptedBeaconBeamShaders {
+        vertex: adapt_beacon_beam_atlas_vertex(&vertex)?,
         fragment,
     }))
 }
@@ -560,6 +592,36 @@ fn adapt_outline_stage(source: &str, vertex_stage: bool) -> Result<String> {
     }
 }
 
+fn adapt_beacon_beam_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        source
+    } else {
+        let source = source.replace(
+            "texture(Sampler0, texCoord0)",
+            "texture(Sampler0, bbbUvRectMin + fract(texCoord0) * bbbUvRectSize)",
+        );
+        insert_after_version(&source, BEACON_BEAM_ATLAS_FRAGMENT_IO)?
+    };
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_beacon_beam_stage_locations(&source, vertex_stage)?;
+    if vertex_stage {
+        Ok(source)
+    } else {
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            }],
+        )
+    }
+}
+
 fn specialize_glint_vertex(
     source: &str,
     texture_scale: &str,
@@ -730,6 +792,18 @@ fn adapt_resident_outline_vertex(source: &str) -> Result<String> {
     )
 }
 
+fn adapt_beacon_beam_atlas_vertex(source: &str) -> Result<String> {
+    let source = insert_after_version(source, BEACON_BEAM_ATLAS_VERTEX_IO)?;
+    let main_end = source
+        .rfind('}')
+        .context("adapted beacon-beam vertex shader has no main terminator")?;
+    Ok(format!(
+        "{}    bbbUvRectMin = BbbUvRectMin;\n    bbbUvRectSize = BbbUvRectSize;\n{}",
+        &source[..main_end],
+        &source[main_end..]
+    ))
+}
+
 fn adapt_hud_end_portal_vertex(source: &str) -> Result<String> {
     Ok(replace_required(
         source,
@@ -825,6 +899,16 @@ vec3 bbb_portal_sample(vec2 rectMin, vec2 rectSize, vec4 projectedUv) {
     vec2 uv = rectMin + fract(projectedUv.xy / projectedUv.w) * rectSize;
     return texture(Sampler0, uv).rgb;
 }
+"#;
+
+const BEACON_BEAM_ATLAS_VERTEX_IO: &str = r#"layout(location = 2) in vec2 BbbUvRectMin;
+layout(location = 3) in vec2 BbbUvRectSize;
+layout(location = 2) out vec2 bbbUvRectMin;
+layout(location = 3) out vec2 bbbUvRectSize;
+"#;
+
+const BEACON_BEAM_ATLAS_FRAGMENT_IO: &str = r#"layout(location = 2) in vec2 bbbUvRectMin;
+layout(location = 3) in vec2 bbbUvRectSize;
 "#;
 
 #[allow(clippy::too_many_arguments)]
@@ -1736,6 +1820,29 @@ fn bind_outline_stage_locations(source: &str, vertex_stage: bool) -> Result<Stri
         })
 }
 
+fn bind_beacon_beam_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 4, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "vec4", "vertexColor", 0, true),
+            ("out", "vec2", "texCoord0", 1, true),
+        ]
+    } else {
+        &[
+            ("in", "vec4", "vertexColor", 0, true),
+            ("in", "vec2", "texCoord0", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -1942,6 +2049,48 @@ void main() {
         assert!(fragment.contains("layout(location = 1) in vec2 texCoord0"));
         assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
         assert!(!fragment.contains("@group"));
+    }
+
+    #[test]
+    fn beacon_beam_adapter_projects_repeat_uv_and_preserves_fragment_depth_fog() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    vertexColor = Color;
+    texCoord0 = UV0;
+}
+"#;
+        let vertex = adapt_beacon_beam_stage(vertex, true).expect("beacon vertex projection");
+        let vertex = adapt_beacon_beam_atlas_vertex(&vertex).expect("beacon atlas projection");
+        assert!(vertex.contains("layout(location = 4) in vec4 Color"));
+        assert!(vertex.contains("layout(location = 2) in vec2 BbbUvRectMin"));
+        assert!(vertex.contains("bbbUvRectSize = BbbUvRectSize"));
+
+        let fragment = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { vec4 ColorModulator; };
+uniform sampler2D Sampler0;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+    float fragmentDistance = -ProjMat[3].z / ((gl_FragCoord.z) * -2.0 + 1.0 - ProjMat[2].z);
+    fragColor = color + vec4(fragmentDistance * 0.0);
+}
+"#;
+        let fragment =
+            adapt_beacon_beam_stage(fragment, false).expect("beacon fragment projection");
+        assert!(fragment.contains("bbbUvRectMin + fract(texCoord0) * bbbUvRectSize"));
+        assert!(fragment.contains("fragmentDistance = -ProjMat[3].z"));
+        assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
     }
 
     #[test]
@@ -2215,6 +2364,14 @@ void main() {
             id: OUTLINE_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let beacon_beam_vertex_key = ShaderSourceKey {
+            id: BEACON_BEAM_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let beacon_beam_fragment_key = ShaderSourceKey {
+            id: BEACON_BEAM_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -2384,6 +2541,28 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: outline_fragment_key,
                         resource_id: "minecraft:shaders/core/rendertype_outline.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    beacon_beam_vertex_key.clone(),
+                    ShaderSource {
+                        key: beacon_beam_vertex_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_beacon_beam.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    beacon_beam_fragment_key.clone(),
+                    ShaderSource {
+                        key: beacon_beam_fragment_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_beacon_beam.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -2904,6 +3083,69 @@ void main() {
             })
             .expect("removing selected outline shader restores embedded generation");
         assert_eq!(renderer.core_shader_generation(), Some(83));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_beacon_beam_shader_preloads_both_depth_variants_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-beacon-beam-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_beacon_beam.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a + texCoord0.x * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected beacon-beam shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(91, selected)
+            .expect("selected beacon-beam generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected opaque/translucent beacon-beam variants compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(91));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_beacon_beam\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected beacon-beam filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(92, filtered)
+            .expect("filtered beacon-beam generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required beacon-beam stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_beacon_beam"));
+        assert_eq!(renderer.core_shader_generation(), Some(91));
 
         std::fs::remove_dir_all(root).unwrap();
     }
