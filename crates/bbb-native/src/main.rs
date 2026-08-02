@@ -745,9 +745,10 @@ fn main() -> Result<()> {
         args.background_for_chat_only,
     );
     if let Some(roots) = pack_roots.as_ref() {
-        match bbb_pack::PostEffectCatalog::load(roots)
-            .and_then(|catalog| renderer.reload_post_effect_graphs(&catalog))
-        {
+        let post_effects = bbb_pack::ShaderSourceCatalog::load(roots).and_then(|shader_sources| {
+            bbb_pack::PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)
+        });
+        match post_effects.and_then(|catalog| renderer.reload_post_effect_graphs(&catalog)) {
             Ok(()) => {}
             Err(error) => {
                 tracing::warn!(

@@ -9,10 +9,10 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
-    FurnaceFuelSourceRule, PackRoots, PostEffectCatalog, RegistryDependentItemComponentInitializer,
-    SelectedClientPack, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
-    MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES, MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
-    MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
+    FurnaceFuelSourceRule, PackRoots, PeriodicNotificationCatalog, PostEffectCatalog,
+    RegistryDependentItemComponentInitializer, SelectedClientPack, ShaderSourceCatalog,
+    MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES, MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
+    MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES, MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
@@ -48,6 +48,8 @@ struct PreparedNativeResourceReload {
     particles: NativeParticleResources,
     items: NativeItemRuntime,
     post_effects: PostEffectCatalog,
+    _shader_sources: ShaderSourceCatalog,
+    _periodic_notifications: PeriodicNotificationCatalog,
     block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
 }
@@ -421,8 +423,13 @@ fn prepare_native_resource_reload(
         .context("prepare particle resources for reload")?;
     let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
         .context("prepare item, model, texture, and language resources for reload")?;
-    let post_effects =
-        PostEffectCatalog::load(&roots).context("prepare post-effect graphs for reload")?;
+    let shader_sources =
+        ShaderSourceCatalog::load(&roots).context("prepare shader sources for reload")?;
+    let post_effects = PostEffectCatalog::load_with_shader_catalog(&roots, &shader_sources)
+        .context("prepare post-effect graphs for reload")?;
+    let periodic_notifications = roots
+        .load_periodic_notification_catalog()
+        .context("prepare periodic notifications for reload")?;
     let block_destroy_profiles = block_destroy_profiles_for_world(
         &roots
             .load_block_destroy_profile_catalog()
@@ -439,6 +446,8 @@ fn prepare_native_resource_reload(
         particles,
         items,
         post_effects,
+        _shader_sources: shader_sources,
+        _periodic_notifications: periodic_notifications,
         block_destroy_profiles,
         block_sound_profiles,
     })
@@ -1201,13 +1210,23 @@ mod tests {
         assert!(atlas_commit < audio_commit);
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
+        let shader_prepare = source
+            .find("ShaderSourceCatalog::load(&roots)")
+            .expect("shader sources should be prepared once on the CPU boundary");
         let post_effect_prepare = source
-            .find("PostEffectCatalog::load(&roots)")
-            .expect("post-effect catalog should be prepared on the CPU boundary");
+            .find("PostEffectCatalog::load_with_shader_catalog(&roots, &shader_sources)")
+            .expect("post effects should consume the shared shader preparation");
+        let periodic_prepare = source
+            .find(".load_periodic_notification_catalog()")
+            .expect("regional notifications should be prepared on the CPU boundary");
         let prepared_generation = source
             .find("        post_effects,\n")
             .expect("prepared reload should retain the post-effect catalog");
+        assert!(shader_prepare < post_effect_prepare);
         assert!(post_effect_prepare < prepared_generation);
+        assert!(periodic_prepare < prepared_generation);
+        let legacy_post_effect_loader = ["PostEffectCatalog::load", "(&roots)"].concat();
+        assert!(!source.contains(&legacy_post_effect_loader));
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));
     }

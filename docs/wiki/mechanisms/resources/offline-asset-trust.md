@@ -96,7 +96,7 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
-| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | post effect 已接；core shader 尚未接 current pipelines | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；core 尚未注入 current pipelines | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
 | 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
 | 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
 | 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
@@ -113,8 +113,16 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 | 17 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:16` | `LevelRenderer`：重建 outline/sky renderer | post/sky resources + reload all chunks | renderer transaction + terrain reload request | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 18 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:17` | `CloudRenderer`：decode cloud cells，apply 标记 mesh rebuild | `try_load_sky_textures` cloud data | renderer sky/cloud checkpoint | `existing` | `crates/bbb-native/src/sky_assets.rs` |
 | 19 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:18` | `GpuWarnlistManager`：只在 Vanilla OpenGL backend 匹配 regex | BBB shipping backend 非 OpenGL，且无 improved-transparency options UI | 无 current consumer | `not-needed` | [ledger](../../../unsupported-features.md)；支持 OpenGL/options warning 时重开 |
-| 20 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:19` | `PeriodicNotificationManager`：host ISO3 选择、delay/period system toast | 尚无 regional catalog/schedule | native HUD runtime，须随 generation 原子替换 | `active` | [ledger](../../../unsupported-features.md) |
+| 20 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:19` | `PeriodicNotificationManager`：host ISO3 选择、delay/period system toast | bounded regional catalog 已 prepare；尚无 schedule/toast apply | native HUD runtime，须随 generation 原子替换 | `active` | [ledger](../../../unsupported-features.md) |
 <!-- reload-listener-projections:end -->
+
+Phase B 的 CPU prepare 只有一个 GLSL owner：`ShaderSourceCatalog` 枚举 selected stack 中的
+`.vsh`/`.fsh`，通过同一 stack 解析 `.glsl` import，并限制 512 个 stage/include 资源、32 层
+import depth 和 generation retained bytes；`PostEffectCatalog` 只引用该 immutable catalog，
+不再拥有第二套 import resolver。`PeriodicNotificationCatalog` 读取最高优先级
+`minecraft:regional_compliancies.json`，限制 256 个 country group、1024 条 notification，
+保留 Vanilla 的缺失/损坏→空准备语义；安全预算拒绝仍使整个 generation 失败。两者均携带
+resource generation，Phase C 才负责 GPU pipeline 与 host ISO3 timer/toast 的原子 apply。
 
 ## BBB 实现映射
 

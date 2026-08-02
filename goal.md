@@ -425,9 +425,9 @@ icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合�
 
 串行阶段：
 
-1. **Phase A — 逐 owner 合同**：Wiki 建立 20 行稳定表，记录顺序、查询/失败、BBB owner、
+1. **Phase A — 逐 owner 合同（完成）**：Wiki 建立 20 行稳定表，记录顺序、查询/失败、BBB owner、
    surface、prepare/apply/rollback evidence 与 reopen condition；机械锁定 20/20。
-2. **Phase B — bounded prepare**：补齐缺失的 core-shader/include 与 periodic-notification
+2. **Phase B — bounded prepare（完成）**：补齐缺失的 core-shader/include 与 periodic-notification
    catalog；复用 pack priority/filter，限制资源数、单项/累计 bytes、include 深度/环和
    notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
 3. **Phase C — 原子 consumer**：renderer pipeline、regional toast 与既有各 consumer

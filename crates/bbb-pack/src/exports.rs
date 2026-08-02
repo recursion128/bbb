@@ -53,6 +53,7 @@ pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
 pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCatalog};
 pub use crate::particle_sprites::ParticleSpriteCatalog;
+pub use crate::periodic_notifications::{PeriodicNotification, PeriodicNotificationCatalog};
 pub use crate::post_effects::{
     PostEffectCatalog, PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
     PostEffectShaderImport, PostEffectShaderKey, PostEffectShaderSource, PostEffectShaderStage,
@@ -75,6 +76,10 @@ pub use crate::server_pack::{
     materialize_server_pack_archive, read_client_resource_pack_format_range,
     read_client_resource_pack_metadata, ClientPackMetadata, ServerPackArchiveLimits,
     ServerPackFormat, ServerPackFormatRange, ServerPackMaterialization,
+};
+pub use crate::shader_sources::{
+    ShaderSource, ShaderSourceCatalog, ShaderSourceImport, ShaderSourceKey,
+    ShaderSourceLoadFailure, ShaderStage,
 };
 pub use crate::sound_event_registry::SoundEventRegistry;
 pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};

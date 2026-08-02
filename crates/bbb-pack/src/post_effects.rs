@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{bail, Context, Result};
-use regex::Regex;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -9,6 +8,9 @@ use crate::{
     image::decode_png_file_rgba_with_budget,
     resources::{PackResourceStack, ResourceLocation},
     roots::PackRoots,
+    shader_sources::{
+        ShaderSource, ShaderSourceCatalog, ShaderSourceImport, ShaderSourceKey, ShaderStage,
+    },
 };
 
 const MAX_POST_EFFECT_GRAPHS: u64 = 64;
@@ -17,8 +19,6 @@ const MAX_POST_EFFECT_TARGETS: u64 = 64;
 const MAX_POST_EFFECT_INPUTS: u64 = 32;
 const MAX_POST_EFFECT_UNIFORM_BLOCKS: u64 = 32;
 const MAX_POST_EFFECT_UNIFORMS_PER_BLOCK: u64 = 128;
-const MAX_POST_EFFECT_SHADER_SOURCES: u64 = 512;
-const MAX_POST_EFFECT_IMPORT_DEPTH: u32 = 32;
 const MAX_POST_EFFECT_DIMENSION: u32 = 8_192;
 
 const RETAINED_GRAPH_BYTES: u64 = 256;
@@ -32,19 +32,38 @@ const RETAINED_UNIFORM_BYTES: u64 = 128;
 pub struct PostEffectCatalog {
     generation: u64,
     graphs: BTreeMap<String, PostEffectGraph>,
-    shaders: BTreeMap<PostEffectShaderKey, PostEffectShaderSource>,
+    shader_keys: BTreeSet<PostEffectShaderKey>,
+    shader_sources: ShaderSourceCatalog,
     textures: BTreeMap<String, PostEffectTextureImage>,
 }
 
 impl PostEffectCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
+        let shader_sources = ShaderSourceCatalog::load(roots)?;
+        Self::load_with_shader_catalog(roots, &shader_sources)
+    }
+
+    pub fn load_with_shader_catalog(
+        roots: &PackRoots,
+        shader_sources: &ShaderSourceCatalog,
+    ) -> Result<Self> {
         let generation = roots
             .client_resource_generation()
             .map_or(0, |generation| generation.generation());
-        Self::load_resource_stack(generation, &roots.resource_stack())
+        if shader_sources.generation() != generation {
+            bail!(
+                "shader catalog generation {} does not match post-effect generation {generation}",
+                shader_sources.generation()
+            );
+        }
+        Self::load_resource_stack(generation, &roots.resource_stack(), shader_sources.clone())
     }
 
-    fn load_resource_stack(generation: u64, stack: &PackResourceStack) -> Result<Self> {
+    fn load_resource_stack(
+        generation: u64,
+        stack: &PackResourceStack,
+        shader_sources: ShaderSourceCatalog,
+    ) -> Result<Self> {
         let resources = stack.list_resources("post_effect", ".json")?;
         stack.admit_resource_collection_count(
             u64::try_from(resources.len()).context("post-effect graph count overflow")?,
@@ -91,12 +110,10 @@ impl PostEffectCatalog {
             "retained post-effect graph catalog",
         )?;
 
-        let mut admitted_sources = BTreeSet::new();
-        let mut shaders = BTreeMap::new();
-        for key in shader_keys {
-            let source = load_shader_source(stack, &key, &mut admitted_sources)
-                .with_context(|| format!("load post-effect shader {key}"))?;
-            shaders.insert(key, source);
+        for key in &shader_keys {
+            shader_sources
+                .source(key)
+                .with_context(|| format!("missing post-effect shader {key}"))?;
         }
 
         let mut textures = BTreeMap::new();
@@ -110,7 +127,8 @@ impl PostEffectCatalog {
         Ok(Self {
             generation,
             graphs,
-            shaders,
+            shader_keys,
+            shader_sources,
             textures,
         })
     }
@@ -129,11 +147,14 @@ impl PostEffectCatalog {
     }
 
     pub fn shader(&self, key: &PostEffectShaderKey) -> Option<&PostEffectShaderSource> {
-        self.shaders.get(key)
+        self.shader_keys
+            .contains(key)
+            .then(|| self.shader_sources.source(key))
+            .flatten()
     }
 
-    pub fn shaders(&self) -> &BTreeMap<PostEffectShaderKey, PostEffectShaderSource> {
-        &self.shaders
+    pub fn shader_source_catalog(&self) -> &ShaderSourceCatalog {
+        &self.shader_sources
     }
 
     pub fn texture(&self, texture_id: &str) -> Option<&PostEffectTextureImage> {
@@ -223,54 +244,10 @@ pub enum PostEffectUniformValue {
     Matrix4x4([f32; 16]),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PostEffectShaderStage {
-    Vertex,
-    Fragment,
-}
-
-impl PostEffectShaderStage {
-    pub fn extension(self) -> &'static str {
-        match self {
-            Self::Vertex => ".vsh",
-            Self::Fragment => ".fsh",
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Vertex => "vertex",
-            Self::Fragment => "fragment",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PostEffectShaderKey {
-    pub id: String,
-    pub stage: PostEffectShaderStage,
-}
-
-impl std::fmt::Display for PostEffectShaderKey {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{} ({})", self.id, self.stage.as_str())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PostEffectShaderSource {
-    pub key: PostEffectShaderKey,
-    pub resource_id: String,
-    pub pack_id: String,
-    pub source: String,
-    pub imports: Vec<PostEffectShaderImport>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PostEffectShaderImport {
-    pub resource_id: String,
-    pub pack_id: String,
-}
+pub type PostEffectShaderStage = ShaderStage;
+pub type PostEffectShaderKey = ShaderSourceKey;
+pub type PostEffectShaderSource = ShaderSource;
+pub type PostEffectShaderImport = ShaderSourceImport;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PostEffectTextureImage {
@@ -703,300 +680,6 @@ fn checked_add(left: u64, right: u64, label: &str) -> Result<u64> {
         .with_context(|| format!("{label} overflow"))
 }
 
-fn load_shader_source(
-    stack: &PackResourceStack,
-    key: &PostEffectShaderKey,
-    admitted_sources: &mut BTreeSet<String>,
-) -> Result<PostEffectShaderSource> {
-    let shader_id = ResourceLocation::parse(&key.id)?;
-    let resource_location = ResourceLocation::new(
-        shader_id.namespace().to_string(),
-        format!("shaders/{}{}", shader_id.path(), key.stage.extension()),
-    )?;
-    admit_shader_resource(stack, admitted_sources, &resource_location)?;
-    let resource = stack
-        .get_resource(&resource_location)
-        .with_context(|| format!("missing shader source {}", resource_location.id()))?;
-    let source = stack
-        .read_text_resource(&resource, "post-effect shader source")
-        .with_context(|| format!("read shader source {}", resource_location.id()))?;
-    let mut imports = Vec::new();
-    let mut imported_locations = BTreeSet::new();
-    let mut maximum_version = shader_version(&source).unwrap_or(0);
-    let source = expand_shader_imports(
-        stack,
-        &resource_location,
-        &source,
-        false,
-        0,
-        &mut maximum_version,
-        &mut imported_locations,
-        admitted_sources,
-        &mut imports,
-    )?;
-    let source = set_shader_version(&source, maximum_version);
-    stack.reserve_derived_resource_bytes(
-        u64::try_from(source.len()).context("preprocessed shader length overflow")?,
-        "preprocessed post-effect shader source",
-    )?;
-    Ok(PostEffectShaderSource {
-        key: key.clone(),
-        resource_id: resource_location.id(),
-        pack_id: resource.pack_id,
-        source,
-        imports,
-    })
-}
-
-#[allow(clippy::too_many_arguments)]
-fn expand_shader_imports(
-    stack: &PackResourceStack,
-    source_location: &ResourceLocation,
-    source: &str,
-    imported_source: bool,
-    depth: u32,
-    maximum_version: &mut u32,
-    imported_locations: &mut BTreeSet<String>,
-    admitted_sources: &mut BTreeSet<String>,
-    imports: &mut Vec<PostEffectShaderImport>,
-) -> Result<String> {
-    if depth > MAX_POST_EFFECT_IMPORT_DEPTH {
-        bail!(
-            "shader import depth exceeds {MAX_POST_EFFECT_IMPORT_DEPTH} at {}",
-            source_location.id()
-        );
-    }
-    if let Some(version) = shader_version(source) {
-        *maximum_version = (*maximum_version).max(version);
-    }
-    let source = if imported_source {
-        comment_shader_versions(source)
-    } else {
-        source.to_string()
-    };
-    let import_pattern = shader_import_pattern();
-    let mut expanded = String::with_capacity(source.len());
-    let mut cursor = 0;
-    for captures in import_pattern.captures_iter(&source) {
-        let whole = captures
-            .get(0)
-            .expect("shader import regex always has a whole match");
-        if is_inside_shader_comment(&source, whole.start()) {
-            continue;
-        }
-        expanded.push_str(&source[cursor..whole.start()]);
-        let (relative, path) = if let Some(path) = captures.get(1) {
-            (true, path.as_str())
-        } else {
-            (
-                false,
-                captures
-                    .get(2)
-                    .expect("shader import regex has one path")
-                    .as_str(),
-            )
-        };
-        let import_location = resolve_shader_import(source_location, relative, path)
-            .with_context(|| format!("resolve shader import {path:?}"))?;
-        let import_id = import_location.id();
-        if !imported_locations.insert(import_id.clone()) {
-            expanded.push_str(&format!("/*{}*/", whole.as_str()));
-            cursor = whole.end();
-            continue;
-        }
-        admit_shader_resource(stack, admitted_sources, &import_location)?;
-        let resource = stack
-            .get_resource(&import_location)
-            .with_context(|| format!("missing shader import {}", import_location.id()))?;
-        let imported = stack
-            .read_text_resource(&resource, "post-effect shader import")
-            .with_context(|| format!("read shader import {}", import_location.id()))?;
-        imports.push(PostEffectShaderImport {
-            resource_id: import_id,
-            pack_id: resource.pack_id,
-        });
-        let imported = expand_shader_imports(
-            stack,
-            &import_location,
-            &imported,
-            true,
-            depth + 1,
-            maximum_version,
-            imported_locations,
-            admitted_sources,
-            imports,
-        )?;
-        expanded.push_str(&imported);
-        if !imported.ends_with('\n') {
-            expanded.push('\n');
-        }
-        cursor = whole.end();
-    }
-    expanded.push_str(&source[cursor..]);
-    Ok(expanded)
-}
-
-fn admit_shader_resource(
-    stack: &PackResourceStack,
-    admitted_sources: &mut BTreeSet<String>,
-    location: &ResourceLocation,
-) -> Result<()> {
-    admitted_sources.insert(location.id());
-    stack.admit_resource_collection_count(
-        u64::try_from(admitted_sources.len())
-            .context("post-effect shader source count overflow")?,
-        MAX_POST_EFFECT_SHADER_SOURCES,
-        "post-effect shader and include sources",
-    )
-}
-
-fn resolve_shader_import(
-    source: &ResourceLocation,
-    relative: bool,
-    import: &str,
-) -> Result<ResourceLocation> {
-    if import.is_empty() || import.contains('\\') {
-        bail!("invalid shader import path {import:?}");
-    }
-    if relative {
-        if import.split('/').any(|component| component == "..") {
-            bail!("shader import path traversal is not allowed: {import:?}");
-        }
-        let parent = source
-            .path()
-            .rsplit_once('/')
-            .map_or("", |(parent, _)| parent);
-        let path = if parent.is_empty() {
-            import.to_string()
-        } else {
-            format!("{parent}/{import}")
-        };
-        ResourceLocation::new(source.namespace().to_string(), path)
-    } else {
-        let import = ResourceLocation::parse(import)?;
-        ResourceLocation::new(
-            import.namespace().to_string(),
-            format!("shaders/include/{}", import.path()),
-        )
-    }
-}
-
-fn shader_import_pattern() -> Regex {
-    Regex::new(
-        r#"(?m)^(?:[ \t]|/\*[^\r\n]*?\*/)*#(?:[ \t]|/\*[^\r\n]*?\*/)*moj_import(?:[ \t]|/\*[^\r\n]*?\*/)*(?:"([^"\r\n]+)"|<([^>\r\n]+)>)(?:[ \t]|/\*[^\r\n]*?\*/)*(?://[^\r\n]*)?\r?$"#,
-    )
-    .expect("shader import regex is valid")
-}
-
-fn shader_version_pattern() -> Regex {
-    Regex::new(
-        r"(?m)^(?:[ \t]|/\*[^\r\n]*?\*/)*#(?:[ \t]|/\*[^\r\n]*?\*/)*version(?:[ \t]|/\*[^\r\n]*?\*/)*([0-9]+)\b",
-    )
-    .expect("shader version regex is valid")
-}
-
-fn shader_version(source: &str) -> Option<u32> {
-    shader_version_pattern()
-        .captures_iter(source)
-        .find(|captures| {
-            captures
-                .get(0)
-                .is_some_and(|whole| !is_inside_shader_comment(source, whole.start()))
-        })
-        .and_then(|captures| captures.get(1)?.as_str().parse().ok())
-}
-
-fn comment_shader_versions(source: &str) -> String {
-    let pattern = shader_version_pattern();
-    let mut result = String::with_capacity(source.len());
-    let mut cursor = 0;
-    for captures in pattern.captures_iter(&source) {
-        let whole = captures
-            .get(0)
-            .expect("shader version regex always has a whole match");
-        if is_inside_shader_comment(&source, whole.start()) {
-            continue;
-        }
-        result.push_str(&source[cursor..whole.start()]);
-        result.push_str("/*");
-        result.push_str(whole.as_str());
-        result.push_str("*/");
-        cursor = whole.end();
-    }
-    result.push_str(&source[cursor..]);
-    result
-}
-
-fn set_shader_version(source: &str, version: u32) -> String {
-    let pattern = shader_version_pattern();
-    for captures in pattern.captures_iter(source) {
-        let whole = captures
-            .get(0)
-            .expect("shader version regex always has a whole match");
-        if is_inside_shader_comment(source, whole.start()) {
-            continue;
-        }
-        let digits = captures
-            .get(1)
-            .expect("shader version regex always has digits");
-        let Ok(current) = digits.as_str().parse::<u32>() else {
-            return source.to_string();
-        };
-        if version <= current {
-            return source.to_string();
-        }
-        let mut result = String::with_capacity(source.len());
-        result.push_str(&source[..digits.start()]);
-        result.push_str(&version.to_string());
-        result.push_str(&source[digits.end()..]);
-        return result;
-    }
-    source.to_string()
-}
-
-fn is_inside_shader_comment(source: &str, offset: usize) -> bool {
-    let bytes = source.as_bytes();
-    let mut index = 0;
-    let mut block_comment = false;
-    let mut line_comment = false;
-    let mut quoted = None;
-    while index < offset {
-        let byte = bytes[index];
-        let next = bytes.get(index + 1).copied();
-        if block_comment {
-            if byte == b'*' && next == Some(b'/') {
-                block_comment = false;
-                index += 2;
-                continue;
-            }
-        } else if line_comment {
-            if byte == b'\n' || byte == b'\r' {
-                line_comment = false;
-            }
-        } else if let Some(quote) = quoted {
-            if byte == b'\\' {
-                index = (index + 2).min(offset);
-                continue;
-            }
-            if byte == quote {
-                quoted = None;
-            }
-        } else if byte == b'/' && next == Some(b'*') {
-            block_comment = true;
-            index += 2;
-            continue;
-        } else if byte == b'/' && next == Some(b'/') {
-            line_comment = true;
-            index += 2;
-            continue;
-        } else if byte == b'"' || byte == b'\'' {
-            quoted = Some(byte);
-        }
-        index += 1;
-    }
-    block_comment || line_comment || quoted.is_some()
-}
-
 fn load_effect_texture(
     stack: &PackResourceStack,
     texture_id: &str,
@@ -1323,12 +1006,13 @@ mod tests {
             &asset(&vanilla, "demo", "shaders/include/shared.glsl"),
             "const float SHARED = 2.0;\n",
         );
-        let stack = fixture_roots(&root, &vanilla, []).resource_stack();
+        let roots = fixture_roots(&root, &vanilla, []);
+        let catalog = ShaderSourceCatalog::load(&roots).unwrap();
         let key = PostEffectShaderKey {
             id: "demo:post/root".to_string(),
             stage: PostEffectShaderStage::Fragment,
         };
-        let source = load_shader_source(&stack, &key, &mut BTreeSet::new()).unwrap();
+        let source = catalog.source(&key).unwrap();
         assert!(source.source.starts_with("#version 450"));
         assert_eq!(source.source.matches("RELATIVE = 1.0").count(), 1);
         assert_eq!(source.source.matches("SHARED = 2.0").count(), 1);

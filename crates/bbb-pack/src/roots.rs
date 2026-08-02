@@ -26,6 +26,7 @@ use crate::{
     metadata::PackMetadataCatalog,
     particle_definitions::ParticleDefinitionCatalog,
     particle_sprites::ParticleSpriteCatalog,
+    periodic_notifications::PeriodicNotificationCatalog,
     resource_budget::{
         ResourceDataGenerationBudget, ResourceDataMemoryObservation,
         MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
@@ -393,6 +394,10 @@ impl PackRoots {
 
     pub fn load_particle_sprite_catalog(&self) -> Result<ParticleSpriteCatalog> {
         ParticleSpriteCatalog::load(self)
+    }
+
+    pub fn load_periodic_notification_catalog(&self) -> Result<PeriodicNotificationCatalog> {
+        PeriodicNotificationCatalog::load(self)
     }
 
     pub fn load_terrain_colormaps(&self) -> Result<TerrainColorMaps> {
