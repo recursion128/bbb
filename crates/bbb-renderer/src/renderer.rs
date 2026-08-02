@@ -1619,10 +1619,18 @@ impl Renderer {
         )?;
         let entity_model_water_mask_pipeline =
             create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_outline_pipeline =
-            create_entity_model_outline_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_outline_cull_pipeline =
-            create_entity_model_outline_cull_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_outline_pipeline = create_entity_model_outline_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
+        let entity_model_outline_cull_pipeline = create_entity_model_outline_cull_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_model_scroll_pipeline = create_entity_model_scroll_pipeline(
             &device,
             format,
@@ -1833,7 +1841,8 @@ impl Renderer {
             &device,
             format,
             &terrain_bind_group_layout,
-        );
+            None,
+        )?;
         let hud_item_glint_pipeline = create_hud_item_glint_pipeline(
             &device,
             format,

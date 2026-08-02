@@ -3104,13 +3104,15 @@ pub(crate) fn create_entity_model_outline_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedOutlineShaders>,
+) -> Result<wgpu::RenderPipeline> {
     create_entity_model_outline_pipeline_with_cull(
         device,
         format,
         bind_group_layout,
         "bbb-entity-model-outline",
         ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
+        shaders,
     )
 }
 
@@ -3118,13 +3120,15 @@ pub(crate) fn create_entity_model_outline_cull_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedOutlineShaders>,
+) -> Result<wgpu::RenderPipeline> {
     create_entity_model_outline_pipeline_with_cull(
         device,
         format,
         bind_group_layout,
         "bbb-entity-model-outline-cull",
         ENTITY_MODEL_OUTLINE_CULL_MODE,
+        shaders,
     )
 }
 
@@ -3134,8 +3138,21 @@ fn create_entity_model_outline_pipeline_with_cull(
     bind_group_layout: &wgpu::BindGroupLayout,
     label_prefix: &str,
     cull_mode: Option<wgpu::Face>,
-) -> wgpu::RenderPipeline {
-    create_entity_model_textured_pipeline_with_depth(
+    shaders: Option<&crate::core_shaders::AdaptedOutlineShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_outline_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            label_prefix,
+            &shaders.vertex,
+            &shaders.fragment,
+            &[entity_model_textured_vertex_layout()],
+            cull_mode,
+        );
+    }
+    Ok(create_entity_model_textured_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
@@ -3145,7 +3162,7 @@ fn create_entity_model_outline_pipeline_with_cull(
         ENTITY_MODEL_OUTLINE_BLEND,
         true,
         cull_mode,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_translucent_pipeline(

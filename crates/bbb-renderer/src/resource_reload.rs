@@ -213,6 +213,40 @@ impl EndPortalCorePipelines {
     }
 }
 
+struct OutlineCorePipelines {
+    entity: wgpu::RenderPipeline,
+    entity_cull: wgpu::RenderPipeline,
+    resident_item: wgpu::RenderPipeline,
+}
+
+impl OutlineCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedOutlineShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            entity: crate::entity_models::create_entity_model_outline_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            entity_cull: crate::entity_models::create_entity_model_outline_cull_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            resident_item: crate::item_models::create_resident_item_model_outline_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -231,6 +265,7 @@ struct CorePipelineGeneration {
     sunrise: Option<wgpu::RenderPipeline>,
     glint: Option<GlintCorePipelines>,
     end_portal: Option<EndPortalCorePipelines>,
+    outline: Option<OutlineCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -342,6 +377,13 @@ impl CorePipelineGeneration {
         let end_portal = (!startup_without_sources)
             .then(|| EndPortalCorePipelines::prepare(renderer, end_portal_shaders.as_ref()))
             .transpose()?;
+        let outline_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_outline_shaders(resources))
+            .transpose()?
+            .flatten();
+        let outline = (!startup_without_sources)
+            .then(|| OutlineCorePipelines::prepare(renderer, outline_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -354,6 +396,7 @@ impl CorePipelineGeneration {
             sunrise,
             glint,
             end_portal,
+            outline,
         })
     }
 
@@ -534,6 +577,20 @@ impl CorePipelineGeneration {
             std::mem::swap(
                 &mut end_portal.resident_item_gateway,
                 &mut renderer.resident_item_model_end_gateway_pipeline,
+            );
+        }
+        if let Some(outline) = self.outline.as_mut() {
+            std::mem::swap(
+                &mut outline.entity,
+                &mut renderer.entity_model_outline_pipeline,
+            );
+            std::mem::swap(
+                &mut outline.entity_cull,
+                &mut renderer.entity_model_outline_cull_pipeline,
+            );
+            std::mem::swap(
+                &mut outline.resident_item,
+                &mut renderer.resident_item_model_outline_pipeline,
             );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
@@ -1493,8 +1550,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            47,
-            "46 GPU handles plus the publication generation must share one mapping"
+            50,
+            "49 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1514,6 +1571,13 @@ mod tests {
                 .count(),
             1,
             "all current end-portal consumers must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_outline_shaders(resources)")
+                .count(),
+            1,
+            "all current outline consumers must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1621,8 +1685,6 @@ mod tests {
             ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
             ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
-            ("entity_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
-            ("entity_model_outline_cull_pipeline", "OUTLINE_CULL/core/rendertype_outline"),
             ("entity_model_beacon_beam_opaque_pipeline", "BEACON_BEAM_OPAQUE/core/rendertype_beacon_beam"),
             ("entity_model_beacon_beam_translucent_pipeline", "BEACON_BEAM_TRANSLUCENT/core/rendertype_beacon_beam"),
             ("lightning_pipeline", "LIGHTNING/core/rendertype_lightning"),
@@ -1632,7 +1694,6 @@ mod tests {
             ("display_text_pipeline", "TEXT/core/rendertype_text"),
             ("display_text_see_through_pipeline", "TEXT_SEE_THROUGH/core/rendertype_text_see_through"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
-            ("resident_item_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
             ("selection_pipeline", "LINES/core/rendertype_lines"),
             ("translucent_debug_line_pipeline", "LINES_TRANSLUCENT/core/rendertype_lines"),
             ("chunk_border_always_on_top_pipeline", "LINES/core/rendertype_lines"),
@@ -1665,10 +1726,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 46, "selected core generation changed");
+        assert_eq!(selected.len(), 49, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            31,
+            28,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

@@ -13,6 +13,7 @@ const PARTICLE_SHADER_ID: &str = "minecraft:core/particle";
 const POSITION_COLOR_SHADER_ID: &str = "minecraft:core/position_color";
 const GLINT_SHADER_ID: &str = "minecraft:core/glint";
 const END_PORTAL_SHADER_ID: &str = "minecraft:core/rendertype_end_portal";
+const OUTLINE_SHADER_ID: &str = "minecraft:core/rendertype_outline";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -60,6 +61,12 @@ pub(crate) struct AdaptedEndPortalShaders {
     pub(crate) vertex: String,
     pub(crate) resident_vertex: String,
     pub(crate) hud_vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedOutlineShaders {
+    pub(crate) vertex: String,
+    pub(crate) resident_vertex: String,
     pub(crate) fragment: String,
 }
 
@@ -251,6 +258,33 @@ pub(crate) fn adapt_selected_end_portal_shaders(
     Ok(Some(AdaptedEndPortalShaders {
         resident_vertex: adapt_resident_end_portal_vertex(&vertex)?,
         hud_vertex: adapt_hud_end_portal_vertex(&vertex)?,
+        vertex,
+        fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_outline_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedOutlineShaders>> {
+    let vertex = resources
+        .source_by_id(OUTLINE_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_outline vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(OUTLINE_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_outline fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let vertex = adapt_outline_stage(&vertex.source, true)
+        .context("adapt selected outline vertex shader")?;
+    let fragment = adapt_outline_stage(&fragment.source, false)
+        .context("adapt selected outline fragment shader")?;
+    Ok(Some(AdaptedOutlineShaders {
+        resident_vertex: adapt_resident_outline_vertex(&vertex)?,
         vertex,
         fragment,
     }))
@@ -505,6 +539,27 @@ fn adapt_end_portal_stage(source: &str, vertex_stage: bool) -> Result<String> {
     }
 }
 
+fn adapt_outline_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_outline_stage_locations(&source, vertex_stage)?;
+    if vertex_stage {
+        Ok(source)
+    } else {
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            }],
+        )
+    }
+}
+
 fn specialize_glint_vertex(
     source: &str,
     texture_scale: &str,
@@ -652,6 +707,27 @@ fn adapt_resident_end_portal_vertex(source: &str) -> Result<String> {
             "bbbPortalRectSize = BbbPortalRectSize;",
             "bbbPortalRectSize = BbbPortalRect.zw;",
         ))
+}
+
+fn adapt_resident_outline_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 2) in vec4 Color;",
+        "layout(location = 5) in vec4 BbbModel0;\nlayout(location = 6) in vec4 BbbModel1;\nlayout(location = 7) in vec4 BbbModel2;\nlayout(location = 8) in vec4 BbbModel3;\nlayout(location = 12) in vec4 BbbTint;",
+        "selected resident outline instance inputs",
+    )?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    gl_Position = ProjMat * bbbModel * vec4(Position, 1.0);",
+        "selected resident outline world transform",
+    )?;
+    replace_required(
+        &source,
+        "vertexColor = Color;",
+        "vertexColor = BbbTint;",
+        "selected resident outline tint",
+    )
 }
 
 fn adapt_hud_end_portal_vertex(source: &str) -> Result<String> {
@@ -950,6 +1026,69 @@ pub(crate) fn create_selected_end_portal_pipeline(
                     wgpu::CompareFunction::LessEqual,
                 )
             }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_outline_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    vertex_source: &str,
+    fragment_source: &str,
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    cull_mode: Option<wgpu::Face>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-outline-vertex-shader",
+        vertex_source.to_string(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected outline vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-outline-fragment-shader",
+        fragment_source.to_string(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected outline fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-outline-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(crate::pipeline_builder::depth_stencil_state(
+                crate::gpu::DEPTH_FORMAT,
+                true,
+                wgpu::CompareFunction::LessEqual,
+            )),
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
@@ -1574,6 +1713,29 @@ fn bind_end_portal_stage_locations(source: &str, vertex_stage: bool) -> Result<S
         })
 }
 
+fn bind_outline_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 2, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "vec4", "vertexColor", 0, true),
+            ("out", "vec2", "texCoord0", 1, true),
+        ]
+    } else {
+        &[
+            ("in", "vec4", "vertexColor", 0, true),
+            ("in", "vec2", "texCoord0", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -1736,6 +1898,50 @@ void main() {
         assert!(fragment.contains("bbb_portal_sample(bbbPortalRectMin, bbbPortalRectSize"));
         assert!(!fragment.contains("Sampler1"));
         assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
+    }
+
+    #[test]
+    fn outline_adapter_projects_entity_and_resident_inputs_without_extra_state() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    vertexColor = Color;
+    texCoord0 = UV0;
+}
+"#;
+        let vertex = adapt_outline_stage(vertex, true).expect("outline vertex projection");
+        assert!(vertex.contains("layout(location = 0) in vec3 Position"));
+        assert!(vertex.contains("layout(location = 1) in vec2 UV0"));
+        assert!(vertex.contains("layout(location = 2) in vec4 Color"));
+        let resident = adapt_resident_outline_vertex(&vertex).expect("resident projection");
+        assert!(resident.contains("layout(location = 12) in vec4 BbbTint"));
+        assert!(resident.contains("mat4 bbbModel = mat4(BbbModel0"));
+        assert!(resident.contains("vertexColor = BbbTint"));
+        assert!(!resident.contains("in vec4 Color"));
+
+        let fragment = r#"#version 330
+uniform sampler2D Sampler0;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(Sampler0, texCoord0);
+    if (color.a == 0.0) { discard; }
+    fragColor = vec4(ColorModulator.rgb * vertexColor.rgb, ColorModulator.a);
+}
+"#;
+        let fragment = adapt_outline_stage(fragment, false).expect("outline fragment projection");
+        assert!(fragment.contains("layout(location = 0) in vec4 vertexColor"));
+        assert!(fragment.contains("layout(location = 1) in vec2 texCoord0"));
+        assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
+        assert!(!fragment.contains("@group"));
     }
 
     #[test]
@@ -2001,6 +2207,14 @@ void main() {
             id: END_PORTAL_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let outline_vertex_key = ShaderSourceKey {
+            id: OUTLINE_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let outline_fragment_key = ShaderSourceKey {
+            id: OUTLINE_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -2150,6 +2364,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         key: end_portal_fragment_key,
                         resource_id:
                             "minecraft:shaders/core/rendertype_end_portal.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    outline_vertex_key.clone(),
+                    ShaderSource {
+                        key: outline_vertex_key,
+                        resource_id: "minecraft:shaders/core/rendertype_outline.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    outline_fragment_key.clone(),
+                    ShaderSource {
+                        key: outline_fragment_key,
+                        resource_id: "minecraft:shaders/core/rendertype_outline.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -2582,6 +2816,94 @@ void main() {
         renderer
             .render_offscreen_frame()
             .expect("official projected portal frame");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_outline_shader_preloads_all_current_surfaces_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-outline-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_outline.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(Sampler0, texCoord0);
+    if (color.a == 0.0) { discard; }
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected outline shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(81, selected)
+            .expect("selected outline generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(OUTLINE_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected outline fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected entity/resident outline variants compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(81));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_outline\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected outline filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(82, filtered)
+            .expect("filtered outline generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required outline stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_outline"));
+        assert_eq!(renderer.core_shader_generation(), Some(81));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .with_client_resource_generation(83, default_stack)
+            .expect("default outline generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected outline shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(83));
 
         std::fs::remove_dir_all(root).unwrap();
     }

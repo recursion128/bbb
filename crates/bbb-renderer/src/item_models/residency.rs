@@ -1338,25 +1338,40 @@ pub(crate) fn create_resident_item_model_outline_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-item-model-resident-outline-pipeline")
-        .shader(
-            "bbb-item-model-resident-outline-shader",
-            ITEM_MODEL_RESIDENT_OUTLINE_SHADER,
-        )
-        .layout(
-            "bbb-item-model-resident-outline-pipeline-layout",
-            &[bind_group_layout],
-        )
-        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
-        .color_target(format, ITEM_MODEL_RESIDENT_OUTLINE_BLEND)
-        .cull_mode(ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
-            ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_WRITE_ENABLED,
-            ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_COMPARE,
-        ))
-        .build()
+    shaders: Option<&crate::core_shaders::AdaptedOutlineShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_outline_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-item-model-resident-outline",
+            &shaders.resident_vertex,
+            &shaders.fragment,
+            &[resident_vertex_layout(), instance_vertex_layout()],
+            ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-item-model-resident-outline-pipeline")
+            .shader(
+                "bbb-item-model-resident-outline-shader",
+                ITEM_MODEL_RESIDENT_OUTLINE_SHADER,
+            )
+            .layout(
+                "bbb-item-model-resident-outline-pipeline-layout",
+                &[bind_group_layout],
+            )
+            .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+            .color_target(format, ITEM_MODEL_RESIDENT_OUTLINE_BLEND)
+            .cull_mode(ITEM_MODEL_RESIDENT_OUTLINE_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_WRITE_ENABLED,
+                ITEM_MODEL_RESIDENT_OUTLINE_DEPTH_COMPARE,
+            ))
+            .build(),
+    )
 }
 
 pub(crate) fn create_resident_item_model_solid_no_cutout_pipeline(
