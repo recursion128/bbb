@@ -328,6 +328,7 @@ mod tests {
                 height: 8,
                 advance: 6,
                 ascent: 7,
+                ..HudAsciiGlyph::default()
             },
         );
         glyphs
@@ -347,6 +348,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -585,6 +587,7 @@ mod tests {
                 height: 16,
                 advance: 16,
                 ascent: 7,
+                ..HudAsciiGlyph::default()
             },
         );
         renderer

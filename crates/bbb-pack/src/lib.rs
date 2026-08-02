@@ -1,3 +1,4 @@
+mod asset_index;
 mod atlas;
 mod atlas_sources;
 mod block_destroy_profiles;

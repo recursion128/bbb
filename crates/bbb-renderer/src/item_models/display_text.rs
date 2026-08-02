@@ -154,11 +154,12 @@ pub(super) fn display_text_runs_width(runs: &[WorldTextRun], fonts: &HudFontGlyp
             run.text
                 .chars()
                 .map(|ch| {
-                    display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance(run.style)
+                    display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance_f32(run.style)
                 })
-                .sum::<u32>()
+                .sum::<f32>()
         })
-        .sum()
+        .sum::<f32>()
+        .ceil() as u32
 }
 
 fn push_styled_char(output: &mut Vec<WorldTextRun>, source: &WorldTextRun, ch: char) {
@@ -215,11 +216,11 @@ pub fn split_display_text_lines(
         return Vec::new();
     }
 
-    let max_width = max_width.max(1) as u32;
+    let max_width = max_width.max(1) as f32;
     let mut lines = Vec::new();
     let mut start = 0usize;
     while start < chars.len() {
-        let mut width = 0u32;
+        let mut width = 0.0_f32;
         let mut had_non_zero_width = false;
         let mut last_space = None;
         let mut split = None;
@@ -235,15 +236,15 @@ pub fn split_display_text_lines(
             }
             let run = &runs[run_index];
             let advance =
-                display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance(run.style);
-            width = width.saturating_add(advance);
+                display_text_glyph(ch, run.font.as_deref(), fonts).styled_advance_f32(run.style);
+            width += advance;
             if had_non_zero_width && width > max_width {
                 let split_at = last_space.unwrap_or(index);
                 let skip = usize::from(chars[split_at].1 == ' ');
                 split = Some((split_at, skip, false));
                 break;
             }
-            had_non_zero_width |= advance != 0;
+            had_non_zero_width |= advance != 0.0;
             index += 1;
         }
 
@@ -443,7 +444,7 @@ pub fn bake_display_text_surface(
                 for rect in base_glyph.styled_effect_rects(pen_x, y, run.style, first_in_line) {
                     effects.push((rect, main_color, shadow_color));
                 }
-                pen_x += base_glyph.styled_advance(run.style) as f32;
+                pen_x += base_glyph.styled_advance_f32(run.style);
                 first_in_line = false;
             }
         }
@@ -892,6 +893,7 @@ mod tests {
                     height: if ch == ' ' { 0 } else { 8 },
                     advance: if ch == ' ' { 4 } else { 6 },
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -915,6 +917,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -1081,6 +1084,7 @@ mod tests {
             height: 8,
             advance,
             ascent: 7,
+            ..HudAsciiGlyph::default()
         };
         let mut default = HudFontGlyphMap::new();
         default.insert_first_wins('a', make_glyph(6, 0.0));

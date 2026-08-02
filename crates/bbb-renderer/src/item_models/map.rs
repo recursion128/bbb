@@ -1406,16 +1406,20 @@ fn bake_map_text_surface(
         if glyph.width > 0 && glyph.height > 0 {
             let x0 = pen_x;
             #[cfg(test)]
-            let x1 = pen_x + glyph.width as f32;
+            let x1 = pen_x + glyph.rendered_width();
             // Baseline alignment across font pages (vanilla
             // `GlyphBitmap.getTop()` = `7 - ascent`): ascent-7 pages keep
             // y0 = 0, the accented page rises 3px above the line top.
             let y0 = glyph.baseline_offset();
-            let y1 = y0 + glyph.height as f32;
+            let y1 = y0 + glyph.rendered_height();
             glyph_instances.push(ItemFrameMapTextGlyphInstance {
                 transform: transform
                     * Mat4::from_translation(Vec3::new(x0, y1, 0.0))
-                    * Mat4::from_scale(Vec3::new(glyph.width as f32, -(glyph.height as f32), 1.0)),
+                    * Mat4::from_scale(Vec3::new(
+                        glyph.rendered_width(),
+                        -glyph.rendered_height(),
+                        1.0,
+                    )),
                 uv: ItemFrameMapUvRect {
                     min: [glyph.uv.min[0], glyph.uv.max[1]],
                     max: [glyph.uv.max[0], glyph.uv.min[1]],
@@ -1450,7 +1454,7 @@ fn bake_map_text_surface(
                 );
             }
         }
-        pen_x += glyph.advance as f32;
+        pen_x += glyph.styled_advance_f32(Default::default());
     }
 
     Some(ItemFrameMapTextSurface {
@@ -1483,7 +1487,7 @@ pub fn item_frame_map_text_width(text: &str, glyphs: &HudFontGlyphMap) -> Option
 }
 
 /// Codepoint lookup over the baked first-provider-wins glyph map; codepoints
-/// outside the bitmap pages (unihex deferred) degrade to `?`.
+/// absent from every resolved provider degrade to `?`.
 fn item_frame_map_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
     glyphs
         .get(ch)
@@ -3591,7 +3595,7 @@ mod tests {
         assert_eq!(item_frame_map_text_width("A A", &glyphs), Some(16));
         // Mapped accented codepoints resolve their own glyph now.
         assert_eq!(item_frame_map_text_width("é", &glyphs), Some(7));
-        // CJK stays outside the bitmap pages (unihex deferred): still `?`.
+        // This fixture deliberately has no unihex provider, so CJK is `?`.
         assert_eq!(item_frame_map_text_width("钻", &glyphs), Some(5));
         assert_eq!(item_frame_map_text_width("", &glyphs), None);
     }
@@ -3611,6 +3615,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -3704,6 +3709,7 @@ mod tests {
                         _ => 6,
                     },
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }

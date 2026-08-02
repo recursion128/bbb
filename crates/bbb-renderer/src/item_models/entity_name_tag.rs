@@ -328,7 +328,7 @@ fn bake_layer_mesh(
             for rect in base_glyph.styled_effect_rects(pen_x, y, run.style, first) {
                 effects.push((rect, color));
             }
-            pen_x += base_glyph.styled_advance(run.style) as f32;
+            pen_x += base_glyph.styled_advance_f32(run.style);
             first = false;
         }
     }
@@ -436,6 +436,7 @@ mod tests {
                     height: if ch == ' ' { 0 } else { 8 },
                     advance: if ch == ' ' { 4 } else { 6 },
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -459,6 +460,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -666,6 +668,7 @@ mod tests {
                     height: 8,
                     advance: 7,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }

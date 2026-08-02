@@ -7,6 +7,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    asset_index::VanillaAssetIndex,
     atlas_sources::load_atlas_texture_entries_with_budget,
     block_destroy_profiles::BlockDestroyProfileCatalog,
     block_models::BlockModelCatalog,
@@ -48,6 +49,8 @@ pub struct PackRoots {
     pub assets_dir: PathBuf,
     #[serde(default)]
     pub generated_assets_dir: Option<PathBuf>,
+    #[serde(skip, default)]
+    indexed_vanilla_assets: Option<Arc<VanillaAssetIndex>>,
     #[serde(default)]
     resource_pack_dirs: Vec<PathBuf>,
     #[serde(skip)]
@@ -74,12 +77,10 @@ impl PackRoots {
         if !sources_dir.is_dir() {
             bail!("missing vanilla source directory {}", sources_dir.display());
         }
-        Ok(Self::from_paths(
-            mc_code_root,
-            sources_dir,
-            assets_dir,
-            None,
-        ))
+        let indexed_vanilla_assets = VanillaAssetIndex::discover(&mc_code_root)?;
+        let mut roots = Self::from_paths(mc_code_root, sources_dir, assets_dir, None);
+        roots.indexed_vanilla_assets = indexed_vanilla_assets.map(Arc::new);
+        Ok(roots)
     }
 
     pub fn from_paths(
@@ -93,6 +94,7 @@ impl PackRoots {
             sources_dir: sources_dir.into(),
             assets_dir: assets_dir.into(),
             generated_assets_dir,
+            indexed_vanilla_assets: None,
             resource_pack_dirs: Vec::new(),
             client_resource_generation: None,
             resource_image_budget: default_resource_image_generation_budget(),
@@ -226,6 +228,49 @@ impl PackRoots {
             Arc::clone(&self.resource_image_budget),
             Arc::clone(&self.resource_data_budget),
         )
+    }
+
+    /// Resolves one selected client resource while treating the launcher's
+    /// SHA-1-addressed asset index as part of Vanilla's default pack. A startup
+    /// or server pack resource wins, and a pack filter can still remove the
+    /// lower Vanilla resource. The object store is an offline fallback only;
+    /// this method never downloads or materializes assets.
+    pub fn resource_with_indexed_vanilla_fallback(
+        &self,
+        location: &ResourceLocation,
+    ) -> Result<Option<crate::PackResource>> {
+        let stack = self.resource_stack();
+        let selected = stack.get_resource(location);
+        let vanilla_pack_id = if self.client_resource_generation().is_some() {
+            "vanilla"
+        } else {
+            "unmanaged/0"
+        };
+        let selected_is_vanilla = selected
+            .as_ref()
+            .is_some_and(|resource| resource.pack_id == vanilla_pack_id);
+        if selected.is_some() && !selected_is_vanilla {
+            return Ok(selected);
+        }
+        if selected.is_none() && stack.filters_lower_priority_resource(location) {
+            return Ok(None);
+        }
+        let Some(index) = &self.indexed_vanilla_assets else {
+            return Ok(selected);
+        };
+        let Some(path) = index.resolve(location)? else {
+            return Ok(selected);
+        };
+        let metadata_path = index.resolve(&location.with_suffix(".mcmeta")?)?;
+        Ok(Some(crate::PackResource {
+            pack_id: selected.as_ref().map_or_else(
+                || "vanilla-index".to_string(),
+                |resource| resource.pack_id.clone(),
+            ),
+            location: location.clone(),
+            path,
+            metadata_path,
+        }))
     }
 
     fn resource_pack_stack(&self) -> PackResourceStack {
@@ -596,12 +641,98 @@ fn load_terrain_colormap(stack: &PackResourceStack, name: &str) -> Result<ColorM
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha1::{Digest, Sha1};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::{
         colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteGuiScaling,
         SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
     };
+
+    #[test]
+    fn indexed_vanilla_fallback_replaces_source_stub_but_selected_pack_wins() {
+        let root = unique_temp_dir("indexed-vanilla-precedence");
+        let source = root.join("sources/26.1/assets/minecraft/font/test.zip");
+        std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+        std::fs::write(&source, b"source stub").unwrap();
+
+        let indexed = b"indexed complete archive";
+        let object_hash = format!("{:x}", Sha1::digest(indexed));
+        let index = format!(
+            r#"{{"objects":{{"minecraft/font/test.zip":{{"hash":"{object_hash}","size":{}}}}}}}"#,
+            indexed.len()
+        );
+        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
+        write_json(
+            &root.join("downloads/26.1/26.1.json"),
+            &format!(
+                r#"{{"assetIndex":{{"id":"30","sha1":"{index_hash}","size":{}}}}}"#,
+                index.len()
+            ),
+        );
+        write_json(&root.join("downloads/26.1/assets/indexes/30.json"), &index);
+        let object_path = root
+            .join("downloads/26.1/assets/objects")
+            .join(&object_hash[..2])
+            .join(&object_hash);
+        std::fs::create_dir_all(object_path.parent().unwrap()).unwrap();
+        std::fs::write(&object_path, indexed).unwrap();
+
+        let location = ResourceLocation::parse("minecraft:font/test.zip").unwrap();
+        let roots = PackRoots::from_root(&root).unwrap();
+        let resource = roots
+            .resource_with_indexed_vanilla_fallback(&location)
+            .unwrap()
+            .unwrap();
+        assert_eq!(std::fs::read(resource.path).unwrap(), indexed);
+
+        let high = root.join("packs/high");
+        let high_resource = high.join("assets/minecraft/font/test.zip");
+        std::fs::create_dir_all(high_resource.parent().unwrap()).unwrap();
+        std::fs::write(&high_resource, b"selected override").unwrap();
+        let roots = roots.with_resource_pack_dirs([high]);
+        let resource = roots
+            .resource_with_indexed_vanilla_fallback(&location)
+            .unwrap()
+            .unwrap();
+        assert_eq!(std::fs::read(resource.path).unwrap(), b"selected override");
+
+        // Pack identity, rather than filesystem ancestry, decides precedence.
+        // A selected pack is allowed to live below the source checkout.
+        let nested_high = root.join("sources/selected-high");
+        let nested_resource = nested_high.join("assets/minecraft/font/test.zip");
+        std::fs::create_dir_all(nested_resource.parent().unwrap()).unwrap();
+        std::fs::write(&nested_resource, b"nested selected override").unwrap();
+        let roots = roots.with_resource_pack_dirs([nested_high]);
+        let resource = roots
+            .resource_with_indexed_vanilla_fallback(&location)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            std::fs::read(resource.path).unwrap(),
+            b"nested selected override"
+        );
+
+        let filter = root.join("packs/filter");
+        write_json(
+            &filter.join("pack.mcmeta"),
+            r#"{
+              "filter": {
+                "block": [
+                  {"namespace":"minecraft","path":"font/test\\.zip"}
+                ]
+              }
+            }"#,
+        );
+        let filtered = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([filter]);
+        assert!(filtered
+            .resource_with_indexed_vanilla_fallback(&location)
+            .unwrap()
+            .is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn pack_roots_loads_block_texture_sources_from_vanilla_atlas() {

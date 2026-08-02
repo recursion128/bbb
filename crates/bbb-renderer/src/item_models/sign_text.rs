@@ -47,8 +47,8 @@ const HANGING_SIGN_TEXT_RENDER_SCALE: f32 = 0.014_062_5;
 const BLACK_GLOWING_SIGN_DARK_RGB: u32 = 0x00F0_EBCC;
 /// Vanilla `AbstractSignRenderer.OUTLINE_RENDER_DISTANCE` (`16²`).
 const SIGN_TEXT_OUTLINE_DISTANCE_SQUARED: f32 = 256.0;
-/// Vanilla `Font` missing-codepoint degradation (unihex deferred), matching
-/// the map-label path's replacement glyph.
+/// Vanilla `Font` missing-codepoint degradation when no resolved provider
+/// supplies a codepoint, matching the map-label path's replacement glyph.
 const SIGN_TEXT_REPLACEMENT_GLYPH: char = '?';
 
 /// The per-face sign text submit metadata alongside the measured glyph slots.
@@ -207,16 +207,15 @@ pub fn truncate_sign_line_runs_to_width(
         .enumerate()
         .flat_map(|(run_index, run)| run.text.chars().map(move |ch| (run_index, ch)))
         .collect();
-    let mut width = 0u32;
+    let mut width = 0.0_f32;
     let mut last_space: Option<usize> = None;
     let mut break_at = flattened.len();
     for (index, (run_index, ch)) in flattened.iter().enumerate() {
         if *ch == ' ' {
             last_space = Some(index);
         }
-        width = width
-            .saturating_add(sign_text_glyph(*ch, glyphs).styled_advance(runs[*run_index].style));
-        if width > max_width {
+        width += sign_text_glyph(*ch, glyphs).styled_advance_f32(runs[*run_index].style);
+        if width > max_width as f32 {
             // The kept slice ends before the break index, so a space break
             // consumes the space itself (vanilla `splitLines` skips it).
             break_at = last_space.unwrap_or(index);
@@ -248,10 +247,11 @@ pub fn sign_line_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap)
         .map(|run| {
             run.text
                 .chars()
-                .map(|ch| sign_text_glyph(ch, glyphs).styled_advance(run.style))
-                .sum::<u32>()
+                .map(|ch| sign_text_glyph(ch, glyphs).styled_advance_f32(run.style))
+                .sum::<f32>()
         })
-        .sum()
+        .sum::<f32>()
+        .ceil() as u32
 }
 
 fn sign_text_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
@@ -307,9 +307,11 @@ pub fn bake_sign_text_surface(
     for (line_index, line) in lines.iter().enumerate() {
         let runs = truncate_sign_line_runs_to_width(line, max_width, glyphs);
         let visual = visual_sign_line(&runs, glyphs);
-        let width = visual.iter().fold(0_u32, |width, (ch, run)| {
-            width.saturating_add(sign_text_glyph(*ch, glyphs).styled_advance(run.style))
-        });
+        let width = visual
+            .iter()
+            .map(|(ch, run)| sign_text_glyph(*ch, glyphs).styled_advance_f32(run.style))
+            .sum::<f32>()
+            .ceil() as u32;
         if width == 0 {
             continue;
         }
@@ -336,7 +338,7 @@ pub fn bake_sign_text_surface(
                 color,
                 first_in_line: visual_index == 0,
             });
-            pen_x += glyph.styled_advance(run.style) as f32;
+            pen_x += glyph.styled_advance_f32(run.style);
         }
     }
     if logical_quad_count == 0 {
@@ -620,6 +622,7 @@ mod tests {
                     height: if ch == ' ' { 0 } else { 8 },
                     advance: if ch == ' ' { 4 } else { 6 },
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -640,6 +643,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -922,6 +926,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -1194,6 +1199,7 @@ mod tests {
                     height: 8,
                     advance: 6,
                     ascent: 7,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }

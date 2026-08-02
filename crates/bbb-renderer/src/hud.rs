@@ -396,6 +396,49 @@ mod chat_layout_tests {
     }
 
     #[test]
+    fn hud_chat_accumulates_unihex_half_pixel_bold_advance_before_rounding() {
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            '中',
+            HudAsciiGlyph {
+                width: 16,
+                height: 16,
+                advance: 9,
+                render_scale: 0.5,
+                bold_offset: 0.5,
+                shadow_offset: 0.5,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let runs = [HudComponentTextRun {
+            visual: HudStyledTextRun {
+                text: "中中".to_string(),
+                style: HudTextStyle {
+                    bold: true,
+                    ..HudTextStyle::default()
+                },
+                color: None,
+            },
+            font: None,
+        }];
+        let lines = hud_wrap_component_runs_with_interactions(
+            &runs,
+            &[HudChatInteraction {
+                start_char: 0,
+                end_char: 2,
+                target_index: 9,
+                tooltip: None,
+            }],
+            19,
+            &HudFontGlyphBook::from(glyphs),
+        );
+
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].interactions[0].start_x, 0);
+        assert_eq!(lines[0].interactions[0].end_x, 19);
+    }
+
+    #[test]
     fn hud_chat_unavailable_font_falls_back_to_default_glyphs() {
         let fonts = HudFontGlyphBook::from(glyphs_for("a"));
         let text = "a".repeat(10);
@@ -1737,9 +1780,8 @@ const HUD_ITEM_BAR_BACKGROUND_HEIGHT: u32 = 2;
 const HUD_ITEM_BAR_FOREGROUND_HEIGHT: u32 = 1;
 const HUD_ITEM_COOLDOWN_TINT: [f32; 4] = [1.0, 1.0, 1.0, 127.0 / 255.0];
 const HUD_TOOLTIP_BACKGROUND_TINT: [f32; 4] = [0.0625, 0.0, 0.0625, 0.94];
-/// Codepoints the `font/default.json` bitmap pages don't cover (CJK etc. —
-/// unihex/unifont is deferred) fall back to this glyph, standing in for the
-/// vanilla missing-glyph box.
+/// Codepoints no provider in the resolved `font/default.json` chain covers
+/// fall back to this glyph, standing in for the vanilla missing-glyph box.
 const HUD_FONT_REPLACEMENT_GLYPH: char = '?';
 const HUD_ITEM_SPECIAL_FOIL_GUI_SCALE: f32 = 0.5;
 const HUD_ITEM_SPECIAL_FOIL_TEXTURE_SCALE: f32 = 1.0 / 128.0;
@@ -18951,8 +18993,9 @@ struct HudResolvedTextRun<'a> {
 /// from that run's selected pool; `obfuscated_seed` (the render frame counter)
 /// seeds one deterministic per-pass LCG so the jitter is reproducible across
 /// font changes and the shadow pass picks the same substitutes as the main
-/// pass. The pen advance always follows the original glyph, so obfuscation and
-/// italic never shift layout.
+/// pass. Like `Font.getGlyph` followed by `PreparedTextBuilder.accept`, pen,
+/// effect and offset metrics come from the selected baked glyph; the random
+/// pool is bucketed by the original glyph's rounded plain advance.
 #[allow(clippy::too_many_arguments)]
 fn hud_styled_text_pass_geometry(
     runs: &[HudStyledTextRun],
@@ -19065,7 +19108,7 @@ fn hud_resolved_text_pass_geometry<'a>(
         glyph_quads: Vec::new(),
         effect_rects: Vec::new(),
     };
-    let mut pen_x = 0u32;
+    let mut pen_x = 0.0_f32;
     let mut first_in_line = true;
     // One LCG per pass, reset from the frame seed so the shadow and main passes
     // choose identical substitutes (the shadow is the main glyph at +1,+1); it
@@ -19089,13 +19132,10 @@ fn hud_resolved_text_pass_geometry<'a>(
         } else {
             run_tint
         };
-        if width_limit.is_some_and(|limit| pen_x >= limit) {
+        if width_limit.is_some_and(|limit| pen_x >= limit as f32) {
             break 'runs;
         }
         let base_glyph = hud_font_glyph(ch, resolved.glyphs);
-        // Layout stays on the original glyph's advance (equal for the
-        // substitute, but this keeps the pen frame-stable regardless).
-        let advance = base_glyph.styled_advance(run.style);
         // Vanilla `Font.getGlyph`: obfuscated non-space codepoints draw a
         // random equal-advance glyph; everything else draws its own glyph.
         let glyph = if run.style.obfuscated && ch != ' ' {
@@ -19106,14 +19146,20 @@ fn hud_resolved_text_pass_geometry<'a>(
         } else {
             base_glyph
         };
+        // `Font.StringRenderOutput.accept` reads metrics from the selected
+        // baked glyph. Obfuscation buckets share the plain integer advance,
+        // but a unihex substitute can still carry its provider-specific
+        // half-pixel bold/shadow offsets.
+        let advance = glyph.styled_advance_f32(run.style);
         // Glyph geometry is produced in font pixels relative to `origin`
         // and mapped through `origin + scale * offset`, exactly a vanilla
         // pose scale (the shadow offset scales with the pose too).
-        let x = pen_x as f32 + shadow_offset;
-        let y = shadow_offset;
+        let glyph_shadow_offset = shadow_offset * glyph.shadow_offset;
+        let x = pen_x + glyph_shadow_offset;
+        let y = glyph_shadow_offset;
         if glyph.width > 0
             && glyph.height > 0
-            && width_limit.is_none_or(|limit| pen_x.saturating_add(glyph.width) <= limit)
+            && width_limit.is_none_or(|limit| pen_x + glyph.rendered_width() <= limit as f32)
         {
             for quad in glyph.styled_quads(x, y, run.style, false) {
                 let quad = HudGlyphQuad {
@@ -19127,8 +19173,8 @@ fn hud_resolved_text_pass_geometry<'a>(
         }
         // Underline/strikethrough bars follow the advance, unaffected by the
         // obfuscated bitmap swap, so they read the original glyph.
-        if width_limit.is_none_or(|limit| pen_x.saturating_add(advance) <= limit) {
-            for rect in base_glyph.styled_effect_rects(x, y, run.style, first_in_line) {
+        if width_limit.is_none_or(|limit| pen_x + advance <= limit as f32) {
+            for rect in glyph.styled_effect_rects(x, y, run.style, first_in_line) {
                 let rect = HudEffectRect {
                     x0: origin.0 + rect.x0 * scale,
                     y0: origin.1 + rect.y0 * scale,
@@ -19139,7 +19185,7 @@ fn hud_resolved_text_pass_geometry<'a>(
                 geometry.effect_rects.push((rect, tint));
             }
         }
-        pen_x = pen_x.saturating_add(advance);
+        pen_x += advance;
         first_in_line = false;
     }
     geometry
@@ -19497,23 +19543,23 @@ fn hud_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> O
         .iter()
         .flat_map(|run| run.text.chars().map(move |ch| (ch, run)))
         .collect::<Vec<_>>();
-    let mut width = 0u32;
+    let mut width = 0.0_f32;
     for (ch, run) in visual_order(&logical, glyphs.default_right_to_left()) {
-        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.style))?;
+        width += hud_font_glyph(ch, glyphs).styled_advance_f32(run.style);
     }
-    (width > 0).then_some(width)
+    (width > 0.0).then_some(width.ceil() as u32)
 }
 
 /// Measures the unshaped logical buffer used by wrapping, editing cursors, and
 /// selections. Vanilla `Font.width(String)` does not apply language ordering.
 fn hud_logical_font_runs_width(runs: &[HudStyledTextRun], glyphs: &HudFontGlyphMap) -> Option<u32> {
-    let mut width = 0u32;
+    let mut width = 0.0_f32;
     for run in runs {
         for ch in run.text.chars() {
-            width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.style))?;
+            width += hud_font_glyph(ch, glyphs).styled_advance_f32(run.style);
         }
     }
-    (width > 0).then_some(width)
+    (width > 0.0).then_some(width.ceil() as u32)
 }
 
 fn hud_component_runs_width(runs: &[HudComponentTextRun], fonts: &HudFontGlyphBook) -> Option<u32> {
@@ -19521,12 +19567,12 @@ fn hud_component_runs_width(runs: &[HudComponentTextRun], fonts: &HudFontGlyphBo
         .iter()
         .flat_map(|run| run.visual.text.chars().map(move |ch| (ch, run)))
         .collect::<Vec<_>>();
-    let mut width = 0u32;
+    let mut width = 0.0_f32;
     for (ch, run) in visual_order(&logical, fonts.default_right_to_left()) {
         let glyphs = fonts.glyphs(run.font.as_deref());
-        width = width.checked_add(hud_font_glyph(ch, glyphs).styled_advance(run.visual.style))?;
+        width += hud_font_glyph(ch, glyphs).styled_advance_f32(run.visual.style);
     }
-    (width > 0).then_some(width)
+    (width > 0.0).then_some(width.ceil() as u32)
 }
 
 const HUD_CHAT_MAX_WIDTH: u32 = 320;
@@ -19699,7 +19745,7 @@ fn hud_wrap_component_runs(
         .collect::<Vec<_>>();
     let mut result = Vec::new();
     let mut line = Vec::<HudChatStyledChar>::new();
-    let mut width = 0u32;
+    let mut width = 0.0_f32;
     let mut last_break = None;
 
     for styled in chars {
@@ -19707,13 +19753,13 @@ fn hud_wrap_component_runs(
             trim_chat_line_end(&mut line);
             result.push(hud_chat_chars_to_component_line(&line, interactions, fonts));
             line.clear();
-            width = 0;
+            width = 0.0;
             last_break = None;
             continue;
         }
         let advance = hud_font_glyph(styled.ch, fonts.glyphs(styled.font.as_deref()))
-            .styled_advance(styled.style);
-        if !line.is_empty() && width.saturating_add(advance) > max_width {
+            .styled_advance_f32(styled.style);
+        if !line.is_empty() && width + advance > max_width as f32 {
             if let Some(break_index) = last_break {
                 let mut carry = line.split_off(break_index);
                 trim_chat_line_end(&mut line);
@@ -19735,7 +19781,7 @@ fn hud_wrap_component_runs(
         }
         let whitespace = styled.ch.is_whitespace();
         line.push(styled);
-        width = width.saturating_add(advance);
+        width += advance;
         if whitespace {
             last_break = Some(line.len());
         }
@@ -19747,12 +19793,11 @@ fn hud_wrap_component_runs(
     result
 }
 
-fn hud_chat_chars_width(chars: &[HudChatStyledChar], fonts: HudChatFontResolver<'_>) -> u32 {
-    chars.iter().fold(0u32, |width, styled| {
-        width.saturating_add(
-            hud_font_glyph(styled.ch, fonts.glyphs(styled.font.as_deref()))
-                .styled_advance(styled.style),
-        )
+fn hud_chat_chars_width(chars: &[HudChatStyledChar], fonts: HudChatFontResolver<'_>) -> f32 {
+    chars.iter().fold(0.0_f32, |width, styled| {
+        width
+            + hud_font_glyph(styled.ch, fonts.glyphs(styled.font.as_deref()))
+                .styled_advance_f32(styled.style)
     })
 }
 
@@ -19802,20 +19847,20 @@ fn hud_chat_chars_to_component_line(
         .collect::<Vec<_>>();
     let visual = visual_order(&logical, fonts.default_right_to_left());
     let mut interactions = Vec::<HudChatLineInteraction>::new();
-    let mut x = 0u32;
+    let mut x = 0.0_f32;
     for (ch, styled) in visual {
-        let end_x = x.saturating_add(
-            hud_font_glyph(ch, fonts.glyphs(styled.font.as_deref())).styled_advance(styled.style),
-        );
+        let end = x + hud_font_glyph(ch, fonts.glyphs(styled.font.as_deref()))
+            .styled_advance_f32(styled.style);
+        let start_x = x.ceil() as u32;
+        let end_x = end.ceil() as u32;
         if let Some(target_index) = styled.target_index {
-            if let Some(previous) = interactions
-                .last_mut()
-                .filter(|previous| previous.target_index == target_index && previous.end_x == x)
-            {
+            if let Some(previous) = interactions.last_mut().filter(|previous| {
+                previous.target_index == target_index && previous.end_x == start_x
+            }) {
                 previous.end_x = end_x;
             } else {
                 interactions.push(HudChatLineInteraction {
-                    start_x: x,
+                    start_x,
                     end_x,
                     target_index,
                     tooltip: source_interactions
@@ -19825,7 +19870,7 @@ fn hud_chat_chars_to_component_line(
                 });
             }
         }
-        x = end_x;
+        x = end;
     }
     HudWrappedComponentChatLine { runs, interactions }
 }
@@ -19964,8 +20009,8 @@ fn hud_chat_tag_at<'a>(
 
 /// Vanilla `FontSet.computeGlyphInfo` walks the flattened provider chain; the
 /// baked `HudFontGlyphMap` already encodes that first-provider-wins order, so
-/// lookup is direct, with `?` standing in for codepoints no bitmap page
-/// covers (unihex/unifont deferred).
+/// lookup is direct, with `?` standing in for codepoints no resolved provider
+/// covers.
 fn hud_font_glyph(ch: char, glyphs: &HudFontGlyphMap) -> HudAsciiGlyph {
     glyphs
         .get(ch)
@@ -21786,6 +21831,7 @@ mod tests {
                     height: 1,
                     advance,
                     ascent: HUD_FONT_BASELINE,
+                    ..HudAsciiGlyph::default()
                 },
             );
         }
@@ -21827,6 +21873,76 @@ mod tests {
     }
 
     #[test]
+    fn unihex_cjk_offscreen_uses_scaled_bitmap_and_common_hud_text_path() {
+        use crate::camera::ClearColor;
+
+        let Some(mut renderer) = Renderer::new_offscreen(96, 48) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.update_camera();
+        let mut rgba = vec![0_u8; 16 * 16 * 4];
+        for y in 1..15_usize {
+            for x in 1..15_usize {
+                if matches!(x, 1 | 7 | 14) || matches!(y, 1 | 7 | 14) {
+                    let offset = (y * 16 + x) * 4;
+                    rgba[offset..offset + 4].copy_from_slice(&[255; 4]);
+                }
+            }
+        }
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.01 / 16.0, 0.01 / 16.0],
+                max: [1.0 - 0.01 / 16.0, 1.0 - 0.01 / 16.0],
+            },
+            width: 16,
+            height: 16,
+            advance: 9,
+            render_scale: 0.5,
+            bold_offset: 0.5,
+            shadow_offset: 0.5,
+            ..HudAsciiGlyph::default()
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for codepoint in ['中', '文', '?'] {
+            glyphs.insert_first_wins(codepoint, glyph);
+        }
+        renderer
+            .upload_hud_font_atlas(16, 16, &rgba, glyphs)
+            .expect("unihex fixture atlas");
+        renderer.set_hud_debug_overlay(Some(HudDebugOverlay {
+            left_lines: vec!["中文".to_string()],
+            ..HudDebugOverlay::default()
+        }));
+
+        let pixels = renderer.render_offscreen_frame().expect("CJK HUD frame");
+        let bright_pixels = pixels
+            .rgba
+            .chunks_exact(4)
+            .filter(|pixel| pixel[0] > 200 && pixel[1] > 200 && pixel[2] > 200)
+            .count();
+        assert!(
+            bright_pixels >= 20,
+            "CJK glyphs did not reach the HUD frame"
+        );
+        if let Some(path) = std::env::var_os("BBB_UNIHEX_ANCHOR_PATH") {
+            image::save_buffer(
+                path,
+                &pixels.rgba,
+                pixels.width,
+                pixels.height,
+                image::ColorType::Rgba8,
+            )
+            .expect("save CJK visual anchor");
+        }
+    }
+
+    #[test]
     fn hide_gui_suppresses_ingame_draws_but_keeps_sleep_debug_and_toasts() {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
@@ -21856,6 +21972,7 @@ mod tests {
             height: 1,
             advance: 1,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         glyphs.insert_first_wins('A', glyph);
@@ -24326,6 +24443,7 @@ mod tests {
             height: 1,
             advance: 6,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         for ch in "?/seedcmd01next".chars() {
@@ -25175,7 +25293,7 @@ mod tests {
         // Mapped non-ASCII codepoints now resolve their own bitmap glyph.
         assert_eq!(hud_font_text_width("é", &glyphs), Some(7));
         assert_eq!(hud_font_glyph('é', &glyphs).ascent, 10);
-        // CJK stays outside the bitmap pages (unihex deferred) and still
+        // This small fixture deliberately has no unihex provider, so CJK
         // degrades to the `?` replacement glyph.
         assert_eq!(hud_font_text_width("钻", &glyphs), Some(5));
         assert_eq!(hud_font_glyph('钻', &glyphs), hud_font_glyph('?', &glyphs));
@@ -25687,6 +25805,7 @@ mod tests {
             height: 1,
             advance,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut default = HudFontGlyphMap::new();
         default.insert_first_wins('a', glyph(0.1, 2));
@@ -26392,6 +26511,7 @@ mod tests {
             width: 4,
             height: 8,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut default = HudFontGlyphMap::new();
         default.insert_first_wins('a', glyph(0.0));
@@ -28015,6 +28135,7 @@ mod tests {
                 height: 8,
                 advance: 6,
                 ascent: 7,
+                ..HudAsciiGlyph::default()
             },
         );
         renderer.upload_item_frame_map_text_font(1, 1, &[255; 4]);
@@ -29481,6 +29602,7 @@ mod tests {
             height: 1,
             advance: 6,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         for ch in "abc".chars() {
@@ -29568,6 +29690,7 @@ mod tests {
             height: 1,
             advance: 1,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         glyphs.insert_first_wins('A', glyph);
@@ -29911,6 +30034,7 @@ mod tests {
             height: 1,
             advance: 6,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         glyphs.insert_first_wins('a', glyph);
@@ -29987,6 +30111,7 @@ mod tests {
             height: 1,
             advance: 6,
             ascent: HUD_FONT_BASELINE,
+            ..HudAsciiGlyph::default()
         };
         let mut glyphs = HudFontGlyphMap::new();
         for ch in "a /0123456789_".chars() {

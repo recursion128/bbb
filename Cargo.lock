@@ -320,6 +320,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+ "zip",
 ]
 
 [[package]]
@@ -392,6 +393,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sha1",
  "zip",
 ]
 

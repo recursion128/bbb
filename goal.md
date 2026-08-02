@@ -447,8 +447,8 @@ canonical state、runtime effect/counter 与适用 presentation。
 
 状态：`maintenance`。账本对应域没有 active item；screen/HUD/font/debug 与
 deterministic screenshot/pixel evidence 的关闭索引见 archive。
-`context_entity_type` 与 unihex 仍按各自 `Reopen when ...` 留在 Todo 域但不进
-ready。启动配置继续只走 CLI，F3+I entity payload 继续由 entity owner 唯一负责。
+`context_entity_type` 仍按自己的 `Reopen when ...` deferred。启动配置继续只走
+CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 ### P3：动态资源 presentation breadth
 

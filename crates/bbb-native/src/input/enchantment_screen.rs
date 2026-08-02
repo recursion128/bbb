@@ -378,6 +378,7 @@ mod tests {
                         height: 8,
                         advance,
                         ascent: 7,
+                        ..HudAsciiGlyph::default()
                     },
                 );
             }

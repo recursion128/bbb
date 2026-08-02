@@ -182,16 +182,6 @@ Skin/cape/elytra requests share one exact resource/session-generation cache.
   resource pack cannot add either registry entry. Reopen if the target protocol
   begins synchronizing one of those registries.
 
-## Fonts and text
-
-Owner: `bbb-pack` + `bbb-renderer`
-
-- **`unihex` / CJK** is `deferred`: the consumed assets tree ships no
-  `font/unifont*.zip` archive, so the `include/unifont` reference cannot resolve
-  its data and codepoints outside the bitmap pages degrade to the `?`
-  replacement glyph. Reopen when a unifont source exists in the consumed
-  assets.
-
 ## Container menu presentation parity
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`

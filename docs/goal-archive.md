@@ -897,3 +897,4 @@
 - **2026-08-02（官方 26.1 渲染机制与同载性能 P0 闭环）**：权威 block-state、
   光照、atlas、透明与 fluid 机制、三场景 ROI/workload/draw 证据及两轮 ABBA
   真机采样已闭环；GPU-only duration 保持精确 deferred。
+- **2026-08-02（unihex/CJK 字体闭环）**：SHA-1 asset-index fallback、过滤/引用顺序、有界 ZIP/HEX、override、共享 atlas、2× oversampling 与全字体消费者度量已贯通；合同见 `docs/archive/unihex-cjk-font-design.md`。

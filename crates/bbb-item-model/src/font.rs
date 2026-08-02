@@ -4,8 +4,9 @@
 //! strip used by item count labels.
 
 pub mod providers;
+mod unihex;
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
@@ -13,7 +14,9 @@ use bbb_render_types::{HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap, HudUvRe
 
 use providers::{
     FontBitmapProviderDefinition, FontProviderDefinition, FontSpaceProviderDefinition,
+    FontUnihexProviderDefinition,
 };
+use unihex::UnihexAtlasPage;
 
 /// Vanilla `Style.DEFAULT_FONT`, also used when a Component does not select a
 /// loaded custom font.
@@ -47,9 +50,17 @@ pub struct HudFontAtlasImage {
 /// One flattened provider ready for atlas baking: bitmap providers carry
 /// their loaded page image, space providers carry only their advances (they
 /// contribute no atlas pixels, mirroring vanilla `EmptyGlyph`).
+#[derive(Clone)]
 enum FontAtlasEntry {
-    Bitmap(FontBitmapProviderDefinition, SpriteImage),
+    Bitmap(FontBitmapProviderDefinition, Arc<SpriteImage>),
     Space(FontSpaceProviderDefinition),
+    Unihex(Arc<UnihexAtlasPage>),
+}
+
+#[derive(Default)]
+struct FontAtlasLoadCache {
+    bitmaps: Vec<(FontBitmapProviderDefinition, Arc<SpriteImage>)>,
+    unihex: Vec<(FontUnihexProviderDefinition, Arc<UnihexAtlasPage>)>,
 }
 
 /// Loads every selected `font/*.json` definition and bakes all bitmap pages
@@ -59,6 +70,7 @@ enum FontAtlasEntry {
 pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
     let stack = roots.resource_stack();
     let mut fonts = Vec::new();
+    let mut cache = FontAtlasLoadCache::default();
     for resource in stack.list_resources("font", ".json")? {
         let Some(path) = resource
             .location
@@ -70,7 +82,7 @@ pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
         };
         let font_id = format!("{}:{path}", resource.location.namespace());
         let definitions = providers::load_font_providers(roots, &font_id)?;
-        let entries = load_font_atlas_entries(roots, definitions)?;
+        let entries = load_font_atlas_entries(roots, definitions, &mut cache)?;
         fonts.push((font_id, entries));
     }
     if !fonts.iter().any(|(font_id, _)| font_id == DEFAULT_FONT_ID) {
@@ -82,16 +94,41 @@ pub fn load_hud_font_atlas(roots: &PackRoots) -> Result<HudFontAtlasImage> {
 fn load_font_atlas_entries(
     roots: &PackRoots,
     definitions: Vec<FontProviderDefinition>,
+    cache: &mut FontAtlasLoadCache,
 ) -> Result<Vec<FontAtlasEntry>> {
     definitions
         .into_iter()
         .map(|definition| {
             Ok(match definition {
                 FontProviderDefinition::Bitmap(bitmap) => {
-                    let image = load_font_bitmap_texture(roots, &bitmap.file)?;
+                    let image = if let Some((_, image)) = cache
+                        .bitmaps
+                        .iter()
+                        .find(|(existing, _)| existing == &bitmap)
+                    {
+                        Arc::clone(image)
+                    } else {
+                        let image = Arc::new(load_font_bitmap_texture(roots, &bitmap.file)?);
+                        cache.bitmaps.push((bitmap.clone(), Arc::clone(&image)));
+                        image
+                    };
                     FontAtlasEntry::Bitmap(bitmap, image)
                 }
                 FontProviderDefinition::Space(space) => FontAtlasEntry::Space(space),
+                FontProviderDefinition::Unihex(unihex) => {
+                    let page = if let Some((_, page)) = cache
+                        .unihex
+                        .iter()
+                        .find(|(existing, _)| existing == &unihex)
+                    {
+                        Arc::clone(page)
+                    } else {
+                        let page = Arc::new(unihex::load_unihex_atlas_page(roots, &unihex)?);
+                        cache.unihex.push((unihex.clone(), Arc::clone(&page)));
+                        page
+                    };
+                    FontAtlasEntry::Unihex(page)
+                }
             })
         })
         .collect()
@@ -127,85 +164,63 @@ fn load_font_bitmap_texture(roots: &PackRoots, file: &str) -> Result<SpriteImage
 
 #[cfg(test)]
 fn build_hud_font_atlas(entries: &[FontAtlasEntry]) -> Result<HudFontAtlasImage> {
-    // The atlas dimensions come from the bitmap pages only: `space` providers
-    // contribute codepoint advances but no pixels (vanilla `EmptyGlyph`).
-    let bitmap_pages = || {
-        entries.iter().filter_map(|entry| match entry {
-            FontAtlasEntry::Bitmap(definition, image) => Some((definition, image)),
-            FontAtlasEntry::Space(_) => None,
-        })
-    };
-    let width = bitmap_pages()
-        .map(|(_, image)| image.width)
-        .max()
-        .context("font atlas needs at least one bitmap page")?;
-    let height = bitmap_pages()
-        .try_fold(0u32, |height, (_, image)| height.checked_add(image.height))
-        .context("font atlas height overflow")?;
-    if width == 0 || height == 0 {
-        bail!("font bitmap pages must not be empty");
-    }
-    let mut rgba = vec![0; rgba_len(width, height)?];
-    let mut glyphs = HudFontGlyphMap::new();
-
-    let mut page_y = 0u32;
-    for entry in entries {
-        match entry {
-            FontAtlasEntry::Bitmap(definition, image) => {
-                blit_font_page(image, &mut rgba, width, page_y)?;
-                collect_page_glyphs(definition, image, width, height, page_y, &mut glyphs)?;
-                page_y += image.height;
-            }
-            FontAtlasEntry::Space(space) => collect_space_glyphs(space, &mut glyphs),
-        }
-    }
-
-    let fonts = HudFontGlyphBook::from_fonts(
-        DEFAULT_FONT_ID,
-        BTreeMap::from([(DEFAULT_FONT_ID.to_string(), glyphs.clone())]),
-    );
-    Ok(HudFontAtlasImage {
-        width,
-        height,
-        rgba,
-        glyphs,
-        fonts,
-    })
+    build_hud_font_book_atlas(&[(DEFAULT_FONT_ID.to_string(), entries.to_vec())])
 }
 
 fn build_hud_font_book_atlas(fonts: &[(String, Vec<FontAtlasEntry>)]) -> Result<HudFontAtlasImage> {
-    let bitmap_pages = || {
-        fonts.iter().flat_map(|(_, entries)| {
-            entries.iter().filter_map(|entry| match entry {
-                FontAtlasEntry::Bitmap(definition, image) => Some((definition, image)),
-                FontAtlasEntry::Space(_) => None,
-            })
-        })
-    };
-    let width = bitmap_pages()
-        .map(|(_, image)| image.width)
-        .max()
-        .context("font atlas needs at least one bitmap page")?;
-    let height = bitmap_pages()
-        .try_fold(0u32, |height, (_, image)| height.checked_add(image.height))
-        .context("font atlas height overflow")?;
-    if width == 0 || height == 0 {
-        bail!("font bitmap pages must not be empty");
-    }
-
+    let (width, height, placements) = layout_unique_font_pages(fonts)?;
     let mut rgba = vec![0; rgba_len(width, height)?];
+    for placement in &placements {
+        match placement.entry {
+            FontAtlasEntry::Bitmap(_, image) => {
+                blit_font_page(image, &mut rgba, width, placement.x, placement.y)?;
+            }
+            FontAtlasEntry::Unihex(page) => {
+                blit_rgba_page(
+                    page.width,
+                    page.height,
+                    &page.rgba,
+                    &mut rgba,
+                    width,
+                    placement.x,
+                    placement.y,
+                )?;
+            }
+            FontAtlasEntry::Space(_) => unreachable!("space provider has no raster page"),
+        }
+    }
     let mut maps = BTreeMap::new();
-    let mut page_y = 0u32;
     for (font_id, entries) in fonts {
         let mut glyphs = HudFontGlyphMap::new();
         for entry in entries {
             match entry {
                 FontAtlasEntry::Bitmap(definition, image) => {
-                    blit_font_page(image, &mut rgba, width, page_y)?;
-                    collect_page_glyphs(definition, image, width, height, page_y, &mut glyphs)?;
-                    page_y += image.height;
+                    let placement = placement_for(entry, &placements)
+                        .context("font bitmap page has no atlas placement")?;
+                    collect_page_glyphs(
+                        definition,
+                        image,
+                        width,
+                        height,
+                        placement.x,
+                        placement.y,
+                        &mut glyphs,
+                    )?;
                 }
                 FontAtlasEntry::Space(space) => collect_space_glyphs(space, &mut glyphs),
+                FontAtlasEntry::Unihex(page) if page.glyphs.is_empty() => {}
+                FontAtlasEntry::Unihex(page) => {
+                    let placement = placement_for(entry, &placements)
+                        .context("unihex page has no atlas placement")?;
+                    collect_unihex_glyphs(
+                        page,
+                        width,
+                        height,
+                        placement.x,
+                        placement.y,
+                        &mut glyphs,
+                    );
+                }
             }
         }
         maps.insert(font_id.clone(), glyphs);
@@ -224,16 +239,127 @@ fn build_hud_font_book_atlas(fonts: &[(String, Vec<FontAtlasEntry>)]) -> Result<
     })
 }
 
-fn blit_font_page(image: &SpriteImage, dst: &mut [u8], dst_width: u32, dst_y: u32) -> Result<()> {
-    let row_len = usize::try_from(image.width)
+struct FontPagePlacement<'a> {
+    entry: &'a FontAtlasEntry,
+    x: u32,
+    y: u32,
+}
+
+fn layout_unique_font_pages(
+    fonts: &[(String, Vec<FontAtlasEntry>)],
+) -> Result<(u32, u32, Vec<FontPagePlacement<'_>>)> {
+    let mut unique = Vec::<&FontAtlasEntry>::new();
+    for entry in fonts.iter().flat_map(|(_, entries)| entries) {
+        if entry_page_dimensions(entry).is_some()
+            && !unique
+                .iter()
+                .any(|existing| same_raster_page(existing, entry))
+        {
+            unique.push(entry);
+        }
+    }
+    let width = unique
+        .iter()
+        .filter_map(|entry| entry_page_dimensions(entry).map(|(width, _)| width))
+        .max()
+        .context("font atlas needs at least one raster page")?;
+    if width > 8_192 {
+        bail!("font atlas width {width} exceeds the 8192 pixel texture limit");
+    }
+    let mut placements = Vec::with_capacity(unique.len());
+    let mut x = 0_u32;
+    let mut y = 0_u32;
+    let mut row_height = 0_u32;
+    for entry in unique {
+        let (page_width, page_height) = entry_page_dimensions(entry).unwrap();
+        if x > 0 && x + page_width > width {
+            x = 0;
+            y = y
+                .checked_add(row_height)
+                .context("font atlas height overflow")?;
+            row_height = 0;
+        }
+        placements.push(FontPagePlacement { entry, x, y });
+        x = x
+            .checked_add(page_width)
+            .context("font atlas row overflow")?;
+        row_height = row_height.max(page_height);
+    }
+    let height = y
+        .checked_add(row_height)
+        .context("font atlas height overflow")?;
+    if height == 0 || height > 8_192 {
+        bail!("font atlas height {height} is outside the 1..=8192 pixel limit");
+    }
+    Ok((width, height, placements))
+}
+
+fn entry_page_dimensions(entry: &FontAtlasEntry) -> Option<(u32, u32)> {
+    match entry {
+        FontAtlasEntry::Bitmap(_, image) if image.width > 0 && image.height > 0 => {
+            Some((image.width, image.height))
+        }
+        FontAtlasEntry::Unihex(page) if page.width > 0 && page.height > 0 => {
+            Some((page.width, page.height))
+        }
+        FontAtlasEntry::Bitmap(_, _) | FontAtlasEntry::Space(_) | FontAtlasEntry::Unihex(_) => None,
+    }
+}
+
+fn same_raster_page(left: &FontAtlasEntry, right: &FontAtlasEntry) -> bool {
+    match (left, right) {
+        (FontAtlasEntry::Bitmap(_, left), FontAtlasEntry::Bitmap(_, right)) => {
+            Arc::ptr_eq(left, right)
+        }
+        (FontAtlasEntry::Unihex(left), FontAtlasEntry::Unihex(right)) => Arc::ptr_eq(left, right),
+        _ => false,
+    }
+}
+
+fn placement_for<'a>(
+    entry: &FontAtlasEntry,
+    placements: &'a [FontPagePlacement<'a>],
+) -> Option<&'a FontPagePlacement<'a>> {
+    placements
+        .iter()
+        .find(|placement| same_raster_page(entry, placement.entry))
+}
+
+fn blit_font_page(
+    image: &SpriteImage,
+    dst: &mut [u8],
+    dst_width: u32,
+    dst_x: u32,
+    dst_y: u32,
+) -> Result<()> {
+    blit_rgba_page(
+        image.width,
+        image.height,
+        &image.rgba,
+        dst,
+        dst_width,
+        dst_x,
+        dst_y,
+    )
+}
+
+fn blit_rgba_page(
+    src_width: u32,
+    src_height: u32,
+    src_rgba: &[u8],
+    dst: &mut [u8],
+    dst_width: u32,
+    dst_x: u32,
+    dst_y: u32,
+) -> Result<()> {
+    let row_len = usize::try_from(src_width)
         .ok()
         .and_then(|width| width.checked_mul(4))
         .context("font page row length overflow")?;
-    for y in 0..image.height {
-        let src_offset = rgba_offset(image.width, 0, y)?;
-        let dst_offset = rgba_offset(dst_width, 0, dst_y + y)?;
-        let src = image
-            .rgba
+    for y in 0..src_height {
+        let src_offset = rgba_offset(src_width, 0, y)?;
+        let dst_offset = rgba_offset(dst_width, dst_x, dst_y + y)?;
+        let src = src_rgba
             .get(src_offset..src_offset + row_len)
             .context("font page source row is outside image")?;
         dst.get_mut(dst_offset..dst_offset + row_len)
@@ -248,6 +374,7 @@ fn collect_page_glyphs(
     image: &SpriteImage,
     atlas_width: u32,
     atlas_height: u32,
+    page_x: u32,
     page_y: u32,
     glyphs: &mut HudFontGlyphMap,
 ) -> Result<()> {
@@ -300,11 +427,11 @@ fn collect_page_glyphs(
             let glyph = HudDigitGlyph {
                 uv: HudUvRect {
                     min: [
-                        src_x as f32 / atlas_width as f32,
+                        (page_x + src_x) as f32 / atlas_width as f32,
                         (page_y + src_y) as f32 / atlas_height as f32,
                     ],
                     max: [
-                        (src_x + glyph_width) as f32 / atlas_width as f32,
+                        (page_x + src_x + glyph_width) as f32 / atlas_width as f32,
                         (page_y + src_y + glyph_height) as f32 / atlas_height as f32,
                     ],
                 },
@@ -316,6 +443,7 @@ fn collect_page_glyphs(
                 advance,
                 // GlyphBitmap.getBearingTop() returns the provider ascent.
                 ascent: definition.ascent,
+                ..HudDigitGlyph::default()
             };
             if let Some(slot) = page_glyphs
                 .iter_mut()
@@ -331,6 +459,45 @@ fn collect_page_glyphs(
         glyphs.insert_first_wins(codepoint, glyph);
     }
     Ok(())
+}
+
+fn collect_unihex_glyphs(
+    page: &UnihexAtlasPage,
+    atlas_width: u32,
+    atlas_height: u32,
+    page_x: u32,
+    page_y: u32,
+    glyphs: &mut HudFontGlyphMap,
+) {
+    for glyph in &page.glyphs {
+        glyphs.insert_first_wins(
+            glyph.codepoint,
+            HudDigitGlyph {
+                uv: HudUvRect {
+                    min: [
+                        (page_x + glyph.x) as f32 / atlas_width as f32 + 0.01 / atlas_width as f32,
+                        (page_y + glyph.y) as f32 / atlas_height as f32
+                            + 0.01 / atlas_height as f32,
+                    ],
+                    max: [
+                        (page_x + glyph.x + glyph.pixel_width) as f32 / atlas_width as f32
+                            - 0.01 / atlas_width as f32,
+                        (page_y + glyph.y + 16) as f32 / atlas_height as f32
+                            - 0.01 / atlas_height as f32,
+                    ],
+                },
+                width: glyph.pixel_width,
+                height: 16,
+                // `UnihexProvider.Glyph.info`: integer division happens
+                // before widening to float.
+                advance: glyph.pixel_width / 2 + 1,
+                ascent: 7,
+                render_scale: 0.5,
+                bold_offset: 0.5,
+                shadow_offset: 0.5,
+            },
+        );
+    }
 }
 
 /// Vanilla `SpaceProvider`: every codepoint maps to an `EmptyGlyph`, which
@@ -518,13 +685,41 @@ mod tests {
         definition: FontBitmapProviderDefinition,
         image: SpriteImage,
     ) -> FontAtlasEntry {
-        FontAtlasEntry::Bitmap(definition, image)
+        FontAtlasEntry::Bitmap(definition, Arc::new(image))
     }
 
     fn space_entry(advances: &[(char, u32)]) -> FontAtlasEntry {
         FontAtlasEntry::Space(FontSpaceProviderDefinition {
             advances: advances.to_vec(),
         })
+    }
+
+    fn unihex_entry(glyphs: &[(char, u32, u32)]) -> FontAtlasEntry {
+        let width = glyphs
+            .iter()
+            .map(|(_, x, width)| x + width)
+            .max()
+            .unwrap_or(1);
+        let mut rgba = vec![0; rgba_len(width, 16).unwrap()];
+        let glyphs = glyphs
+            .iter()
+            .map(|&(codepoint, x, pixel_width)| {
+                let offset = rgba_offset(width, x, 0).unwrap();
+                rgba[offset..offset + 4].copy_from_slice(&[255; 4]);
+                unihex::UnihexAtlasGlyph {
+                    codepoint,
+                    x,
+                    y: 0,
+                    pixel_width,
+                }
+            })
+            .collect();
+        FontAtlasEntry::Unihex(Arc::new(UnihexAtlasPage {
+            width,
+            height: 16,
+            rgba,
+            glyphs,
+        }))
     }
 
     #[test]
@@ -573,6 +768,37 @@ mod tests {
         assert_eq!(glyph.uv.max, [1.0, 0.5]);
         // Advance from the first page's 4px actual width, not the second's 7px.
         assert_eq!(glyph.advance, 5);
+    }
+
+    #[test]
+    fn unihex_fallback_uses_provider_order_metrics_and_one_shared_raster_page() {
+        let bitmap = bitmap_entry(
+            definition("minecraft:font/ascii.png", 8, 7, &["A"]),
+            page_image("ascii", 8, 8, &[(3, 0)]),
+        );
+        let unihex = unihex_entry(&[('A', 0, 8), ('中', 9, 16)]);
+        let fonts = vec![
+            (
+                DEFAULT_FONT_ID.to_string(),
+                vec![bitmap.clone(), unihex.clone()],
+            ),
+            ("minecraft:uniform".to_string(), vec![unihex]),
+        ];
+        let atlas = build_hud_font_book_atlas(&fonts).unwrap();
+
+        // Default's higher bitmap page wins A; CJK falls through to unihex.
+        assert_eq!(atlas.glyphs.get('A').unwrap().render_scale, 1.0);
+        let cjk = atlas.glyphs.get('中').unwrap();
+        assert_eq!((cjk.width, cjk.height, cjk.advance), (16, 16, 9));
+        assert_eq!(cjk.rendered_width(), 8.0);
+        assert_eq!((cjk.bold_offset, cjk.shadow_offset), (0.5, 0.5));
+        // The cloned provider Arc is placed once even though two font maps
+        // consume it. The 16-row unihex page plus the 8-row bitmap page is 24.
+        assert_eq!(atlas.height, 24);
+        assert_eq!(
+            atlas.fonts.glyphs(Some("minecraft:uniform")).get('中'),
+            Some(cjk)
+        );
     }
 
     #[test]
@@ -662,7 +888,8 @@ mod tests {
     fn european_codepoints_resolve_with_vanilla_page_metrics() {
         // Vanilla include/default.json shape: nonlatin_european (ascent 7)
         // carries ж and λ, accented (height 12, ascent 10) carries é/ü/ñ,
-        // ascii (ascent 7) carries e. CJK stays unmapped (unifont deferred).
+        // ascii (ascent 7) carries e. This bitmap-only fixture intentionally
+        // has no unihex provider, so CJK remains unmapped here.
         let nonlatin = page_image("nonlatin", 16, 8, &[(4, 2), (8 + 5, 3)]);
         let accented = page_image("accented", 27, 12, &[(3, 1), (9 + 4, 5), (18 + 2, 6)]);
         let ascii = page_image("ascii", 8, 8, &[(3, 4)]);
@@ -787,5 +1014,47 @@ mod tests {
         let glyph = atlas.glyphs.get('A').expect("A glyph");
         assert_eq!(glyph.advance, 7);
         assert_eq!(glyph.uv.min, [0.5, 0.0]);
+    }
+
+    /// Local acceptance against the SHA-1-verified launcher object store. CI
+    /// fixtures cover the same parser without external files; setting
+    /// `BBB_MC_CODE_ROOT` turns this into the real 26.1 asset check.
+    #[test]
+    fn local_vanilla_26_1_unihex_cjk_acceptance() {
+        let Some(root) = std::env::var_os("BBB_MC_CODE_ROOT") else {
+            return;
+        };
+        let roots = PackRoots::from_root(root).unwrap();
+        let atlas = load_hud_font_atlas(&roots).unwrap();
+        eprintln!(
+            "Vanilla 26.1 font atlas: {}x{}, {} default glyphs",
+            atlas.width,
+            atlas.height,
+            atlas.glyphs.len()
+        );
+        assert!(atlas.width <= 8_192);
+        assert!(atlas.height <= 8_192);
+        for codepoint in ['中', '日', '한', '\u{20000}'] {
+            let glyph = atlas
+                .glyphs
+                .get(codepoint)
+                .unwrap_or_else(|| panic!("missing real Vanilla unihex glyph {codepoint}"));
+            assert_eq!(glyph.height, 16, "{codepoint}");
+            assert_eq!(glyph.render_scale, 0.5, "{codepoint}");
+            assert_eq!(glyph.bold_offset, 0.5, "{codepoint}");
+            assert_eq!(glyph.shadow_offset, 0.5, "{codepoint}");
+            assert!(glyph.width > 0, "{codepoint}");
+            assert!(glyph.advance > 0, "{codepoint}");
+            let quads =
+                glyph.styled_quads(0.0, 0.0, bbb_render_types::HudTextStyle::default(), false);
+            assert_eq!(quads.len(), 1, "{codepoint}");
+            assert_eq!(quads[0].corners[2][1], 8.0, "{codepoint}");
+        }
+        // CJK size override is full 16 columns; the default provider remains
+        // first-provider-wins behind bitmap/space entries.
+        assert_eq!(atlas.glyphs.get('中').unwrap().width, 16);
+        assert_eq!(atlas.glyphs.get('中').unwrap().advance, 9);
+        assert_eq!(atlas.glyphs.get('A').unwrap().render_scale, 1.0);
+        assert_eq!(atlas.glyphs.get(' ').unwrap().advance, 4);
     }
 }

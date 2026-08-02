@@ -27,6 +27,14 @@ pub struct HudDigitGlyph {
     /// Bitmap provider `ascent` (vanilla `GlyphBitmap.getBearingTop()`):
     /// distance from the reference baseline up to the glyph cell top.
     pub ascent: i32,
+    /// Quad-space scale from uploaded bitmap pixels to font pixels. Bitmap
+    /// providers are pre-scaled to `1.0`; Vanilla unihex uses two-times
+    /// oversampling and therefore `0.5`.
+    pub render_scale: f32,
+    /// `GlyphInfo.getBoldOffset()` for this provider.
+    pub bold_offset: f32,
+    /// `GlyphInfo.getShadowOffset()` for this provider.
+    pub shadow_offset: f32,
 }
 
 impl HudDigitGlyph {
@@ -36,6 +44,14 @@ impl HudDigitGlyph {
     /// pages such as `font/accented.png` (ascent 10 -> -3).
     pub fn baseline_offset(&self) -> f32 {
         (HUD_FONT_BASELINE - self.ascent) as f32
+    }
+
+    pub fn rendered_width(&self) -> f32 {
+        self.width as f32 * self.render_scale
+    }
+
+    pub fn rendered_height(&self) -> f32 {
+        self.height as f32 * self.render_scale
     }
 }
 
@@ -50,6 +66,9 @@ impl Default for HudDigitGlyph {
             height: 0,
             advance: 0,
             ascent: HUD_FONT_BASELINE,
+            render_scale: 1.0,
+            bold_offset: HUD_FONT_BOLD_OFFSET,
+            shadow_offset: HUD_FONT_SHADOW_OFFSET,
         }
     }
 }
@@ -167,7 +186,13 @@ impl HudDigitGlyph {
     /// advance unchanged — obfuscated substitutes an equal-advance glyph, and
     /// italic/underline/strikethrough only affect geometry.
     pub fn styled_advance(&self, style: HudTextStyle) -> u32 {
-        self.advance + u32::from(style.bold)
+        self.styled_advance_f32(style).ceil() as u32
+    }
+
+    /// Exact `GlyphInfo.getAdvance(bold)` used while positioning quads. This
+    /// keeps unihex's half-pixel bold offset instead of rounding each glyph.
+    pub fn styled_advance_f32(&self, style: HudTextStyle) -> f32 {
+        self.advance as f32 + if style.bold { self.bold_offset } else { 0.0 }
     }
 
     /// Glyph cell top edge relative to the pen `y`, mirroring
@@ -179,7 +204,7 @@ impl HudDigitGlyph {
     /// Glyph cell bottom edge, mirroring `GlyphBitmap.getBottom()` =
     /// `getTop() + pixelHeight`.
     fn cell_down(&self) -> f32 {
-        self.baseline_offset() + self.height as f32
+        self.baseline_offset() + self.rendered_height()
     }
 
     /// Italic shear applied to the cell top edge:
@@ -199,7 +224,7 @@ impl HudDigitGlyph {
     /// applies the shear, and `bold` applies `extraThickness`.
     fn render_corners(&self, x: f32, y: f32, italic: bool, bold: bool) -> [[f32; 2]; 4] {
         let x0 = x; // getLeft() == bearingLeft == 0
-        let x1 = x + self.width as f32; // getRight() == left + pixelWidth
+        let x1 = x + self.rendered_width(); // getRight() == left + pixelWidth / oversample
         let y0 = y + self.cell_up();
         let y1 = y + self.cell_down();
         let shear_y0 = if italic { self.shear_top() } else { 0.0 };
@@ -235,8 +260,8 @@ impl HudDigitGlyph {
         if shadow {
             quads.push(HudGlyphQuad {
                 corners: self.render_corners(
-                    x + HUD_FONT_SHADOW_OFFSET,
-                    y + HUD_FONT_SHADOW_OFFSET,
+                    x + self.shadow_offset,
+                    y + self.shadow_offset,
                     italic,
                     bold,
                 ),
@@ -246,8 +271,8 @@ impl HudDigitGlyph {
             if bold {
                 quads.push(HudGlyphQuad {
                     corners: self.render_corners(
-                        x + HUD_FONT_BOLD_OFFSET + HUD_FONT_SHADOW_OFFSET,
-                        y + HUD_FONT_SHADOW_OFFSET,
+                        x + self.bold_offset + self.shadow_offset,
+                        y + self.shadow_offset,
                         italic,
                         true,
                     ),
@@ -263,7 +288,7 @@ impl HudDigitGlyph {
         });
         if bold {
             quads.push(HudGlyphQuad {
-                corners: self.render_corners(x + HUD_FONT_BOLD_OFFSET, y, italic, true),
+                corners: self.render_corners(x + self.bold_offset, y, italic, true),
                 uv: self.uv,
                 shadow: false,
             });
@@ -284,7 +309,7 @@ impl HudDigitGlyph {
         first_in_line: bool,
     ) -> Vec<HudEffectRect> {
         let mut rects = Vec::new();
-        let advance = self.styled_advance(style) as f32;
+        let advance = self.styled_advance_f32(style);
         let effect_x0 = if first_in_line { x - 1.0 } else { x };
         let x1 = x + advance;
         if style.strikethrough {
@@ -705,6 +730,7 @@ mod tests {
             height: 8,
             advance,
             ascent: 7,
+            ..HudAsciiGlyph::default()
         };
         let mut default = HudFontGlyphMap::new();
         default.insert_first_wins('A', glyph(5, 0.0));
@@ -788,6 +814,7 @@ mod tests {
             height: 8,
             advance: 6,
             ascent: 7,
+            ..HudAsciiGlyph::default()
         }
     }
 
@@ -829,6 +856,34 @@ mod tests {
         ] {
             assert_eq!(glyph.styled_advance(style), 6);
         }
+    }
+
+    #[test]
+    fn unihex_metrics_preserve_two_times_oversampling_and_half_pixel_offsets() {
+        let glyph = HudAsciiGlyph {
+            width: 16,
+            height: 16,
+            advance: 9,
+            render_scale: 0.5,
+            bold_offset: 0.5,
+            shadow_offset: 0.5,
+            ..HudAsciiGlyph::default()
+        };
+        let bold = HudTextStyle {
+            bold: true,
+            ..HudTextStyle::default()
+        };
+        assert_eq!(glyph.rendered_width(), 8.0);
+        assert_eq!(glyph.rendered_height(), 8.0);
+        assert_eq!(glyph.styled_advance_f32(bold), 9.5);
+        assert_eq!(glyph.styled_advance(bold), 10);
+
+        let quads = glyph.styled_quads(0.0, 0.0, bold, true);
+        assert_eq!(quads.len(), 4);
+        assert_close(quads[0].corners[0][0], 0.4);
+        assert_close(quads[0].corners[0][1], 0.4);
+        assert_close(quads[1].corners[0][0], 0.9);
+        assert_close(quads[2].corners[2][0], 8.1);
     }
 
     #[test]
@@ -999,6 +1054,7 @@ mod tests {
             height: 8,
             advance,
             ascent: 7,
+            ..HudAsciiGlyph::default()
         }
     }
 

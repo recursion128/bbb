@@ -186,6 +186,7 @@ fn test_map_text_fonts() -> HudFontGlyphBook {
                 height: 8,
                 advance: if byte == b' ' { 4 } else { 6 },
                 ascent: 7,
+                ..bbb_render_types::HudAsciiGlyph::default()
             },
         );
     }
