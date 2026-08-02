@@ -455,6 +455,7 @@ pub struct Renderer {
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap: LightmapGpu,
     pub(super) lightmap_dirty: bool,
+    pub(super) lightmap_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) lightmap_hud_bind_group: wgpu::BindGroup,
     pub(super) _lightmap_hud_sampler: wgpu::Sampler,
     pub(super) lightmap_sample_bind_group_layout: wgpu::BindGroupLayout,
@@ -1411,7 +1412,8 @@ impl Renderer {
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
         let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
-        let lightmap_pipeline = create_lightmap_pipeline(&device, &lightmap_bind_group_layout);
+        let lightmap_pipeline =
+            create_lightmap_pipeline(&device, &lightmap_bind_group_layout, None)?;
         let lightmap = create_lightmap_gpu(
             &device,
             &queue,
@@ -2199,6 +2201,7 @@ impl Renderer {
             lightmap_pipeline,
             lightmap,
             lightmap_dirty: true,
+            lightmap_bind_group_layout,
             lightmap_hud_bind_group,
             _lightmap_hud_sampler: lightmap_hud_sampler,
             lightmap_sample_bind_group_layout,

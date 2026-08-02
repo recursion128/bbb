@@ -1,5 +1,6 @@
 use crate::camera::LightmapEnvironment;
 use crate::pipeline_builder::RenderPipelineBuilder;
+use anyhow::{Context, Result};
 
 pub(super) const LIGHTMAP_TEXTURE_SIZE: u32 = 16;
 pub(super) const LIGHTMAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -184,12 +185,66 @@ pub(super) fn create_lightmap_sample_bind_group_layout(
 pub(super) fn create_lightmap_pipeline(
     device: &wgpu::Device,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-lightmap-pipeline")
+    shaders: Option<&crate::core_shaders::AdaptedLightmapShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_lightmap_pipeline(device, bind_group_layout, shaders);
+    }
+    Ok(RenderPipelineBuilder::new(device, "bbb-lightmap-pipeline")
         .shader("bbb-lightmap-shader", LIGHTMAP_SHADER)
         .layout("bbb-lightmap-pipeline-layout", &[bind_group_layout])
         .color_target(LIGHTMAP_FORMAT, None)
-        .build()
+        .build())
+}
+
+fn create_selected_lightmap_pipeline(
+    device: &wgpu::Device,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: &crate::core_shaders::AdaptedLightmapShaders,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-lightmap-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .context("compile selected lightmap vertex")?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-lightmap-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .context("compile selected lightmap fragment")?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-lightmap-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("bbb-selected-lightmap-pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[],
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: LIGHTMAP_FORMAT,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
 }
 
 pub(super) fn create_lightmap_gpu(

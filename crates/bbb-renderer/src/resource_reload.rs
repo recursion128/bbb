@@ -430,6 +430,7 @@ struct CorePipelineGeneration {
     text: Option<TextCorePipelines>,
     text_background: Option<wgpu::RenderPipeline>,
     clouds: Option<CloudCorePipelines>,
+    lightmap: Option<wgpu::RenderPipeline>,
 }
 
 impl CorePipelineGeneration {
@@ -598,6 +599,19 @@ impl CorePipelineGeneration {
         let clouds = (!startup_without_sources)
             .then(|| CloudCorePipelines::prepare(renderer, cloud_shaders.as_ref()))
             .transpose()?;
+        let lightmap_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_lightmap_shaders(resources))
+            .transpose()?
+            .flatten();
+        let lightmap = (!startup_without_sources)
+            .then(|| {
+                crate::lightmap::create_lightmap_pipeline(
+                    &renderer.device,
+                    &renderer.lightmap_bind_group_layout,
+                    lightmap_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -617,6 +631,7 @@ impl CorePipelineGeneration {
             text,
             text_background,
             clouds,
+            lightmap,
         })
     }
 
@@ -858,6 +873,9 @@ impl CorePipelineGeneration {
         if let Some(clouds) = self.clouds.as_mut() {
             std::mem::swap(&mut clouds.flat, &mut renderer.cloud_flat_pipeline);
             std::mem::swap(&mut clouds.fancy, &mut renderer.cloud_fancy_pipeline);
+        }
+        if let Some(lightmap) = self.lightmap.as_mut() {
+            std::mem::swap(lightmap, &mut renderer.lightmap_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1816,8 +1834,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            63,
-            "62 GPU handles plus the publication generation must share one mapping"
+            64,
+            "63 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1886,6 +1904,13 @@ mod tests {
                 .count(),
             1,
             "flat and fancy clouds must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_lightmap_shaders(resources)")
+                .count(),
+            1,
+            "lightmap must have one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1994,7 +2019,6 @@ mod tests {
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
-            ("lightmap_pipeline", "LIGHTMAP/core/lightmap"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
             ("sky_pipeline", "SKY/core/sky"),
             ("star_pipeline", "STARS/core/stars"),
@@ -2021,10 +2045,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 62, "selected core generation changed");
+        assert_eq!(selected.len(), 63, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            15,
+            14,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

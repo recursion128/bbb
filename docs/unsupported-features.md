@@ -73,8 +73,8 @@ Matrix route: `resources-reload-listeners`
   selected `core/glint` source now own one atomic pipeline generation. Remaining active work is
   the rest of the current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The exhaustive source guard classifies all 87 renderer pipeline owners: 62 are in the selected
-  core generation, 15 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
+  The exhaustive source guard classifies all 87 renderer pipeline owners: 63 are in the selected
+  core generation, 14 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
   post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The single
   `core/entity` adapter now preloads and atomically swaps breeze/energy scroll, guardian/end-crystal
   beam, dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull with
@@ -86,7 +86,8 @@ Matrix route: `resources-reload-listeners`
   pre-expanded side input exactly once across three depth variants. Normal text now shares atlas/lightmap/fog
   sources across debug/display projections while see-through remains distinct; the independent text-background
   source now drives the background owner through the same atlas/lightmap layouts. One cloud adapter projects
-  Vanilla's signed texel-buffer faces onto BBB's packed instance input for both cull variants. The next cursor is lightmap.
+  Vanilla's signed texel-buffer faces onto BBB's packed instance input for both cull variants. The screenquad/lightmap
+  source pair now drives the retained lightmap target through its exact uniform layout. The next cursor is the sky family.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.

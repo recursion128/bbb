@@ -21,6 +21,8 @@ const TEXT_SHADER_ID: &str = "minecraft:core/rendertype_text";
 const TEXT_SEE_THROUGH_SHADER_ID: &str = "minecraft:core/rendertype_text_see_through";
 const TEXT_BACKGROUND_SHADER_ID: &str = "minecraft:core/rendertype_text_background";
 const CLOUD_SHADER_ID: &str = "minecraft:core/rendertype_clouds";
+const SCREEN_QUAD_SHADER_ID: &str = "minecraft:core/screenquad";
+const LIGHTMAP_SHADER_ID: &str = "minecraft:core/lightmap";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -106,6 +108,11 @@ pub(crate) struct AdaptedTextBackgroundShaders {
 }
 
 pub(crate) struct AdaptedCloudShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedLightmapShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
 }
@@ -494,6 +501,26 @@ pub(crate) fn adapt_selected_cloud_shaders(
         vertex: adapted_vertex,
         fragment: adapt_cloud_stage(&fragment.source, false)
             .context("adapt selected cloud fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_lightmap_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedLightmapShaders>> {
+    let vertex = resources
+        .source_by_id(SCREEN_QUAD_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/screenquad vertex stage")?;
+    let fragment = resources
+        .source_by_id(LIGHTMAP_SHADER_ID, ShaderStage::Fragment)
+        .context("prepared core shaders are missing minecraft:core/lightmap fragment stage")?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedLightmapShaders {
+        vertex: adapt_lightmap_stage(&vertex.source, true)
+            .context("adapt selected lightmap vertex shader")?,
+        fragment: adapt_lightmap_stage(&fragment.source, false)
+            .context("adapt selected lightmap fragment shader")?,
     }))
 }
 
@@ -957,6 +984,21 @@ fn adapt_cloud_stage(source: &str, vertex_stage: bool) -> Result<String> {
         source
     };
     bind_cloud_stage_locations(&source, vertex_stage)
+}
+
+fn adapt_lightmap_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = require_webgpu_glsl_version(source);
+    let source = if vertex_stage {
+        source.replace("gl_VertexID", "int(gl_VertexIndex)")
+    } else {
+        replace_required(
+            &source,
+            "layout(std140) uniform LightmapInfo",
+            "layout(std140, set = 0, binding = 0) uniform LightmapInfo",
+            "selected lightmap info uniform",
+        )?
+    };
+    bind_lightmap_stage_locations(&source, vertex_stage)
 }
 
 const CLOUD_FACE_INPUT_PROJECTION: &str = r#"layout(location = 0) in uint BbbCloudFace;
@@ -2454,6 +2496,22 @@ fn bind_cloud_stage_locations(source: &str, vertex_stage: bool) -> Result<String
         })
 }
 
+fn bind_lightmap_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[("out", "vec2", "texCoord", 0, true)]
+    } else {
+        &[
+            ("in", "vec2", "texCoord", 0, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2932,6 +2990,33 @@ void main() {
     }
 
     #[test]
+    fn lightmap_adapter_projects_screen_quad_and_uniform_layout() {
+        let vertex = r#"#version 330
+out vec2 texCoord;
+void main() {
+    vec2 uv = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+    gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+    texCoord = uv;
+}
+"#;
+        let vertex = adapt_lightmap_stage(vertex, true).expect("lightmap screen quad");
+        assert!(vertex.contains("int(gl_VertexIndex)"));
+        assert!(!vertex.contains("gl_VertexID"));
+        assert!(vertex.contains("layout(location = 0) out vec2 texCoord"));
+
+        let fragment = r#"#version 330
+layout(std140) uniform LightmapInfo { float SkyFactor; } lightmapInfo;
+in vec2 texCoord;
+out vec4 fragColor;
+void main() { fragColor = vec4(texCoord, lightmapInfo.SkyFactor, 1.0); }
+"#;
+        let fragment = adapt_lightmap_stage(fragment, false).expect("lightmap fragment");
+        assert!(fragment.contains("layout(std140, set = 0, binding = 0) uniform LightmapInfo"));
+        assert!(fragment.contains("layout(location = 0) in vec2 texCoord"));
+        assert!(fragment.contains("layout(location = 0) out vec4 fragColor"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -3258,6 +3343,14 @@ void main() {
             id: CLOUD_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let screen_quad_vertex_key = ShaderSourceKey {
+            id: SCREEN_QUAD_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let lightmap_fragment_key = ShaderSourceKey {
+            id: LIGHTMAP_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -3575,6 +3668,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: cloud_fragment_key,
                         resource_id: "minecraft:shaders/core/rendertype_clouds.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    screen_quad_vertex_key.clone(),
+                    ShaderSource {
+                        key: screen_quad_vertex_key,
+                        resource_id: "minecraft:shaders/core/screenquad.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    lightmap_fragment_key.clone(),
+                    ShaderSource {
+                        key: lightmap_fragment_key,
+                        resource_id: "minecraft:shaders/core/lightmap.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -4492,6 +4605,79 @@ void main() {
             .expect_err("filtering required cloud stages must reject the generation");
         assert!(error.to_string().contains("rendertype_clouds"));
         assert_eq!(renderer.core_shader_generation(), Some(141));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_lightmap_shader_preloads_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-lightmap-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/lightmap.fsh"),
+            r#"#version 330
+layout(std140) uniform LightmapInfo {
+    float SkyFactor;
+    float BlockFactor;
+    float NightVisionFactor;
+    float DarknessScale;
+    float BossOverlayWorldDarkeningFactor;
+    float BrightnessFactor;
+    vec3 BlockLightTint;
+    vec3 SkyLightColor;
+    vec3 AmbientColor;
+    vec3 NightVisionColor;
+} lightmapInfo;
+in vec2 texCoord;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, texCoord.x * 0.0, 1.0 + lightmapInfo.SkyFactor * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected lightmap shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(151, selected)
+            .expect("selected lightmap generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected lightmap pipeline compiles atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(151));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/(?:screenquad\\.vsh|lightmap\\.fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected lightmap filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(152, filtered)
+            .expect("filtered lightmap generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required lightmap stages must reject the generation");
+        assert!(error.to_string().contains("screenquad") || error.to_string().contains("lightmap"));
+        assert_eq!(renderer.core_shader_generation(), Some(151));
 
         std::fs::remove_dir_all(root).unwrap();
     }
