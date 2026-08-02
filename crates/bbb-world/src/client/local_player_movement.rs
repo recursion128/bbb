@@ -634,7 +634,7 @@ fn advance_local_player_physics_step(
         let jump_velocity = local_player_jump_velocity(world, pose);
         if jump_velocity > 1.0e-5 {
             pose.delta_movement.y = pose.delta_movement.y.max(jump_velocity);
-            if input.sprint {
+            if input.sprinting {
                 let (impulse_x, impulse_z) = local_player_sprint_jump_horizontal_impulse(pose);
                 pose.delta_movement.x += impulse_x;
                 pose.delta_movement.z += impulse_z;
@@ -684,7 +684,7 @@ fn advance_local_player_physics_step(
     } else if let Some(abilities) = flying {
         // `Player.getFlyingSpeed` while creative-flying off-vehicle.
         local_player_flying_air_acceleration(abilities, input)
-    } else if input.sprint {
+    } else if input.sprinting {
         LOCAL_PLAYER_SPRINT_AIR_ACCELERATION
     } else {
         LOCAL_PLAYER_AIR_ACCELERATION
@@ -1091,7 +1091,7 @@ fn local_player_input_acceleration(
 /// attribute with Vanilla's +30% sprint modifier.
 fn local_player_ground_speed(world: &WorldStore, input: LocalPlayerInputState) -> f64 {
     let mut speed = local_player_movement_speed_attribute_value(world);
-    if input.sprint {
+    if input.sprinting {
         speed *= LOCAL_PLAYER_SPRINT_SPEED_MODIFIER;
     }
     speed
@@ -1373,7 +1373,7 @@ fn local_player_should_swim(
     pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
 ) -> bool {
-    if !input.focused || !input.sprint {
+    if !input.focused || !input.sprinting {
         return false;
     }
 
@@ -1394,32 +1394,76 @@ fn local_player_effective_movement_input(
     world: &WorldStore,
     mut input: LocalPlayerInputState,
 ) -> LocalPlayerInputState {
-    if input.sprint && !local_player_can_sprint(world, input) {
-        input.sprint = false;
+    if input.sprinting && local_player_should_stop_sprinting(world, input) {
+        input.sprinting = false;
     }
     input
 }
 
-pub(super) fn local_player_effective_sprint(
-    world: &WorldStore,
-    input: LocalPlayerInputState,
-) -> bool {
-    input.sprint && local_player_can_sprint(world, input)
-}
-
-fn local_player_can_sprint(world: &WorldStore, input: LocalPlayerInputState) -> bool {
+fn local_player_is_sprinting_possible(world: &WorldStore, allowed_in_shallow_water: bool) -> bool {
     let sprint_source_is_eligible = if world.local_player_vehicle_id().is_some() {
         world.local_player_sprintable_vehicle_id().is_some()
     } else {
         local_player_has_enough_food_to_sprint(world)
     };
 
+    let in_shallow_water = world.local_player().pose.is_some_and(|pose| {
+        let contact = local_player_fluid_contact(world, pose);
+        contact.in_water() && !contact.eye_in_water
+    });
+    local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_none()
+        && sprint_source_is_eligible
+        && (allowed_in_shallow_water || !in_shallow_water)
+}
+
+pub(super) fn local_player_can_start_sprinting(
+    world: &WorldStore,
+    input: LocalPlayerInputState,
+) -> bool {
+    let Some(pose) = world.local_player().pose else {
+        return false;
+    };
+    let contact = local_player_fluid_contact(world, pose);
+    let under_water = contact.in_water() && contact.eye_in_water;
+    let visually_crawling = pose.swimming && !contact.in_water();
     input.focused
         && input.forward
         && !input.backward
-        && local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_none()
-        && sprint_source_is_eligible
+        && local_player_is_sprinting_possible(
+            world,
+            world
+                .local_player()
+                .abilities
+                .is_some_and(|abilities| abilities.flying),
+        )
         && !local_player_is_slow_due_to_using_item(world)
+        && (!local_player_is_fall_flying(world) || under_water)
+        && (!(pose.sneaking || visually_crawling) || under_water)
+}
+
+pub(super) fn local_player_should_stop_sprinting(
+    world: &WorldStore,
+    input: LocalPlayerInputState,
+) -> bool {
+    let Some(pose) = world.local_player().pose else {
+        return true;
+    };
+    let contact = local_player_fluid_contact(world, pose);
+    if pose.swimming {
+        !local_player_is_sprinting_possible(world, true)
+            || !contact.in_water()
+            || (!(input.forward && !input.backward) && !pose.on_ground && !input.sneak)
+    } else {
+        !local_player_is_sprinting_possible(
+            world,
+            world
+                .local_player()
+                .abilities
+                .is_some_and(|abilities| abilities.flying),
+        ) || !input.forward
+            || input.backward
+            || pose.horizontal_collision && !pose.minor_horizontal_collision
+    }
 }
 
 fn local_player_is_slow_due_to_using_item(world: &WorldStore) -> bool {
@@ -1854,7 +1898,7 @@ fn local_player_flying_air_acceleration(
     input: LocalPlayerInputState,
 ) -> f64 {
     let mut speed = f64::from(abilities.flying_speed).max(0.0);
-    if input.sprint {
+    if input.sprinting {
         speed *= LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER;
     }
     speed

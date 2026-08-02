@@ -643,7 +643,7 @@ impl WorldStore {
             .entities
             .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)?;
         let base_movement_speed = base_movement_speed_value as f32;
-        let controller_sprinting = self.local_player_effective_sprint(input);
+        let controller_sprinting = self.local_player_is_sprinting();
         let max_up_step =
             self.entities
                 .attribute_value(vehicle_id, VANILLA_ATTRIBUTE_STEP_HEIGHT_ID)? as f32;

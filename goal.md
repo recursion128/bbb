@@ -159,8 +159,8 @@ unused/dead-code lint。
 - 决策合同：双击前进不得设置 raw sprint bit；松开 sprint 键本身不得停止 latch；start 必须
   同时满足 forward、mobility、food/controlled sprintable vehicle、shallow-water、item-use、
   fall-flying、slow-pose 条件；run/swim stop、major collision 与 attack restart 顺序复刻
-  `canStartSprinting`/`shouldStop*`。同一机会 raw input 先于 sprint command，sprint command
-  先于 movement；passenger 分支保持 rotation/vehicle 顺序。
+  `canStartSprinting`/`shouldStop*`。同一机会 raw input 最先发送；非乘客保持 sprint command
+  先于 player movement，乘客保持 rotation、authoritative vehicle movement、sprint command 顺序。
 - 生命周期：login/respawn/level generation 原子重置或按 Vanilla keep-entity-data 继承 latch
   与 last-sent baseline；旧 generation 的 trigger/pending transition 不得泄漏；发送失败不推进
   baseline，下一 tick 可重试。移除旧 `input.sprint` 双重语义、独立 effective resolver 和

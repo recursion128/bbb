@@ -218,6 +218,7 @@ impl WorldStore {
         player_pose.delta_movement.x *= 0.6;
         player_pose.delta_movement.z *= 0.6;
         self.local_player.pose = Some(player_pose);
+        self.local_player.sprinting = false;
         true
     }
 

@@ -30,7 +30,7 @@ use super::{
         queue_use_item_command, queue_use_item_on_command, queue_zero_pos_player_action_command,
         select_hotbar_slot,
     },
-    effective_sprinting_from_state, release_active_input, ClientInputState,
+    release_active_input, ClientInputState,
 };
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
@@ -176,12 +176,8 @@ pub(crate) fn handle_mouse_input_at_partial_tick_with_effects_and_presentation(
                             hit.entity_id,
                             world.local_player().selected_hotbar_slot,
                         );
-                        let was_sprinting = effective_sprinting_from_state(world, input);
-                        let stopped_sprinting = world
-                            .apply_local_player_attack_prediction(hit.entity_id, was_sprinting);
-                        if was_sprinting && stopped_sprinting {
-                            input.pending_attack_sprint_stop = true;
-                        }
+                        let was_sprinting = world.local_player_is_sprinting();
+                        world.apply_local_player_attack_prediction(hit.entity_id, was_sprinting);
                         world.reset_local_player_attack_strength();
                     }
                 }
@@ -1162,8 +1158,8 @@ mod tests {
         ItemEnchantmentSummary, ItemStackSummary as ProtocolItemStackSummary,
         ItemStackTemplateSummary, LodestoneTargetSummary, OpenSignEditor, PickItemFromBlock,
         PickItemFromEntity, PlayLogin, PlayerAbilities, PlayerAction, PlayerCommand,
-        PlayerCommandAction, PlayerHealth, PlayerInput, RegistryData, RegistryDataEntry,
-        RegistryTags, RemoveEntities, SetEntityData, SetPassengers,
+        PlayerCommandAction, PlayerHealth, RegistryData, RegistryDataEntry, RegistryTags,
+        RemoveEntities, SetEntityData, SetPassengers,
         SetPlayerInventory as ProtocolSetPlayerInventory, SoundEventSummary, TagNetworkPayload,
         ToolSummary, UpdateTags, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
@@ -3455,12 +3451,11 @@ mod tests {
     }
 
     #[test]
-    fn local_attack_sprint_predicts_vehicle_knockback_and_defers_stop_until_tick() {
+    fn local_attack_sprint_predicts_vehicle_knockback_and_sends_stop_on_tick() {
         let (tx, mut rx) = mpsc::channel(8);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        input.sprint = true;
         let mut world = local_attack_world_with_player_and_target(123);
         world.set_local_player_pose(LocalPlayerPoseState {
             delta_movement: ProtocolVec3d {
@@ -3470,6 +3465,9 @@ mod tests {
             },
             ..LocalPlayerPoseState::default()
         });
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
+        input.last_sent_sprinting = true;
+        input.sprint_level_generation = world.client_level_generation();
         world.advance_client_level_entity_ticks_with_observation(6);
         let mut counters = NetCounters::default();
 
@@ -3482,8 +3480,7 @@ mod tests {
             ElementState::Pressed,
         );
 
-        assert!(input.pending_attack_sprint_stop);
-        assert!(input.sprint);
+        assert!(!world.local_player_is_sprinting());
         let target = world.probe_entity_transform(123).unwrap();
         assert_f64_near(target.delta_movement.y, 0.1);
         assert_f64_near(target.delta_movement.z, 0.5);
@@ -3511,16 +3508,7 @@ mod tests {
             1,
         );
 
-        assert!(!input.pending_attack_sprint_stop);
-        assert!(!input.sprint);
-        assert!(matches!(
-            rx.try_recv().unwrap(),
-            NetCommand::PlayerInput(PlayerInput {
-                forward: true,
-                sprint: false,
-                ..
-            })
-        ));
+        assert!(!world.local_player_is_sprinting());
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::PlayerCommand(PlayerCommand {
@@ -3532,14 +3520,17 @@ mod tests {
     }
 
     #[test]
-    fn local_attack_held_sprint_key_restarts_before_pending_stop_is_sent() {
+    fn local_attack_held_sprint_key_restarts_before_outbound_stop_is_sent() {
         let (tx, mut rx) = mpsc::channel(8);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        input.sprint = true;
+        input.sprint_key_down = true;
         input.control_left_down = true;
         let mut world = local_attack_world_with_player_and_target(123);
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
+        input.last_sent_sprinting = true;
+        input.sprint_level_generation = world.client_level_generation();
         world.advance_client_level_entity_ticks_with_observation(6);
         let mut counters = NetCounters::default();
 
@@ -3551,7 +3542,7 @@ mod tests {
             MouseButton::Left,
             ElementState::Pressed,
         );
-        assert!(input.pending_attack_sprint_stop);
+        assert!(!world.local_player_is_sprinting());
         assert!(matches!(
             rx.try_recv().unwrap(),
             NetCommand::AttackEntity(_)
@@ -3570,8 +3561,7 @@ mod tests {
             1,
         );
 
-        assert!(!input.pending_attack_sprint_stop);
-        assert!(input.sprint);
+        assert!(world.local_player_is_sprinting());
         while let Ok(command) = rx.try_recv() {
             assert!(!matches!(
                 command,
@@ -6740,8 +6730,9 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        input.sprint = true;
         let mut world = world_with_crosshair_block();
+        input.forward = true;
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(

@@ -182,7 +182,7 @@ pub(super) fn advance_local_player_fluid_physics_step(
             world,
             pose.delta_movement,
             is_falling,
-            input.sprint,
+            input.sprinting,
             step_ticks,
         );
     } else {
@@ -191,7 +191,7 @@ pub(super) fn advance_local_player_fluid_physics_step(
             pose.delta_movement,
             initial_fluid_contact.lava_height,
             is_falling,
-            input.sprint,
+            input.sprinting,
             step_ticks,
         );
     }
@@ -342,7 +342,7 @@ fn local_player_water_relative_speed_per_tick(world: &WorldStore, on_ground: boo
 }
 
 fn water_horizontal_drag(world: &WorldStore, input: LocalPlayerInputState, on_ground: bool) -> f64 {
-    let mut drag = if input.sprint {
+    let mut drag = if input.sprinting {
         LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG
     } else {
         LOCAL_INPUT_WATER_HORIZONTAL_DRAG

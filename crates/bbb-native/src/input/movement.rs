@@ -9,9 +9,9 @@ use tokio::sync::mpsc;
 use super::{
     commands::{
         queue_paddle_boat_command, queue_player_abilities_command, queue_player_command_action,
-        queue_player_input_command, queue_sprint_command, queue_vehicle_move_command,
+        queue_sprint_command, queue_vehicle_move_command,
     },
-    effective_sprinting_from_state, player_input_from_state, ClientInputState,
+    ClientInputState,
 };
 
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
@@ -23,7 +23,7 @@ const LOCAL_PLAYER_MOVEMENT_TICK_SECONDS: f64 = 0.05;
 const RIDING_JUMP_TICK_SECONDS: f64 = 0.05;
 
 impl ClientInputState {
-    pub(crate) fn local_player_input(&self) -> LocalPlayerInputState {
+    pub(crate) fn local_player_input(&self, world: &WorldStore) -> LocalPlayerInputState {
         LocalPlayerInputState {
             focused: self.focused,
             forward: self.forward,
@@ -32,7 +32,7 @@ impl ClientInputState {
             right: self.right,
             jump: self.jump,
             sneak: self.sneak,
-            sprint: self.sprint,
+            sprinting: world.local_player_is_sprinting(),
             mouse_delta_x: self.mouse_delta_x,
             mouse_delta_y: self.mouse_delta_y,
         }
@@ -85,7 +85,8 @@ pub(crate) fn advance_player_input_for_client_ticks(
     // remain per-tick (0.05 s) even when synchronized tick rate slows wall time.
     // Preserve bbb's existing five-tick catch-up bound for a stalled frame.
     let client_ticks = client_ticks.min(5);
-    let tutorial_input = input.local_player_input();
+    synchronize_local_player_sprint_generation(input, world);
+    let tutorial_input = input.local_player_input(world);
     world.tutorial_on_mouse(tutorial_input.mouse_delta_x, tutorial_input.mouse_delta_y);
     for _ in 0..client_ticks {
         world.tutorial_on_input(
@@ -100,14 +101,14 @@ pub(crate) fn advance_player_input_for_client_ticks(
     input.advance_debug_crash_hold(world, now);
     input.advance_sprint_trigger(dt_seconds);
     input.advance_creative_flight_jump_trigger(dt_seconds);
-    resolve_pending_attack_sprint_stop(input, world, counters, net_commands, client_ticks);
     maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
         for _ in 0..client_ticks {
+            reconcile_local_player_sprint_state(input, world);
             world.advance_local_player_ambient_audio_tick();
         }
-        let input_state = input.local_player_input();
+        let input_state = input.local_player_input(world);
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
             let rotation_command_count =
                 client_ticks.max(u32::from(input.last_move_command_at.is_none()));
@@ -133,6 +134,9 @@ pub(crate) fn advance_player_input_for_client_ticks(
         if client_ticks > 0 || boat_vehicle && input.last_vehicle_command_at.is_none() {
             maybe_queue_vehicle_commands(input, world, counters, net_commands, now, vehicle_report);
         }
+        // Passenger `LocalPlayer.tick` sends Rot, authoritative vehicle move,
+        // then `sendIsSprintingIfNeeded`.
+        maybe_queue_local_player_sprint_transition(input, world, counters, net_commands);
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -165,11 +169,14 @@ fn advance_unmounted_local_player_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     client_ticks: u32,
 ) -> Option<LocalPlayerPoseState> {
-    let mut pose = world.advance_local_player_look_input(input.local_player_input())?;
+    let mut pose = world.advance_local_player_look_input(input.local_player_input(world))?;
 
     for _ in 0..client_ticks {
-        stop_run_sprinting_for_previous_major_collision(input, world, counters, net_commands);
-        let mut movement_input = input.local_player_input();
+        reconcile_local_player_sprint_state(input, world);
+        // Non-passenger `sendPosition` emits the sprint transition before the
+        // position/rotation packet generated after this movement step.
+        maybe_queue_local_player_sprint_transition(input, world, counters, net_commands);
+        let mut movement_input = input.local_player_input(world);
         movement_input.mouse_delta_x = 0.0;
         movement_input.mouse_delta_y = 0.0;
         world.begin_local_player_ambient_audio_tick();
@@ -182,56 +189,59 @@ fn advance_unmounted_local_player_input(
     Some(pose)
 }
 
-fn stop_run_sprinting_for_previous_major_collision(
+pub(super) fn synchronize_local_player_sprint_generation(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+) {
+    let generation = world.client_level_generation();
+    if input.sprint_level_generation == generation {
+        return;
+    }
+    input.sprint_level_generation = generation;
+    input.sprint_start_requested = false;
+    input.clear_sprint_trigger();
+    input.last_sent_sprinting = world.local_player_is_sprinting();
+}
+
+fn reconcile_local_player_sprint_state(input: &mut ClientInputState, world: &mut WorldStore) {
+    let start_requested =
+        input.sprint_key_down || std::mem::take(&mut input.sprint_start_requested);
+    let sprint_input = input.local_player_input(world);
+    world.reconcile_local_player_sprinting(sprint_input, start_requested);
+}
+
+fn maybe_queue_local_player_sprint_transition(
     input: &mut ClientInputState,
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> bool {
-    let should_stop = world.local_player_pose().is_some_and(|pose| {
-        !pose.swimming
-            && pose.horizontal_collision
-            && !pose.minor_horizontal_collision
-            && effective_sprinting_from_state(world, input)
-    });
-    if !should_stop {
+    let sprinting = world.local_player_is_sprinting();
+    if sprinting == input.last_sent_sprinting {
         return false;
     }
-
-    // `LocalPlayer.aiStep` observes the previous `Entity.move` collision
-    // result before the current travel step. Clear the native sprint latch so
-    // catch-up ticks cannot emit the same transition more than once.
-    input.sprint = false;
-    input.pending_attack_sprint_stop = false;
-    queue_player_input_command(counters, net_commands, player_input_from_state(input));
-    queue_sprint_command(counters, world, net_commands, false);
+    if !queue_sprint_command(counters, world, net_commands, sprinting) {
+        return false;
+    }
+    input.last_sent_sprinting = sprinting;
     true
 }
 
-fn resolve_pending_attack_sprint_stop(
-    input: &mut ClientInputState,
-    world: &WorldStore,
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    client_ticks: u32,
-) {
-    if client_ticks == 0 || !input.pending_attack_sprint_stop {
+pub(super) fn maybe_request_double_tap_sprint(input: &mut ClientInputState, world: &WorldStore) {
+    synchronize_local_player_sprint_generation(input, world);
+    if input.sprint_key_down || world.local_player_is_sprinting() {
+        input.clear_sprint_trigger();
         return;
     }
-    input.pending_attack_sprint_stop = false;
-
-    // Player.attack clears the sprinting entity flag. On the next LocalPlayer
-    // tick, holding the dedicated sprint key can set it again before
-    // sendIsSprintingIfNeeded observes any transition, so no stop command is
-    // emitted in that case. Double-tap sprint has no held key and remains
-    // stopped.
-    if input.control_down() && effective_sprinting_from_state(world, input) {
+    if !world.local_player_can_start_sprinting(input.local_player_input(world)) {
         return;
     }
-
-    input.sprint = false;
-    queue_player_input_command(counters, net_commands, player_input_from_state(input));
-    queue_sprint_command(counters, world, net_commands, false);
+    if input.sprint_trigger_ticks > 0 {
+        input.sprint_start_requested = true;
+        input.clear_sprint_trigger();
+    } else {
+        input.prime_sprint_trigger();
+    }
 }
 
 fn maybe_enable_spectator_flying(
@@ -535,15 +545,17 @@ mod tests {
     #[test]
     fn local_input_projection_includes_focus_keys_and_mouse_delta() {
         let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
         input.forward = true;
         input.left = true;
         input.jump = true;
-        input.sprint = true;
         input.mouse_delta_x = 100.0;
         input.mouse_delta_y = 1000.0;
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
 
         assert_eq!(
-            input.local_player_input(),
+            input.local_player_input(&world),
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
@@ -552,7 +564,7 @@ mod tests {
                 right: false,
                 jump: true,
                 sneak: false,
-                sprint: true,
+                sprinting: true,
                 mouse_delta_x: 100.0,
                 mouse_delta_y: 1000.0,
             }
@@ -595,7 +607,6 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        input.sprint = true;
         let mut world = WorldStore::new();
         world.apply_login(&protocol_play_login(99));
         world.set_local_player_pose(LocalPlayerPoseState {
@@ -604,6 +615,9 @@ mod tests {
             minor_horizontal_collision: false,
             ..LocalPlayerPoseState::default()
         });
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
+        input.last_sent_sprinting = true;
+        input.sprint_level_generation = world.client_level_generation();
         let mut counters = NetCounters::default();
         let now = Instant::now();
 
@@ -615,7 +629,7 @@ mod tests {
             0,
         )
         .is_some());
-        assert!(input.sprint);
+        assert!(world.local_player_is_sprinting());
         assert!(rx.try_recv().is_err());
 
         advance_player_input_for_client_ticks(
@@ -627,11 +641,6 @@ mod tests {
             5,
         );
 
-        let raw_input = match rx.try_recv().unwrap() {
-            NetCommand::PlayerInput(input) => input,
-            other => panic!("expected raw player input before sprint stop, got {other:?}"),
-        };
-        assert!(!raw_input.sprint);
         let sprint_stop = match rx.try_recv().unwrap() {
             NetCommand::PlayerCommand(command) => command,
             other => panic!("expected sprint stop before movement, got {other:?}"),
@@ -639,41 +648,151 @@ mod tests {
         assert_eq!(sprint_stop.action, PlayerCommandAction::StopSprinting);
         assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
         assert!(rx.try_recv().is_err());
-        assert!(!input.sprint);
-        assert_eq!(counters.player_input_commands_queued, 1);
+        assert!(!world.local_player_is_sprinting());
+        assert_eq!(counters.player_input_commands_queued, 0);
         assert_eq!(counters.player_command_commands_queued, 1);
         assert_eq!(counters.player_move_commands_queued, 1);
     }
 
     #[test]
-    fn run_sprint_minor_or_swimming_collision_does_not_stop() {
-        for (minor_horizontal_collision, swimming) in [(true, false), (false, true)] {
-            let (tx, mut rx) = mpsc::channel(2);
-            let commands = Some(tx);
-            let mut input = ClientInputState::new(true);
-            input.forward = true;
-            input.sprint = true;
-            let mut world = WorldStore::new();
-            world.apply_login(&protocol_play_login(99));
-            world.set_local_player_pose(LocalPlayerPoseState {
-                horizontal_collision: true,
-                minor_horizontal_collision,
-                swimming,
-                ..LocalPlayerPoseState::default()
-            });
-            let mut counters = NetCounters::default();
+    fn run_sprint_minor_collision_does_not_stop() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            horizontal_collision: true,
+            minor_horizontal_collision: true,
+            ..LocalPlayerPoseState::default()
+        });
+        assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
+        input.last_sent_sprinting = true;
+        input.sprint_level_generation = world.client_level_generation();
+        let mut counters = NetCounters::default();
 
-            assert!(!stop_run_sprinting_for_previous_major_collision(
-                &mut input,
-                &world,
-                &mut counters,
-                &commands,
-            ));
-            assert!(input.sprint);
-            assert!(rx.try_recv().is_err());
-            assert_eq!(counters.player_input_commands_queued, 0);
-            assert_eq!(counters.player_command_commands_queued, 0);
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+            1,
+        );
+        assert!(world.local_player_is_sprinting());
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_input_commands_queued, 0);
+        assert_eq!(counters.player_command_commands_queued, 0);
+    }
+
+    #[test]
+    fn sprint_command_queue_failure_keeps_baseline_and_retries_next_tick() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetCommand::PlayerInput(Default::default()))
+            .unwrap();
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        input.sprint_key_down = true;
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+            1,
+        );
+        assert!(world.local_player_is_sprinting());
+        assert!(!input.last_sent_sprinting);
+        assert_eq!(counters.player_command_commands_queued, 0);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+
+        advance_player_input_for_client_ticks(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Instant::now(),
+            1,
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerCommand(bbb_protocol::packets::PlayerCommand {
+                entity_id: 99,
+                action: PlayerCommandAction::StartSprinting,
+                data: 0,
+            })
+        );
+        assert!(input.last_sent_sprinting);
+        assert_eq!(counters.player_command_commands_queued, 1);
+    }
+
+    #[test]
+    fn level_generation_change_discards_stale_double_tap_and_sprint_baseline() {
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        input.sprint_level_generation = world.client_level_generation();
+        input.sprint_start_requested = true;
+        input.sprint_trigger_ticks = 5;
+        input.last_sent_sprinting = true;
+
+        world.clear_client_level();
+        synchronize_local_player_sprint_generation(&mut input, &world);
+
+        assert_eq!(
+            input.sprint_level_generation,
+            world.client_level_generation()
+        );
+        assert!(!input.sprint_start_requested);
+        assert_eq!(input.sprint_trigger_ticks, 0);
+        assert_eq!(input.last_sent_sprinting, world.local_player_is_sprinting());
+    }
+
+    #[test]
+    fn sprint_production_sources_do_not_restore_raw_key_latch_conflation() {
+        let movement = include_str!("movement.rs")
+            .split("\n#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap();
+        let mouse = include_str!("mouse.rs")
+            .split("\n#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap();
+        let sources = [
+            include_str!("../input.rs"),
+            movement,
+            mouse,
+            include_str!("../runtime.rs"),
+            include_str!("../../../bbb-world/src/client/local_player.rs"),
+            include_str!("../../../bbb-world/src/entities/passengers.rs"),
+        ]
+        .join("\n");
+        for forbidden in [
+            "input.sprint =",
+            "sprinting: self.sprint_key_down",
+            "effective_sprinting_from_state",
+            "pending_attack_sprint_stop",
+            "local_player_effective_sprint",
+        ] {
+            assert!(
+                !sources.contains(forbidden),
+                "restored old sprint path: {forbidden}"
+            );
         }
+        assert!(sources.contains("sprint_key_down"));
+        assert!(sources.contains("world.local_player_is_sprinting()"));
     }
 
     #[test]

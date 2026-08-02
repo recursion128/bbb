@@ -805,7 +805,7 @@ mod tests {
         );
 
         assert!(requests.lock().unwrap().input_requests.is_empty());
-        let projected = input.local_player_input();
+        let projected = input.local_player_input(&world);
         assert!(projected.forward);
         assert_eq!(projected.mouse_delta_x, 24.0);
         assert_eq!(projected.mouse_delta_y, -8.0);
@@ -829,7 +829,7 @@ mod tests {
             PhysicalSize::new(1280, 720),
             1.0,
         );
-        assert!(!input.local_player_input().forward);
+        assert!(!input.local_player_input(&world).forward);
     }
 
     #[test]
@@ -860,7 +860,7 @@ mod tests {
         );
 
         assert!(requests.lock().unwrap().input_requests.is_empty());
-        assert!(!input.local_player_input().jump);
+        assert!(!input.local_player_input(&world).jump);
     }
 
     #[test]

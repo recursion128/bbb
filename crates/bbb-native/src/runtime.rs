@@ -2937,7 +2937,7 @@ pub(crate) fn advance_simulation(
         advanced_ticks,
         world,
         input.camera_type().is_first_person(),
-        world.local_player_effective_sprint(input.local_player_input()),
+        world.local_player_is_sprinting(),
     );
     camera_spinning_ticks.advance_for_world(advanced_ticks, world);
     push_simulation_profile_section(

@@ -19,8 +19,8 @@ use uuid::Uuid;
 use super::local_player_fluid::{local_player_eye_in_water, local_player_fluid_contact};
 use super::local_player_movement::{
     advance_local_player_auto_spin_attack_after_move, apply_local_player_input_look,
-    integrate_local_player_input_pose_with_world_effects, local_player_effective_sprint,
-    local_player_is_on_climbable,
+    integrate_local_player_input_pose_with_world_effects, local_player_can_start_sprinting,
+    local_player_is_on_climbable, local_player_should_stop_sprinting,
 };
 use crate::{protocol_block_pos, BlockPos, WorldStore};
 
@@ -55,6 +55,11 @@ pub struct LocalPlayerState {
     pub camera: CameraState,
     #[serde(default)]
     pub pose: Option<LocalPlayerPoseState>,
+    /// Client-owned `Entity` sprinting shared flag for the local player.
+    /// Raw keyboard state and the last outbound command baseline deliberately
+    /// live outside the canonical world state.
+    #[serde(default)]
+    pub sprinting: bool,
     /// Process-configured `Options.autoJump` and LocalPlayer's private
     /// one-tick `autoJumpTime`. Neither is server-owned snapshot state.
     #[serde(skip)]
@@ -78,6 +83,7 @@ impl Default for LocalPlayerState {
             portal_cooldown: 0,
             camera: CameraState::default(),
             pose: None,
+            sprinting: false,
             auto_jump: LocalPlayerAutoJumpState::default(),
             last_look_at: None,
             interaction: LocalPlayerInteractionState::default(),
@@ -253,7 +259,9 @@ pub struct LocalPlayerInputState {
     pub right: bool,
     pub jump: bool,
     pub sneak: bool,
-    pub sprint: bool,
+    /// Canonical LocalPlayer sprint latch, not the raw sprint key bit carried
+    /// by `ServerboundPlayerInputPacket`.
+    pub sprinting: bool,
     pub mouse_delta_x: f64,
     pub mouse_delta_y: f64,
 }
@@ -620,8 +628,30 @@ impl WorldStore {
         Some(pose)
     }
 
-    pub fn local_player_effective_sprint(&self, input: LocalPlayerInputState) -> bool {
-        local_player_effective_sprint(self, input)
+    pub fn local_player_is_sprinting(&self) -> bool {
+        self.local_player.sprinting
+    }
+
+    /// Applies the exact `LocalPlayer.aiStep` sprint start/stop decision to the
+    /// canonical local-player latch. `start_requested` is true for the held
+    /// sprint key or one accepted double-tap-forward edge.
+    pub fn reconcile_local_player_sprinting(
+        &mut self,
+        input: LocalPlayerInputState,
+        start_requested: bool,
+    ) -> bool {
+        let previous = self.local_player.sprinting;
+        let sprinting = if previous {
+            !local_player_should_stop_sprinting(self, input)
+        } else {
+            start_requested && local_player_can_start_sprinting(self, input)
+        };
+        self.local_player.sprinting = sprinting;
+        sprinting != previous
+    }
+
+    pub fn local_player_can_start_sprinting(&self, input: LocalPlayerInputState) -> bool {
+        !self.local_player.sprinting && local_player_can_start_sprinting(self, input)
     }
 
     pub fn local_player_eye_in_water(&self) -> bool {

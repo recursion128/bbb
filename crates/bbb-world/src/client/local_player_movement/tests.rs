@@ -3032,7 +3032,7 @@ fn local_player_underwater_sprint_uses_swimming_pose() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -3501,7 +3501,7 @@ fn local_player_bad_omen_does_not_apply_dolphins_grace_water_drag() {
 }
 
 #[test]
-fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_gravity() {
+fn local_player_shallow_water_stops_run_sprint_before_fluid_travel() {
     let mut world = flat_collision_world();
     set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -3515,7 +3515,7 @@ fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_grav
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -3525,10 +3525,10 @@ fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_grav
     assert_f64_near(pose.position.z, 0.5 + first_fluid_step(0.02), 0.000001);
     assert_f64_near(
         pose.delta_movement.z,
-        first_fluid_step(0.02) * 0.9,
+        first_fluid_step(0.02) * 0.8,
         0.000001,
     );
-    assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
 }
 
 #[test]
@@ -3547,7 +3547,7 @@ fn local_player_low_food_prevents_water_sprint_and_swimming_pose() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -3581,7 +3581,7 @@ fn local_player_swimming_pitch_down_pulls_velocity_toward_look_y() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -3616,7 +3616,7 @@ fn local_player_swimming_pitch_up_rises_when_fluid_above() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -3645,7 +3645,7 @@ fn local_player_swimming_pitch_up_near_surface_does_not_auto_rise() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -4400,7 +4400,7 @@ fn local_player_flying_uses_abilities_speed_and_sprint_multiplier() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -5465,7 +5465,7 @@ fn local_player_blindness_prevents_sprint_speed() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -5496,7 +5496,7 @@ fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -5531,7 +5531,7 @@ fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -5550,7 +5550,7 @@ fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
 }
 
 #[test]
-fn local_player_using_item_applies_default_use_effects_slowdown_and_sprint_suppression() {
+fn local_player_using_item_slows_input_without_stopping_an_active_sprint_latch() {
     let mut world = flat_collision_world();
     world.set_local_player_pose(LocalPlayerPoseState {
         position: vec3(0.5, 1.0, 0.5),
@@ -5568,14 +5568,17 @@ fn local_player_using_item_applies_default_use_effects_slowdown_and_sprint_suppr
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
         )
         .unwrap();
 
-    let expected_step = first_ground_step(TEST_DEFAULT_MOVEMENT_SPEED, 0.2);
+    let expected_step = first_ground_step(
+        TEST_DEFAULT_MOVEMENT_SPEED * LOCAL_PLAYER_SPRINT_SPEED_MODIFIER,
+        0.2,
+    );
     assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
     assert_f64_near(
         pose.delta_movement.z,
@@ -5603,7 +5606,7 @@ fn local_player_using_item_can_sprint_override_preserves_sprint_speed() {
             LocalPlayerInputState {
                 focused: true,
                 forward: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -5623,11 +5626,11 @@ fn local_player_using_item_can_sprint_override_preserves_sprint_speed() {
 }
 
 #[test]
-fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mounted() {
+fn local_player_sprint_latch_uses_sprintable_vehicle_instead_of_food_when_mounted() {
     let input = LocalPlayerInputState {
         focused: true,
         forward: true,
-        sprint: true,
+        sprinting: true,
         ..LocalPlayerInputState::default()
     };
 
@@ -5640,7 +5643,9 @@ fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mo
         VANILLA_ENTITY_TYPE_CAMEL_ID,
         vec![99],
     );
-    assert!(camel_world.local_player_effective_sprint(input));
+    camel_world.set_local_player_pose(LocalPlayerPoseState::default());
+    assert!(camel_world.reconcile_local_player_sprinting(input, true));
+    assert!(camel_world.local_player_is_sprinting());
 
     let mut horse_world = WorldStore::new();
     apply_player_health(&mut horse_world, 20);
@@ -5651,7 +5656,9 @@ fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mo
         VANILLA_ENTITY_TYPE_HORSE_ID,
         vec![99],
     );
-    assert!(!horse_world.local_player_effective_sprint(input));
+    horse_world.set_local_player_pose(LocalPlayerPoseState::default());
+    assert!(!horse_world.reconcile_local_player_sprinting(input, true));
+    assert!(!horse_world.local_player_is_sprinting());
 
     let mut boat_world = WorldStore::new();
     apply_player_health(&mut boat_world, 20);
@@ -5662,11 +5669,13 @@ fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mo
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         vec![99],
     );
-    assert!(!boat_world.local_player_effective_sprint(input));
+    boat_world.set_local_player_pose(LocalPlayerPoseState::default());
+    assert!(!boat_world.reconcile_local_player_sprinting(input, true));
+    assert!(!boat_world.local_player_is_sprinting());
 }
 
 #[test]
-fn local_player_effective_sprint_requires_controlling_sprintable_vehicle_passenger() {
+fn local_player_sprint_latch_requires_controlling_sprintable_vehicle_passenger() {
     let mut world = WorldStore::new();
     apply_player_health(&mut world, 20);
     world.apply_add_entity(ProtocolAddEntity {
@@ -5688,12 +5697,120 @@ fn local_player_effective_sprint_requires_controlling_sprintable_vehicle_passeng
         vec![123, 99],
     );
 
-    assert!(!world.local_player_effective_sprint(LocalPlayerInputState {
+    assert!(!world.reconcile_local_player_sprinting(
+        LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            sprinting: false,
+            ..LocalPlayerInputState::default()
+        },
+        true,
+    ));
+    assert!(!world.local_player_is_sprinting());
+}
+
+#[test]
+fn local_player_sprint_latch_survives_key_release_but_stops_without_forward_input() {
+    let mut world = flat_collision_world();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    let input = LocalPlayerInputState {
         focused: true,
         forward: true,
-        sprint: true,
         ..LocalPlayerInputState::default()
-    }));
+    };
+
+    assert!(world.reconcile_local_player_sprinting(input, true));
+    assert!(world.local_player_is_sprinting());
+    assert!(!world.reconcile_local_player_sprinting(input, false));
+    assert!(world.local_player_is_sprinting());
+    assert!(world.reconcile_local_player_sprinting(
+        LocalPlayerInputState {
+            forward: false,
+            ..input
+        },
+        false,
+    ));
+    assert!(!world.local_player_is_sprinting());
+}
+
+#[test]
+fn local_player_sprint_start_rejects_shallow_water_slow_item_and_blindness() {
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        ..LocalPlayerInputState::default()
+    };
+
+    let mut shallow = flat_collision_world();
+    set_test_block(&mut shallow, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    shallow.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.5),
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(!shallow.reconcile_local_player_sprinting(input, true));
+
+    let mut using_item = flat_collision_world();
+    using_item.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    using_item.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    using_item.set_local_using_item(true);
+    assert!(!using_item.reconcile_local_player_sprinting(input, true));
+
+    let mut blind = flat_collision_world();
+    attach_local_player_entity(&mut blind, 123);
+    blind.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(blind.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_BLINDNESS_ID, 0,)));
+    assert!(!blind.reconcile_local_player_sprinting(input, true));
+}
+
+#[test]
+fn local_player_sprint_start_allows_underwater_but_rejects_dry_crawling_and_fall_flying() {
+    let input = LocalPlayerInputState {
+        focused: true,
+        forward: true,
+        ..LocalPlayerInputState::default()
+    };
+
+    let mut underwater = flat_collision_world();
+    set_test_block(&mut underwater, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    set_test_block(&mut underwater, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+    underwater.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.1, 0.5),
+        swimming: true,
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(underwater.reconcile_local_player_sprinting(input, true));
+
+    let mut crawling = flat_collision_world();
+    crawling.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        swimming: true,
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(!crawling.reconcile_local_player_sprinting(input, true));
+
+    let mut fall_flying = flat_collision_world();
+    attach_local_player_entity(&mut fall_flying, 123);
+    fall_flying.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 4.0, 0.5),
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(apply_fall_flying(&mut fall_flying, 123));
+    assert!(!fall_flying.reconcile_local_player_sprinting(input, true));
 }
 
 #[test]
@@ -6140,7 +6257,7 @@ fn local_player_sprint_jump_adds_vanilla_horizontal_impulse() {
                 focused: true,
                 forward: true,
                 jump: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,
@@ -6182,7 +6299,7 @@ fn local_player_ineligible_sprint_jump_does_not_add_horizontal_impulse() {
                 focused: true,
                 forward: true,
                 jump: true,
-                sprint: true,
+                sprinting: true,
                 ..LocalPlayerInputState::default()
             },
             LOCAL_PHYSICS_TICK_SECONDS,

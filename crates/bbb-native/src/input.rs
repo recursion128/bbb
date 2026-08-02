@@ -145,9 +145,8 @@ use bbb_world::{
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos,
     CommandSuggestionState, CommandSuggestionsResultState, EntityState, EntityVec3,
-    LocalBlockAttackEffect, LocalPlayerInputState, LocalPlayerPoseState, SignBlockForm,
-    TagQueryResponseState, VanillaArmorStandMetadataAccessors,
-    VanillaFireworkRocketMetadataAccessors, WorldStore,
+    LocalBlockAttackEffect, LocalPlayerPoseState, SignBlockForm, TagQueryResponseState,
+    VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -586,7 +585,7 @@ pub(crate) struct ClientInputState {
     right: bool,
     jump: bool,
     sneak: bool,
-    sprint: bool,
+    sprint_key_down: bool,
     destroy_block_held: bool,
     use_item_held: bool,
     pending_local_player_action_particles: Vec<LocalPlayerActionParticleState>,
@@ -741,7 +740,9 @@ pub(crate) struct ClientInputState {
     riding_jump_charge_seconds: Option<f64>,
     sprint_trigger_ticks: u8,
     sprint_trigger_elapsed_seconds: f64,
-    pending_attack_sprint_stop: bool,
+    sprint_start_requested: bool,
+    last_sent_sprinting: bool,
+    sprint_level_generation: u64,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,
@@ -1456,8 +1457,8 @@ impl ClientInputState {
         self.right = false;
         self.jump = false;
         self.sneak = false;
-        self.sprint = false;
-        self.pending_attack_sprint_stop = false;
+        self.sprint_key_down = false;
+        self.sprint_start_requested = false;
         self.destroy_block_held = false;
         self.use_item_held = false;
         self.pressed_keys.clear();
@@ -10728,16 +10729,11 @@ pub(crate) fn release_active_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     let before = player_input_from_state(input);
-    let before_sprinting = effective_sprinting_from_state(world, input);
     let riding_jump_charge_seconds = input.riding_jump_charge_seconds.take();
     input.clear_pressed();
     let after = player_input_from_state(input);
-    let after_sprinting = effective_sprinting_from_state(world, input);
     if after != before {
         queue_player_input_command(counters, net_commands, after);
-        if before_sprinting != after_sprinting {
-            queue_sprint_command(counters, world, net_commands, after_sprinting);
-        }
     }
     movement::queue_released_riding_jump_command(
         riding_jump_charge_seconds,
@@ -11804,7 +11800,6 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     let before = player_input_from_state(input);
-    let before_sprinting = effective_sprinting_from_state(world, input);
     let handled = match code {
         KeyCode::KeyW | KeyCode::ArrowUp => {
             input.forward = pressed;
@@ -11840,7 +11835,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
             true
         }
         KeyCode::ControlLeft | KeyCode::ControlRight => {
-            input.sprint = pressed;
+            input.sprint_key_down = pressed;
             if pressed {
                 input.clear_sprint_trigger();
             }
@@ -11850,15 +11845,8 @@ pub(crate) fn handle_key_input_with_item_runtime(
     };
     if handled {
         let after = player_input_from_state(input);
-        let after_sprinting = effective_sprinting_from_state(world, input);
         if after != before {
             queue_player_input_command(counters, net_commands, after);
-            if before_sprinting != after_sprinting {
-                if !after_sprinting {
-                    input.pending_attack_sprint_stop = false;
-                }
-                queue_sprint_command(counters, world, net_commands, after_sprinting);
-            }
             let just_toggled_creative_flight =
                 maybe_toggle_creative_flight(input, counters, world, net_commands, before, after);
             if should_queue_start_fall_flying(world, before, after) {
@@ -11877,21 +11865,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
 }
 
 fn maybe_apply_forward_sprint_trigger(input: &mut ClientInputState, world: &WorldStore) {
-    if input.sprint {
-        input.clear_sprint_trigger();
-        return;
-    }
-    let mut sprint_candidate = local_player_input_from_state(input);
-    sprint_candidate.sprint = true;
-    if !world.local_player_effective_sprint(sprint_candidate) {
-        return;
-    }
-    if input.sprint_trigger_ticks > 0 {
-        input.sprint = true;
-        input.clear_sprint_trigger();
-    } else {
-        input.prime_sprint_trigger();
-    }
+    movement::maybe_request_double_tap_sprint(input, world);
 }
 
 fn maybe_toggle_creative_flight(
@@ -13410,27 +13384,8 @@ fn player_input_from_state(input: &ClientInputState) -> PlayerInput {
         right: input.right,
         jump: input.jump,
         shift: input.sneak,
-        sprint: input.sprint,
+        sprint: input.sprint_key_down,
     }
-}
-
-fn local_player_input_from_state(input: &ClientInputState) -> LocalPlayerInputState {
-    LocalPlayerInputState {
-        focused: input.focused,
-        forward: input.forward,
-        backward: input.backward,
-        left: input.left,
-        right: input.right,
-        jump: input.jump,
-        sneak: input.sneak,
-        sprint: input.sprint,
-        mouse_delta_x: input.mouse_delta_x,
-        mouse_delta_y: input.mouse_delta_y,
-    }
-}
-
-fn effective_sprinting_from_state(world: &WorldStore, input: &ClientInputState) -> bool {
-    world.local_player_effective_sprint(local_player_input_from_state(input))
 }
 
 #[cfg(test)]

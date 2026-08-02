@@ -907,6 +907,7 @@ impl WorldStore {
             .then_some(old_local_player.default_spawn)
             .flatten();
         self.local_player.simulation_distance = old_local_player.simulation_distance;
+        self.local_player.sprinting = keep_entity_data && old_local_player.sprinting;
         self.local_player.pose = keep_entity_data.then_some(old_pose).flatten().map(|pose| {
             crate::LocalPlayerPoseState {
                 position: Default::default(),
@@ -1717,6 +1718,7 @@ mod tests {
         assert!(store.local_player().default_spawn.is_some());
         assert_eq!(store.local_player().simulation_distance, Some(12));
         assert_eq!(store.local_player_pose(), None);
+        assert!(!store.local_player_is_sprinting());
         assert_eq!(store.local_player().camera, CameraState::default());
         assert_eq!(
             store.local_player().interaction,
@@ -1797,6 +1799,7 @@ mod tests {
         let mut attributes_only = respawn_state_with_local_player_data();
         attributes_only.apply_respawn(&respawn_packet(RESPAWN_KEEP_ATTRIBUTE_MODIFIERS));
         assert!(attributes_only.local_player_pose().is_none());
+        assert!(!attributes_only.local_player_is_sprinting());
         let entity = attributes_only.probe_entity(123).unwrap();
         assert!(entity.data_values.is_empty());
         assert_eq!(entity.attributes[0].modifiers.len(), 1);
@@ -1804,6 +1807,7 @@ mod tests {
         let mut entity_data_only = respawn_state_with_local_player_data();
         let old_pose = entity_data_only.local_player_pose().unwrap();
         entity_data_only.apply_respawn(&respawn_packet(RESPAWN_KEEP_ENTITY_DATA));
+        assert!(entity_data_only.local_player_is_sprinting());
         assert_eq!(
             entity_data_only.local_player_pose(),
             Some(LocalPlayerPoseState {
@@ -2540,6 +2544,7 @@ mod tests {
             pitch: 0.0,
         });
         store.local_player.simulation_distance = Some(12);
+        store.local_player.sprinting = true;
         store
             .entities
             .with_equipment_mut(123, |equipment| {
