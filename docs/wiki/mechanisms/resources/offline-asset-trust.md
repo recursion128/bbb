@@ -122,8 +122,12 @@ import depth 和 generation retained bytes；`PostEffectCatalog` 只引用该 im
 不再拥有第二套 import resolver。`PeriodicNotificationCatalog` 读取最高优先级
 `minecraft:regional_compliancies.json`，限制 256 个 country group、1024 条 notification，
 保留 Vanilla 的缺失/损坏→空准备语义；安全预算拒绝仍使整个 generation 失败。两者均携带
-resource generation。CPU catalog 只在 `bbb-pack` 解释 pack；不可变 shader/atlas 值经
-`bbb-render-types` 投影，`bbb-renderer` 的生产依赖不读取 pack。Phase C 已把
+resource generation。`PostEffectCatalog::renderer_projection` 是唯一跨 crate shader generation
+投影，其内的 core sources 与 post graphs 必须同 generation；CPU catalog 只在
+`bbb-pack` 解释 pack，不可变值经 `bbb-render-types` 到 renderer，`bbb-renderer` 的生产依赖
+不读取 pack。native startup 和 server-pack reload 都只调用一次
+`transactional_shader_resource_reload`；该入口固定 core→post 顺序，且把后续 atlas/HUD/
+entity/sky/audio 提交纳入同一 rollback barrier。Phase C 已把
 `core/terrain` 三个当前 pipeline、24 个从单一 `core/entity` 派生的 entity/beam/item/resident
 variant、4 dynamic/resident `core/item`、3 particle/weather、2 position-color、5 个 `core/glint`
 entity/armor/item/HUD variant、5 个 end-portal world/resident/HUD owner 与 post graph 放进同一 renderer transaction；构建任一 pipeline 或后续 atlas/HUD/entity/sky/audio owner 失败会
@@ -131,8 +135,9 @@ entity/armor/item/HUD variant、5 个 end-portal world/resident/HUD owner 与 po
 core pipeline 的 GPU 准备集由 renderer 内部唯一私有
 `CorePipelineGeneration` 拥有；family container 只是同质 handle 值组，不再各自
 声明 generation。成功发布与失败回滚共用同一份
-`swap_with_renderer` 字段映射，generation 在全部 handle 之后一起交换；公共
-reload API 与 pack → render-types → renderer 依赖方向不变。glint 的 scale、view-offset-Z、
+`swap_with_renderer` 字段映射，generation 在全部 handle 之后一起交换；独立
+`reload_core_shaders`/`reload_post_effect_graphs` 只对 renderer crate 内测试与实现可见，
+生产不能恢复分裂 commit。glint 的 scale、view-offset-Z、
 resident instance/decal UV 与 HUD clip/mask 只在 renderer 的共享 adapter 中形成窄 GPU
 projection；各 family consumer 不再分别解析 selected shader，也不能独立发布 generation。
 renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：全部 77 个有一对一 Vanilla

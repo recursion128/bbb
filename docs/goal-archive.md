@@ -47,6 +47,8 @@
   与回滚收敛为一个 renderer-private generation owner 和一份字段映射。
 - **2026-08-02（reload-listener generation closure）**：20 个 Vanilla listener owner 完成
   bounded prepare、单 barrier apply/rollback 与真实 default/selected/live 验收。
+- **2026-08-02（shader generation architecture convergence）**：shader sources、static core
+  pipelines 与 post graphs 收敛为单一 CPU projection 和 renderer transaction API。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
