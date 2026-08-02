@@ -10,7 +10,7 @@ use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
     FurnaceFuelSourceRule, PackRoots, PeriodicNotificationCatalog, PostEffectCatalog,
-    RegistryDependentItemComponentInitializer, SelectedClientPack, ShaderSourceCatalog,
+    RegistryDependentItemComponentInitializer, SelectedClientPack,
     MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES, MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
     MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES, MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
 };
@@ -48,20 +48,13 @@ struct PreparedNativeResourceReload {
     particles: NativeParticleResources,
     items: NativeItemRuntime,
     post_effects: PostEffectCatalog,
-    shader_sources: ShaderSourceCatalog,
     periodic_notifications: PeriodicNotificationCatalog,
     block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
 }
 
-pub(crate) fn prepare_native_shader_resources(
-    roots: &PackRoots,
-) -> Result<(ShaderSourceCatalog, PostEffectCatalog)> {
-    let shader_sources =
-        ShaderSourceCatalog::load(roots).context("prepare shader sources for reload")?;
-    let post_effects = PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)
-        .context("prepare post-effect graphs for reload")?;
-    Ok((shader_sources, post_effects))
+pub(crate) fn prepare_native_shader_resources(roots: &PackRoots) -> Result<PostEffectCatalog> {
+    PostEffectCatalog::load(roots).context("prepare shader resources for reload")
 }
 
 pub(crate) struct ResourceReloadSimulationCommit {
@@ -222,16 +215,9 @@ fn apply_native_resource_reload(
         })?;
 
     let cutout_leaves = terrain_textures.cutout_leaves();
-    let core_shader_resources = prepared.shader_sources.renderer_projection();
-    let post_effect_resources = prepared.post_effects.renderer_projection();
+    let shader_resources = prepared.post_effects.renderer_projection();
     let (next_terrain_textures, win_screen_resources) = renderer
-        .transactional_resource_reload(|renderer| {
-            renderer
-                .reload_core_shaders(&core_shader_resources, false)
-                .context("compile core shader pipelines during resource reload")?;
-            renderer
-                .reload_post_effect_graphs(&post_effect_resources)
-                .context("compile post-effect graphs during resource reload")?;
+        .transactional_shader_resource_reload(&shader_resources, false, |renderer| {
             upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)?;
             let textures = try_load_terrain_textures(renderer, &prepared.roots, cutout_leaves)
                 .context("upload terrain resources during resource reload")?;
@@ -448,7 +434,7 @@ fn prepare_native_resource_reload(
         .context("prepare particle resources for reload")?;
     let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
         .context("prepare item, model, texture, and language resources for reload")?;
-    let (shader_sources, post_effects) = prepare_native_shader_resources(&roots)?;
+    let post_effects = prepare_native_shader_resources(&roots)?;
     let periodic_notifications = roots
         .load_periodic_notification_catalog()
         .context("prepare periodic notifications for reload")?;
@@ -468,7 +454,6 @@ fn prepare_native_resource_reload(
         particles,
         items,
         post_effects,
-        shader_sources,
         periodic_notifications,
         block_destroy_profiles,
         block_sound_profiles,
@@ -1196,12 +1181,13 @@ mod tests {
     #[test]
     fn renderer_resource_owners_commit_inside_one_reload_barrier() {
         let source = include_str!("resource_reload.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]")
+            .expect("resource reload production/test boundary")
+            .0;
         let transaction = source
-            .find(".transactional_resource_reload(|renderer|")
-            .expect("reload should retain accepted renderer owners");
-        let post_effect_commit = source
-            .find(".reload_post_effect_graphs(&post_effect_resources)")
-            .expect("reload should compile and install the prepared post-effect generation");
+            .find(".transactional_shader_resource_reload(&shader_resources, false, |renderer|")
+            .expect("reload should commit one shader generation with accepted renderer owners");
         let atlas_commit = source
             .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
             .expect("reload should install generation-matched atlases");
@@ -1224,8 +1210,7 @@ mod tests {
             .find("    prepared\n        .particles\n        .simulation")
             .expect("reload should commit the matching simulation resources");
 
-        assert!(transaction < post_effect_commit);
-        assert!(post_effect_commit < atlas_commit);
+        assert!(transaction < atlas_commit);
         assert!(atlas_commit < hud_commit);
         assert!(hud_commit < language_direction_commit);
         assert!(language_direction_commit < win_screen_commit);
@@ -1233,22 +1218,17 @@ mod tests {
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
         let shader_prepare = source
-            .find("ShaderSourceCatalog::load(roots)")
-            .expect("shader sources should be prepared once on the CPU boundary");
-        let post_effect_prepare = source
-            .find("PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)")
-            .expect("post effects should consume the shared shader preparation");
+            .find("PostEffectCatalog::load(roots)")
+            .expect("shader sources and post effects should share one CPU generation owner");
         let periodic_prepare = source
             .find(".load_periodic_notification_catalog()")
             .expect("regional notifications should be prepared on the CPU boundary");
         let prepared_generation = source
             .find("        post_effects,\n")
             .expect("prepared reload should retain the post-effect catalog");
-        assert!(shader_prepare < post_effect_prepare);
-        assert!(post_effect_prepare < prepared_generation);
+        assert!(shader_prepare < prepared_generation);
         assert!(periodic_prepare < prepared_generation);
-        let legacy_post_effect_loader = ["PostEffectCatalog::load", "(&roots)"].concat();
-        assert!(!source.contains(&legacy_post_effect_loader));
+        assert!(!production.contains("ShaderSourceCatalog"));
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));
     }
@@ -1261,40 +1241,51 @@ mod tests {
             .split_once("\n#[cfg(test)]")
             .expect("resource reload production/test boundary")
             .0;
-        let main_production = main
-            .split_once("\n#[cfg(test)]")
-            .map_or(main, |(production, _)| production);
+        let main_production = main;
         assert_eq!(
             reload_production
-                .matches("ShaderSourceCatalog::load(")
+                .matches("PostEffectCatalog::load(")
                 .count()
-                + main_production
-                    .matches("ShaderSourceCatalog::load(")
-                    .count(),
+                + main_production.matches("PostEffectCatalog::load(").count(),
             1,
             "startup and reload must share one shader preparation owner"
         );
+        assert_eq!(
+            reload_production
+                .matches(".transactional_shader_resource_reload(")
+                .count(),
+            1,
+            "server-pack reload must commit one shader generation"
+        );
+        assert_eq!(
+            main_production
+                .matches(".transactional_shader_resource_reload(")
+                .count(),
+            1,
+            "startup must commit one shader generation"
+        );
+        for legacy in [".reload_core_shaders(", ".reload_post_effect_graphs("] {
+            assert_eq!(reload_production.matches(legacy).count(), 0);
+            assert_eq!(main_production.matches(legacy).count(), 0);
+        }
         let transaction = reload
-            .find(".transactional_resource_reload(|renderer|")
-            .expect("renderer transaction");
-        let core = reload
-            .find(".reload_core_shaders(&core_shader_resources, false)")
-            .expect("core shader generation commit");
-        let post = reload
-            .find(".reload_post_effect_graphs(&post_effect_resources)")
-            .expect("post-effect generation commit");
+            .find(".transactional_shader_resource_reload(&shader_resources, false, |renderer|")
+            .expect("unified renderer transaction");
+        let atlas = reload
+            .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
+            .expect("generation-matched atlas commit");
         let transaction_result = reload
             .find("stage: \"commit\"")
             .expect("renderer transaction result");
         let periodic = reload
             .find("hud_render_runtime.install_periodic_notifications(")
             .expect("periodic schedule commit");
-        assert!(transaction < core && core < post && post < transaction_result);
+        assert!(transaction < atlas && atlas < transaction_result);
         assert!(
             transaction_result < periodic,
             "the non-fallible periodic schedule commit must follow a successful GPU/audio barrier"
         );
-        assert!(!reload_production.contains("_shader_sources:"));
+        assert!(!reload_production.contains("shader_sources:"));
         assert!(!reload_production.contains("_periodic_notifications:"));
     }
     use std::{

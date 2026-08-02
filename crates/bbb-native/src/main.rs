@@ -747,17 +747,9 @@ fn main() -> Result<()> {
     );
     if let Some(roots) = pack_roots.as_ref() {
         let shader_resources =
-            prepare_native_shader_resources(roots).map(|(shader_sources, post_effects)| {
-                (
-                    shader_sources.renderer_projection(),
-                    post_effects.renderer_projection(),
-                )
-            });
-        match shader_resources.and_then(|(core, post)| {
-            renderer.transactional_resource_reload(|renderer| {
-                renderer.reload_core_shaders(&core, true)?;
-                renderer.reload_post_effect_graphs(&post)
-            })
+            prepare_native_shader_resources(roots).map(|resources| resources.renderer_projection());
+        match shader_resources.and_then(|resources| {
+            renderer.transactional_shader_resource_reload(&resources, true, |_| Ok(()))
         }) {
             Ok(()) => {}
             Err(error) => {

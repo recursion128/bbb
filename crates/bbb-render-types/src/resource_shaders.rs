@@ -123,6 +123,10 @@ impl PostEffectResourceProjection {
         self.generation
     }
 
+    pub fn core_shader_sources(&self) -> &CoreShaderSourceProjection {
+        &self.shader_sources
+    }
+
     pub fn graph(&self, graph_id: &str) -> Option<&PostEffectGraph> {
         self.graphs.get(graph_id)
     }

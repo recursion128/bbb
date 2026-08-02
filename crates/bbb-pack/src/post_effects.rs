@@ -966,6 +966,9 @@ mod tests {
         let roots = roots.with_client_resource_generation(47, selected).unwrap();
         let catalog = PostEffectCatalog::load(&roots).unwrap();
         assert_eq!(catalog.generation(), 47);
+        let projection = catalog.renderer_projection();
+        assert_eq!(projection.generation(), 47);
+        assert_eq!(projection.core_shader_sources().generation(), 47);
         assert!(catalog.is_empty());
 
         std::fs::remove_dir_all(root).unwrap();

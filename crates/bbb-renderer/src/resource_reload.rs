@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 use bbb_render_types::{CoreShaderSourceProjection, PostEffectResourceProjection};
 
 use crate::{post_effect_graph::PostEffectGraphRuntime, Renderer};
@@ -1122,7 +1122,7 @@ impl CorePipelineGeneration {
 }
 
 impl Renderer {
-    pub fn reload_core_shaders(
+    pub(crate) fn reload_core_shaders(
         &mut self,
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
@@ -1143,7 +1143,7 @@ impl Renderer {
         self.core_shader_generation
     }
 
-    pub fn reload_post_effect_graphs(
+    pub(crate) fn reload_post_effect_graphs(
         &mut self,
         resources: &PostEffectResourceProjection,
     ) -> Result<()> {
@@ -1170,10 +1170,36 @@ impl Renderer {
             .map(PostEffectGraphRuntime::generation)
     }
 
-    /// Runs all renderer resource uploads as one all-or-nothing render-thread
-    /// transaction. The closure is synchronous: no frame can observe the empty
-    /// staging slots or a partially installed generation.
-    pub fn transactional_resource_reload<T>(
+    /// Installs one CPU-prepared shader generation and any generation-matched
+    /// renderer resources in a single render-thread transaction.
+    pub fn transactional_shader_resource_reload<T>(
+        &mut self,
+        resources: &PostEffectResourceProjection,
+        allow_embedded_fallback: bool,
+        apply: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
+        if resources.core_shader_sources().generation() != resources.generation() {
+            bail!(
+                "core shader generation {} does not match post-effect generation {}",
+                resources.core_shader_sources().generation(),
+                resources.generation()
+            );
+        }
+        self.transactional_resource_reload(|renderer| {
+            renderer
+                .reload_core_shaders(resources.core_shader_sources(), allow_embedded_fallback)
+                .context("compile core shader pipelines during resource reload")?;
+            renderer
+                .reload_post_effect_graphs(resources)
+                .context("compile post-effect graphs during resource reload")?;
+            apply(renderer)
+        })
+    }
+
+    /// Runs renderer-owned resource updates as one all-or-nothing transaction.
+    /// Crate-internal focused tests also use this to inject failures between
+    /// individual owners.
+    pub(crate) fn transactional_resource_reload<T>(
         &mut self,
         apply: impl FnOnce(&mut Self) -> Result<T>,
     ) -> Result<T> {
@@ -1611,7 +1637,13 @@ pub(crate) use take_hud_resource_owners;
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        sync::Arc,
+    };
+
     use anyhow::{anyhow, Result};
+    use bbb_render_types::{CoreShaderSourceProjection, PostEffectResourceProjection};
 
     use crate::{
         entity_model_texture_refs, ClearColor, EntityModelTextureImage, HudAsciiGlyph,
@@ -1636,6 +1668,77 @@ mod tests {
             item < armor && armor < next,
             "item and armor glint owners are captured together"
         );
+    }
+
+    #[test]
+    fn shader_resource_generation_rejects_mismatched_projection_atomically() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let previous_core = renderer.core_shader_generation();
+        let previous_post = renderer.post_effect_graph_generation();
+        let resources = PostEffectResourceProjection::new(
+            2,
+            Arc::new(BTreeMap::new()),
+            Arc::new(BTreeSet::new()),
+            CoreShaderSourceProjection::new(1, Arc::new(BTreeMap::new())),
+            Arc::new(BTreeMap::new()),
+        );
+
+        let error = renderer
+            .transactional_shader_resource_reload(&resources, false, |_| Ok(()))
+            .expect_err("mismatched shader generation should be rejected");
+        assert!(error
+            .to_string()
+            .contains("core shader generation 1 does not match post-effect generation 2"));
+        assert_eq!(renderer.core_shader_generation(), previous_core);
+        assert_eq!(renderer.post_effect_graph_generation(), previous_post);
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn local_shader_resource_generation_commits_and_rolls_back_as_one_owner() {
+        let Some(mut renderer) = Renderer::new_offscreen(32, 32) else {
+            return;
+        };
+        let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+        let selected = roots.selected_client_packs_or_unmanaged();
+        let first_roots = roots
+            .clone()
+            .with_client_resource_generation(91, selected.clone())
+            .expect("prepare first selected generation");
+        let second_roots = roots
+            .with_client_resource_generation(92, selected)
+            .expect("prepare second selected generation");
+        let first = bbb_pack::PostEffectCatalog::load(&first_roots)
+            .expect("prepare first shader resource generation")
+            .renderer_projection();
+        let second = bbb_pack::PostEffectCatalog::load(&second_roots)
+            .expect("prepare second shader resource generation")
+            .renderer_projection();
+
+        renderer
+            .transactional_shader_resource_reload(&first, false, |_| Ok(()))
+            .expect("install first shader resource generation");
+        assert_eq!(renderer.core_shader_generation(), Some(91));
+        assert_eq!(renderer.post_effect_graph_generation(), Some(91));
+        renderer.counters.draw_calls = 123;
+
+        renderer
+            .transactional_shader_resource_reload(&second, false, |renderer| -> Result<()> {
+                renderer.counters.draw_calls = 999;
+                anyhow::bail!("injected failure after shader generation commit")
+            })
+            .expect_err("later owner failure should roll back the whole shader generation");
+        assert_eq!(renderer.core_shader_generation(), Some(91));
+        assert_eq!(renderer.post_effect_graph_generation(), Some(91));
+        assert_eq!(renderer.counters.draw_calls, 123);
+
+        renderer
+            .transactional_shader_resource_reload(&second, false, |_| Ok(()))
+            .expect("install second shader resource generation");
+        assert_eq!(renderer.core_shader_generation(), Some(92));
+        assert_eq!(renderer.post_effect_graph_generation(), Some(92));
     }
 
     #[test]
@@ -2195,9 +2298,39 @@ mod tests {
             "the four final static owners must share one family adapter"
         );
 
+        assert_eq!(
+            production
+                .matches("    pub fn transactional_shader_resource_reload<")
+                .count(),
+            1,
+            "renderer must expose one cross-crate shader generation commit"
+        );
+        assert!(!production.contains("    pub fn reload_core_shaders("));
+        assert!(!production.contains("    pub fn reload_post_effect_graphs("));
+        let unified_reload = production
+            .split_once("    pub fn transactional_shader_resource_reload<")
+            .expect("unified shader generation entry")
+            .1
+            .split_once("\n    pub(crate) fn transactional_resource_reload<")
+            .expect("unified shader generation boundary")
+            .0;
+        assert_eq!(unified_reload.matches(".reload_core_shaders(").count(), 1);
+        assert_eq!(
+            unified_reload
+                .matches(".reload_post_effect_graphs(")
+                .count(),
+            1
+        );
+        let core = unified_reload.find(".reload_core_shaders(").unwrap();
+        let post = unified_reload.find(".reload_post_effect_graphs(").unwrap();
+        assert!(
+            core < post,
+            "core pipelines must compile before post graphs"
+        );
+
         let core_reload = production
-            .split_once("    pub fn reload_core_shaders(")
-            .expect("public core shader reload entry")
+            .split_once("    pub(crate) fn reload_core_shaders(")
+            .expect("crate-internal core shader reload entry")
             .1
             .split_once("\n    pub fn core_shader_generation(")
             .expect("core shader generation query boundary")
