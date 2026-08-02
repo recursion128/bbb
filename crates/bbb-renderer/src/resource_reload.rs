@@ -416,6 +416,7 @@ impl SkyCorePipelines {
     fn prepare(
         renderer: &Renderer,
         shaders: &crate::core_shaders::AdaptedSkyShaders,
+        position_tex_color: Option<&crate::core_shaders::AdaptedPositionTexColorShaders>,
     ) -> Result<Self> {
         Ok(Self {
             sky: crate::sky::create_sky_pipeline(
@@ -438,7 +439,7 @@ impl SkyCorePipelines {
                 &renderer.terrain_bind_group_layout,
                 &renderer.end_sky_texture_bind_group_layout,
                 &renderer.sky_dynamic_bind_group_layout,
-                shaders.end_sky.as_ref(),
+                position_tex_color.map(|shaders| &shaders.end_sky),
             )?,
             celestial: crate::sky::create_celestial_pipeline(
                 &renderer.device,
@@ -447,6 +448,33 @@ impl SkyCorePipelines {
                 &renderer.celestial_bind_group_layout,
                 &renderer.sky_dynamic_bind_group_layout,
                 shaders.celestial.as_ref(),
+            )?,
+        })
+    }
+}
+
+struct GuiCorePipelines {
+    hud: wgpu::RenderPipeline,
+    vignette: wgpu::RenderPipeline,
+}
+
+impl GuiCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedPositionTexColorShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            hud: crate::hud::create_hud_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.hud_bind_group_layout,
+                shaders,
+            )?,
+            vignette: crate::vignette::create_vignette_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.vignette_bind_group_layout,
+                shaders,
             )?,
         })
     }
@@ -479,6 +507,7 @@ struct CorePipelineGeneration {
     clouds: Option<CloudCorePipelines>,
     lightmap: Option<wgpu::RenderPipeline>,
     sky: Option<SkyCorePipelines>,
+    gui: Option<GuiCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -663,9 +692,18 @@ impl CorePipelineGeneration {
         let sky_shaders = (!startup_without_sources)
             .then(|| crate::core_shaders::adapt_selected_sky_shaders(resources))
             .transpose()?;
+        let position_tex_color_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_position_tex_color_shaders(resources))
+            .transpose()?
+            .flatten();
         let sky = sky_shaders
             .as_ref()
-            .map(|shaders| SkyCorePipelines::prepare(renderer, shaders))
+            .map(|shaders| {
+                SkyCorePipelines::prepare(renderer, shaders, position_tex_color_shaders.as_ref())
+            })
+            .transpose()?;
+        let gui = (!startup_without_sources)
+            .then(|| GuiCorePipelines::prepare(renderer, position_tex_color_shaders.as_ref()))
             .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
@@ -688,6 +726,7 @@ impl CorePipelineGeneration {
             clouds,
             lightmap,
             sky,
+            gui,
         })
     }
 
@@ -938,6 +977,10 @@ impl CorePipelineGeneration {
             std::mem::swap(&mut sky.stars, &mut renderer.star_pipeline);
             std::mem::swap(&mut sky.end_sky, &mut renderer.end_sky_pipeline);
             std::mem::swap(&mut sky.celestial, &mut renderer.celestial_pipeline);
+        }
+        if let Some(gui) = self.gui.as_mut() {
+            std::mem::swap(&mut gui.hud, &mut renderer.hud_pipeline);
+            std::mem::swap(&mut gui.vignette, &mut renderer.vignette_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1896,8 +1939,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            68,
-            "67 GPU handles plus the publication generation must share one mapping"
+            70,
+            "69 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1979,7 +2022,14 @@ mod tests {
                 .matches("adapt_selected_sky_shaders(resources)")
                 .count(),
             1,
-            "sky, stars, end sky, and celestial must share one selected-source adapter"
+            "sky, stars, and celestial must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_position_tex_color_shaders(resources)")
+                .count(),
+            1,
+            "end sky, HUD, and vignette must share one position-tex-color adapter"
         );
         assert_eq!(
             production
@@ -2089,8 +2139,6 @@ mod tests {
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
-            ("hud_pipeline", "GUI_TEXTURED/core/gui_textured"),
-            ("vignette_pipeline", "VIGNETTE/core/gui_textured"),
         ];
         // These handles have no one-to-one Vanilla static core owner: eight are exact/default
         // post-graph or renderer-internal copies whose selected path is PostEffectGraphRuntime;
@@ -2110,10 +2158,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 67, "selected core generation changed");
+        assert_eq!(selected.len(), 69, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            10,
+            8,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

@@ -129,8 +129,13 @@ pub(crate) struct AdaptedShaderPair {
 pub(crate) struct AdaptedSkyShaders {
     pub(crate) sky: Option<AdaptedShaderPair>,
     pub(crate) stars: Option<AdaptedShaderPair>,
-    pub(crate) end_sky: Option<AdaptedShaderPair>,
     pub(crate) celestial: Option<AdaptedShaderPair>,
+}
+
+pub(crate) struct AdaptedPositionTexColorShaders {
+    pub(crate) end_sky: AdaptedShaderPair,
+    pub(crate) hud: AdaptedShaderPair,
+    pub(crate) vignette: AdaptedShaderPair,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -546,17 +551,61 @@ pub(crate) fn adapt_selected_sky_shaders(
     Ok(AdaptedSkyShaders {
         sky: adapt_selected_sky_pair(resources, SKY_SHADER_ID, SkyShaderKind::Sky)?,
         stars: adapt_selected_sky_pair(resources, STARS_SHADER_ID, SkyShaderKind::Stars)?,
-        end_sky: adapt_selected_sky_pair(
-            resources,
-            POSITION_TEX_COLOR_SHADER_ID,
-            SkyShaderKind::EndSky,
-        )?,
         celestial: adapt_selected_sky_pair(
             resources,
             POSITION_TEX_SHADER_ID,
             SkyShaderKind::Celestial,
         )?,
     })
+}
+
+pub(crate) fn adapt_selected_position_tex_color_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedPositionTexColorShaders>> {
+    let vertex = resources
+        .source_by_id(POSITION_TEX_COLOR_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/position_tex_color vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(POSITION_TEX_COLOR_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/position_tex_color fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let adapt = |projection, vertex_stage| {
+        adapt_position_tex_color_stage(
+            if vertex_stage {
+                &vertex.source
+            } else {
+                &fragment.source
+            },
+            vertex_stage,
+            projection,
+        )
+    };
+    Ok(Some(AdaptedPositionTexColorShaders {
+        end_sky: AdaptedShaderPair {
+            vertex: adapt(PositionTexColorProjection::EndSky, true)
+                .context("adapt selected end-sky vertex shader")?,
+            fragment: adapt(PositionTexColorProjection::EndSky, false)
+                .context("adapt selected end-sky fragment shader")?,
+        },
+        hud: AdaptedShaderPair {
+            vertex: adapt(PositionTexColorProjection::Hud, true)
+                .context("adapt selected HUD vertex shader")?,
+            fragment: adapt(PositionTexColorProjection::Hud, false)
+                .context("adapt selected HUD fragment shader")?,
+        },
+        vignette: AdaptedShaderPair {
+            vertex: adapt(PositionTexColorProjection::Vignette, true)
+                .context("adapt selected vignette vertex shader")?,
+            fragment: adapt(PositionTexColorProjection::Vignette, false)
+                .context("adapt selected vignette fragment shader")?,
+        },
+    }))
 }
 
 #[derive(Clone, Copy)]
@@ -1092,6 +1141,111 @@ fn adapt_sky_stage(source: &str, vertex_stage: bool, kind: SkyShaderKind) -> Res
     }
 }
 
+#[derive(Clone, Copy)]
+enum PositionTexColorProjection {
+    EndSky,
+    Hud,
+    Vignette,
+}
+
+fn adapt_position_tex_color_stage(
+    source: &str,
+    vertex_stage: bool,
+    projection: PositionTexColorProjection,
+) -> Result<String> {
+    if matches!(projection, PositionTexColorProjection::EndSky) {
+        return adapt_sky_stage(source, vertex_stage, SkyShaderKind::EndSky);
+    }
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = require_webgpu_glsl_version(&source);
+    let source = insert_after_version(
+        &source,
+        "#define ProjMat mat4(1.0)\n#define ModelViewMat mat4(1.0)\n#define ColorModulator vec4(1.0)\n#define ModelOffset vec3(0.0)\n#define TextureMat mat4(1.0)\n",
+    )?;
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_sky_stage_locations(&source, vertex_stage, SkyShaderKind::EndSky)?;
+    let source = match (projection, vertex_stage) {
+        (PositionTexColorProjection::Hud, true) => adapt_hud_position_tex_color_vertex(&source)?,
+        (PositionTexColorProjection::Hud, false) => source,
+        (PositionTexColorProjection::Vignette, true) => {
+            adapt_vignette_position_tex_color_vertex(&source)?
+        }
+        (PositionTexColorProjection::Vignette, false) => {
+            adapt_vignette_position_tex_color_fragment(&source)?
+        }
+        (PositionTexColorProjection::EndSky, _) => unreachable!(),
+    };
+    adapt_combined_samplers(
+        &source,
+        &[SamplerBinding {
+            source_name: "Sampler0".to_string(),
+            texture_group: 0,
+            texture_binding: 0,
+            sampler_group: 0,
+            sampler_binding: 1,
+        }],
+    )
+}
+
+fn adapt_hud_position_tex_color_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 0) in vec3 Position;",
+        "layout(location = 0) in vec2 Position;",
+        "selected HUD clip-position input",
+    )?;
+    replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "gl_Position = vec4(Position, 0.0, 1.0);",
+        "selected HUD clip projection",
+    )
+}
+
+fn adapt_vignette_position_tex_color_vertex(source: &str) -> Result<String> {
+    let source = [
+        "layout(location = 0) in vec3 Position;",
+        "layout(location = 1) in vec2 UV0;",
+        "layout(location = 2) in vec4 Color;",
+    ]
+    .into_iter()
+    .try_fold(source.to_string(), |source, declaration| {
+        replace_required(
+            &source,
+            declaration,
+            "",
+            "selected vignette synthesized vertex input",
+        )
+    })?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "vec2 bbbPosition = vec2(-1.0, -1.0);\n    if (gl_VertexIndex == 1) { bbbPosition = vec2(3.0, -1.0); }\n    else if (gl_VertexIndex == 2) { bbbPosition = vec2(-1.0, 3.0); }\n    gl_Position = vec4(bbbPosition, 0.0, 1.0);",
+        "selected vignette fullscreen triangle",
+    )?;
+    let source = replace_required(
+        &source,
+        "texCoord0 = UV0;",
+        "texCoord0 = vec2(bbbPosition.x * 0.5 + 0.5, 0.5 - bbbPosition.y * 0.5);",
+        "selected vignette synthesized UV",
+    )?;
+    replace_required(
+        &source,
+        "vertexColor = Color;",
+        "vertexColor = vec4(1.0);",
+        "selected vignette synthesized color",
+    )
+}
+
+fn adapt_vignette_position_tex_color_fragment(source: &str) -> Result<String> {
+    replace_required(
+        source,
+        "#define ColorModulator vec4(1.0)",
+        "layout(std140, set = 0, binding = 2) uniform BbbVignette { vec4 BbbVignetteColor; } bbbVignette;\n#define ColorModulator bbbVignette.BbbVignetteColor",
+        "selected vignette color projection",
+    )
+}
+
 fn project_sky_dynamic_uniform(source: &str, dynamic_group: u32) -> Result<String> {
     let source = replace_required(
         source,
@@ -1459,6 +1613,60 @@ pub(crate) fn create_selected_position_color_pipeline(
                 depth_write_enabled,
                 depth_compare,
             )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+pub(crate) fn create_selected_position_tex_color_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    shaders: &AdaptedShaderPair,
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    blend: Option<wgpu::BlendState>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-position-tex-color-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected position-tex-color vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-position-tex-color-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected position-tex-color fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-position-tex-color-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
@@ -3210,6 +3418,59 @@ void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModu
         assert!(end_sky_fragment.contains("layout(set = 1, binding = 1) uniform sampler"));
         assert!(end_sky_fragment.contains("layout(location = 1) in vec4 vertexColor"));
         assert!(end_sky_fragment.contains("layout(location = 0) out vec4 fragColor"));
+
+        let position_tex_color_vertex = r#"#version 330
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+layout(std140) uniform Projection { mat4 ProjMat; };
+in vec3 Position;
+in vec2 UV0;
+in vec4 Color;
+out vec2 texCoord0;
+out vec4 vertexColor;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    texCoord0 = UV0;
+    vertexColor = Color;
+}
+"#;
+        let hud_vertex = adapt_position_tex_color_stage(
+            position_tex_color_vertex,
+            true,
+            PositionTexColorProjection::Hud,
+        )
+        .expect("HUD position-tex-color projection");
+        assert!(hud_vertex.contains("layout(location = 0) in vec2 Position"));
+        assert!(hud_vertex.contains("gl_Position = vec4(Position, 0.0, 1.0)"));
+        let vignette_vertex = adapt_position_tex_color_stage(
+            position_tex_color_vertex,
+            true,
+            PositionTexColorProjection::Vignette,
+        )
+        .expect("vignette position-tex-color projection");
+        assert!(vignette_vertex.contains("gl_VertexIndex == 1"));
+        assert!(vignette_vertex.contains("vertexColor = vec4(1.0)"));
+        assert!(!vignette_vertex.contains("in vec3 Position"));
+
+        let vignette_fragment = adapt_position_tex_color_stage(
+            end_sky_fragment_source(),
+            false,
+            PositionTexColorProjection::Vignette,
+        )
+        .expect("vignette color projection");
+        assert!(
+            vignette_fragment.contains("layout(std140, set = 0, binding = 2) uniform BbbVignette")
+        );
+    }
+
+    fn end_sky_fragment_source() -> &'static str {
+        r#"#version 330
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModulator; }
+"#
     }
 
     #[test]
@@ -4992,7 +5253,7 @@ void main() {
 
     #[test]
     #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
-    fn selected_sky_family_preloads_all_four_pipelines_and_filter_rolls_back() {
+    fn selected_sky_and_position_tex_color_families_preload_and_filter_rolls_back() {
         let root = unique_temp_dir("selected-sky-family");
         let overlay = root.join("overlay");
         write_pack_metadata(&overlay, None);
@@ -5062,7 +5323,9 @@ void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
             .transactional_resource_reload(|renderer| {
                 renderer.reload_core_shaders(&catalog.renderer_projection(), false)
             })
-            .expect("selected sky, stars, end-sky, and celestial pipelines compile atomically");
+            .expect(
+                "selected sky, stars, celestial, end-sky, HUD, and vignette pipelines compile atomically",
+            );
         assert_eq!(renderer.core_shader_generation(), Some(161));
 
         let filter = root.join("filter");

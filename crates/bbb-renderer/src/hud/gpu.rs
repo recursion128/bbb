@@ -187,13 +187,25 @@ pub(crate) fn create_hud_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-hud-pipeline")
+    shaders: Option<&crate::core_shaders::AdaptedPositionTexColorShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_tex_color_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-hud",
+            &shaders.hud,
+            &[hud_vertex_layout()],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+        );
+    }
+    Ok(RenderPipelineBuilder::new(device, "bbb-hud-pipeline")
         .shader("bbb-hud-shader", HUD_SHADER)
         .layout("bbb-hud-pipeline-layout", &[bind_group_layout])
         .vertex_buffers(&[hud_vertex_layout()])
         .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .build()
+        .build())
 }
 
 pub(crate) fn create_hud_item_glint_pipeline(

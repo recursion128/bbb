@@ -236,12 +236,24 @@ pub(crate) fn create_vignette_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-vignette-pipeline")
+    shaders: Option<&crate::core_shaders::AdaptedPositionTexColorShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_tex_color_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-vignette",
+            &shaders.vignette,
+            &[],
+            Some(VIGNETTE_BLEND),
+        );
+    }
+    Ok(RenderPipelineBuilder::new(device, "bbb-vignette-pipeline")
         .shader("bbb-vignette-shader", VIGNETTE_SHADER)
         .layout("bbb-vignette-pipeline-layout", &[bind_group_layout])
         .color_target(format, Some(VIGNETTE_BLEND))
-        .build()
+        .build())
 }
 
 fn create_vignette_texture_gpu(

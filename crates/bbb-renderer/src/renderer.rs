@@ -1997,10 +1997,10 @@ impl Renderer {
             CloudShape::Fancy,
             None,
         )?;
-        let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
+        let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout, None)?;
         let vignette_bind_group_layout = create_vignette_bind_group_layout(&device);
         let vignette_pipeline =
-            create_vignette_pipeline(&device, format, &vignette_bind_group_layout);
+            create_vignette_pipeline(&device, format, &vignette_bind_group_layout, None)?;
         let map_surface_residency = MapSurfaceResidency::new(
             &device,
             format,

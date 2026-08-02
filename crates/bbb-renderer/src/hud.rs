@@ -28907,7 +28907,8 @@ mod tests {
 
         // HUD frame + blit resources: the production HUD sprite pipeline and vertex path.
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
-        let hud_pipeline = create_hud_pipeline(&device, COLOR_FORMAT, &hud_bind_group_layout);
+        let hud_pipeline = create_hud_pipeline(&device, COLOR_FORMAT, &hud_bind_group_layout, None)
+            .expect("embedded HUD pipeline");
         let blit_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("pip-test-blit-sampler"),
             mag_filter: wgpu::FilterMode::Nearest,
