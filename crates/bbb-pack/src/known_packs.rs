@@ -294,7 +294,6 @@ mod tests {
                 self.0.clone(),
                 self.0.clone(),
                 self.0.join("assets/minecraft"),
-                None,
             )
         }
     }

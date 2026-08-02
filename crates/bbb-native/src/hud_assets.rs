@@ -2262,7 +2262,7 @@ mod tests {
             r#"{"texture":{"blur":true,"clamp":false}}"#,
         )
         .unwrap();
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
 
         let image = load_vignette_image(&roots).unwrap();
 
@@ -2291,7 +2291,7 @@ mod tests {
             r#"{"texture":{"blur":true,"clamp":true}}"#,
         )
         .unwrap();
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"));
 
         let image = load_spyglass_scope_image(&roots).unwrap();
 

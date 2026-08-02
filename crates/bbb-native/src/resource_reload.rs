@@ -1200,7 +1200,7 @@ mod tests {
         }
         write_resource(&server_first, b"first");
         write_resource(&server_second, b"second");
-        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None)
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"))
             .with_resource_pack_dirs([startup_base.clone(), startup_top.clone()]);
         let first_metadata = bbb_pack::read_client_resource_pack_metadata(&server_first).unwrap();
         let second_metadata = bbb_pack::read_client_resource_pack_metadata(&server_second).unwrap();
@@ -1382,7 +1382,7 @@ mod tests {
         let sources = temp.join("sources");
         std::fs::create_dir_all(sources.join("assets/minecraft")).unwrap();
         write_png(&sources.join("assets/minecraft/textures/item/widget.png"));
-        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None);
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"));
         let selected = base.selected_client_packs_or_unmanaged();
         let accepted = base
             .clone()
@@ -1445,7 +1445,7 @@ mod tests {
         let json_path = sources.join("assets/minecraft/test/value.json");
         std::fs::create_dir_all(json_path.parent().unwrap()).unwrap();
         std::fs::write(&json_path, br#"{"value":"accepted"}"#).unwrap();
-        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"), None);
+        let base = PackRoots::from_paths(&temp, &sources, sources.join("assets/minecraft"));
         let selected = base.selected_client_packs_or_unmanaged();
         let accepted = base
             .clone()

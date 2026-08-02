@@ -3712,7 +3712,6 @@ mod tests {
             missing.clone(),
             missing.join("sources/26.1"),
             missing.join("sources/26.1/assets/minecraft"),
-            None,
         );
 
         let catalog = ItemRegistryCatalog::load(&roots).unwrap();

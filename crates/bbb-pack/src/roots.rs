@@ -40,15 +40,12 @@ use crate::{
 
 pub const MC_VERSION: &str = "26.1";
 pub const DEFAULT_MC_CODE_ROOT: &str = "/Users/zhangguyu/Work/mc-code";
-pub const GENERATED_ASSETS_DIR_NAME: &str = "assets-26.1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackRoots {
     pub mc_code_root: PathBuf,
     pub sources_dir: PathBuf,
     pub assets_dir: PathBuf,
-    #[serde(default)]
-    pub generated_assets_dir: Option<PathBuf>,
     #[serde(skip, default)]
     indexed_vanilla_assets: Option<Arc<VanillaAssetIndex>>,
     #[serde(default)]
@@ -73,7 +70,7 @@ impl PackRoots {
                     .filter(|root| root.join("sources").join(MC_VERSION).is_dir())
             })
             .unwrap_or_else(|| PathBuf::from(DEFAULT_MC_CODE_ROOT));
-        Ok(Self::from_root(root)?.with_generated_assets_dir(discover_generated_assets_dir()))
+        Self::from_root(root)
     }
 
     pub fn from_root(root: impl Into<PathBuf>) -> Result<Self> {
@@ -84,7 +81,7 @@ impl PackRoots {
             bail!("missing vanilla source directory {}", sources_dir.display());
         }
         let indexed_vanilla_assets = VanillaAssetIndex::discover(&mc_code_root)?;
-        let mut roots = Self::from_paths(mc_code_root, sources_dir, assets_dir, None);
+        let mut roots = Self::from_paths(mc_code_root, sources_dir, assets_dir);
         roots.indexed_vanilla_assets = indexed_vanilla_assets.map(Arc::new);
         Ok(roots)
     }
@@ -93,24 +90,17 @@ impl PackRoots {
         mc_code_root: impl Into<PathBuf>,
         sources_dir: impl Into<PathBuf>,
         assets_dir: impl Into<PathBuf>,
-        generated_assets_dir: Option<PathBuf>,
     ) -> Self {
         Self {
             mc_code_root: mc_code_root.into(),
             sources_dir: sources_dir.into(),
             assets_dir: assets_dir.into(),
-            generated_assets_dir,
             indexed_vanilla_assets: None,
             resource_pack_dirs: Vec::new(),
             client_resource_generation: None,
             resource_image_budget: default_resource_image_generation_budget(),
             resource_data_budget: default_resource_data_generation_budget(),
         }
-    }
-
-    pub fn with_generated_assets_dir(mut self, dir: Option<PathBuf>) -> Self {
-        self.generated_assets_dir = dir;
-        self
     }
 
     pub fn with_resource_pack_dirs(
@@ -238,17 +228,6 @@ impl PackRoots {
         self.indexed_vanilla_assets.as_ref().map(Arc::clone)
     }
 
-    fn resource_pack_stack(&self) -> PackResourceStack {
-        if let Some(generation) = self.client_resource_generation() {
-            return generation.resources().without_first();
-        }
-        PackResourceStack::from_roots_with_budgets(
-            self.resource_pack_dirs.iter().cloned(),
-            Arc::clone(&self.resource_image_budget),
-            Arc::clone(&self.resource_data_budget),
-        )
-    }
-
     pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
         self.resource_image_budget.observation()
     }
@@ -283,50 +262,6 @@ impl PackRoots {
 
     pub fn atlases_dir(&self) -> PathBuf {
         self.assets_dir.join("atlases")
-    }
-
-    pub fn sounds_definition(&self) -> PathBuf {
-        if self.source_sounds_definition().is_file() {
-            return self.source_sounds_definition();
-        }
-        if let Some(path) = self.generated_sounds_definition() {
-            return path;
-        }
-        self.source_sounds_definition()
-    }
-
-    fn source_sounds_definition(&self) -> PathBuf {
-        self.assets_dir.join("sounds.json")
-    }
-
-    fn generated_sounds_definition(&self) -> Option<PathBuf> {
-        self.generated_sound_assets_dir()
-            .map(|dir| dir.join("sounds.json"))
-    }
-
-    pub fn sounds_dir(&self) -> PathBuf {
-        if self.source_sounds_definition().is_file() {
-            return self.source_sounds_dir();
-        }
-        if let Some(path) = self.generated_sounds_dir() {
-            return path;
-        }
-        self.source_sounds_dir()
-    }
-
-    fn source_sounds_dir(&self) -> PathBuf {
-        self.assets_dir.join("sounds")
-    }
-
-    fn generated_sounds_dir(&self) -> Option<PathBuf> {
-        self.generated_sound_assets_dir()
-            .map(|dir| dir.join("sounds"))
-    }
-
-    fn generated_sound_assets_dir(&self) -> Option<&Path> {
-        self.generated_assets_dir
-            .as_deref()
-            .filter(|dir| dir.join("sounds.json").is_file())
     }
 
     pub fn atlas_definition(&self, name: &str) -> PathBuf {
@@ -468,37 +403,7 @@ impl PackRoots {
     }
 
     pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
-        let mut catalog = if !self.source_sounds_definition().is_file() {
-            if let Some(generated_assets_dir) = self.generated_sound_assets_dir() {
-                let resource_pack_stack = self.resource_pack_stack();
-                let sounds_location = ResourceLocation::new("minecraft", "sounds.json")?;
-                let mut catalog =
-                    if resource_pack_stack.filters_lower_priority_resource(&sounds_location) {
-                        SoundCatalog::default()
-                    } else {
-                        SoundCatalog::load_minecraft_assets_dir_with_resource_stack_fallback(
-                            generated_assets_dir,
-                            &resource_pack_stack,
-                        )
-                        .with_context(|| {
-                            format!(
-                                "load generated sound catalog from {}",
-                                generated_assets_dir.join("sounds.json").display()
-                            )
-                        })?
-                    };
-                catalog.merge_resource_stack_with_namespace_fallback(
-                    &resource_pack_stack,
-                    Some(("minecraft", generated_assets_dir)),
-                )?;
-                catalog.admit_retained_collections(&resource_pack_stack)?;
-                catalog
-            } else {
-                SoundCatalog::load_resource_stack(&self.resource_stack())?
-            }
-        } else {
-            SoundCatalog::load_resource_stack(&self.resource_stack())?
-        };
+        let mut catalog = SoundCatalog::load_resource_stack(&self.resource_stack())?;
         catalog.set_resource_generation(
             self.client_resource_generation()
                 .map_or(0, ClientResourceGeneration::generation),
@@ -507,18 +412,13 @@ impl PackRoots {
     }
 
     pub fn load_required_sound_catalog(&self) -> Result<SoundCatalog> {
-        let sounds_definition = self.sounds_definition();
-        let catalog = self.load_sound_catalog().with_context(|| {
-            format!(
-                "load required sound catalog from {}",
-                sounds_definition.display()
-            )
-        })?;
+        let catalog = self
+            .load_sound_catalog()
+            .context("load required sound catalog minecraft:sounds.json")?;
         if catalog.is_empty() {
             bail!(
-                "load required sound catalog from {}: required sound catalog is empty; checked sound definition {}",
-                sounds_definition.display(),
-                sounds_definition.display()
+                "load required sound catalog: required sound catalog is empty; \
+                 minecraft:sounds.json resolved no events"
             );
         }
         Ok(catalog)
@@ -570,21 +470,6 @@ impl PackRoots {
     pub fn load_tag_catalog(&self, registry_path: &str) -> Result<TagCatalog> {
         TagCatalog::load_resource_stack(&self.resource_stack(), registry_path)
     }
-}
-
-fn discover_generated_assets_dir() -> Option<PathBuf> {
-    std::env::var_os("BBB_MC_GENERATED_ASSETS_DIR")
-        .or_else(|| std::env::var_os("BBB_MC_ASSETS_DIR"))
-        .map(PathBuf::from)
-        .or_else(|| {
-            let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("..")
-                .join("..")
-                .join("target")
-                .join(GENERATED_ASSETS_DIR_NAME);
-            dir.is_dir().then_some(dir)
-        })
-        .filter(|dir| dir.join("sounds.json").is_file())
 }
 
 fn default_resource_image_generation_budget() -> Arc<ResourceImageGenerationBudget> {
@@ -1017,44 +902,42 @@ mod tests {
     }
 
     #[test]
-    fn pack_roots_uses_generated_sound_assets_when_source_sounds_are_absent() {
-        let root = unique_temp_dir("generated-sounds");
+    fn pack_roots_uses_indexed_sound_assets_when_source_sounds_are_absent() {
+        let root = unique_temp_dir("indexed-sounds");
         std::fs::create_dir_all(root.join("sources").join(MC_VERSION)).unwrap();
-        let generated_assets = root.join("generated-assets");
-        let generated_ogg = generated_assets
-            .join("sounds")
-            .join("random")
-            .join("click.ogg");
-        write_file(&generated_ogg);
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.click": {
                 "sounds": ["random/click"]
               }
             }"#,
+                    true,
+                ),
+                ("minecraft/sounds/random/click.ogg", b"indexed ogg", true),
+            ],
         );
 
-        let roots = PackRoots::from_root(&root)
-            .unwrap()
-            .with_generated_assets_dir(Some(generated_assets.clone()));
+        let roots = PackRoots::from_root(&root).unwrap();
         let catalog = roots.load_required_sound_catalog().unwrap();
         let event = catalog.event("minecraft:ui.button.click").unwrap();
 
-        assert_eq!(
-            roots.sounds_definition(),
-            generated_assets.join("sounds.json")
-        );
-        assert_eq!(roots.sounds_dir(), generated_assets.join("sounds"));
         assert_eq!(event.sounds.len(), 1);
-        assert_eq!(event.sounds[0].ogg_path, Some(generated_ogg));
+        assert_eq!(
+            std::fs::read(event.sounds[0].ogg_path.as_ref().unwrap()).unwrap(),
+            b"indexed ogg"
+        );
+        assert!(event.sounds[0].ogg_integrity.is_some());
 
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn pack_roots_prefers_source_sounds_over_generated_sound_assets() {
-        let root = unique_temp_dir("source-sounds-before-generated");
+    fn indexed_sound_definition_replaces_the_source_stub() {
+        let root = unique_temp_dir("indexed-sounds-before-source");
         let source_assets = root
             .join("sources")
             .join(MC_VERSION)
@@ -1073,54 +956,56 @@ mod tests {
               }
             }"#,
         );
-        let generated_assets = root.join("generated-assets");
-        write_file(
-            &generated_assets
-                .join("sounds")
-                .join("random")
-                .join("generated.ogg"),
-        );
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.generated": {
                 "sounds": ["random/generated"]
               }
             }"#,
+                    true,
+                ),
+                (
+                    "minecraft/sounds/random/generated.ogg",
+                    b"indexed generated",
+                    true,
+                ),
+            ],
         );
 
-        let roots = PackRoots::from_root(&root)
-            .unwrap()
-            .with_generated_assets_dir(Some(generated_assets));
+        let roots = PackRoots::from_root(&root).unwrap();
         let catalog = roots.load_required_sound_catalog().unwrap();
-        let event = catalog.event("minecraft:ui.button.click").unwrap();
+        let event = catalog.event("minecraft:ui.button.generated").unwrap();
 
-        assert_eq!(roots.sounds_definition(), source_assets.join("sounds.json"));
-        assert_eq!(roots.sounds_dir(), source_assets.join("sounds"));
         assert_eq!(catalog.len(), 1);
-        assert!(catalog.event("minecraft:ui.button.generated").is_none());
-        assert_eq!(event.sounds[0].ogg_path, Some(source_ogg));
+        assert!(catalog.event("minecraft:ui.button.click").is_none());
+        assert_ne!(event.sounds[0].ogg_path, Some(source_ogg));
+        assert!(event.sounds[0].ogg_integrity.is_some());
 
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn generated_sound_assets_keep_resource_pack_overlays() {
-        let root = unique_temp_dir("generated-sounds-pack-overlays");
+    fn indexed_sound_assets_keep_resource_pack_overlays() {
+        let root = unique_temp_dir("indexed-sounds-pack-overlays");
         std::fs::create_dir_all(root.join("sources").join(MC_VERSION)).unwrap();
-        let generated_assets = root.join("generated-assets");
-        let generated_ogg = generated_assets
-            .join("sounds")
-            .join("random")
-            .join("base.ogg");
-        write_file(&generated_ogg);
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.click": {
                 "sounds": ["random/base"]
               }
             }"#,
+                    true,
+                ),
+                ("minecraft/sounds/random/base.ogg", b"indexed base", true),
+            ],
         );
 
         let overlay = root.join("overlay");
@@ -1145,7 +1030,6 @@ mod tests {
 
         let roots = PackRoots::from_root(&root)
             .unwrap()
-            .with_generated_assets_dir(Some(generated_assets))
             .with_resource_pack_dirs([overlay]);
         let catalog = roots.load_required_sound_catalog().unwrap();
         let click = catalog.event("minecraft:ui.button.click").unwrap();
@@ -1159,29 +1043,34 @@ mod tests {
         assert_eq!(click.sounds[0].ogg_path, Some(overlay_ogg));
         assert_eq!(vanilla_reference.sounds.len(), 1);
         assert_eq!(vanilla_reference.sounds[0].name, "minecraft:random/base");
-        assert_eq!(vanilla_reference.sounds[0].ogg_path, Some(generated_ogg));
+        assert_eq!(
+            std::fs::read(vanilla_reference.sounds[0].ogg_path.as_ref().unwrap()).unwrap(),
+            b"indexed base"
+        );
+        assert!(vanilla_reference.sounds[0].ogg_integrity.is_some());
 
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn generated_sound_assets_append_resource_pack_sounds_without_replace() {
-        let root = unique_temp_dir("generated-sounds-pack-append");
+    fn indexed_sound_assets_append_resource_pack_sounds_without_replace() {
+        let root = unique_temp_dir("indexed-sounds-pack-append");
         std::fs::create_dir_all(root.join("sources").join(MC_VERSION)).unwrap();
-        let generated_assets = root.join("generated-assets");
-        let generated_ogg = generated_assets
-            .join("sounds")
-            .join("random")
-            .join("base.ogg");
-        write_file(&generated_ogg);
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.click": {
                 "subtitle": "subtitles.ui.button.base",
                 "sounds": ["random/base"]
               }
             }"#,
+                    true,
+                ),
+                ("minecraft/sounds/random/base.ogg", b"indexed base", true),
+            ],
         );
 
         let overlay = root.join("overlay");
@@ -1203,7 +1092,6 @@ mod tests {
 
         let roots = PackRoots::from_root(&root)
             .unwrap()
-            .with_generated_assets_dir(Some(generated_assets))
             .with_resource_pack_dirs([overlay]);
         let catalog = roots.load_required_sound_catalog().unwrap();
         let event = catalog.event("minecraft:ui.button.click").unwrap();
@@ -1211,30 +1099,35 @@ mod tests {
         assert!(!event.replace);
         assert_eq!(event.subtitle.as_deref(), Some("subtitles.ui.button.base"));
         assert_eq!(event.sounds.len(), 2);
-        assert_eq!(event.sounds[0].ogg_path, Some(generated_ogg));
+        assert_eq!(
+            std::fs::read(event.sounds[0].ogg_path.as_ref().unwrap()).unwrap(),
+            b"indexed base"
+        );
+        assert!(event.sounds[0].ogg_integrity.is_some());
         assert_eq!(event.sounds[1].ogg_path, Some(overlay_ogg));
+        assert!(event.sounds[1].ogg_integrity.is_none());
 
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn generated_sound_assets_honor_resource_pack_filter_for_sounds_json() {
-        let root = unique_temp_dir("generated-sounds-filter-json");
+    fn indexed_sound_assets_honor_resource_pack_filter_for_sounds_json() {
+        let root = unique_temp_dir("indexed-sounds-filter-json");
         std::fs::create_dir_all(root.join("sources").join(MC_VERSION)).unwrap();
-        let generated_assets = root.join("generated-assets");
-        write_file(
-            &generated_assets
-                .join("sounds")
-                .join("random")
-                .join("base.ogg"),
-        );
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.click": {
                 "sounds": ["random/base"]
               }
             }"#,
+                    true,
+                ),
+                ("minecraft/sounds/random/base.ogg", b"indexed base", true),
+            ],
         );
         let filter_pack = root.join("filter-pack");
         write_json(
@@ -1253,7 +1146,6 @@ mod tests {
 
         let roots = PackRoots::from_root(&root)
             .unwrap()
-            .with_generated_assets_dir(Some(generated_assets))
             .with_resource_pack_dirs([filter_pack]);
         let err = roots.load_required_sound_catalog().unwrap_err();
         let message = format!("{err:#}");
@@ -1264,23 +1156,23 @@ mod tests {
     }
 
     #[test]
-    fn generated_sound_assets_honor_resource_pack_filter_for_ogg_files() {
-        let root = unique_temp_dir("generated-sounds-filter-ogg");
+    fn indexed_sound_assets_honor_resource_pack_filter_for_ogg_files() {
+        let root = unique_temp_dir("indexed-sounds-filter-ogg");
         std::fs::create_dir_all(root.join("sources").join(MC_VERSION)).unwrap();
-        let generated_assets = root.join("generated-assets");
-        write_file(
-            &generated_assets
-                .join("sounds")
-                .join("random")
-                .join("base.ogg"),
-        );
-        write_json(
-            &generated_assets.join("sounds.json"),
-            r#"{
+        write_asset_index_fixture(
+            &root,
+            &[
+                (
+                    "minecraft/sounds.json",
+                    br#"{
               "ui.button.click": {
                 "sounds": ["random/base"]
               }
             }"#,
+                    true,
+                ),
+                ("minecraft/sounds/random/base.ogg", b"indexed base", true),
+            ],
         );
         let filter_pack = root.join("filter-pack");
         write_json(
@@ -1299,7 +1191,6 @@ mod tests {
 
         let roots = PackRoots::from_root(&root)
             .unwrap()
-            .with_generated_assets_dir(Some(generated_assets))
             .with_resource_pack_dirs([filter_pack]);
         let catalog = roots.load_sound_catalog().unwrap();
         let event = catalog.event("minecraft:ui.button.click").unwrap();

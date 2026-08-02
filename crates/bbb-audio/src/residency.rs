@@ -36,6 +36,23 @@ pub(crate) const MAX_STATIC_SOUND_DECODED_BYTES: u64 = 256 * 1024 * 1024;
 pub(crate) const MAX_STATIC_SOUND_CACHE_BYTES: u64 = 512 * 1024 * 1024;
 pub(crate) const MAX_STATIC_SOUND_CACHE_BUFFERS: usize = 65_536;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AudioFileProbe {
+    pub sample_rate: u32,
+    pub frames: usize,
+}
+
+/// Opens and admits one compressed audio resource through the same bounded
+/// metadata path used by playback, without requiring an audio device or
+/// decoding the complete stream.
+pub fn probe_bounded_audio_file(path: impl AsRef<Path>) -> Result<AudioFileProbe> {
+    let decoder = BoundedAudioDecoder::open(path.as_ref(), false).map_err(anyhow::Error::new)?;
+    Ok(AudioFileProbe {
+        sample_rate: decoder.sample_rate,
+        frames: decoder.admitted_frames,
+    })
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct AudioResidencyObservation {
     pub static_buffers: usize,

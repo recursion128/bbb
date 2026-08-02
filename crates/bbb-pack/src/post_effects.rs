@@ -1430,7 +1430,6 @@ mod tests {
             root.to_path_buf(),
             root.join("empty-vanilla"),
             root.join("empty-vanilla/assets/minecraft"),
-            None,
         )
         .with_resource_pack_dirs(packs)
     }

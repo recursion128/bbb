@@ -1710,7 +1710,6 @@ mod tests {
             &temp,
             temp.join("sources/26.1"),
             temp.join("sources/26.1/assets/minecraft"),
-            Some(PathBuf::from("/generated/assets-26.1")),
         );
 
         let roots = apply_resource_pack_dirs(roots, [base.clone(), overlay.clone()]).unwrap();
@@ -1725,10 +1724,6 @@ mod tests {
                 .map(|pack| pack.id.as_str())
                 .collect::<Vec<_>>(),
             vec!["vanilla", "startup/0", "startup/1"]
-        );
-        assert_eq!(
-            roots.generated_assets_dir,
-            Some(PathBuf::from("/generated/assets-26.1"))
         );
         std::fs::remove_dir_all(temp).unwrap();
     }

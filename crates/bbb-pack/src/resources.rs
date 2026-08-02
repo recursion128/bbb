@@ -77,7 +77,7 @@ pub struct PackRootResource {
     pub integrity: Option<ResourceIntegrity>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ResourceIntegrity {
     pub size: u64,
     pub sha1: String,
@@ -230,16 +230,6 @@ impl PackResourceStack {
 
     pub fn roots(&self) -> &[PathBuf] {
         &self.roots[self.start..]
-    }
-
-    pub(crate) fn without_first(&self) -> Self {
-        Self {
-            roots: Arc::clone(&self.roots),
-            entries: Arc::clone(&self.entries),
-            start: (self.start + 1).min(self.entries.len()),
-            image_budget: Arc::clone(&self.image_budget),
-            data_budget: Arc::clone(&self.data_budget),
-        }
     }
 
     pub(crate) fn single_image_png_decode_budget(&self) -> PngDecodeBudget {
@@ -453,23 +443,8 @@ impl PackResourceStack {
         self.get_resource_stack_in("assets", location)
     }
 
-    pub(crate) fn filters_lower_priority_resource(&self, location: &ResourceLocation) -> bool {
-        self.filters_lower_priority_resource_in("assets", location)
-    }
-
     pub fn get_data_resource_stack(&self, location: &ResourceLocation) -> Vec<PackResource> {
         self.get_resource_stack_in("data", location)
-    }
-
-    fn filters_lower_priority_resource_in(
-        &self,
-        _domain: &str,
-        location: &ResourceLocation,
-    ) -> bool {
-        self.pack_entries()
-            .iter()
-            .rev()
-            .any(|pack| pack.is_filtered(location))
     }
 
     fn get_resource_stack_in(

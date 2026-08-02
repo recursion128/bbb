@@ -47,6 +47,12 @@ pub enum AudioResolveError {
         event_id: String,
         sound_name: String,
     },
+    #[error("sound entry {sound_name} in event {event_id} failed indexed integrity: {reason}")]
+    InvalidSoundFile {
+        event_id: String,
+        sound_name: String,
+        reason: String,
+    },
 }
 
 pub struct AudioCommandResolver<'a> {
@@ -486,6 +492,15 @@ fn resolved_file_sound(
                 event_id: event_id.to_string(),
                 sound_name: entry.name.clone(),
             })?;
+    if let Some(integrity) = &entry.ogg_integrity {
+        integrity
+            .verify(&ogg_path, "indexed sound object")
+            .map_err(|error| AudioResolveError::InvalidSoundFile {
+                event_id: event_id.to_string(),
+                sound_name: entry.name.clone(),
+                reason: format!("{error:#}"),
+            })?;
+    }
     Ok(ResolvedSound {
         event_id: root_event_id.to_string(),
         sound_name: entry.name.clone(),
@@ -1302,6 +1317,52 @@ mod tests {
                 name: Some("minecraft:music.menu".to_string()),
             })
         );
+    }
+
+    #[test]
+    #[ignore = "requires the local Vanilla 26.1 asset object store"]
+    fn real_indexed_sound_resolves_and_opens_through_the_bounded_decoder() {
+        let roots = bbb_pack::PackRoots::discover().unwrap();
+        let catalog = roots.load_required_sound_catalog().unwrap();
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let sound = resolver
+            .resolve_event_for_seed("minecraft:ui.button.click", 0)
+            .unwrap();
+        assert_eq!(sound.sound_name, "minecraft:random/click_stereo");
+        assert_eq!(sound.resource_generation, 0);
+        let probe = bbb_audio::probe_bounded_audio_file(&sound.ogg_path).unwrap();
+        assert!(probe.sample_rate > 0);
+        assert!(probe.frames > 0);
+    }
+
+    #[test]
+    fn indexed_sound_integrity_is_checked_only_when_the_entry_is_resolved() {
+        let assets = unique_assets_dir("indexed-integrity");
+        let ogg = assets.join("sounds/random/test.ogg");
+        std::fs::create_dir_all(ogg.parent().unwrap()).unwrap();
+        std::fs::write(&ogg, b"bad").unwrap();
+        let mut catalog = test_catalog(
+            &assets,
+            br#"{"test":{"sounds":["random/test"]},"unused":{"sounds":[]}}"#,
+        );
+        catalog.events.get_mut("minecraft:test").unwrap().sounds[0].ogg_integrity =
+            Some(bbb_pack::ResourceIntegrity {
+                size: 4,
+                sha1: "0".repeat(40),
+            });
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let error = resolver
+            .resolve_event_for_seed("minecraft:test", 0)
+            .unwrap_err();
+        assert!(matches!(error, AudioResolveError::InvalidSoundFile { .. }));
+        assert!(resolver
+            .resolve_event_for_seed("minecraft:unused", 0)
+            .is_err());
+        std::fs::remove_dir_all(assets.parent().unwrap().parent().unwrap()).unwrap();
     }
 
     fn test_catalog(assets_dir: &Path, bytes: &[u8]) -> SoundCatalog {

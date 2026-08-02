@@ -14,6 +14,6 @@ pub use command::{
 };
 
 #[cfg(feature = "kira")]
-pub use residency::AudioResidencyObservation;
+pub use residency::{probe_bounded_audio_file, AudioFileProbe, AudioResidencyObservation};
 #[cfg(feature = "kira")]
 pub use runtime::{AudioChannelObservation, AudioPlaybackEvent, KiraAudioRuntime};

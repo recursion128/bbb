@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     resource_budget::read_standalone_json,
-    resources::{PackResourceStack, ResourceLocation},
+    resources::{PackResourceStack, ResourceIntegrity, ResourceLocation},
 };
 
 const MAX_SOUND_EVENT_DEFINITIONS: u64 = 65_536;
@@ -28,13 +28,6 @@ impl SoundCatalog {
         Self::load_namespace_assets_dir("minecraft", assets_dir)
     }
 
-    pub(crate) fn load_minecraft_assets_dir_with_resource_stack_fallback(
-        assets_dir: impl AsRef<Path>,
-        stack: &PackResourceStack,
-    ) -> Result<Self> {
-        Self::load_namespace_assets_dir_with_resource_stack_fallback("minecraft", assets_dir, stack)
-    }
-
     pub fn load_namespace_assets_dir(
         namespace: &str,
         namespace_assets_dir: impl AsRef<Path>,
@@ -45,50 +38,24 @@ impl SoundCatalog {
         let raw = read_standalone_json(&path, "sound catalog")?;
         let mut catalog = Self::default();
         catalog
-            .merge_raw(namespace, namespace_assets_dir, raw, None, None)
+            .merge_raw(namespace, namespace_assets_dir, raw, None)
             .with_context(|| format!("parse sounds {}", path.display()))
             .map(|()| catalog)
     }
 
-    fn load_namespace_assets_dir_with_resource_stack_fallback(
-        namespace: &str,
-        namespace_assets_dir: impl AsRef<Path>,
-        stack: &PackResourceStack,
-    ) -> Result<Self> {
-        ResourceLocation::parse(&format!("{namespace}:_"))?;
-        let namespace_assets_dir = namespace_assets_dir.as_ref();
-        let path = namespace_assets_dir.join("sounds.json");
-        let raw = stack.read_json_file(&path, "sound catalog")?;
-        let mut catalog = Self::default();
-        catalog
-            .merge_raw(
-                namespace,
-                namespace_assets_dir,
-                raw,
-                Some(stack),
-                Some((namespace, namespace_assets_dir)),
-            )
-            .with_context(|| format!("parse sounds {}", path.display()))?;
-        Ok(catalog)
-    }
-
     pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut catalog = Self::default();
-        catalog.merge_resource_stack_with_namespace_fallback(stack, None)?;
+        catalog.merge_selected_resource_stack(stack)?;
         catalog.admit_retained_collections(stack)?;
         Ok(catalog)
     }
 
     pub fn merge_resource_stack(&mut self, stack: &PackResourceStack) -> Result<()> {
-        self.merge_resource_stack_with_namespace_fallback(stack, None)?;
+        self.merge_selected_resource_stack(stack)?;
         self.admit_retained_collections(stack)
     }
 
-    pub(crate) fn merge_resource_stack_with_namespace_fallback(
-        &mut self,
-        stack: &PackResourceStack,
-        fallback: Option<(&str, &Path)>,
-    ) -> Result<()> {
+    fn merge_selected_resource_stack(&mut self, stack: &PackResourceStack) -> Result<()> {
         for namespace in stack.namespaces()? {
             let sounds_location = ResourceLocation::new(namespace.clone(), "sounds.json")?;
             for resource in stack.get_resource_stack(&sounds_location) {
@@ -102,7 +69,7 @@ impl SoundCatalog {
                     .parent()
                     .ok_or_else(|| anyhow::anyhow!("sounds path has no parent"))?;
                 if self
-                    .merge_raw(&namespace, namespace_assets_dir, raw, Some(stack), fallback)
+                    .merge_raw(&namespace, namespace_assets_dir, raw, Some(stack))
                     .is_err()
                 {
                     continue;
@@ -135,7 +102,7 @@ impl SoundCatalog {
     ) -> Result<Self> {
         let mut catalog = Self::default();
         let namespace_assets_dir = namespace_assets_dir.as_ref();
-        catalog.merge_json_bytes(namespace, namespace_assets_dir, bytes, None, None)?;
+        catalog.merge_json_bytes(namespace, namespace_assets_dir, bytes, None)?;
         Ok(catalog)
     }
 
@@ -145,11 +112,10 @@ impl SoundCatalog {
         namespace_assets_dir: &Path,
         bytes: &[u8],
         stack: Option<&PackResourceStack>,
-        fallback: Option<(&str, &Path)>,
     ) -> Result<()> {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let raw: BTreeMap<String, RawSoundEventDefinition> = serde_json::from_slice(bytes)?;
-        self.merge_raw(namespace, namespace_assets_dir, raw, stack, fallback)
+        self.merge_raw(namespace, namespace_assets_dir, raw, stack)
     }
 
     fn merge_raw(
@@ -158,7 +124,6 @@ impl SoundCatalog {
         namespace_assets_dir: &Path,
         raw: BTreeMap<String, RawSoundEventDefinition>,
         stack: Option<&PackResourceStack>,
-        fallback: Option<(&str, &Path)>,
     ) -> Result<()> {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let mut retained_event_count = self.events.len();
@@ -167,7 +132,7 @@ impl SoundCatalog {
             let location = ResourceLocation::new(namespace.to_string(), event_path.clone())?;
             let id = location.id();
             let definition = event
-                .into_definition(namespace, id, namespace_assets_dir, stack, fallback)
+                .into_definition(namespace, id, namespace_assets_dir, stack)
                 .with_context(|| format!("parse sound event {event_path:?}"))?;
             self.merge_definition(
                 definition,
@@ -315,6 +280,8 @@ pub struct SoundEntry {
     pub preload: bool,
     pub attenuation_distance: i32,
     pub ogg_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ogg_integrity: Option<ResourceIntegrity>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -340,12 +307,11 @@ impl RawSoundEventDefinition {
         id: String,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
-        fallback: Option<(&str, &Path)>,
     ) -> Result<SoundEventDefinition> {
         let sounds = self
             .sounds
             .into_iter()
-            .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack, fallback))
+            .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack))
             .filter_map(|entry| entry.transpose())
             .collect::<Result<Vec<_>>>()?;
         Ok(SoundEventDefinition {
@@ -370,7 +336,6 @@ impl RawSoundEntry {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
-        fallback: Option<(&str, &Path)>,
     ) -> Result<Option<SoundEntry>> {
         match self {
             Self::Name(name) => sound_entry(
@@ -385,9 +350,8 @@ impl RawSoundEntry {
                 namespace,
                 namespace_assets_dir,
                 stack,
-                fallback,
             ),
-            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir, stack, fallback),
+            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir, stack),
         }
     }
 }
@@ -417,7 +381,6 @@ impl RawSoundObject {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
-        fallback: Option<(&str, &Path)>,
     ) -> Result<Option<SoundEntry>> {
         sound_entry(
             self.name,
@@ -431,7 +394,6 @@ impl RawSoundObject {
             namespace,
             namespace_assets_dir,
             stack,
-            fallback,
         )
     }
 }
@@ -465,7 +427,6 @@ fn sound_entry(
     namespace: &str,
     namespace_assets_dir: &Path,
     stack: Option<&PackResourceStack>,
-    fallback: Option<(&str, &Path)>,
 ) -> Result<Option<SoundEntry>> {
     if !volume.is_finite() || volume <= 0.0 {
         bail!("invalid sound volume {volume}");
@@ -478,14 +439,14 @@ fn sound_entry(
     }
     let location = ResourceLocation::parse(&name)?;
     let name = location.id();
-    let ogg_path = match kind {
+    let (ogg_path, ogg_integrity) = match kind {
         SoundEntryKind::File => {
-            match sound_ogg_path(namespace_assets_dir, namespace, &location, stack, fallback)? {
-                Some(path) => Some(path),
+            match sound_ogg_resource(namespace_assets_dir, namespace, &location, stack)? {
+                Some((path, integrity)) => (Some(path), integrity),
                 None => return Ok(None),
             }
         }
-        SoundEntryKind::Event => None,
+        SoundEntryKind::Event => (None, None),
     };
     Ok(Some(SoundEntry {
         name,
@@ -497,34 +458,19 @@ fn sound_entry(
         preload,
         attenuation_distance,
         ogg_path,
+        ogg_integrity,
     }))
 }
 
-fn sound_ogg_path(
+fn sound_ogg_resource(
     namespace_assets_dir: &Path,
     namespace: &str,
     location: &ResourceLocation,
     stack: Option<&PackResourceStack>,
-    fallback: Option<(&str, &Path)>,
-) -> Result<Option<PathBuf>> {
+) -> Result<Option<(PathBuf, Option<ResourceIntegrity>)>> {
     let sound_location = sound_resource_location(location)?;
     if let Some(resource) = stack.and_then(|stack| stack.get_resource(&sound_location)) {
-        return Ok(Some(resource.path));
-    }
-
-    if let Some((fallback_namespace, fallback_assets_dir)) = fallback {
-        if location.namespace() == fallback_namespace
-            && stack.map_or(true, |stack| {
-                !stack.filters_lower_priority_resource(&sound_location)
-            })
-        {
-            let path = fallback_assets_dir
-                .join("sounds")
-                .join(format!("{}.ogg", location.path()));
-            if path.is_file() {
-                return Ok(Some(path));
-            }
-        }
+        return Ok(Some((resource.path, resource.integrity)));
     }
 
     if stack.is_some() {
@@ -539,11 +485,12 @@ fn sound_ogg_path(
             .unwrap_or(namespace_assets_dir)
             .join(location.namespace())
     };
-    Ok(Some(
+    Ok(Some((
         assets_dir
             .join("sounds")
             .join(format!("{}.ogg", location.path())),
-    ))
+        None,
+    )))
 }
 
 fn sound_resource_location(location: &ResourceLocation) -> Result<ResourceLocation> {
@@ -707,6 +654,7 @@ mod tests {
                 preload: false,
                 attenuation_distance: 16,
                 ogg_path: Some(assets_dir.join("sounds").join("mob/cat/meow1.ogg")),
+                ogg_integrity: None,
             }
         );
         assert_eq!(event.sounds[1].volume, 0.6);
@@ -757,8 +705,6 @@ mod tests {
         let roots = PackRoots::from_root(&root).unwrap();
         let catalog = roots.load_sound_catalog().unwrap();
 
-        assert_eq!(roots.sounds_definition(), assets_dir.join("sounds.json"));
-        assert_eq!(roots.sounds_dir(), assets_dir.join("sounds"));
         assert_eq!(
             catalog.event("ui.button.click").unwrap().sounds[0].ogg_path,
             Some(assets_dir.join("sounds").join("random/click_stereo.ogg"))
@@ -808,6 +754,25 @@ mod tests {
         assert!(catalog.event("minecraft:ui.button.click").is_some());
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn production_sound_loading_uses_only_the_resource_stack() {
+        let production = [include_str!("roots.rs"), include_str!("sounds.rs")]
+            .into_iter()
+            .map(|source| source.split("#[cfg(test)]").next().unwrap())
+            .collect::<String>();
+        for forbidden in [
+            ["generated", "assets", "dir"].join("_"),
+            ["namespace", "fallback"].join("_"),
+            ["BBB", "MC", "ASSETS", "DIR"].join("_"),
+        ] {
+            assert!(
+                !production.contains(&forbidden),
+                "production sound loading retained forbidden resolver {forbidden}"
+            );
+        }
+        assert!(production.contains("SoundCatalog::load_resource_stack(&self.resource_stack())"));
     }
 
     #[test]
@@ -1058,23 +1023,19 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires generated vanilla 26.1 sound assets in target/assets-26.1"]
-    fn generated_vanilla_26_1_sounds_catalog_loads_representative_events() {
-        let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("..")
-            .join("target")
-            .join("assets-26.1");
-        let catalog = SoundCatalog::load_minecraft_assets_dir(&assets_dir).unwrap();
+    #[ignore = "requires the local Vanilla 26.1 asset object store"]
+    fn indexed_vanilla_26_1_sounds_catalog_loads_representative_events() {
+        let catalog = PackRoots::discover()
+            .unwrap()
+            .load_required_sound_catalog()
+            .unwrap();
 
         assert_eq!(catalog.len(), 1902);
         let cave = catalog.event("minecraft:ambient.cave").unwrap();
         assert_eq!(cave.subtitle.as_deref(), Some("subtitles.ambient.sound"));
         assert_eq!(cave.sounds[0].name, "minecraft:ambient/cave/cave1");
-        assert_eq!(
-            cave.sounds[0].ogg_path.as_ref().unwrap(),
-            &assets_dir.join("sounds").join("ambient/cave/cave1.ogg")
-        );
+        assert!(cave.sounds[0].ogg_path.as_ref().unwrap().is_file());
+        assert!(cave.sounds[0].ogg_integrity.is_some());
         let music = catalog.event("music.menu").unwrap();
         assert!(music.sounds.iter().any(|sound| sound.stream));
     }

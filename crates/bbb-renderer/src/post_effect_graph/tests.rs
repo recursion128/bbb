@@ -969,7 +969,6 @@ fn fixture_roots(root: &Path) -> PackRoots {
         root.to_path_buf(),
         &vanilla,
         vanilla.join("assets/minecraft"),
-        None,
     )
     .with_resource_pack_dirs([root.to_path_buf()])
 }

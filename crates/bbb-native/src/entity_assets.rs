@@ -675,7 +675,6 @@ mod tests {
             temp.to_path_buf(),
             &vanilla,
             vanilla.join("assets/minecraft"),
-            None,
         )
         .with_resource_pack_dirs([pack])
     }

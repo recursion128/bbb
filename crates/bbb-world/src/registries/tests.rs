@@ -3374,12 +3374,8 @@ fn test_known_packs_manager(label: &str) -> Arc<bbb_pack::KnownPacksManager> {
             &contents,
         );
     }
-    let roots = bbb_pack::PackRoots::from_paths(
-        root.clone(),
-        root.clone(),
-        root.join("assets/minecraft"),
-        None,
-    );
+    let roots =
+        bbb_pack::PackRoots::from_paths(root.clone(), root.clone(), root.join("assets/minecraft"));
     let manager = Arc::new(bbb_pack::KnownPacksManager::load(&roots).unwrap());
     fs::remove_dir_all(root).unwrap();
     manager

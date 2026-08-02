@@ -153,7 +153,6 @@ mod tests {
             root.to_path_buf(),
             sources.to_path_buf(),
             sources.join("assets/minecraft"),
-            None,
         )
         .with_resource_pack_dirs(resource_pack_dirs)
     }

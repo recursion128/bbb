@@ -33,12 +33,8 @@ pub(crate) fn known_packs_manager(label: &str) -> bbb_pack::KnownPacksManager {
             &contents,
         );
     }
-    let roots = bbb_pack::PackRoots::from_paths(
-        root.clone(),
-        root.clone(),
-        root.join("assets/minecraft"),
-        None,
-    );
+    let roots =
+        bbb_pack::PackRoots::from_paths(root.clone(), root.clone(), root.join("assets/minecraft"));
     let manager = bbb_pack::KnownPacksManager::load(&roots).unwrap();
     fs::remove_dir_all(root).unwrap();
     manager
