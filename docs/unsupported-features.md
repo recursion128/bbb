@@ -43,13 +43,17 @@ Owner: `bbb-native` + `bbb-control`
 
 Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
-- **The complete external-session runtime/crash lifecycle is `active`.** The
-  live gate proves the happy login-to-disconnect path, but the source-derived
-  `Minecraft`/`CrashReport` surface is not yet backed by decision-level evidence
-  for every close, delayed-crash, recovery, report, shutdown, and stale-session
-  branch. Split the generated owners into homogeneous lifecycle decisions,
-  implement any missing projections, and close only with deterministic failure
-  and recovery acceptance in addition to the happy live path.
+- **The complete external-session runtime lifecycle is `active`.** The live gate
+  proves the happy login-to-disconnect path, but the 187 source-derived
+  `Minecraft` owners are not yet backed by decision-level evidence for every
+  close, recovery, backend shutdown, task handoff, and stale-session branch.
+  Split them into homogeneous lifecycle decisions and require deterministic
+  failure/recovery acceptance in addition to the happy live path.
+- **Fatal runtime crash diagnostics are `active`.** Worker/render fatal paths can
+  currently degrade to log-only event-loop exit, while main-thread panic and
+  startup error have no bounded repo-owned report. The frozen goal slice must
+  route first failure and bounded suppressed failures through one report owner,
+  join/drop runtime owners in order, publish without clobber, and exit nonzero.
 
 ## Architecture drift candidates
 

@@ -142,6 +142,43 @@ deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
 `cargo check` 一条不可省：只跑 `cargo test` 会漏掉非测试（交付 bin）构建的
 unused/dead-code lint。
 
+## 当前 active 工程：fatal runtime failure 与 bounded crash report
+
+目标是把 BBB 当前“worker/render fatal 只写日志并可能正常退出、主线程 panic 无 repo-owned
+报告”的双重缺口收敛为一条 fatal lifecycle：首个不可恢复失败成为 immutable canonical
+failure，经有界 crash report 持久化，并在 ordered backend/worker shutdown 后以非零状态退出。
+
+- Vanilla 依据：`CrashReport`/`CrashReportCategory` 的 title、exception、category、system report、
+  friendly text 与 save-once；`Minecraft.run`/`delayCrash`/`emergencySaveAndCrash`/`saveReport`/
+  `fillReport`/`destroy`/`close` 的 first-failure relay、报告填充、sound emergency shutdown 和退出顺序。
+- 唯一 owner 与方向：新 `bbb-native::crash_report` 只拥有 bounded immutable report/failure、
+  filename 与原子 publish；startup/main、simulation、render 只提交结构化 failure。event-loop owner
+  编排 exit/join/drop，不允许 worker 自写文件，也不允许 control/snapshot 成为第二报告 owner。
+- 决策合同：startup `Result`、main panic、simulation panic/join error、render/resize/effect fatal 均走
+  同一 first-failure-wins accumulator；后续失败作为有界 suppressed diagnostics，正常 close/quit 不产报告。
+  worker failure 必须到主线程，不得再被降成 log-only success。
+- 报告合同：UTF-8，Vanilla 风格 header/time/description/error walk-through/category/system facts；
+  title/message/category/count/backtrace/total retained bytes 均有常量 budget，截断显式可诊断；路径只来自
+  `--crash-report-dir` 或默认 `crash-reports`，文件名不含 server/user input，发布 create-new/atomic/
+  no-clobber，单个 report 只成功保存一次，写失败仍输出 bounded stderr 并返回 distinct nonzero status。
+- 生命周期：启动预留有界 emergency buffer；fatal 时释放 reserve，先请求 event-loop exit，LoopExiting
+  join simulation 并让 renderer/audio/window 按 owner 顺序 drop，随后持久化报告；stale/重复 failure
+  不得覆盖首因。成功路径、probe/status/build-info 行为和 playable workload 不变。
+- API/删除：把 `SimulationThread` 的 `String` failure 改为窄 typed failure；替换所有 fatal
+  `tracing::error! + target.exit()` 绕路，保留普通可恢复 warn/error。禁止 catch 后继续运行或双写报告。
+- 非目标：不实现 crash screen、telemetry uploader、launcher support、JVM 文本逐字复制、singleplayer
+  emergency save，也不借此关闭 187-owner broad lifecycle 行。
+- 阶段：A 完成本地源码/调用链审计并冻结合同；B 建 report/budget/atomic writer；C 接 main/worker/
+  event-loop ordered failure；D 删除 log-only 路径并加 source guard；E deterministic failure/recovery、
+  Wiki/matrix/ledger 收口、diff review、提交、full gate 与 live playable。
+- Focused/acceptance：format/budget/truncation、safe path/collision/save-once/write failure、first/suppressed、
+  panic/error/worker/render ingress、join-before-report、normal exit no report、nonzero status、source guard；
+  实际临时目录文件 round-trip、失败后下一进程正常启动以及 Vanilla offline live happy path。
+- Checkpoint：基线 `08603afe9` 已 full-gated/live；合同独立提交，B–D 高风险 lifecycle checkpoint，
+  E 收口后最终 HEAD 强制 full gate 并刷新 fixture/live stamp。
+- 安全停止点：仅合同已提交且 ledger 保持 active 的干净 A、实现/focused acceptance 已通过的干净
+  checkpoint，或最终 full-gated/live HEAD；blocker 必须给出复现命令、外部 owner 和重启条件。
+
 ## Slice 工作流（每轮）
 
 有 ready 工作时选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0
