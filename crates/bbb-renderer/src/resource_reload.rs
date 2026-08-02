@@ -66,6 +66,103 @@ impl GlintCorePipelines {
     }
 }
 
+struct EntityShaderVariantPipelines {
+    scroll: wgpu::RenderPipeline,
+    scroll_additive: wgpu::RenderPipeline,
+    guardian_beam: wgpu::RenderPipeline,
+    end_crystal_beam: wgpu::RenderPipeline,
+    dynamic_item_z_offset_forward: wgpu::RenderPipeline,
+    resident_item_z_offset_forward: wgpu::RenderPipeline,
+    resident_item_cutout_no_cull: wgpu::RenderPipeline,
+    resident_item_cutout_z_offset: wgpu::RenderPipeline,
+    resident_item_pattern: wgpu::RenderPipeline,
+    resident_item_translucent_no_cull: wgpu::RenderPipeline,
+}
+
+impl EntityShaderVariantPipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            scroll: crate::entity_models::create_entity_model_scroll_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            scroll_additive: crate::entity_models::create_entity_model_scroll_additive_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            guardian_beam: crate::entity_models::create_entity_model_guardian_beam_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            end_crystal_beam: crate::entity_models::create_entity_model_end_crystal_beam_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            dynamic_item_z_offset_forward:
+                crate::item_models::create_item_model_z_offset_forward_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders,
+                )?,
+            resident_item_z_offset_forward:
+                crate::item_models::create_resident_item_model_z_offset_forward_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders,
+                )?,
+            resident_item_cutout_no_cull:
+                crate::item_models::create_resident_item_model_cutout_no_cull_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders,
+                )?,
+            resident_item_cutout_z_offset:
+                crate::item_models::create_resident_item_model_cutout_z_offset_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders,
+                )?,
+            resident_item_pattern: crate::item_models::create_resident_item_model_pattern_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            resident_item_translucent_no_cull:
+                crate::item_models::create_resident_item_model_translucent_no_cull_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    shaders,
+                )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -76,6 +173,7 @@ struct CorePipelineGeneration {
     generation: Option<u64>,
     terrain: crate::gpu::TerrainCorePipelines,
     entity: Option<crate::entity_models::EntityCorePipelines>,
+    entity_variants: Option<EntityShaderVariantPipelines>,
     item: Option<crate::item_models::ItemCorePipelines>,
     particle: Option<crate::particles::ParticleCorePipelines>,
     weather: Option<wgpu::RenderPipeline>,
@@ -100,6 +198,10 @@ impl CorePipelineGeneration {
             allow_embedded_fallback,
         )?;
         let startup_without_sources = allow_embedded_fallback && resources.source_count() == 0;
+        let entity_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_entity_shaders(resources))
+            .transpose()?
+            .flatten();
         let entity = (!startup_without_sources)
             .then(|| {
                 crate::entity_models::create_entity_core_pipelines(
@@ -107,9 +209,12 @@ impl CorePipelineGeneration {
                     renderer.config.format,
                     &renderer.terrain_bind_group_layout,
                     &renderer.lightmap_sample_bind_group_layout,
-                    resources,
+                    entity_shaders.as_ref(),
                 )
             })
+            .transpose()?;
+        let entity_variants = (!startup_without_sources)
+            .then(|| EntityShaderVariantPipelines::prepare(renderer, entity_shaders.as_ref()))
             .transpose()?;
         let item = (!startup_without_sources)
             .then(|| {
@@ -183,6 +288,7 @@ impl CorePipelineGeneration {
             generation: Some(resources.generation()),
             terrain,
             entity,
+            entity_variants,
             item,
             particle,
             weather,
@@ -256,6 +362,48 @@ impl CorePipelineGeneration {
                 &mut renderer.entity_model_translucent_emissive_pipeline,
             );
             std::mem::swap(&mut entity.eyes, &mut renderer.entity_model_eyes_pipeline);
+        }
+        if let Some(entity) = self.entity_variants.as_mut() {
+            std::mem::swap(
+                &mut entity.scroll,
+                &mut renderer.entity_model_scroll_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.scroll_additive,
+                &mut renderer.entity_model_scroll_additive_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.guardian_beam,
+                &mut renderer.entity_model_guardian_beam_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.end_crystal_beam,
+                &mut renderer.entity_model_end_crystal_beam_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.dynamic_item_z_offset_forward,
+                &mut renderer.item_model_z_offset_forward_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.resident_item_z_offset_forward,
+                &mut renderer.resident_item_model_z_offset_forward_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.resident_item_cutout_no_cull,
+                &mut renderer.resident_item_model_cutout_no_cull_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.resident_item_cutout_z_offset,
+                &mut renderer.resident_item_model_cutout_z_offset_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.resident_item_pattern,
+                &mut renderer.resident_item_model_pattern_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.resident_item_translucent_no_cull,
+                &mut renderer.resident_item_model_translucent_no_cull_pipeline,
+            );
         }
         if let Some(item) = self.item.as_mut() {
             std::mem::swap(&mut item.dynamic_cutout, &mut renderer.item_model_pipeline);
@@ -1264,8 +1412,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            32,
-            "31 GPU handles plus the publication generation must share one mapping"
+            42,
+            "41 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1279,6 +1427,13 @@ mod tests {
                 "selected glint owner {glint_owner} is missing from the shared generation mapping"
             );
         }
+        assert_eq!(
+            production
+                .matches("adapt_selected_entity_shaders(resources)")
+                .count(),
+            1,
+            "all current entity-shader consumers must share one selected-source adapter"
+        );
         assert_eq!(
             production
                 .matches("adapt_selected_glint_shaders(resources)")
@@ -1383,25 +1538,15 @@ mod tests {
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
             ("entity_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
             ("entity_model_outline_cull_pipeline", "OUTLINE_CULL/core/rendertype_outline"),
-            ("entity_model_scroll_pipeline", "BREEZE_WIND/core/entity"),
-            ("entity_model_scroll_additive_pipeline", "ENERGY_SWIRL/core/entity"),
-            ("entity_model_guardian_beam_pipeline", "ENTITY_CUTOUT/core/entity"),
-            ("entity_model_end_crystal_beam_pipeline", "END_CRYSTAL_BEAM/core/entity"),
             ("entity_model_beacon_beam_opaque_pipeline", "BEACON_BEAM_OPAQUE/core/rendertype_beacon_beam"),
             ("entity_model_beacon_beam_translucent_pipeline", "BEACON_BEAM_TRANSLUCENT/core/rendertype_beacon_beam"),
             ("lightning_pipeline", "LIGHTNING/core/rendertype_lightning"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
-            ("item_model_z_offset_forward_pipeline", "ENTITY_SOLID_Z_OFFSET_FORWARD/core/entity"),
             ("display_text_background_pipeline", "TEXT_BACKGROUND/core/rendertype_text_background"),
             ("display_text_pipeline", "TEXT/core/rendertype_text"),
             ("display_text_see_through_pipeline", "TEXT_SEE_THROUGH/core/rendertype_text_see_through"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
-            ("resident_item_model_z_offset_forward_pipeline", "ENTITY_SOLID_Z_OFFSET_FORWARD/core/entity"),
-            ("resident_item_model_cutout_no_cull_pipeline", "ENTITY_CUTOUT/core/entity"),
-            ("resident_item_model_cutout_z_offset_pipeline", "ENTITY_CUTOUT_Z_OFFSET/core/entity"),
-            ("resident_item_model_pattern_pipeline", "BANNER_PATTERN/core/entity"),
-            ("resident_item_model_translucent_no_cull_pipeline", "ENTITY_TRANSLUCENT/core/entity"),
             ("resident_item_model_end_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
             ("resident_item_model_end_gateway_pipeline", "END_GATEWAY/core/rendertype_end_portal"),
             ("resident_item_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
@@ -1437,10 +1582,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 31, "selected core generation changed");
+        assert_eq!(selected.len(), 41, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            46,
+            36,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

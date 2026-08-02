@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::{anyhow, bail, Context, Result};
-use bbb_render_types::CoreShaderSourceProjection;
+use anyhow::{anyhow, bail, Result};
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
@@ -2250,9 +2249,9 @@ pub(crate) fn create_entity_core_pipelines(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-    resources: &CoreShaderSourceProjection,
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
 ) -> Result<EntityCorePipelines> {
-    let Some(shaders) = crate::core_shaders::adapt_selected_entity_shaders(resources)? else {
+    let Some(shaders) = shaders else {
         return Ok(EntityCorePipelines {
             textured: create_entity_model_textured_pipeline(
                 device,
@@ -2342,20 +2341,24 @@ pub(crate) fn create_entity_core_pipelines(
                  depth_compare: wgpu::CompareFunction,
                  cull_mode: Option<wgpu::Face>,
                  uses_lightmap: bool| {
-        create_selected_entity_pipeline(
+        let bind_group_layouts = if uses_lightmap {
+            vec![bind_group_layout, lightmap_bind_group_layout]
+        } else {
+            vec![bind_group_layout]
+        };
+        crate::core_shaders::create_selected_entity_pipeline(
             device,
             format,
-            bind_group_layout,
-            lightmap_bind_group_layout,
+            &bind_group_layouts,
             label,
-            &shaders,
+            &shaders.vertex,
+            &shaders.fragment,
             defines,
+            &[entity_model_textured_vertex_layout()],
             blend,
             depth_write_enabled,
             depth_compare,
             cull_mode,
-            uses_lightmap,
-            false,
         )
     };
     let alpha = Some("0.1");
@@ -2387,24 +2390,23 @@ pub(crate) fn create_entity_core_pipelines(
             ENTITY_MODEL_SURFACE_CULL_MODE,
             true,
         )?,
-        dissolve: create_selected_entity_pipeline(
+        dissolve: crate::core_shaders::create_selected_entity_pipeline(
             device,
             format,
-            bind_group_layout,
-            lightmap_bind_group_layout,
+            &[bind_group_layout, lightmap_bind_group_layout],
             "bbb-selected-entity-cutout-dissolve",
-            &shaders,
+            &shaders.dissolve_vertex,
+            &shaders.dissolve_fragment,
             &[
                 ("ALPHA_CUTOUT", alpha),
                 ("PER_FACE_LIGHTING", None),
                 ("DISSOLVE", None),
             ],
+            &[entity_model_dissolve_vertex_layout()],
             ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
             true,
             ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
             ENTITY_MODEL_SURFACE_NO_CULL_MODE,
-            true,
-            true,
         )?,
         solid_z_offset_forward: build(
             "bbb-selected-entity-solid-z-offset-forward",
@@ -2522,88 +2524,6 @@ pub(crate) fn create_entity_core_pipelines(
             false,
         )?,
     })
-}
-
-#[allow(clippy::too_many_arguments)]
-fn create_selected_entity_pipeline(
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-    bind_group_layout: &wgpu::BindGroupLayout,
-    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-    label: &'static str,
-    shaders: &crate::core_shaders::AdaptedEntityShaders,
-    defines: &[(&str, Option<&str>)],
-    blend: Option<wgpu::BlendState>,
-    depth_write_enabled: bool,
-    depth_compare: wgpu::CompareFunction,
-    cull_mode: Option<wgpu::Face>,
-    uses_lightmap: bool,
-    dissolve: bool,
-) -> Result<wgpu::RenderPipeline> {
-    let (vertex_source, fragment_source) = if dissolve {
-        (&shaders.dissolve_vertex, &shaders.dissolve_fragment)
-    } else {
-        (&shaders.vertex, &shaders.fragment)
-    };
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-entity-vertex-shader",
-        crate::core_shaders::shader_with_defines(vertex_source, defines),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected entity vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-entity-fragment-shader",
-        crate::core_shaders::shader_with_defines(fragment_source, defines),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected entity fragment for {label}"))?;
-    let bind_group_layouts = if uses_lightmap {
-        vec![bind_group_layout, lightmap_bind_group_layout]
-    } else {
-        vec![bind_group_layout]
-    };
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-selected-entity-pipeline-layout"),
-        bind_group_layouts: &bind_group_layouts,
-        push_constant_ranges: &[],
-    });
-    Ok(
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some(label),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &vertex,
-                entry_point: "main",
-                buffers: &[if dissolve {
-                    entity_model_dissolve_vertex_layout()
-                } else {
-                    entity_model_textured_vertex_layout()
-                }],
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode,
-                ..Default::default()
-            },
-            depth_stencil: Some(depth_stencil_state(
-                DEPTH_FORMAT,
-                depth_write_enabled,
-                depth_compare,
-            )),
-            multisample: wgpu::MultisampleState::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &fragment,
-                entry_point: "main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview: None,
-        }),
-    )
 }
 
 pub(crate) fn create_entity_model_textured_pipeline(
@@ -3315,8 +3235,30 @@ pub(crate) fn create_entity_model_scroll_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_blend(
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout, lightmap_bind_group_layout],
+            "bbb-selected-entity-model-scroll",
+            &shaders.scroll_vertex,
+            &shaders.fragment,
+            &[
+                ("ALPHA_CUTOUT", Some("0.1")),
+                ("APPLY_TEXTURE_MATRIX", None),
+                ("NO_OVERLAY", None),
+                ("NO_CARDINAL_LIGHTING", None),
+            ],
+            &[entity_model_scroll_vertex_layout()],
+            Some(ENTITY_MODEL_SCROLL_BLEND),
+            ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
+            ENTITY_MODEL_SCROLL_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_blend(
         device,
         format,
         bind_group_layout,
@@ -3324,7 +3266,7 @@ pub(crate) fn create_entity_model_scroll_pipeline(
         "bbb-entity-model-scroll",
         ENTITY_MODEL_SCROLL_SHADER,
         ENTITY_MODEL_SCROLL_BLEND,
-    )
+    ))
 }
 
 /// The scrolling-overlay pipeline for vanilla `energySwirl` (the charged-creeper / wither glow):
@@ -3333,8 +3275,31 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_blend(
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-scroll-additive",
+            &shaders.scroll_vertex,
+            &shaders.fragment,
+            &[
+                ("ALPHA_CUTOUT", Some("0.1")),
+                ("EMISSIVE", None),
+                ("NO_OVERLAY", None),
+                ("NO_CARDINAL_LIGHTING", None),
+                ("APPLY_TEXTURE_MATRIX", None),
+            ],
+            &[entity_model_scroll_vertex_layout()],
+            Some(ENTITY_MODEL_ADDITIVE_BLEND),
+            ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
+            ENTITY_MODEL_SCROLL_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_blend(
         device,
         format,
         bind_group_layout,
@@ -3342,7 +3307,7 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
         "bbb-entity-model-scroll-additive",
         ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
         ENTITY_MODEL_ADDITIVE_BLEND,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_guardian_beam_pipeline(
@@ -3350,8 +3315,25 @@ pub(crate) fn create_entity_model_guardian_beam_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth(
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout, lightmap_bind_group_layout],
+            "bbb-selected-entity-model-guardian-beam",
+            &shaders.scroll_vertex,
+            &shaders.fragment,
+            &[("ALPHA_CUTOUT", Some("0.1")), ("PER_FACE_LIGHTING", None)],
+            &[entity_model_scroll_vertex_layout()],
+            ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+            ENTITY_MODEL_SCROLL_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
@@ -3361,7 +3343,7 @@ pub(crate) fn create_entity_model_guardian_beam_pipeline(
         ENTITY_MODEL_BEAM_OPAQUE_BLEND,
         ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_BEAM_DEPTH_COMPARE,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_end_crystal_beam_pipeline(
@@ -3369,8 +3351,25 @@ pub(crate) fn create_entity_model_end_crystal_beam_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth(
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout, lightmap_bind_group_layout],
+            "bbb-selected-entity-model-end-crystal-beam",
+            &shaders.scroll_vertex,
+            &shaders.fragment,
+            &[("ALPHA_CUTOUT", Some("0.1")), ("NO_OVERLAY", None)],
+            &[entity_model_scroll_vertex_layout()],
+            ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BEAM_DEPTH_COMPARE,
+            ENTITY_MODEL_SCROLL_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
@@ -3380,7 +3379,7 @@ pub(crate) fn create_entity_model_end_crystal_beam_pipeline(
         ENTITY_MODEL_BEAM_OPAQUE_BLEND,
         ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_BEAM_DEPTH_COMPARE,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_beacon_beam_opaque_pipeline(

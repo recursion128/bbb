@@ -1382,9 +1382,24 @@ pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_resident_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-model-z-offset-forward",
+            shaders,
+            &[("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZForward"))],
+            Some(wgpu::BlendState::REPLACE),
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+            true,
+        );
+    }
     let shader = resident_z_offset_forward_shader();
-    create_resident_item_model_pipeline_with_blend(
+    Ok(create_resident_item_model_pipeline_with_blend(
         device,
         format,
         bind_group_layout,
@@ -1392,7 +1407,7 @@ pub(crate) fn create_resident_item_model_z_offset_forward_pipeline(
         &shader,
         "bbb-item-model-resident-z-offset-forward-pipeline",
         wgpu::BlendState::REPLACE,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_cutout_no_cull_pipeline(
@@ -1400,9 +1415,24 @@ pub(crate) fn create_resident_item_model_cutout_no_cull_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_resident_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-model-cutout-no-cull",
+            shaders,
+            &[("ALPHA_CUTOUT", Some("0.1")), ("PER_FACE_LIGHTING", None)],
+            Some(wgpu::BlendState::REPLACE),
+            None,
+            true,
+        );
+    }
     let shader = resident_per_face_shader();
-    create_resident_item_model_pipeline_with_state(
+    Ok(create_resident_item_model_pipeline_with_state(
         device,
         format,
         bind_group_layout,
@@ -1412,7 +1442,7 @@ pub(crate) fn create_resident_item_model_cutout_no_cull_pipeline(
         wgpu::BlendState::REPLACE,
         None,
         true,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_cutout_z_offset_pipeline(
@@ -1420,9 +1450,28 @@ pub(crate) fn create_resident_item_model_cutout_z_offset_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_resident_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-model-cutout-z-offset",
+            shaders,
+            &[
+                ("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZ")),
+                ("ALPHA_CUTOUT", Some("0.1")),
+                ("PER_FACE_LIGHTING", None),
+            ],
+            Some(wgpu::BlendState::REPLACE),
+            None,
+            true,
+        );
+    }
     let shader = resident_cutout_z_offset_shader();
-    create_resident_item_model_pipeline_with_state(
+    Ok(create_resident_item_model_pipeline_with_state(
         device,
         format,
         bind_group_layout,
@@ -1432,7 +1481,7 @@ pub(crate) fn create_resident_item_model_cutout_z_offset_pipeline(
         wgpu::BlendState::REPLACE,
         None,
         true,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_translucent_pipeline(
@@ -1457,9 +1506,24 @@ pub(crate) fn create_resident_item_model_translucent_no_cull_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_resident_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-model-translucent-no-cull",
+            shaders,
+            &[("ALPHA_CUTOUT", Some("0.1")), ("PER_FACE_LIGHTING", None)],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            None,
+            true,
+        );
+    }
     let shader = resident_per_face_shader();
-    create_resident_item_model_pipeline_with_state(
+    Ok(create_resident_item_model_pipeline_with_state(
         device,
         format,
         bind_group_layout,
@@ -1469,7 +1533,7 @@ pub(crate) fn create_resident_item_model_translucent_no_cull_pipeline(
         wgpu::BlendState::ALPHA_BLENDING,
         None,
         true,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_pattern_pipeline(
@@ -1477,23 +1541,40 @@ pub(crate) fn create_resident_item_model_pattern_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    let shader = resident_no_alpha_cutout_shader();
-    RenderPipelineBuilder::new(device, "bbb-item-model-resident-pattern-pipeline")
-        .shader("bbb-item-model-resident-pattern-shader", &shader)
-        .layout(
-            "bbb-item-model-resident-pattern-pipeline-layout",
-            &[bind_group_layout, lightmap_bind_group_layout],
-        )
-        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
-        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return create_selected_resident_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-model-pattern",
+            shaders,
+            &[("NO_OVERLAY", None)],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            ITEM_MODEL_PIPELINE_CULL_MODE,
             false,
-            wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+        );
+    }
+    let shader = resident_no_alpha_cutout_shader();
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-item-model-resident-pattern-pipeline")
+            .shader("bbb-item-model-resident-pattern-shader", &shader)
+            .layout(
+                "bbb-item-model-resident-pattern-pipeline-layout",
+                &[bind_group_layout, lightmap_bind_group_layout],
+            )
+            .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+            .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+            .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                false,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build(),
+    )
 }
 
 pub(crate) fn create_resident_item_model_glint_pipeline(
@@ -1765,6 +1846,35 @@ fn create_resident_item_model_pipeline_with_blend(
         blend,
         ITEM_MODEL_PIPELINE_CULL_MODE,
         true,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_selected_resident_entity_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    shaders: &crate::core_shaders::AdaptedEntityShaders,
+    defines: &[(&str, Option<&str>)],
+    blend: Option<wgpu::BlendState>,
+    cull_mode: Option<wgpu::Face>,
+    depth_write_enabled: bool,
+) -> Result<wgpu::RenderPipeline> {
+    crate::core_shaders::create_selected_entity_pipeline(
+        device,
+        format,
+        &[bind_group_layout, lightmap_bind_group_layout],
+        label,
+        &shaders.resident_vertex,
+        &shaders.fragment,
+        defines,
+        &[resident_vertex_layout(), instance_vertex_layout()],
+        blend,
+        depth_write_enabled,
+        wgpu::CompareFunction::LessEqual,
+        cull_mode,
     )
 }
 

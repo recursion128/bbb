@@ -1422,9 +1422,26 @@ pub(crate) fn create_item_model_z_offset_forward_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEntityShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout, lightmap_bind_group_layout],
+            "bbb-selected-item-model-z-offset-forward",
+            &shaders.item_vertex,
+            &shaders.fragment,
+            &[("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZForward"))],
+            &[item_model_vertex_layout()],
+            Some(wgpu::BlendState::REPLACE),
+            true,
+            wgpu::CompareFunction::LessEqual,
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+        );
+    }
     let shader = item_model_z_offset_forward_shader();
-    create_item_model_pipeline_with_blend(
+    Ok(create_item_model_pipeline_with_blend(
         device,
         format,
         bind_group_layout,
@@ -1432,7 +1449,7 @@ pub(crate) fn create_item_model_z_offset_forward_pipeline(
         &shader,
         "bbb-item-model-z-offset-forward-pipeline",
         wgpu::BlendState::REPLACE,
-    )
+    ))
 }
 
 /// Builds the vanilla `item_translucent` variant: same shader and depth state as

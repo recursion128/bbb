@@ -1616,24 +1616,28 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_scroll_additive_pipeline = create_entity_model_scroll_additive_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_guardian_beam_pipeline = create_entity_model_guardian_beam_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_end_crystal_beam_pipeline = create_entity_model_end_crystal_beam_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_beacon_beam_opaque_pipeline =
             create_entity_model_beacon_beam_opaque_pipeline(
                 &device,
@@ -1706,7 +1710,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let item_model_translucent_pipeline = create_item_model_translucent_pipeline(
             &device,
             format,
@@ -1752,27 +1757,31 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_cutout_no_cull_pipeline =
             create_resident_item_model_cutout_no_cull_pipeline(
                 &device,
                 format,
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_cutout_z_offset_pipeline =
             create_resident_item_model_cutout_z_offset_pipeline(
                 &device,
                 format,
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_pattern_pipeline = create_resident_item_model_pattern_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let resident_item_model_translucent_pipeline =
             create_resident_item_model_translucent_pipeline(
                 &device,
@@ -1786,7 +1795,8 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_glint_pipeline = create_resident_item_model_glint_pipeline(
             &device,
             format,

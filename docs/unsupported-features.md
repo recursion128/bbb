@@ -73,12 +73,12 @@ Matrix route: `resources-reload-listeners`
   selected `core/glint` source now own one atomic pipeline generation. Remaining active work is
   the rest of the current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The exhaustive source guard classifies all 87 renderer pipeline owners: 31 are in the selected
-  core generation, 46 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
-  post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The exact next
-  cursor is the remaining `core/entity` family: breeze/energy scroll, guardian/end-crystal beam,
-  dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull — ten
-  pipeline owners must share the existing selected entity source and atomic generation.
+  The exhaustive source guard classifies all 87 renderer pipeline owners: 41 are in the selected
+  core generation, 36 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
+  post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The single
+  `core/entity` adapter now preloads and atomically swaps breeze/energy scroll, guardian/end-crystal
+  beam, dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull with
+  the original 14 entity variants. The exact next cursor is the five current end-portal owners.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.

@@ -20,6 +20,9 @@ pub(crate) struct AdaptedTerrainShaders {
 
 pub(crate) struct AdaptedEntityShaders {
     pub(crate) vertex: String,
+    pub(crate) scroll_vertex: String,
+    pub(crate) item_vertex: String,
+    pub(crate) resident_vertex: String,
     pub(crate) fragment: String,
     pub(crate) dissolve_vertex: String,
     pub(crate) dissolve_fragment: String,
@@ -88,9 +91,14 @@ pub(crate) fn adapt_selected_entity_shaders(
         adapt_entity_stage(&vertex.source, true).context("adapt selected entity vertex shader")?;
     let fragment = adapt_entity_stage(&fragment.source, false)
         .context("adapt selected entity fragment shader")?;
+    let item_vertex = adapt_item_entity_vertex(&vertex)?;
+    let resident_vertex = adapt_resident_entity_vertex(&item_vertex)?;
     Ok(Some(AdaptedEntityShaders {
         dissolve_vertex: adapt_entity_dissolve_vertex(&vertex)?,
         dissolve_fragment: adapt_entity_dissolve_fragment(&fragment)?,
+        scroll_vertex: adapt_scroll_entity_vertex(&vertex)?,
+        item_vertex,
+        resident_vertex,
         vertex,
         fragment,
     }))
@@ -624,6 +632,73 @@ const SELECTED_GLINT_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_entity_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layouts: &[&wgpu::BindGroupLayout],
+    label: &str,
+    vertex_source: &str,
+    fragment_source: &str,
+    defines: &[(&str, Option<&str>)],
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    blend: Option<wgpu::BlendState>,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
+    cull_mode: Option<wgpu::Face>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-entity-vertex-shader",
+        shader_with_defines(vertex_source, defines),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected entity vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-entity-fragment-shader",
+        shader_with_defines(fragment_source, defines),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected entity fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-entity-pipeline-layout"),
+        bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(crate::pipeline_builder::depth_stencil_state(
+                crate::gpu::DEPTH_FORMAT,
+                depth_write_enabled,
+                depth_compare,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_selected_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -718,6 +793,120 @@ fn adapt_resident_item_vertex(source: &str) -> Result<String> {
             "mix(Color * BbbTint, minecraft_mix_light(Light0_Direction, Light1_Direction, normalize(bbbNormal), Color * BbbTint), Normal.w)",
         );
     Ok(source)
+}
+
+fn adapt_scroll_entity_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 1) in vec2 UV0;",
+        "layout(location = 1) in vec2 BbbLocalUv;\nlayout(location = 2) in vec2 BbbUvRectMin;\nlayout(location = 3) in vec2 BbbUvRectSize;",
+        "selected scrolling entity UV inputs",
+    )?;
+    let source = replace_required(
+        &source,
+        "layout(location = 2) in vec4 Color;",
+        "layout(location = 4) in vec4 Color;",
+        "selected scrolling entity color input",
+    )?;
+    let source = source
+        .replace(
+            "layout(location = 3) in vec2 UV2;",
+            "layout(location = 5) in vec2 UV2;",
+        )
+        .replace(
+            "layout(location = 4) in vec2 UV1;",
+            "layout(location = 6) in vec2 UV1;",
+        )
+        .replace(
+            "layout(location = 5) in vec3 Normal;",
+            "layout(location = 7) in vec3 Normal;",
+        );
+    replace_required(
+        &source,
+        "void main() {",
+        "void main() {\n    vec2 UV0 = BbbUvRectMin + fract(BbbLocalUv) * BbbUvRectSize;",
+        "selected scrolling entity atlas projection",
+    )
+}
+
+fn adapt_item_entity_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 5) in vec3 Normal;",
+        "layout(location = 5) in vec4 Normal;",
+        "selected item entity normal input",
+    )?;
+    Ok(source
+        .replace(
+            "minecraft_compute_light(Light0_Direction, Light1_Direction, Normal)",
+            "minecraft_compute_light(Light0_Direction, Light1_Direction, Normal.xyz)",
+        )
+        .replace(
+            "vertexPerFaceColorBack = minecraft_mix_light_separate(-light, Color);",
+            "vertexPerFaceColorBack = mix(Color, minecraft_mix_light_separate(-light, Color), Normal.w);",
+        )
+        .replace(
+            "vertexPerFaceColorFront = minecraft_mix_light_separate(light, Color);",
+            "vertexPerFaceColorFront = mix(Color, minecraft_mix_light_separate(light, Color), Normal.w);",
+        )
+        .replace(
+            "vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color);",
+            "vertexColor = mix(Color, minecraft_mix_light(Light0_Direction, Light1_Direction, Normal.xyz, Color), Normal.w);",
+        ))
+}
+
+fn adapt_resident_entity_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 3) in vec2 UV2;",
+        "",
+        "selected resident entity UV2 declaration",
+    )?;
+    let source = source.replace("layout(location = 4) in vec2 UV1;", "");
+    let source = replace_required(
+        &source,
+        "layout(location = 5) in vec4 Normal;",
+        "layout(location = 3) in vec4 Normal;",
+        "selected resident entity normal declaration",
+    )?;
+    let source = insert_after_version(&source, RESIDENT_ITEM_INSTANCE_INPUTS)?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    mat3 bbbNormalMatrix = mat3(BbbNormal0.xyz, BbbNormal1.xyz, BbbNormal2.xyz);\n    vec4 bbbWorld = bbbModel * vec4(Position, 1.0);\n    vec3 bbbNormal = bbbNormalMatrix * Normal.xyz;\n    if (dot(bbbNormal, bbbNormal) <= 0.0000001) { bbbNormal = vec3(0.0, 0.0, 1.0); }\n    gl_Position = ProjMat * bbbWorld;",
+        "selected resident entity world transform",
+    )?;
+    Ok(source
+        .replace(
+            "fog_spherical_distance(Position)",
+            "fog_spherical_distance(bbbWorld.xyz)",
+        )
+        .replace(
+            "fog_cylindrical_distance(Position)",
+            "fog_cylindrical_distance(bbbWorld.xyz)",
+        )
+        .replace(
+            "minecraft_compute_light(Light0_Direction, Light1_Direction, Normal.xyz)",
+            "minecraft_compute_light(Light0_Direction, Light1_Direction, normalize(bbbNormal))",
+        )
+        .replace(
+            "mix(Color, minecraft_mix_light_separate(-light, Color), Normal.w)",
+            "mix(Color * BbbTint, minecraft_mix_light_separate(-light, Color * BbbTint), Normal.w)",
+        )
+        .replace(
+            "mix(Color, minecraft_mix_light_separate(light, Color), Normal.w)",
+            "mix(Color * BbbTint, minecraft_mix_light_separate(light, Color * BbbTint), Normal.w)",
+        )
+        .replace("vertexColor = Color;", "vertexColor = Color * BbbTint;")
+        .replace(
+            "mix(Color, minecraft_mix_light(Light0_Direction, Light1_Direction, Normal.xyz, Color), Normal.w)",
+            "mix(Color * BbbTint, minecraft_mix_light(Light0_Direction, Light1_Direction, normalize(bbbNormal), Color * BbbTint), Normal.w)",
+        )
+        .replace("sample_lightmap(UV2)", "sample_lightmap(BbbLightOverlay.xy)")
+        .replace(
+            "bbb_overlay_color(UV1)",
+            "bbb_overlay_color(BbbLightOverlay.zw)",
+        ))
 }
 
 const RESIDENT_ITEM_INSTANCE_INPUTS: &str = r#"layout(location = 5) in vec4 BbbModel0;
@@ -1169,6 +1358,48 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("Position"), "{error}");
+    }
+
+    #[test]
+    fn entity_adapter_projects_scroll_dynamic_item_and_resident_vertex_inputs() {
+        let base = r#"#version 450
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec2 UV0;
+layout(location = 2) in vec4 Color;
+layout(location = 3) in vec2 UV2;
+layout(location = 4) in vec2 UV1;
+layout(location = 5) in vec3 Normal;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    float spherical = fog_spherical_distance(Position);
+    float cylindrical = fog_cylindrical_distance(Position);
+    vec2 light = minecraft_compute_light(Light0_Direction, Light1_Direction, Normal);
+    vertexPerFaceColorBack = minecraft_mix_light_separate(-light, Color);
+    vertexPerFaceColorFront = minecraft_mix_light_separate(light, Color);
+    vertexColor = Color;
+    vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color);
+    lightMapColor = sample_lightmap(UV2);
+    overlayColor = bbb_overlay_color(UV1);
+    texCoord0 = UV0;
+}
+"#;
+
+        let scroll = adapt_scroll_entity_vertex(base).expect("scroll projection");
+        assert!(scroll.contains("layout(location = 2) in vec2 BbbUvRectMin"));
+        assert!(scroll.contains("layout(location = 7) in vec3 Normal"));
+        assert!(scroll.contains("vec2 UV0 = BbbUvRectMin + fract(BbbLocalUv) * BbbUvRectSize"));
+
+        let item = adapt_item_entity_vertex(base).expect("dynamic item projection");
+        assert!(item.contains("layout(location = 5) in vec4 Normal"));
+        assert!(item.contains("Normal.xyz, Color), Normal.w"));
+        let resident = adapt_resident_entity_vertex(&item).expect("resident item projection");
+        assert!(!resident.contains("in vec2 UV2"));
+        assert!(!resident.contains("in vec2 UV1"));
+        assert!(resident.contains("layout(location = 3) in vec4 Normal"));
+        assert!(resident.contains("mat4 bbbModel = mat4(BbbModel0"));
+        assert!(resident.contains("sample_lightmap(BbbLightOverlay.xy)"));
+        assert!(resident.contains("bbb_overlay_color(BbbLightOverlay.zw)"));
+        assert!(resident.contains("Color * BbbTint"));
     }
 
     #[test]
