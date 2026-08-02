@@ -13,4 +13,4 @@ projection 和 evidence。状态只表示 Wiki 审计置信度：
 
 `active`、`deferred-external`、`missing` 和未关闭 `partial` 必须链接
 `docs/unsupported-features.md` 或 `goal.md`；矩阵不能单独改变调度。完成项链接机制页、
-focused test 或 archive evidence。
+focused test、生成 coverage、checkout-local real evidence 或 Git history。

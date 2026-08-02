@@ -21,8 +21,27 @@ playable gate 需要真实 live session 时才运行并更新 `.git/bbb/last-pla
 纯 docs/workflow slice 不改变可玩行为，可验证旧 stamp 是最终 HEAD 祖先；如果修改产品
 行为，这个豁免立即失效。
 
+## 生命周期与平台验收
+
+`scripts/lifecycle-soak-gate.sh` 在三次独立 live session 中交替验证 quit/kick、
+resource generation、reconfiguration、Transfer、feature-gated resize/minimize/restore、
+surface lost/outdated/timeout、no-audio fallback、终态 queue/gauge、RSS/FD/thread 趋势和
+clean process exit。唯一场景输入是
+`scripts/fixtures/lifecycle-soak/manifest-26.1.json`；成功后写入
+`.git/bbb/last-lifecycle-soak` 与本地 report。fixture 重放不能刷新 live stamp。
+
+`scripts/platform-acceptance-gate.sh` 当前只声明
+`Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`。它要求 fully gated
+clean HEAD、fresh locked release build、`--build-info`、headless/live/quit 证据、实际
+winit/wgpu backend 日志、输入语义 focused receipts，以及当前 lifecycle-soak 祖先
+stamp；成功后写入 `.git/bbb/last-linux-platform` 与本地 report。headless runner 没有
+真实 compositor seat，因此不能把 unit/semantic input receipts 宣称为物理 DPI、
+fullscreen、X11、clipboard 或 IME 注入。扩展 Linux 矩阵和 macOS/Windows runner 的
+重开条件只由[缺口账本](../../unsupported-features.md)维护。
+
 ## 文档测试
 
 `scripts/docs-lint.sh` 是入口；Wiki 检查由其调用的 repo-owned helper 完成。fixture
 必须无网络且覆盖通过、断链、重复 mechanism id、非法 parity 状态、孤儿 canonical
-页面与失效 goal/ledger route。不能通过排除目录或放宽规则绕过失败内容。
+页面、失效 goal/ledger route 与禁止的历史文档布局。不能通过排除目录或放宽规则绕过
+失败内容。

@@ -224,21 +224,23 @@ class WikiLint:
                 if phrase in text:
                     self.fail(f"stale completion prose {phrase!r} in {relative}")
 
-    def check_canonical_scopes(self) -> None:
-        required = [
-            "docs/cargo-build-performance.md",
-            "docs/code-organization-style.md",
-            "docs/native-client-architecture.md",
-        ]
-        required.extend(
-            str(path.relative_to(self.repo))
-            for path in (self.repo / "docs").glob("*-design.md")
-            if path.name != "wiki-engineering-design.md"
-        )
-        for relative in required:
-            path = self.repo / relative
-            if path.is_file() and "Canonical scope" not in path.read_text(encoding="utf-8"):
-                self.fail(f"legacy current doc has no canonical-scope route: {relative}")
+    def check_document_layout(self, files: list[Path]) -> None:
+        allowed_top_level = {
+            Path("docs/README.md"),
+            Path("docs/goal-archive.md"),
+            Path("docs/unsupported-features.md"),
+        }
+        for path in files:
+            relative = path.relative_to(self.repo)
+            if relative in allowed_top_level:
+                continue
+            if relative.parts[:2] == ("docs", "wiki"):
+                continue
+            if relative.parts and relative.parts[0] == "docs":
+                self.fail(
+                    "historical Markdown outside the Wiki/flow allowlist: "
+                    f"{relative}"
+                )
 
     def check_vanilla_sources(self) -> str:
         source_root = Path.home() / "Work" / "mc-code" / "sources" / "26.1"
@@ -269,7 +271,7 @@ class WikiLint:
         self.check_inventory(all_markdown)
         self.check_repo_paths(wiki)
         self.check_chinese_and_stale_text(wiki)
-        self.check_canonical_scopes()
+        self.check_document_layout(all_markdown)
         source_message = self.check_vanilla_sources()
         if self.issues:
             for issue in self.issues:

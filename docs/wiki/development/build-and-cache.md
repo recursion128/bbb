@@ -20,6 +20,6 @@ run，用 keep list 清理真正陈旧 cache。sccache、linker 或 profile 改�
 ## 检查点（checkpoint）
 
 `gate` 对最终 HEAD 运行完整检查并写 last-gated stamp。高风险工程按 `goal.md` 的阶段
-checkpoint 执行，不靠频繁清空 cache 获得表面一致。历史 build measurement 保留在
-[`cargo-build-performance.md`](../../cargo-build-performance.md)作为专门证据；本页是
-当前长期规则的 canonical owner。
+checkpoint 执行，不靠频繁清空 cache 获得表面一致。需要重新评估 sccache、linker、
+profile 或 cache 策略时，用上一节的同机 cold/warm 合同生成外部原始产物，并把采用后的
+长期规则更新在本页；旧测量由 Git history 保留，不在受维护文档中复制快照表。

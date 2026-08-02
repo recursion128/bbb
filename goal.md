@@ -137,7 +137,8 @@ non-goals 不因进入维护态而自动转成 TODO。
 
 deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
 承担；禁止手工设置 `RUSTFLAGS='-D warnings'`——它会双向作废
-`/tmp/bbb-target-*` 缓存，代价是整仓重编（见 `docs/cargo-build-performance.md`）。
+`/tmp/bbb-target-*` 缓存，代价是整仓重编（见
+`docs/wiki/development/build-and-cache.md`）。
 `cargo check` 一条不可省：只跑 `cargo test` 会漏掉非测试（交付 bin）构建的
 unused/dead-code lint。
 
@@ -421,32 +422,32 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
-证据由 `scripts/playable-gate.sh`、Wiki 测试门禁页和专门 lifecycle evidence 持续
-维护；archive 的 lifecycle、
-interaction 与 failure-evidence milestone 是关闭依据。新垂直 slice 若改变可玩
+证据由 `scripts/playable-gate.sh`、Wiki 测试门禁页、本地 stamp/report 与 Git history
+持续维护。新垂直 slice 若改变可玩
 行为，必须扩展适用场景并按 checkpoint 规则刷新 stamp；门禁回退按 P0 处理。
 
 ### P1：可机械推导的 vanilla 事实
 
-状态：`maintenance`。中文机制 Wiki、全 Markdown inventory、Vanilla 26.1 parity
-matrix 与可执行 docs lint 已闭环；长期 owner 见 `docs/wiki/README.md`，冻结合同归档
-在 `docs/archive/wiki-engineering-design.md`。生成物、共享 Tree-sitter frontend、
-反向 source guard 与文档 canonical ownership 继续作为结构不变量。只有目标版本、
-生成输入/模板、具体第二事实源或 Wiki lint 回退时才开有界 slice；宽泛手工审计不在
+状态：`maintenance`。中文机制 Wiki、Vanilla 26.1 parity matrix、全 Markdown
+inventory 与可执行 docs lint 已闭环。`docs/` 只允许 Wiki、入口、紧凑 milestone
+索引和缺口 ledger；完成合同/取证正文由 Git history 保留，layout lint 防止历史目录、
+顶层 legacy 文档或双 canonical owner 回流。生成物、共享 Tree-sitter frontend、反向
+source guard 与文档 canonical ownership 继续作为结构不变量。只有目标版本、生成
+输入/模板、具体第二事实源或 Wiki/layout lint 回退时才开有界 slice；宽泛手工审计不在
 active=0 时生成工作。
 
 ### P2：非实体客户端行为 closeout
 
 状态：`maintenance`。packet/registry/item/entity coverage 均无 open row，
-unsupported 账本也无 active 项；world/block-entity、movement/interaction、
-particle/level-event、audio、相机介质与跨域 side-effect 的关闭证据见 archive
-对应 milestone 及 playable gate。后续 vertical slice 仍须贯通 protocol summary、
+unsupported 账本也无相关 active 项；world/block-entity、movement/interaction、
+particle/level-event、audio、相机介质与跨域 side-effect 的关闭证据见生成 coverage、
+focused tests、紧凑 milestone 索引及 playable gate。后续 vertical slice 仍须贯通 protocol summary、
 canonical state、runtime effect/counter 与适用 presentation。
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`maintenance`。账本对应域没有 active item；screen/HUD/font/debug 与
-deterministic screenshot/pixel evidence 的关闭索引见 archive。
+状态：`maintenance`。账本对应域没有相关 active item；screen/HUD/font/debug 与
+deterministic screenshot/pixel evidence 由 focused tests、可玩证据与 Git history 维护。
 `context_entity_type` 仍按自己的 `Reopen when ...` deferred。启动配置继续只走
 CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
@@ -454,7 +455,7 @@ CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 状态：`maintenance`。selected/startup/server pack、push/pop、原子 immutable
 resource generation、profile/map/variant/painting/pattern/trim 动态资源与诊断
-owner 已由 Wiki 资源机制页、专门资源 evidence、archive 和
+owner 已由 Wiki 资源机制页、生成 coverage、focused tests 和
 playable 证据覆盖；剩余 non-profile producer 属于当前不存在且未声明进入范围的
 server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
@@ -482,29 +483,29 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
 关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
-官方 26.1 离线启动、共同 replay/capture 合同与 GPU-duration 边界由 Wiki 等负载机制
-页维护，正式结果和 host/tool hash 由 `docs/official-client-performance-benchmark.md`
-作为专门 evidence 维护；不得把 MangoHud
+官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
+边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
-  原子回滚和诊断由协议测试、Wiki 资源机制页、专门 resource evidence 及 full gate
+  原子回滚和诊断由协议测试、Wiki 资源机制页、focused budget/recovery tests 及 full gate
   维护；
 - simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
-  shutdown/join 与 panic propagation 由 Wiki 边界页、专门 simulation evidence 和
-  focused tests 维护；
+  shutdown/join 与 panic propagation 由 Wiki 边界页、runtime counters 和 focused tests
+  维护；
 - repo-native before/after 与 runtime observation 已有稳定基线；同载门禁要求
   每次性能变化重新验证共同 workload，不能通过减少可见或 resident 工作伪造
   胜负结论；
-- `scripts/lifecycle-soak-gate.sh` 依 Wiki 测试门禁页和专门 lifecycle evidence 组合
+- `scripts/lifecycle-soak-gate.sh` 依 Wiki 测试门禁页、场景 manifest 与 checkout-local
+  report 组合
   三轮真实 live playable、
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
-  指标趋势与 clean exit；`last-lifecycle-soak`/归档 report 是 maintenance
+  指标趋势与 clean exit；`last-lifecycle-soak`/checkout-local report 是 maintenance
   证据，fixture 重放不能替代该 gate。
-- `scripts/platform-acceptance-gate.sh` 依
-  `docs/linux-platform-acceptance.md` 声明并验收 Linux x86_64 / Wayland /
+- `scripts/platform-acceptance-gate.sh` 依 Wiki 测试门禁页声明并验收
+  Linux x86_64 / Wayland /
   Vulkan / windowed external-multiplayer 行：fresh locked release build、
   build-info、headless probe、完整 live/quit、实际 backend 日志、输入语义
   focused receipts 与 lifecycle-soak 证据统一写入 report/stamp。

@@ -58,7 +58,7 @@ glyph。默认 options 为 `uniform=false`、`jp=false`。
 | first-provider-wins | `FontSet.computeGlyphInfo` | glyph map insertion | `equivalent` | provider ordering tests |
 | unihex parse/override/metrics | `UnihexProvider` | `font/unihex.rs` | `equivalent` | ZIP/HEX/bounds/metrics tests |
 | atlas UV/style | `GlyphBitmap`, `FontSet` | atlas + `hud_glyphs` | `equivalent` | UV/top/bold/shadow tests |
-| bidi/shaping | language/text pipeline | native text pipeline | `equivalent` | archived shaping evidence |
+| bidi/shaping | language/text pipeline | native text pipeline | `equivalent` | native text-layout focused tests |
 | ICU locale/timezone parity | ICU-backed date/time | local time formatter | `deferred-external` | [ledger](../../../unsupported-features.md) |
 
 ## 结构性不变量

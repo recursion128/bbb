@@ -28,5 +28,5 @@ coverage/generated catalog，不保存外部 jar/assets/capture。`tests/` 和�
 ## 文档
 
 [`docs/README.md`](../../README.md)是总入口，Wiki 保存长期事实。`goal.md`、ledger、
-archive 与 Git 的特殊权威边界见[文档工作流](documentation-workflow.md)。全部 Markdown
+milestone index 与 Git 的特殊权威边界见[文档工作流](documentation-workflow.md)。全部 Markdown
 处理结论见[inventory](document-inventory.md)。

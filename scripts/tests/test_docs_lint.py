@@ -248,6 +248,21 @@ class DocsLintTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("broken relative Markdown link", result.stdout)
 
+    def test_historical_markdown_outside_wiki_fails(self) -> None:
+        for relative in ("docs/archive/old-design.md", "docs/legacy-note.md"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                repo = self.make_repo(Path(directory))
+                legacy = repo / relative
+                legacy.parent.mkdir(parents=True, exist_ok=True)
+                legacy.write_text("# Old design\n\nHistorical prose.\n", encoding="utf-8")
+                self.sync_inventory(repo)
+                result = self.run_lint(repo)
+
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn(
+                "historical Markdown outside the Wiki/flow allowlist", result.stdout
+            )
+
     def test_duplicate_mechanism_id_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))

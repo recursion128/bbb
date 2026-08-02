@@ -784,7 +784,7 @@
       "canonical_apply": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_custom_payload", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleCustomPayload"], "status": "complete"},
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_brand_custom_payload", "crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_unknown_custom_payload_raw_body", "vanilla:net/minecraft/network/protocol/common/ClientboundCustomPayloadPacket.java#GAMEPLAY_STREAM_CODEC"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::CustomPayload"], "status": "complete"},
-      "runtime_side_effect": {"evidence": ["docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.", "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status", "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"], "gap": "docs/unsupported-features.md#not-needed", "status": "not-applicable"},
+      "runtime_side_effect": {"evidence": ["docs/wiki/architecture/client-boundaries.md#mojang-client-telemetry", "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status", "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"], "gap": "docs/unsupported-features.md#not-needed", "status": "not-applicable"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/client_common/tests.rs#decodes_brand_custom_payload", "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response", "crates/bbb-net/src/probe/play.rs#probe_play_custom_payload_updates_world_brand_and_unknown_payload", "crates/bbb-world/src/client/server_presentation.rs#custom_payload_tracks_server_brand_and_unknown_payloads", "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"], "status": "complete"}
     },
     "play/clientbound/CLIENTBOUND_DEBUG_BLOCK_VALUE": {
@@ -4759,7 +4759,7 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.",
+          "docs/wiki/architecture/client-boundaries.md#mojang-client-telemetry",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
           "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"
         ],

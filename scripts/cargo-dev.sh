@@ -262,7 +262,7 @@ EOF
 }
 
 # Stable long-lived caches that prune never deletes. Keep in sync with the
-# keep-list documented in docs/cargo-build-performance.md "Periodic Cleanup".
+# keep-list documented in docs/wiki/development/build-and-cache.md.
 PRUNE_KEEP_LIST="main batch-gate playable world renderer net native protocol pack control audio item-model render-types"
 
 is_prune_keep() {

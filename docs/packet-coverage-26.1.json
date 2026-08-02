@@ -1394,7 +1394,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.",
+            "docs/wiki/architecture/client-boundaries.md#mojang-client-telemetry",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
             "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"
           ],
@@ -8345,7 +8345,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "docs/native-client-architecture.md#Do not collect or upload Mojang client telemetry.",
+            "docs/wiki/architecture/client-boundaries.md#mojang-client-telemetry",
             "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_tps_server_brand_and_freeze_status",
             "vanilla:net/minecraft/client/telemetry/WorldSessionTelemetryManager.java#onServerBrandReceived"
           ],

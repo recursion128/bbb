@@ -14,11 +14,10 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # changing the limit; do not raise it to accommodate coverage prose.
 max_goal_lines=560
 
-# workflow-v6 (2026-07-28): the goal-archive milestone index gets its own cap
-# so it cannot regrow the prose problem goal.md had. When the cap is reached,
-# roll the oldest months up into one-line-per-month summaries; do not raise
-# the limit for new milestone prose.
-max_archive_lines=900
+# workflow-v10 (2026-08-02): historical contracts moved to Git-only retention
+# and the goal archive became a compact routing index. Keep enough headroom for
+# new engineering milestones without allowing completion prose to regrow.
+max_archive_lines=100
 
 failed=0
 
@@ -223,32 +222,6 @@ elif [ "$active_todo_items" -ne 0 ] && [ "$active_roadmap_routes" -eq 0 ]; then
   failed=1
 fi
 
-# workflow-v6 (2026-07-28): top-level docs/*-design.md files are active
-# contracts and must be referenced from an active root (goal.md, AGENTS.md, or
-# another top-level doc). docs/goal-archive.md is a history index and does not
-# count; move closed contracts to docs/archive/ instead.
-for design_doc in docs/*-design.md; do
-  [ -e "$design_doc" ] || continue
-  design_base=$(basename "$design_doc")
-  design_referenced=0
-  for ref_root in goal.md AGENTS.md docs/*.md docs/wiki/*.md docs/wiki/*/*.md docs/wiki/*/*/*.md; do
-    [ -e "$ref_root" ] || continue
-    case "$ref_root" in
-      docs/goal-archive.md | "$design_doc")
-        continue
-        ;;
-    esac
-    if grep -qF "$design_base" "$ref_root"; then
-      design_referenced=1
-      break
-    fi
-  done
-  if [ "$design_referenced" -eq 0 ]; then
-    echo "docs lint: $design_doc is not referenced by goal.md, AGENTS.md, or another active doc; move closed design docs to docs/archive/" >&2
-    failed=1
-  fi
-done
-
 if [ "$failed" -ne 0 ]; then
   exit 1
 fi
@@ -261,4 +234,4 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
-echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, route/ledger states consistent, owned deferred/not-needed decisions, design docs referenced, no completed coverage prose"
+echo "docs lint: goal.md $line_count/$max_goal_lines lines, goal-archive $archive_line_count/$max_archive_lines lines, route/ledger states consistent, owned deferred/not-needed decisions, Wiki-only docs layout, no completed coverage prose"

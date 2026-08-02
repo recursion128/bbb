@@ -22,9 +22,8 @@ configuration UI.
 - Crate boundaries, ownership rules, and state taxonomy:
   `docs/wiki/architecture/overview.md` and
   `docs/wiki/architecture/client-boundaries.md`
-- Build/target/cache policy and measured build baselines:
-  `docs/wiki/development/build-and-cache.md` and
-  `docs/cargo-build-performance.md`
+- Build/target/cache policy and measurement method:
+  `docs/wiki/development/build-and-cache.md`
 - Current priorities, hard constraints, structural invariants, slice shapes,
   ready contracts, hardest-ready-first selection, and the checkpoint/full-gate
   policy: `goal.md`. The feature gap ledger: `docs/unsupported-features.md`.

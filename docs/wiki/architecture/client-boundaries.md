@@ -33,3 +33,14 @@
 protocol 测 byte/类型边界，world 测 ordered apply 与 canonical state，native 测
 publication/consumer wiring，renderer/audio 测 backend 输入合同。跨边界测试证明同一
 id、generation、tick 与顺序，而不是重复每层的内部测试。
+
+<a id="mojang-client-telemetry"></a>
+
+## Mojang 客户端遥测边界
+
+BBB 不收集或上传 Mojang client telemetry。Vanilla 26.1 的
+`WorldSessionTelemetryManager` 会把 server brand 写入 `WorldLoadEvent` 并尝试通过独立
+event sender 发送；这不是 multiplayer protocol canonical state。BBB 仍可把对应 wire
+字段解码为诊断事实，但不得为它创建外部 telemetry runtime owner。只有项目明确把该
+外部服务纳入产品表面时才重新审计；当前裁决由
+[缺口账本](../../unsupported-features.md)唯一维护。

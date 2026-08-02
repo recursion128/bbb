@@ -11,22 +11,22 @@
 | `protocol-phase-lifecycle` | protocol | `GameProtocols`, packet listeners | `bbb-net::ConnectionState` | phase, typed packet order | `equivalent` | packet coverage 256 closed | 目标 protocol 变化时重开 |
 | `protocol-client-state-flow` | protocol/world | `ClientPacketListener`, `ClientLevel` | `WorldStore::apply_play_packet` | registry context, ordered events | `equivalent` | [机制页](../mechanisms/protocol/client-state-flow.md) | packet table 变化时重开 |
 | `registries-synchronized-data` | registries | `RegistryDataLoader` | world registry loaders | dynamic holders/session ids | `equivalent` | registry coverage 194 | synchronized set 变化时重开 |
-| `registries-fixed-client-catalogs` | registries | `BuiltInRegistries` | generated protocol catalogs | fixed id/name tables | `equivalent` | [registry inventory](../../registry-data-inventory-26.1.md) | bootstrap order 变化时重开 |
+| `registries-fixed-client-catalogs` | registries | `BuiltInRegistries` | generated protocol catalogs | fixed id/name tables | `equivalent` | `crates/bbb-protocol/src/registry_data_types.rs` + [holder coverage](../../registry-holder-consumer-coverage-26.1.json) | bootstrap order 变化时重开 |
 | `world-chunk-canonical-state` | world | `ClientLevel`, chunk cache | `bbb-world::chunks` | block/light/biome/block entity | `equivalent` | chunk/play-apply tests | packet/section layout 变化时重开 |
 | `world-entity-canonical-state` | entities | `ClientLevel`, `Entity` | `bbb-world::entities` | spawn, metadata, equipment | `equivalent` | entity coverage 157 | entity network surface 变化时重开 |
 | `world-local-player-prediction` | movement | `LocalPlayer` | native/world movement owners | input, collision, ack sequence | `equivalent` | movement/collision focused tests | authoritative type变化时重开 |
 | `rendering-block-model-pipeline` | rendering | `ModelBlockRenderer`, `BlockModelLighter` | terrain projection/mesh | exact occlusion/light facts | `equivalent` | [方块机制页](../mechanisms/rendering/block-rendering.md) | 关键 ROI 或 state table 变化时重开 |
 | `rendering-chunk-layer-routing` | rendering | `SectionCompiler` | terrain renderer | material layer, sort state | `equivalent` | layer/anchor evidence | render layer bootstrap 变化时重开 |
 | `rendering-fluid-mesh` | rendering | `FluidRenderer` | terrain fluid mesh | fluid/neighbor/overlay/tint/light | `equivalent` | [fluid 机制页](../mechanisms/rendering/fluid-rendering.md) | fluid ROI 或 renderer 变化时重开 |
-| `rendering-camera-fluid-fog` | rendering | `Camera.getFluidInCamera`, fog environments | native camera/fog state | None/Water/Lava + effects | `equivalent` | camera environment tests/archive | camera/fog owner 变化时重开 |
+| `rendering-camera-fluid-fog` | rendering | `Camera.getFluidInCamera`, fog environments | native camera/fog state | None/Water/Lava + effects | `equivalent` | camera environment focused tests | camera/fog owner 变化时重开 |
 | `rendering-entity-models` | entities/rendering | entity renderers/states/layers | world/native/renderer entity pipeline | model, pose, material, light | `equivalent` | entity coverage + anchors | 新 entity type/version 时重开 |
 | `rendering-block-entities` | rendering | block entity renderers | native/renderer block entities | typed block-entity state | `equivalent` | block-entity focused tests | new current BE surface 时重开 |
 | `rendering-particles-events` | rendering | particle engine/level event handler | world effects/native/renderer | ordered transient particles | `equivalent` | particle matrix in ledger appendix | provider set 变化时重开 |
 | `ui-font-provider-pipeline` | ui/text | `FontManager`, `FontSet`, providers | item-model/render-types/native | provider graph, glyph atlas | `equivalent` | [字体机制页](../mechanisms/ui/font-and-text.md) | font codec/consumer 变化时重开 |
-| `ui-bidirectional-shaping` | ui/text | language/font text pipeline | native text layout | bidi runs, shaped glyph order | `equivalent` | archived shaping design/tests | shaping owner 变化时重开 |
+| `ui-bidirectional-shaping` | ui/text | language/font text pipeline | native text layout | bidi runs, shaped glyph order | `equivalent` | native text-layout focused tests | shaping owner 变化时重开 |
 | `ui-local-time-icu` | ui/text | ICU `SimpleDateFormat` path | local-time item property | locale/calendar/timezone data | `deferred-external` | [ledger](../../unsupported-features.md) | approved Rust-1.80-compatible ICU provider 可覆盖任意 pattern 时 |
 | `ui-context-entity-type` | items/ui | `ContextEntityType.get`, resolver living owner | item model consumers | optional living owner type | `equivalent` | current-consumer tests；[conditional ledger](../../unsupported-features.md) | 新 current consumer 传 real living owner 时重开 |
-| `ui-screen-hud-state` | ui | screens/HUD/debug overlay | native/render-types/renderer | canonical screen + HUD snapshot | `equivalent` | UI coverage/archive tests | 新声明 screen surface 时重开 |
+| `ui-screen-hud-state` | ui | screens/HUD/debug overlay | native/render-types/renderer | canonical screen + HUD snapshot | `equivalent` | UI focused/pixel/playable evidence | 新声明 screen surface 时重开 |
 | `input-native-routing` | input | keyboard/mouse handlers | native input/control/net | focus, bindings, local intent | `equivalent` | input/playable tests | platform/input surface 变化时重开 |
 | `audio-event-playback` | audio | `SoundManager`, client level sounds | world effects/audio runtime | sound holder, position, category | `equivalent` | audio runtime tests/live gate | device/backend 变化时重开 |
 | `persistence-server-options` | persistence | options/server list/local storage | native persistence modules | typed files, atomic recovery | `equivalent` | persistence focused tests | schema 变化时重开 |
@@ -39,11 +39,11 @@
 | `resources-world-list-favicons` | resources/ui | server/world list screens | screens out of scope | external dynamic textures | `not-needed` | [ledger](../../unsupported-features.md) | 对应 screen 进入声明范围时 |
 | `movement-remote-type-exceptions` | movement | rabbit/fox/bee/stray etc. local entity paths | server-owned remote entities | exact local movement authority | `not-needed` | [ledger](../../unsupported-features.md) | 列出的 exact type 获得本地权威时 |
 | `telemetry-mojang-upload` | diagnostics | telemetry managers | no external sender | account/session telemetry | `not-needed` | [ledger](../../unsupported-features.md) | repo 明确加入该外部 surface 时 |
-| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | `docs/wiki`, docs lint | inventory, ids, routes, links | `equivalent` | docs lint fixtures + [归档合同](../../archive/wiki-engineering-design.md) | 目标版本、canonical owner 或 lint 合同变化时重开 |
+| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | `docs/wiki`, docs lint | inventory, ids, routes, links | `equivalent` | docs lint fixtures + [文档工作流](../development/documentation-workflow.md) | 目标版本、canonical owner 或 layout lint 合同变化时重开 |
 
 ## 审计摘要
 
 矩阵覆盖 startup、resources、protocol、registries、world、movement、rendering、entities、
 UI/text、input、audio、persistence、performance、platform、diagnostics 和 workflow。更细的
-closed packet/entity/item/provider 证据由生成 coverage 与 archive 索引承载，不在此扩成
+closed packet/entity/item/provider 证据由生成 coverage、focused tests 与 Git history 承载，不在此扩成
 第二份完成清单。
