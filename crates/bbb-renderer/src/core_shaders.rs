@@ -9,6 +9,7 @@ use crate::post_effect_graph::glsl::{
 const TERRAIN_SHADER_ID: &str = "minecraft:core/terrain";
 const ENTITY_SHADER_ID: &str = "minecraft:core/entity";
 const ITEM_SHADER_ID: &str = "minecraft:core/item";
+const PARTICLE_SHADER_ID: &str = "minecraft:core/particle";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -26,6 +27,11 @@ pub(crate) struct AdaptedItemShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
     pub(crate) resident_vertex: String,
+}
+
+pub(crate) struct AdaptedParticleShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -92,6 +98,26 @@ pub(crate) fn adapt_selected_item_shaders(
         resident_vertex: adapt_resident_item_vertex(&vertex)?,
         vertex,
         fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_particle_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedParticleShaders>> {
+    let vertex = resources
+        .source_by_id(PARTICLE_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/particle vertex stage")?;
+    let fragment = resources
+        .source_by_id(PARTICLE_SHADER_ID, ShaderStage::Fragment)
+        .context("prepared core shaders are missing minecraft:core/particle fragment stage")?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedParticleShaders {
+        vertex: adapt_particle_stage(&vertex.source, true)
+            .context("adapt selected particle vertex shader")?,
+        fragment: adapt_particle_stage(&fragment.source, false)
+            .context("adapt selected particle fragment shader")?,
     }))
 }
 
@@ -190,6 +216,36 @@ fn adapt_item_stage(source: &str, vertex_stage: bool) -> Result<String> {
         );
     let source = hoist_combined_sampler_declarations(&source)?;
     let source = bind_item_stage_locations(&source, vertex_stage)?;
+    adapt_combined_samplers(
+        &source,
+        &[
+            SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            },
+            SamplerBinding {
+                source_name: "Sampler2".to_string(),
+                texture_group: 1,
+                texture_binding: 0,
+                sampler_group: 1,
+                sampler_binding: 1,
+            },
+        ],
+    )
+}
+
+fn adapt_particle_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = adapt_entity_lightmap(&source)?;
+    let source = source
+        .replace("in ivec2 UV2;", "in vec2 UV2;")
+        .replace("sample_lightmap(Sampler2, UV2)", "sample_lightmap(UV2)");
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_particle_stage_locations(&source, vertex_stage)?;
     adapt_combined_samplers(
         &source,
         &[
@@ -594,6 +650,34 @@ fn bind_item_stage_locations(source: &str, vertex_stage: bool) -> Result<String>
         })
 }
 
+fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("in", "vec4", "Color", 2, true),
+            ("in", "vec2", "UV2", 3, false),
+            ("out", "float", "sphericalVertexDistance", 0, false),
+            ("out", "float", "cylindricalVertexDistance", 1, false),
+            ("out", "vec2", "texCoord0", 2, false),
+            ("out", "vec4", "vertexColor", 3, false),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, false),
+            ("in", "float", "cylindricalVertexDistance", 1, false),
+            ("in", "vec2", "texCoord0", 2, false),
+            ("in", "vec4", "vertexColor", 3, false),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_optional_declaration(
     source: &str,
     (storage, field_type, name, location, required): (&str, &str, &str, u32, bool),
@@ -726,6 +810,14 @@ mod tests {
             id: ITEM_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let particle_vertex_key = ShaderSourceKey {
+            id: PARTICLE_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let particle_fragment_key = ShaderSourceKey {
+            id: PARTICLE_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -793,6 +885,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: item_fragment_key,
                         resource_id: "minecraft:shaders/core/item.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    particle_vertex_key.clone(),
+                    ShaderSource {
+                        key: particle_vertex_key,
+                        resource_id: "minecraft:shaders/core/particle.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    particle_fragment_key.clone(),
+                    ShaderSource {
+                        key: particle_fragment_key,
+                        resource_id: "minecraft:shaders/core/particle.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -1198,6 +1310,96 @@ void main() {
                 .render_offscreen_frame()
                 .expect("restored embedded item frame")
         ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_particle_shader_preloads_particle_and_weather_surfaces() {
+        let root = unique_temp_dir("selected-particle-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/particle.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec2 texCoord0;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + texCoord0.x + vertexColor.x;
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected particle shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(81, selected)
+            .expect("selected particle generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(PARTICLE_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected particle fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(24, 20) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect(
+                "selected opaque/translucent particle and weather pipelines compile atomically",
+            );
+        assert_eq!(renderer.core_shader_generation(), Some(81));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/particle\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected particle filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(82, filtered)
+            .expect("filtered particle generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required particle stage must reject the generation");
+        assert!(error.to_string().contains("minecraft:core/particle"));
+        assert_eq!(renderer.core_shader_generation(), Some(81));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .with_client_resource_generation(83, default_stack)
+            .expect("default particle generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected particle shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(83));
 
         std::fs::remove_dir_all(root).unwrap();
     }

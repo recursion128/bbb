@@ -411,6 +411,34 @@ pub(crate) fn create_weather_pipeline(
         .build()
 }
 
+pub(crate) fn create_weather_core_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedParticleShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_weather_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+        ));
+    };
+    crate::particles::create_selected_particle_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        "bbb-selected-weather",
+        shaders,
+        weather_vertex_layout(),
+        Some(WEATHER_PIPELINE_BLEND),
+        WEATHER_PIPELINE_CULL_MODE,
+    )
+}
+
 pub(crate) fn create_lightning_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,

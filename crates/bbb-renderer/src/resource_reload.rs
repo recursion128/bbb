@@ -23,7 +23,7 @@ impl Renderer {
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
     ) -> Result<()> {
-        let (next, next_entity, next_item) =
+        let (next, next_entity, next_item, next_particle, next_weather) =
             crate::post_effect_graph::capture_gpu_errors(&self.device, || {
                 let terrain = crate::gpu::create_terrain_core_pipeline_generation(
                     &self.device,
@@ -58,7 +58,30 @@ impl Renderer {
                         resources,
                     )?)
                 };
-                Ok((terrain, entity, item))
+                let (particle, weather) = if allow_embedded_fallback
+                    && resources.source_count() == 0
+                {
+                    (None, None)
+                } else {
+                    let shaders = crate::core_shaders::adapt_selected_particle_shaders(resources)?;
+                    (
+                        Some(crate::particles::create_particle_core_pipeline_generation(
+                            &self.device,
+                            self.config.format,
+                            &self.terrain_bind_group_layout,
+                            &self.lightmap_sample_bind_group_layout,
+                            shaders.as_ref(),
+                        )?),
+                        Some(crate::weather::create_weather_core_pipeline(
+                            &self.device,
+                            self.config.format,
+                            &self.terrain_bind_group_layout,
+                            &self.lightmap_sample_bind_group_layout,
+                            shaders.as_ref(),
+                        )?),
+                    )
+                };
+                Ok((terrain, entity, item, particle, weather))
             })?;
         let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
         let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
@@ -133,6 +156,16 @@ impl Renderer {
                 next.resident_translucent,
             ),
         });
+        let previous_particle =
+            next_particle.map(|next| crate::particles::ParticleCorePipelineGeneration {
+                opaque: std::mem::replace(&mut self.opaque_particle_pipeline, next.opaque),
+                translucent: std::mem::replace(
+                    &mut self.translucent_particle_pipeline,
+                    next.translucent,
+                ),
+            });
+        let previous_weather =
+            next_weather.map(|next| std::mem::replace(&mut self.weather_pipeline, next));
         if self.resource_reload_in_progress() {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.terrain_solid_pipeline = previous_solid;
@@ -163,6 +196,13 @@ impl Renderer {
                     renderer.resident_item_model_pipeline = previous.resident_cutout;
                     renderer.resident_item_model_translucent_pipeline =
                         previous.resident_translucent;
+                }
+                if let Some(previous) = previous_particle {
+                    renderer.opaque_particle_pipeline = previous.opaque;
+                    renderer.translucent_particle_pipeline = previous.translucent;
+                }
+                if let Some(previous) = previous_weather {
+                    renderer.weather_pipeline = previous;
                 }
             }));
         }

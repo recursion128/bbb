@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, mem};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::{
     gpu::DEPTH_FORMAT,
@@ -182,6 +182,126 @@ pub(crate) fn create_particle_pipeline(
             PARTICLE_PIPELINE_DEPTH_COMPARE,
         ))
         .build()
+}
+
+pub(crate) struct ParticleCorePipelineGeneration {
+    pub(crate) opaque: wgpu::RenderPipeline,
+    pub(crate) translucent: wgpu::RenderPipeline,
+}
+
+pub(crate) fn create_particle_core_pipeline_generation(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedParticleShaders>,
+) -> Result<ParticleCorePipelineGeneration> {
+    let Some(shaders) = shaders else {
+        return Ok(ParticleCorePipelineGeneration {
+            opaque: create_particle_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+                ParticlePipelineKind::Opaque,
+            ),
+            translucent: create_particle_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+                ParticlePipelineKind::Translucent,
+            ),
+        });
+    };
+    Ok(ParticleCorePipelineGeneration {
+        opaque: create_selected_particle_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-opaque-particle",
+            shaders,
+            particle_vertex_layout(),
+            None,
+            PARTICLE_PIPELINE_CULL_MODE,
+        )?,
+        translucent: create_selected_particle_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-translucent-particle",
+            shaders,
+            particle_vertex_layout(),
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            PARTICLE_PIPELINE_CULL_MODE,
+        )?,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_particle_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    shaders: &crate::core_shaders::AdaptedParticleShaders,
+    vertex_layout: wgpu::VertexBufferLayout<'_>,
+    blend: Option<wgpu::BlendState>,
+    cull_mode: Option<wgpu::Face>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-particle-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected particle vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-particle-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected particle fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-particle-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[vertex_layout],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED,
+                PARTICLE_PIPELINE_DEPTH_COMPARE,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
 }
 
 pub(crate) fn create_particle_atlas_gpu(
