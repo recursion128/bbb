@@ -169,6 +169,7 @@ fn normalize_translation_format(value: &str, unsupported_format: &Regex) -> Stri
 mod tests {
     use super::*;
     use crate::{PackRoots, MC_VERSION};
+    use sha1::{Digest, Sha1};
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -398,6 +399,49 @@ mod tests {
     }
 
     #[test]
+    fn indexed_selected_locale_honors_pack_override_and_filter() {
+        let root = unique_temp_dir("indexed-language-precedence");
+        let assets = root.join("sources/26.1/assets/minecraft");
+        write_json(
+            &assets.join("lang/en_us.json"),
+            r#"{"options.language":"Language...","menu.play":"Play"}"#,
+        );
+        write_indexed_language_fixture(&root);
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let indexed = roots.load_client_language_catalog("zh_cn").unwrap();
+        assert_eq!(indexed.get("options.language"), Some("语言…"));
+        assert_eq!(indexed.get("menu.play"), Some("开始游戏"));
+
+        let override_pack = root.join("packs/override");
+        write_json(
+            &override_pack.join("assets/minecraft/lang/zh_cn.json"),
+            r#"{"menu.play":"覆盖"}"#,
+        );
+        let overridden = roots
+            .clone()
+            .with_resource_pack_dirs([override_pack])
+            .load_client_language_catalog("zh_cn")
+            .unwrap();
+        assert_eq!(overridden.get("options.language"), Some("语言…"));
+        assert_eq!(overridden.get("menu.play"), Some("覆盖"));
+
+        let filter_pack = root.join("packs/filter");
+        write_json(
+            &filter_pack.join("pack.mcmeta"),
+            r#"{"filter":{"block":[{"namespace":"minecraft","path":"lang/zh_cn\\.json"}]}}"#,
+        );
+        let filtered = roots
+            .with_resource_pack_dirs([filter_pack])
+            .load_client_language_catalog("zh_cn")
+            .unwrap();
+        assert_eq!(filtered.get("options.language"), Some("Language..."));
+        assert_eq!(filtered.get("menu.play"), Some("Play"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn pack_roots_language_catalog_applies_default_deprecated_translations() {
         let root = unique_temp_dir("language-deprecated");
         let assets_dir = root
@@ -447,6 +491,24 @@ mod tests {
         );
     }
 
+    #[test]
+    #[ignore = "requires the local Vanilla 26.1 asset object store"]
+    fn loads_real_indexed_zh_cn_through_the_default_resource_pack() {
+        let roots = PackRoots::discover().unwrap();
+        let stack = roots.resource_stack();
+        let observation = stack
+            .vanilla_asset_index_observation()
+            .expect("local Vanilla index must be mounted");
+        assert_eq!(observation.index_id, "30");
+        assert_eq!(observation.object_count, 4_749);
+
+        let catalog = roots.load_client_language_catalog("zh_cn").unwrap();
+        assert_eq!(catalog.get("options.language"), Some("语言…"));
+        assert_eq!(catalog.get("menu.multiplayer"), Some("多人游戏"));
+        assert_eq!(catalog.get("block.minecraft.stone"), Some("石头"));
+        assert!(!catalog.is_bidirectional());
+    }
+
     fn unique_temp_dir(label: &str) -> PathBuf {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -458,5 +520,42 @@ mod tests {
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    fn write_indexed_language_fixture(root: &Path) {
+        let mut objects = serde_json::Map::new();
+        for (name, contents) in [
+            (
+                "minecraft/lang/zh_cn.json",
+                r#"{"options.language":"语言…","menu.play":"开始游戏"}"#,
+            ),
+            (
+                "pack.mcmeta",
+                r#"{"language":{"zh_cn":{"region":"CN","name":"简体中文"}}}"#,
+            ),
+        ] {
+            let bytes = contents.as_bytes();
+            let hash = format!("{:x}", Sha1::digest(bytes));
+            objects.insert(
+                name.to_string(),
+                serde_json::json!({"hash": hash, "size": bytes.len()}),
+            );
+            let path = root
+                .join("downloads/26.1/assets/objects")
+                .join(&hash[..2])
+                .join(&hash);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
+        let index = serde_json::to_string(&serde_json::json!({"objects": objects})).unwrap();
+        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
+        write_json(&root.join("downloads/26.1/assets/indexes/30.json"), &index);
+        write_json(
+            &root.join("downloads/26.1/26.1.json"),
+            &format!(
+                r#"{{"assetIndex":{{"id":"30","sha1":"{index_hash}","size":{}}}}}"#,
+                index.len()
+            ),
+        );
     }
 }

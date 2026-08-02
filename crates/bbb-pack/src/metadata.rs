@@ -18,13 +18,12 @@ impl PackMetadataCatalog {
             LanguageInfo::default_english(),
         );
 
-        for root in stack.roots() {
-            let metadata_path = root.join("pack.mcmeta");
-            if !metadata_path.is_file() {
-                continue;
-            }
+        let Ok(resources) = stack.root_resource_stack("pack.mcmeta") else {
+            return catalog;
+        };
+        for resource in resources {
             let Ok(raw): Result<RawPackMetadata> =
-                stack.read_json_file(&metadata_path, "pack metadata")
+                stack.read_json_root_resource(&resource, "pack metadata")
             else {
                 continue;
             };
