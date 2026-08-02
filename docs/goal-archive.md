@@ -894,7 +894,6 @@
   投影携带 session registry/equipment 上下文并复用实体、装备与手持物路径。
 - **2026-07-31（相机流体与 Lava fog 工程闭环）**：共享 Water/Lava 采样、颜色、
   sky 抑制及 normal/fire-resistance/spectator 距离均对齐 26.1。
-- **2026-07-31（官方 26.1 同载比较工程安全停止）**：离线启动、共同 replay 与 OpenGL/Vulkan capture smoke 已建立；真实 GPU/perf 权限和可见内容一致性曾阻塞。
-- **2026-07-31（官方 26.1 同载比较工程闭环）**：完整 assets、离线官方 jar、
-  共同 replay/draw 证据、MangoHud 开销门禁与两轮 ABBA 真机采样已闭环；bbb
-  chunk-boundary 长尾转 active，GPU-only duration 保持精确 deferred。
+- **2026-08-02（官方 26.1 渲染机制与同载性能 P0 闭环）**：权威 block-state、
+  光照、atlas、透明与 fluid 机制、三场景 ROI/workload/draw 证据及两轮 ABBA
+  真机采样已闭环；GPU-only duration 保持精确 deferred。

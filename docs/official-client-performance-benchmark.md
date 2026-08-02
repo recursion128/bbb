@@ -9,17 +9,12 @@ The existing repo-native owner and frame-tail baselines remain in
 `docs/simulation-render-performance-design.md`; this document adds only the
 cross-client launch, workload, and external-measurement boundary.
 
-The current P0 audit invalidated the equal-load status of the existing two ABBA
-rounds: generated replay dispatch can consume adjacent leaves in one server
-tick, bbb caps terrain residency at 49 chunks and reaches anchors before all
-required meshes converge, and its sRGB render targets/textures do not match
-Vanilla 26.1's numeric `TextureFormat.RGBA8` / `GL_RGBA8` color path. The old
-captures remain diagnostic evidence only and must not be presented as a formal
-cross-client result. Their machine-readable result is
-`/tmp/bbb-formal-abba-v1/summary.json`, SHA-256
-`370a87331c8bdb3eb15e9c6ebc824608b9a1329a948d9b2d4df321b5cfde3fcb`;
-large external assets, clients, tools, worlds, screenshots, and captures remain
-outside the repository.
+The current publishable result is
+`/tmp/bbb-formal-comparison-summary-v4.json`, SHA-256
+`ced023ba8a4369b617ac801093d29fc26e56d04dbe3ca869ba7ff6ec0f2faa00`.
+It follows a rendering-mechanism and visible-workload P0 gate; earlier captures
+that predate that gate remain diagnostic only. Large external assets, clients,
+tools, worlds, screenshots, and captures remain outside the repository.
 
 ## Scope and safety boundary
 
@@ -32,8 +27,8 @@ The harness:
   token;
 - extracts native classifiers into a per-run directory while rejecting
   absolute paths, `..`, backslashes, NULs, symlinks, and basename collisions;
-- uses a separate game directory, fixed `options.txt`, one sequential
-  Weston/Xwayland compositor, and process groups with bounded cleanup;
+- uses a separate game directory, fixed `options.txt`, clients launched
+  sequentially on one X11 compositor, and process groups with bounded cleanup;
 - keeps Mojang assets, jars, libraries, worlds, native libraries, tool packages,
   screenshots, and raw captures outside the repository.
 
@@ -108,8 +103,8 @@ records the replay, source-world, and resource hashes separately.
 
 ## Equal-load settings
 
-Both launch plans pin a 1280×720 window inside the same 1280×720 hardware
-Weston/Xwayland output, view and simulation distance 12, entity distance scale 1, fancy
+Both launch plans pin a 1280×720 client area on the same X11 display and
+compositor, view and simulation distance 12, entity distance scale 1, fancy
 graphics (including AO, player-affected chunk priority, cloud distance 64,
 cutout leaves, entity shadows, weather radius 10, and RGSS filtering), clouds,
 minimal particles, mipmap level 4, visible HUD, GUI scale 1, view bobbing on,
@@ -125,12 +120,17 @@ visible sections, resident bytes, draw calls, chunk view, and local pose at
 every anchor.
 
 A matching replay/world/resource/settings contract hash is necessary but not
-sufficient. The reviewed screenshot evidence hash is
-`cbf036d934a21c757f239956aa01f1e741174df79918975ec20bebcc0cf79b2b`.
+sufficient. Same-tick screenshots, zero-error geometry assertions, 11
+material-specific ROIs, pixel diffs, same-client noise calibration, and full
+manual review form the visible-workload gate. Its evidence hash is
+`576b14ec01439bc64c3ddcde335b387841a592cb4a006f0404423f3d07e22604`.
+At the three bbb anchors the frozen resident set is 637 chunks / 15,288
+sections; visible sections are 2,098 / 2,130 / 2,109.
+
 RenderDoc 1.45 raw anchors prove both clients submitted work on the hardware
-GPU: Vanilla OpenGL has 330/234/248 draw API calls and bbb Vulkan has
-684/701/668 for static/flight/boundary. The RenderDoc evidence hash is
-`1c13956244098e4763039fd14524b4269edea7824ef47a8772979aa0c998a4b4`.
+GPU: Vanilla OpenGL has 340/257/285 draw API calls and bbb Vulkan has
+337/330/283 for static/flight/boundary. The RenderDoc evidence hash is
+`6b38c475615448aa408b28ca943f407d8bee02f3341fa042888c24f354e65a19`.
 Those API counts establish non-empty visible draw work; different APIs and
 batching make the counts unsuitable as an equality or performance metric.
 
@@ -172,8 +172,8 @@ percentile source.
 
 ## Formal sampling and invalidation
 
-A publishable comparison requires at least three valid captures per client in
-Java → bbb → bbb → Java order, the same fixed warm-up, and a measured MangoHud
+A publishable comparison requires two complete Java → bbb → bbb → Java rounds,
+four valid captures per client, the same fixed warm-up, and a measured MangoHud
 overhead at or below 1% median. Each scenario is summarized separately.
 
 A run is invalid when any replay, world, resource, settings, resolution, pose,
@@ -183,12 +183,12 @@ with the client. Raw files and machine-readable `summary.json` are mandatory.
 
 ## Current-host formal result
 
-All eight formal captures passed with zero position corrections, the same
-camera-log SHA-256
-`61a3e901230da541718fb17fb889f27cf18d61ac0a4ababfc3632a274b8190bd`,
-the replay/world/resource/settings/scene hashes below, and the release bbb
-binary SHA-256
-`9d99bc50ac4aee6e9f732b9e5eb1b1e0b97a96ae5bef519ec65daf86e62d501d`.
+All eight formal captures passed with zero position corrections, zero
+`>=33.333 ms` segment hitches, the same camera-log SHA-256
+`f3749c011859c34d97f5ce0f36fdfec45e2ab7c81b51b405ad046489943a0b3a`,
+the replay/world/resource/settings/scene hashes below, and the gated release
+bbb binary SHA-256
+`18b6fffe1238b280bce8292b935f317eb74933128834f2d79cb5721196649aaf`.
 The fresh-credential preflight at
 `/tmp/bbb-benchmark-capture-preflight-final-fresh-groups.json` records the
 benchmark user in `video` and `render`, a successful read-write open of
@@ -199,49 +199,52 @@ that stale shell's group list as host capability.
 
 | Contract | SHA-256 |
 | --- | --- |
-| replay | `c40b92e6686a9bfbc32dd4192020c4c95caa2ab1607383e33dffa6b8562eae14` |
-| world | `abe09627d1e9e300ec4dc5b9bdcc870785f1527b265bdb09061f347fd9a74b66` |
+| replay | `5073908b5e5cd7eeca023540b9c2844e9c4d196610a2fbb67866058c5421c388` |
+| world | `59bc552530d1c13ce3d618be5669e5d99d052e01d53e99a879a44008c7ba4bca` |
 | resources | `8aa8d02d6806ef9396564b83b7b64f73014ea654d8059a1b8ae6b09f3f67df0c` |
-| settings | `51081ecb561de7f053ddf3ed40255865fc037da5ba895cc8dcc2d73aaa4236c9` |
-| scene | `6acedfc5cb5323032c034c04630b7a878acce98974b6d8d7c1ec9a8daf60b747` |
+| settings | `4ca64c1649a9ada45f8d9d7903abd488902accab7d227c5d9017b714a8ac8093` |
+| scene | `6f77811b5deafacea3c7666414cc1705c396a987b015e2a5f1f4832e872f73bc` |
 
 Pooled MangoHud application-frame results:
 
 | Scene/client | Samples | p50 ms | p95 ms | p99 ms | 1% low FPS | ≥33.333 ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| overall Vanilla | 152,383 | 1.433 | 2.445 | 3.695 | 253.62 | 0 |
-| overall bbb | 9,150 | 8.452 | 142.407 | 150.685 | 6.12 | 1,087 |
-| static Vanilla | 35,504 | 2.152 | 2.474 | 2.769 | 313.00 | 0 |
-| static bbb | 4,373 | 8.595 | 24.750 | 144.475 | 6.62 | 174 |
-| flight Vanilla | 57,165 | 1.205 | 1.765 | 1.988 | 444.91 | 0 |
-| flight bbb | 3,667 | 6.304 | 137.327 | 145.499 | 6.44 | 294 |
-| boundary Vanilla | 27,806 | 1.468 | 3.446 | 3.799 | 250.98 | 0 |
-| boundary bbb | 577 | 127.313 | 151.610 | 175.038 | 5.42 | 314 |
+| overall Vanilla | 57,798 | 3.345 | 4.981 | 5.751 | 166.07 | 0 |
+| overall bbb | 71,890 | 2.722 | 4.229 | 4.683 | 138.21 | 0 |
+| static Vanilla | 17,120 | 3.903 | 4.171 | 4.361 | 207.70 | 0 |
+| static bbb | 22,808 | 2.888 | 3.208 | 3.503 | 194.99 | 0 |
+| flight Vanilla | 22,626 | 2.942 | 3.422 | 3.734 | 251.43 | 0 |
+| flight bbb | 27,476 | 2.393 | 2.676 | 2.881 | 153.75 | 0 |
+| boundary Vanilla | 18,052 | 3.385 | 5.611 | 6.019 | 160.47 | 0 |
+| boundary bbb | 21,606 | 2.744 | 4.573 | 4.961 | 110.51 | 0 |
 
-Overall mean GPU telemetry is 97.50% / 2,172.76 MHz / 61.33°C for
-Vanilla and 35.74% / 1,308.04 MHz / 52.45°C for bbb. Maximum observed
-CPU/GPU temperatures were 90/64°C for Vanilla and 88/55°C for bbb, below the
-frozen 95°C invalidation threshold.
+Overall mean GPU telemetry is 97.48% / 2,160.26 MHz for Vanilla and 97.19% /
+2,157.40 MHz for bbb. Maximum observed CPU/GPU temperatures were 77/63°C for
+Vanilla and 76/63°C for bbb, below the frozen 95°C invalidation threshold.
 
 `perf stat` process means per captured frame:
 
 | Client | task-clock ms | cycles | instructions | ctx switches | migrations | page faults |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Vanilla | 0.659 | 3,216,082 | 4,821,124 | 14.154 | 0.212 | 12.405 |
-| bbb | 55.442 | 293,755,625 | 684,868,191 | 56.038 | 1.292 | 88.090 |
+| Vanilla | 1.083 | 4,479,328 | 6,833,680 | 19.069 | 0.258 | 17.949 |
+| bbb | 1.309 | 5,853,361 | 10,208,141 | 13.652 | 0.244 | 0.332 |
 
-These means do not provide CPU-frame percentiles. The measurements identify a
-real bbb long-tail regression, strongest during chunk-boundary crossing; later
-optimization work must diagnose its native owner without reducing visible or
-resident work.
+These means do not provide CPU-frame percentiles. bbb uses about 20.8% more
+task-clock, 30.7% more cycles, and 49.4% more instructions per presented frame,
+even though its application-frame p50/p95/p99 are lower in every scene. Its 1%
+low remains lower because the sparse sub-33.333 ms tail beyond p99 is wider;
+neither client has a formal hitch. This is maintenance evidence, not permission
+to reduce visible or resident work in a later optimization.
 
 Raw formal artifacts are under
-`/tmp/bbb-formal-abba-v1/{01-vanilla,02-bbb,03-bbb,04-vanilla,05-vanilla,06-bbb,07-bbb,08-vanilla}`.
+`/tmp/bbb-formal-abba-final-v4/{01-vanilla,02-bbb,03-bbb,04-vanilla,05-vanilla,06-bbb,07-bbb,08-vanilla}`.
 Each directory contains its launch manifest, server/camera logs, raw MangoHud
 CSV, perf CSV, and `smoke.json`; scenario membership is encoded by elapsed time
-against the replay's capture markers. Common draw artifacts are under
-`/tmp/bbb-benchmark-renderdoc-{vanilla,bbb}-v2` and
-`/tmp/bbb-benchmark-renderdoc-xml-v1`.
+against the replay's capture markers. The manifest and summary are
+`/tmp/bbb-formal-comparison-manifest-v4.json` and
+`/tmp/bbb-formal-comparison-summary-v4.json`; visible-workload evidence is
+`/tmp/bbb-benchmark-workload-v82-gated-summary.json`. Common draw artifacts are
+listed by `/tmp/bbb-benchmark-renderdoc-summary-direct-depth-final-v1.json`.
 
 ## Tool identities, invalid trials, and residual blocker
 
@@ -294,8 +297,8 @@ python3 scripts/official_client_benchmark.py run-official-smoke \
   --replay scripts/fixtures/official-client-benchmark/replay-26.1.json \
   --mc-code-root /home/zgy/Work/mc-code \
   --java /home/zgy/.local/jdks/jdk-25.0.3+9/bin/java \
-  --world-manifest /tmp/bbb-benchmark-world-v8/world-snapshot.json \
-  --x-display :0 --wayland-display bbb-renderdoc-xwayland \
+  --world-manifest /tmp/bbb-benchmark-world-v15/world-snapshot.json \
+  --x-display :0 --wayland-display bbb-formal-final \
   --mangohud-root /tmp/bbb-benchmark-tools/MangoHud-0.8.4/package \
   --perf /usr/bin/perf --accept-eula --artifact-dir <unique-run-dir>
 
@@ -304,8 +307,8 @@ python3 scripts/official_client_benchmark.py run-bbb-smoke \
   --mc-code-root /home/zgy/Work/mc-code \
   --java /home/zgy/.local/jdks/jdk-25.0.3+9/bin/java \
   --bbb-binary /tmp/bbb-target-main/release/bbb-native \
-  --world-manifest /tmp/bbb-benchmark-world-v8/world-snapshot.json \
-  --x-display :0 --wayland-display bbb-renderdoc-xwayland \
+  --world-manifest /tmp/bbb-benchmark-world-v15/world-snapshot.json \
+  --x-display :0 --wayland-display bbb-formal-final \
   --mangohud-root /tmp/bbb-benchmark-tools/MangoHud-0.8.4/package \
   --perf /usr/bin/perf \
   --extra-library-path \

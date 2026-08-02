@@ -280,18 +280,19 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
-### 当前 P0 工程：官方 26.1 同载渲染与性能闭环
+### P0 合同：官方 26.1 同载渲染与性能闭环
 
-这是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla 26.1 渲染机制与
-可见 workload 等价”，再在相同实际画面负载下使 bbb 的稳定帧性能不劣于官方客户端。
+同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
+26.1 渲染机制与可见 workload 等价”，再在相同实际画面负载下使 bbb 的稳定帧性能
+不劣于官方客户端。
 这里的等价不是截图“大致相似”：任何可见几何、材质、光照、透明面或
 resident/visible workload 不一致，都会使对应性能 run 作废。渲染一致性门禁是正式
-性能比较的强制前置，不能作为与性能并行推进的第二个 feature；本工程关闭前也不能
-启动其它完整 feature。
+性能比较的强制前置，不能作为与性能并行推进的第二个 feature；重开工程 active 时
+不能启动其它完整 feature。
 
 非目标：不 patch/mod 官方 jar，不改协议/服务器玩法，不通过 view distance、resident
 cap、实体/粒子/HUD/透明层删减或较低图形设置换取性能，不把 MangoHud interval 称为
-CPU/GPU duration，不把本工程扩成无界通用 renderer 重写或 GPU-only ftrace 工程。
+CPU/GPU duration，不把重开工程扩成无界通用 renderer 重写或 GPU-only ftrace 工程。
 
 边界：benchmark/replay/capture parser 归 `scripts/official_client_benchmark.py`；
 权威 block-state 渲染事实归 `bbb-protocol`，canonical chunk/world projection 归
@@ -342,7 +343,7 @@ routing、fluid renderer、translucent sorting 与 blend state；共同 replay �
    capture，生成完整机器可解析报告，更新账本，运行 per-commit checks 与 full gate。
 
 各阶段严格串行；失败必须 fix-forward 并重复本阶段验证，不得跳过失败阶段发布性能
-结论。基线 full gate 已在开工前关闭；A～E 的每个跨核心 owner/真实性里程碑、累计
+结论。每次重开前先关闭基线 full gate；A～E 的每个跨核心 owner/真实性里程碑、累计
 四个提交、准备正式 capture、停止或交付时均 full gate，最终 `HEAD` 必须
 full-gated。安全停止点只允许位于干净提交、文档仍明确 active 的 checkpoint，或有
 可复现且经过验证的精确外部 blocker。
@@ -390,9 +391,9 @@ frame p50/p95/p99、1% low 与 hitch，不能宣称纯 CPU/GPU frame duration。
 machine-readable summary 必须保留每次 run、无效原因、截图/marker/residency、
 MangoHud、perf、共同 draw/frame evidence及工具版本/校验。
 
-当前 P0 slice 只有同时满足以下条件才能关闭：Vanilla 机制证据已记录；focused
+按本合同重开的 P0 slice 只有同时满足以下条件才能关闭：Vanilla 机制证据已记录；focused
 unit/integration tests 通过；三个场景关键锚点通过；可见 workload 与共同 draw
-evidence 通过；每客户端至少三次有效正式 capture 且上述两轮 ABBA 完成；完整 diff
+evidence 通过；每客户端至少四次有效正式 capture 且上述两轮 ABBA 完成；完整 diff
 review、docs lint、fmt、diff check 与 per-commit checks 通过；最终 `HEAD` 通过 full
 gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-features.md`
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
@@ -410,7 +411,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
-- p4-delivery: active
+- p4-delivery: maintenance
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -477,14 +478,12 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。官方 Java 同载对照的截图审计重开为当前 P0 工程：replay dispatch
-会在同一 server tick 消费相邻 leaf，bbb 的 49-chunk cap 与未收敛 mesh 造成可见
-几何缺失，Vanilla RGBA8 与 bbb sRGB target/texture 合同造成颜色偏差；旧 ABBA 只
-保留诊断价值。在真实性里程碑通过后，继续按修正 workload 的 losing scene 定位并
-消除 dominant runtime owner。安全预算、bounded runtime、lifecycle/fault soak 与已声明平台行已有
-有界 gate；剩余 GPU-only duration 关联、扩展 Linux 交互矩阵和非 Linux 发布行
-只按各自 `Reopen when ...` deferred。官方 26.1 离线启动、共同
-replay/capture 合同、两轮 ABBA 结果与 GPU-duration 精确 blocker 由
+状态：`maintenance`。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
+锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
+runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
+关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
+官方 26.1 离线启动、共同 replay/capture 合同、正式结果与 GPU-duration 精确
+blocker 由
 `docs/official-client-performance-benchmark.md` 唯一维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
@@ -496,10 +495,9 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
 - simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
   shutdown/join 与 panic propagation 由
   `docs/simulation-render-thread-design.md` 和 focused tests 维护；
-- repo-native before/after 与 runtime observation 已有稳定基线；旧同载官方 Java
-  ABBA 因可见/resident/颜色/时序合同不成立只可用于诊断；当前工程必须先恢复共同
-  workload，再按测得的 losing scene/owner 优化，不能通过
-  减少可见或 resident 工作伪造胜负结论；
+- repo-native before/after 与 runtime observation 已有稳定基线；同载门禁要求
+  每次性能变化重新验证共同 workload，不能通过减少可见或 resident 工作伪造
+  胜负结论；
 - `scripts/lifecycle-soak-gate.sh` 依
   `docs/lifecycle-soak-gate-design.md` 组合三轮真实 live playable、
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程

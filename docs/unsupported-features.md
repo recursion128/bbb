@@ -41,16 +41,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-- The official-client comparison remains an active P0 engineering item. Localize
-  and remove the measured application-frame tail across chunk application,
-  meshing, GPU upload, draw/pipeline state and resident release. Formal timing
-  is valid only while same-tick anchors, exact block-state render facts, full
-  loaded-resident readiness, material-specific ROI review and common external
-  draw evidence remain green. Completion requires four valid captures per
-  client in two ABBA rounds with the same camera/world/resource/settings and
-  actual visible/resident workload; bbb p50/p95 must not exceed Vanilla, p99
-  must not regress, and no bbb-only 33.333 ms hitch may remain. Preserve exact
-  phase/translucent order and bounded-owner fallback.
 - API-neutral per-client GPU execution duration is `deferred`: the current
   kernel exposes `dma_fence:dma_fence_signaled` instead of the requested
   `fence:fence_signaled`, and the headless Xwayland path has no proven
