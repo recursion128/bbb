@@ -166,6 +166,18 @@ Loader invariants (not todos): keep the local vanilla coverage tests
 add parser support only when an official asset or a focused resource-pack
 fixture fails them; keep precedence/filter tests next to the loaders.
 
+- **Vanilla 26.1 indexed assets unified provider is `active`.** The verified
+  index is currently reachable only through a font-specific fallback, so
+  `LanguageCatalog` cannot load indexed locales and sound still needs source or
+  materialized generated assets. Build one lazy indexed provider inside the
+  default `vanilla` pack, preserve source/index and selected/server pack
+  precedence, filter and companion metadata semantics, then migrate font,
+  language and sound to the shared `PackResourceStack`. Close only after real
+  object-store acceptance for zh_cn, a representative OGG bounded open, and
+  the 114432-glyph CJK atlas; classify every remaining indexed family by
+  Vanilla/BBB owner, current surface and exact reopen condition without adding
+  an unrelated screen.
+
 ## Resource and dynamic texture generalization
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`

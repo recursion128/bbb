@@ -411,7 +411,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p1-generated-facts: maintenance
 - p2-non-entity: maintenance
 - p2-hud: maintenance
-- p3-resources: maintenance
+- p3-resources: active
 - p4-delivery: maintenance
 <!-- roadmap-status:end -->
 
@@ -453,11 +453,41 @@ CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 ### P3：动态资源 presentation breadth
 
-状态：`maintenance`。selected/startup/server pack、push/pop、原子 immutable
+状态：`active`。selected/startup/server pack、push/pop、原子 immutable
 resource generation、profile/map/variant/painting/pattern/trim 动态资源与诊断
 owner 已由 Wiki 资源机制页、生成 coverage、focused tests 和
 playable 证据覆盖；剩余 non-profile producer 属于当前不存在且未声明进入范围的
 server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
+
+#### 工程合同：Vanilla 26.1 indexed assets 统一默认 provider
+
+- 目标/完成：`bbb-pack` 以只读、按需校验的 indexed provider 与 source/jar-equivalent
+  provider 组成单一低优先级 `vanilla` pack；font、language、sound 只经同一
+  `PackResourceStack`，真实 index 30 的 zh_cn、sounds/OGG、unihex 均通过验收。
+- Vanilla 合同：`GameConfig.FolderData.getExternalAssetSource` 的 index FS 被
+  `ClientPackSource.createVanillaPackSource` 放在 jar resources 之后，builder 反转后 external
+  对 jar 优先；外层 pack 为 vanilla→startup→server 低到高，single 高到低，stack 低到高；
+  filter 截断低层，single `.mcmeta` 取不低于内容的最高可见项，stack metadata 绑定本 pack。
+  普通 namespace 只暴露 `minecraft`/`realms`；`icons/**` 与 `pack.mcmeta` 走 root resource。
+- 边界/非目标：owner 为 `bbb-pack` provider/generation、`bbb-item-model` font、`bbb-native`
+  reload/audio wiring、`bbb-audio` bounded decode；不联网、不 materialize/copy/提交官方对象，
+  不新增 screen/renderer/mixer/layout 功能，不 eager open/hash 4749 个对象。
+- Phase A：复核 Vanilla/current flow，冻结 precedence/filter/metadata/enumeration/lazy 合同。
+  Phase B：通用 indexed provider + composite vanilla pack；checkpoint full gate。
+- Phase C：font 移除专用 fallback，保持 provider/metrics/8192 atlas/CJK；Phase D：language
+  保持 en_us→selected、metadata/bidi/override/filter 并真实加载 zh_cn。
+- Phase E：sound definition、file/event reference、stream/preload 与 lazy OGG decode 统一接入；
+  真实 sounds.json/OGG 验收后 checkpoint full gate。
+- Phase F：按 font/lang/sounds/panorama/icons/Realms/built-in packs/root metadata 记录 physical、
+  reachable、consumer、surface、lazy/deferred 状态与 reopen 条件；不借机实现无 surface 功能。
+- Phase G：focused/local acceptance、Wiki/parity/ledger 收口、diff review、提交、最终 full gate，
+  并因产品 locale/audio/font 资源行为变化刷新适用 playable gate。
+- Focused tests：metadata/index id/hash/size、key/path 拒绝、missing/size/SHA、namespace/list、
+  single/stack/source-index-pack precedence、filter、mcmeta、lazy unrelated object、budget/accounting；
+  generation rollback；font first-provider/filter/atlas；en_us+zh_cn；sounds.json/OGG/event/stream；
+  反向 guard 禁止生产字体 fallback。受影响 crate、docs-lint fixtures/docs-lint/fmt/diff-check 必跑。
+- checkpoint/安全停止：开工前 gate 已通过；只允许在 Phase B、E 或最终 G 的干净提交且 full
+  gate 通过后停止，或记录可复现外部 blocker 并保留 ledger active；失败 fix-forward，不改历史。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
   immutable resource generation；`BuiltInRegistries.BLOCK` / `ENTITY_TYPE`
@@ -474,8 +504,8 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
   pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
   schema、pack stack 或 cache owner。
 
-当前无 ready P3 工作；只有声明新 screen surface、目标版本产生新 producer 或发现
-当前表面的具体 active producer 时才重开。
+本工程关闭后恢复 maintenance；以后只有目标 index/pack 语义变化、统一 resolver 回退或新
+current-surface consumer 出现时重开。
 
 ### P4：健壮性、运行时性能与平台交付
 
