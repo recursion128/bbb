@@ -163,6 +163,56 @@ impl EntityShaderVariantPipelines {
     }
 }
 
+struct EndPortalCorePipelines {
+    entity_portal: wgpu::RenderPipeline,
+    entity_gateway: wgpu::RenderPipeline,
+    hud_portal: wgpu::RenderPipeline,
+    resident_item_portal: wgpu::RenderPipeline,
+    resident_item_gateway: wgpu::RenderPipeline,
+}
+
+impl EndPortalCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            entity_portal: crate::entity_models::create_entity_model_end_portal_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            entity_gateway: crate::entity_models::create_entity_model_end_gateway_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            hud_portal: crate::entity_models::create_win_screen_end_portal_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            resident_item_portal:
+                crate::item_models::create_resident_item_model_end_portal_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    shaders,
+                )?,
+            resident_item_gateway:
+                crate::item_models::create_resident_item_model_end_gateway_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    shaders,
+                )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -180,6 +230,7 @@ struct CorePipelineGeneration {
     debug_filled: Option<wgpu::RenderPipeline>,
     sunrise: Option<wgpu::RenderPipeline>,
     glint: Option<GlintCorePipelines>,
+    end_portal: Option<EndPortalCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -284,6 +335,13 @@ impl CorePipelineGeneration {
         let glint = (!startup_without_sources)
             .then(|| GlintCorePipelines::prepare(renderer, glint_shaders.as_ref()))
             .transpose()?;
+        let end_portal_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_end_portal_shaders(resources))
+            .transpose()?
+            .flatten();
+        let end_portal = (!startup_without_sources)
+            .then(|| EndPortalCorePipelines::prepare(renderer, end_portal_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -295,6 +353,7 @@ impl CorePipelineGeneration {
             debug_filled,
             sunrise,
             glint,
+            end_portal,
         })
     }
 
@@ -454,6 +513,28 @@ impl CorePipelineGeneration {
                 &mut renderer.resident_item_model_glint_pipeline,
             );
             std::mem::swap(&mut glint.hud_item, &mut renderer.hud_item_glint_pipeline);
+        }
+        if let Some(end_portal) = self.end_portal.as_mut() {
+            std::mem::swap(
+                &mut end_portal.entity_portal,
+                &mut renderer.entity_model_end_portal_pipeline,
+            );
+            std::mem::swap(
+                &mut end_portal.entity_gateway,
+                &mut renderer.entity_model_end_gateway_pipeline,
+            );
+            std::mem::swap(
+                &mut end_portal.hud_portal,
+                &mut renderer.hud_win_portal_pipeline,
+            );
+            std::mem::swap(
+                &mut end_portal.resident_item_portal,
+                &mut renderer.resident_item_model_end_portal_pipeline,
+            );
+            std::mem::swap(
+                &mut end_portal.resident_item_gateway,
+                &mut renderer.resident_item_model_end_gateway_pipeline,
+            );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1412,8 +1493,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            42,
-            "41 GPU handles plus the publication generation must share one mapping"
+            47,
+            "46 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1427,6 +1508,13 @@ mod tests {
                 "selected glint owner {glint_owner} is missing from the shared generation mapping"
             );
         }
+        assert_eq!(
+            production
+                .matches("adapt_selected_end_portal_shaders(resources)")
+                .count(),
+            1,
+            "all current end-portal consumers must share one selected-source adapter"
+        );
         assert_eq!(
             production
                 .matches("adapt_selected_entity_shaders(resources)")
@@ -1532,9 +1620,6 @@ mod tests {
             ("entity_model_dragon_rays_pipeline", "DRAGON_RAYS/core/rendertype_lightning"),
             ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
             ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
-            ("entity_model_end_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
-            ("entity_model_end_gateway_pipeline", "END_GATEWAY/core/rendertype_end_portal"),
-            ("hud_win_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
             ("entity_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
             ("entity_model_outline_cull_pipeline", "OUTLINE_CULL/core/rendertype_outline"),
@@ -1547,8 +1632,6 @@ mod tests {
             ("display_text_pipeline", "TEXT/core/rendertype_text"),
             ("display_text_see_through_pipeline", "TEXT_SEE_THROUGH/core/rendertype_text_see_through"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
-            ("resident_item_model_end_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
-            ("resident_item_model_end_gateway_pipeline", "END_GATEWAY/core/rendertype_end_portal"),
             ("resident_item_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
             ("selection_pipeline", "LINES/core/rendertype_lines"),
             ("translucent_debug_line_pipeline", "LINES_TRANSLUCENT/core/rendertype_lines"),
@@ -1582,10 +1665,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 41, "selected core generation changed");
+        assert_eq!(selected.len(), 46, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            36,
+            31,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

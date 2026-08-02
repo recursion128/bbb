@@ -2893,14 +2893,29 @@ pub(crate) fn create_entity_model_end_portal_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_portal_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_end_portal_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-entity-model-end-portal",
+            &shaders.vertex,
+            &shaders.fragment,
+            "15",
+            &[entity_model_portal_vertex_layout()],
+            ENTITY_MODEL_PORTAL_CULL_MODE,
+            true,
+        );
+    }
+    Ok(create_entity_model_portal_pipeline(
         device,
         format,
         bind_group_layout,
         "bbb-entity-model-end-portal",
         ENTITY_MODEL_END_PORTAL_LAYERS,
-    )
+    ))
 }
 
 /// Full-screen `WinScreen.extractBackground` variant of the same 15-layer
@@ -2910,18 +2925,35 @@ pub(crate) fn create_win_screen_end_portal_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_end_portal_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-win-screen-end-portal",
+            &shaders.hud_vertex,
+            &shaders.fragment,
+            "15",
+            &[entity_model_portal_vertex_layout()],
+            None,
+            false,
+        );
+    }
     let shader = win_screen_end_portal_shader();
-    RenderPipelineBuilder::new(device, "bbb-win-screen-end-portal-pipeline")
-        .shader("bbb-win-screen-end-portal-shader", &shader)
-        .layout(
-            "bbb-win-screen-end-portal-pipeline-layout",
-            &[bind_group_layout],
-        )
-        .vertex_buffers(&[entity_model_portal_vertex_layout()])
-        .color_target(format, None)
-        .cull_mode(None)
-        .build()
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-win-screen-end-portal-pipeline")
+            .shader("bbb-win-screen-end-portal-shader", &shader)
+            .layout(
+                "bbb-win-screen-end-portal-pipeline-layout",
+                &[bind_group_layout],
+            )
+            .vertex_buffers(&[entity_model_portal_vertex_layout()])
+            .color_target(format, None)
+            .cull_mode(None)
+            .build(),
+    )
 }
 
 fn win_screen_end_portal_shader() -> String {
@@ -2969,14 +3001,29 @@ pub(crate) fn create_entity_model_end_gateway_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_portal_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_end_portal_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-entity-model-end-gateway",
+            &shaders.vertex,
+            &shaders.fragment,
+            "16",
+            &[entity_model_portal_vertex_layout()],
+            ENTITY_MODEL_PORTAL_CULL_MODE,
+            true,
+        );
+    }
+    Ok(create_entity_model_portal_pipeline(
         device,
         format,
         bind_group_layout,
         "bbb-entity-model-end-gateway",
         ENTITY_MODEL_END_GATEWAY_LAYERS,
-    )
+    ))
 }
 
 fn create_entity_model_portal_pipeline(

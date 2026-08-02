@@ -1599,12 +1599,24 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
-        let entity_model_end_portal_pipeline =
-            create_entity_model_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_end_gateway_pipeline =
-            create_entity_model_end_gateway_pipeline(&device, format, &terrain_bind_group_layout);
-        let hud_win_portal_pipeline =
-            create_win_screen_end_portal_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_end_portal_pipeline = create_entity_model_end_portal_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
+        let entity_model_end_gateway_pipeline = create_entity_model_end_gateway_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
+        let hud_win_portal_pipeline = create_win_screen_end_portal_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_model_water_mask_pipeline =
             create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
@@ -1808,13 +1820,15 @@ impl Renderer {
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_end_gateway_pipeline =
             create_resident_item_model_end_gateway_pipeline(
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let resident_item_model_outline_pipeline = create_resident_item_model_outline_pipeline(
             &device,
             format,

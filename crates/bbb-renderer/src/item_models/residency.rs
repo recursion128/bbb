@@ -1621,28 +1621,58 @@ pub(crate) fn create_resident_item_model_end_portal_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_resident_item_model_end_cube_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_end_portal_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-resident-item-model-end-portal",
+            &shaders.resident_vertex,
+            &shaders.fragment,
+            "15",
+            &[resident_vertex_layout(), instance_vertex_layout()],
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+            true,
+        );
+    }
+    Ok(create_resident_item_model_end_cube_pipeline(
         device,
         format,
         bind_group_layout,
         "bbb-item-model-resident-end-portal",
         15,
-    )
+    ))
 }
 
 pub(crate) fn create_resident_item_model_end_gateway_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_resident_item_model_end_cube_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedEndPortalShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_end_portal_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-resident-item-model-end-gateway",
+            &shaders.resident_vertex,
+            &shaders.fragment,
+            "16",
+            &[resident_vertex_layout(), instance_vertex_layout()],
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+            true,
+        );
+    }
+    Ok(create_resident_item_model_end_cube_pipeline(
         device,
         format,
         bind_group_layout,
         "bbb-item-model-resident-end-gateway",
         16,
-    )
+    ))
 }
 
 fn create_resident_item_model_end_cube_pipeline(

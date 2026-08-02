@@ -12,6 +12,7 @@ const ITEM_SHADER_ID: &str = "minecraft:core/item";
 const PARTICLE_SHADER_ID: &str = "minecraft:core/particle";
 const POSITION_COLOR_SHADER_ID: &str = "minecraft:core/position_color";
 const GLINT_SHADER_ID: &str = "minecraft:core/glint";
+const END_PORTAL_SHADER_ID: &str = "minecraft:core/rendertype_end_portal";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -53,6 +54,13 @@ pub(crate) struct AdaptedGlintShaders {
     pub(crate) hud_item_vertex: String,
     pub(crate) fragment: String,
     pub(crate) hud_item_fragment: String,
+}
+
+pub(crate) struct AdaptedEndPortalShaders {
+    pub(crate) vertex: String,
+    pub(crate) resident_vertex: String,
+    pub(crate) hud_vertex: String,
+    pub(crate) fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -216,6 +224,35 @@ pub(crate) fn adapt_selected_glint_shaders(
         hud_item_vertex,
         fragment,
         hud_item_fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_end_portal_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedEndPortalShaders>> {
+    let vertex = resources
+        .source_by_id(END_PORTAL_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_end_portal vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(END_PORTAL_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_end_portal fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let vertex = adapt_end_portal_stage(&vertex.source, true)
+        .context("adapt selected end-portal vertex shader")?;
+    let fragment = adapt_end_portal_stage(&fragment.source, false)
+        .context("adapt selected end-portal fragment shader")?;
+    let vertex = adapt_end_portal_atlas_vertex(&vertex)?;
+    Ok(Some(AdaptedEndPortalShaders {
+        resident_vertex: adapt_resident_end_portal_vertex(&vertex)?,
+        hud_vertex: adapt_hud_end_portal_vertex(&vertex)?,
+        vertex,
+        fragment,
     }))
 }
 
@@ -416,6 +453,58 @@ fn adapt_glint_stage(source: &str, vertex_stage: bool) -> Result<String> {
     }
 }
 
+fn adapt_end_portal_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        source
+    } else {
+        let source = source
+            .replace(
+                "const vec3[] COLORS = vec3[](",
+                "const vec3[16] COLORS = vec3[16](",
+            )
+            .replace(
+                "textureProj(Sampler0, texProj0).rgb",
+                "bbb_portal_sample(bbbSkyRectMin, bbbSkyRectSize, texProj0)",
+            )
+            .replace(
+                "textureProj(Sampler1, texProj0 * end_portal_layer(float(i + 1))).rgb",
+                "bbb_portal_sample(bbbPortalRectMin, bbbPortalRectSize, texProj0 * end_portal_layer(float(i + 1)))",
+            );
+        let secondary =
+            Regex::new(r"(?m)^[ \t]*uniform[ \t]+sampler2D[ \t]+Sampler1[ \t]*;[ \t\r]*$")
+                .context("compile end-portal secondary sampler adapter")?;
+        let source = secondary.replace_all(&source, "").into_owned();
+        let secondary_use = Regex::new(r"\bSampler1\b")
+            .context("compile end-portal secondary sampler use adapter")?;
+        let source = secondary_use.replace_all(&source, "Sampler0").into_owned();
+        let uses_atlas_helper = source.contains("bbb_portal_sample");
+        let source = insert_after_version(&source, END_PORTAL_ATLAS_FRAGMENT_IO)?;
+        if uses_atlas_helper {
+            insert_after_version(&source, END_PORTAL_ATLAS_HELPER)?
+        } else {
+            source
+        }
+    };
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_end_portal_stage_locations(&source, vertex_stage)?;
+    if vertex_stage {
+        Ok(source)
+    } else {
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            }],
+        )
+    }
+}
+
 fn specialize_glint_vertex(
     source: &str,
     texture_scale: &str,
@@ -513,6 +602,79 @@ fn adapt_hud_glint_fragment(source: &str) -> Result<String> {
     )
 }
 
+fn adapt_end_portal_atlas_vertex(source: &str) -> Result<String> {
+    let source = insert_after_version(source, END_PORTAL_ATLAS_VERTEX_IO)?;
+    let main_end = source
+        .rfind('}')
+        .context("adapted end-portal vertex shader has no main terminator")?;
+    Ok(format!(
+        "{}    bbbSkyRectMin = BbbSkyRectMin;\n    bbbSkyRectSize = BbbSkyRectSize;\n    bbbPortalRectMin = BbbPortalRectMin;\n    bbbPortalRectSize = BbbPortalRectSize;\n{}",
+        &source[..main_end],
+        &source[main_end..]
+    ))
+}
+
+fn adapt_resident_end_portal_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        END_PORTAL_ATLAS_VERTEX_INPUTS,
+        RESIDENT_END_PORTAL_VERTEX_INPUTS,
+        "selected resident end-portal inputs",
+    )?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    vec4 bbbWorld = bbbModel * vec4(Position, 1.0);\n    gl_Position = ProjMat * bbbWorld;",
+        "selected resident end-portal world transform",
+    )?;
+    Ok(source
+        .replace(
+            "fog_spherical_distance(Position)",
+            "fog_spherical_distance(bbbWorld.xyz)",
+        )
+        .replace(
+            "fog_cylindrical_distance(Position)",
+            "fog_cylindrical_distance(bbbWorld.xyz)",
+        )
+        .replace(
+            "bbbSkyRectMin = BbbSkyRectMin;",
+            "bbbSkyRectMin = BbbSkyRect.xy;",
+        )
+        .replace(
+            "bbbSkyRectSize = BbbSkyRectSize;",
+            "bbbSkyRectSize = BbbSkyRect.zw;",
+        )
+        .replace(
+            "bbbPortalRectMin = BbbPortalRectMin;",
+            "bbbPortalRectMin = BbbPortalRect.xy;",
+        )
+        .replace(
+            "bbbPortalRectSize = BbbPortalRectSize;",
+            "bbbPortalRectSize = BbbPortalRect.zw;",
+        ))
+}
+
+fn adapt_hud_end_portal_vertex(source: &str) -> Result<String> {
+    Ok(replace_required(
+        source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "gl_Position = vec4(Position.xy, 0.0, 1.0);",
+        "selected HUD end-portal clip projection",
+    )?
+    .replace(
+        "texProj0 = projection_from_position(gl_Position);",
+        "texProj0 = vec4(Position.xy * 0.5 + vec2(0.5), 0.0, 1.0);",
+    )
+    .replace(
+        "sphericalVertexDistance = fog_spherical_distance(Position);",
+        "sphericalVertexDistance = 0.0;",
+    )
+    .replace(
+        "cylindricalVertexDistance = fog_cylindrical_distance(Position);",
+        "cylindricalVertexDistance = 0.0;",
+    ))
+}
+
 const GLINT_TEXTURE_HELPER: &str = r#"
 vec2 bbb_glint_uv(vec2 uv, float scale, vec2 offset) {
     vec2 scaled = uv * scale;
@@ -550,6 +712,43 @@ const HUD_GLINT_FRAGMENT_IO: &str = r#"layout(set = 1, binding = 0) uniform text
 layout(set = 1, binding = 1) uniform sampler BbbMaskSampler;
 layout(location = 3) in vec2 bbbMaskUv;
 layout(location = 4) in float bbbMaskAlpha;
+"#;
+
+const END_PORTAL_ATLAS_VERTEX_INPUTS: &str = r#"layout(location = 1) in vec2 BbbSkyRectMin;
+layout(location = 2) in vec2 BbbSkyRectSize;
+layout(location = 3) in vec2 BbbPortalRectMin;
+layout(location = 4) in vec2 BbbPortalRectSize;
+"#;
+
+const END_PORTAL_ATLAS_VERTEX_IO: &str = r#"layout(location = 1) in vec2 BbbSkyRectMin;
+layout(location = 2) in vec2 BbbSkyRectSize;
+layout(location = 3) in vec2 BbbPortalRectMin;
+layout(location = 4) in vec2 BbbPortalRectSize;
+layout(location = 3) out vec2 bbbSkyRectMin;
+layout(location = 4) out vec2 bbbSkyRectSize;
+layout(location = 5) out vec2 bbbPortalRectMin;
+layout(location = 6) out vec2 bbbPortalRectSize;
+"#;
+
+const RESIDENT_END_PORTAL_VERTEX_INPUTS: &str = r#"layout(location = 2) in vec4 BbbSkyRect;
+layout(location = 3) in vec4 BbbPortalRect;
+layout(location = 5) in vec4 BbbModel0;
+layout(location = 6) in vec4 BbbModel1;
+layout(location = 7) in vec4 BbbModel2;
+layout(location = 8) in vec4 BbbModel3;
+"#;
+
+const END_PORTAL_ATLAS_FRAGMENT_IO: &str = r#"layout(location = 3) in vec2 bbbSkyRectMin;
+layout(location = 4) in vec2 bbbSkyRectSize;
+layout(location = 5) in vec2 bbbPortalRectMin;
+layout(location = 6) in vec2 bbbPortalRectSize;
+"#;
+
+const END_PORTAL_ATLAS_HELPER: &str = r#"
+vec3 bbb_portal_sample(vec2 rectMin, vec2 rectSize, vec4 projectedUv) {
+    vec2 uv = rectMin + fract(projectedUv.xy / projectedUv.w) * rectSize;
+    return texture(Sampler0, uv).rgb;
+}
 "#;
 
 #[allow(clippy::too_many_arguments)]
@@ -690,6 +889,74 @@ pub(crate) fn create_selected_entity_pipeline(
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_end_portal_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    vertex_source: &str,
+    fragment_source: &str,
+    portal_layers: &str,
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    cull_mode: Option<wgpu::Face>,
+    with_depth: bool,
+) -> Result<wgpu::RenderPipeline> {
+    let defines = &[("PORTAL_LAYERS", Some(portal_layers))];
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-end-portal-vertex-shader",
+        shader_with_defines(vertex_source, defines),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected end-portal vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-end-portal-fragment-shader",
+        shader_with_defines(fragment_source, defines),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected end-portal fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-end-portal-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: with_depth.then(|| {
+                crate::pipeline_builder::depth_stencil_state(
+                    crate::gpu::DEPTH_FORMAT,
+                    true,
+                    wgpu::CompareFunction::LessEqual,
+                )
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -1284,6 +1551,29 @@ fn bind_glint_stage_locations(source: &str, vertex_stage: bool) -> Result<String
         })
 }
 
+fn bind_end_portal_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("out", "vec4", "texProj0", 0, true),
+            ("out", "float", "sphericalVertexDistance", 1, true),
+            ("out", "float", "cylindricalVertexDistance", 2, true),
+        ]
+    } else {
+        &[
+            ("in", "vec4", "texProj0", 0, true),
+            ("in", "float", "sphericalVertexDistance", 1, true),
+            ("in", "float", "cylindricalVertexDistance", 2, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -1400,6 +1690,52 @@ void main() {
         assert!(resident.contains("sample_lightmap(BbbLightOverlay.xy)"));
         assert!(resident.contains("bbb_overlay_color(BbbLightOverlay.zw)"));
         assert!(resident.contains("Color * BbbTint"));
+    }
+
+    #[test]
+    fn end_portal_adapter_projects_atlas_resident_and_hud_inputs() {
+        let vertex = r#"#version 450
+layout(location = 0) in vec3 Position;
+layout(location = 0) out vec4 texProj0;
+layout(location = 1) out float sphericalVertexDistance;
+layout(location = 2) out float cylindricalVertexDistance;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    texProj0 = projection_from_position(gl_Position);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+}
+"#;
+        let atlas = adapt_end_portal_atlas_vertex(vertex).expect("atlas projection");
+        assert!(atlas.contains("layout(location = 4) in vec2 BbbPortalRectSize"));
+        assert!(atlas.contains("bbbSkyRectMin = BbbSkyRectMin"));
+        let resident = adapt_resident_end_portal_vertex(&atlas).expect("resident projection");
+        assert!(resident.contains("layout(location = 2) in vec4 BbbSkyRect"));
+        assert!(resident.contains("mat4 bbbModel = mat4(BbbModel0"));
+        assert!(resident.contains("bbbPortalRectSize = BbbPortalRect.zw"));
+        let hud = adapt_hud_end_portal_vertex(&atlas).expect("HUD projection");
+        assert!(hud.contains("gl_Position = vec4(Position.xy, 0.0, 1.0)"));
+        assert!(hud.contains("texProj0 = vec4(Position.xy * 0.5 + vec2(0.5), 0.0, 1.0)"));
+        assert!(hud.contains("sphericalVertexDistance = 0.0"));
+
+        let fragment = r#"#version 330
+uniform sampler2D Sampler0;
+uniform sampler2D Sampler1;
+in vec4 texProj0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+out vec4 fragColor;
+void main() {
+    vec3 color = textureProj(Sampler0, texProj0).rgb;
+    color += textureProj(Sampler1, texProj0 * end_portal_layer(float(i + 1))).rgb;
+    fragColor = vec4(color, 1.0);
+}
+"#;
+        let fragment = adapt_end_portal_stage(fragment, false).expect("fragment projection");
+        assert!(fragment.contains("bbb_portal_sample(bbbSkyRectMin, bbbSkyRectSize, texProj0)"));
+        assert!(fragment.contains("bbb_portal_sample(bbbPortalRectMin, bbbPortalRectSize"));
+        assert!(!fragment.contains("Sampler1"));
+        assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
     }
 
     #[test]
@@ -1657,6 +1993,14 @@ void main() {
             id: GLINT_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let end_portal_vertex_key = ShaderSourceKey {
+            id: END_PORTAL_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let end_portal_fragment_key = ShaderSourceKey {
+            id: END_PORTAL_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -1784,6 +2128,28 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: glint_fragment_key,
                         resource_id: "minecraft:shaders/core/glint.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    end_portal_vertex_key.clone(),
+                    ShaderSource {
+                        key: end_portal_vertex_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_end_portal.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    end_portal_fragment_key.clone(),
+                    ShaderSource {
+                        key: end_portal_fragment_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_end_portal.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -2055,6 +2421,167 @@ void main() {
             .render_offscreen_frame()
             .expect("restored embedded entity frame");
         assert!(!frame_has_green_entity_pixel(&restored));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_end_portal_shader_drives_hud_and_preloads_all_current_portal_surfaces() {
+        let root = unique_temp_dir("selected-end-portal-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_end_portal.fsh"),
+            r#"#version 330
+in vec4 texProj0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+out vec4 fragColor;
+void main() {
+    float keep = texProj0.x + sphericalVertexDistance + cylindricalVertexDistance;
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected end-portal shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(71, selected)
+            .expect("selected end-portal generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(END_PORTAL_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected end-portal fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected end-portal variants compile atomically");
+        let sky = crate::EntityModelTextureRef {
+            path: "textures/environment/end_sky.png",
+            size: [128, 128],
+        };
+        let portal = crate::EntityModelTextureRef {
+            path: "textures/entity/end_portal/end_portal.png",
+            size: [256, 256],
+        };
+        renderer
+            .upload_entity_model_textures(&[
+                crate::EntityModelTextureImage::with_physical_size(
+                    sky,
+                    [1, 1],
+                    vec![255, 255, 255, 255],
+                ),
+                crate::EntityModelTextureImage::with_physical_size(
+                    portal,
+                    [1, 1],
+                    vec![255, 255, 255, 255],
+                ),
+            ])
+            .expect("portal textures");
+        renderer.set_hud_game_event_screen(Some(crate::HudGameEventScreen::Win(
+            crate::HudWinScreen {
+                generation: 71,
+                scroll: 0.0,
+                show_easter_egg_logo: false,
+                lines: Arc::from([]),
+            },
+        )));
+        assert_eq!(renderer.core_shader_generation(), Some(71));
+        let selected_frame = renderer
+            .render_offscreen_frame()
+            .expect("selected portal frame");
+        assert!(frame_has_green_entity_pixel(&selected_frame));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_end_portal\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected end-portal filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(72, filtered)
+            .expect("filtered end-portal generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required end-portal stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_end_portal"));
+        assert_eq!(renderer.core_shader_generation(), Some(71));
+        assert!(frame_has_green_entity_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("retained portal frame")
+        ));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .clone()
+            .with_client_resource_generation(73, default_stack)
+            .expect("default end-portal generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected end-portal shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(73));
+        assert!(!frame_has_green_entity_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("restored portal frame")
+        ));
+
+        let official = root.join("official-fragment");
+        write_pack_metadata(&official, None);
+        let expanded_vertex = default_catalog
+            .source_by_id(END_PORTAL_SHADER_ID, ShaderStage::Vertex)
+            .expect("default expanded end-portal vertex")
+            .source
+            .clone();
+        write_text(
+            &official.join("assets/minecraft/shaders/core/rendertype_end_portal.vsh"),
+            &expanded_vertex,
+        );
+        let official_selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [official])
+                .expect("selected official vertex pack");
+        let official_roots = base
+            .with_client_resource_generation(74, official_selected)
+            .expect("selected official end-portal generation");
+        let official_catalog = bbb_pack::ShaderSourceCatalog::load(&official_roots)
+            .expect("selected official-fragment catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&official_catalog.renderer_projection(), false)
+            })
+            .expect("official end-portal fragment compiles through the atlas projection");
+        assert_eq!(renderer.core_shader_generation(), Some(74));
+        renderer
+            .render_offscreen_frame()
+            .expect("official projected portal frame");
 
         std::fs::remove_dir_all(root).unwrap();
     }
