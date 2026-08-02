@@ -1,5 +1,9 @@
 # Resource Image Input Safety
 
+> Canonical scope：资源可信链与 fail-closed 规则见
+> [`docs/wiki/mechanisms/resources/offline-asset-trust.md`](wiki/mechanisms/resources/offline-asset-trust.md)。
+> 本页只保留不可信输入边界的详细 evidence。
+
 This document freezes the bounded PNG boundary for selected client resource
 packs and downloaded profile textures. It refines the ownership and atomic
 generation rules in

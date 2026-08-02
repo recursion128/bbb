@@ -1,5 +1,9 @@
 # Simulation Publication Snapshot Cost
 
+> Canonical scope：当前状态分类与发布边界见
+> [`docs/wiki/architecture/client-boundaries.md`](wiki/architecture/client-boundaries.md)。
+> 本页只保留 publication snapshot 的详细 evidence。
+
 This document is the pre-start contract and measurement record for the
 high-risk engineering slice that replaces the deep `WorldStore` clone in each
 simulation publication. It refines the immutable-publication boundary in

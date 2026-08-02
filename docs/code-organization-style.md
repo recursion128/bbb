@@ -1,5 +1,9 @@
 # Code Organization Style
 
+> Canonical scope：当前代码组织规则已收敛到
+> [`docs/wiki/development/architecture-rules.md`](wiki/development/architecture-rules.md)。
+> 本页保留英文详细示例，不独立拥有规则状态。
+
 This repo is a native Minecraft Java 26.1 client rewrite. Code should be organized
 by semantic ownership, not by convenience. Large catch-all `lib.rs` and `main.rs`
 files are transitional only; new work should move the codebase toward smaller,

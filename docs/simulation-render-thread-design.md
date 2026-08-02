@@ -1,5 +1,9 @@
 # Simulation / Render Thread Split
 
+> Canonical scope：当前 runtime 状态边界见
+> [`docs/wiki/architecture/client-boundaries.md`](wiki/architecture/client-boundaries.md)。
+> 本页只保留 thread/queue/shutdown 工程的详细 evidence。
+
 This document freezes the ownership and migration contract for moving native
 client simulation off the winit/render thread. It is the prerequisite design
 for the `goal.md` simulation/render decoupling engineering slice.

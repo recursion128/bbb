@@ -1,5 +1,9 @@
 # Simulation / Publication / Render Performance
 
+> Canonical scope：当前性能验证口径见
+> [`docs/wiki/architecture/performance-and-validation.md`](wiki/architecture/performance-and-validation.md)。
+> 本页只保留 repo-native 历史基线和 owner-level evidence。
+
 This document is the pre-start contract and measurement record for the
 high-risk engineering slice that removes render-driven simulation work,
 projects only visible entities, reuses render extraction state, and makes

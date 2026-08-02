@@ -1,5 +1,9 @@
 # Deterministic Lifecycle / Fault Soak Gate
 
+> Canonical scope：当前门禁规则见
+> [`docs/wiki/development/testing-and-gates.md`](wiki/development/testing-and-gates.md)。本页
+> 只保留 lifecycle soak 的专门 evidence 和命令合同。
+
 This document freezes the delivery contract for the P4 lifecycle/fault soak
 item in `docs/unsupported-features.md`. The gate composes the existing live
 Vanilla 26.1 playable scenario; it does not replace that scenario with fixture

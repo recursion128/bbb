@@ -22,9 +22,37 @@ ROADMAP_STATUSES = """\
 
 
 class DocsLintTests(unittest.TestCase):
+    def sync_inventory(self, repo: Path) -> None:
+        paths = sorted(
+            str(path.relative_to(repo)) for path in repo.rglob("*.md")
+        )
+        inventory = repo / "docs" / "wiki" / "development" / "document-inventory.md"
+        inventory_relative = str(inventory.relative_to(repo))
+        if inventory_relative not in paths:
+            paths.append(inventory_relative)
+            paths.sort()
+        rows = "\n".join(
+            f"| `{path}` | fixture | 是 | 同路径 | 保留 | fixture | 测试 | 无冲突 |"
+            for path in paths
+        )
+        inventory.write_text(
+            """\
+# 测试文档清单
+
+这是中文 Wiki lint 的最小测试清单，用于验证所有 Markdown 都被唯一记录。
+
+| 当前路径 | 当前职责 | 是否仍准确 | Canonical destination | 处理方式 | 引用者/脚本 | 内容类别 | 重复或冲突 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+"""
+            + rows
+            + "\n",
+            encoding="utf-8",
+        )
+
     def make_repo(self, root: Path) -> Path:
         repo = root / "repo"
-        (repo / "docs").mkdir(parents=True)
+        (repo / "docs" / "wiki" / "parity").mkdir(parents=True)
+        (repo / "docs" / "wiki" / "development").mkdir(parents=True)
         (repo / "goal.md").write_text(
             "# Goal\n\n" + ROADMAP_STATUSES,
             encoding="utf-8",
@@ -50,6 +78,39 @@ class DocsLintTests(unittest.TestCase):
 """,
             encoding="utf-8",
         )
+        (repo / "docs" / "README.md").write_text(
+            "# 文档入口\n\n这是测试仓库的中文文档入口，链接到[中文机制 Wiki](wiki/README.md)，用于验证导航和链接。\n",
+            encoding="utf-8",
+        )
+        (repo / "docs" / "wiki" / "README.md").write_text(
+            """\
+# 中文机制 Wiki
+
+这是 fixture 的中文 Wiki 入口，正文足够完整且不是英文占位页面。
+
+- [术语表](glossary.md)
+- [机制矩阵](parity/vanilla-26.1-matrix.md)
+- [文档清单](development/document-inventory.md)
+""",
+            encoding="utf-8",
+        )
+        (repo / "docs" / "wiki" / "glossary.md").write_text(
+            "# 术语表\n\n## 核心术语\n\n这里用中文解释语义所有者、状态投影、回退行为、聚焦测试和完整门禁，供测试页面共享。\n\n## 维护规则\n\n内容不是占位符，并由入口页面导航。\n",
+            encoding="utf-8",
+        )
+        (repo / "docs" / "wiki" / "parity" / "vanilla-26.1-matrix.md").write_text(
+            """\
+# Vanilla 机制矩阵
+
+这是中文机制覆盖测试矩阵，状态只用于审计，不维护第二份工程任务。
+
+| Mechanism ID | 领域 | Vanilla owner/class | BBB owner/module | Required state/projection | 状态 | Focused test/evidence | Route / reopen condition |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `fixture-valid` | 测试 | `Owner.method` | fixture | value | `equivalent` | fixture | 版本变化时重开 |
+""",
+            encoding="utf-8",
+        )
+        self.sync_inventory(repo)
         return repo
 
     def run_lint(self, repo: Path) -> subprocess.CompletedProcess[str]:
@@ -173,6 +234,81 @@ class DocsLintTests(unittest.TestCase):
             "# Not needed items need a Vanilla statement or source-code anchor",
             result.stdout,
         )
+
+    def test_broken_wiki_link_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            index = repo / "docs" / "wiki" / "README.md"
+            index.write_text(
+                index.read_text(encoding="utf-8") + "\n[断链](missing.md)\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("broken relative Markdown link", result.stdout)
+
+    def test_duplicate_mechanism_id_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            index = repo / "docs" / "wiki" / "README.md"
+            for name in ("one.md", "two.md"):
+                (repo / "docs" / "wiki" / name).write_text(
+                    "# 中文机制\n\n机制 ID：`fixture-duplicate`\n\n这是完整中文测试机制页面，包含所有者、状态和验证说明。\n",
+                    encoding="utf-8",
+                )
+                index.write_text(
+                    index.read_text(encoding="utf-8") + f"\n[{name}]({name})\n",
+                    encoding="utf-8",
+                )
+            self.sync_inventory(repo)
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("duplicate mechanism id fixture-duplicate", result.stdout)
+
+    def test_illegal_parity_status_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            matrix = repo / "docs" / "wiki" / "parity" / "vanilla-26.1-matrix.md"
+            matrix.write_text(
+                matrix.read_text(encoding="utf-8").replace(
+                    "`equivalent`", "`almost-done`"
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("illegal parity status", result.stdout)
+
+    def test_orphan_wiki_page_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "docs" / "wiki" / "orphan.md").write_text(
+                "# 孤儿页面\n\n这是没有从 Wiki 入口可达的中文机制页面，应被文档 lint 明确拒绝。\n\n它不是占位内容。\n",
+                encoding="utf-8",
+            )
+            self.sync_inventory(repo)
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("orphan canonical Wiki page", result.stdout)
+
+    def test_open_parity_state_without_ledger_or_goal_route_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            matrix = repo / "docs" / "wiki" / "parity" / "vanilla-26.1-matrix.md"
+            matrix.write_text(
+                matrix.read_text(encoding="utf-8").replace(
+                    "`equivalent`", "`active`"
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("invalid open-state route", result.stdout)
 
 
 if __name__ == "__main__":

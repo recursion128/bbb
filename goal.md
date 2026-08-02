@@ -407,7 +407,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
-- p1-generated-facts: maintenance
+- p1-generated-facts: active
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
@@ -421,19 +421,19 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
-证据由 `scripts/playable-gate.sh` 和
-`docs/playable-session-lifecycle-design.md` 持续维护；archive 的 lifecycle、
+证据由 `scripts/playable-gate.sh`、Wiki 测试门禁页和专门 lifecycle evidence 持续
+维护；archive 的 lifecycle、
 interaction 与 failure-evidence milestone 是关闭依据。新垂直 slice 若改变可玩
 行为，必须扩展适用场景并按 checkpoint 规则刷新 stamp；门禁回退按 P0 处理。
 
 ### P1：可机械推导的 vanilla 事实
 
-状态：`maintenance`。生成物提交、普通 build/test 不读取工作区外源码、共享
-Tree-sitter frontend 与反向 source guard 是持续不变量。只有以下触发之一出现时
-才开有界 slice：结构门禁命中具体第二事实源；目标版本升级产生权威 source diff；
-生成输入/模板变化；或代码 review 指出一个可定位的重复 registry/ordinal/tag/
-membership owner。没有具体文件、事实源与验收测试的手工 grep 不能在 active=0
-时生成审计 slice。
+状态：`active`。当前唯一工程是中文 Vanilla 26.1 机制等价与 BBB Wiki；冻结合同、
+Phase A～H、迁移规则、focused fixtures、checkpoint 与安全停止点见
+`docs/wiki-engineering-design.md`。该 docs/workflow slice 只审计和迁移知识、强化
+文档门禁；发现产品差异时只更新 ledger/parity 路由，不实现功能。关闭后本路线恢复
+`maintenance`，生成物、共享 Tree-sitter frontend 与反向 source guard 继续作为
+结构不变量。
 
 ### P2：非实体客户端行为 closeout
 
@@ -454,7 +454,7 @@ CLI，F3+I entity payload 继续由 entity owner 唯一负责。
 
 状态：`maintenance`。selected/startup/server pack、push/pop、原子 immutable
 resource generation、profile/map/variant/painting/pattern/trim 动态资源与诊断
-owner 已由 `docs/resource-pack-lifecycle-design.md`、资源预算合同、archive 和
+owner 已由 Wiki 资源机制页、专门资源 evidence、archive 和
 playable 证据覆盖；剩余 non-profile producer 属于当前不存在且未声明进入范围的
 server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 
@@ -482,24 +482,24 @@ server/world-list 与 pack-selection screen，按账本保留为 `not-needed`。
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
 关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
-官方 26.1 离线启动、共同 replay/capture 合同、正式结果与 GPU-duration 精确
-blocker 由
-`docs/official-client-performance-benchmark.md` 唯一维护；不得把 MangoHud
+官方 26.1 离线启动、共同 replay/capture 合同与 GPU-duration 边界由 Wiki 等负载机制
+页维护，正式结果和 host/tool hash 由 `docs/official-client-performance-benchmark.md`
+作为专门 evidence 维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
-  原子回滚和诊断由协议测试、`docs/resource-input-safety-design.md`、
-  `docs/resource-data-audio-budget-design.md` 及 full gate 维护；
+  原子回滚和诊断由协议测试、Wiki 资源机制页、专门 resource evidence 及 full gate
+  维护；
 - simulation/net/resource/mesh/audio owner 的 bounded queue、generation、
-  shutdown/join 与 panic propagation 由
-  `docs/simulation-render-thread-design.md` 和 focused tests 维护；
+  shutdown/join 与 panic propagation 由 Wiki 边界页、专门 simulation evidence 和
+  focused tests 维护；
 - repo-native before/after 与 runtime observation 已有稳定基线；同载门禁要求
   每次性能变化重新验证共同 workload，不能通过减少可见或 resident 工作伪造
   胜负结论；
-- `scripts/lifecycle-soak-gate.sh` 依
-  `docs/lifecycle-soak-gate-design.md` 组合三轮真实 live playable、
+- `scripts/lifecycle-soak-gate.sh` 依 Wiki 测试门禁页和专门 lifecycle evidence 组合
+  三轮真实 live playable、
   quit/kick、feature-gated surface/window/no-audio 故障、终态 gauge、进程
   指标趋势与 clean exit；`last-lifecycle-soak`/归档 report 是 maintenance
   证据，fixture 重放不能替代该 gate。

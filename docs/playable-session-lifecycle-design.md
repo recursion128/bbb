@@ -1,5 +1,10 @@
 # Playable Session Lifecycle Engineering Slice
 
+> Canonical scope：当前门禁和生命周期分类见
+> [`docs/wiki/development/testing-and-gates.md`](wiki/development/testing-and-gates.md)与
+> [`docs/wiki/architecture/client-boundaries.md`](wiki/architecture/client-boundaries.md)。
+> 本页只保留 playable lifecycle 的专门 evidence。
+
 This document freezes the high-risk engineering contract for extending the
 repository-native playable gate from one initial login and interaction smoke to
 the Vanilla 26.1 session lifecycle. The gate remains an integration test of the

@@ -3,7 +3,7 @@
 This document freezes the high-risk engineering slice that closes the
 Vanilla 26.1 `ClientboundAddEntityPacket` client lifecycle. It refines the
 entity ownership described in
-[`native-client-architecture.md`](native-client-architecture.md) without
+[`native-client-architecture.md`](../native-client-architecture.md) without
 claiming that every entity-family model, animation, constructor default, or
 client tick is complete.
 

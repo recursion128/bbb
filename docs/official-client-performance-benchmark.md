@@ -1,5 +1,9 @@
 # Official Minecraft 26.1 Equal-Load Benchmark
 
+> Canonical scope：比较机制、invalid-run 与指标口径见中文
+> [`docs/wiki/mechanisms/performance/equal-load-benchmark.md`](wiki/mechanisms/performance/equal-load-benchmark.md)。
+> 本页只拥有当前 host 的详细 hash、工具身份、命令和外部产物证据。
+
 This document owns the repeatable comparison contract between the repo-native
 client and the unmodified official Minecraft Java 26.1 client. The launcher,
 replay generator, capture parsers, and smoke runners live in

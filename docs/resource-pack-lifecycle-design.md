@@ -1,5 +1,10 @@
 # Resource-Pack Stack and Reload Lifecycle
 
+> Canonical scope：资源 generation 与可信链见
+> [`docs/wiki/mechanisms/resources/offline-asset-trust.md`](wiki/mechanisms/resources/offline-asset-trust.md)及
+> [`docs/wiki/architecture/overview.md`](wiki/architecture/overview.md)。本页只保留已完成
+> lifecycle 工程的详细 evidence。
+
 This document freezes the high-risk engineering contract for the P3 resource
 slice. It refines the ownership rules in
 [`native-client-architecture.md`](native-client-architecture.md) and the

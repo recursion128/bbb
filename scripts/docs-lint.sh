@@ -5,6 +5,7 @@ repo_root=${BBB_DOCS_LINT_REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && 
 goal="$repo_root/goal.md"
 archive="$repo_root/docs/goal-archive.md"
 feature_ledger="$repo_root/docs/unsupported-features.md"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 # workflow-v5 (2026-07-21) rewrote goal.md down to 513 lines: completed
 # foundations moved to the goal-archive milestone index and workflow prose was
@@ -230,7 +231,7 @@ for design_doc in docs/*-design.md; do
   [ -e "$design_doc" ] || continue
   design_base=$(basename "$design_doc")
   design_referenced=0
-  for ref_root in goal.md AGENTS.md docs/*.md; do
+  for ref_root in goal.md AGENTS.md docs/*.md docs/wiki/*.md docs/wiki/*/*.md docs/wiki/*/*/*.md; do
     [ -e "$ref_root" ] || continue
     case "$ref_root" in
       docs/goal-archive.md | "$design_doc")
@@ -247,6 +248,14 @@ for design_doc in docs/*-design.md; do
     failed=1
   fi
 done
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi
+
+if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
+  failed=1
+fi
 
 if [ "$failed" -ne 0 ]; then
   exit 1

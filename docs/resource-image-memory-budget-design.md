@@ -1,5 +1,9 @@
 # Resource Image Aggregate Memory Budget
 
+> Canonical scope：资源可信链见
+> [`docs/wiki/mechanisms/resources/offline-asset-trust.md`](wiki/mechanisms/resources/offline-asset-trust.md)。
+> 本页只保留 image/atlas memory budget 的详细 evidence。
+
 This document freezes the high-risk engineering contract for bounding decoded
 resource images across an atomic resource reload and the unified downloaded
 profile-texture owner. It extends

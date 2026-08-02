@@ -4,9 +4,9 @@ Status: completed on 2026-07-26.
 
 This document freezes the engineering contract for closing the remaining
 resource-pack item-tint gap. It refines the item ownership boundaries in
-[`native-client-architecture.md`](native-client-architecture.md), the selected
+[`native-client-architecture.md`](../native-client-architecture.md), the selected
 resource-generation contract in
-[`resource-pack-lifecycle-design.md`](resource-pack-lifecycle-design.md), and
+[`resource-pack-lifecycle-design.md`](../resource-pack-lifecycle-design.md), and
 the resolved-leaf contract in
 [`special-item-model-rendering-design.md`](special-item-model-rendering-design.md).
 

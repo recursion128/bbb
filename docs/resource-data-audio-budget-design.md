@@ -1,5 +1,9 @@
 # Resource Data And Audio Aggregate Budgets
 
+> Canonical scope：资源可信链见
+> [`docs/wiki/mechanisms/resources/offline-asset-trust.md`](wiki/mechanisms/resources/offline-asset-trust.md)。
+> 本页只保留 data/audio budget 的详细 evidence。
+
 This document freezes the high-risk engineering contract for bounding selected
 resource JSON, model/font/sound collections, and decoded audio. It extends the
 atomic owner in

@@ -1,5 +1,9 @@
 # Cargo Build Performance
 
+> Canonical scope：当前构建/缓存规则见
+> [`docs/wiki/development/build-and-cache.md`](wiki/development/build-and-cache.md)。本页仅
+> 保留详细命令参考和版本化测量证据；若与 Wiki 或 `goal.md` 冲突，以后两者为准。
+
 This document records the current Cargo build baseline and the local workflow
 used to keep focused tests fast without weakening checkpoint or final merge gates.
 

@@ -1,5 +1,11 @@
 # Entity Tick And Publication Cost
 
+> Canonical scope：当前状态边界见
+> [`docs/wiki/architecture/client-boundaries.md`](wiki/architecture/client-boundaries.md)，
+> 性能方法见
+> [`docs/wiki/architecture/performance-and-validation.md`](wiki/architecture/performance-and-validation.md)。
+> 本页只保留已完成工程的详细证据。
+
 This document is the pre-start contract and measurement record for the
 high-risk engineering slice that reduces the end-to-end cost of one entity
 client tick followed by an immutable simulation publication. It refines the

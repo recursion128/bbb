@@ -18,10 +18,12 @@ configuration UI.
 - Use local vanilla 26.1 sources first:
   `~/Work/mc-code/sources/26.1/`
 - Follow the repo code organization and style rules in:
-  `docs/code-organization-style.md`
+  `docs/wiki/development/architecture-rules.md`
 - Crate boundaries, ownership rules, and state taxonomy:
-  `docs/native-client-architecture.md`
+  `docs/wiki/architecture/overview.md` and
+  `docs/wiki/architecture/client-boundaries.md`
 - Build/target/cache policy and measured build baselines:
+  `docs/wiki/development/build-and-cache.md` and
   `docs/cargo-build-performance.md`
 - Current priorities, hard constraints, structural invariants, slice shapes,
   ready contracts, hardest-ready-first selection, and the checkpoint/full-gate
@@ -160,7 +162,7 @@ Every worker prompt should include:
   `scripts/cargo-dev.sh test -p <crate> <filter>`.
 - Do not delete assigned Cargo target caches after every slice. For periodic
   cleanup of stale slice caches use `scripts/cargo-dev.sh prune` (dry-run by
-  default; keep-list documented in `docs/cargo-build-performance.md`).
+  default; keep-list documented in `docs/wiki/development/build-and-cache.md`).
 - Repo-local `target` directories must not be generated or committed.
 - Do not force-remove a dirty worker worktree until its diff has been reviewed
   and confirmed integrated, duplicated, or intentionally abandoned.
@@ -176,14 +178,14 @@ failure-localization tool only.
 
 deny-warnings is baked into the workspace lints table; never set
 `RUSTFLAGS='-D warnings'` manually — toggling `RUSTFLAGS` invalidates the whole
-shared target cache in both directions (see `docs/cargo-build-performance.md`).
+shared target cache in both directions (see `docs/wiki/development/build-and-cache.md`).
 Developers may optionally run `scripts/install-hooks.sh` for the seconds-only
 local pre-commit checks; it never replaces the full gate.
 
 For daily focused tests, prefer `scripts/cargo-dev.sh fast-test` with an
 assigned external `CARGO_TARGET_DIR`; it exports the `RUST_MIN_STACK`
 headroom that opt-level-0 frames need (see
-`docs/cargo-build-performance.md`). `scripts/cargo-dev.sh` also covers focused
+`docs/wiki/development/build-and-cache.md`). `scripts/cargo-dev.sh` also covers focused
 tests, timings, `sccache` evaluation, and target-size inspection.
 Track the latest fully gated commit; any delivered or merged HEAD must have
 passed the full gate.
@@ -191,7 +193,7 @@ passed the full gate.
 ## Implementation Guidance
 
 - Keep changes scoped to the selected slice.
-- Organize code by semantic modules per `docs/code-organization-style.md`; avoid
+- Organize code by semantic modules per `docs/wiki/development/architecture-rules.md`; avoid
   growing catch-all `lib.rs`/`main.rs` sections.
 - Do not split files just to reduce line count. Files under 1000 lines stay
   intact by default; a split needs a named semantic owner, a narrow API, focused

@@ -1,5 +1,10 @@
 # Native Client Architecture
 
+> Canonical scope：当前总体边界和状态分类见
+> [`docs/wiki/architecture/overview.md`](wiki/architecture/overview.md)与
+> [`docs/wiki/architecture/client-boundaries.md`](wiki/architecture/client-boundaries.md)。
+> 本页保留英文深度映射与历史上下文，不独立拥有当前架构状态。
+
 This document defines the target architecture for the native Minecraft Java 26.1
 client rewrite. The goal is to stay aligned with vanilla client semantics while
 using Rust-friendly data ownership, testable systems, and performance-oriented
