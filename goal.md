@@ -142,6 +142,44 @@ deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
 `cargo check` 一条不可省：只跑 `cargo test` 会漏掉非测试（交付 bin）构建的
 unused/dead-code lint。
 
+## 当前 active 工程：LocalPlayer sprint key 与 sprint latch 分离
+
+目标是关闭 `LocalPlayer` tick/input 决策域中一个已复现的双 owner：原始 sprint 键位与
+玩家实体 sprint latch 当前共用 `ClientInputState.sprint`，导致双击前进会污染
+`ServerboundPlayerInputPacket`，松开 sprint 键又会错误停止已经启动的 sprint。完成时两种
+状态拥有独立且唯一的 owner，start/stop、movement/FOV/combat/vehicle 消费和 outbound 顺序
+均由同一 canonical sprint state 派生。
+
+- Vanilla 依据：`KeyboardInput.tick` 只把 `keySprint.isDown()` 写入 `Input.sprint`；
+  `LocalPlayer.aiStep` 独立调用 `setSprinting`，`tick` 先发送变化后的 raw `Input`，再由
+  `sendIsSprintingIfNeeded` 发送 sprint command，最后发送 player/vehicle movement。
+- 唯一 owner 与方向：`bbb-native::ClientInputState` 只拥有 raw key/edge/timer 与最后发送
+  baseline；`bbb-world::LocalPlayerState` 唯一拥有 canonical sprint latch 和 Vanilla eligibility；
+  net 只编码命令，movement、vehicle、combat、camera/FOV 只读 world latch，不得反读按键。
+- 决策合同：双击前进不得设置 raw sprint bit；松开 sprint 键本身不得停止 latch；start 必须
+  同时满足 forward、mobility、food/controlled sprintable vehicle、shallow-water、item-use、
+  fall-flying、slow-pose 条件；run/swim stop、major collision 与 attack restart 顺序复刻
+  `canStartSprinting`/`shouldStop*`。同一机会 raw input 先于 sprint command，sprint command
+  先于 movement；passenger 分支保持 rotation/vehicle 顺序。
+- 生命周期：login/respawn/level generation 原子重置或按 Vanilla keep-entity-data 继承 latch
+  与 last-sent baseline；旧 generation 的 trigger/pending transition 不得泄漏；发送失败不推进
+  baseline，下一 tick 可重试。移除旧 `input.sprint` 双重语义、独立 effective resolver 和
+  attack pending shadow state，全部 production caller 迁到单一路径。
+- 非目标：不改 movement physics、collision 几何、key mapping、协议 wire、renderer、screen、
+  其他 `LocalPlayer`/`MultiPlayerGameMode` 决策，亦不借此关闭 broad 104/39 owner 行。
+- 串行阶段：A 完成本地 Vanilla/BBB 只读审计并冻结合同；B 建立 world latch/eligibility 与
+  generation lifecycle；C 迁移 raw input、tick command ordering、movement/vehicle/combat/FOV；
+  D 删除旧路径并加 reverse source guard；E focused/live acceptance、Wiki/ledger/matrix 收口、
+  diff review、提交、full gate 与 playable gate。
+- Focused：`bbb-world` local-player movement/fluid/respawn，`bbb-native` input/movement/mouse/runtime，
+  `bbb-net` outbound ordering；覆盖双击 raw bit、key release、浅水/水下/缓行/fall-flying/失明、
+  food/vehicle、collision、attack held-key restart、queue retry、generation reset/keep 与 source guard。
+- Checkpoint：基线 `fc1dce60e` 已 full-gated；合同独立清洁提交，B–D 作为高风险状态机提交，
+  E 收口提交后最终 HEAD full gate。产品输入行为变化，最终必须刷新 fixture/live playable stamp。
+- 安全停止点：仅允许合同已提交且 ledger 仍明确 active 的干净 Phase A、实现与 focused tests
+  已通过的干净 checkpoint，或最终 full-gated/playable HEAD；blocker 必须有可复现命令、外部
+  owner 与精确重启条件。
+
 ## Slice 工作流（每轮）
 
 有 ready 工作时选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0
