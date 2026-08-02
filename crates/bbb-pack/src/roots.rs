@@ -238,18 +238,6 @@ impl PackRoots {
         self.indexed_vanilla_assets.as_ref().map(Arc::clone)
     }
 
-    /// Resolves one selected client resource while treating the launcher's
-    /// SHA-1-addressed asset index as part of Vanilla's default pack. A startup
-    /// or server pack resource wins, and a pack filter can still remove the
-    /// lower Vanilla resource. The object store is an offline fallback only;
-    /// this method never downloads or materializes assets.
-    pub fn resource_with_indexed_vanilla_fallback(
-        &self,
-        location: &ResourceLocation,
-    ) -> Result<Option<crate::PackResource>> {
-        Ok(self.resource_stack().get_resource(location))
-    }
-
     fn resource_pack_stack(&self) -> PackResourceStack {
         if let Some(generation) = self.client_resource_generation() {
             return generation.resources().without_first();
@@ -627,7 +615,7 @@ mod tests {
     };
 
     #[test]
-    fn indexed_vanilla_fallback_replaces_source_stub_but_selected_pack_wins() {
+    fn indexed_vanilla_provider_replaces_source_stub_but_selected_pack_wins() {
         let root = unique_temp_dir("indexed-vanilla-precedence");
         let source = root.join("sources/26.1/assets/minecraft/font/test.zip");
         std::fs::create_dir_all(source.parent().unwrap()).unwrap();
@@ -703,10 +691,7 @@ mod tests {
         std::fs::create_dir_all(high_resource.parent().unwrap()).unwrap();
         std::fs::write(&high_resource, b"selected override").unwrap();
         let roots = roots.with_resource_pack_dirs([high]);
-        let resource = roots
-            .resource_with_indexed_vanilla_fallback(&location)
-            .unwrap()
-            .unwrap();
+        let resource = roots.resource_stack().get_resource(&location).unwrap();
         assert_eq!(std::fs::read(resource.path).unwrap(), b"selected override");
         let stack = roots.resource_stack().get_resource_stack(&location);
         assert_eq!(
@@ -724,10 +709,7 @@ mod tests {
         std::fs::create_dir_all(nested_resource.parent().unwrap()).unwrap();
         std::fs::write(&nested_resource, b"nested selected override").unwrap();
         let roots = roots.with_resource_pack_dirs([nested_high]);
-        let resource = roots
-            .resource_with_indexed_vanilla_fallback(&location)
-            .unwrap()
-            .unwrap();
+        let resource = roots.resource_stack().get_resource(&location).unwrap();
         assert_eq!(
             std::fs::read(resource.path).unwrap(),
             b"nested selected override"
@@ -747,10 +729,7 @@ mod tests {
         let filtered = PackRoots::from_root(&root)
             .unwrap()
             .with_resource_pack_dirs([filter]);
-        assert!(filtered
-            .resource_with_indexed_vanilla_fallback(&location)
-            .unwrap()
-            .is_none());
+        assert!(filtered.resource_stack().get_resource(&location).is_none());
         std::fs::remove_dir_all(root).unwrap();
     }
 

@@ -99,8 +99,8 @@ pub fn load_font_providers(
             "font definitions",
         )?;
         let location = font_definition_location(id)?;
-        let resource = roots
-            .resource_with_indexed_vanilla_fallback(&location)?
+        let resource = stack
+            .get_resource(&location)
             .with_context(|| format!("missing font definition {}", location.id()))?;
         let value: Value = stack
             .read_json_resource(&resource, "font definition")
@@ -495,6 +495,15 @@ mod tests {
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    #[test]
+    fn font_production_sources_have_no_index_specific_resource_resolver() {
+        let forbidden = ["resource_with_indexed", "_vanilla_fallback"].concat();
+        for source in [include_str!("providers.rs"), include_str!("unihex.rs")] {
+            let production = source.split("#[cfg(test)]").next().unwrap_or(source);
+            assert!(!production.contains(&forbidden));
+        }
+    }
 
     #[test]
     fn selected_resource_generation_applies_font_pack_precedence() {

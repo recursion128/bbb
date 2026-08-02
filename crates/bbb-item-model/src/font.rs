@@ -140,6 +140,8 @@ pub fn load_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
     let resource = resources
         .get_resource(&location)
         .context("missing ASCII font texture minecraft:textures/font/ascii.png")?;
+    resources.validate_resource(&resource, "ASCII font texture")?;
+    resources.validate_resource_metadata(&resource, "ASCII font texture metadata")?;
     SpriteImage::from_png_file_with_resource_stack(
         "minecraft:textures/font/ascii",
         resource.path,
@@ -159,6 +161,8 @@ fn load_font_bitmap_texture(roots: &PackRoots, file: &str) -> Result<SpriteImage
     let resource = resources
         .get_resource(&location)
         .with_context(|| format!("missing font bitmap texture {}", location.id()))?;
+    resources.validate_resource(&resource, "font bitmap texture")?;
+    resources.validate_resource_metadata(&resource, "font bitmap texture metadata")?;
     SpriteImage::from_png_file_with_resource_stack(location.id(), resource.path, &resources)
 }
 

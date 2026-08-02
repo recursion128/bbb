@@ -51,9 +51,11 @@ pub(super) fn load_unihex_atlas_page(
     definition: &FontUnihexProviderDefinition,
 ) -> Result<UnihexAtlasPage> {
     let location = ResourceLocation::parse(&definition.hex_file)?;
-    let resource = roots
-        .resource_with_indexed_vanilla_fallback(&location)?
+    let stack = roots.resource_stack();
+    let resource = stack
+        .get_resource(&location)
         .with_context(|| format!("missing unihex archive {}", location.id()))?;
+    stack.validate_resource(&resource, "unihex archive")?;
     let file = File::open(&resource.path)
         .with_context(|| format!("open unihex archive {}", resource.path.display()))?;
     let size = file
@@ -72,9 +74,7 @@ pub(super) fn load_unihex_atlas_page(
         .context("unihex glyph count overflow")?
         .checked_mul(96)
         .context("unihex retained byte count overflow")?;
-    roots
-        .resource_stack()
-        .reserve_derived_resource_bytes(retained_bytes, "retained unihex glyph catalog")?;
+    stack.reserve_derived_resource_bytes(retained_bytes, "retained unihex glyph catalog")?;
     Ok(page)
 }
 
