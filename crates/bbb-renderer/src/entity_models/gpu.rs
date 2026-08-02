@@ -2356,6 +2356,7 @@ pub(crate) fn create_entity_core_pipelines(
             defines,
             &[entity_model_textured_vertex_layout()],
             blend,
+            wgpu::ColorWrites::ALL,
             depth_write_enabled,
             depth_compare,
             cull_mode,
@@ -2404,6 +2405,7 @@ pub(crate) fn create_entity_core_pipelines(
             ],
             &[entity_model_dissolve_vertex_layout()],
             ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            wgpu::ColorWrites::ALL,
             true,
             ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
             ENTITY_MODEL_SURFACE_NO_CULL_MODE,
@@ -2808,26 +2810,46 @@ pub(crate) fn create_entity_model_water_mask_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-entity-model-water-mask-pipeline")
-        .shader(
-            "bbb-entity-model-water-mask-shader",
-            ENTITY_MODEL_WATER_MASK_SHADER,
-        )
-        .layout(
-            "bbb-entity-model-water-mask-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedEntitySpecialShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders.and_then(|shaders| shaders.water_mask.as_ref()) {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
             &[bind_group_layout],
-        )
-        .vertex_buffers(&[entity_model_vertex_layout()])
-        .color_target(format, ENTITY_MODEL_WATER_MASK_BLEND)
-        .color_write_mask(ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK)
-        .cull_mode(ENTITY_MODEL_WATER_MASK_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+            "bbb-selected-entity-model-water-mask",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[entity_model_vertex_layout()],
+            ENTITY_MODEL_WATER_MASK_BLEND,
+            ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
             ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
-        ))
-        .build()
+            ENTITY_MODEL_WATER_MASK_CULL_MODE,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-entity-model-water-mask-pipeline")
+            .shader(
+                "bbb-entity-model-water-mask-shader",
+                ENTITY_MODEL_WATER_MASK_SHADER,
+            )
+            .layout(
+                "bbb-entity-model-water-mask-pipeline-layout",
+                &[bind_group_layout],
+            )
+            .vertex_buffers(&[entity_model_vertex_layout()])
+            .color_target(format, ENTITY_MODEL_WATER_MASK_BLEND)
+            .color_write_mask(ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK)
+            .cull_mode(ENTITY_MODEL_WATER_MASK_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+                ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+            ))
+            .build(),
+    )
 }
 
 pub(crate) fn create_entity_model_dragon_rays_pipeline(
@@ -2867,8 +2889,26 @@ pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_position_color_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedEntitySpecialShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders.and_then(|shaders| shaders.dragon_rays_depth.as_ref()) {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-dragon-rays-depth",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[entity_model_vertex_layout()],
+            None,
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
+            wgpu::CompareFunction::LessEqual,
+            ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
+        );
+    }
+    Ok(create_entity_model_position_color_pipeline(
         device,
         format,
         bind_group_layout,
@@ -2877,7 +2917,7 @@ pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
         wgpu::CompareFunction::LessEqual,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
-    )
+    ))
 }
 
 /// Vanilla `RenderPipelines.LEASH` (`RenderTypes.leash()`): `POSITION_COLOR_LIGHTMAP`, no cull, no
@@ -2887,22 +2927,42 @@ pub(crate) fn create_entity_model_leash_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-entity-model-leash-pipeline")
-        .shader("bbb-entity-model-leash-shader", ENTITY_MODEL_LEASH_SHADER)
-        .layout(
-            "bbb-entity-model-leash-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedEntitySpecialShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders.and_then(|shaders| shaders.leash.as_ref()) {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
             &[bind_group_layout, lightmap_bind_group_layout],
-        )
-        .vertex_buffers(&[entity_model_vertex_layout()])
-        .color_target(format, None)
-        .cull_mode(None)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+            "bbb-selected-entity-model-leash",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[entity_model_vertex_layout()],
+            None,
+            wgpu::ColorWrites::ALL,
             true,
             wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+            None,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-entity-model-leash-pipeline")
+            .shader("bbb-entity-model-leash-shader", ENTITY_MODEL_LEASH_SHADER)
+            .layout(
+                "bbb-entity-model-leash-pipeline-layout",
+                &[bind_group_layout, lightmap_bind_group_layout],
+            )
+            .vertex_buffers(&[entity_model_vertex_layout()])
+            .color_target(format, None)
+            .cull_mode(None)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                true,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build(),
+    )
 }
 
 pub(crate) fn create_entity_model_end_portal_pipeline(
@@ -3333,6 +3393,7 @@ pub(crate) fn create_entity_model_scroll_pipeline(
             ],
             &[entity_model_scroll_vertex_layout()],
             Some(ENTITY_MODEL_SCROLL_BLEND),
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
             ENTITY_MODEL_SCROLL_CULL_MODE,
@@ -3374,6 +3435,7 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
             ],
             &[entity_model_scroll_vertex_layout()],
             Some(ENTITY_MODEL_ADDITIVE_BLEND),
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
             ENTITY_MODEL_SCROLL_CULL_MODE,
@@ -3408,6 +3470,7 @@ pub(crate) fn create_entity_model_guardian_beam_pipeline(
             &[("ALPHA_CUTOUT", Some("0.1")), ("PER_FACE_LIGHTING", None)],
             &[entity_model_scroll_vertex_layout()],
             ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_BEAM_DEPTH_COMPARE,
             ENTITY_MODEL_SCROLL_CULL_MODE,
@@ -3444,6 +3507,7 @@ pub(crate) fn create_entity_model_end_crystal_beam_pipeline(
             &[("ALPHA_CUTOUT", Some("0.1")), ("NO_OVERLAY", None)],
             &[entity_model_scroll_vertex_layout()],
             ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_BEAM_DEPTH_COMPARE,
             ENTITY_MODEL_SCROLL_CULL_MODE,
@@ -3479,6 +3543,7 @@ pub(crate) fn create_entity_model_beacon_beam_opaque_pipeline(
             &[],
             &[entity_model_scroll_vertex_layout()],
             ENTITY_MODEL_BEAM_OPAQUE_BLEND,
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_BEAM_OPAQUE_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_BEAM_DEPTH_COMPARE,
             ENTITY_MODEL_BEACON_BEAM_CULL_MODE,
@@ -3515,6 +3580,7 @@ pub(crate) fn create_entity_model_beacon_beam_translucent_pipeline(
             &[],
             &[entity_model_scroll_vertex_layout()],
             ENTITY_MODEL_BEAM_TRANSLUCENT_BLEND,
+            wgpu::ColorWrites::ALL,
             ENTITY_MODEL_BEAM_TRANSLUCENT_DEPTH_WRITE_ENABLED,
             ENTITY_MODEL_BEAM_DEPTH_COMPARE,
             ENTITY_MODEL_BEACON_BEAM_CULL_MODE,

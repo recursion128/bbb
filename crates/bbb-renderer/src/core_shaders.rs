@@ -27,6 +27,10 @@ const SKY_SHADER_ID: &str = "minecraft:core/sky";
 const STARS_SHADER_ID: &str = "minecraft:core/stars";
 const POSITION_TEX_COLOR_SHADER_ID: &str = "minecraft:core/position_tex_color";
 const POSITION_TEX_SHADER_ID: &str = "minecraft:core/position_tex";
+const POSITION_SHADER_ID: &str = "minecraft:core/position";
+const LEASH_SHADER_ID: &str = "minecraft:core/rendertype_leash";
+const WATER_MASK_SHADER_ID: &str = "minecraft:core/rendertype_water_mask";
+const ENTITY_SHADOW_SHADER_ID: &str = "minecraft:core/rendertype_entity_shadow";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -136,6 +140,13 @@ pub(crate) struct AdaptedPositionTexColorShaders {
     pub(crate) end_sky: AdaptedShaderPair,
     pub(crate) hud: AdaptedShaderPair,
     pub(crate) vignette: AdaptedShaderPair,
+}
+
+pub(crate) struct AdaptedEntitySpecialShaders {
+    pub(crate) dragon_rays_depth: Option<AdaptedShaderPair>,
+    pub(crate) leash: Option<AdaptedShaderPair>,
+    pub(crate) water_mask: Option<AdaptedShaderPair>,
+    pub(crate) shadow: Option<AdaptedShaderPair>,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -605,6 +616,63 @@ pub(crate) fn adapt_selected_position_tex_color_shaders(
             fragment: adapt(PositionTexColorProjection::Vignette, false)
                 .context("adapt selected vignette fragment shader")?,
         },
+    }))
+}
+
+pub(crate) fn adapt_selected_entity_special_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<AdaptedEntitySpecialShaders> {
+    Ok(AdaptedEntitySpecialShaders {
+        dragon_rays_depth: adapt_selected_entity_special_pair(
+            resources,
+            POSITION_SHADER_ID,
+            EntitySpecialShaderKind::Position,
+        )?,
+        leash: adapt_selected_entity_special_pair(
+            resources,
+            LEASH_SHADER_ID,
+            EntitySpecialShaderKind::Leash,
+        )?,
+        water_mask: adapt_selected_entity_special_pair(
+            resources,
+            WATER_MASK_SHADER_ID,
+            EntitySpecialShaderKind::WaterMask,
+        )?,
+        shadow: adapt_selected_entity_special_pair(
+            resources,
+            ENTITY_SHADOW_SHADER_ID,
+            EntitySpecialShaderKind::Shadow,
+        )?,
+    })
+}
+
+#[derive(Clone, Copy)]
+enum EntitySpecialShaderKind {
+    Position,
+    Leash,
+    WaterMask,
+    Shadow,
+}
+
+fn adapt_selected_entity_special_pair(
+    resources: &CoreShaderSourceProjection,
+    shader_id: &str,
+    kind: EntitySpecialShaderKind,
+) -> Result<Option<AdaptedShaderPair>> {
+    let vertex = resources
+        .source_by_id(shader_id, ShaderStage::Vertex)
+        .with_context(|| format!("prepared core shaders are missing {shader_id} vertex stage"))?;
+    let fragment = resources
+        .source_by_id(shader_id, ShaderStage::Fragment)
+        .with_context(|| format!("prepared core shaders are missing {shader_id} fragment stage"))?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedShaderPair {
+        vertex: adapt_entity_special_stage(&vertex.source, true, kind)
+            .with_context(|| format!("adapt selected {shader_id} vertex shader"))?,
+        fragment: adapt_entity_special_stage(&fragment.source, false, kind)
+            .with_context(|| format!("adapt selected {shader_id} fragment shader"))?,
     }))
 }
 
@@ -1246,6 +1314,52 @@ fn adapt_vignette_position_tex_color_fragment(source: &str) -> Result<String> {
     )
 }
 
+fn adapt_entity_special_stage(
+    source: &str,
+    vertex_stage: bool,
+    kind: EntitySpecialShaderKind,
+) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if matches!(kind, EntitySpecialShaderKind::Shadow) {
+        replace_required(
+            &source,
+            "#define ProjMat bbbCamera.BbbViewProj",
+            "#define ProjMat bbbCamera.BbbViewProjViewOffsetZ",
+            "selected entity-shadow view offset",
+        )?
+    } else {
+        source
+    };
+    let source = if matches!(kind, EntitySpecialShaderKind::Leash) {
+        adapt_entity_lightmap(&source)?
+            .replace("in ivec2 UV2;", "in vec2 UV2;")
+            .replace("sample_lightmap(Sampler2, UV2)", "sample_lightmap(UV2)")
+    } else {
+        source
+    };
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_entity_special_stage_locations(&source, vertex_stage, kind)?;
+    let bindings = match kind {
+        EntitySpecialShaderKind::Leash => vec![SamplerBinding {
+            source_name: "Sampler2".to_string(),
+            texture_group: 1,
+            texture_binding: 0,
+            sampler_group: 1,
+            sampler_binding: 1,
+        }],
+        EntitySpecialShaderKind::Shadow => vec![SamplerBinding {
+            source_name: "Sampler0".to_string(),
+            texture_group: 0,
+            texture_binding: 1,
+            sampler_group: 0,
+            sampler_binding: 2,
+        }],
+        EntitySpecialShaderKind::Position | EntitySpecialShaderKind::WaterMask => Vec::new(),
+    };
+    adapt_combined_samplers(&source, &bindings)
+}
+
 fn project_sky_dynamic_uniform(source: &str, dynamic_group: u32) -> Result<String> {
     let source = replace_required(
         source,
@@ -1706,6 +1820,7 @@ pub(crate) fn create_selected_entity_pipeline(
     defines: &[(&str, Option<&str>)],
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     blend: Option<wgpu::BlendState>,
+    color_write_mask: wgpu::ColorWrites,
     depth_write_enabled: bool,
     depth_compare: wgpu::CompareFunction,
     cull_mode: Option<wgpu::Face>,
@@ -1754,7 +1869,7 @@ pub(crate) fn create_selected_entity_pipeline(
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
-                    write_mask: wgpu::ColorWrites::ALL,
+                    write_mask: color_write_mask,
                 })],
             }),
             multiview: None,
@@ -2875,6 +2990,76 @@ fn bind_sky_stage_locations(
         })
 }
 
+fn bind_entity_special_stage_locations(
+    source: &str,
+    vertex_stage: bool,
+    kind: EntitySpecialShaderKind,
+) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = match (kind, vertex_stage) {
+        (EntitySpecialShaderKind::Position, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+        ],
+        (EntitySpecialShaderKind::Position, false) => &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+        (EntitySpecialShaderKind::Leash, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 1, true),
+            ("in", "vec2", "UV2", 2, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+        ],
+        (EntitySpecialShaderKind::Leash, false) => &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+        (EntitySpecialShaderKind::WaterMask, true) => &[("in", "vec3", "Position", 0, true)],
+        (EntitySpecialShaderKind::WaterMask, false) => &[("out", "vec4", "fragColor", 0, true)],
+        (EntitySpecialShaderKind::Shadow, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 2, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "vertexColor", 2, true),
+            ("out", "vec2", "texCoord0", 3, true),
+        ],
+        (EntitySpecialShaderKind::Shadow, false) => &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec4", "vertexColor", 2, true),
+            ("in", "vec2", "texCoord0", 3, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+    };
+    let source = declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })?;
+    if matches!(kind, EntitySpecialShaderKind::Leash) {
+        let (from, to) = if vertex_stage {
+            (
+                "flat out vec4 vertexColor;",
+                "layout(location = 2) flat out vec4 vertexColor;",
+            )
+        } else {
+            (
+                "flat in vec4 vertexColor;",
+                "layout(location = 2) flat in vec4 vertexColor;",
+            )
+        };
+        replace_required(&source, from, to, "selected leash flat vertex color")
+    } else {
+        Ok(source)
+    }
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -3474,6 +3659,47 @@ void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModu
     }
 
     #[test]
+    fn entity_special_adapter_preserves_flat_light_and_shadow_projection() {
+        let leash_vertex = r#"#version 330
+in vec3 Position;
+in vec4 Color;
+in ivec2 UV2;
+uniform sampler2D Sampler2;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+flat out vec4 vertexColor;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = length(Position);
+    cylindricalVertexDistance = length(Position.xz);
+    vertexColor = Color * sample_lightmap(Sampler2, UV2);
+}
+"#;
+        let leash = adapt_entity_special_stage(leash_vertex, true, EntitySpecialShaderKind::Leash)
+            .expect("leash projection");
+        assert!(leash.contains("layout(location = 2) in vec2 UV2"));
+        assert!(leash.contains("layout(location = 2) flat out vec4 vertexColor"));
+        assert!(leash.contains("sample_lightmap(UV2)"));
+        assert!(leash.contains("layout(set = 1, binding = 0) uniform texture2D"));
+
+        let shadow_fragment = r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModulator; }
+"#;
+        let shadow =
+            adapt_entity_special_stage(shadow_fragment, false, EntitySpecialShaderKind::Shadow)
+                .expect("entity-shadow projection");
+        assert!(shadow.contains("#define ProjMat bbbCamera.BbbViewProjViewOffsetZ"));
+        assert!(shadow.contains("layout(location = 3) in vec2 texCoord0"));
+        assert!(shadow.contains("layout(set = 0, binding = 1) uniform texture2D"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -3840,9 +4066,21 @@ void main() {
             id: POSITION_TEX_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
-        CoreShaderSourceProjection::new(
-            generation,
-            Arc::new(BTreeMap::from([
+        let entity_special_keys = [
+            POSITION_SHADER_ID,
+            LEASH_SHADER_ID,
+            WATER_MASK_SHADER_ID,
+            ENTITY_SHADOW_SHADER_ID,
+        ]
+        .into_iter()
+        .flat_map(|id| {
+            [ShaderStage::Vertex, ShaderStage::Fragment].map(|stage| ShaderSourceKey {
+                id: id.to_string(),
+                stage,
+            })
+        })
+        .collect::<Vec<_>>();
+        let mut sources = BTreeMap::from([
                 (
                     vertex_key.clone(),
                     ShaderSource {
@@ -4262,8 +4500,29 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         imports: Vec::new(),
                     },
                 ),
-            ])),
-        )
+        ]);
+        for key in entity_special_keys {
+            let extension = match key.stage {
+                ShaderStage::Vertex => "vsh",
+                ShaderStage::Fragment => "fsh",
+            };
+            let shader_path = key
+                .id
+                .strip_prefix("minecraft:core/")
+                .expect("fixture shader namespace")
+                .to_string();
+            sources.insert(
+                key.clone(),
+                ShaderSource {
+                    key,
+                    resource_id: format!("minecraft:shaders/core/{shader_path}.{extension}"),
+                    pack_id: "vanilla".to_string(),
+                    source: String::new(),
+                    imports: Vec::new(),
+                },
+            );
+        }
+        CoreShaderSourceProjection::new(generation, Arc::new(sources))
     }
 
     fn assert_red(pixel: [u8; 4]) {
@@ -5356,6 +5615,92 @@ void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
         .iter()
         .any(|needle| error.to_string().contains(needle)));
         assert_eq!(renderer.core_shader_generation(), Some(161));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_entity_special_family_preloads_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-entity-special");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/position.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+out vec4 fragColor;
+void main() { fragColor = vec4(0.0, 1.0, sphericalVertexDistance * 0.0, 1.0 + cylindricalVertexDistance * 0.0) * ColorModulator; }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_leash.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+flat in vec4 vertexColor;
+out vec4 fragColor;
+void main() { fragColor = vertexColor + vec4((sphericalVertexDistance + cylindricalVertexDistance) * 0.0); }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_water_mask.fsh"),
+            "#version 330\nout vec4 fragColor;\nvoid main() { fragColor = ColorModulator; }\n",
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_entity_shadow.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, clamp(texCoord0, 0.0, 1.0)) * vertexColor + vec4((sphericalVertexDistance + cylindricalVertexDistance) * 0.0); }
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected entity-special shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(171, selected)
+            .expect("selected entity-special generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected dragon-depth, leash, water-mask, and shadow compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(171));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/(?:position|rendertype_leash|rendertype_water_mask|rendertype_entity_shadow)\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected entity-special filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(172, filtered)
+            .expect("filtered entity-special generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required entity-special stages must reject the generation");
+        assert!(error.to_string().contains("core/position"));
+        assert_eq!(renderer.core_shader_generation(), Some(171));
 
         std::fs::remove_dir_all(root).unwrap();
     }

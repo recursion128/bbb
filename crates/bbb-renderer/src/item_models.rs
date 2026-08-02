@@ -1375,22 +1375,42 @@ pub(crate) fn create_entity_shadow_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-entity-shadow-pipeline")
-        .shader("bbb-entity-shadow-shader", ENTITY_SHADOW_SHADER)
-        .layout(
-            "bbb-entity-shadow-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedEntitySpecialShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders.and_then(|shaders| shaders.shadow.as_ref()) {
+        return crate::core_shaders::create_selected_entity_pipeline(
+            device,
+            format,
             &[bind_group_layout, lightmap_bind_group_layout],
-        )
-        .vertex_buffers(&[item_model_vertex_layout()])
-        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+            "bbb-selected-entity-shadow",
+            &shaders.vertex,
+            &shaders.fragment,
+            &[],
+            &[item_model_vertex_layout()],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            wgpu::ColorWrites::ALL,
             false,
             wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+            ITEM_MODEL_PIPELINE_CULL_MODE,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-entity-shadow-pipeline")
+            .shader("bbb-entity-shadow-shader", ENTITY_SHADOW_SHADER)
+            .layout(
+                "bbb-entity-shadow-pipeline-layout",
+                &[bind_group_layout, lightmap_bind_group_layout],
+            )
+            .vertex_buffers(&[item_model_vertex_layout()])
+            .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+            .cull_mode(ITEM_MODEL_PIPELINE_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                false,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build(),
+    )
 }
 
 /// Builds the item-model render pipeline. Reuses the terrain camera+atlas bind-group layout (so it binds
@@ -1435,6 +1455,7 @@ pub(crate) fn create_item_model_z_offset_forward_pipeline(
             &[("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZForward"))],
             &[item_model_vertex_layout()],
             Some(wgpu::BlendState::REPLACE),
+            wgpu::ColorWrites::ALL,
             true,
             wgpu::CompareFunction::LessEqual,
             ITEM_MODEL_PIPELINE_CULL_MODE,

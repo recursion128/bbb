@@ -1600,13 +1600,15 @@ impl Renderer {
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let entity_model_leash_pipeline = create_entity_model_leash_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_end_portal_pipeline = create_entity_model_end_portal_pipeline(
             &device,
             format,
@@ -1625,8 +1627,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             None,
         )?;
-        let entity_model_water_mask_pipeline =
-            create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_water_mask_pipeline = create_entity_model_water_mask_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_model_outline_pipeline = create_entity_model_outline_pipeline(
             &device,
             format,
@@ -1734,7 +1740,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let item_model_z_offset_forward_pipeline = create_item_model_z_offset_forward_pipeline(
             &device,
             format,

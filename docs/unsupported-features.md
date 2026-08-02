@@ -73,8 +73,8 @@ Matrix route: `resources-reload-listeners`
   selected `core/glint` source now own one atomic pipeline generation. Remaining active work is
   the rest of the current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The exhaustive source guard classifies all 87 renderer pipeline owners: 69 are in the selected
-  core generation, 8 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
+  The exhaustive source guard classifies all 87 renderer pipeline owners: 73 are in the selected
+  core generation, 4 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
   post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The single
   `core/entity` adapter now preloads and atomically swaps breeze/energy scroll, guardian/end-crystal
   beam, dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull with
@@ -90,7 +90,9 @@ Matrix route: `resources-reload-listeners`
   source pair now drives the retained lightmap target through its exact uniform layout. One shared sky adapter now drives
   sky, stars, end-sky, and celestial pipelines through the retained camera/texture/dynamic layouts. The same selected
   `core/position_tex_color` source is resolved once and projected across end-sky, ordinary HUD, and vignette consumers.
-  The next cursor is the entity-special static family.
+  Dragon-rays depth, leash, water-mask, and entity-shadow selected sources now share one entity-special
+  preparation family while preserving their distinct vertex formats, lightmap/sampler layouts, write masks,
+  depth, cull, and view-offset projection. The next cursor is the final four static owners.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.

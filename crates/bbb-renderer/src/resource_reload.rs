@@ -280,6 +280,50 @@ struct LightningCorePipelines {
     lightning: wgpu::RenderPipeline,
 }
 
+struct EntitySpecialCorePipelines {
+    dragon_rays_depth: wgpu::RenderPipeline,
+    leash: wgpu::RenderPipeline,
+    water_mask: wgpu::RenderPipeline,
+    shadow: wgpu::RenderPipeline,
+}
+
+impl EntitySpecialCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: &crate::core_shaders::AdaptedEntitySpecialShaders,
+    ) -> Result<Self> {
+        Ok(Self {
+            dragon_rays_depth:
+                crate::entity_models::create_entity_model_dragon_rays_depth_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    Some(shaders),
+                )?,
+            leash: crate::entity_models::create_entity_model_leash_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                Some(shaders),
+            )?,
+            water_mask: crate::entity_models::create_entity_model_water_mask_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                Some(shaders),
+            )?,
+            shadow: crate::item_models::create_entity_shadow_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                Some(shaders),
+            )?,
+        })
+    }
+}
+
 impl LightningCorePipelines {
     fn prepare(
         renderer: &Renderer,
@@ -501,6 +545,7 @@ struct CorePipelineGeneration {
     outline: Option<OutlineCorePipelines>,
     beacon_beam: Option<BeaconBeamCorePipelines>,
     lightning: Option<LightningCorePipelines>,
+    entity_special: Option<EntitySpecialCorePipelines>,
     lines: Option<LineCorePipelines>,
     text: Option<TextCorePipelines>,
     text_background: Option<wgpu::RenderPipeline>,
@@ -640,6 +685,13 @@ impl CorePipelineGeneration {
         let lightning = (!startup_without_sources)
             .then(|| LightningCorePipelines::prepare(renderer, lightning_shaders.as_ref()))
             .transpose()?;
+        let entity_special_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_entity_special_shaders(resources))
+            .transpose()?;
+        let entity_special = entity_special_shaders
+            .as_ref()
+            .map(|shaders| EntitySpecialCorePipelines::prepare(renderer, shaders))
+            .transpose()?;
         let line_shaders = (!startup_without_sources)
             .then(|| crate::core_shaders::adapt_selected_line_shaders(resources))
             .transpose()?
@@ -720,6 +772,7 @@ impl CorePipelineGeneration {
             outline,
             beacon_beam,
             lightning,
+            entity_special,
             lines,
             text,
             text_background,
@@ -939,6 +992,18 @@ impl CorePipelineGeneration {
                 &mut renderer.entity_model_dragon_rays_pipeline,
             );
             std::mem::swap(&mut lightning.lightning, &mut renderer.lightning_pipeline);
+        }
+        if let Some(entity) = self.entity_special.as_mut() {
+            std::mem::swap(
+                &mut entity.dragon_rays_depth,
+                &mut renderer.entity_model_dragon_rays_depth_pipeline,
+            );
+            std::mem::swap(&mut entity.leash, &mut renderer.entity_model_leash_pipeline);
+            std::mem::swap(
+                &mut entity.water_mask,
+                &mut renderer.entity_model_water_mask_pipeline,
+            );
+            std::mem::swap(&mut entity.shadow, &mut renderer.entity_shadow_pipeline);
         }
         if let Some(lines) = self.lines.as_mut() {
             std::mem::swap(&mut lines.selection, &mut renderer.selection_pipeline);
@@ -1939,8 +2004,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            70,
-            "69 GPU handles plus the publication generation must share one mapping"
+            74,
+            "73 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -2030,6 +2095,13 @@ mod tests {
                 .count(),
             1,
             "end sky, HUD, and vignette must share one position-tex-color adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_entity_special_shaders(resources)")
+                .count(),
+            1,
+            "dragon depth, leash, water mask, and shadow must share one family adapter"
         );
         assert_eq!(
             production
@@ -2132,11 +2204,7 @@ mod tests {
         #[rustfmt::skip]
         let pending = [
             ("block_destroy_pipeline", "CRUMBLING/core/rendertype_crumbling"),
-            ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
-            ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
-            ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
-            ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
         ];
@@ -2158,10 +2226,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 69, "selected core generation changed");
+        assert_eq!(selected.len(), 73, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            8,
+            4,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

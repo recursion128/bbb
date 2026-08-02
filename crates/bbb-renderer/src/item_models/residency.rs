@@ -1917,6 +1917,7 @@ fn create_selected_resident_entity_pipeline(
         defines,
         &[resident_vertex_layout(), instance_vertex_layout()],
         blend,
+        wgpu::ColorWrites::ALL,
         depth_write_enabled,
         wgpu::CompareFunction::LessEqual,
         cull_mode,
