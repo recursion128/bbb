@@ -1000,22 +1000,22 @@ pub(crate) fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     }
 }
 
-pub(crate) struct ItemCorePipelineGeneration {
+pub(crate) struct ItemCorePipelines {
     pub(crate) dynamic_cutout: wgpu::RenderPipeline,
     pub(crate) dynamic_translucent: wgpu::RenderPipeline,
     pub(crate) resident_cutout: wgpu::RenderPipeline,
     pub(crate) resident_translucent: wgpu::RenderPipeline,
 }
 
-pub(crate) fn create_item_core_pipeline_generation(
+pub(crate) fn create_item_core_pipelines(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
     resources: &CoreShaderSourceProjection,
-) -> Result<ItemCorePipelineGeneration> {
+) -> Result<ItemCorePipelines> {
     let Some(shaders) = crate::core_shaders::adapt_selected_item_shaders(resources)? else {
-        return Ok(ItemCorePipelineGeneration {
+        return Ok(ItemCorePipelines {
             dynamic_cutout: create_item_model_pipeline(
                 device,
                 format,
@@ -1043,7 +1043,7 @@ pub(crate) fn create_item_core_pipeline_generation(
         });
     };
     let defines = [("ALPHA_CUTOUT", Some("0.1"))];
-    Ok(ItemCorePipelineGeneration {
+    Ok(ItemCorePipelines {
         dynamic_cutout: create_selected_item_pipeline(
             device,
             format,

@@ -23,9 +23,9 @@ use descriptors::{
     ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
-    create_particle_atlas_gpu, create_particle_core_pipeline_generation, create_particle_pipeline,
+    create_particle_atlas_gpu, create_particle_core_pipelines, create_particle_pipeline,
     create_selected_particle_pipeline, update_particle_atlas_gpu, ParticleAtlasGpu,
-    ParticleCorePipelineGeneration, ParticlePipelineKind, ParticleVertex,
+    ParticleCorePipelines, ParticlePipelineKind, ParticleVertex,
 };
 
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;

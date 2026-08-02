@@ -2228,7 +2228,7 @@ pub(crate) fn create_entity_model_pipeline(
         .build()
 }
 
-pub(crate) struct EntityCorePipelineGeneration {
+pub(crate) struct EntityCorePipelines {
     pub(crate) textured: wgpu::RenderPipeline,
     pub(crate) textured_cull: wgpu::RenderPipeline,
     pub(crate) solid: wgpu::RenderPipeline,
@@ -2245,15 +2245,15 @@ pub(crate) struct EntityCorePipelineGeneration {
     pub(crate) eyes: wgpu::RenderPipeline,
 }
 
-pub(crate) fn create_entity_core_pipeline_generation(
+pub(crate) fn create_entity_core_pipelines(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
     resources: &CoreShaderSourceProjection,
-) -> Result<EntityCorePipelineGeneration> {
+) -> Result<EntityCorePipelines> {
     let Some(shaders) = crate::core_shaders::adapt_selected_entity_shaders(resources)? else {
-        return Ok(EntityCorePipelineGeneration {
+        return Ok(EntityCorePipelines {
             textured: create_entity_model_textured_pipeline(
                 device,
                 format,
@@ -2359,7 +2359,7 @@ pub(crate) fn create_entity_core_pipeline_generation(
         )
     };
     let alpha = Some("0.1");
-    Ok(EntityCorePipelineGeneration {
+    Ok(EntityCorePipelines {
         textured: build(
             "bbb-selected-entity-cutout",
             &[("ALPHA_CUTOUT", alpha), ("PER_FACE_LIGHTING", None)],

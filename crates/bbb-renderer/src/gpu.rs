@@ -745,14 +745,13 @@ fn create_terrain_pipeline_with_options(
         .build()
 }
 
-pub(super) struct TerrainCorePipelineGeneration {
-    pub(super) generation: u64,
+pub(super) struct TerrainCorePipelines {
     pub(super) solid: wgpu::RenderPipeline,
     pub(super) cutout: wgpu::RenderPipeline,
     pub(super) translucent: wgpu::RenderPipeline,
 }
 
-pub(super) fn create_terrain_core_pipeline_generation(
+pub(super) fn create_terrain_core_pipelines(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
@@ -760,7 +759,7 @@ pub(super) fn create_terrain_core_pipeline_generation(
     resources: &CoreShaderSourceProjection,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
     allow_embedded_fallback: bool,
-) -> Result<TerrainCorePipelineGeneration> {
+) -> Result<TerrainCorePipelines> {
     let adapted = crate::core_shaders::adapt_terrain_shaders(
         resources,
         texture_filtering == crate::renderer::TerrainTextureFiltering::Rgss,
@@ -769,8 +768,7 @@ pub(super) fn create_terrain_core_pipeline_generation(
         if !allow_embedded_fallback {
             bail!("prepared core shaders are missing minecraft:core/terrain");
         }
-        return Ok(TerrainCorePipelineGeneration {
-            generation: resources.generation(),
+        return Ok(TerrainCorePipelines {
             solid: create_terrain_solid_pipeline(
                 device,
                 format,
@@ -794,8 +792,7 @@ pub(super) fn create_terrain_core_pipeline_generation(
             ),
         });
     };
-    Ok(TerrainCorePipelineGeneration {
-        generation: resources.generation(),
+    Ok(TerrainCorePipelines {
         solid: create_selected_terrain_pipeline(
             device,
             format,

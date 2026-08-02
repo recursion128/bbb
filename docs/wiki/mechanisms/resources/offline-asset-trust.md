@@ -127,6 +127,11 @@ resource generation。CPU catalog 只在 `bbb-pack` 解释 pack；不可变 shad
 `core/terrain` 三个当前 pipeline、14 entity、4 dynamic/resident item、3 particle/weather、
 2 position-color variant 与 post graph 放进同一 renderer transaction；构建任一 pipeline 或后续 atlas/HUD/entity/sky/audio owner 失败会
 恢复旧 pipeline generation。
+core pipeline 的 GPU 准备集由 renderer 内部唯一私有
+`CorePipelineGeneration` 拥有；family container 只是同质 handle 值组，不再各自
+声明 generation。成功发布与失败回滚共用同一份
+`swap_with_renderer` 字段映射，generation 在全部 handle 之后一起交换；公共
+reload API 与 pack → render-types → renderer 依赖方向不变。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
 推进 elapsed。剩余 ShaderManager 工作是把其它 current static pipeline 迁入同一投影与预载。

@@ -184,20 +184,20 @@ pub(crate) fn create_particle_pipeline(
         .build()
 }
 
-pub(crate) struct ParticleCorePipelineGeneration {
+pub(crate) struct ParticleCorePipelines {
     pub(crate) opaque: wgpu::RenderPipeline,
     pub(crate) translucent: wgpu::RenderPipeline,
 }
 
-pub(crate) fn create_particle_core_pipeline_generation(
+pub(crate) fn create_particle_core_pipelines(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
     shaders: Option<&crate::core_shaders::AdaptedParticleShaders>,
-) -> Result<ParticleCorePipelineGeneration> {
+) -> Result<ParticleCorePipelines> {
     let Some(shaders) = shaders else {
-        return Ok(ParticleCorePipelineGeneration {
+        return Ok(ParticleCorePipelines {
             opaque: create_particle_pipeline(
                 device,
                 format,
@@ -214,7 +214,7 @@ pub(crate) fn create_particle_core_pipeline_generation(
             ),
         });
     };
-    Ok(ParticleCorePipelineGeneration {
+    Ok(ParticleCorePipelines {
         opaque: create_selected_particle_pipeline(
             device,
             format,

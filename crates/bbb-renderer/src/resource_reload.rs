@@ -17,239 +17,236 @@ pub(crate) struct RendererResourceReloadCheckpoint {
     previous_counters: crate::RendererCounters,
 }
 
+/// One fully prepared set of core-shader GPU owners.
+///
+/// This is the only generation-shaped owner for core pipelines. Family values
+/// group homogeneous handles but do not publish an independent generation.
+/// Swapping this value with the renderer is the single field mapping used for
+/// both commit and rollback.
+struct CorePipelineGeneration {
+    generation: Option<u64>,
+    terrain: crate::gpu::TerrainCorePipelines,
+    entity: Option<crate::entity_models::EntityCorePipelines>,
+    item: Option<crate::item_models::ItemCorePipelines>,
+    particle: Option<crate::particles::ParticleCorePipelines>,
+    weather: Option<wgpu::RenderPipeline>,
+    debug_filled: Option<wgpu::RenderPipeline>,
+    sunrise: Option<wgpu::RenderPipeline>,
+}
+
+impl CorePipelineGeneration {
+    fn prepare(
+        renderer: &Renderer,
+        resources: &CoreShaderSourceProjection,
+        allow_embedded_fallback: bool,
+    ) -> Result<Self> {
+        let terrain = crate::gpu::create_terrain_core_pipelines(
+            &renderer.device,
+            renderer.config.format,
+            &renderer.terrain_bind_group_layout,
+            &renderer.lightmap_sample_bind_group_layout,
+            resources,
+            renderer.terrain_texture_filtering,
+            allow_embedded_fallback,
+        )?;
+        let startup_without_sources = allow_embedded_fallback && resources.source_count() == 0;
+        let entity = (!startup_without_sources)
+            .then(|| {
+                crate::entity_models::create_entity_core_pipelines(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    resources,
+                )
+            })
+            .transpose()?;
+        let item = (!startup_without_sources)
+            .then(|| {
+                crate::item_models::create_item_core_pipelines(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    resources,
+                )
+            })
+            .transpose()?;
+        let particle_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_particle_shaders(resources))
+            .transpose()?
+            .flatten();
+        let particle = (!startup_without_sources)
+            .then(|| {
+                crate::particles::create_particle_core_pipelines(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    particle_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
+        let weather = (!startup_without_sources)
+            .then(|| {
+                crate::weather::create_weather_core_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    particle_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
+        let position_color_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_position_color_shaders(resources))
+            .transpose()?
+            .flatten();
+        let debug_filled = (!startup_without_sources)
+            .then(|| {
+                crate::debug_filled_boxes::create_debug_filled_box_core_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    position_color_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
+        let sunrise = (!startup_without_sources)
+            .then(|| {
+                crate::sky::create_sunrise_sunset_core_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    position_color_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
+        Ok(Self {
+            generation: Some(resources.generation()),
+            terrain,
+            entity,
+            item,
+            particle,
+            weather,
+            debug_filled,
+            sunrise,
+        })
+    }
+
+    fn swap_with_renderer(&mut self, renderer: &mut Renderer) {
+        std::mem::swap(
+            &mut self.terrain.solid,
+            &mut renderer.terrain_solid_pipeline,
+        );
+        std::mem::swap(
+            &mut self.terrain.cutout,
+            &mut renderer.terrain_cutout_pipeline,
+        );
+        std::mem::swap(
+            &mut self.terrain.translucent,
+            &mut renderer.terrain_translucent_pipeline,
+        );
+        if let Some(entity) = self.entity.as_mut() {
+            std::mem::swap(
+                &mut entity.textured,
+                &mut renderer.entity_model_textured_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.textured_cull,
+                &mut renderer.entity_model_textured_cull_pipeline,
+            );
+            std::mem::swap(&mut entity.solid, &mut renderer.entity_model_solid_pipeline);
+            std::mem::swap(
+                &mut entity.dissolve,
+                &mut renderer.entity_model_dissolve_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.solid_z_offset_forward,
+                &mut renderer.entity_model_solid_z_offset_forward_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.cutout_z_offset,
+                &mut renderer.entity_model_cutout_z_offset_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.armor_cutout,
+                &mut renderer.entity_model_armor_cutout_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.armor_decal,
+                &mut renderer.entity_model_armor_decal_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.armor_translucent,
+                &mut renderer.entity_model_armor_translucent_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.translucent,
+                &mut renderer.entity_model_translucent_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.banner_pattern,
+                &mut renderer.entity_model_banner_pattern_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.translucent_cull,
+                &mut renderer.entity_model_translucent_cull_pipeline,
+            );
+            std::mem::swap(
+                &mut entity.translucent_emissive,
+                &mut renderer.entity_model_translucent_emissive_pipeline,
+            );
+            std::mem::swap(&mut entity.eyes, &mut renderer.entity_model_eyes_pipeline);
+        }
+        if let Some(item) = self.item.as_mut() {
+            std::mem::swap(&mut item.dynamic_cutout, &mut renderer.item_model_pipeline);
+            std::mem::swap(
+                &mut item.dynamic_translucent,
+                &mut renderer.item_model_translucent_pipeline,
+            );
+            std::mem::swap(
+                &mut item.resident_cutout,
+                &mut renderer.resident_item_model_pipeline,
+            );
+            std::mem::swap(
+                &mut item.resident_translucent,
+                &mut renderer.resident_item_model_translucent_pipeline,
+            );
+        }
+        if let Some(particle) = self.particle.as_mut() {
+            std::mem::swap(&mut particle.opaque, &mut renderer.opaque_particle_pipeline);
+            std::mem::swap(
+                &mut particle.translucent,
+                &mut renderer.translucent_particle_pipeline,
+            );
+        }
+        if let Some(weather) = self.weather.as_mut() {
+            std::mem::swap(weather, &mut renderer.weather_pipeline);
+        }
+        if let Some(debug_filled) = self.debug_filled.as_mut() {
+            std::mem::swap(debug_filled, &mut renderer.debug_filled_box_pipeline);
+        }
+        if let Some(sunrise) = self.sunrise.as_mut() {
+            std::mem::swap(sunrise, &mut renderer.sunrise_sunset_pipeline);
+        }
+        std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
+    }
+}
+
 impl Renderer {
     pub fn reload_core_shaders(
         &mut self,
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
     ) -> Result<()> {
-        let (
-            next,
-            next_entity,
-            next_item,
-            next_particle,
-            next_weather,
-            next_debug_filled,
-            next_sunrise,
-        ) = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
-            let terrain = crate::gpu::create_terrain_core_pipeline_generation(
-                &self.device,
-                self.config.format,
-                &self.terrain_bind_group_layout,
-                &self.lightmap_sample_bind_group_layout,
-                resources,
-                self.terrain_texture_filtering,
-                allow_embedded_fallback,
-            )?;
-            let entity = if allow_embedded_fallback && resources.source_count() == 0 {
-                None
-            } else {
-                Some(
-                    crate::entity_models::create_entity_core_pipeline_generation(
-                        &self.device,
-                        self.config.format,
-                        &self.terrain_bind_group_layout,
-                        &self.lightmap_sample_bind_group_layout,
-                        resources,
-                    )?,
-                )
-            };
-            let item = if allow_embedded_fallback && resources.source_count() == 0 {
-                None
-            } else {
-                Some(crate::item_models::create_item_core_pipeline_generation(
-                    &self.device,
-                    self.config.format,
-                    &self.terrain_bind_group_layout,
-                    &self.lightmap_sample_bind_group_layout,
-                    resources,
-                )?)
-            };
-            let (particle, weather) = if allow_embedded_fallback && resources.source_count() == 0 {
-                (None, None)
-            } else {
-                let shaders = crate::core_shaders::adapt_selected_particle_shaders(resources)?;
-                (
-                    Some(crate::particles::create_particle_core_pipeline_generation(
-                        &self.device,
-                        self.config.format,
-                        &self.terrain_bind_group_layout,
-                        &self.lightmap_sample_bind_group_layout,
-                        shaders.as_ref(),
-                    )?),
-                    Some(crate::weather::create_weather_core_pipeline(
-                        &self.device,
-                        self.config.format,
-                        &self.terrain_bind_group_layout,
-                        &self.lightmap_sample_bind_group_layout,
-                        shaders.as_ref(),
-                    )?),
-                )
-            };
-            let (debug_filled, sunrise) =
-                if allow_embedded_fallback && resources.source_count() == 0 {
-                    (None, None)
-                } else {
-                    let shaders =
-                        crate::core_shaders::adapt_selected_position_color_shaders(resources)?;
-                    (
-                        Some(
-                            crate::debug_filled_boxes::create_debug_filled_box_core_pipeline(
-                                &self.device,
-                                self.config.format,
-                                &self.terrain_bind_group_layout,
-                                shaders.as_ref(),
-                            )?,
-                        ),
-                        Some(crate::sky::create_sunrise_sunset_core_pipeline(
-                            &self.device,
-                            self.config.format,
-                            &self.terrain_bind_group_layout,
-                            shaders.as_ref(),
-                        )?),
-                    )
-                };
-            Ok((
-                terrain,
-                entity,
-                item,
-                particle,
-                weather,
-                debug_filled,
-                sunrise,
-            ))
+        let mut next = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
+            CorePipelineGeneration::prepare(self, resources, allow_embedded_fallback)
         })?;
-        let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
-        let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
-        let previous_translucent =
-            std::mem::replace(&mut self.terrain_translucent_pipeline, next.translucent);
-        let previous_generation = self.core_shader_generation.replace(next.generation);
-        let previous_entity =
-            next_entity.map(|next| crate::entity_models::EntityCorePipelineGeneration {
-                textured: std::mem::replace(
-                    &mut self.entity_model_textured_pipeline,
-                    next.textured,
-                ),
-                textured_cull: std::mem::replace(
-                    &mut self.entity_model_textured_cull_pipeline,
-                    next.textured_cull,
-                ),
-                solid: std::mem::replace(&mut self.entity_model_solid_pipeline, next.solid),
-                dissolve: std::mem::replace(
-                    &mut self.entity_model_dissolve_pipeline,
-                    next.dissolve,
-                ),
-                solid_z_offset_forward: std::mem::replace(
-                    &mut self.entity_model_solid_z_offset_forward_pipeline,
-                    next.solid_z_offset_forward,
-                ),
-                cutout_z_offset: std::mem::replace(
-                    &mut self.entity_model_cutout_z_offset_pipeline,
-                    next.cutout_z_offset,
-                ),
-                armor_cutout: std::mem::replace(
-                    &mut self.entity_model_armor_cutout_pipeline,
-                    next.armor_cutout,
-                ),
-                armor_decal: std::mem::replace(
-                    &mut self.entity_model_armor_decal_pipeline,
-                    next.armor_decal,
-                ),
-                armor_translucent: std::mem::replace(
-                    &mut self.entity_model_armor_translucent_pipeline,
-                    next.armor_translucent,
-                ),
-                translucent: std::mem::replace(
-                    &mut self.entity_model_translucent_pipeline,
-                    next.translucent,
-                ),
-                banner_pattern: std::mem::replace(
-                    &mut self.entity_model_banner_pattern_pipeline,
-                    next.banner_pattern,
-                ),
-                translucent_cull: std::mem::replace(
-                    &mut self.entity_model_translucent_cull_pipeline,
-                    next.translucent_cull,
-                ),
-                translucent_emissive: std::mem::replace(
-                    &mut self.entity_model_translucent_emissive_pipeline,
-                    next.translucent_emissive,
-                ),
-                eyes: std::mem::replace(&mut self.entity_model_eyes_pipeline, next.eyes),
-            });
-        let previous_item = next_item.map(|next| crate::item_models::ItemCorePipelineGeneration {
-            dynamic_cutout: std::mem::replace(&mut self.item_model_pipeline, next.dynamic_cutout),
-            dynamic_translucent: std::mem::replace(
-                &mut self.item_model_translucent_pipeline,
-                next.dynamic_translucent,
-            ),
-            resident_cutout: std::mem::replace(
-                &mut self.resident_item_model_pipeline,
-                next.resident_cutout,
-            ),
-            resident_translucent: std::mem::replace(
-                &mut self.resident_item_model_translucent_pipeline,
-                next.resident_translucent,
-            ),
-        });
-        let previous_particle =
-            next_particle.map(|next| crate::particles::ParticleCorePipelineGeneration {
-                opaque: std::mem::replace(&mut self.opaque_particle_pipeline, next.opaque),
-                translucent: std::mem::replace(
-                    &mut self.translucent_particle_pipeline,
-                    next.translucent,
-                ),
-            });
-        let previous_weather =
-            next_weather.map(|next| std::mem::replace(&mut self.weather_pipeline, next));
-        let previous_debug_filled = next_debug_filled
-            .map(|next| std::mem::replace(&mut self.debug_filled_box_pipeline, next));
-        let previous_sunrise =
-            next_sunrise.map(|next| std::mem::replace(&mut self.sunrise_sunset_pipeline, next));
+        next.swap_with_renderer(self);
         if self.resource_reload_in_progress() {
             self.register_resource_owner_restore(Box::new(move |renderer| {
-                renderer.terrain_solid_pipeline = previous_solid;
-                renderer.terrain_cutout_pipeline = previous_cutout;
-                renderer.terrain_translucent_pipeline = previous_translucent;
-                renderer.core_shader_generation = previous_generation;
-                if let Some(previous) = previous_entity {
-                    renderer.entity_model_textured_pipeline = previous.textured;
-                    renderer.entity_model_textured_cull_pipeline = previous.textured_cull;
-                    renderer.entity_model_solid_pipeline = previous.solid;
-                    renderer.entity_model_dissolve_pipeline = previous.dissolve;
-                    renderer.entity_model_solid_z_offset_forward_pipeline =
-                        previous.solid_z_offset_forward;
-                    renderer.entity_model_cutout_z_offset_pipeline = previous.cutout_z_offset;
-                    renderer.entity_model_armor_cutout_pipeline = previous.armor_cutout;
-                    renderer.entity_model_armor_decal_pipeline = previous.armor_decal;
-                    renderer.entity_model_armor_translucent_pipeline = previous.armor_translucent;
-                    renderer.entity_model_translucent_pipeline = previous.translucent;
-                    renderer.entity_model_banner_pattern_pipeline = previous.banner_pattern;
-                    renderer.entity_model_translucent_cull_pipeline = previous.translucent_cull;
-                    renderer.entity_model_translucent_emissive_pipeline =
-                        previous.translucent_emissive;
-                    renderer.entity_model_eyes_pipeline = previous.eyes;
-                }
-                if let Some(previous) = previous_item {
-                    renderer.item_model_pipeline = previous.dynamic_cutout;
-                    renderer.item_model_translucent_pipeline = previous.dynamic_translucent;
-                    renderer.resident_item_model_pipeline = previous.resident_cutout;
-                    renderer.resident_item_model_translucent_pipeline =
-                        previous.resident_translucent;
-                }
-                if let Some(previous) = previous_particle {
-                    renderer.opaque_particle_pipeline = previous.opaque;
-                    renderer.translucent_particle_pipeline = previous.translucent;
-                }
-                if let Some(previous) = previous_weather {
-                    renderer.weather_pipeline = previous;
-                }
-                if let Some(previous) = previous_debug_filled {
-                    renderer.debug_filled_box_pipeline = previous;
-                }
-                if let Some(previous) = previous_sunrise {
-                    renderer.sunrise_sunset_pipeline = previous;
-                }
+                next.swap_with_renderer(renderer);
             }));
         }
         Ok(())
@@ -1156,6 +1153,85 @@ mod tests {
             assert!(
                 checkpoint_source.contains(&format!("take_owner!({owner})")),
                 "derived HUD owner {owner} is missing from the transaction checkpoint"
+            );
+        }
+    }
+
+    #[test]
+    fn core_pipelines_have_one_private_generation_owner_and_one_field_mapping() {
+        let reload = include_str!("resource_reload.rs");
+        let production = reload
+            .split_once("\n#[cfg(test)]")
+            .expect("resource reload production/test boundary")
+            .0;
+        assert_eq!(
+            production.matches("struct CorePipelineGeneration").count(),
+            1
+        );
+        assert!(!production.contains("pub struct CorePipelineGeneration"));
+        assert!(!production.contains("pub(crate) struct CorePipelineGeneration"));
+        assert_eq!(
+            production
+                .matches("CorePipelineGeneration::prepare(")
+                .count(),
+            1
+        );
+        assert_eq!(production.matches(".swap_with_renderer(").count(), 2);
+
+        let mapping = production
+            .split_once("    fn swap_with_renderer(&mut self, renderer: &mut Renderer) {")
+            .expect("single core pipeline mapping")
+            .1
+            .split_once("\n    }\n}\n\nimpl Renderer")
+            .expect("core pipeline mapping boundary")
+            .0;
+        assert_eq!(
+            mapping.matches("std::mem::swap(").count(),
+            27,
+            "26 GPU handles plus the publication generation must share one mapping"
+        );
+
+        let core_reload = production
+            .split_once("    pub fn reload_core_shaders(")
+            .expect("public core shader reload entry")
+            .1
+            .split_once("\n    pub fn core_shader_generation(")
+            .expect("core shader generation query boundary")
+            .0;
+        assert!(!core_reload.contains("std::mem::replace"));
+        for legacy in [
+            ["previous", "entity"].join("_"),
+            ["previous", "item"].join("_"),
+            ["previous", "particle"].join("_"),
+            ["next", "weather"].join("_"),
+        ] {
+            assert!(
+                !core_reload.contains(&legacy),
+                "legacy mirror path {legacy}"
+            );
+        }
+
+        let core_sources = [
+            include_str!("gpu.rs"),
+            include_str!("entity_models.rs"),
+            include_str!("entity_models/gpu.rs"),
+            include_str!("item_models.rs"),
+            include_str!("particles.rs"),
+            include_str!("particles/gpu.rs"),
+        ]
+        .join("\n");
+        for family in ["Terrain", "Entity", "Item", "Particle"] {
+            let legacy_type = format!("{family}CorePipeline{}", "Generation");
+            assert!(
+                !core_sources.contains(&legacy_type),
+                "family container must not restore generation owner {legacy_type}"
+            );
+        }
+        for family in ["terrain", "entity", "item", "particle"] {
+            let legacy_factory = format!("create_{family}_core_pipeline_{}", "generation");
+            assert!(
+                !core_sources.contains(&legacy_factory),
+                "family factory must not restore generation API {legacy_factory}"
             );
         }
     }
