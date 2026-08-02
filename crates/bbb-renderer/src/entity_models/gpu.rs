@@ -3425,8 +3425,21 @@ pub(crate) fn create_entity_model_entity_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth(
+    shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_glint_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-entity-glint",
+            &shaders.entity_vertex,
+            &shaders.fragment,
+            &[entity_model_scroll_vertex_layout()],
+            true,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
@@ -3436,15 +3449,28 @@ pub(crate) fn create_entity_model_entity_glint_pipeline(
         Some(ENTITY_MODEL_GLINT_BLEND),
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_armor_entity_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_scroll_pipeline_with_depth(
+    shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_glint_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-entity-model-armor-entity-glint",
+            &shaders.armor_entity_vertex,
+            &shaders.fragment,
+            &[entity_model_scroll_vertex_layout()],
+            true,
+        );
+    }
+    Ok(create_entity_model_scroll_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
@@ -3454,7 +3480,7 @@ pub(crate) fn create_entity_model_armor_entity_glint_pipeline(
         Some(ENTITY_MODEL_GLINT_BLEND),
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
-    )
+    ))
 }
 
 /// Builds a scrolling-overlay pipeline (its own scroll vertex layout + [`ENTITY_MODEL_SCROLL_SHADER`],

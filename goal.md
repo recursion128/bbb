@@ -431,8 +431,9 @@ icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合�
    catalog；复用 pack priority/filter，限制资源数、单项/累计 bytes、include 深度/环和
    notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
 3. **Phase C — 原子 consumer**：regional toast、`core/terrain`、14 entity、4 item、3 个
-   particle/weather 与 2 个 position-color variant 已进入统一 projection/barrier；继续迁移其余
-   static pipeline，逐 stage 失败须保留旧 GPU/HUD/audio/simulation/schedule。
+   particle/weather、2 个 position-color 与从单一 `core/glint` 派生的 5 个 current variant
+   已进入统一 projection/barrier；先机械分类其余 renderer pipeline，再只迁移映射到 Vanilla
+   static shader 的 current surface，逐 stage 失败须保留旧 GPU/HUD/audio/simulation/schedule。
 4. **Phase D — 真实验收与收口**：以本地 26.1 source/default assets 和 selected/server
    fixture 验证 core shader override/filter、三色 colormap、cloud、waypoint、model/entity/
    particle/font/language/sound 及 KOR periodic fixture；更新矩阵/账本/Wiki、做完整 diff

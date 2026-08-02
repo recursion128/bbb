@@ -201,16 +201,31 @@ pub(crate) fn create_hud_item_glint_pipeline(
     format: wgpu::TextureFormat,
     glint_bind_group_layout: &wgpu::BindGroupLayout,
     item_mask_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-hud-item-glint-pipeline")
-        .shader("bbb-hud-item-glint-shader", HUD_ITEM_GLINT_SHADER)
-        .layout(
-            "bbb-hud-item-glint-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_glint_pipeline(
+            device,
+            format,
             &[glint_bind_group_layout, item_mask_bind_group_layout],
-        )
-        .vertex_buffers(&[hud_vertex_layout()])
-        .color_target(format, Some(HUD_ITEM_GLINT_BLEND))
-        .build()
+            "bbb-selected-hud-item-glint",
+            &shaders.hud_item_vertex,
+            &shaders.hud_item_fragment,
+            &[hud_vertex_layout()],
+            false,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-hud-item-glint-pipeline")
+            .shader("bbb-hud-item-glint-shader", HUD_ITEM_GLINT_SHADER)
+            .layout(
+                "bbb-hud-item-glint-pipeline-layout",
+                &[glint_bind_group_layout, item_mask_bind_group_layout],
+            )
+            .vertex_buffers(&[hud_vertex_layout()])
+            .color_target(format, Some(HUD_ITEM_GLINT_BLEND))
+            .build(),
+    )
 }
 
 pub(crate) fn create_hud_sprite_gpu(

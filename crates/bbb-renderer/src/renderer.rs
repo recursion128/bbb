@@ -1646,14 +1646,19 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
             );
-        let entity_model_entity_glint_pipeline =
-            create_entity_model_entity_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_entity_glint_pipeline = create_entity_model_entity_glint_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_model_armor_entity_glint_pipeline =
             create_entity_model_armor_entity_glint_pipeline(
                 &device,
                 format,
                 &terrain_bind_group_layout,
-            );
+                None,
+            )?;
         let opaque_particle_pipeline = create_particle_pipeline(
             &device,
             format,
@@ -1709,7 +1714,7 @@ impl Renderer {
             &lightmap_sample_bind_group_layout,
         );
         let item_model_glint_pipeline =
-            create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+            create_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout, None)?;
         let display_text_background_pipeline = create_display_text_background_pipeline(
             &device,
             format,
@@ -1782,8 +1787,12 @@ impl Renderer {
                 &terrain_bind_group_layout,
                 &lightmap_sample_bind_group_layout,
             );
-        let resident_item_model_glint_pipeline =
-            create_resident_item_model_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let resident_item_model_glint_pipeline = create_resident_item_model_glint_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let resident_item_model_end_portal_pipeline =
             create_resident_item_model_end_portal_pipeline(
                 &device,
@@ -1806,7 +1815,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &hud_bind_group_layout,
-        );
+            None,
+        )?;
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let translucent_debug_line_pipeline =

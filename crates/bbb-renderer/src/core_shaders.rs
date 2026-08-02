@@ -11,6 +11,7 @@ const ENTITY_SHADER_ID: &str = "minecraft:core/entity";
 const ITEM_SHADER_ID: &str = "minecraft:core/item";
 const PARTICLE_SHADER_ID: &str = "minecraft:core/particle";
 const POSITION_COLOR_SHADER_ID: &str = "minecraft:core/position_color";
+const GLINT_SHADER_ID: &str = "minecraft:core/glint";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -39,6 +40,16 @@ pub(crate) struct AdaptedPositionColorShaders {
     pub(crate) vertex: String,
     pub(crate) sky_vertex: String,
     pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedGlintShaders {
+    pub(crate) item_vertex: String,
+    pub(crate) entity_vertex: String,
+    pub(crate) armor_entity_vertex: String,
+    pub(crate) resident_item_vertex: String,
+    pub(crate) hud_item_vertex: String,
+    pub(crate) fragment: String,
+    pub(crate) hud_item_fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -162,6 +173,41 @@ pub(crate) fn adapt_selected_position_color_shaders(
         vertex: debug_vertex,
         sky_vertex,
         fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_glint_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedGlintShaders>> {
+    let vertex = resources
+        .source_by_id(GLINT_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/glint vertex stage")?;
+    let fragment = resources
+        .source_by_id(GLINT_SHADER_ID, ShaderStage::Fragment)
+        .context("prepared core shaders are missing minecraft:core/glint fragment stage")?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+
+    let vertex =
+        adapt_glint_stage(&vertex.source, true).context("adapt selected glint vertex shader")?;
+    let fragment = adapt_glint_stage(&fragment.source, false)
+        .context("adapt selected glint fragment shader")?;
+    let item_vertex = specialize_glint_vertex(&vertex, "8.0", false)?;
+    let entity_vertex = specialize_glint_vertex(&vertex, "0.5", false)?;
+    let armor_entity_vertex = specialize_glint_vertex(&vertex, "0.16", true)?;
+    let resident_item_vertex = adapt_resident_glint_vertex(&item_vertex)?;
+    let hud_item_vertex = adapt_hud_glint_vertex(&item_vertex)?;
+    let hud_item_fragment = adapt_hud_glint_fragment(&fragment)?;
+
+    Ok(Some(AdaptedGlintShaders {
+        item_vertex,
+        entity_vertex,
+        armor_entity_vertex,
+        resident_item_vertex,
+        hud_item_vertex,
+        fragment,
+        hud_item_fragment,
     }))
 }
 
@@ -331,6 +377,173 @@ fn adapt_position_color_stage(source: &str, vertex_stage: bool) -> Result<String
     })
 }
 
+fn adapt_glint_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        source
+    } else {
+        replace_required(
+            &source,
+            "#define GlintAlpha bbbCamera.BbbGlintOffsets.w",
+            "#define GlintAlpha 0.75",
+            "selected glint strength",
+        )?
+    };
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_glint_stage_locations(&source, vertex_stage)?;
+    if vertex_stage {
+        Ok(source)
+    } else {
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            }],
+        )
+    }
+}
+
+fn specialize_glint_vertex(
+    source: &str,
+    texture_scale: &str,
+    use_view_offset_z_layering: bool,
+) -> Result<String> {
+    let source = if use_view_offset_z_layering {
+        replace_required(
+            source,
+            "#define ProjMat bbbCamera.BbbViewProj",
+            "#define ProjMat bbbCamera.BbbViewProjViewOffsetZ",
+            "selected armor-entity glint projection",
+        )?
+    } else {
+        source.to_string()
+    };
+    let source = replace_required(
+        &source,
+        "texCoord0 = (TextureMat * vec4(UV0, 0.0, 1.0)).xy;",
+        &format!("texCoord0 = bbb_glint_uv(UV0, {texture_scale}, bbbCamera.BbbGlintOffsets.xy);"),
+        "selected glint texture transform",
+    )?;
+    insert_after_version(&source, GLINT_TEXTURE_HELPER)
+}
+
+fn adapt_resident_glint_vertex(source: &str) -> Result<String> {
+    let source = insert_after_version(source, RESIDENT_GLINT_INSTANCE_INPUTS)?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    vec4 bbbWorld = bbbModel * vec4(Position, 1.0);\n    gl_Position = ProjMat * bbbWorld;",
+        "selected resident glint world transform",
+    )?;
+    let source = source
+        .replace(
+            "fog_spherical_distance(Position)",
+            "fog_spherical_distance(bbbWorld.xyz)",
+        )
+        .replace(
+            "fog_cylindrical_distance(Position)",
+            "fog_cylindrical_distance(bbbWorld.xyz)",
+        );
+    replace_required(
+        &source,
+        "texCoord0 = bbb_glint_uv(UV0, 8.0, bbbCamera.BbbGlintOffsets.xy);",
+        "float bbbDecalScale = max(abs(BbbFoil.y), 0.0001);\n    vec2 bbbSourceUv = BbbFoil.x > 1.5 ? BbbDecalUv / bbbDecalScale : UV0;\n    texCoord0 = bbb_glint_uv(bbbSourceUv, 8.0, bbbCamera.BbbGlintOffsets.xy);",
+        "selected resident glint foil projection",
+    )
+}
+
+fn adapt_hud_glint_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 0) in vec3 Position;",
+        "layout(location = 0) in vec2 Position;",
+        "selected HUD glint position input",
+    )?;
+    let source = replace_required(
+        &source,
+        "layout(location = 1) in vec2 UV0;",
+        "layout(location = 3) in vec2 UV0;",
+        "selected HUD glint local UV input",
+    )?;
+    let source = insert_after_version(&source, HUD_GLINT_VERTEX_IO)?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "gl_Position = vec4(Position, 0.0, 1.0);",
+        "selected HUD glint clip projection",
+    )?
+    .replace(
+        "sphericalVertexDistance = fog_spherical_distance(Position);",
+        "sphericalVertexDistance = 0.0;",
+    )
+    .replace(
+        "cylindricalVertexDistance = fog_cylindrical_distance(Position);",
+        "cylindricalVertexDistance = 0.0;",
+    );
+    let main_end = source
+        .rfind('}')
+        .context("adapted HUD glint vertex shader has no main terminator")?;
+    Ok(format!(
+        "{}    bbbMaskUv = BbbMaskUv;\n    bbbMaskAlpha = BbbTint.a;\n{}",
+        &source[..main_end],
+        &source[main_end..]
+    ))
+}
+
+fn adapt_hud_glint_fragment(source: &str) -> Result<String> {
+    let source = insert_after_version(source, HUD_GLINT_FRAGMENT_IO)?;
+    replace_required(
+        &source,
+        "void main() {",
+        "void main() {\n    vec4 bbbMask = texture(sampler2D(BbbMaskTexture, BbbMaskSampler), bbbMaskUv);\n    if (bbbMask.a * bbbMaskAlpha <= 0.01) { discard; }",
+        "selected HUD glint alpha mask",
+    )
+}
+
+const GLINT_TEXTURE_HELPER: &str = r#"
+vec2 bbb_glint_uv(vec2 uv, float scale, vec2 offset) {
+    vec2 scaled = uv * scale;
+    float angle = 0.1745329252;
+    float cosAngle = cos(angle);
+    float sinAngle = sin(angle);
+    vec2 rotated = vec2(
+        scaled.x * cosAngle - scaled.y * sinAngle,
+        scaled.x * sinAngle + scaled.y * cosAngle
+    );
+    return rotated + offset;
+}
+"#;
+
+const RESIDENT_GLINT_INSTANCE_INPUTS: &str = r#"layout(location = 4) in vec2 BbbDecalUv;
+layout(location = 5) in vec4 BbbModel0;
+layout(location = 6) in vec4 BbbModel1;
+layout(location = 7) in vec4 BbbModel2;
+layout(location = 8) in vec4 BbbModel3;
+layout(location = 9) in vec4 BbbNormal0;
+layout(location = 10) in vec4 BbbNormal1;
+layout(location = 11) in vec4 BbbNormal2;
+layout(location = 12) in vec4 BbbTint;
+layout(location = 13) in vec4 BbbLightOverlay;
+layout(location = 14) in vec4 BbbFoil;
+"#;
+
+const HUD_GLINT_VERTEX_IO: &str = r#"layout(location = 1) in vec2 BbbMaskUv;
+layout(location = 2) in vec4 BbbTint;
+layout(location = 3) out vec2 bbbMaskUv;
+layout(location = 4) out float bbbMaskAlpha;
+"#;
+
+const HUD_GLINT_FRAGMENT_IO: &str = r#"layout(set = 1, binding = 0) uniform texture2D BbbMaskTexture;
+layout(set = 1, binding = 1) uniform sampler BbbMaskSampler;
+layout(location = 3) in vec2 bbbMaskUv;
+layout(location = 4) in float bbbMaskAlpha;
+"#;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_selected_position_color_pipeline(
     device: &wgpu::Device,
@@ -389,6 +602,84 @@ pub(crate) fn create_selected_position_color_pipeline(
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+const SELECTED_GLINT_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Src,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_glint_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layouts: &[&wgpu::BindGroupLayout],
+    label: &'static str,
+    vertex_source: &str,
+    fragment_source: &str,
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    with_depth: bool,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-glint-vertex-shader",
+        vertex_source.to_string(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected glint vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-glint-fragment-shader",
+        fragment_source.to_string(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected glint fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-glint-pipeline-layout"),
+        bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: with_depth.then(|| {
+                crate::pipeline_builder::depth_stencil_state(
+                    crate::gpu::DEPTH_FORMAT,
+                    false,
+                    wgpu::CompareFunction::Equal,
+                )
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(SELECTED_GLINT_BLEND),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -780,6 +1071,30 @@ fn bind_item_stage_locations(source: &str, vertex_stage: bool) -> Result<String>
         })
 }
 
+fn bind_glint_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec2", "texCoord0", 2, true),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec2", "texCoord0", 2, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -907,6 +1222,103 @@ mod tests {
     }
 
     #[test]
+    fn glint_adapter_projects_one_selected_source_into_all_current_consumers() {
+        let vertex_key = ShaderSourceKey {
+            id: GLINT_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let fragment_key = ShaderSourceKey {
+            id: GLINT_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let projection = CoreShaderSourceProjection::new(
+            7,
+            Arc::new(BTreeMap::from([
+                (
+                    vertex_key.clone(),
+                    ShaderSource {
+                        key: vertex_key,
+                        resource_id: "minecraft:shaders/core/glint.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: r#"#version 330
+in vec3 Position;
+in vec2 UV0;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    texCoord0 = (TextureMat * vec4(UV0, 0.0, 1.0)).xy;
+}
+"#
+                        .to_string(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    fragment_key.clone(),
+                    ShaderSource {
+                        key: fragment_key,
+                        resource_id: "minecraft:shaders/core/glint.fsh".to_string(),
+                        pack_id: "fixture".to_string(),
+                        source: r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    vec4 color = texture(Sampler0, texCoord0) * ColorModulator;
+    float fade = (1.0 - sphericalVertexDistance * 0.0 - cylindricalVertexDistance * 0.0) * GlintAlpha;
+    fragColor = vec4(color.rgb * fade, color.a);
+}
+"#
+                        .to_string(),
+                        imports: Vec::new(),
+                    },
+                ),
+            ])),
+        );
+
+        let adapted = adapt_selected_glint_shaders(&projection)
+            .unwrap()
+            .expect("selected glint fragment activates the shared adapter");
+        assert!(adapted
+            .item_vertex
+            .contains("texCoord0 = bbb_glint_uv(UV0, 8.0,"));
+        assert!(adapted
+            .entity_vertex
+            .contains("texCoord0 = bbb_glint_uv(UV0, 0.5,"));
+        assert!(adapted
+            .armor_entity_vertex
+            .contains("texCoord0 = bbb_glint_uv(UV0, 0.16,"));
+        assert!(adapted
+            .armor_entity_vertex
+            .contains("#define ProjMat bbbCamera.BbbViewProjViewOffsetZ"));
+        assert!(adapted
+            .resident_item_vertex
+            .contains("mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3)"));
+        assert!(adapted
+            .resident_item_vertex
+            .contains("BbbDecalUv / bbbDecalScale"));
+        assert!(adapted
+            .hud_item_vertex
+            .contains("layout(location = 0) in vec2 Position"));
+        assert!(adapted
+            .hud_item_vertex
+            .contains("gl_Position = vec4(Position, 0.0, 1.0)"));
+        assert!(adapted.fragment.contains("#define GlintAlpha 0.75"));
+        assert!(adapted
+            .hud_item_fragment
+            .contains("layout(set = 1, binding = 0) uniform texture2D BbbMaskTexture"));
+        assert!(adapted
+            .hud_item_fragment
+            .contains("bbbMask.a * bbbMaskAlpha <= 0.01"));
+    }
+
+    #[test]
     fn selected_core_shader_drives_terrain_pixels_and_failed_generation_rolls_back() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
             return;
@@ -1004,6 +1416,14 @@ mod tests {
         };
         let position_color_fragment_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let glint_vertex_key = ShaderSourceKey {
+            id: GLINT_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let glint_fragment_key = ShaderSourceKey {
+            id: GLINT_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
         CoreShaderSourceProjection::new(
@@ -1113,6 +1533,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: position_color_fragment_key,
                         resource_id: "minecraft:shaders/core/position_color.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    glint_vertex_key.clone(),
+                    ShaderSource {
+                        key: glint_vertex_key,
+                        resource_id: "minecraft:shaders/core/glint.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    glint_fragment_key.clone(),
+                    ShaderSource {
+                        key: glint_fragment_key,
+                        resource_id: "minecraft:shaders/core/glint.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -1524,6 +1964,148 @@ void main() {
 
     #[test]
     #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_glint_shader_drives_item_pixels_and_preloads_all_current_glint_surfaces() {
+        let root = unique_temp_dir("selected-glint-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/glint.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + texCoord0.x;
+    fragColor = vec4(0.0, 0.75, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected glint shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(76, selected)
+            .expect("selected glint generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(GLINT_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected glint fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(24, 20) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("all five selected glint pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(76));
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(crate::CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &[0, 0, 0, 255])
+            .expect("black item atlas");
+        renderer
+            .upload_item_glint_texture(1, 1, &[255; 4])
+            .expect("white glint texture");
+        let item = crate::ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 0.0],
+                [0.0, 16.0, 0.0],
+                [16.0, 16.0, 0.0],
+                [16.0, 0.0, 0.0],
+            ],
+            uvs: [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, -1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        let meshes = crate::bake_item_model_meshes_with_light_and_overlay_and_foil(
+            &[item],
+            glam::Mat4::from_translation(glam::Vec3::new(-0.5, -0.5, 4.0)),
+            [1.0; 2],
+            [0.0, 10.0],
+            true,
+        );
+        renderer.set_block_item_model_meshes(vec![meshes.solid]);
+        renderer.set_item_model_glint_meshes(vec![meshes.glint]);
+        assert!(frame_has_green_glint_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("selected glint frame")
+        ));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/glint\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected glint filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(77, filtered)
+            .expect("filtered glint generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required glint stages must reject the generation");
+        assert!(error.to_string().contains("minecraft:core/glint"));
+        assert_eq!(renderer.core_shader_generation(), Some(76));
+        assert!(frame_has_green_glint_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("retained selected glint frame")
+        ));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .with_client_resource_generation(78, default_stack)
+            .expect("default glint generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected glint shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(78));
+        assert!(!frame_has_green_glint_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("restored embedded glint frame")
+        ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
     fn selected_particle_shader_preloads_particle_and_weather_surfaces() {
         let root = unique_temp_dir("selected-particle-shader");
         let overlay = root.join("overlay");
@@ -1745,6 +2327,15 @@ void main() {
             (0..pixels.width).any(|x| {
                 let pixel = pixels.pixel(x, y);
                 pixel[1] > 240 && pixel[0] < 8 && pixel[2] < 8
+            })
+        })
+    }
+
+    fn frame_has_green_glint_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
+        (0..pixels.height).any(|y| {
+            (0..pixels.width).any(|x| {
+                let pixel = pixels.pixel(x, y);
+                pixel[1] > 100 && pixel[0] < 20 && pixel[2] < 20
             })
         })
     }

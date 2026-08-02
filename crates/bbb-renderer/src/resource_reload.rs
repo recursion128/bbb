@@ -17,6 +17,55 @@ pub(crate) struct RendererResourceReloadCheckpoint {
     previous_counters: crate::RendererCounters,
 }
 
+struct GlintCorePipelines {
+    entity: wgpu::RenderPipeline,
+    armor_entity: wgpu::RenderPipeline,
+    dynamic_item: wgpu::RenderPipeline,
+    resident_item: wgpu::RenderPipeline,
+    hud_item: wgpu::RenderPipeline,
+}
+
+impl GlintCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            entity: crate::entity_models::create_entity_model_entity_glint_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            armor_entity: crate::entity_models::create_entity_model_armor_entity_glint_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            dynamic_item: crate::item_models::create_item_model_glint_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            resident_item: crate::item_models::create_resident_item_model_glint_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            hud_item: crate::hud::create_hud_item_glint_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.hud_bind_group_layout,
+                shaders,
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -32,6 +81,7 @@ struct CorePipelineGeneration {
     weather: Option<wgpu::RenderPipeline>,
     debug_filled: Option<wgpu::RenderPipeline>,
     sunrise: Option<wgpu::RenderPipeline>,
+    glint: Option<GlintCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -122,6 +172,13 @@ impl CorePipelineGeneration {
                 )
             })
             .transpose()?;
+        let glint_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_glint_shaders(resources))
+            .transpose()?
+            .flatten();
+        let glint = (!startup_without_sources)
+            .then(|| GlintCorePipelines::prepare(renderer, glint_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -131,6 +188,7 @@ impl CorePipelineGeneration {
             weather,
             debug_filled,
             sunrise,
+            glint,
         })
     }
 
@@ -229,6 +287,25 @@ impl CorePipelineGeneration {
         }
         if let Some(sunrise) = self.sunrise.as_mut() {
             std::mem::swap(sunrise, &mut renderer.sunrise_sunset_pipeline);
+        }
+        if let Some(glint) = self.glint.as_mut() {
+            std::mem::swap(
+                &mut glint.entity,
+                &mut renderer.entity_model_entity_glint_pipeline,
+            );
+            std::mem::swap(
+                &mut glint.armor_entity,
+                &mut renderer.entity_model_armor_entity_glint_pipeline,
+            );
+            std::mem::swap(
+                &mut glint.dynamic_item,
+                &mut renderer.item_model_glint_pipeline,
+            );
+            std::mem::swap(
+                &mut glint.resident_item,
+                &mut renderer.resident_item_model_glint_pipeline,
+            );
+            std::mem::swap(&mut glint.hud_item, &mut renderer.hud_item_glint_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1187,8 +1264,27 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            27,
-            "26 GPU handles plus the publication generation must share one mapping"
+            32,
+            "31 GPU handles plus the publication generation must share one mapping"
+        );
+        for glint_owner in [
+            "entity_model_entity_glint_pipeline",
+            "entity_model_armor_entity_glint_pipeline",
+            "item_model_glint_pipeline",
+            "resident_item_model_glint_pipeline",
+            "hud_item_glint_pipeline",
+        ] {
+            assert!(
+                mapping.contains(glint_owner),
+                "selected glint owner {glint_owner} is missing from the shared generation mapping"
+            );
+        }
+        assert_eq!(
+            production
+                .matches("adapt_selected_glint_shaders(resources)")
+                .count(),
+            1,
+            "all current glint consumers must share one selected-source adapter"
         );
 
         let core_reload = production

@@ -69,12 +69,14 @@ Matrix route: `resources-reload-listeners`
   apply/reset is wired after the shared rollback barrier, and selected/filterable
   `core/terrain`, all 14 entity variants, four dynamic/resident `core/item`
   variants, three particle/weather variants, and the two position-color debug/sunrise
-  variants now own one atomic pipeline generation. Remaining active work is the rest of the
-  current static-pipeline projection/preload surface;
+  variants and the five entity/armor/dynamic-item/resident-item/HUD projections of the single
+  selected `core/glint` source now own one atomic pipeline generation. Remaining active work is
+  the rest of the current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The full-gated/playable safe-stop cursor is exactly `core/glint`: the entity,
-  armor-entity, dynamic-item, resident-item and HUD-item glint pipelines must next consume
-  one selected source generation before the remaining static families are classified.
+  The next checkpoint cursor is an exact remaining-static-pipeline classification: every
+  renderer-owned pipeline not yet in `CorePipelineGeneration` must map to its Vanilla static
+  pipeline/shader owner, or to an evidenced repo-native/post-effect/non-selected category; the
+  resulting homogeneous current-surface families then become the only Phase C migration queue.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.

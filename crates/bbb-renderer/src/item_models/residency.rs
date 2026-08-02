@@ -1500,25 +1500,40 @@ pub(crate) fn create_resident_item_model_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-item-model-resident-glint-pipeline")
-        .shader(
-            "bbb-item-model-resident-glint-shader",
-            ITEM_MODEL_RESIDENT_GLINT_SHADER,
-        )
-        .layout(
-            "bbb-item-model-resident-glint-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_glint_pipeline(
+            device,
+            format,
             &[bind_group_layout],
-        )
-        .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
-        .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
-        .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
-            ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
-            ITEM_MODEL_GLINT_DEPTH_COMPARE,
-        ))
-        .build()
+            "bbb-selected-resident-item-model-glint",
+            &shaders.resident_item_vertex,
+            &shaders.fragment,
+            &[resident_vertex_layout(), instance_vertex_layout()],
+            true,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-item-model-resident-glint-pipeline")
+            .shader(
+                "bbb-item-model-resident-glint-shader",
+                ITEM_MODEL_RESIDENT_GLINT_SHADER,
+            )
+            .layout(
+                "bbb-item-model-resident-glint-pipeline-layout",
+                &[bind_group_layout],
+            )
+            .vertex_buffers(&[resident_vertex_layout(), instance_vertex_layout()])
+            .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
+            .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+                ITEM_MODEL_GLINT_DEPTH_COMPARE,
+            ))
+            .build(),
+    )
 }
 
 pub(crate) fn create_resident_item_model_end_portal_pipeline(

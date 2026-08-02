@@ -1574,19 +1574,34 @@ pub(crate) fn create_item_model_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-item-model-glint-pipeline")
-        .shader("bbb-item-model-glint-shader", ITEM_MODEL_GLINT_SHADER)
-        .layout("bbb-item-model-glint-pipeline-layout", &[bind_group_layout])
-        .vertex_buffers(&[item_model_vertex_layout()])
-        .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
-        .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
-            ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
-            ITEM_MODEL_GLINT_DEPTH_COMPARE,
-        ))
-        .build()
+    shaders: Option<&crate::core_shaders::AdaptedGlintShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_glint_pipeline(
+            device,
+            format,
+            &[bind_group_layout],
+            "bbb-selected-item-model-glint",
+            &shaders.item_vertex,
+            &shaders.fragment,
+            &[item_model_vertex_layout()],
+            true,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-item-model-glint-pipeline")
+            .shader("bbb-item-model-glint-shader", ITEM_MODEL_GLINT_SHADER)
+            .layout("bbb-item-model-glint-pipeline-layout", &[bind_group_layout])
+            .vertex_buffers(&[item_model_vertex_layout()])
+            .color_target(format, Some(ITEM_MODEL_GLINT_BLEND))
+            .cull_mode(ITEM_MODEL_GLINT_CULL_MODE)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                ITEM_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+                ITEM_MODEL_GLINT_DEPTH_COMPARE,
+            ))
+            .build(),
+    )
 }
 
 fn create_item_model_pipeline_with_blend(
