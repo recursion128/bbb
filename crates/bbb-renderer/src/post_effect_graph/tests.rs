@@ -964,12 +964,14 @@ void main() {{
 }
 
 fn fixture_roots(root: &Path) -> PackRoots {
+    let vanilla = root.join("empty-vanilla");
     PackRoots::from_paths(
         root.to_path_buf(),
-        root.to_path_buf(),
-        root.join("assets/minecraft"),
+        &vanilla,
+        vanilla.join("assets/minecraft"),
         None,
     )
+    .with_resource_pack_dirs([root.to_path_buf()])
 }
 
 fn asset(root: &Path, namespace: &str, path: &str) -> PathBuf {
