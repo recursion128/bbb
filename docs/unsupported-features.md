@@ -37,16 +37,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 # Todo
 
-## 中文 Vanilla 机制与项目文档系统
-
-Owner: `docs/` + `scripts/docs-lint.sh`
-
-- **Repo-owned 中文 Vanilla 26.1 机制等价与 BBB Wiki**：当前受维护的架构、
-  机制、验证和开发知识散布在顶层设计文档中，缺少统一入口、canonical owner、
-  机制级 parity matrix、完整迁移清单和可机械检查的链接/路由/孤儿规则。按
-  `docs/wiki-engineering-design.md` 的单一高风险 docs/workflow 工程迁移；审计发现的
-  产品缺口只登记到本账本，不在该工程中实现。
-
 ## Runtime performance parity and stable frame tails
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`

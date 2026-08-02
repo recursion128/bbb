@@ -24,8 +24,7 @@
 - P1-1 GPU render-state / render-graph fidelity。
 - P1-2 实体专用 renderer 行为。
 - P1-3 物品、frame 与第一人称表现（含 font 五连、DISSOLVE、PIP）。
-- P1-4 GUI lighting surface / entity-in-UI。
-- P1-5 透明排序、粒子与 level events。
+- P1-4 GUI lighting/entity-in-UI；P1-5 透明排序、粒子与 level events。
 - P2 terrain / block render presentation；P2 屏幕、HUD、字体与截图（两批）。
 - 历史 audit 快照；2026-07-02/07-04 架构重构批次记录（另见 memory）。
 
@@ -67,7 +66,6 @@
 - **2026-07-15**：dialog 收尾（OpenUrl/click event/screen 返回栈）；Transfer
   reconnect 闭环；RegistryData loader/built-in/holder-consumer inventory 生成；
   holder identity 修复批；catalog lookup bridge 清理批；class-behavior 生成批
-  （pickability/sound-source/renderer registrations/arm-pose 等 ~25 节）；
   workflow-v3 落地并归档旧 goal.md 完成史；metadata accessor 统一推导批开工。
 - **2026-07-16**：metadata accessor 推导/派生/消费三大批收尾（~170 节，
   含全部 fixture 与生产路径迁移）；serializer/fixture 身份统一批；entity
@@ -898,3 +896,4 @@
   光照、atlas、透明与 fluid 机制、三场景 ROI/workload/draw 证据及两轮 ABBA
   真机采样已闭环；GPU-only duration 保持精确 deferred。
 - **2026-08-02（unihex/CJK 字体闭环）**：SHA-1 asset-index fallback、过滤/引用顺序、有界 ZIP/HEX、override、共享 atlas、2× oversampling 与全字体消费者度量已贯通；合同见 `docs/archive/unihex-cjk-font-design.md`。
+- **2026-08-02（中文 Vanilla 机制与 BBB Wiki 闭环）**：23 页中文 canonical Wiki、六个首批纵向机制、35 行 parity matrix 与 189 份 Markdown inventory 已建立；链接/孤儿/ID/状态/route/路径由 docs lint fixtures 强制，合同见 `docs/archive/wiki-engineering-design.md`。

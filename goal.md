@@ -407,7 +407,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
-- p1-generated-facts: active
+- p1-generated-facts: maintenance
 - p2-non-entity: maintenance
 - p2-hud: maintenance
 - p3-resources: maintenance
@@ -428,12 +428,12 @@ interaction 与 failure-evidence milestone 是关闭依据。新垂直 slice 若
 
 ### P1：可机械推导的 vanilla 事实
 
-状态：`active`。当前唯一工程是中文 Vanilla 26.1 机制等价与 BBB Wiki；冻结合同、
-Phase A～H、迁移规则、focused fixtures、checkpoint 与安全停止点见
-`docs/wiki-engineering-design.md`。该 docs/workflow slice 只审计和迁移知识、强化
-文档门禁；发现产品差异时只更新 ledger/parity 路由，不实现功能。关闭后本路线恢复
-`maintenance`，生成物、共享 Tree-sitter frontend 与反向 source guard 继续作为
-结构不变量。
+状态：`maintenance`。中文机制 Wiki、全 Markdown inventory、Vanilla 26.1 parity
+matrix 与可执行 docs lint 已闭环；长期 owner 见 `docs/wiki/README.md`，冻结合同归档
+在 `docs/archive/wiki-engineering-design.md`。生成物、共享 Tree-sitter frontend、
+反向 source guard 与文档 canonical ownership 继续作为结构不变量。只有目标版本、
+生成输入/模板、具体第二事实源或 Wiki lint 回退时才开有界 slice；宽泛手工审计不在
+active=0 时生成工作。
 
 ### P2：非实体客户端行为 closeout
 

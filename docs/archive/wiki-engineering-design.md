@@ -1,5 +1,8 @@
 # 中文 Vanilla 26.1 机制等价与 BBB Wiki 工程合同
 
+> Archive：本页保存已完成高风险 docs/workflow slice 的冻结合同；当前机制与流程以
+> `docs/wiki/`、`goal.md` 和缺口 ledger 为准。
+
 ## 目标与完成标准
 
 本高风险 docs/workflow engineering slice 建立 repo-owned 中文 Wiki，并把它作为

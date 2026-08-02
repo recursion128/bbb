@@ -39,7 +39,7 @@
 | `resources-world-list-favicons` | resources/ui | server/world list screens | screens out of scope | external dynamic textures | `not-needed` | [ledger](../../unsupported-features.md) | 对应 screen 进入声明范围时 |
 | `movement-remote-type-exceptions` | movement | rabbit/fox/bee/stray etc. local entity paths | server-owned remote entities | exact local movement authority | `not-needed` | [ledger](../../unsupported-features.md) | 列出的 exact type 获得本地权威时 |
 | `telemetry-mojang-upload` | diagnostics | telemetry managers | no external sender | account/session telemetry | `not-needed` | [ledger](../../unsupported-features.md) | repo 明确加入该外部 surface 时 |
-| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | `docs/wiki`, docs lint | inventory, ids, routes, links | `active` | [工程合同](../../wiki-engineering-design.md) | [ledger](../../unsupported-features.md)；本 slice 关闭后改为 `equivalent` |
+| `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | `docs/wiki`, docs lint | inventory, ids, routes, links | `equivalent` | docs lint fixtures + [归档合同](../../archive/wiki-engineering-design.md) | 目标版本、canonical owner 或 lint 合同变化时重开 |
 
 ## 审计摘要
 
