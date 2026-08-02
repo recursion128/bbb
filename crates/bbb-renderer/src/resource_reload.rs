@@ -1333,6 +1333,142 @@ mod tests {
     }
 
     #[test]
+    fn every_renderer_pipeline_owner_has_one_shader_reload_classification() {
+        use std::collections::BTreeSet;
+
+        let renderer = include_str!("renderer.rs");
+        let all = renderer
+            .lines()
+            .filter_map(|line| {
+                line.trim()
+                    .strip_prefix("pub(super) ")?
+                    .strip_suffix(": wgpu::RenderPipeline,")
+            })
+            .collect::<BTreeSet<_>>();
+        let reload = include_str!("resource_reload.rs");
+        let production = reload
+            .split_once("\n#[cfg(test)]")
+            .expect("resource reload production/test boundary")
+            .0;
+        let mapping = production
+            .split_once("    fn swap_with_renderer(&mut self, renderer: &mut Renderer) {")
+            .expect("single core pipeline mapping")
+            .1
+            .split_once("\n    }\n}\n\nimpl Renderer")
+            .expect("core pipeline mapping boundary")
+            .0;
+        let selected = mapping
+            .split("&mut renderer.")
+            .skip(1)
+            .filter_map(|suffix| {
+                suffix
+                    .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+                    .next()
+            })
+            .filter(|owner| owner.ends_with("_pipeline"))
+            .collect::<BTreeSet<_>>();
+
+        // These current surfaces map to a Vanilla static RenderPipeline and therefore must be
+        // migrated into CorePipelineGeneration. The value is the exact Java owner / core shader.
+        #[rustfmt::skip]
+        let pending = [
+            ("block_destroy_pipeline", "CRUMBLING/core/rendertype_crumbling"),
+            ("debug_text_pipeline", "TEXT/core/rendertype_text"),
+            ("entity_model_dragon_rays_pipeline", "DRAGON_RAYS/core/rendertype_lightning"),
+            ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
+            ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
+            ("entity_model_end_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
+            ("entity_model_end_gateway_pipeline", "END_GATEWAY/core/rendertype_end_portal"),
+            ("hud_win_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
+            ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
+            ("entity_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
+            ("entity_model_outline_cull_pipeline", "OUTLINE_CULL/core/rendertype_outline"),
+            ("entity_model_scroll_pipeline", "BREEZE_WIND/core/entity"),
+            ("entity_model_scroll_additive_pipeline", "ENERGY_SWIRL/core/entity"),
+            ("entity_model_guardian_beam_pipeline", "ENTITY_CUTOUT/core/entity"),
+            ("entity_model_end_crystal_beam_pipeline", "END_CRYSTAL_BEAM/core/entity"),
+            ("entity_model_beacon_beam_opaque_pipeline", "BEACON_BEAM_OPAQUE/core/rendertype_beacon_beam"),
+            ("entity_model_beacon_beam_translucent_pipeline", "BEACON_BEAM_TRANSLUCENT/core/rendertype_beacon_beam"),
+            ("lightning_pipeline", "LIGHTNING/core/rendertype_lightning"),
+            ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
+            ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
+            ("item_model_z_offset_forward_pipeline", "ENTITY_SOLID_Z_OFFSET_FORWARD/core/entity"),
+            ("display_text_background_pipeline", "TEXT_BACKGROUND/core/rendertype_text_background"),
+            ("display_text_pipeline", "TEXT/core/rendertype_text"),
+            ("display_text_see_through_pipeline", "TEXT_SEE_THROUGH/core/rendertype_text_see_through"),
+            ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
+            ("resident_item_model_z_offset_forward_pipeline", "ENTITY_SOLID_Z_OFFSET_FORWARD/core/entity"),
+            ("resident_item_model_cutout_no_cull_pipeline", "ENTITY_CUTOUT/core/entity"),
+            ("resident_item_model_cutout_z_offset_pipeline", "ENTITY_CUTOUT_Z_OFFSET/core/entity"),
+            ("resident_item_model_pattern_pipeline", "BANNER_PATTERN/core/entity"),
+            ("resident_item_model_translucent_no_cull_pipeline", "ENTITY_TRANSLUCENT/core/entity"),
+            ("resident_item_model_end_portal_pipeline", "END_PORTAL/core/rendertype_end_portal"),
+            ("resident_item_model_end_gateway_pipeline", "END_GATEWAY/core/rendertype_end_portal"),
+            ("resident_item_model_outline_pipeline", "OUTLINE_NO_CULL/core/rendertype_outline"),
+            ("selection_pipeline", "LINES/core/rendertype_lines"),
+            ("translucent_debug_line_pipeline", "LINES_TRANSLUCENT/core/rendertype_lines"),
+            ("chunk_border_always_on_top_pipeline", "LINES/core/rendertype_lines"),
+            ("lightmap_pipeline", "LIGHTMAP/core/lightmap"),
+            ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
+            ("sky_pipeline", "SKY/core/sky"),
+            ("star_pipeline", "STARS/core/stars"),
+            ("end_sky_pipeline", "END_SKY/core/position_tex_color"),
+            ("celestial_pipeline", "CELESTIAL/core/position_tex"),
+            ("cloud_flat_pipeline", "FLAT_CLOUDS/core/clouds"),
+            ("cloud_fancy_pipeline", "CLOUDS/core/clouds"),
+            ("hud_pipeline", "GUI_TEXTURED/core/gui_textured"),
+            ("vignette_pipeline", "VIGNETTE/core/gui_textured"),
+        ];
+        // These handles have no one-to-one Vanilla static core owner: eight are exact/default
+        // post-graph or renderer-internal copies whose selected path is PostEffectGraphRuntime;
+        // two are BBB fallback presentation lanes absent from Vanilla's pipeline registry.
+        #[rustfmt::skip]
+        let fixed = [
+            ("screen_blur_horizontal_pipeline", "minecraft:blur post fallback"),
+            ("screen_blur_vertical_pipeline", "minecraft:blur post fallback"),
+            ("transparency_combine_pipeline", "minecraft:transparency optimized default graph"),
+            ("transparency_blit_pipeline", "renderer-internal final-target copy"),
+            ("entity_model_pipeline", "BBB colored entity fallback"),
+            ("item_entity_pipeline", "BBB billboard item fallback"),
+            ("entity_outline_sobel_pipeline", "minecraft:entity_outline post fallback"),
+            ("entity_outline_blur_horizontal_pipeline", "minecraft:entity_outline post fallback"),
+            ("entity_outline_blur_vertical_pipeline", "minecraft:entity_outline post fallback"),
+            ("entity_outline_blit_pipeline", "minecraft:entity_outline post fallback copy"),
+        ];
+
+        assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
+        assert_eq!(selected.len(), 31, "selected core generation changed");
+        assert_eq!(
+            pending.len(),
+            46,
+            "pending static-core classification changed"
+        );
+        assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");
+        let pending = pending
+            .into_iter()
+            .map(|(owner, _)| owner)
+            .collect::<BTreeSet<_>>();
+        let fixed = fixed
+            .into_iter()
+            .map(|(owner, _)| owner)
+            .collect::<BTreeSet<_>>();
+        assert!(selected.is_disjoint(&pending));
+        assert!(selected.is_disjoint(&fixed));
+        assert!(pending.is_disjoint(&fixed));
+        let classified = selected
+            .union(&pending)
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .union(&fixed)
+            .copied()
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            classified, all,
+            "every renderer pipeline needs one reload classification"
+        );
+    }
+
+    #[test]
     fn renderer_production_dependency_points_at_pure_render_types_not_pack_loaders() {
         let manifest = include_str!("../Cargo.toml");
         let dependencies = manifest

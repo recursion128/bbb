@@ -135,9 +135,15 @@ core pipeline 的 GPU 准备集由 renderer 内部唯一私有
 reload API 与 pack → render-types → renderer 依赖方向不变。glint 的 scale、view-offset-Z、
 resident instance/decal UV 与 HUD clip/mask 只在 renderer 的共享 adapter 中形成窄 GPU
 projection；五个 consumer 不再分别解析 selected shader，也不能独立发布 generation。
+renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：31 个已在统一 core
+generation、46 个仍映射到 Vanilla static pipeline/core shader、10 个无一对一 static owner。
+后者只有 8 个已由 `PostEffectGraphRuntime` 拥有 selected path 的 default/内部 copy，以及
+Vanilla registry 中不存在的 BBB colored-entity / billboard-item fallback；它们不会冒充
+selected core consumer。46 个待迁移 owner 按 shader family 分组，下一组是同一
+`core/entity` source 的 10 个 scroll/beam/item/resident variant。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
-推进 elapsed。剩余 ShaderManager 工作是把其它 current static pipeline 迁入同一投影与预载。
+推进 elapsed。剩余 ShaderManager 工作只来自上述 46 个机械分类 owner。
 
 ## BBB 实现映射
 
