@@ -16,6 +16,7 @@ const END_PORTAL_SHADER_ID: &str = "minecraft:core/rendertype_end_portal";
 const OUTLINE_SHADER_ID: &str = "minecraft:core/rendertype_outline";
 const BEACON_BEAM_SHADER_ID: &str = "minecraft:core/rendertype_beacon_beam";
 const LIGHTNING_SHADER_ID: &str = "minecraft:core/rendertype_lightning";
+const LINES_SHADER_ID: &str = "minecraft:core/rendertype_lines";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -78,6 +79,11 @@ pub(crate) struct AdaptedBeaconBeamShaders {
 }
 
 pub(crate) struct AdaptedLightningShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedLineShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
 }
@@ -349,6 +355,30 @@ pub(crate) fn adapt_selected_lightning_shaders(
             .context("adapt selected lightning vertex shader")?,
         fragment: adapt_lightning_stage(&fragment.source, false)
             .context("adapt selected lightning fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_line_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedLineShaders>> {
+    let vertex = resources
+        .source_by_id(LINES_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_lines vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(LINES_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_lines fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedLineShaders {
+        vertex: adapt_line_stage(&vertex.source, true)
+            .context("adapt selected line vertex shader")?,
+        fragment: adapt_line_stage(&fragment.source, false)
+            .context("adapt selected line fragment shader")?,
     }))
 }
 
@@ -656,6 +686,33 @@ fn adapt_lightning_stage(source: &str, vertex_stage: bool) -> Result<String> {
     let source = remove_vanilla_uniform_blocks(source)?;
     let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
     bind_lightning_stage_locations(&source, vertex_stage)
+}
+
+fn adapt_line_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        let source = replace_required(
+            &source,
+            "#define ProjMat bbbCamera.BbbViewProj",
+            "#define ProjMat bbbCamera.BbbViewProjViewOffsetZ",
+            "selected line view-offset projection",
+        )?;
+        let source = source.replace(
+            "ProjMat * VIEW_SCALE * ModelViewMat",
+            "ProjMat * ModelViewMat",
+        );
+        let source = insert_after_version(&source, "layout(location = 3) in float BbbLineSide;\n")?;
+        replace_required(
+            &source,
+            "    if (gl_VertexID % 2 == 0) {\n        gl_Position = vec4((ndc1 + vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);\n    } else {\n        gl_Position = vec4((ndc1 - vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);\n    }",
+            "    gl_Position = vec4((ndc1 + vec3(lineOffset * BbbLineSide, 0.0)) * linePosStart.w, linePosStart.w);",
+            "selected pre-expanded line side",
+        )?
+    } else {
+        source
+    };
+    bind_line_stage_locations(&source, vertex_stage)
 }
 
 fn specialize_glint_vertex(
@@ -1216,6 +1273,72 @@ pub(crate) fn create_selected_outline_pipeline(
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_line_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    shaders: &AdaptedLineShaders,
+    vertex_layout: wgpu::VertexBufferLayout<'_>,
+    depth_write_enabled: bool,
+    depth_test_enabled: bool,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-line-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected line vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-line-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected line fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-line-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[vertex_layout],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: depth_test_enabled.then(|| {
+                crate::pipeline_builder::depth_stencil_state(
+                    crate::gpu::DEPTH_FORMAT,
+                    depth_write_enabled,
+                    wgpu::CompareFunction::LessEqual,
+                )
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -1903,6 +2026,32 @@ fn bind_lightning_stage_locations(source: &str, vertex_stage: bool) -> Result<St
         })
 }
 
+fn bind_line_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 4, true),
+            ("in", "vec3", "Normal", 1, true),
+            ("in", "float", "LineWidth", 2, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "vertexColor", 2, true),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec4", "vertexColor", 2, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2194,6 +2343,46 @@ void main() {
     }
 
     #[test]
+    fn line_adapter_projects_preexpanded_side_and_view_offset_once() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in vec3 Normal;
+in float LineWidth;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+const mat4 VIEW_SCALE = mat4(1.0);
+void main() {
+    vec4 linePosStart = ProjMat * VIEW_SCALE * ModelViewMat * vec4(Position, 1.0);
+    vec4 linePosEnd = ProjMat * VIEW_SCALE * ModelViewMat * vec4(Position + Normal, 1.0);
+    vec3 ndc1 = linePosStart.xyz / linePosStart.w;
+    vec3 ndc2 = linePosEnd.xyz / linePosEnd.w;
+    vec2 lineScreenDirection = normalize((ndc2.xy - ndc1.xy) * ScreenSize);
+    vec2 lineOffset = vec2(-lineScreenDirection.y, lineScreenDirection.x) * LineWidth / ScreenSize;
+    if (lineOffset.x < 0.0) { lineOffset *= -1.0; }
+    if (gl_VertexID % 2 == 0) {
+        gl_Position = vec4((ndc1 + vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);
+    } else {
+        gl_Position = vec4((ndc1 - vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);
+    }
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    vertexColor = Color;
+}
+"#;
+        let vertex = adapt_line_stage(vertex, true).expect("line vertex projection");
+        assert!(vertex.contains("#define ProjMat bbbCamera.BbbViewProjViewOffsetZ"));
+        assert!(!vertex.contains("ProjMat * VIEW_SCALE * ModelViewMat"));
+        assert!(vertex.contains("layout(location = 3) in float BbbLineSide"));
+        assert!(vertex.contains("lineOffset * BbbLineSide"));
+        assert!(!vertex.contains("gl_VertexID"));
+        assert!(vertex.contains("layout(location = 4) in vec4 Color"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -2480,6 +2669,14 @@ void main() {
             id: LIGHTNING_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let lines_vertex_key = ShaderSourceKey {
+            id: LINES_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let lines_fragment_key = ShaderSourceKey {
+            id: LINES_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -2693,6 +2890,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         key: lightning_fragment_key,
                         resource_id:
                             "minecraft:shaders/core/rendertype_lightning.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    lines_vertex_key.clone(),
+                    ShaderSource {
+                        key: lines_vertex_key,
+                        resource_id: "minecraft:shaders/core/rendertype_lines.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    lines_fragment_key.clone(),
+                    ShaderSource {
+                        key: lines_fragment_key,
+                        resource_id: "minecraft:shaders/core/rendertype_lines.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -3340,6 +3557,70 @@ void main() {
             .expect_err("filtering a required lightning stage must reject the generation");
         assert!(error.to_string().contains("rendertype_lightning"));
         assert_eq!(renderer.core_shader_generation(), Some(101));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_line_shader_preloads_depth_variants_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-line-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_lines.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + vertexColor.a;
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected line shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(111, selected)
+            .expect("selected line generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected line depth variants compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(111));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_lines\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected line filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(112, filtered)
+            .expect("filtered line generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required line stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_lines"));
+        assert_eq!(renderer.core_shader_generation(), Some(111));
 
         std::fs::remove_dir_all(root).unwrap();
     }

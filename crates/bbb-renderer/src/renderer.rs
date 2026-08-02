@@ -1857,11 +1857,19 @@ impl Renderer {
             None,
         )?;
         let selection_pipeline =
-            create_selection_pipeline(&device, format, &terrain_bind_group_layout);
-        let translucent_debug_line_pipeline =
-            create_translucent_debug_line_pipeline(&device, format, &terrain_bind_group_layout);
-        let chunk_border_always_on_top_pipeline =
-            create_chunk_border_always_on_top_pipeline(&device, format, &terrain_bind_group_layout);
+            create_selection_pipeline(&device, format, &terrain_bind_group_layout, None)?;
+        let translucent_debug_line_pipeline = create_translucent_debug_line_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
+        let chunk_border_always_on_top_pipeline = create_chunk_border_always_on_top_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
         let entity_outline_sobel_pipeline = create_entity_outline_sobel_pipeline(
             &device,

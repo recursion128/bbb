@@ -1,3 +1,4 @@
+use anyhow::Result;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 use wgpu::util::DeviceExt;
@@ -339,44 +340,74 @@ pub(super) fn create_selection_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-selection-outline-pipeline")
-        .shader("bbb-selection-outline-shader", SELECTION_SHADER)
-        .layout(
-            "bbb-selection-outline-pipeline-layout",
-            &[camera_bind_group_layout],
-        )
-        .vertex_buffers(&[selection_vertex_layout()])
-        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .topology(wgpu::PrimitiveTopology::TriangleList)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+    shaders: Option<&crate::core_shaders::AdaptedLineShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_line_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            "bbb-selected-selection-outline",
+            shaders,
+            selection_vertex_layout(),
             SELECTION_LINES_DEPTH_WRITE,
-            wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+            true,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-selection-outline-pipeline")
+            .shader("bbb-selection-outline-shader", SELECTION_SHADER)
+            .layout(
+                "bbb-selection-outline-pipeline-layout",
+                &[camera_bind_group_layout],
+            )
+            .vertex_buffers(&[selection_vertex_layout()])
+            .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+            .topology(wgpu::PrimitiveTopology::TriangleList)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                SELECTION_LINES_DEPTH_WRITE,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build(),
+    )
 }
 
 pub(super) fn create_translucent_debug_line_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-debug-lines-translucent-pipeline")
-        .shader("bbb-debug-lines-translucent-shader", SELECTION_SHADER)
-        .layout(
-            "bbb-debug-lines-translucent-pipeline-layout",
-            &[camera_bind_group_layout],
-        )
-        .vertex_buffers(&[selection_vertex_layout()])
-        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .topology(wgpu::PrimitiveTopology::TriangleList)
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
+    shaders: Option<&crate::core_shaders::AdaptedLineShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_line_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            "bbb-selected-debug-lines-translucent",
+            shaders,
+            selection_vertex_layout(),
             TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE,
-            wgpu::CompareFunction::LessEqual,
-        ))
-        .build()
+            true,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-debug-lines-translucent-pipeline")
+            .shader("bbb-debug-lines-translucent-shader", SELECTION_SHADER)
+            .layout(
+                "bbb-debug-lines-translucent-pipeline-layout",
+                &[camera_bind_group_layout],
+            )
+            .vertex_buffers(&[selection_vertex_layout()])
+            .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+            .topology(wgpu::PrimitiveTopology::TriangleList)
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE,
+                wgpu::CompareFunction::LessEqual,
+            ))
+            .build(),
+    )
 }
 
 #[derive(Debug, Default)]
@@ -445,26 +476,41 @@ pub(super) fn create_chunk_border_always_on_top_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-chunk-border-debug-pipeline")
-        .shader("bbb-chunk-border-debug-shader", SELECTION_SHADER)
-        .layout(
-            "bbb-chunk-border-debug-pipeline-layout",
-            &[camera_bind_group_layout],
-        )
-        .vertex_buffers(&[selection_vertex_layout()])
-        .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
-        .topology(wgpu::PrimitiveTopology::TriangleList)
-        .depth_stencil(if CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST {
-            Some(depth_stencil_state(
-                DEPTH_FORMAT,
-                SELECTION_LINES_DEPTH_WRITE,
-                wgpu::CompareFunction::LessEqual,
-            ))
-        } else {
-            None
-        })
-        .build()
+    shaders: Option<&crate::core_shaders::AdaptedLineShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_line_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            "bbb-selected-chunk-border-debug",
+            shaders,
+            selection_vertex_layout(),
+            SELECTION_LINES_DEPTH_WRITE,
+            CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-chunk-border-debug-pipeline")
+            .shader("bbb-chunk-border-debug-shader", SELECTION_SHADER)
+            .layout(
+                "bbb-chunk-border-debug-pipeline-layout",
+                &[camera_bind_group_layout],
+            )
+            .vertex_buffers(&[selection_vertex_layout()])
+            .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
+            .topology(wgpu::PrimitiveTopology::TriangleList)
+            .depth_stencil(if CHUNK_BORDER_ALWAYS_ON_TOP_DEPTH_TEST {
+                Some(depth_stencil_state(
+                    DEPTH_FORMAT,
+                    SELECTION_LINES_DEPTH_WRITE,
+                    wgpu::CompareFunction::LessEqual,
+                ))
+            } else {
+                None
+            })
+            .build(),
+    )
 }
 
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
