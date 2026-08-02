@@ -1914,7 +1914,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )?;
         let sunrise_sunset_pipeline =
             create_sunrise_sunset_pipeline(&device, format, &terrain_bind_group_layout);
         let star_pipeline = create_star_pipeline(
@@ -1922,7 +1923,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )?;
         let end_sky_texture_bind_group_layout = create_end_sky_bind_group_layout(&device);
         let end_sky_pipeline = create_end_sky_pipeline(
             &device,
@@ -1930,7 +1932,8 @@ impl Renderer {
             &terrain_bind_group_layout,
             &end_sky_texture_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )?;
         let end_sky_mesh = create_end_sky_gpu(&device, &sky_dynamic_bind_group_layout);
         let celestial_bind_group_layout = create_celestial_bind_group_layout(&device);
         let celestial_pipeline = create_celestial_pipeline(
@@ -1939,7 +1942,8 @@ impl Renderer {
             &terrain_bind_group_layout,
             &celestial_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )?;
         let cloud_bind_group_layout = create_cloud_bind_group_layout(&device);
         let cloud_uniform_buffer = create_cloud_uniform_buffer(&device);
         let cloud_bind_group =

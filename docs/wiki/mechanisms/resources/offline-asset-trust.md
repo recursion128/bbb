@@ -96,7 +96,7 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
-| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；63 个 current pipeline（含 portal、outline、beam、lightning、line、text、cloud、lightmap family）驱动同一原子 generation，其余 static pipeline 仍待迁移 | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；67 个 current pipeline（含 portal、outline、beam、lightning、line、text、cloud、lightmap、sky family）驱动同一原子 generation，其余 static pipeline 仍待迁移 | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
 | 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
 | 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
 | 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
@@ -135,17 +135,19 @@ core pipeline 的 GPU 准备集由 renderer 内部唯一私有
 reload API 与 pack → render-types → renderer 依赖方向不变。glint 的 scale、view-offset-Z、
 resident instance/decal UV 与 HUD clip/mask 只在 renderer 的共享 adapter 中形成窄 GPU
 projection；各 family consumer 不再分别解析 selected shader，也不能独立发布 generation。
-renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：63 个已在统一 core
-generation、14 个仍映射到 Vanilla static pipeline/core shader、10 个无一对一 static owner。
+renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：67 个已在统一 core
+generation、10 个仍映射到 Vanilla static pipeline/core shader、10 个无一对一 static owner。
 后者只有 8 个已由 `PostEffectGraphRuntime` 拥有 selected path 的 default/内部 copy，以及
 Vanilla registry 中不存在的 BBB colored-entity / billboard-item fallback；它们不会冒充
 selected core consumer。独立 `core/rendertype_text_background` source 现在通过同一 atlas/lightmap
 layout 驱动 display-text background owner；cloud adapter 将 Vanilla signed texel-buffer face 投影到
 BBB packed instance input，并共同驱动 flat/fancy cull variant；screenquad/lightmap source pair 也已驱动
-retained 16×16 lightmap target；14 个待迁移 owner 的下一组是 sky family。
+retained 16×16 lightmap target；sky、stars、end-sky 和 celestial 也共享一个 selected-source
+adapter，并复用既有 camera/texture/dynamic bind-group ownership；10 个待迁移 owner 的下一组是
+GUI_TEXTURED family。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
-推进 elapsed。剩余 ShaderManager 工作只来自上述 14 个机械分类 owner。
+推进 elapsed。剩余 ShaderManager 工作只来自上述 10 个机械分类 owner。
 
 ## BBB 实现映射
 

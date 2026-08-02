@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
@@ -729,6 +729,32 @@ pub(super) fn create_sky_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_embedded_sky_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            dynamic_bind_group_layout,
+        ));
+    };
+    create_selected_sky_pipeline(
+        device,
+        format,
+        &[bind_group_layout, dynamic_bind_group_layout],
+        "bbb-selected-sky-disc",
+        shaders,
+        &[sky_position_vertex_layout()],
+        sky_disc_blend_state(),
+    )
+}
+
+fn create_embedded_sky_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     RenderPipelineBuilder::new(device, "bbb-sky-disc-pipeline")
         .shader("bbb-sky-disc-shader", SKY_DISC_SHADER)
@@ -736,11 +762,7 @@ pub(super) fn create_sky_pipeline(
             "bbb-sky-disc-pipeline-layout",
             &[bind_group_layout, dynamic_bind_group_layout],
         )
-        .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<SkyPositionVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float32x3],
-        }])
+        .vertex_buffers(&[sky_position_vertex_layout()])
         .color_target(format, sky_disc_blend_state())
         .cull_mode(sky_cull_mode())
         .depth_stencil(sky_depth_stencil_state())
@@ -803,6 +825,32 @@ pub(super) fn create_star_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_embedded_star_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            dynamic_bind_group_layout,
+        ));
+    };
+    create_selected_sky_pipeline(
+        device,
+        format,
+        &[camera_bind_group_layout, dynamic_bind_group_layout],
+        "bbb-selected-stars",
+        shaders,
+        &[sky_position_vertex_layout()],
+        Some(SKY_OVERLAY_BLEND),
+    )
+}
+
+fn create_embedded_star_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     RenderPipelineBuilder::new(device, "bbb-star-pipeline")
         .shader("bbb-star-shader", STAR_SHADER)
@@ -810,11 +858,7 @@ pub(super) fn create_star_pipeline(
             "bbb-star-pipeline-layout",
             &[camera_bind_group_layout, dynamic_bind_group_layout],
         )
-        .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<SkyPositionVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float32x3],
-        }])
+        .vertex_buffers(&[sky_position_vertex_layout()])
         .color_target(format, Some(SKY_OVERLAY_BLEND))
         .cull_mode(sky_cull_mode())
         .depth_stencil(sky_depth_stencil_state())
@@ -942,6 +986,38 @@ pub(super) fn create_end_sky_pipeline(
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     texture_bind_group_layout: &wgpu::BindGroupLayout,
     dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_embedded_end_sky_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ));
+    };
+    create_selected_sky_pipeline(
+        device,
+        format,
+        &[
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ],
+        "bbb-selected-end-sky",
+        shaders,
+        &[sky_textured_vertex_layout()],
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+    )
+}
+
+fn create_embedded_end_sky_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     RenderPipelineBuilder::new(device, "bbb-end-sky-pipeline")
         .shader("bbb-end-sky-shader", END_SKY_SHADER)
@@ -953,15 +1029,7 @@ pub(super) fn create_end_sky_pipeline(
                 dynamic_bind_group_layout,
             ],
         )
-        .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<SkyTexturedVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![
-                0 => Float32x3,
-                1 => Float32x2,
-                2 => Float32x4
-            ],
-        }])
+        .vertex_buffers(&[sky_textured_vertex_layout()])
         .color_target(format, Some(wgpu::BlendState::ALPHA_BLENDING))
         .cull_mode(sky_cull_mode())
         .depth_stencil(sky_depth_stencil_state())
@@ -969,6 +1037,38 @@ pub(super) fn create_end_sky_pipeline(
 }
 
 pub(super) fn create_celestial_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
+) -> Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_embedded_celestial_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ));
+    };
+    create_selected_sky_pipeline(
+        device,
+        format,
+        &[
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ],
+        "bbb-selected-celestial",
+        shaders,
+        &[sky_uv_vertex_layout()],
+        Some(SKY_OVERLAY_BLEND),
+    )
+}
+
+fn create_embedded_celestial_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
@@ -985,15 +1085,98 @@ pub(super) fn create_celestial_pipeline(
                 dynamic_bind_group_layout,
             ],
         )
-        .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<SkyUvVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
-        }])
+        .vertex_buffers(&[sky_uv_vertex_layout()])
         .color_target(format, Some(SKY_OVERLAY_BLEND))
         .cull_mode(sky_cull_mode())
         .depth_stencil(sky_depth_stencil_state())
         .build()
+}
+
+fn sky_position_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<SkyPositionVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float32x3],
+    }
+}
+
+const SKY_UV_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+
+fn sky_uv_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<SkyUvVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &SKY_UV_VERTEX_ATTRIBUTES,
+    }
+}
+
+const SKY_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
+
+fn sky_textured_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<SkyTexturedVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &SKY_TEXTURED_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn create_selected_sky_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layouts: &[&wgpu::BindGroupLayout],
+    label: &'static str,
+    shaders: &crate::core_shaders::AdaptedShaderPair,
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    blend: Option<wgpu::BlendState>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-sky-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected sky vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-sky-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected sky fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-sky-pipeline-layout"),
+        bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: sky_cull_mode(),
+                ..Default::default()
+            },
+            depth_stencil: sky_depth_stencil_state(),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
 }
 
 pub(super) fn create_sky_disc_gpu(
@@ -1968,7 +2151,9 @@ mod tests {
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )
+        .expect("embedded sky pipeline");
         let _sunrise_pipeline = create_sunrise_sunset_pipeline(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
@@ -1979,21 +2164,27 @@ mod tests {
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )
+        .expect("embedded star pipeline");
         let _end_sky_pipeline = create_end_sky_pipeline(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
             &end_sky_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )
+        .expect("embedded end-sky pipeline");
         let _celestial_pipeline = create_celestial_pipeline(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
             &celestial_bind_group_layout,
             &sky_dynamic_bind_group_layout,
-        );
+            None,
+        )
+        .expect("embedded celestial pipeline");
     }
 
     #[test]

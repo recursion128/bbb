@@ -23,6 +23,10 @@ const TEXT_BACKGROUND_SHADER_ID: &str = "minecraft:core/rendertype_text_backgrou
 const CLOUD_SHADER_ID: &str = "minecraft:core/rendertype_clouds";
 const SCREEN_QUAD_SHADER_ID: &str = "minecraft:core/screenquad";
 const LIGHTMAP_SHADER_ID: &str = "minecraft:core/lightmap";
+const SKY_SHADER_ID: &str = "minecraft:core/sky";
+const STARS_SHADER_ID: &str = "minecraft:core/stars";
+const POSITION_TEX_COLOR_SHADER_ID: &str = "minecraft:core/position_tex_color";
+const POSITION_TEX_SHADER_ID: &str = "minecraft:core/position_tex";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -115,6 +119,18 @@ pub(crate) struct AdaptedCloudShaders {
 pub(crate) struct AdaptedLightmapShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedShaderPair {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedSkyShaders {
+    pub(crate) sky: Option<AdaptedShaderPair>,
+    pub(crate) stars: Option<AdaptedShaderPair>,
+    pub(crate) end_sky: Option<AdaptedShaderPair>,
+    pub(crate) celestial: Option<AdaptedShaderPair>,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -521,6 +537,55 @@ pub(crate) fn adapt_selected_lightmap_shaders(
             .context("adapt selected lightmap vertex shader")?,
         fragment: adapt_lightmap_stage(&fragment.source, false)
             .context("adapt selected lightmap fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_sky_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<AdaptedSkyShaders> {
+    Ok(AdaptedSkyShaders {
+        sky: adapt_selected_sky_pair(resources, SKY_SHADER_ID, SkyShaderKind::Sky)?,
+        stars: adapt_selected_sky_pair(resources, STARS_SHADER_ID, SkyShaderKind::Stars)?,
+        end_sky: adapt_selected_sky_pair(
+            resources,
+            POSITION_TEX_COLOR_SHADER_ID,
+            SkyShaderKind::EndSky,
+        )?,
+        celestial: adapt_selected_sky_pair(
+            resources,
+            POSITION_TEX_SHADER_ID,
+            SkyShaderKind::Celestial,
+        )?,
+    })
+}
+
+#[derive(Clone, Copy)]
+enum SkyShaderKind {
+    Sky,
+    Stars,
+    EndSky,
+    Celestial,
+}
+
+fn adapt_selected_sky_pair(
+    resources: &CoreShaderSourceProjection,
+    shader_id: &str,
+    kind: SkyShaderKind,
+) -> Result<Option<AdaptedShaderPair>> {
+    let vertex = resources
+        .source_by_id(shader_id, ShaderStage::Vertex)
+        .with_context(|| format!("prepared core shaders are missing {shader_id} vertex stage"))?;
+    let fragment = resources
+        .source_by_id(shader_id, ShaderStage::Fragment)
+        .with_context(|| format!("prepared core shaders are missing {shader_id} fragment stage"))?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedShaderPair {
+        vertex: adapt_sky_stage(&vertex.source, true, kind)
+            .with_context(|| format!("adapt selected {shader_id} vertex shader"))?,
+        fragment: adapt_sky_stage(&fragment.source, false, kind)
+            .with_context(|| format!("adapt selected {shader_id} fragment shader"))?,
     }))
 }
 
@@ -999,6 +1064,49 @@ fn adapt_lightmap_stage(source: &str, vertex_stage: bool) -> Result<String> {
         )?
     };
     bind_lightmap_stage_locations(&source, vertex_stage)
+}
+
+fn adapt_sky_stage(source: &str, vertex_stage: bool, kind: SkyShaderKind) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let dynamic_group = match kind {
+        SkyShaderKind::Sky | SkyShaderKind::Stars => 1,
+        SkyShaderKind::EndSky | SkyShaderKind::Celestial => 2,
+    };
+    let source = project_sky_dynamic_uniform(&source, dynamic_group)?;
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_sky_stage_locations(&source, vertex_stage, kind)?;
+    if matches!(kind, SkyShaderKind::EndSky | SkyShaderKind::Celestial) {
+        adapt_combined_samplers(
+            &source,
+            &[SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 1,
+                texture_binding: 0,
+                sampler_group: 1,
+                sampler_binding: 1,
+            }],
+        )
+    } else {
+        Ok(source)
+    }
+}
+
+fn project_sky_dynamic_uniform(source: &str, dynamic_group: u32) -> Result<String> {
+    let source = replace_required(
+        source,
+        "#define ProjMat bbbCamera.BbbViewProj",
+        "#define ProjMat bbbCamera.BbbProjection",
+        "selected sky projection",
+    )?;
+    replace_required(
+        &source,
+        "#define ModelViewMat mat4(1.0)\n#define ColorModulator vec4(1.0)",
+        &format!(
+            "layout(std140, set = {dynamic_group}, binding = 0) uniform BbbSkyDynamic {{\n    mat4 BbbSkyModelTransform;\n    vec4 BbbSkyColorModulator;\n}} bbbSkyDynamic;\n#define ModelViewMat bbbSkyDynamic.BbbSkyModelTransform\n#define ColorModulator bbbSkyDynamic.BbbSkyColorModulator"
+        ),
+        "selected sky dynamic projection",
+    )
 }
 
 const CLOUD_FACE_INPUT_PROJECTION: &str = r#"layout(location = 0) in uint BbbCloudFace;
@@ -2512,6 +2620,53 @@ fn bind_lightmap_stage_locations(source: &str, vertex_stage: bool) -> Result<Str
         })
 }
 
+fn bind_sky_stage_locations(
+    source: &str,
+    vertex_stage: bool,
+    kind: SkyShaderKind,
+) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = match (kind, vertex_stage) {
+        (SkyShaderKind::Sky, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+        ],
+        (SkyShaderKind::Sky, false) => &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+        (SkyShaderKind::Stars, true) => &[("in", "vec3", "Position", 0, true)],
+        (SkyShaderKind::Stars, false) => &[("out", "vec4", "fragColor", 0, true)],
+        (SkyShaderKind::EndSky, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("in", "vec4", "Color", 2, true),
+            ("out", "vec2", "texCoord0", 0, true),
+            ("out", "vec4", "vertexColor", 1, true),
+        ],
+        (SkyShaderKind::EndSky, false) => &[
+            ("in", "vec2", "texCoord0", 0, true),
+            ("in", "vec4", "vertexColor", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+        (SkyShaderKind::Celestial, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("out", "vec2", "texCoord0", 0, true),
+        ],
+        (SkyShaderKind::Celestial, false) => &[
+            ("in", "vec2", "texCoord0", 0, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -3017,6 +3172,47 @@ void main() { fragColor = vec4(texCoord, lightmapInfo.SkyFactor, 1.0); }
     }
 
     #[test]
+    fn sky_family_adapter_projects_exact_layouts_and_dynamic_uniform_groups() {
+        let sky_vertex = r#"#version 330
+in vec3 Position;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = length(Position);
+    cylindricalVertexDistance = length(Position.xz);
+}
+"#;
+        let sky_vertex =
+            adapt_sky_stage(sky_vertex, true, SkyShaderKind::Sky).expect("sky vertex projection");
+        assert!(sky_vertex.contains("#define ProjMat bbbCamera.BbbProjection"));
+        assert!(sky_vertex.contains("layout(std140, set = 1, binding = 0) uniform BbbSkyDynamic"));
+        assert!(sky_vertex.contains("layout(location = 0) in vec3 Position"));
+        assert!(sky_vertex.contains("layout(location = 1) out float cylindricalVertexDistance"));
+
+        let end_sky_fragment = r#"#version 330
+layout(std140) uniform DynamicTransforms {
+    mat4 ModelViewMat;
+    vec4 ColorModulator;
+};
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModulator; }
+"#;
+        let end_sky_fragment = adapt_sky_stage(end_sky_fragment, false, SkyShaderKind::EndSky)
+            .expect("end-sky fragment projection");
+        assert!(
+            end_sky_fragment.contains("layout(std140, set = 2, binding = 0) uniform BbbSkyDynamic")
+        );
+        assert!(end_sky_fragment.contains("layout(set = 1, binding = 0) uniform texture2D"));
+        assert!(end_sky_fragment.contains("layout(set = 1, binding = 1) uniform sampler"));
+        assert!(end_sky_fragment.contains("layout(location = 1) in vec4 vertexColor"));
+        assert!(end_sky_fragment.contains("layout(location = 0) out vec4 fragColor"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -3349,6 +3545,38 @@ void main() {
         };
         let lightmap_fragment_key = ShaderSourceKey {
             id: LIGHTMAP_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let sky_vertex_key = ShaderSourceKey {
+            id: SKY_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let sky_fragment_key = ShaderSourceKey {
+            id: SKY_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let stars_vertex_key = ShaderSourceKey {
+            id: STARS_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let stars_fragment_key = ShaderSourceKey {
+            id: STARS_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let end_sky_vertex_key = ShaderSourceKey {
+            id: POSITION_TEX_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let end_sky_fragment_key = ShaderSourceKey {
+            id: POSITION_TEX_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let celestial_vertex_key = ShaderSourceKey {
+            id: POSITION_TEX_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let celestial_fragment_key = ShaderSourceKey {
+            id: POSITION_TEX_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
         CoreShaderSourceProjection::new(
@@ -3688,6 +3916,86 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: lightmap_fragment_key,
                         resource_id: "minecraft:shaders/core/lightmap.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    sky_vertex_key.clone(),
+                    ShaderSource {
+                        key: sky_vertex_key,
+                        resource_id: "minecraft:shaders/core/sky.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    sky_fragment_key.clone(),
+                    ShaderSource {
+                        key: sky_fragment_key,
+                        resource_id: "minecraft:shaders/core/sky.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    stars_vertex_key.clone(),
+                    ShaderSource {
+                        key: stars_vertex_key,
+                        resource_id: "minecraft:shaders/core/stars.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    stars_fragment_key.clone(),
+                    ShaderSource {
+                        key: stars_fragment_key,
+                        resource_id: "minecraft:shaders/core/stars.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    end_sky_vertex_key.clone(),
+                    ShaderSource {
+                        key: end_sky_vertex_key,
+                        resource_id: "minecraft:shaders/core/position_tex_color.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    end_sky_fragment_key.clone(),
+                    ShaderSource {
+                        key: end_sky_fragment_key,
+                        resource_id: "minecraft:shaders/core/position_tex_color.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    celestial_vertex_key.clone(),
+                    ShaderSource {
+                        key: celestial_vertex_key,
+                        resource_id: "minecraft:shaders/core/position_tex.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    celestial_fragment_key.clone(),
+                    ShaderSource {
+                        key: celestial_fragment_key,
+                        resource_id: "minecraft:shaders/core/position_tex.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -4678,6 +4986,113 @@ void main() {
             .expect_err("filtering required lightmap stages must reject the generation");
         assert!(error.to_string().contains("screenquad") || error.to_string().contains("lightmap"));
         assert_eq!(renderer.core_shader_generation(), Some(151));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_sky_family_preloads_all_four_pipelines_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-sky-family");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/sky.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, sphericalVertexDistance * 0.0, 1.0 + cylindricalVertexDistance * 0.0) * ColorModulator;
+}
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/stars.fsh"),
+            "#version 330\nout vec4 fragColor;\nvoid main() { fragColor = ColorModulator; }\n",
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/position_tex_color.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * vertexColor * ColorModulator; }
+"#,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/position_tex.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = texture(Sampler0, texCoord0) * ColorModulator; }
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected sky-family shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(161, selected)
+            .expect("selected sky-family generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        for shader_id in [
+            SKY_SHADER_ID,
+            STARS_SHADER_ID,
+            POSITION_TEX_COLOR_SHADER_ID,
+            POSITION_TEX_SHADER_ID,
+        ] {
+            assert_eq!(
+                catalog
+                    .source_by_id(shader_id, ShaderStage::Fragment)
+                    .expect("selected sky-family fragment")
+                    .pack_id,
+                "startup/0"
+            );
+        }
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected sky, stars, end-sky, and celestial pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(161));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/(?:sky|stars|position_tex_color|position_tex)\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected sky-family filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(162, filtered)
+            .expect("filtered sky-family generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required sky-family stages must reject the generation");
+        assert!([
+            "core/sky",
+            "core/stars",
+            "position_tex_color",
+            "position_tex"
+        ]
+        .iter()
+        .any(|needle| error.to_string().contains(needle)));
+        assert_eq!(renderer.core_shader_generation(), Some(161));
 
         std::fs::remove_dir_all(root).unwrap();
     }

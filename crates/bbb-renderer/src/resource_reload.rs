@@ -405,6 +405,53 @@ impl CloudCorePipelines {
     }
 }
 
+struct SkyCorePipelines {
+    sky: wgpu::RenderPipeline,
+    stars: wgpu::RenderPipeline,
+    end_sky: wgpu::RenderPipeline,
+    celestial: wgpu::RenderPipeline,
+}
+
+impl SkyCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: &crate::core_shaders::AdaptedSkyShaders,
+    ) -> Result<Self> {
+        Ok(Self {
+            sky: crate::sky::create_sky_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.sky_dynamic_bind_group_layout,
+                shaders.sky.as_ref(),
+            )?,
+            stars: crate::sky::create_star_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.sky_dynamic_bind_group_layout,
+                shaders.stars.as_ref(),
+            )?,
+            end_sky: crate::sky::create_end_sky_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.end_sky_texture_bind_group_layout,
+                &renderer.sky_dynamic_bind_group_layout,
+                shaders.end_sky.as_ref(),
+            )?,
+            celestial: crate::sky::create_celestial_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.celestial_bind_group_layout,
+                &renderer.sky_dynamic_bind_group_layout,
+                shaders.celestial.as_ref(),
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -431,6 +478,7 @@ struct CorePipelineGeneration {
     text_background: Option<wgpu::RenderPipeline>,
     clouds: Option<CloudCorePipelines>,
     lightmap: Option<wgpu::RenderPipeline>,
+    sky: Option<SkyCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -612,6 +660,13 @@ impl CorePipelineGeneration {
                 )
             })
             .transpose()?;
+        let sky_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_sky_shaders(resources))
+            .transpose()?;
+        let sky = sky_shaders
+            .as_ref()
+            .map(|shaders| SkyCorePipelines::prepare(renderer, shaders))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -632,6 +687,7 @@ impl CorePipelineGeneration {
             text_background,
             clouds,
             lightmap,
+            sky,
         })
     }
 
@@ -876,6 +932,12 @@ impl CorePipelineGeneration {
         }
         if let Some(lightmap) = self.lightmap.as_mut() {
             std::mem::swap(lightmap, &mut renderer.lightmap_pipeline);
+        }
+        if let Some(sky) = self.sky.as_mut() {
+            std::mem::swap(&mut sky.sky, &mut renderer.sky_pipeline);
+            std::mem::swap(&mut sky.stars, &mut renderer.star_pipeline);
+            std::mem::swap(&mut sky.end_sky, &mut renderer.end_sky_pipeline);
+            std::mem::swap(&mut sky.celestial, &mut renderer.celestial_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1834,8 +1896,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            64,
-            "63 GPU handles plus the publication generation must share one mapping"
+            68,
+            "67 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1911,6 +1973,13 @@ mod tests {
                 .count(),
             1,
             "lightmap must have one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_sky_shaders(resources)")
+                .count(),
+            1,
+            "sky, stars, end sky, and celestial must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -2020,10 +2089,6 @@ mod tests {
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
-            ("sky_pipeline", "SKY/core/sky"),
-            ("star_pipeline", "STARS/core/stars"),
-            ("end_sky_pipeline", "END_SKY/core/position_tex_color"),
-            ("celestial_pipeline", "CELESTIAL/core/position_tex"),
             ("hud_pipeline", "GUI_TEXTURED/core/gui_textured"),
             ("vignette_pipeline", "VIGNETTE/core/gui_textured"),
         ];
@@ -2045,10 +2110,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 63, "selected core generation changed");
+        assert_eq!(selected.len(), 67, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            14,
+            10,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");
