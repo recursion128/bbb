@@ -45,6 +45,8 @@
   inventory、细分 parity matrix 与离线 evidence/双向 route/stale-output 门禁建立。
 - **2026-08-02（core pipeline generation convergence）**：core shader GPU 准备、发布
   与回滚收敛为一个 renderer-private generation owner 和一份字段映射。
+- **2026-08-02（reload-listener generation closure）**：20 个 Vanilla listener owner 完成
+  bounded prepare、单 barrier apply/rollback 与真实 default/selected/live 验收。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

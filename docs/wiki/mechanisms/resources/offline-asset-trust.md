@@ -88,18 +88,18 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 
 ### Reload listener 逐 owner 投影
 
-下表顺序直接对应 `Minecraft` 的注册顺序。`existing` 只表示当前已有候选 consumer evidence，
-仍须随本工程逐项完成 prepare/apply/rollback 验证；它不是 parity matrix 的关闭状态。
+下表顺序直接对应 `Minecraft` 的注册顺序。18 个 current-surface owner 已完成同 generation
+prepare/apply/rollback 验收；另外两个 owner 保留精确的 `not-needed` reopen condition。
 
 <!-- reload-listener-projections:start -->
 | 序 | Inventory owner | Vanilla listener / 查询 | BBB projection | apply / rollback owner | 状态 | Evidence / reopen |
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
-| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；全部 77 个有一对一 Vanilla static owner 的 current pipeline 驱动同一原子 generation；其余 10 个是有精确依据的 post-effect/internal 或 BBB-only fallback | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；全部 77 个有一对一 Vanilla static owner 的 current pipeline 驱动同一原子 generation；其余 10 个是有精确依据的 post-effect/internal 或 BBB-only fallback | renderer pipeline generation | `existing` | `crates/bbb-renderer/src/core_shaders.rs`、`resource_reload.rs` |
 | 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
 | 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
-| 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
+| 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/HUD/entity/sky/item/particle atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 7 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:6` | `FontManager`：definition/provider/reference prepare 后替换 `FontSet` | unified stack font catalog + atlas | renderer font/HUD cache checkpoint | `existing` | `crates/bbb-item-model/src/font.rs` |
 | 8 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:7` | `GrassColorReloadListener`：读取 grass colormap | `TerrainColorMaps.grass` | terrain generation | `existing` | `crates/bbb-pack/src/colors.rs` |
 | 9 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:8` | `FoliageColorReloadListener`：读取 foliage colormap | `TerrainColorMaps.foliage` | terrain generation | `existing` | `crates/bbb-pack/src/colors.rs` |

@@ -51,55 +51,6 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   implement any missing projections, and close only with deterministic failure
   and recovery acceptance in addition to the happy live path.
 
-## Resource reload-listener consumer closure
-
-Owner: `bbb-pack` + `bbb-native` + `bbb-renderer` + `bbb-audio`
-
-Matrix route: `resources-reload-listeners`
-
-- **All 20 Vanilla reload-listener owner families are `active`.** The shared
-  pack generation and language/font/sound consumers are closed, but the census
-  has not proven a prepare/apply/rollback projection for every registered
-  texture, shader, atlas, color, model, equipment, entity, block-entity,
-  particle, waypoint, level/cloud, GPU-warning and regional-compliance owner.
-  The 20 registrations are mechanically retained in exact source order. Phase B prepares one
-  bounded `ShaderSourceCatalog` shared by core and post-effect shaders and one
-  bounded `PeriodicNotificationCatalog`; priority/filter/import, malformed-empty
-  fallback and generation evidence are covered. Host-country schedule/system-toast
-  apply/reset is wired after the shared rollback barrier, and selected/filterable
-  `core/terrain`, all 14 entity variants, four dynamic/resident `core/item`
-  variants, three particle/weather variants, and the two position-color debug/sunrise
-  variants and the five entity/armor/dynamic-item/resident-item/HUD projections of the single
-  selected `core/glint` source now own one atomic pipeline generation. All one-to-one static-pipeline
-  projection/preload owners are closed; remaining active work is Phase D real local acceptance and
-  20-listener closeout. Embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The exhaustive source guard classifies all 87 renderer pipeline owners: all 77 with a one-to-one
-  Vanilla static pipeline/core shader are in the selected core generation, and 10 are evidenced
-  post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The single
-  `core/entity` adapter now preloads and atomically swaps breeze/energy scroll, guardian/end-crystal
-  beam, dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull with
-  the original 14 entity variants. One `rendertype_end_portal` adapter likewise projects the world,
-  resident-item and HUD layouts for all five portal/gateway owners. One outline adapter now owns both
-  entity cull variants and the resident-item projection; the beacon-beam adapter preserves atlas repeat,
-  fragment-depth fog and both depth-write variants. One lightning adapter now feeds weather lightning
-  and dragon rays without absorbing the separate depth replay. The line adapter consumes the existing
-  pre-expanded side input exactly once across three depth variants. Normal text now shares atlas/lightmap/fog
-  sources across debug/display projections while see-through remains distinct; the independent text-background
-  source now drives the background owner through the same atlas/lightmap layouts. One cloud adapter projects
-  Vanilla's signed texel-buffer faces onto BBB's packed instance input for both cull variants. The screenquad/lightmap
-  source pair now drives the retained lightmap target through its exact uniform layout. One shared sky adapter now drives
-  sky, stars, end-sky, and celestial pipelines through the retained camera/texture/dynamic layouts. The same selected
-  `core/position_tex_color` source is resolved once and projected across end-sky, ordinary HUD, and vignette consumers.
-  Dragon-rays depth, leash, water-mask, and entity-shadow selected sources now share one entity-special
-  preparation family while preserving their distinct vertex formats, lightmap/sampler layouts, write masks,
-  depth, cull, and view-offset projection. The final crumbling, world-border, resident `core/block`,
-  and entity-outline blit owners now share one additional preparation family while retaining their
-  atlas/instance/fullscreen input projections and exact pipeline state. The next cursor is Phase D
-  real local acceptance and reload-listener closeout.
-  The title-only splash and Vanilla-OpenGL/options-only GPU
-  warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
-  the previous immutable generation on any failure.
-
 ## Architecture drift candidates
 
 Owner: `bbb-renderer` + `bbb-native`
