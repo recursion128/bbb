@@ -374,6 +374,37 @@ impl TextCorePipelines {
     }
 }
 
+struct CloudCorePipelines {
+    flat: wgpu::RenderPipeline,
+    fancy: wgpu::RenderPipeline,
+}
+
+impl CloudCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedCloudShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            flat: crate::clouds::create_cloud_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.cloud_bind_group_layout,
+                crate::CloudShape::Flat,
+                shaders,
+            )?,
+            fancy: crate::clouds::create_cloud_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.cloud_bind_group_layout,
+                crate::CloudShape::Fancy,
+                shaders,
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -398,6 +429,7 @@ struct CorePipelineGeneration {
     lines: Option<LineCorePipelines>,
     text: Option<TextCorePipelines>,
     text_background: Option<wgpu::RenderPipeline>,
+    clouds: Option<CloudCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -559,6 +591,13 @@ impl CorePipelineGeneration {
                 )
             })
             .transpose()?;
+        let cloud_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_cloud_shaders(resources))
+            .transpose()?
+            .flatten();
+        let clouds = (!startup_without_sources)
+            .then(|| CloudCorePipelines::prepare(renderer, cloud_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -577,6 +616,7 @@ impl CorePipelineGeneration {
             lines,
             text,
             text_background,
+            clouds,
         })
     }
 
@@ -814,6 +854,10 @@ impl CorePipelineGeneration {
                 text_background,
                 &mut renderer.display_text_background_pipeline,
             );
+        }
+        if let Some(clouds) = self.clouds.as_mut() {
+            std::mem::swap(&mut clouds.flat, &mut renderer.cloud_flat_pipeline);
+            std::mem::swap(&mut clouds.fancy, &mut renderer.cloud_fancy_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1772,8 +1816,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            61,
-            "60 GPU handles plus the publication generation must share one mapping"
+            63,
+            "62 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1835,6 +1879,13 @@ mod tests {
                 .count(),
             1,
             "display text background must have one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_cloud_shaders(resources)")
+                .count(),
+            1,
+            "flat and fancy clouds must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1949,8 +2000,6 @@ mod tests {
             ("star_pipeline", "STARS/core/stars"),
             ("end_sky_pipeline", "END_SKY/core/position_tex_color"),
             ("celestial_pipeline", "CELESTIAL/core/position_tex"),
-            ("cloud_flat_pipeline", "FLAT_CLOUDS/core/clouds"),
-            ("cloud_fancy_pipeline", "CLOUDS/core/clouds"),
             ("hud_pipeline", "GUI_TEXTURED/core/gui_textured"),
             ("vignette_pipeline", "VIGNETTE/core/gui_textured"),
         ];
@@ -1972,10 +2021,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 60, "selected core generation changed");
+        assert_eq!(selected.len(), 62, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            17,
+            15,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

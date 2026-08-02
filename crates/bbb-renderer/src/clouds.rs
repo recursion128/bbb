@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use wgpu::util::DeviceExt;
 
 use crate::camera::CameraPose;
@@ -366,22 +366,30 @@ pub(super) fn create_cloud_pipeline(
     bind_group_layout: &wgpu::BindGroupLayout,
     cloud_bind_group_layout: &wgpu::BindGroupLayout,
     shape: CloudShape,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedCloudShaders>,
+) -> Result<wgpu::RenderPipeline> {
     let (pipeline_label, cull_mode) = match shape {
         CloudShape::Flat => ("bbb-cloud-flat-pipeline", CLOUD_FLAT_PIPELINE_CULL_MODE),
         CloudShape::Fancy => ("bbb-cloud-fancy-pipeline", CLOUD_FANCY_PIPELINE_CULL_MODE),
     };
-    RenderPipelineBuilder::new(device, pipeline_label)
+    if let Some(shaders) = shaders {
+        return create_selected_cloud_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            cloud_bind_group_layout,
+            pipeline_label,
+            cull_mode,
+            shaders,
+        );
+    }
+    Ok(RenderPipelineBuilder::new(device, pipeline_label)
         .shader("bbb-cloud-shader", CLOUD_SHADER)
         .layout(
             "bbb-cloud-pipeline-layout",
             &[bind_group_layout, cloud_bind_group_layout],
         )
-        .vertex_buffers(&[wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<CloudFaceRecord>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &wgpu::vertex_attr_array![0 => Uint32],
-        }])
+        .vertex_buffers(&[cloud_face_vertex_layout()])
         .color_target(format, Some(CLOUD_TARGET_BLEND))
         .cull_mode(cull_mode)
         .depth_stencil(depth_stencil_state(
@@ -389,7 +397,76 @@ pub(super) fn create_cloud_pipeline(
             CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
             CLOUD_PIPELINE_DEPTH_COMPARE,
         ))
-        .build()
+        .build())
+}
+
+fn create_selected_cloud_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    cloud_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &str,
+    cull_mode: Option<wgpu::Face>,
+    shaders: &crate::core_shaders::AdaptedCloudShaders,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-cloud-vertex-shader",
+        shaders.vertex.clone(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected cloud vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-cloud-fragment-shader",
+        shaders.fragment.clone(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected cloud fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-cloud-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout, cloud_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[cloud_face_vertex_layout()],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
+                CLOUD_PIPELINE_DEPTH_COMPARE,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(CLOUD_TARGET_BLEND),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+fn cloud_face_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<CloudFaceRecord>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &wgpu::vertex_attr_array![0 => Uint32],
+    }
 }
 
 pub(super) fn create_cloud_target(
@@ -1305,7 +1382,9 @@ mod tests {
             &terrain_layout,
             &cloud_layout,
             CloudShape::Fancy,
-        );
+            None,
+        )
+        .expect("embedded cloud pipeline");
     }
 
     #[test]

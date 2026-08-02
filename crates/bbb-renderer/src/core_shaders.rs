@@ -20,6 +20,7 @@ const LINES_SHADER_ID: &str = "minecraft:core/rendertype_lines";
 const TEXT_SHADER_ID: &str = "minecraft:core/rendertype_text";
 const TEXT_SEE_THROUGH_SHADER_ID: &str = "minecraft:core/rendertype_text_see_through";
 const TEXT_BACKGROUND_SHADER_ID: &str = "minecraft:core/rendertype_text_background";
+const CLOUD_SHADER_ID: &str = "minecraft:core/rendertype_clouds";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -100,6 +101,11 @@ pub(crate) struct AdaptedTextShaders {
 }
 
 pub(crate) struct AdaptedTextBackgroundShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedCloudShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
 }
@@ -463,6 +469,31 @@ pub(crate) fn adapt_selected_text_background_shaders(
             .context("adapt selected text-background vertex shader")?,
         fragment: adapt_text_background_stage(&fragment.source, false)
             .context("adapt selected text-background fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_cloud_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedCloudShaders>> {
+    let vertex = resources
+        .source_by_id(CLOUD_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_clouds vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(CLOUD_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_clouds fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let adapted_vertex =
+        adapt_cloud_stage(&vertex.source, true).context("adapt selected cloud vertex shader")?;
+    Ok(Some(AdaptedCloudShaders {
+        vertex: adapted_vertex,
+        fragment: adapt_cloud_stage(&fragment.source, false)
+            .context("adapt selected cloud fragment shader")?,
     }))
 }
 
@@ -891,6 +922,52 @@ fn adapt_text_background_stage(source: &str, vertex_stage: bool) -> Result<Strin
         ],
     )
 }
+
+fn adapt_cloud_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if vertex_stage {
+        let source = replace_required(
+            &source,
+            "layout(std140) uniform CloudInfo",
+            "layout(std140, set = 1, binding = 0) uniform CloudInfo",
+            "selected cloud info uniform",
+        )?;
+        let source = replace_required(
+            &source,
+            "uniform isamplerBuffer CloudFaces;",
+            CLOUD_FACE_INPUT_PROJECTION,
+            "selected cloud face texel buffer",
+        )?;
+        source
+            .replace("gl_VertexID", "int(gl_VertexIndex)")
+            .replace(
+                "const vec3[] vertices = vec3[](",
+                "const vec3 vertices[24] = vec3[24](",
+            )
+            .replace(
+                "const vec4[] faceColors = vec4[](",
+                "const vec4 faceColors[6] = vec4[6](",
+            )
+            .replace(
+                "fog_spherical_distance(pos)",
+                "fog_spherical_distance(pos - bbbCamera.BbbCameraPosition.xyz)",
+            )
+    } else {
+        source
+    };
+    bind_cloud_stage_locations(&source, vertex_stage)
+}
+
+const CLOUD_FACE_INPUT_PROJECTION: &str = r#"layout(location = 0) in uint BbbCloudFace;
+struct BbbCloudTexel { int r; };
+BbbCloudTexel bbb_cloud_texel_fetch(int index) {
+    uint shift = uint(index % 3) * 8u;
+    int value = int((BbbCloudFace >> shift) & 255u);
+    return BbbCloudTexel(value >= 128 ? value - 256 : value);
+}
+#define CloudFaces 0
+#define texelFetch(buffer, index) bbb_cloud_texel_fetch(index)"#;
 
 fn specialize_glint_vertex(
     source: &str,
@@ -2357,6 +2434,26 @@ fn bind_text_background_stage_locations(source: &str, vertex_stage: bool) -> Res
         })
 }
 
+fn bind_cloud_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("out", "float", "vertexDistance", 0, true),
+            ("out", "vec4", "vertexColor", 1, true),
+        ]
+    } else {
+        &[
+            ("in", "float", "vertexDistance", 0, true),
+            ("in", "vec4", "vertexColor", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2789,6 +2886,52 @@ void main() {
     }
 
     #[test]
+    fn cloud_adapter_projects_packed_face_uniform_and_fog_inputs() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+layout(std140) uniform CloudInfo { vec4 CloudColor; vec3 CloudOffset; vec3 CellSize; };
+uniform isamplerBuffer CloudFaces;
+out float vertexDistance;
+out vec4 vertexColor;
+void main() {
+    int index = (gl_VertexID / 4) * 3;
+    int cellX = texelFetch(CloudFaces, index).r;
+    int cellZ = texelFetch(CloudFaces, index + 1).r;
+    int flags = texelFetch(CloudFaces, index + 2).r;
+    vec3 pos = vec3(cellX, 0, cellZ) * CellSize + CloudOffset;
+    gl_Position = ProjMat * ModelViewMat * vec4(pos, 1.0);
+    vertexDistance = fog_spherical_distance(pos);
+    vertexColor = CloudColor + vec4(float(flags) * 0.0);
+}
+"#;
+        let vertex = adapt_cloud_stage(vertex, true).expect("cloud vertex projection");
+        assert!(vertex.contains("layout(std140, set = 1, binding = 0) uniform CloudInfo"));
+        assert!(vertex.contains("layout(location = 0) in uint BbbCloudFace"));
+        assert!(vertex.contains("#define texelFetch(buffer, index) bbb_cloud_texel_fetch(index)"));
+        assert!(vertex.contains("fog_spherical_distance(pos - bbbCamera.BbbCameraPosition.xyz)"));
+        assert!(vertex.contains("layout(location = 1) out vec4 vertexColor"));
+        assert!(!vertex.contains("uniform isamplerBuffer CloudFaces"));
+
+        let fragment = r#"#version 330
+layout(std140) uniform Fog { vec4 FogColor; };
+in float vertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    vec4 color = vertexColor;
+    color.a *= 1.0 - linear_fog_value(vertexDistance, 0, FogCloudsEnd);
+    fragColor = color;
+}
+"#;
+        let fragment = adapt_cloud_stage(fragment, false).expect("cloud fragment projection");
+        assert!(fragment.contains("layout(location = 0) in float vertexDistance"));
+        assert!(fragment.contains("layout(location = 1) in vec4 vertexColor"));
+        assert!(fragment.contains("layout(location = 0) out vec4 fragColor"));
+        assert!(fragment.contains("FogCloudsEnd"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -3107,6 +3250,14 @@ void main() {
             id: TEXT_BACKGROUND_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let cloud_vertex_key = ShaderSourceKey {
+            id: CLOUD_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let cloud_fragment_key = ShaderSourceKey {
+            id: CLOUD_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -3404,6 +3555,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         key: text_background_fragment_key,
                         resource_id:
                             "minecraft:shaders/core/rendertype_text_background.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    cloud_vertex_key.clone(),
+                    ShaderSource {
+                        key: cloud_vertex_key,
+                        resource_id: "minecraft:shaders/core/rendertype_clouds.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    cloud_fragment_key.clone(),
+                    ShaderSource {
+                        key: cloud_fragment_key,
+                        resource_id: "minecraft:shaders/core/rendertype_clouds.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -4259,6 +4430,68 @@ void main() {
             .expect_err("filtering required text-background stages must reject the generation");
         assert!(error.to_string().contains("rendertype_text_background"));
         assert_eq!(renderer.core_shader_generation(), Some(131));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_cloud_shader_preloads_flat_and_fancy_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-cloud-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_clouds.fsh"),
+            r#"#version 330
+in float vertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a + vertexDistance * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected cloud shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(141, selected)
+            .expect("selected cloud generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected flat/fancy cloud pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(141));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_clouds\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected cloud filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(142, filtered)
+            .expect("filtered cloud generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required cloud stages must reject the generation");
+        assert!(error.to_string().contains("rendertype_clouds"));
+        assert_eq!(renderer.core_shader_generation(), Some(141));
 
         std::fs::remove_dir_all(root).unwrap();
     }

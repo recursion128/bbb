@@ -476,6 +476,7 @@ pub struct Renderer {
     pub(super) cloud_flat_pipeline: wgpu::RenderPipeline,
     pub(super) cloud_fancy_pipeline: wgpu::RenderPipeline,
     pub(super) cloud_target: CloudTarget,
+    pub(super) cloud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) cloud_bind_group: wgpu::BindGroup,
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
@@ -1980,14 +1981,16 @@ impl Renderer {
             &terrain_bind_group_layout,
             &cloud_bind_group_layout,
             CloudShape::Flat,
-        );
+            None,
+        )?;
         let cloud_fancy_pipeline = create_cloud_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &cloud_bind_group_layout,
             CloudShape::Fancy,
-        );
+            None,
+        )?;
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let vignette_bind_group_layout = create_vignette_bind_group_layout(&device);
         let vignette_pipeline =
@@ -2217,6 +2220,7 @@ impl Renderer {
             cloud_flat_pipeline,
             cloud_fancy_pipeline,
             cloud_target,
+            cloud_bind_group_layout,
             cloud_bind_group,
             cloud_uniform_buffer,
             hud_pipeline,

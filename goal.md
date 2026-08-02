@@ -432,8 +432,8 @@ icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合�
    notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
 3. **Phase C — 原子 consumer**：regional toast、`core/terrain`、14 entity、4 item、3 个
    particle/weather、2 个 position-color、从单一 `core/glint` 派生的 5 个 variant 及额外 10 个
-   portal/outline/beam/lightning/line/text 等 60 个 owner 已进入统一 barrier；其余 27 个 owner
-   分成 17 个 Vanilla static consumer 与 10 个 fallback，下一组审计并迁移 cloud family；
+   portal/outline/beam/lightning/line/text/cloud 等 62 个 owner 已进入统一 barrier；其余 25 个 owner
+   分成 15 个 Vanilla static consumer 与 10 个 fallback，下一组审计并迁移 lightmap owner；
    逐 stage 失败须保留旧 GPU/HUD/audio/simulation/schedule。
 4. **Phase D — 真实验收与收口**：以本地 26.1 source/default assets 和 selected/server
    fixture 验证 core shader override/filter、三色 colormap、cloud、waypoint、model/entity/
