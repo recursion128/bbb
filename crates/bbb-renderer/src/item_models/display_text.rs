@@ -821,20 +821,31 @@ pub(crate) fn create_display_text_background_pipeline(
     format: wgpu::TextureFormat,
     atlas_layout: &wgpu::BindGroupLayout,
     lightmap_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    display_text_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedTextBackgroundShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    let depth = depth_stencil_state(DEPTH_FORMAT, true, wgpu::CompareFunction::LessEqual);
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_text_pipeline(
+            device,
+            format,
+            &[atlas_layout, lightmap_layout],
+            "bbb-selected-display-text-background",
+            &shaders.vertex,
+            &shaders.fragment,
+            item_model_vertex_layout(),
+            Some(depth),
+            None,
+        );
+    }
+    Ok(display_text_pipeline(
         device,
         format,
         atlas_layout,
         lightmap_layout,
         "bbb-display-text-background-pipeline",
         DISPLAY_TEXT_SHADER,
-        Some(depth_stencil_state(
-            DEPTH_FORMAT,
-            true,
-            wgpu::CompareFunction::LessEqual,
-        )),
-    )
+        Some(depth),
+    ))
 }
 
 pub(crate) fn create_display_text_pipeline(

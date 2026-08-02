@@ -397,6 +397,7 @@ struct CorePipelineGeneration {
     lightning: Option<LightningCorePipelines>,
     lines: Option<LineCorePipelines>,
     text: Option<TextCorePipelines>,
+    text_background: Option<wgpu::RenderPipeline>,
 }
 
 impl CorePipelineGeneration {
@@ -543,6 +544,21 @@ impl CorePipelineGeneration {
         let text = (!startup_without_sources)
             .then(|| TextCorePipelines::prepare(renderer, text_shaders.as_ref()))
             .transpose()?;
+        let text_background_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_text_background_shaders(resources))
+            .transpose()?
+            .flatten();
+        let text_background = (!startup_without_sources)
+            .then(|| {
+                crate::item_models::create_display_text_background_pipeline(
+                    &renderer.device,
+                    renderer.config.format,
+                    &renderer.terrain_bind_group_layout,
+                    &renderer.lightmap_sample_bind_group_layout,
+                    text_background_shaders.as_ref(),
+                )
+            })
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -560,6 +576,7 @@ impl CorePipelineGeneration {
             lightning,
             lines,
             text,
+            text_background,
         })
     }
 
@@ -790,6 +807,12 @@ impl CorePipelineGeneration {
             std::mem::swap(
                 &mut text.display_see_through,
                 &mut renderer.display_text_see_through_pipeline,
+            );
+        }
+        if let Some(text_background) = self.text_background.as_mut() {
+            std::mem::swap(
+                text_background,
+                &mut renderer.display_text_background_pipeline,
             );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
@@ -1749,8 +1772,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            60,
-            "59 GPU handles plus the publication generation must share one mapping"
+            61,
+            "60 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1805,6 +1828,13 @@ mod tests {
                 .count(),
             1,
             "debug and display text glyph consumers must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_text_background_shaders(resources)")
+                .count(),
+            1,
+            "display text background must have one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1912,7 +1942,6 @@ mod tests {
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
-            ("display_text_background_pipeline", "TEXT_BACKGROUND/core/rendertype_text_background"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
             ("lightmap_pipeline", "LIGHTMAP/core/lightmap"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
@@ -1943,10 +1972,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 59, "selected core generation changed");
+        assert_eq!(selected.len(), 60, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            18,
+            17,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

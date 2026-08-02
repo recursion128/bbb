@@ -19,6 +19,7 @@ const LIGHTNING_SHADER_ID: &str = "minecraft:core/rendertype_lightning";
 const LINES_SHADER_ID: &str = "minecraft:core/rendertype_lines";
 const TEXT_SHADER_ID: &str = "minecraft:core/rendertype_text";
 const TEXT_SEE_THROUGH_SHADER_ID: &str = "minecraft:core/rendertype_text_see_through";
+const TEXT_BACKGROUND_SHADER_ID: &str = "minecraft:core/rendertype_text_background";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -96,6 +97,11 @@ pub(crate) struct AdaptedTextShaders {
     pub(crate) fragment: String,
     pub(crate) see_through_vertex: String,
     pub(crate) see_through_fragment: String,
+}
+
+pub(crate) struct AdaptedTextBackgroundShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -433,6 +439,30 @@ pub(crate) fn adapt_selected_text_shaders(
         )?)?,
         see_through_fragment: adapt_text_stage(&see_fragment.source, false, true)
             .context("adapt selected see-through text fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_text_background_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedTextBackgroundShaders>> {
+    let vertex = resources
+        .source_by_id(TEXT_BACKGROUND_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_text_background vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(TEXT_BACKGROUND_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_text_background fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedTextBackgroundShaders {
+        vertex: adapt_text_background_stage(&vertex.source, true)
+            .context("adapt selected text-background vertex shader")?,
+        fragment: adapt_text_background_stage(&fragment.source, false)
+            .context("adapt selected text-background fragment shader")?,
     }))
 }
 
@@ -830,6 +860,35 @@ fn project_see_through_text_vertex_inputs(source: &str) -> Result<String> {
         "layout(location = 2) in vec2 UV0;",
         "layout(location = 1) in vec2 UV0;",
         "selected see-through text UV input projection",
+    )
+}
+
+fn adapt_text_background_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = adapt_entity_lightmap(&source)?
+        .replace("in ivec2 UV2;", "in vec2 UV2;")
+        .replace("sample_lightmap(Sampler2, UV2)", "sample_lightmap(UV2)");
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_text_background_stage_locations(&source, vertex_stage)?;
+    adapt_combined_samplers(
+        &source,
+        &[
+            SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            },
+            SamplerBinding {
+                source_name: "Sampler2".to_string(),
+                texture_group: 1,
+                texture_binding: 0,
+                sampler_group: 1,
+                sampler_binding: 1,
+            },
+        ],
     )
 }
 
@@ -2273,6 +2332,31 @@ fn bind_text_stage_locations(
         })
 }
 
+fn bind_text_background_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 2, true),
+            ("in", "vec2", "UV2", 3, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "vertexColor", 2, true),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec4", "vertexColor", 2, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2658,6 +2742,53 @@ void main() {
     }
 
     #[test]
+    fn text_background_adapter_projects_display_inputs_lightmap_and_fog() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in ivec2 UV2;
+uniform sampler2D Sampler2;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    vertexColor = Color * sample_lightmap(Sampler2, UV2);
+}
+"#;
+        let vertex = adapt_text_background_stage(vertex, true).expect("text background vertex");
+        assert!(vertex.contains("layout(location = 0) in vec3 Position"));
+        assert!(vertex.contains("layout(location = 2) in vec4 Color"));
+        assert!(vertex.contains("layout(location = 3) in vec2 UV2"));
+        assert!(vertex.contains("sample_lightmap(UV2)"));
+        assert!(vertex.contains("layout(location = 2) out vec4 vertexColor"));
+
+        let fragment = r#"#version 330
+layout(std140) uniform DynamicTransforms { vec4 ColorModulator; };
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    vec4 color = vertexColor * ColorModulator;
+    if (color.a < 0.1) { discard; }
+    fragColor = color * (1.0 - total_fog_value(sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd));
+}
+"#;
+        let fragment =
+            adapt_text_background_stage(fragment, false).expect("text background fragment");
+        assert!(fragment.contains("layout(location = 0) in float sphericalVertexDistance"));
+        assert!(fragment.contains("layout(location = 2) in vec4 vertexColor"));
+        assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
+        assert!(fragment.contains("total_fog_value"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -2968,6 +3099,14 @@ void main() {
             id: TEXT_SEE_THROUGH_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let text_background_vertex_key = ShaderSourceKey {
+            id: TEXT_BACKGROUND_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let text_background_fragment_key = ShaderSourceKey {
+            id: TEXT_BACKGROUND_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -3243,6 +3382,28 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         key: text_see_through_fragment_key,
                         resource_id:
                             "minecraft:shaders/core/rendertype_text_see_through.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_background_vertex_key.clone(),
+                    ShaderSource {
+                        key: text_background_vertex_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_text_background.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_background_fragment_key.clone(),
+                    ShaderSource {
+                        key: text_background_fragment_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_text_background.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -4033,6 +4194,71 @@ void main() {
             .expect_err("filtering a required text stage must reject the generation");
         assert!(error.to_string().contains("rendertype_text"));
         assert_eq!(renderer.core_shader_generation(), Some(121));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_text_background_shader_preloads_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-text-background-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_text_background.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + vertexColor.a;
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected text-background shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(131, selected)
+            .expect("selected text-background generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected text-background pipeline compiles atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(131));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_text_background\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected text-background filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(132, filtered)
+            .expect("filtered text-background generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering required text-background stages must reject the generation");
+        assert!(error.to_string().contains("rendertype_text_background"));
+        assert_eq!(renderer.core_shader_generation(), Some(131));
 
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -1752,7 +1752,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let display_text_pipeline = create_display_text_pipeline(
             &device,
             format,
