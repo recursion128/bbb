@@ -58,7 +58,7 @@ server-authoritative replay 由 datapack tick function 每 tick 执行绝对 `tp
 | --- | --- | --- | --- | --- |
 | 离线 UUID | `Main.main` → `UUIDUtil.createOfflinePlayerUUID` | benchmark 固定用户名 | `equivalent` | launcher CLI tests |
 | 离线服务 | `Minecraft` offline branches | official launcher contract | `equivalent` | real launch smoke |
-| asset object store | `AssetIndex`/resource loading | `bbb-pack` asset-index fallback | `equivalent` | full asset audit 与 unihex real load |
+| asset object store | `AssetIndex`/resource loading | `bbb-pack` default vanilla indexed provider | `equivalent` | zh_cn、sound OGG 与 unihex real load |
 | 共同位置序列 | server teleport → player-position packet | replay generator + play apply | `equivalent` | camera-log deterministic hash |
 | 认证服务器 | `authenticateServer` online path | 离线 server 配置 | `not-needed` | online mode explicitly disabled |
 

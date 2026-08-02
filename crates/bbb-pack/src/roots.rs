@@ -228,6 +228,12 @@ impl PackRoots {
         self.indexed_vanilla_assets.as_ref().map(Arc::clone)
     }
 
+    pub fn vanilla_asset_index_observation(&self) -> Option<crate::VanillaAssetIndexObservation> {
+        self.indexed_vanilla_assets
+            .as_ref()
+            .map(|index| index.observation())
+    }
+
     pub fn resource_image_memory_observation(&self) -> ResourceImageMemoryObservation {
         self.resource_image_budget.observation()
     }
@@ -555,6 +561,7 @@ mod tests {
         assert_eq!(observation.object_count, 6);
         assert_eq!(observation.exposed_resource_count, 4);
         assert_eq!(observation.root_resource_count, 2);
+        assert_eq!(roots.vanilla_asset_index_observation(), Some(observation));
         let realms = stack
             .get_resource(&ResourceLocation::parse("realms:lang/en_us.json").unwrap())
             .unwrap();

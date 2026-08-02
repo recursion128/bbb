@@ -155,9 +155,9 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     if version != "26.1":
         raise GateFailure(f"vanilla_version must be '26.1', got {version!r}")
     client_locale = evidence.get("client_locale")
-    if client_locale not in ("en_us", "ar_sa"):
+    if client_locale not in ("en_us", "ar_sa", "zh_cn"):
         raise GateFailure(
-            "client_locale must be the deterministic 'en_us' or 'ar_sa' gate locale, "
+            "client_locale must be the deterministic 'en_us', 'ar_sa', or 'zh_cn' gate locale, "
             f"got {client_locale!r}"
         )
 
@@ -248,7 +248,9 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
     _validate_screenshot_readback(evidence.get("screenshot_readback"))
-    _validate_lifecycle(evidence.get("lifecycle"), client_locale)
+    _validate_lifecycle(
+        evidence.get("lifecycle"), client_locale, evidence.get("mode") == "live"
+    )
 
 
 def validate_headless_probe(probe: dict[str, Any]) -> None:
@@ -293,7 +295,9 @@ BLOCK_INTERACTION_COMMAND_DELTAS = (
 )
 
 
-def _validate_lifecycle(lifecycle: Any, client_locale: str) -> None:
+def _validate_lifecycle(
+    lifecycle: Any, client_locale: str, require_indexed_language_diagnostics: bool
+) -> None:
     lifecycle = _object(lifecycle, "lifecycle")
     if lifecycle.get("stage") != "complete":
         raise GateFailure(
@@ -384,6 +388,36 @@ def _validate_lifecycle(lifecycle: Any, client_locale: str) -> None:
         )
     if resource_pack.get("reload_failure_stage") is not None:
         raise GateFailure("successful resource-pack lifecycle retained a reload failure stage")
+    if require_indexed_language_diagnostics:
+        if resource_pack.get("indexed_asset_index_id") != "30":
+            raise GateFailure("live client resource diagnostics did not mount asset index 30")
+        if resource_pack.get("indexed_asset_object_count") != 4749:
+            raise GateFailure("live client resource diagnostics did not expose 4749 index objects")
+        if resource_pack.get("indexed_asset_exposed_resource_count") != 4736:
+            raise GateFailure(
+                "live client resource diagnostics did not expose 4736 namespaced resources"
+            )
+        if resource_pack.get("indexed_asset_root_resource_count") != 13:
+            raise GateFailure(
+                "live client resource diagnostics did not expose 13 root resources"
+            )
+        _positive_int(
+            resource_pack.get("indexed_asset_retained_logical_bytes"),
+            "lifecycle.resource_pack.indexed_asset_retained_logical_bytes",
+        )
+        if resource_pack.get("selected_language") != client_locale:
+            raise GateFailure("live client resource diagnostics selected the wrong language")
+        if resource_pack.get("selected_language_probe_key") != "menu.multiplayer":
+            raise GateFailure("live client resource diagnostics used the wrong language probe")
+        expected_translation = {
+            "en_us": "Multiplayer",
+            "ar_sa": "اللعب متعدد اللاعبين",
+            "zh_cn": "多人游戏",
+        }[client_locale]
+        if resource_pack.get("selected_language_probe_value") != expected_translation:
+            raise GateFailure(
+                "live client resource diagnostics did not resolve the selected-language probe"
+            )
 
     reconfiguration = _object(
         lifecycle.get("reconfiguration"), "lifecycle.reconfiguration"
@@ -3074,6 +3108,26 @@ def drive_session_lifecycle(
         "server_pack_selected_after_pop": _diagnostics_select_server_pack(
             resources_after_pack, server_pack_id
         ),
+        "indexed_asset_index_id": resources_after_pack.get("indexed_asset_index_id"),
+        "indexed_asset_object_count": resources_after_pack.get(
+            "indexed_asset_object_count"
+        ),
+        "indexed_asset_exposed_resource_count": resources_after_pack.get(
+            "indexed_asset_exposed_resource_count"
+        ),
+        "indexed_asset_root_resource_count": resources_after_pack.get(
+            "indexed_asset_root_resource_count"
+        ),
+        "indexed_asset_retained_logical_bytes": resources_after_pack.get(
+            "indexed_asset_retained_logical_bytes"
+        ),
+        "selected_language": resources_after_pack.get("selected_language"),
+        "selected_language_probe_key": resources_after_pack.get(
+            "selected_language_probe_key"
+        ),
+        "selected_language_probe_value": resources_after_pack.get(
+            "selected_language_probe_value"
+        ),
         "language_bidirectional_while_active": resources_with_active_pack.get(
             "language_bidirectional"
         ),
@@ -3693,7 +3747,9 @@ def _build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--server-command", type=Path, required=True)
     collect.add_argument("--profile-id", required=True)
     collect.add_argument("--server-pack-id", required=True)
-    collect.add_argument("--client-locale", choices=("en_us", "ar_sa"), required=True)
+    collect.add_argument(
+        "--client-locale", choices=("en_us", "ar_sa", "zh_cn"), required=True
+    )
 
     terminate = subparsers.add_parser(
         "terminate-live", help="capture quiescence and request ordered client shutdown"

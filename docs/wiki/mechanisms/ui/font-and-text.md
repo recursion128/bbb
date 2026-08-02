@@ -23,7 +23,8 @@ glyph 高 16、oversample 2，advance 为宽度/2+1；bold/shadow offset 为 0.5
 
 ## 决策输入与状态所有权
 
-pack stack 决定 font JSON/ZIP/PNG 字节和顺序；font options 决定 filter；provider graph
+统一 `PackResourceStack` 决定 source/indexed/selected/server 的 font JSON/ZIP/PNG 字节和
+顺序；font options 决定 filter；provider graph
 决定候选顺序；glyph provider 拥有 bitmap/metrics，resource generation 拥有 atlas，
 文本 layout 拥有本次 codepoint/style 序列。
 
@@ -48,6 +49,8 @@ glyph。默认 options 为 `uniform=false`、`jp=false`。
 `bbb-render-types/src/hud_glyphs.rs` 保留 UV、advance、top、style quads；
 `bbb-native`/`bbb-renderer` 的 HUD、screen、map、sign、TextDisplay 等消费同一
 `HudFontGlyphMap`。
+definition 与 unihex ZIP 不再经过字体专用 indexed fallback；它们和 language/sound 一样
+只使用默认 `vanilla` pack 所在的共享 stack。
 
 ## Vanilla/BBB 对照
 
@@ -71,8 +74,9 @@ glyph。默认 options 为 `uniform=false`、`jp=false`。
 ## 聚焦测试（focused tests）和真实证据
 
 focused tests 覆盖 filters、reference cycle/order、unihex digit widths、duplicate、override、
-blank/bounds、metrics、oversample、UV、budget 和 asset-index fallback。真实完整 26.1
-objects 构建 8192×4492 atlas、114432 个 default glyph；中文 HUD 锚点验证资源链、
+blank/bounds、metrics、oversample、UV、budget、共享 stack priority/filter，以及反向 source
+guard 禁止 index-specific resolver。真实完整 26.1 objects 构建 8192×4729 atlas、
+114432 个 default glyph；`中`、`日`、`한`、U+20000 锚点验证资源链、
 layout 与 GPU sampling。
 
 ## 当前差异

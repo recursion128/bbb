@@ -1,86 +1,150 @@
-# 离线启动与 asset-index/object-store 可信链
+# Vanilla 默认资源包与 asset-index/object-store 可信链
 
 机制 ID：`resources-offline-asset-trust`
 
 ## 机制目的和边界
 
-该链证明官方客户端和 BBB 读取的是同一组 26.1 资源，并允许缺少普通 assets 目录时由
-官方 asset-index/object-store 提供资源。它不下载资源，也不把外部对象纳入仓库。
+该机制把官方 26.1 asset index 作为默认 `vanilla` pack 的通用只读 provider，而不是
+把 4749 个 object 启动时载入内存，也不是给 font、language、sound 分别建立 fallback。
+它覆盖 metadata/index 信任链、namespace/root 可见性、pack priority、filter、companion
+metadata、generation 与 consumer 数据流；不下载、复制、materialize 或提交官方对象。
 
 ## Vanilla 26.1 权威实现
 
-`Main.main` 将 `--assetsDir` 与 `--assetIndex` 放入 `GameConfig.FolderData`；
-`Minecraft` 创建资源管理器时消费该配置。版本 metadata 的 downloads/libraries 和
-asset index 的 object hash 是启动前信任根。资源包层随后按 pack priority 构造
-`MultiPackResourceManager`；资源查询必须遵守 namespace、relative path 与 stack 顺序。
+`GameConfig.FolderData.getExternalAssetSource` 在存在 asset-index id 时创建
+`IndexedAssetSource.createIndexFs`。`ClientPackSource.createVanillaPackSource` 依次调用
+`VanillaPackResourcesBuilder.pushJarResources`、`pushAssetPath(externalAssetRoot)`；builder
+构建时反转 path 列表，所以同一个 `vanilla` pack 内 external indexed path 先于
+jar/default resources。它只暴露 `minecraft`、`realms` namespace；`icons/**` 与
+`pack.mcmeta` 由 `VanillaPackResources.getRootResource` 访问。
+
+`MultiPackResourceManager` 按 vanilla→startup/selected→server 的低到高 pack priority
+建立 fallback manager。single resource 从高到低取第一个可见项，遇到高层 filter 即停止；
+resource stack 先按高到低收集再反转为低到高。single `.mcmeta` 取不低于内容 provider 的
+最高可见 companion；stack metadata 与各自 pack 的内容绑定。`LanguageManager`、
+`FontManager`、`SoundManager` 都从同一 resource manager 查询。
 
 ## 决策输入与状态所有权
 
-输入是 `26.1.json`、client/server jar、library/native metadata、index `30` 与每个
-object 的 SHA-1/size。外部缓存拥有字节；launcher 只验证并生成 launch plan。
-`bbb-pack` 拥有 pack roots、asset-index fallback 和已解码 resource generation。
+输入是 `26.1.json` 中 asset-index id/SHA-1/size、index `30`、object key/hash/size、
+source/jar-equivalent assets 以及 selected/server packs。外部缓存拥有物理字节；
+`bbb-pack::VanillaAssetIndex` 拥有有界 key→object descriptor，`PackResourceStack` 拥有
+统一查询与预算，`ClientResourceGeneration` 拥有一次原子发布。font atlas、language
+catalog 和 sound catalog/audio decoder 只拥有各自派生状态，不重新决定资源来源。
 
 ## 判断与处理顺序
 
-1. 校验 metadata 与所有声明文件，再创建进程。
-2. native classifier 逐 entry 做路径安全检查，再提取到独立目录。
-3. pack lookup 先按当前 pack stack 查普通 root；对 assets logical path 再查已验证 index
-   hash 对象，不能把 index 当任意文件系统 escape。
-4. provider graph、纹理、字体、声音等在同一 generation 内解析；成功后原子发布。
+1. `PackRoots::discover` 从本地 26.1 metadata 定位 index，不依赖
+   `BBB_MC_GENERATED_ASSETS_DIR` 或 materialized assets 目录。
+2. 读取 metadata/index 时校验 id、size、SHA-1、object 数量、单对象/总声明字节和安全
+   key；只保留 descriptor，不打开 4749 个 object。
+3. composite `vanilla` pack 先查 indexed provider，再查 source/jar-equivalent provider；
+   外层 startup/server pack 保持更高优先级，filter 可隐藏 indexed 低层。
+4. namespace 枚举只返回 `minecraft`/`realms`；合法 root 查询只暴露 `icons/**` 与
+   `pack.mcmeta`。绝对路径、`..`、反斜杠、NUL 和非法 namespace 被拒绝。
+5. JSON/ZIP/OGG 等 consumer 实际读取选中 object 时才校验 size/SHA-1；一个缺失或损坏
+   object 不妨碍枚举或读取无关 object。
+6. 新 resource generation 全部 prepare 成功后一次提交；失败保留上一 generation，旧
+   session/provider 不泄漏到新状态。
+
+## language、font 与 audio 数据流
+
+- language：`PackMetadataCatalog` 通过 root `pack.mcmeta` 取得 language metadata；
+  `LanguageCatalog` 按 `en_us`→selected locale 遍历同一 stack。pack 的 replace/filter、
+  bidi metadata 与 deprecated mapping 保持原语义。`zh_cn` 的 `menu.multiplayer=多人游戏`
+  来自 index object，并进入 `NativeItemRuntime` 与 control resource diagnostics。
+- font：definition JSON、bitmap 和 unihex ZIP 都由 `PackResourceStack` 提供；reference/filter
+  展开之后仍是 first-provider-wins。不存在 index-specific font resolver。
+- audio：各 namespace 的 `sounds.json` 按 resource-stack 低到高合并，`replace`、file/event
+  reference、stream/preload、attenuation 保持既有语义。选中的 file entry 才验证 indexed
+  OGG 并交给 bounded decoder；catalog 构建不 eager decode 4564 个声音，也不要求音频设备。
+
+## Indexed object 消费矩阵
+
+index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”“provider 可达”“consumer
+已实现”“当前产品 surface 需要”分别判定，不能互相替代。
+
+| 家族 | object 数 | Vanilla owner | provider 可达 | BBB consumer / 当前 surface | 状态与精确重开条件 |
+| --- | ---: | --- | --- | --- | --- |
+| font definition/unihex | 5 | `FontManager`, `FontSet`, `UnihexProvider` | 是，`minecraft` | 共享 font atlas；HUD/screen/world text 需要 | `equivalent` |
+| Minecraft locale JSON | 141 | `LanguageManager`, `ClientLanguage` | 是，按 selected locale 读取 | `LanguageCatalog`/`NativeItemRuntime`；CLI locale 需要 | `equivalent` |
+| `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | `equivalent` |
+| root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | `equivalent` |
+| window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | native window 存在，但尚未设置 icon | `partial`；[ledger](../../../unsupported-features.md) |
+| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama` | 是，`minecraft` | CLI 直连客户端无 title/panorama screen | `not-needed`；title/menu panorama 进入产品范围时重开 |
+| built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | `not-needed`；增加内置 pack id 选择或对应 UI/CLI 时重开 |
+| Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | `not-needed`；Realms service/screen 进入范围时重开 |
+
+按 object 计数为：`equivalent=4712`、`partial=12`、`not-needed=25`、
+`deferred-external=0`，合计 4749。not-needed 判断只关闭对应 presentation consumer；这些
+字节仍保持 provider 可达，不会因此被 eager 读取。
 
 ## 生命周期和 fallback
 
-启动校验 fail closed。资源 reload 的新 generation 构建失败时，运行时保留上一代；单个
-可选资源的 missing/invalid fallback 由其 provider 合同决定并保留诊断。object-store
-是读取 fallback，不改变资源包 precedence。
+metadata/index 结构错误 fail closed；selected/server pack 的合法资源仍可覆盖 indexed
+vanilla。单个缺失、size 不符或 SHA-1 不符 object 在其 consumer 打开时按该 consumer 的
+Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generation 加载失败时，运行时
+保留上一代及其 diagnostics；成功后预算、catalog、atlas 与 audio owner 一起换代。
 
 ## BBB 实现映射
 
-官方 launcher 与验证器位于 `scripts/official_client_benchmark.py`。`bbb-pack` 的
-asset-index/root lookup 为 item model、字体、纹理和音频提供字节；
-`ClientResourceGeneration` 是跨消费者的一代资源 owner。解码预算和 path validation
-仍由 pack safety 层约束。
+`bbb-pack/src/asset_index.rs` 负责可信 descriptor 与 lazy integrity；
+`bbb-pack/src/resources.rs` 负责 composite vanilla、namespace/root、single/stack、filter、
+metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。language/sound consumer
+位于 `bbb-pack`，font 位于 `bbb-item-model`，OGG 选择与 bounded open 位于
+`bbb-native`/`bbb-audio`。`ClientResourceDiagnostics` 发布 index id/count、selected language
+和真实 translation probe，供 live gate 机器解析。
 
 ## Vanilla/BBB 对照
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
 | --- | --- | --- | --- | --- |
-| version/library/native 校验 | launcher metadata contracts | `scripts/official_client_benchmark.py` | `equivalent` | metadata/classpath/native focused tests |
-| native 路径安全 | trusted launcher extraction | benchmark safe extractor | `equivalent` | traversal/symlink/collision fixtures |
-| logical asset → SHA-1 object | asset index/object store | `bbb-pack` asset-index fallback | `equivalent` | full 26.1 asset audit |
-| pack precedence | `MultiPackResourceManager` stack | `bbb-pack` provider stack | `equivalent` | pack-stack focused tests |
-| reload 原子性 | reload prepare/apply | `ClientResourceGeneration` | `equivalent` | generation failure/recovery tests |
+| version/index metadata 校验 | launcher/index metadata | `VanillaAssetIndex::discover` | `equivalent` | metadata/id/hash/size fixtures |
+| composite vanilla 顺序 | external indexed→jar/default | `PackResourceStack` vanilla entry | `equivalent` | source/index precedence tests |
+| pack/filter/metadata 顺序 | fallback resource manager | selected stack/generation | `equivalent` | single/stack/filter/mcmeta tests |
+| namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | `equivalent` | list/root/path-safety tests |
+| lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | `equivalent` | missing/size/SHA/lazy/accounting tests |
+| locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | `equivalent` | zh_cn/CJK/OGG real acceptance |
+| window icon consumer | `Window.setIcon` | no native consumer | `partial` | [ledger](../../../unsupported-features.md) |
 
 ## 结构性不变量
 
-- hash/size 错误不得以 warning 后继续。
-- path normalization 后仍不得越出目标 root。
-- asset-index fallback 不得覆盖更高优先级 pack provider。
-- generation 内消费者不能混用两次 reload 的资源。
+- 不提交或 materialize 官方 object store、asset index 副本、字体/声音 ZIP。
+- external indexed 对 source/jar-equivalent 的 pack 内顺序和外层 pack priority 不得互换。
+- index 枚举不得打开或 hash 全部 object；integrity 必须延迟到实际 read/open。
+- font、language、sound 不得恢复各自的 index-specific fallback/resolver。
+- generation 内消费者不能混用两次 reload 的资源，失败必须保留上一代。
 
 ## 聚焦测试（focused tests）和真实证据
 
-`scripts.tests.test_official_client_benchmark` 覆盖 metadata、SHA-1/size、native extraction
-和 offline CLI。`bbb-pack` focused tests 覆盖 pack stack、budget、path 与 object lookup。
-完整 assets 曾真实生成 8192×4492 字体 atlas 和 114432 个 default glyph，证明 unihex
-不是 fixture-only 路径；外部对象与图像不提交。
+focused tests 覆盖 metadata/index、非法 key/path、missing/size/SHA、namespace/list、root、
+single/stack、source/index/selected/server priority、filter、`.mcmeta`、lazy unrelated object、
+预算与 generation rollback。真实 index 30 acceptance 在清除旧 assets 环境变量后读取
+`zh_cn` 的“多人游戏”，解析 1902 个 sound event 并 bounded-open
+`random/click_stereo.ogg`，以及生成 8192×4729、114432 glyph 的默认 atlas，验证
+`中`、`日`、`한`、U+20000 metrics/UV。
 
 ## 当前差异
 
-本机制已覆盖当前 26.1 离线比较与运行资源面。未来新版本若改变 metadata、asset index
-或 pack lookup，必须重新审计，不能沿用 26.1 hash。
+统一 provider、font、language、sound 当前闭合；root icon 字节已可达但 window consumer
+仍是独立 open gap。其余未消费家族没有当前产品 surface，依据和重开条件由上表及唯一
+ledger 保留。
 
 ## 账本/goal 路由
 
-无未关闭条目。
+window icon gap 与 indexed 范围外 family 判断只在
+[`unsupported-features.md`](../../../unsupported-features.md) 维护。
 
 ## 精确重开条件
 
-升级目标版本，或代码新增绕过 `bbb-pack` 的资源消费者时重开审计。
+升级目标版本、index/provider/pack 顺序变化、出现绕过共享 stack 的 consumer，或上表列出的
+产品 surface 进入范围时重开对应行。
 
 ## 相关页面和源码索引
 
 - [官方离线运行体系](../../architecture/offline-runtime.md)
 - [字体与文本](../ui/font-and-text.md)
-- Vanilla：`Main`、`Minecraft`、resource manager/pack classes
-- BBB：`bbb-pack`、`bbb-item-model`、`scripts/official_client_benchmark.py`
+- Vanilla：`GameConfig.FolderData`、`IndexedAssetSource`、`ClientPackSource`、
+  `VanillaPackResourcesBuilder`、resource/fallback managers、`LanguageManager`、
+  `FontManager`、`SoundManager`、`IconSet`
+- BBB：`bbb-pack`、`bbb-item-model`、`bbb-native`、`bbb-audio`

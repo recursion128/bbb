@@ -16,6 +16,24 @@ pub struct ClientResourcePackDiagnostic {
 pub struct ClientResourceDiagnostics {
     pub generation: u64,
     pub selected_packs: Vec<ClientResourcePackDiagnostic>,
+    /// Mounted external Vanilla asset-index identity and lazy provider inventory.
+    #[serde(default)]
+    pub indexed_asset_index_id: Option<String>,
+    #[serde(default)]
+    pub indexed_asset_object_count: usize,
+    #[serde(default)]
+    pub indexed_asset_exposed_resource_count: usize,
+    #[serde(default)]
+    pub indexed_asset_root_resource_count: usize,
+    #[serde(default)]
+    pub indexed_asset_retained_logical_bytes: u64,
+    /// Selected language and one consumer-resolved translation from this generation.
+    #[serde(default)]
+    pub selected_language: Option<String>,
+    #[serde(default)]
+    pub selected_language_probe_key: Option<String>,
+    #[serde(default)]
+    pub selected_language_probe_value: Option<String>,
     /// Direction selected from the committed client pack language metadata.
     /// This is the reload-generation value consumed by renderer text caches.
     #[serde(default)]

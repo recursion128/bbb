@@ -39,6 +39,8 @@
   以及中文 Vanilla 机制 Wiki 与 parity/document lint 工程闭环。
 - **2026-08-02（文档工作流 v10）**：当前事实收敛到 Wiki，历史 Markdown 正文改由
   Git-only 保留，`docs/` allowlist、30 文件 inventory 与 focused fixtures 防止回流。
+- **2026-08-02（indexed default pack）**：asset index 30 成为统一 lazy `vanilla`
+  provider，font、language、sound 经共享 pack stack 完成真实 zh_cn、OGG 与 CJK 验收。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

@@ -166,17 +166,14 @@ Loader invariants (not todos): keep the local vanilla coverage tests
 add parser support only when an official asset or a focused resource-pack
 fixture fails them; keep precedence/filter tests next to the loaders.
 
-- **Vanilla 26.1 indexed assets unified provider is `active`.** The verified
-  index is currently reachable only through a font-specific fallback, so
-  `LanguageCatalog` cannot load indexed locales and sound still needs source or
-  materialized generated assets. Build one lazy indexed provider inside the
-  default `vanilla` pack, preserve source/index and selected/server pack
-  precedence, filter and companion metadata semantics, then migrate font,
-  language and sound to the shared `PackResourceStack`. Close only after real
-  object-store acceptance for zh_cn, a representative OGG bounded open, and
-  the 114432-glyph CJK atlas; classify every remaining indexed family by
-  Vanilla/BBB owner, current surface and exact reopen condition without adding
-  an unrelated screen.
+- **Vanilla root window-icon consumption is `active`.** Vanilla 26.1
+  `Minecraft` calls `Window.setIcon(vanillaPackResources, IconSet)` during
+  native window startup, and `IconSet` opens five release/snapshot PNGs or the
+  macOS ICNS through root resources. The shared indexed provider exposes all
+  12 objects, but bbb's existing native window never consumes them. Wire the
+  bounded root-resource decode to the platform window without adding title or
+  pack-selection UI; preserve release/snapshot selection and missing/invalid
+  icon fallback diagnostics.
 
 ## Resource and dynamic texture generalization
 
@@ -278,6 +275,22 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   registration list differs.
 
 ## Resource and screen surface
+
+- **Indexed title panorama assets.** Vanilla 26.1 `GuiRenderer` owns a
+  `CubeMap("textures/gui/title/background/panorama")` and `Panorama` owns the
+  overlay, but the CLI-direct external client has no title/menu panorama
+  surface. The seven PNGs remain provider-reachable and intentionally lazy.
+  Reopen when a title/menu panorama surface enters the declared product.
+- **Indexed built-in resource-pack ZIPs.** `ClientPackSource` exposes
+  `programmer_art` and `high_contrast` through the pack repository/options
+  selection surface. bbb accepts explicit startup/server packs but has no
+  built-in pack-id selection or in-game options UI, so the two ZIPs have no
+  current consumer. Reopen when a built-in pack-id UI or CLI surface is added.
+- **Indexed Realms language and carousel assets.** Vanilla's shared language
+  manager can see `realms:lang/en_us`, while `AddRealmPopupScreen` enumerates
+  `realms:textures/gui/images`; Realms service and screens are outside the
+  external multiplayer client boundary. The 16 objects remain
+  provider-reachable. Reopen when Realms service/screen support enters scope.
 
 - **Broader non-profile dynamic textures.** The remaining Vanilla 26.1
   external-image producers are server/world-list favicons and pack-selection

@@ -28,7 +28,7 @@ Live environment:
   BBB_PLAYABLE_ARTIFACT_DIR     Evidence directory; default is a fresh /tmp directory
   BBB_PLAYABLE_TIMEOUT_SECONDS  Client/canonical-state timeout; default 120
   BBB_PLAYABLE_SERVER_READY_TIMEOUT_SECONDS  Server-ready timeout; default 120
-  BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default) or ar_sa
+  BBB_PLAYABLE_CLIENT_LOCALE  Deterministic client locale: en_us (default), ar_sa, or zh_cn
   BBB_PLAYABLE_TERMINATION_MODE  Optional validation-only clean quit or server kick
   BBB_LIFECYCLE_SOAK_MANIFEST    Required manifest when termination mode is set
 
@@ -158,9 +158,9 @@ case "$termination_timeout_seconds" in
     ;;
 esac
 case "$client_locale" in
-  en_us|ar_sa) ;;
+  en_us|ar_sa|zh_cn) ;;
   *)
-    echo "playable gate: BBB_PLAYABLE_CLIENT_LOCALE must be en_us or ar_sa" >&2
+    echo "playable gate: BBB_PLAYABLE_CLIENT_LOCALE must be en_us, ar_sa, or zh_cn" >&2
     exit 2
     ;;
 esac

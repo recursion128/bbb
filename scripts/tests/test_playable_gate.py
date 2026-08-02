@@ -782,6 +782,30 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "restore"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_live_zh_cn_requires_indexed_language_resource_diagnostics(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["mode"] = "live"
+        evidence["client_locale"] = "zh_cn"
+        resource_pack = evidence["lifecycle"]["resource_pack"]
+        resource_pack.update(
+            {
+                "indexed_asset_index_id": "30",
+                "indexed_asset_object_count": 4749,
+                "indexed_asset_exposed_resource_count": 4736,
+                "indexed_asset_root_resource_count": 13,
+                "indexed_asset_retained_logical_bytes": 800000,
+                "selected_language": "zh_cn",
+                "selected_language_probe_key": "menu.multiplayer",
+                "selected_language_probe_value": "多人游戏",
+            }
+        )
+
+        playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        resource_pack["indexed_asset_object_count"] = 4748
+        with self.assertRaisesRegex(playable_gate.GateFailure, "4749 index objects"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
     def test_reconfiguration_registry_drift_fails(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["lifecycle"]["reconfiguration"]["registry_revision_after"][

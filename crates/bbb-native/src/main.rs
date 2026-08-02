@@ -105,7 +105,7 @@ use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResour
 use resource_reload::{
     apply_item_runtime_world_defaults, apply_server_resource_pack_reload_effect,
     block_destroy_profiles_for_world, block_sound_profiles_for_world,
-    client_resource_pack_diagnostics, item_particle_sprite_uvs,
+    client_resource_pack_diagnostics, item_particle_sprite_uvs, SELECTED_LANGUAGE_PROBE_KEY,
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, hud_player_list_is_visible,
@@ -475,8 +475,12 @@ fn main() -> Result<()> {
         blocked_players: args.client_blocked_players.clone(),
     });
     let mut net_counters = NetCounters::default();
-    net_counters.client_resources =
-        std::sync::Arc::new(client_resource_pack_diagnostics(pack_roots.as_ref(), false));
+    net_counters.client_resources = std::sync::Arc::new(client_resource_pack_diagnostics(
+        pack_roots.as_ref(),
+        false,
+        Some(&args.client_locale),
+        None,
+    ));
     let code_of_conduct_store_path = args
         .code_of_conduct_store
         .clone()
@@ -819,6 +823,10 @@ fn main() -> Result<()> {
         item_runtime
             .as_ref()
             .is_some_and(NativeItemRuntime::language_bidirectional),
+        Some(&args.client_locale),
+        item_runtime
+            .as_ref()
+            .map(|runtime| runtime.localized_text(SELECTED_LANGUAGE_PROBE_KEY)),
     ));
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();

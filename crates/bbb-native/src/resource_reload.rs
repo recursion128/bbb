@@ -135,6 +135,10 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
         item_runtime
             .as_ref()
             .is_some_and(NativeItemRuntime::language_bidirectional),
+        Some(client_locale),
+        item_runtime
+            .as_ref()
+            .map(|runtime| runtime.localized_text(SELECTED_LANGUAGE_PROBE_KEY)),
         generation,
         failure
             .as_ref()
@@ -291,6 +295,8 @@ fn apply_native_resource_reload(
 pub(crate) fn client_resource_pack_diagnostics(
     roots: Option<&PackRoots>,
     language_bidirectional: bool,
+    selected_language: Option<&str>,
+    selected_language_probe_value: Option<&str>,
 ) -> ClientResourceDiagnostics {
     let Some(roots) = roots else {
         return ClientResourceDiagnostics::default();
@@ -300,6 +306,7 @@ pub(crate) fn client_resource_pack_diagnostics(
     };
     let image_memory = roots.resource_image_memory_observation();
     let data_memory = roots.resource_data_memory_observation();
+    let indexed_assets = roots.vanilla_asset_index_observation();
     ClientResourceDiagnostics {
         generation: generation.generation(),
         selected_packs: generation
@@ -331,6 +338,25 @@ pub(crate) fn client_resource_pack_diagnostics(
                 fixed_position: pack.selection.fixed_position,
             })
             .collect(),
+        indexed_asset_index_id: indexed_assets
+            .as_ref()
+            .map(|observation| observation.index_id.clone()),
+        indexed_asset_object_count: indexed_assets
+            .as_ref()
+            .map_or(0, |observation| observation.object_count),
+        indexed_asset_exposed_resource_count: indexed_assets
+            .as_ref()
+            .map_or(0, |observation| observation.exposed_resource_count),
+        indexed_asset_root_resource_count: indexed_assets
+            .as_ref()
+            .map_or(0, |observation| observation.root_resource_count),
+        indexed_asset_retained_logical_bytes: indexed_assets
+            .as_ref()
+            .map_or(0, |observation| observation.retained_logical_bytes),
+        selected_language: selected_language.map(str::to_owned),
+        selected_language_probe_key: selected_language_probe_value
+            .map(|_| SELECTED_LANGUAGE_PROBE_KEY.to_string()),
+        selected_language_probe_value: selected_language_probe_value.map(str::to_owned),
         language_bidirectional,
         image_rgba_limit_bytes: image_memory.max_rgba_bytes,
         image_rgba_charged_bytes: image_memory.charged_rgba_bytes,
@@ -354,10 +380,17 @@ pub(crate) fn client_resource_pack_diagnostics(
 fn client_resource_reload_diagnostics(
     roots: Option<&PackRoots>,
     language_bidirectional: bool,
+    selected_language: Option<&str>,
+    selected_language_probe_value: Option<&str>,
     reload_generation: u64,
     failure: Option<(&str, &str)>,
 ) -> ClientResourceDiagnostics {
-    let mut diagnostics = client_resource_pack_diagnostics(roots, language_bidirectional);
+    let mut diagnostics = client_resource_pack_diagnostics(
+        roots,
+        language_bidirectional,
+        selected_language,
+        selected_language_probe_value,
+    );
     diagnostics.last_reload_generation = Some(reload_generation);
     if let Some((stage, error)) = failure {
         diagnostics.last_reload_failure_stage = Some(stage.to_string());
@@ -365,6 +398,8 @@ fn client_resource_reload_diagnostics(
     }
     diagnostics
 }
+
+pub(crate) const SELECTED_LANGUAGE_PROBE_KEY: &str = "menu.multiplayer";
 
 fn prepare_native_resource_reload(
     base_roots: &Option<PackRoots>,
@@ -1234,7 +1269,12 @@ mod tests {
             7
         );
         assert_eq!(
-            client_resource_pack_diagnostics(Some(&composed), true),
+            client_resource_pack_diagnostics(
+                Some(&composed),
+                true,
+                Some("zh_cn"),
+                Some("多人游戏"),
+            ),
             ClientResourceDiagnostics {
                 generation: 7,
                 selected_packs: vec![
@@ -1279,6 +1319,14 @@ mod tests {
                         fixed_position: true,
                     },
                 ],
+                indexed_asset_index_id: None,
+                indexed_asset_object_count: 0,
+                indexed_asset_exposed_resource_count: 0,
+                indexed_asset_root_resource_count: 0,
+                indexed_asset_retained_logical_bytes: 0,
+                selected_language: Some("zh_cn".to_string()),
+                selected_language_probe_key: Some("menu.multiplayer".to_string()),
+                selected_language_probe_value: Some("多人游戏".to_string()),
                 language_bidirectional: true,
                 image_rgba_limit_bytes: MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
                 image_rgba_charged_bytes: 0,
@@ -1313,6 +1361,8 @@ mod tests {
         let failed = client_resource_reload_diagnostics(
             Some(&composed),
             true,
+            None,
+            None,
             8,
             Some(("prepare", "invalid custom model")),
         );
@@ -1326,7 +1376,8 @@ mod tests {
         assert_eq!(failed.selected_packs.len(), 5);
         assert!(failed.language_bidirectional);
 
-        let succeeded = client_resource_reload_diagnostics(Some(&composed), false, 9, None);
+        let succeeded =
+            client_resource_reload_diagnostics(Some(&composed), false, None, None, 9, None);
         assert_eq!(succeeded.generation, 7);
         assert!(!succeeded.language_bidirectional);
         assert_eq!(succeeded.last_reload_generation, Some(9));
@@ -1409,7 +1460,7 @@ mod tests {
                 .charged_rgba_bytes,
             4
         );
-        let staged_diagnostics = client_resource_pack_diagnostics(Some(&staged), false);
+        let staged_diagnostics = client_resource_pack_diagnostics(Some(&staged), false, None, None);
         assert_eq!(
             staged_diagnostics.image_rgba_limit_bytes,
             MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES
@@ -1478,7 +1529,7 @@ mod tests {
                 .charged_logical_bytes,
             accepted_charge
         );
-        let diagnostics = client_resource_pack_diagnostics(Some(&staged), false);
+        let diagnostics = client_resource_pack_diagnostics(Some(&staged), false, None, None);
         assert_eq!(
             diagnostics.data_logical_charged_bytes,
             staged_memory.charged_logical_bytes
