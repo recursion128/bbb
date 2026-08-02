@@ -8,6 +8,7 @@ use crate::post_effect_graph::glsl::{
 
 const TERRAIN_SHADER_ID: &str = "minecraft:core/terrain";
 const ENTITY_SHADER_ID: &str = "minecraft:core/entity";
+const ITEM_SHADER_ID: &str = "minecraft:core/item";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -19,6 +20,12 @@ pub(crate) struct AdaptedEntityShaders {
     pub(crate) fragment: String,
     pub(crate) dissolve_vertex: String,
     pub(crate) dissolve_fragment: String,
+}
+
+pub(crate) struct AdaptedItemShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+    pub(crate) resident_vertex: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -60,6 +67,29 @@ pub(crate) fn adapt_selected_entity_shaders(
     Ok(Some(AdaptedEntityShaders {
         dissolve_vertex: adapt_entity_dissolve_vertex(&vertex)?,
         dissolve_fragment: adapt_entity_dissolve_fragment(&fragment)?,
+        vertex,
+        fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_item_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedItemShaders>> {
+    let vertex = resources
+        .source_by_id(ITEM_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/item vertex stage")?;
+    let fragment = resources
+        .source_by_id(ITEM_SHADER_ID, ShaderStage::Fragment)
+        .context("prepared core shaders are missing minecraft:core/item fragment stage")?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let vertex =
+        adapt_item_stage(&vertex.source, true).context("adapt selected item vertex shader")?;
+    let fragment =
+        adapt_item_stage(&fragment.source, false).context("adapt selected item fragment shader")?;
+    Ok(Some(AdaptedItemShaders {
+        resident_vertex: adapt_resident_item_vertex(&vertex)?,
         vertex,
         fragment,
     }))
@@ -143,6 +173,92 @@ fn adapt_entity_stage(source: &str, vertex_stage: bool) -> Result<String> {
             },
         ],
     )
+}
+
+fn adapt_item_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = adapt_entity_lightmap(&source)?;
+    let source = source
+        .replace("in ivec2 UV1;", "in vec2 UV1;")
+        .replace("in ivec2 UV2;", "in vec2 UV2;")
+        .replace("in vec3 Normal;", "in vec4 Normal;")
+        .replace("sample_lightmap(Sampler2, UV2)", "sample_lightmap(UV2)")
+        .replace(
+            "minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)",
+            "mix(Color, minecraft_mix_light(Light0_Direction, Light1_Direction, Normal.xyz, Color), Normal.w)",
+        );
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_item_stage_locations(&source, vertex_stage)?;
+    adapt_combined_samplers(
+        &source,
+        &[
+            SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            },
+            SamplerBinding {
+                source_name: "Sampler2".to_string(),
+                texture_group: 1,
+                texture_binding: 0,
+                sampler_group: 1,
+                sampler_binding: 1,
+            },
+        ],
+    )
+}
+
+fn adapt_resident_item_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 3) in vec2 UV2;",
+        "",
+        "selected resident item UV2 declaration",
+    )?;
+    let source = source.replace("layout(location = 4) in vec2 UV1;", "");
+    let source = replace_required(
+        &source,
+        "layout(location = 5) in vec4 Normal;",
+        "layout(location = 3) in vec4 Normal;",
+        "selected resident item normal declaration",
+    )?;
+    let source = insert_after_version(&source, RESIDENT_ITEM_INSTANCE_INPUTS)?;
+    let source = replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "mat4 bbbModel = mat4(BbbModel0, BbbModel1, BbbModel2, BbbModel3);\n    mat3 bbbNormalMatrix = mat3(BbbNormal0.xyz, BbbNormal1.xyz, BbbNormal2.xyz);\n    vec4 bbbWorld = bbbModel * vec4(Position, 1.0);\n    vec3 bbbNormal = bbbNormalMatrix * Normal.xyz;\n    if (dot(bbbNormal, bbbNormal) <= 0.0000001) { bbbNormal = vec3(0.0, 0.0, 1.0); }\n    gl_Position = ProjMat * bbbWorld;",
+        "selected resident item world transform",
+    )?;
+    let source = source
+        .replace("fog_spherical_distance(Position)", "fog_spherical_distance(bbbWorld.xyz)")
+        .replace("fog_cylindrical_distance(Position)", "fog_cylindrical_distance(bbbWorld.xyz)")
+        .replace("sample_lightmap(UV2)", "sample_lightmap(BbbLightOverlay.xy)")
+        .replace(
+            "mix(Color, minecraft_mix_light(Light0_Direction, Light1_Direction, Normal.xyz, Color), Normal.w)",
+            "mix(Color * BbbTint, minecraft_mix_light(Light0_Direction, Light1_Direction, normalize(bbbNormal), Color * BbbTint), Normal.w)",
+        );
+    Ok(source)
+}
+
+const RESIDENT_ITEM_INSTANCE_INPUTS: &str = r#"layout(location = 5) in vec4 BbbModel0;
+layout(location = 6) in vec4 BbbModel1;
+layout(location = 7) in vec4 BbbModel2;
+layout(location = 8) in vec4 BbbModel3;
+layout(location = 9) in vec4 BbbNormal0;
+layout(location = 10) in vec4 BbbNormal1;
+layout(location = 11) in vec4 BbbNormal2;
+layout(location = 12) in vec4 BbbTint;
+layout(location = 13) in vec4 BbbLightOverlay;
+"#;
+
+fn replace_required(source: &str, from: &str, to: &str, label: &str) -> Result<String> {
+    if !source.contains(from) {
+        bail!("{label} is missing from prepared core shader");
+    }
+    Ok(source.replace(from, to))
 }
 
 fn adapt_entity_dissolve_vertex(source: &str) -> Result<String> {
@@ -448,6 +564,36 @@ fn bind_entity_stage_locations(source: &str, vertex_stage: bool) -> Result<Strin
         })
 }
 
+fn bind_item_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec2", "UV0", 1, true),
+            ("in", "vec4", "Color", 2, true),
+            ("in", "vec2", "UV2", 3, false),
+            ("in", "vec2", "UV1", 4, false),
+            ("in", "vec4", "Normal", 5, false),
+            ("out", "float", "sphericalVertexDistance", 0, false),
+            ("out", "float", "cylindricalVertexDistance", 1, false),
+            ("out", "vec4", "vertexColor", 2, false),
+            ("out", "vec2", "texCoord0", 3, false),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, false),
+            ("in", "float", "cylindricalVertexDistance", 1, false),
+            ("in", "vec4", "vertexColor", 2, false),
+            ("in", "vec2", "texCoord0", 3, false),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_optional_declaration(
     source: &str,
     (storage, field_type, name, location, required): (&str, &str, &str, u32, bool),
@@ -572,6 +718,14 @@ mod tests {
             id: ENTITY_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let item_vertex_key = ShaderSourceKey {
+            id: ITEM_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let item_fragment_key = ShaderSourceKey {
+            id: ITEM_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -619,6 +773,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: entity_fragment_key,
                         resource_id: "minecraft:shaders/core/entity.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    item_vertex_key.clone(),
+                    ShaderSource {
+                        key: item_vertex_key,
+                        resource_id: "minecraft:shaders/core/item.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    item_fragment_key.clone(),
+                    ShaderSource {
+                        key: item_fragment_key,
+                        resource_id: "minecraft:shaders/core/item.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -894,7 +1068,150 @@ void main() {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_item_shader_drives_dynamic_and_preloads_resident_item_surfaces() {
+        let root = unique_temp_dir("selected-item-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/item.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + vertexColor.x + texCoord0.x;
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected item shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(71, selected)
+            .expect("selected item generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(ITEM_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected item fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(24, 20) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected dynamic and resident item pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(71));
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(crate::CameraPose {
+            position: [0.0; 3],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        renderer
+            .upload_terrain_texture_atlas(1, 1, &[255; 4])
+            .expect("white item atlas");
+        let item = crate::ItemModelQuad {
+            corners: [
+                [0.0, 0.0, 0.0],
+                [0.0, 16.0, 0.0],
+                [16.0, 16.0, 0.0],
+                [16.0, 0.0, 0.0],
+            ],
+            uvs: [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]],
+            tint: [1.0; 4],
+            normal: [0.0, 0.0, -1.0],
+            shade: 1.0,
+            translucent: false,
+        };
+        renderer.set_block_item_model_meshes(vec![crate::bake_item_model_mesh(
+            &[item],
+            glam::Mat4::from_translation(glam::Vec3::new(-0.5, -0.5, 4.0)),
+        )]);
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("selected item frame");
+        assert!(frame_has_green_item_pixel(&pixels));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/item\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected item filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(72, filtered)
+            .expect("filtered item generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required item stage must reject the generation");
+        assert!(error.to_string().contains("minecraft:core/item"));
+        assert_eq!(renderer.core_shader_generation(), Some(71));
+        assert!(frame_has_green_item_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("retained selected item frame")
+        ));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .with_client_resource_generation(73, default_stack)
+            .expect("default item generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected item shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(73));
+        assert!(!frame_has_green_item_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("restored embedded item frame")
+        ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn frame_has_green_entity_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
+        (0..pixels.height).any(|y| {
+            (0..pixels.width).any(|x| {
+                let pixel = pixels.pixel(x, y);
+                pixel[1] > 240 && pixel[0] < 8 && pixel[2] < 8
+            })
+        })
+    }
+
+    fn frame_has_green_item_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
         (0..pixels.height).any(|y| {
             (0..pixels.width).any(|x| {
                 let pixel = pixels.pixel(x, y);

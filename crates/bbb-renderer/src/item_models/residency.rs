@@ -1024,7 +1024,7 @@ const ITEM_MODEL_INSTANCE_ATTRIBUTES: [wgpu::VertexAttribute; 10] = wgpu::vertex
     14 => Float32x4
 ];
 
-fn resident_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+pub(super) fn resident_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<ItemModelResidentVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
@@ -1032,7 +1032,7 @@ fn resident_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     }
 }
 
-fn instance_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+pub(super) fn instance_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<ItemModelGpuInstance>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Instance,

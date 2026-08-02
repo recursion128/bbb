@@ -23,7 +23,7 @@ impl Renderer {
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
     ) -> Result<()> {
-        let (next, next_entity) =
+        let (next, next_entity, next_item) =
             crate::post_effect_graph::capture_gpu_errors(&self.device, || {
                 let terrain = crate::gpu::create_terrain_core_pipeline_generation(
                     &self.device,
@@ -47,7 +47,18 @@ impl Renderer {
                         )?,
                     )
                 };
-                Ok((terrain, entity))
+                let item = if allow_embedded_fallback && resources.source_count() == 0 {
+                    None
+                } else {
+                    Some(crate::item_models::create_item_core_pipeline_generation(
+                        &self.device,
+                        self.config.format,
+                        &self.terrain_bind_group_layout,
+                        &self.lightmap_sample_bind_group_layout,
+                        resources,
+                    )?)
+                };
+                Ok((terrain, entity, item))
             })?;
         let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
         let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
@@ -107,6 +118,21 @@ impl Renderer {
                 ),
                 eyes: std::mem::replace(&mut self.entity_model_eyes_pipeline, next.eyes),
             });
+        let previous_item = next_item.map(|next| crate::item_models::ItemCorePipelineGeneration {
+            dynamic_cutout: std::mem::replace(&mut self.item_model_pipeline, next.dynamic_cutout),
+            dynamic_translucent: std::mem::replace(
+                &mut self.item_model_translucent_pipeline,
+                next.dynamic_translucent,
+            ),
+            resident_cutout: std::mem::replace(
+                &mut self.resident_item_model_pipeline,
+                next.resident_cutout,
+            ),
+            resident_translucent: std::mem::replace(
+                &mut self.resident_item_model_translucent_pipeline,
+                next.resident_translucent,
+            ),
+        });
         if self.resource_reload_in_progress() {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.terrain_solid_pipeline = previous_solid;
@@ -130,6 +156,13 @@ impl Renderer {
                     renderer.entity_model_translucent_emissive_pipeline =
                         previous.translucent_emissive;
                     renderer.entity_model_eyes_pipeline = previous.eyes;
+                }
+                if let Some(previous) = previous_item {
+                    renderer.item_model_pipeline = previous.dynamic_cutout;
+                    renderer.item_model_translucent_pipeline = previous.dynamic_translucent;
+                    renderer.resident_item_model_pipeline = previous.resident_cutout;
+                    renderer.resident_item_model_translucent_pipeline =
+                        previous.resident_translucent;
                 }
             }));
         }

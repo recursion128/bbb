@@ -15,7 +15,8 @@
 
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
+use bbb_render_types::CoreShaderSourceProjection;
 use glam::{Mat4, Vec3};
 
 use crate::{
@@ -997,6 +998,172 @@ pub(crate) fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &ITEM_MODEL_VERTEX_ATTRIBUTES,
     }
+}
+
+pub(crate) struct ItemCorePipelineGeneration {
+    pub(crate) dynamic_cutout: wgpu::RenderPipeline,
+    pub(crate) dynamic_translucent: wgpu::RenderPipeline,
+    pub(crate) resident_cutout: wgpu::RenderPipeline,
+    pub(crate) resident_translucent: wgpu::RenderPipeline,
+}
+
+pub(crate) fn create_item_core_pipeline_generation(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    resources: &CoreShaderSourceProjection,
+) -> Result<ItemCorePipelineGeneration> {
+    let Some(shaders) = crate::core_shaders::adapt_selected_item_shaders(resources)? else {
+        return Ok(ItemCorePipelineGeneration {
+            dynamic_cutout: create_item_model_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            dynamic_translucent: create_item_model_translucent_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            resident_cutout: create_resident_item_model_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            resident_translucent: create_resident_item_model_translucent_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+        });
+    };
+    let defines = [("ALPHA_CUTOUT", Some("0.1"))];
+    Ok(ItemCorePipelineGeneration {
+        dynamic_cutout: create_selected_item_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-item-cutout",
+            &shaders.vertex,
+            &shaders.fragment,
+            &defines,
+            &[item_model_vertex_layout()],
+            wgpu::BlendState::REPLACE,
+        )?,
+        dynamic_translucent: create_selected_item_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-item-translucent",
+            &shaders.vertex,
+            &shaders.fragment,
+            &defines,
+            &[item_model_vertex_layout()],
+            wgpu::BlendState::ALPHA_BLENDING,
+        )?,
+        resident_cutout: create_selected_item_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-cutout",
+            &shaders.resident_vertex,
+            &shaders.fragment,
+            &defines,
+            &[
+                residency::resident_vertex_layout(),
+                residency::instance_vertex_layout(),
+            ],
+            wgpu::BlendState::REPLACE,
+        )?,
+        resident_translucent: create_selected_item_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-resident-item-translucent",
+            &shaders.resident_vertex,
+            &shaders.fragment,
+            &defines,
+            &[
+                residency::resident_vertex_layout(),
+                residency::instance_vertex_layout(),
+            ],
+            wgpu::BlendState::ALPHA_BLENDING,
+        )?,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_selected_item_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    vertex_source: &str,
+    fragment_source: &str,
+    defines: &[(&str, Option<&str>)],
+    vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
+    blend: wgpu::BlendState,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-item-vertex-shader",
+        crate::core_shaders::shader_with_defines(vertex_source, defines),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected item vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-item-fragment-shader",
+        crate::core_shaders::shader_with_defines(fragment_source, defines),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected item fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-item-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: vertex_layouts,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: ITEM_MODEL_PIPELINE_CULL_MODE,
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                true,
+                wgpu::CompareFunction::LessEqual,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(blend),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
 }
 
 /// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
