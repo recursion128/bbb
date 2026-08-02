@@ -294,6 +294,34 @@ pub(super) fn create_debug_filled_box_pipeline(
         .build()
 }
 
+pub(super) fn create_debug_filled_box_core_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedPositionColorShaders>,
+) -> anyhow::Result<wgpu::RenderPipeline> {
+    let Some(shaders) = shaders else {
+        return Ok(create_debug_filled_box_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+        ));
+    };
+    crate::core_shaders::create_selected_position_color_pipeline(
+        device,
+        format,
+        camera_bind_group_layout,
+        "bbb-selected-debug-filled-box",
+        &shaders.vertex,
+        &shaders.fragment,
+        debug_filled_box_vertex_layout(),
+        Some(DEBUG_FILLED_BOX_BLEND),
+        DEBUG_FILLED_BOX_CULL_MODE,
+        DEBUG_FILLED_BOX_DEPTH_WRITE_ENABLED,
+        DEBUG_FILLED_BOX_DEPTH_COMPARE,
+    )
+}
+
 fn debug_filled_box_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<DebugFilledBoxVertex>() as wgpu::BufferAddress,

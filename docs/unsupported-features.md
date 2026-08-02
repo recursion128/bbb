@@ -69,8 +69,9 @@ Matrix route: `resources-reload-listeners`
   fallback and generation evidence are covered. Host-country schedule/system-toast
   apply/reset is wired after the shared rollback barrier, and selected/filterable
   `core/terrain`, all 14 entity variants, four dynamic/resident `core/item`
-  variants, and the three particle/weather variants now own one atomic pipeline generation. Remaining active work is the rest of the current
-  static-pipeline projection/preload surface;
+  variants, three particle/weather variants, and the two position-color debug/sunrise
+  variants now own one atomic pipeline generation. Remaining active work is the rest of the
+  current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep

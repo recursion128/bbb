@@ -23,66 +23,102 @@ impl Renderer {
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
     ) -> Result<()> {
-        let (next, next_entity, next_item, next_particle, next_weather) =
-            crate::post_effect_graph::capture_gpu_errors(&self.device, || {
-                let terrain = crate::gpu::create_terrain_core_pipeline_generation(
-                    &self.device,
-                    self.config.format,
-                    &self.terrain_bind_group_layout,
-                    &self.lightmap_sample_bind_group_layout,
-                    resources,
-                    self.terrain_texture_filtering,
-                    allow_embedded_fallback,
-                )?;
-                let entity = if allow_embedded_fallback && resources.source_count() == 0 {
-                    None
-                } else {
-                    Some(
-                        crate::entity_models::create_entity_core_pipeline_generation(
-                            &self.device,
-                            self.config.format,
-                            &self.terrain_bind_group_layout,
-                            &self.lightmap_sample_bind_group_layout,
-                            resources,
-                        )?,
-                    )
-                };
-                let item = if allow_embedded_fallback && resources.source_count() == 0 {
-                    None
-                } else {
-                    Some(crate::item_models::create_item_core_pipeline_generation(
+        let (
+            next,
+            next_entity,
+            next_item,
+            next_particle,
+            next_weather,
+            next_debug_filled,
+            next_sunrise,
+        ) = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
+            let terrain = crate::gpu::create_terrain_core_pipeline_generation(
+                &self.device,
+                self.config.format,
+                &self.terrain_bind_group_layout,
+                &self.lightmap_sample_bind_group_layout,
+                resources,
+                self.terrain_texture_filtering,
+                allow_embedded_fallback,
+            )?;
+            let entity = if allow_embedded_fallback && resources.source_count() == 0 {
+                None
+            } else {
+                Some(
+                    crate::entity_models::create_entity_core_pipeline_generation(
                         &self.device,
                         self.config.format,
                         &self.terrain_bind_group_layout,
                         &self.lightmap_sample_bind_group_layout,
                         resources,
-                    )?)
-                };
-                let (particle, weather) = if allow_embedded_fallback
-                    && resources.source_count() == 0
-                {
+                    )?,
+                )
+            };
+            let item = if allow_embedded_fallback && resources.source_count() == 0 {
+                None
+            } else {
+                Some(crate::item_models::create_item_core_pipeline_generation(
+                    &self.device,
+                    self.config.format,
+                    &self.terrain_bind_group_layout,
+                    &self.lightmap_sample_bind_group_layout,
+                    resources,
+                )?)
+            };
+            let (particle, weather) = if allow_embedded_fallback && resources.source_count() == 0 {
+                (None, None)
+            } else {
+                let shaders = crate::core_shaders::adapt_selected_particle_shaders(resources)?;
+                (
+                    Some(crate::particles::create_particle_core_pipeline_generation(
+                        &self.device,
+                        self.config.format,
+                        &self.terrain_bind_group_layout,
+                        &self.lightmap_sample_bind_group_layout,
+                        shaders.as_ref(),
+                    )?),
+                    Some(crate::weather::create_weather_core_pipeline(
+                        &self.device,
+                        self.config.format,
+                        &self.terrain_bind_group_layout,
+                        &self.lightmap_sample_bind_group_layout,
+                        shaders.as_ref(),
+                    )?),
+                )
+            };
+            let (debug_filled, sunrise) =
+                if allow_embedded_fallback && resources.source_count() == 0 {
                     (None, None)
                 } else {
-                    let shaders = crate::core_shaders::adapt_selected_particle_shaders(resources)?;
+                    let shaders =
+                        crate::core_shaders::adapt_selected_position_color_shaders(resources)?;
                     (
-                        Some(crate::particles::create_particle_core_pipeline_generation(
+                        Some(
+                            crate::debug_filled_boxes::create_debug_filled_box_core_pipeline(
+                                &self.device,
+                                self.config.format,
+                                &self.terrain_bind_group_layout,
+                                shaders.as_ref(),
+                            )?,
+                        ),
+                        Some(crate::sky::create_sunrise_sunset_core_pipeline(
                             &self.device,
                             self.config.format,
                             &self.terrain_bind_group_layout,
-                            &self.lightmap_sample_bind_group_layout,
-                            shaders.as_ref(),
-                        )?),
-                        Some(crate::weather::create_weather_core_pipeline(
-                            &self.device,
-                            self.config.format,
-                            &self.terrain_bind_group_layout,
-                            &self.lightmap_sample_bind_group_layout,
                             shaders.as_ref(),
                         )?),
                     )
                 };
-                Ok((terrain, entity, item, particle, weather))
-            })?;
+            Ok((
+                terrain,
+                entity,
+                item,
+                particle,
+                weather,
+                debug_filled,
+                sunrise,
+            ))
+        })?;
         let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
         let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
         let previous_translucent =
@@ -166,6 +202,10 @@ impl Renderer {
             });
         let previous_weather =
             next_weather.map(|next| std::mem::replace(&mut self.weather_pipeline, next));
+        let previous_debug_filled = next_debug_filled
+            .map(|next| std::mem::replace(&mut self.debug_filled_box_pipeline, next));
+        let previous_sunrise =
+            next_sunrise.map(|next| std::mem::replace(&mut self.sunrise_sunset_pipeline, next));
         if self.resource_reload_in_progress() {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.terrain_solid_pipeline = previous_solid;
@@ -203,6 +243,12 @@ impl Renderer {
                 }
                 if let Some(previous) = previous_weather {
                     renderer.weather_pipeline = previous;
+                }
+                if let Some(previous) = previous_debug_filled {
+                    renderer.debug_filled_box_pipeline = previous;
+                }
+                if let Some(previous) = previous_sunrise {
+                    renderer.sunrise_sunset_pipeline = previous;
                 }
             }));
         }

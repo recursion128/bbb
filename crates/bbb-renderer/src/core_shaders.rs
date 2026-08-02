@@ -10,6 +10,7 @@ const TERRAIN_SHADER_ID: &str = "minecraft:core/terrain";
 const ENTITY_SHADER_ID: &str = "minecraft:core/entity";
 const ITEM_SHADER_ID: &str = "minecraft:core/item";
 const PARTICLE_SHADER_ID: &str = "minecraft:core/particle";
+const POSITION_COLOR_SHADER_ID: &str = "minecraft:core/position_color";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -31,6 +32,12 @@ pub(crate) struct AdaptedItemShaders {
 
 pub(crate) struct AdaptedParticleShaders {
     pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedPositionColorShaders {
+    pub(crate) vertex: String,
+    pub(crate) sky_vertex: String,
     pub(crate) fragment: String,
 }
 
@@ -118,6 +125,43 @@ pub(crate) fn adapt_selected_particle_shaders(
             .context("adapt selected particle vertex shader")?,
         fragment: adapt_particle_stage(&fragment.source, false)
             .context("adapt selected particle fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_position_color_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedPositionColorShaders>> {
+    let vertex = resources
+        .source_by_id(POSITION_COLOR_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/position_color vertex stage")?;
+    let fragment = resources
+        .source_by_id(POSITION_COLOR_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/position_color fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    let vertex = adapt_position_color_stage(&vertex.source, true)
+        .context("adapt selected position-color vertex shader")?;
+    let fragment = adapt_position_color_stage(&fragment.source, false)
+        .context("adapt selected position-color fragment shader")?;
+    let debug_vertex = replace_required(
+        &vertex,
+        "#define ProjMat bbbCamera.BbbViewProj",
+        "#define ProjMat bbbCamera.BbbViewProjViewOffsetZ",
+        "selected debug-filled position-color projection",
+    )?;
+    let sky_vertex = replace_required(
+        &vertex,
+        "#define ProjMat bbbCamera.BbbViewProj",
+        "#define ProjMat (bbbCamera.BbbProjection * bbbCamera.BbbSkyModelView)",
+        "selected sunrise position-color projection",
+    )?;
+    Ok(Some(AdaptedPositionColorShaders {
+        vertex: debug_vertex,
+        sky_vertex,
+        fragment,
     }))
 }
 
@@ -264,6 +308,92 @@ fn adapt_particle_stage(source: &str, vertex_stage: bool) -> Result<String> {
                 sampler_binding: 1,
             },
         ],
+    )
+}
+
+fn adapt_position_color_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 1, true),
+            ("out", "vec4", "vertexColor", 0, false),
+        ]
+    } else {
+        &[
+            ("in", "vec4", "vertexColor", 0, false),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations.iter().try_fold(source, |source, declaration| {
+        bind_optional_declaration(&source, *declaration)
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_position_color_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    vertex_source: &str,
+    fragment_source: &str,
+    vertex_layout: wgpu::VertexBufferLayout<'_>,
+    blend: Option<wgpu::BlendState>,
+    cull_mode: Option<wgpu::Face>,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-position-color-vertex-shader",
+        vertex_source.to_string(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected position-color vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-position-color-fragment-shader",
+        fragment_source.to_string(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected position-color fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-position-color-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[vertex_layout],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(crate::pipeline_builder::depth_stencil_state(
+                crate::gpu::DEPTH_FORMAT,
+                depth_write_enabled,
+                depth_compare,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
     )
 }
 
@@ -727,6 +857,56 @@ mod tests {
     }
 
     #[test]
+    fn position_color_consumers_select_their_exact_camera_projection() {
+        let vertex_key = ShaderSourceKey {
+            id: POSITION_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let fragment_key = ShaderSourceKey {
+            id: POSITION_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let projection = CoreShaderSourceProjection::new(
+            1,
+            Arc::new(BTreeMap::from([
+                (
+                    vertex_key.clone(),
+                    ShaderSource {
+                        key: vertex_key,
+                        resource_id: "minecraft:shaders/core/position_color.vsh".to_string(),
+                        pack_id: "fixture".to_string(),
+                        source: "#version 330\nin vec3 Position;\nin vec4 Color;\nout vec4 vertexColor;\nvoid main() { gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0); vertexColor = Color; }\n".to_string(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    fragment_key.clone(),
+                    ShaderSource {
+                        key: fragment_key,
+                        resource_id: "minecraft:shaders/core/position_color.fsh".to_string(),
+                        pack_id: "fixture".to_string(),
+                        source: "#version 330\nin vec4 vertexColor;\nout vec4 fragColor;\nvoid main() { fragColor = vertexColor; }\n".to_string(),
+                        imports: Vec::new(),
+                    },
+                ),
+            ])),
+        );
+
+        let adapted = adapt_selected_position_color_shaders(&projection)
+            .unwrap()
+            .expect("fixture stages are selected");
+        assert!(adapted
+            .vertex
+            .contains("#define ProjMat bbbCamera.BbbViewProjViewOffsetZ"));
+        assert!(adapted
+            .sky_vertex
+            .contains("#define ProjMat (bbbCamera.BbbProjection * bbbCamera.BbbSkyModelView)"));
+        assert!(!adapted
+            .sky_vertex
+            .contains("#define ProjMat bbbCamera.BbbViewProj\n"));
+    }
+
+    #[test]
     fn selected_core_shader_drives_terrain_pixels_and_failed_generation_rolls_back() {
         let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
             return;
@@ -818,6 +998,14 @@ mod tests {
             id: PARTICLE_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let position_color_vertex_key = ShaderSourceKey {
+            id: POSITION_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let position_color_fragment_key = ShaderSourceKey {
+            id: POSITION_COLOR_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -905,6 +1093,26 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: particle_fragment_key,
                         resource_id: "minecraft:shaders/core/particle.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    position_color_vertex_key.clone(),
+                    ShaderSource {
+                        key: position_color_vertex_key,
+                        resource_id: "minecraft:shaders/core/position_color.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    position_color_fragment_key.clone(),
+                    ShaderSource {
+                        key: position_color_fragment_key,
+                        resource_id: "minecraft:shaders/core/position_color.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -1404,6 +1612,116 @@ void main() {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_position_color_shader_drives_debug_and_preloads_sunrise_surface() {
+        let root = unique_temp_dir("selected-position-color-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/position_color.fsh"),
+            r#"#version 330
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(vertexColor.x * 0.0);
+}
+"#,
+        );
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected position-color shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(91, selected)
+            .expect("selected position-color generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        assert_eq!(
+            catalog
+                .source_by_id(POSITION_COLOR_SHADER_ID, ShaderStage::Fragment)
+                .expect("selected position-color fragment")
+                .pack_id,
+            "startup/0"
+        );
+
+        let Some(mut renderer) = crate::Renderer::new_offscreen(24, 20) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected debug-filled and sunrise pipelines compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(91));
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_debug_filled_boxes(vec![crate::DebugFilledBox {
+            min: [-0.5, -0.5, 0.25],
+            max: [0.5, 0.5, 0.75],
+            color: [255; 4],
+        }]);
+        assert!(frame_has_green_position_color_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("selected position-color debug frame")
+        ));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/position_color\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected position-color filter pack");
+        let filtered_roots = base
+            .clone()
+            .with_client_resource_generation(92, filtered)
+            .expect("filtered position-color generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required position-color stage must reject the generation");
+        assert!(error.to_string().contains("minecraft:core/position_color"));
+        assert_eq!(renderer.core_shader_generation(), Some(91));
+        assert!(frame_has_green_position_color_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("retained selected position-color frame")
+        ));
+
+        let default_stack = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [])
+            .expect("default selected stack");
+        let default_roots = base
+            .with_client_resource_generation(93, default_stack)
+            .expect("default position-color generation");
+        let default_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&default_roots).expect("default shader catalog");
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&default_catalog.renderer_projection(), false)
+            })
+            .expect("removing selected position-color shader restores embedded generation");
+        assert_eq!(renderer.core_shader_generation(), Some(93));
+        assert!(!frame_has_green_position_color_pixel(
+            &renderer
+                .render_offscreen_frame()
+                .expect("restored embedded position-color frame")
+        ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn frame_has_green_entity_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
         (0..pixels.height).any(|y| {
             (0..pixels.width).any(|x| {
@@ -1414,6 +1732,15 @@ void main() {
     }
 
     fn frame_has_green_item_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
+        (0..pixels.height).any(|y| {
+            (0..pixels.width).any(|x| {
+                let pixel = pixels.pixel(x, y);
+                pixel[1] > 240 && pixel[0] < 8 && pixel[2] < 8
+            })
+        })
+    }
+
+    fn frame_has_green_position_color_pixel(pixels: &crate::screenshot::ScreenshotPixels) -> bool {
         (0..pixels.height).any(|y| {
             (0..pixels.width).any(|x| {
                 let pixel = pixels.pixel(x, y);
