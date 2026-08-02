@@ -90,11 +90,6 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
   Audit the 104 local-player and 39 game-mode owners against their actual
   command/state/presentation paths and close only after the applicable live
   interaction cases pass.
-  - The current frozen slice separates `KeyboardInput`'s raw sprint key from
-    `LocalPlayer`'s canonical sprint latch, closes exact start/stop and packet
-    ordering, migrates movement/vehicle/combat/FOV consumers, and rejects stale
-    level-generation transitions. The remaining heterogeneous owners stay on
-    this ledger route and are not implied closed by the sprint slice.
 
 ## Render-step, HUD and block-entity presentation closure
 

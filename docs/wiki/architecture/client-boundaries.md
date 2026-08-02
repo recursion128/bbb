@@ -21,6 +21,21 @@
 - reload 先构造完整 generation，再原子发布；失败时旧 generation 仍可用。
 - 本地预测必须可被服务端 packet 校正；诊断 snapshot 不得成为控制输入。
 
+## 本地输入与 LocalPlayer sprint owner
+
+原始按键与玩家语义状态不能共用一个字段。`bbb-native::ClientInputState` 只保存
+`sprint_key_down`、双击前进 edge/timer 和最后成功发送的 sprint baseline；
+`bbb-world::LocalPlayerState` 唯一保存 canonical sprint latch，并按 Vanilla
+`canStartSprinting`、`shouldStopRunSprinting`、`shouldStopSwimSprinting` 处理 food、mobility、
+vehicle、water、pose、collision 与 attack。movement、vehicle、combat 和 camera/FOV 只读取
+world latch，不反向读取原始按键。
+
+raw `ServerboundPlayerInputPacket` 只投影按键位；双击前进不会伪造其 sprint bit，松开 sprint
+键也不会单独清除已经启动的 latch。非乘客 tick 先发送 latch transition，再发送 player
+movement；乘客 tick 保持 rotation、authoritative vehicle movement、latch transition 顺序。
+level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐新 world；队列发送失败
+不推进 baseline，所以下一 tick 会重试而不形成 shadow state。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

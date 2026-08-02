@@ -49,6 +49,8 @@
   bounded prepare、单 barrier apply/rollback 与真实 default/selected/live 验收。
 - **2026-08-02（shader generation architecture convergence）**：shader sources、static core
   pipelines 与 post graphs 收敛为单一 CPU projection 和 renderer transaction API。
+- **2026-08-02（LocalPlayer sprint ownership）**：raw sprint key、canonical player latch 与
+  outbound baseline 分离，movement/vehicle/combat/FOV 统一读取 world owner。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
