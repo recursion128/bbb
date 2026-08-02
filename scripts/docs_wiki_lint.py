@@ -42,6 +42,11 @@ class WikiLint:
     def fail(self, message: str) -> None:
         self.issues.append(message)
 
+    @staticmethod
+    def sha256_file(path: Path) -> str:
+        with path.open("rb") as handle:
+            return hashlib.file_digest(handle, "sha256").hexdigest()
+
     def markdown_files(self) -> list[Path]:
         return sorted(
             path
@@ -344,7 +349,7 @@ class WikiLint:
             expected = item.get("sha256")
             if not candidate.is_file():
                 self.fail(f"client mechanism generator input missing: {input_path}")
-            elif hashlib.sha256(candidate.read_bytes()).hexdigest() != expected:
+            elif self.sha256_file(candidate) != expected:
                 self.fail(f"client mechanism inventory generator input is stale: {input_path}")
 
         source_root_value = os.environ.get("BBB_DOCS_LINT_VANILLA_SOURCE_ROOT")
@@ -364,7 +369,7 @@ class WikiLint:
                     self.fail(f"client mechanism Vanilla source missing: {source_path}")
                     continue
                 checked_sources += 1
-                if hashlib.sha256(candidate.read_bytes()).hexdigest() != item.get("sha256"):
+                if self.sha256_file(candidate) != item.get("sha256"):
                     self.fail(f"client mechanism inventory source is stale: {source_path}")
             source_message = f"{checked_sources} source hashes checked"
         else:
