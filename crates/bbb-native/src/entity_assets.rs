@@ -409,7 +409,7 @@ mod tests {
                 .unwrap();
             }
         }
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 
@@ -455,7 +455,7 @@ mod tests {
             };
             write_png(&texture_path, width, height);
         }
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 
@@ -484,7 +484,7 @@ mod tests {
             br#"{"texture":{"blur":true,"clamp":true}}"#,
         )
         .unwrap();
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
 
         let image = load_entity_shadow_texture_image(&roots).unwrap();
 
@@ -520,7 +520,7 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
 
         let images = load_special_item_texture_images(&roots).unwrap();
 
@@ -564,7 +564,7 @@ mod tests {
             .join("custom.png");
         std::fs::create_dir_all(texture.parent().unwrap()).unwrap();
         write_png(&texture, 32, 64);
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
 
         let images = load_special_item_texture_images(&roots).unwrap();
 
@@ -619,7 +619,7 @@ mod tests {
             .join("custom.png");
         std::fs::create_dir_all(custom.parent().unwrap()).unwrap();
         write_png(&custom, 32, 16);
-        let roots = PackRoots::from_paths(temp.clone(), sources, temp.join("unused-assets"), None);
+        let roots = fixture_pack_roots(&temp, sources);
         let source = roots.load_equipment_asset_catalog().unwrap();
         let mut owned = BTreeMap::new();
 
@@ -667,6 +667,17 @@ mod tests {
             .unwrap()
             .as_nanos();
         std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+    }
+
+    fn fixture_pack_roots(temp: &std::path::Path, pack: std::path::PathBuf) -> PackRoots {
+        let vanilla = temp.join("empty-vanilla");
+        PackRoots::from_paths(
+            temp.to_path_buf(),
+            &vanilla,
+            vanilla.join("assets/minecraft"),
+            None,
+        )
+        .with_resource_pack_dirs([pack])
     }
 
     fn write_png(path: &std::path::Path, width: u32, height: u32) {

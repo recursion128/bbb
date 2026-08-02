@@ -558,12 +558,7 @@ mod tests {
             2,
             1,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader {
             images: Vec::new(),
@@ -632,12 +627,7 @@ mod tests {
             2,
             1,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let mut world = WorldStore::new();
@@ -701,12 +691,7 @@ mod tests {
             64,
             32,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let world = WorldStore::new();
@@ -744,12 +729,7 @@ mod tests {
             64,
             64,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let world = WorldStore::new();
@@ -791,12 +771,7 @@ mod tests {
             64,
             64,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let world = WorldStore::new();
@@ -843,12 +818,7 @@ mod tests {
             16,
             16,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
 
@@ -891,12 +861,7 @@ mod tests {
             32,
             32,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let mut world = WorldStore::new();
@@ -970,12 +935,7 @@ mod tests {
             48,
             48,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let mut world = WorldStore::new();
@@ -1054,12 +1014,7 @@ mod tests {
                 16,
             );
         }
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let mut world = WorldStore::new();
@@ -1145,12 +1100,7 @@ mod tests {
             128,
             64,
         );
-        let roots = PackRoots::from_paths(
-            root.clone(),
-            sources.clone(),
-            sources.join("assets/minecraft"),
-            None,
-        );
+        let roots = fixture_pack_roots(&root, &sources);
         let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
         let mut uploader = TestUploader::default();
         let mut world = WorldStore::new();
@@ -1281,6 +1231,17 @@ mod tests {
         let bytes = value.as_bytes();
         payload.extend((bytes.len() as u16).to_be_bytes());
         payload.extend(bytes);
+    }
+
+    fn fixture_pack_roots(root: &Path, pack: &Path) -> PackRoots {
+        let vanilla = root.join("empty-vanilla");
+        PackRoots::from_paths(
+            root.to_path_buf(),
+            &vanilla,
+            vanilla.join("assets/minecraft"),
+            None,
+        )
+        .with_resource_pack_dirs([pack.to_path_buf()])
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {
