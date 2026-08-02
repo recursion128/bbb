@@ -344,10 +344,12 @@ dependencies = [
  "clap",
  "glam 0.29.3",
  "image",
+ "isocountry",
  "pollster",
  "reqwest",
  "serde",
  "serde_json",
+ "sys-locale",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -389,6 +391,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bbb-protocol",
+ "bbb-render-types",
  "image",
  "regex",
  "serde",
@@ -421,6 +424,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "image",
+ "serde",
  "unicode-bidi",
  "unicode-character-database",
 ]
@@ -1772,6 +1776,16 @@ name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
+
+[[package]]
+name = "isocountry"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ea1dc4bf0fb4904ba83ffdb98af3d9c325274e92e6e295e4151e86c96363e04"
+dependencies = [
+ "serde",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "itertools"
@@ -3535,6 +3549,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "sys-locale"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

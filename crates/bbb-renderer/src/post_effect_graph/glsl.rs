@@ -4,13 +4,15 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use bbb_pack::{PostEffectPass, PostEffectUniformValue};
+use bbb_render_types::{PostEffectPass, PostEffectUniformValue};
 use regex::Regex;
 
 #[derive(Debug, Clone)]
-pub(super) struct SamplerBinding {
+pub(crate) struct SamplerBinding {
     pub source_name: String,
+    pub texture_group: u32,
     pub texture_binding: u32,
+    pub sampler_group: u32,
     pub sampler_binding: u32,
 }
 
@@ -349,7 +351,7 @@ fn collect_sampler_declarations(source: &str) -> Result<BTreeSet<String>> {
     Ok(samplers)
 }
 
-fn adapt_combined_samplers(source: &str, bindings: &[SamplerBinding]) -> Result<String> {
+pub(crate) fn adapt_combined_samplers(source: &str, bindings: &[SamplerBinding]) -> Result<String> {
     if bindings.is_empty() {
         return Ok(source.to_string());
     }
@@ -395,8 +397,11 @@ fn adapt_combined_samplers(source: &str, bindings: &[SamplerBinding]) -> Result<
         output = output.replace(
             &format!("__BBB_POST_SAMPLER_DECL_{index}__"),
             &format!(
-                "layout(set = 0, binding = {}) uniform texture2D {texture_name};\nlayout(set = 0, binding = {}) uniform sampler {sampler_name};",
-                binding.texture_binding, binding.sampler_binding
+                "layout(set = {}, binding = {}) uniform texture2D {texture_name};\nlayout(set = {}, binding = {}) uniform sampler {sampler_name};",
+                binding.texture_group,
+                binding.texture_binding,
+                binding.sampler_group,
+                binding.sampler_binding
             ),
         );
     }
@@ -563,7 +568,7 @@ fn bind_stage_locations(
     Ok(output)
 }
 
-fn require_webgpu_glsl_version(source: &str) -> String {
+pub(crate) fn require_webgpu_glsl_version(source: &str) -> String {
     let stripped = strip_glsl_comments(source);
     if let Some(captures) = version_pattern().captures(&stripped) {
         let digits = captures.name("version").expect("version digits capture");
@@ -581,7 +586,7 @@ fn require_webgpu_glsl_version(source: &str) -> String {
     }
 }
 
-fn replace_identifier(source: &str, from: &str, to: &str) -> Result<String> {
+pub(crate) fn replace_identifier(source: &str, from: &str, to: &str) -> Result<String> {
     Ok(Regex::new(&format!(r"\b{}\b", regex::escape(from)))
         .context("compile GLSL identifier replacement")?
         .replace_all(source, to)
@@ -744,7 +749,9 @@ fn vertex_main_pattern() -> &'static Regex {
 
 #[cfg(test)]
 mod tests {
-    use bbb_pack::{PostEffectInput, PostEffectPass, PostEffectUniform, PostEffectUniformValue};
+    use bbb_render_types::{
+        PostEffectInput, PostEffectPass, PostEffectUniform, PostEffectUniformValue,
+    };
 
     use super::*;
 
@@ -771,7 +778,9 @@ mod tests {
         let bindings = PassGlslBindings {
             samplers: vec![SamplerBinding {
                 source_name: "InSampler".to_string(),
+                texture_group: 0,
                 texture_binding: 0,
+                sampler_group: 0,
                 sampler_binding: 1,
             }],
             uniform_blocks: BTreeMap::from([

@@ -1,7 +1,7 @@
 use std::mem;
 
 use anyhow::{anyhow, bail, Result};
-use bbb_pack::AtlasMipPatch;
+use bbb_render_types::{AtlasMipPatch, CoreShaderSourceProjection};
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -745,6 +745,171 @@ fn create_terrain_pipeline_with_options(
         .build()
 }
 
+pub(super) struct TerrainCorePipelineGeneration {
+    pub(super) generation: u64,
+    pub(super) solid: wgpu::RenderPipeline,
+    pub(super) cutout: wgpu::RenderPipeline,
+    pub(super) translucent: wgpu::RenderPipeline,
+}
+
+pub(super) fn create_terrain_core_pipeline_generation(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    resources: &CoreShaderSourceProjection,
+    texture_filtering: crate::renderer::TerrainTextureFiltering,
+    allow_embedded_fallback: bool,
+) -> Result<TerrainCorePipelineGeneration> {
+    let adapted = crate::core_shaders::adapt_terrain_shaders(
+        resources,
+        texture_filtering == crate::renderer::TerrainTextureFiltering::Rgss,
+    )?;
+    let Some(adapted) = adapted else {
+        if !allow_embedded_fallback {
+            bail!("prepared core shaders are missing minecraft:core/terrain");
+        }
+        return Ok(TerrainCorePipelineGeneration {
+            generation: resources.generation(),
+            solid: create_terrain_solid_pipeline(
+                device,
+                format,
+                camera_bind_group_layout,
+                lightmap_bind_group_layout,
+                texture_filtering,
+            ),
+            cutout: create_terrain_cutout_pipeline(
+                device,
+                format,
+                camera_bind_group_layout,
+                lightmap_bind_group_layout,
+                texture_filtering,
+            ),
+            translucent: create_terrain_translucent_pipeline(
+                device,
+                format,
+                camera_bind_group_layout,
+                lightmap_bind_group_layout,
+                texture_filtering,
+            ),
+        });
+    };
+    Ok(TerrainCorePipelineGeneration {
+        generation: resources.generation(),
+        solid: create_selected_terrain_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-terrain-pipeline",
+            &adapted,
+            TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
+            TERRAIN_PIPELINE_OPAQUE_BLEND,
+            None,
+        )?,
+        cutout: create_selected_terrain_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-terrain-cutout-pipeline",
+            &adapted,
+            TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
+            TERRAIN_PIPELINE_OPAQUE_BLEND,
+            Some(TERRAIN_CUTOUT_ALPHA_THRESHOLD),
+        )?,
+        translucent: create_selected_terrain_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            lightmap_bind_group_layout,
+            "bbb-selected-terrain-translucent-pipeline",
+            &adapted,
+            TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
+            TERRAIN_PIPELINE_TRANSLUCENT_BLEND,
+            Some(TERRAIN_TRANSLUCENT_ALPHA_THRESHOLD),
+        )?,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_selected_terrain_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    shaders: &crate::core_shaders::AdaptedTerrainShaders,
+    depth_write_enabled: bool,
+    blend: Option<wgpu::BlendState>,
+    alpha_cutout: Option<&str>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex_source = shader_with_define(&shaders.vertex, "ALPHA_CUTOUT", alpha_cutout);
+    let fragment_source = shader_with_define(&shaders.fragment, "ALPHA_CUTOUT", alpha_cutout);
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-terrain-vertex-shader",
+        vertex_source,
+        wgpu::naga::ShaderStage::Vertex,
+    )?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-terrain-fragment-shader",
+        fragment_source,
+        wgpu::naga::ShaderStage::Fragment,
+    )?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-terrain-pipeline-layout"),
+        bind_group_layouts: &[camera_bind_group_layout, lightmap_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[terrain_vertex_layout()],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: TERRAIN_PIPELINE_CULL_MODE,
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                depth_write_enabled,
+                TERRAIN_PIPELINE_DEPTH_COMPARE,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+fn shader_with_define(source: &str, name: &str, value: Option<&str>) -> String {
+    let Some(value) = value else {
+        return source.to_string();
+    };
+    let newline = source
+        .find('\n')
+        .expect("adapted terrain shader always has a version line");
+    format!(
+        "{}#define {name} {value}\n{}",
+        &source[..=newline],
+        &source[newline + 1..]
+    )
+}
+
 fn terrain_shader(
     alpha_cutout: Option<&str>,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
@@ -982,7 +1147,7 @@ mod tests {
     fn terrain_atlas_mip_patch_validation_rejects_wrong_level_bounds_and_bytes() {
         let valid = AtlasMipPatch {
             level: 1,
-            rect: bbb_pack::AtlasRect {
+            rect: bbb_render_types::AtlasRect {
                 x: 2,
                 y: 3,
                 width: 4,

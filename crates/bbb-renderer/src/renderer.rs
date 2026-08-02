@@ -358,6 +358,8 @@ pub struct Renderer {
     pub(super) terrain_solid_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_cutout_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
+    pub(super) core_shader_generation: Option<u64>,
+    pub(super) terrain_texture_filtering: TerrainTextureFiltering,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) debug_filled_box_pipeline: wgpu::RenderPipeline,
     pub(super) debug_text_pipeline: wgpu::RenderPipeline,
@@ -2002,6 +2004,8 @@ impl Renderer {
             terrain_solid_pipeline,
             terrain_cutout_pipeline,
             terrain_translucent_pipeline,
+            core_shader_generation: None,
+            terrain_texture_filtering,
             block_destroy_pipeline,
             debug_filled_box_pipeline,
             debug_text_pipeline,
@@ -3514,14 +3518,14 @@ impl Renderer {
 
     pub fn update_terrain_texture_atlas_mip_patches(
         &mut self,
-        patches: &[bbb_pack::AtlasMipPatch],
+        patches: &[bbb_render_types::AtlasMipPatch],
     ) -> Result<()> {
         write_terrain_atlas_mip_patches_gpu(&self.queue, &self.terrain_atlas, patches)
     }
 
     pub fn upload_terrain_texture_animation(
         &mut self,
-        plan: Option<bbb_pack::AtlasGpuAnimationPlan>,
+        plan: Option<bbb_render_types::AtlasGpuAnimationPlan>,
     ) -> Result<()> {
         let animation = plan
             .map(|plan| TerrainAtlasAnimationGpu::new(&self.device, &self.queue, plan))

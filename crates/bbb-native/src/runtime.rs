@@ -261,6 +261,7 @@ mod dialog_screen;
 mod game_rules_screen;
 mod loom_screen;
 mod overworld_day_timeline;
+mod periodic_notifications;
 mod render_extract;
 mod smithing_screen;
 mod vignette;
@@ -615,6 +616,7 @@ pub(crate) use control_requests::{
     pump_control_input_requests_with_effects, pump_control_net_requests,
 };
 pub(crate) use events::LevelEventSoundRandomState;
+use periodic_notifications::{PeriodicNotificationRuntime, PeriodicNotificationSchedule};
 #[cfg(test)]
 use toast::ClientToast;
 use toast::ClientToastRuntime;
@@ -659,6 +661,8 @@ pub(crate) struct ClientAnimationTickState {
 pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
+    periodic_notification_toast: SystemToastAnimationState,
+    periodic_notifications: PeriodicNotificationRuntime,
     client_toasts: ClientToastRuntime,
     debug_options_screen_narration: Option<ScreenNarrationFrame>,
     stats_screen_narration: Option<ScreenNarrationFrame>,
@@ -764,6 +768,26 @@ impl ClientAnimationTickState {
 }
 
 impl HudRenderRuntime {
+    pub(crate) fn prepare_periodic_notifications(
+        catalog: &bbb_pack::PeriodicNotificationCatalog,
+    ) -> anyhow::Result<Option<PeriodicNotificationSchedule>> {
+        PeriodicNotificationSchedule::prepare(
+            catalog,
+            periodic_notifications::host_country_iso3().as_deref(),
+        )
+    }
+
+    pub(crate) fn install_periodic_notifications(
+        &mut self,
+        generation: u64,
+        schedule: Option<PeriodicNotificationSchedule>,
+        now: Instant,
+    ) {
+        self.periodic_notifications
+            .install(generation, schedule, now);
+        self.periodic_notification_toast = SystemToastAnimationState::default();
+    }
+
     pub(crate) fn debug_options_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.debug_options_screen_narration.as_ref()
     }
@@ -6864,6 +6888,7 @@ fn hud_system_toast(
     item_runtime: Option<&NativeItemRuntime>,
     now: Instant,
 ) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
+    let periodic_notification = state.periodic_notifications.update(now).cloned();
     let (frame, title, message, multiline) = if let Some(frame) = state
         .insecure_chat_toast
         .update(world.insecure_chat_warning_count(), now)
@@ -6893,6 +6918,30 @@ fn hud_system_toast(
                 item_runtime,
                 "chunk.toast.lowDiskSpace.description",
                 "Might not be able to save the world.",
+            ),
+            false,
+        )
+    } else if let Some(notification) = periodic_notification {
+        let Some(frame) = state
+            .periodic_notification_toast
+            .update(notification.sequence, now)
+        else {
+            return (None, None);
+        };
+        let elapsed_periods = notification.elapsed_periods.to_string();
+        (
+            frame,
+            localized_gui_text_with_args(
+                item_runtime,
+                &notification.title_key,
+                &notification.title_key,
+                &[&elapsed_periods],
+            ),
+            localized_gui_text_with_args(
+                item_runtime,
+                &notification.message_key,
+                &notification.message_key,
+                &[&elapsed_periods],
             ),
             false,
         )

@@ -2,6 +2,7 @@
 //! like `bbb-item-model` can name renderer-facing data without depending on the renderer itself.
 //! `bbb-renderer` re-exports everything here at its existing paths.
 
+mod atlas_animation;
 mod banner_pattern_types;
 pub mod cat_variants;
 mod dye_colors;
@@ -10,6 +11,7 @@ mod hud_glyphs;
 mod map_backgrounds;
 mod map_decorations;
 pub mod player_skin;
+mod resource_shaders;
 mod sprites;
 pub mod temperature_animal_variants;
 mod text_visual_order;
@@ -19,6 +21,10 @@ mod villager_model_types;
 pub mod wolf_variants;
 pub mod zombie_nautilus_variants;
 
+pub use atlas_animation::{
+    AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasMipPatch,
+    AtlasRect, SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteMipLevel,
+};
 pub use banner_pattern_types::BannerPatternKind;
 pub use dye_colors::{
     VanillaDyeColor, VanillaDyeColorEntry, VANILLA_DYE_COLORS, VANILLA_DYE_COLOR_COUNT,
@@ -45,6 +51,12 @@ pub use player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
     MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
+};
+pub use resource_shaders::{
+    CoreShaderSourceProjection, PostEffectGraph, PostEffectInput, PostEffectInternalTarget,
+    PostEffectPass, PostEffectResourceProjection, PostEffectTextureImage, PostEffectUniform,
+    PostEffectUniformValue, ShaderSource, ShaderSourceImport, ShaderSourceKey,
+    ShaderSourceLoadFailure, ShaderStage,
 };
 pub use sprites::{ItemSpriteRect, SpriteAlphaMask};
 pub use text_visual_order::visual_order;

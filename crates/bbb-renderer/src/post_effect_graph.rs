@@ -1,14 +1,14 @@
 use std::{borrow::Cow, cell::Cell, collections::BTreeMap};
 
 use anyhow::{bail, Context, Result};
-use bbb_pack::{
-    PostEffectCatalog, PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
-    PostEffectShaderKey, PostEffectShaderStage, PostEffectTextureImage,
+use bbb_render_types::{
+    PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
+    PostEffectResourceProjection, PostEffectTextureImage, ShaderSourceKey, ShaderStage,
 };
 use wgpu::util::DeviceExt;
 
 mod depth;
-mod glsl;
+pub(crate) mod glsl;
 mod runtime;
 mod std140;
 #[cfg(test)]
@@ -72,10 +72,10 @@ impl PostEffectGraphGeneration {
         format: wgpu::TextureFormat,
         width: u32,
         height: u32,
-        catalog: &PostEffectCatalog,
+        resources: &PostEffectResourceProjection,
     ) -> Result<Self> {
         capture_gpu_errors(device, || {
-            Self::build(device, queue, format, width, height, catalog)
+            Self::build(device, queue, format, width, height, resources)
         })
     }
 
@@ -85,29 +85,29 @@ impl PostEffectGraphGeneration {
         format: wgpu::TextureFormat,
         width: u32,
         height: u32,
-        catalog: &PostEffectCatalog,
+        resources: &PostEffectResourceProjection,
     ) -> Result<Self> {
         let screen_size = [width.max(1), height.max(1)];
         let nearest_sampler = create_sampler(device, "bbb-post-effect-nearest-sampler", false);
         let linear_sampler = create_sampler(device, "bbb-post-effect-linear-sampler", true);
-        let textures = catalog
+        let textures = resources
             .textures()
             .iter()
             .map(|(id, image)| {
                 create_static_texture(device, queue, image).map(|texture| (id.clone(), texture))
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
-        let graphs = catalog
+        let graphs = resources
             .graphs()
             .iter()
             .map(|(id, graph)| {
-                CompiledGraph::new(device, format, screen_size, catalog, graph)
+                CompiledGraph::new(device, format, screen_size, resources, graph)
                     .with_context(|| format!("compile post-effect graph {id}"))
                     .map(|graph| (id.clone(), graph))
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
         Ok(Self {
-            generation: catalog.generation(),
+            generation: resources.generation(),
             format,
             screen_size,
             nearest_sampler,
@@ -191,7 +191,7 @@ impl CompiledGraph {
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
         screen_size: [u32; 2],
-        catalog: &PostEffectCatalog,
+        resources: &PostEffectResourceProjection,
         graph: &PostEffectGraph,
     ) -> Result<Self> {
         let depth_targets = graph
@@ -238,7 +238,7 @@ impl CompiledGraph {
                         pass.output
                     );
                 }
-                CompiledPass::new(device, format, catalog, pass)
+                CompiledPass::new(device, format, resources, pass)
                     .with_context(|| format!("compile pass {index}"))
             })
             .collect::<Result<Vec<_>>>()?;
@@ -449,7 +449,7 @@ impl CompiledPass {
     fn new(
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
-        catalog: &PostEffectCatalog,
+        resources: &PostEffectResourceProjection,
         pass: &PostEffectPass,
     ) -> Result<Self> {
         let mut next_binding = 0_u32;
@@ -483,7 +483,9 @@ impl CompiledPass {
             ));
             samplers.push(SamplerBinding {
                 source_name: format!("{}Sampler", input.sampler_name()),
+                texture_group: 0,
                 texture_binding,
+                sampler_group: 0,
                 sampler_binding,
             });
         }
@@ -509,18 +511,18 @@ impl CompiledPass {
             samplers: samplers.clone(),
             uniform_blocks: uniform_block_bindings,
         };
-        let vertex_key = PostEffectShaderKey {
+        let vertex_key = ShaderSourceKey {
             id: pass.vertex_shader.clone(),
-            stage: PostEffectShaderStage::Vertex,
+            stage: ShaderStage::Vertex,
         };
-        let fragment_key = PostEffectShaderKey {
+        let fragment_key = ShaderSourceKey {
             id: pass.fragment_shader.clone(),
-            stage: PostEffectShaderStage::Fragment,
+            stage: ShaderStage::Fragment,
         };
-        let vertex = catalog
+        let vertex = resources
             .shader(&vertex_key)
             .with_context(|| format!("missing prepared shader {vertex_key}"))?;
-        let fragment = catalog
+        let fragment = resources
             .shader(&fragment_key)
             .with_context(|| format!("missing prepared shader {fragment_key}"))?;
         let adapted = adapt_pass_shaders(pass, &vertex.source, &fragment.source, &shader_bindings)?;
@@ -888,7 +890,7 @@ fn take_binding(next: &mut u32) -> Result<u32> {
     Ok(binding)
 }
 
-fn create_glsl_module(
+pub(crate) fn create_glsl_module(
     device: &wgpu::Device,
     label: &str,
     source: String,
@@ -898,7 +900,7 @@ fn create_glsl_module(
     let options = wgpu::naga::front::glsl::Options::from(stage);
     let module = frontend.parse(&options, &source).map_err(|errors| {
         anyhow::anyhow!(
-            "post-effect GLSL parse failed: {}",
+            "resource GLSL parse failed: {}",
             errors
                 .into_iter()
                 .map(|error| error.to_string())
@@ -911,14 +913,14 @@ fn create_glsl_module(
         wgpu::naga::valid::Capabilities::all(),
     )
     .validate(&module)
-    .context("post-effect GLSL validation failed")?;
+    .context("resource GLSL validation failed")?;
     Ok(device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(label),
         source: wgpu::ShaderSource::Naga(Cow::Owned(module)),
     }))
 }
 
-pub(super) fn capture_gpu_errors<T>(
+pub(crate) fn capture_gpu_errors<T>(
     device: &wgpu::Device,
     operation: impl FnOnce() -> Result<T>,
 ) -> Result<T> {
@@ -931,10 +933,10 @@ pub(super) fn capture_gpu_errors<T>(
     let validation = pollster::block_on(validation);
     let out_of_memory = pollster::block_on(out_of_memory);
     if let Some(error) = validation {
-        bail!("post-effect GPU validation failed: {error}");
+        bail!("resource GPU validation failed: {error}");
     }
     if let Some(error) = out_of_memory {
-        bail!("post-effect GPU allocation failed: {error}");
+        bail!("resource GPU allocation failed: {error}");
     }
     result
 }

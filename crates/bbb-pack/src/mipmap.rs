@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, sync::OnceLock};
 
 use anyhow::{bail, Result};
-use serde::{Deserialize, Serialize};
+use bbb_render_types::SpriteMipLevel;
 
 use crate::{
     rgba_len, rgba_offset, SpriteImage, SpriteMipmapStrategy, SpriteTextureMetadata,
@@ -10,13 +10,6 @@ use crate::{
 
 const ALPHA_CUTOFF: f32 = 0.5;
 const STRICT_ALPHA_CUTOFF: f32 = 0.3;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SpriteMipLevel {
-    pub width: u32,
-    pub height: u32,
-    pub rgba: Vec<u8>,
-}
 
 impl SpriteImage {
     /// Generates vanilla-style mip levels for this image's current RGBA frame.

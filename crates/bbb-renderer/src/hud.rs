@@ -3483,7 +3483,7 @@ impl Renderer {
 
     pub fn update_hud_item_atlas_patches(
         &mut self,
-        patches: &[bbb_pack::AtlasMipPatch],
+        patches: &[bbb_render_types::AtlasMipPatch],
     ) -> Result<()> {
         let Some(atlas) = self.hud_item_atlas.as_ref() else {
             return Ok(());

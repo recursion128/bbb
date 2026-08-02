@@ -1,7 +1,6 @@
 pub use crate::asset_index::VanillaAssetIndexObservation;
 pub use crate::atlas::{
-    AtlasAnimationMipCache, AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite,
-    AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasMipPatch, AtlasPacker, AtlasRect,
+    AtlasAnimationMipCache, AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasPacker,
     AtlasSprite,
 };
 pub use crate::block_destroy_profiles::{BlockDestroyProfile, BlockDestroyProfileCatalog};
@@ -50,14 +49,13 @@ pub use crate::jukebox_song_registry::{JukeboxSongRegistry, JukeboxSongRegistryE
 pub use crate::known_packs::{KnownPackDataSource, KnownPacksManager};
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
-pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
+pub use crate::mipmap::generate_sprite_mip_levels;
 pub use crate::particle_definitions::{ParticleDefinition, ParticleDefinitionCatalog};
 pub use crate::particle_sprites::ParticleSpriteCatalog;
 pub use crate::periodic_notifications::{PeriodicNotification, PeriodicNotificationCatalog};
 pub use crate::post_effects::{
-    PostEffectCatalog, PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
-    PostEffectShaderImport, PostEffectShaderKey, PostEffectShaderSource, PostEffectShaderStage,
-    PostEffectTextureImage, PostEffectUniform, PostEffectUniformValue,
+    PostEffectCatalog, PostEffectShaderImport, PostEffectShaderKey, PostEffectShaderSource,
+    PostEffectShaderStage,
 };
 pub use crate::resource_budget::{
     ResourceDataMemoryObservation, MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES,
@@ -77,19 +75,23 @@ pub use crate::server_pack::{
     read_client_resource_pack_metadata, ClientPackMetadata, ServerPackArchiveLimits,
     ServerPackFormat, ServerPackFormatRange, ServerPackMaterialization,
 };
-pub use crate::shader_sources::{
-    ShaderSource, ShaderSourceCatalog, ShaderSourceImport, ShaderSourceKey,
-    ShaderSourceLoadFailure, ShaderStage,
-};
+pub use crate::shader_sources::ShaderSourceCatalog;
 pub use crate::sound_event_registry::SoundEventRegistry;
 pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 pub use crate::sprites::{
-    SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteGuiMetadata,
-    SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
-    SpriteTextureMetadata, SpriteTransparency,
+    SpriteGuiMetadata, SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder,
+    SpriteSource, SpriteTextureMetadata, SpriteTransparency,
 };
 pub use crate::tags::{TagCatalog, TagDefinition};
 pub use crate::waypoint_styles::{WaypointStyle, WaypointStyleCatalog};
 pub use crate::win_screen::WinScreenTextResources;
+pub use bbb_render_types::{
+    AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasMipPatch,
+    AtlasRect, CoreShaderSourceProjection, PostEffectGraph, PostEffectInput,
+    PostEffectInternalTarget, PostEffectPass, PostEffectResourceProjection, PostEffectTextureImage,
+    PostEffectUniform, PostEffectUniformValue, ShaderSource, ShaderSourceImport, ShaderSourceKey,
+    ShaderSourceLoadFailure, ShaderStage, SpriteAnimation, SpriteAnimationFrame,
+    SpriteAnimationFrameTick, SpriteMipLevel,
+};
 
 pub(crate) use crate::image::{rgba_len, rgba_offset};

@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 anyhow = { workspace = true }
 bbb-protocol = { path = "../bbb-protocol" }
+bbb-render-types = { path = "../bbb-render-types" }
 image = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }

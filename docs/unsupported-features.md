@@ -66,9 +66,12 @@ Matrix route: `resources-reload-listeners`
   are mechanically retained in exact source order. Phase B now prepares one
   bounded `ShaderSourceCatalog` shared by core and post-effect shaders and one
   bounded `PeriodicNotificationCatalog`; priority/filter/import, malformed-empty
-  fallback and generation evidence are covered. Remaining active work is the
-  renderer static-pipeline projection/preload plus host-country schedule/system-
-  toast apply/reset. The title-only splash and Vanilla-OpenGL/options-only GPU
+  fallback and generation evidence are covered. Host-country schedule/system-toast
+  apply/reset is wired after the shared rollback barrier, and selected/filterable
+  `core/terrain` now owns the solid/cutout/translucent pipeline generation. Remaining
+  active work is the rest of the current static-pipeline projection/preload surface;
+  embedded WGSL alone is not evidence that selected core shader overrides are consumed.
+  The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.
 

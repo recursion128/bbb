@@ -29,8 +29,15 @@ fn post_effect_graph_executes_selected_custom_shader_pixels_in_pass_order() {
     let root = unique_temp_dir("post-effect-graph-pixels");
     write_two_pass_fixture(&root);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    let generation =
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 4, 4, &catalog).unwrap();
+    let generation = PostEffectGraphGeneration::new(
+        &device,
+        &queue,
+        TEST_FORMAT,
+        4,
+        4,
+        &catalog.renderer_projection(),
+    )
+    .unwrap();
     assert_eq!(generation.generation(), 0);
     assert!(generation.contains_graph("demo:custom"));
 
@@ -129,8 +136,15 @@ void main() {
 "#,
     );
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    let generation =
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 4, 4, &catalog).unwrap();
+    let generation = PostEffectGraphGeneration::new(
+        &device,
+        &queue,
+        TEST_FORMAT,
+        4,
+        4,
+        &catalog.renderer_projection(),
+    )
+    .unwrap();
     let source = create_test_target(&device, "bbb-post-effect-orientation-source");
     let destination = create_test_target(&device, "bbb-post-effect-orientation-destination");
     let mut pixels = Vec::with_capacity(64);
@@ -208,8 +222,15 @@ fn post_effect_graph_resize_recreates_only_size_dependent_targets() {
         }"#,
     );
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    let mut generation =
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 4, 5, &catalog).unwrap();
+    let mut generation = PostEffectGraphGeneration::new(
+        &device,
+        &queue,
+        TEST_FORMAT,
+        4,
+        5,
+        &catalog.renderer_projection(),
+    )
+    .unwrap();
     {
         let graph = &generation.graphs["demo:targets"];
         assert_eq!(graph.targets["demo:full"].size, [4, 5]);
@@ -272,8 +293,15 @@ fn post_effect_graph_rejects_context_before_mutating_persistent_targets() {
         "#version 330\nin vec2 texCoord;\nout vec4 fragColor;\nvoid main() { fragColor = vec4(texCoord * 0.0, 1.0, 1.0); }\n",
     );
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    let generation =
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 4, 4, &catalog).unwrap();
+    let generation = PostEffectGraphGeneration::new(
+        &device,
+        &queue,
+        TEST_FORMAT,
+        4,
+        4,
+        &catalog.renderer_projection(),
+    )
+    .unwrap();
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("bbb-post-effect-invalid-context-encoder"),
     });
@@ -323,9 +351,16 @@ fn post_effect_graph_reports_shader_compilation_failure_without_installing() {
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
     let error = format!(
         "{:#}",
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 4, 4, &catalog)
-            .err()
-            .expect("malformed GLSL must reject the staged generation")
+        PostEffectGraphGeneration::new(
+            &device,
+            &queue,
+            TEST_FORMAT,
+            4,
+            4,
+            &catalog.renderer_projection(),
+        )
+        .err()
+        .expect("malformed GLSL must reject the staged generation")
     );
     assert!(error.contains("GLSL parse failed"), "{error}");
 
@@ -339,8 +374,15 @@ fn compiles_all_local_vanilla_post_effect_graphs() {
         return;
     };
     let catalog = PostEffectCatalog::load(&PackRoots::discover().unwrap()).unwrap();
-    let generation =
-        PostEffectGraphGeneration::new(&device, &queue, TEST_FORMAT, 64, 64, &catalog).unwrap();
+    let generation = PostEffectGraphGeneration::new(
+        &device,
+        &queue,
+        TEST_FORMAT,
+        64,
+        64,
+        &catalog.renderer_projection(),
+    )
+    .unwrap();
     for id in [
         "minecraft:blur",
         "minecraft:creeper",
@@ -354,7 +396,9 @@ fn compiles_all_local_vanilla_post_effect_graphs() {
     let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
         return;
     };
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     assert!(
         renderer
             .post_effect_graphs
@@ -381,7 +425,9 @@ fn selected_generation_drives_live_camera_graph_instead_of_fixed_shader() {
     let root = unique_temp_dir("post-effect-live-camera");
     write_live_catalog(&root, [1.0, 0.0, 0.0, 1.0]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     assert!(
         !renderer
             .post_effect_graphs
@@ -434,7 +480,9 @@ fn selected_generation_drives_live_transparency_graph() {
     let root = unique_temp_dir("post-effect-live-transparency");
     write_live_catalog_with_overrides(&root, &[("transparency", [1.0, 0.0, 1.0, 1.0])]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     renderer.set_clear_color(ClearColor {
         r: 0.0,
         g: 0.0,
@@ -459,7 +507,9 @@ fn selected_generation_drives_live_menu_blur_graph_and_pass_count() {
     let root = unique_temp_dir("post-effect-live-blur");
     write_live_catalog_with_overrides(&root, &[("blur", [0.0, 1.0, 0.0, 1.0])]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     renderer.set_hud_inventory_screen(Some(HudInventoryScreen {
         width: 24,
         height: 20,
@@ -502,7 +552,9 @@ fn selected_generation_drives_live_entity_outline_graph_before_composite() {
     let root = unique_temp_dir("post-effect-live-outline");
     write_live_catalog_with_overrides(&root, &[("entity_outline", [1.0, 0.0, 0.0, 1.0])]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     renderer.set_clear_color(ClearColor {
         r: 0.0,
         g: 0.0,
@@ -547,7 +599,9 @@ fn resident_item_model_main_and_entity_outline_copy_reach_both_gpu_targets() {
     let root = unique_temp_dir("resident-block-main-outline");
     write_live_catalog_with_overrides(&root, &[("entity_outline", [1.0, 0.0, 0.0, 1.0])]);
     let catalog = PostEffectCatalog::load(&fixture_roots(&root)).unwrap();
-    renderer.reload_post_effect_graphs(&catalog).unwrap();
+    renderer
+        .reload_post_effect_graphs(&catalog.renderer_projection())
+        .unwrap();
     renderer.set_clear_color(ClearColor {
         r: 0.0,
         g: 0.0,
@@ -650,10 +704,14 @@ fn selected_generation_rollback_restores_exact_previous_owner_and_counters() {
     let red = PostEffectCatalog::load(&fixture_roots(&red_root)).unwrap();
     let green = PostEffectCatalog::load(&fixture_roots(&green_root)).unwrap();
     let bad = PostEffectCatalog::load(&fixture_roots(&bad_root)).unwrap();
-    renderer.reload_post_effect_graphs(&red).unwrap();
+    renderer
+        .reload_post_effect_graphs(&red.renderer_projection())
+        .unwrap();
     renderer.counters.draw_calls = 123;
 
-    let error = renderer.reload_post_effect_graphs(&bad).unwrap_err();
+    let error = renderer
+        .reload_post_effect_graphs(&bad.renderer_projection())
+        .unwrap_err();
     assert!(
         format!("{error:#}").contains("GLSL parse failed"),
         "staged compile error should retain shader context: {error:#}"
@@ -663,7 +721,7 @@ fn selected_generation_rollback_restores_exact_previous_owner_and_counters() {
 
     let error = renderer
         .transactional_resource_reload(|renderer| -> anyhow::Result<()> {
-            renderer.reload_post_effect_graphs(&green)?;
+            renderer.reload_post_effect_graphs(&green.renderer_projection())?;
             renderer.counters.draw_calls = 999;
             anyhow::bail!("later staged upload failed")
         })

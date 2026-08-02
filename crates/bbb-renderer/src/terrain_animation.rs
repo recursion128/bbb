@@ -9,7 +9,9 @@
 use std::collections::HashMap;
 
 use anyhow::{bail, Result};
-use bbb_pack::{AtlasGpuAnimationPlan, SpriteAnimation};
+use bbb_render_types::{
+    AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasRect, SpriteAnimation, SpriteMipLevel,
+};
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
@@ -575,7 +577,7 @@ fn validate_animation_schedule_frames(
 
 #[allow(clippy::too_many_arguments)]
 fn animation_info_at_tick(
-    destination: bbb_pack::AtlasRect,
+    destination: AtlasRect,
     content_width: u32,
     content_height: u32,
     atlas_width: u32,
@@ -669,7 +671,7 @@ fn validate_sprite_destination(
     atlas_width: u32,
     atlas_height: u32,
     padding: u32,
-    sprite: &bbb_pack::AtlasGpuAnimationSprite,
+    sprite: &AtlasGpuAnimationSprite,
 ) -> Result<()> {
     let gutter = padding
         .checked_mul(2)
@@ -703,7 +705,7 @@ fn validate_source_mip(
     level: u32,
     base_width: u32,
     base_height: u32,
-    mip: &bbb_pack::SpriteMipLevel,
+    mip: &SpriteMipLevel,
 ) -> Result<()> {
     let expected_width = base_width.checked_shr(level).unwrap_or(0);
     let expected_height = base_height.checked_shr(level).unwrap_or(0);
@@ -734,7 +736,7 @@ fn validate_source_mip(
 mod tests {
     use std::sync::mpsc;
 
-    use bbb_pack::{
+    use bbb_render_types::{
         AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasRect,
         SpriteAnimation, SpriteAnimationFrame, SpriteMipLevel,
     };

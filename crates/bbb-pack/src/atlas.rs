@@ -1,19 +1,14 @@
 use anyhow::{bail, Result};
+use bbb_render_types::{
+    AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasMipPatch,
+    AtlasRect, SpriteAnimation, SpriteMipLevel,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    mipmap::generate_sprite_rgba_mip_levels, rgba_len, rgba_offset, SpriteAnimation,
-    SpriteGuiMetadata, SpriteImage, SpriteMipLevel, SpriteSource, SpriteTextureMetadata,
-    SpriteTransparency,
+    mipmap::generate_sprite_rgba_mip_levels, rgba_len, rgba_offset, SpriteGuiMetadata, SpriteImage,
+    SpriteSource, SpriteTextureMetadata, SpriteTransparency,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AtlasRect {
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtlasSprite {
@@ -51,44 +46,6 @@ pub struct AtlasMipLevel {
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AtlasMipPatch {
-    pub level: u32,
-    pub rect: AtlasRect,
-    pub rgba: Vec<u8>,
-}
-
-/// Immutable, GPU-ready source frames and scheduling metadata for one atlas.
-///
-/// Vanilla 26.1 uploads every unique animated sprite frame (including its
-/// complete mip chain) once, then renders the current frame into the atlas on
-/// client ticks. This projection deliberately contains source frames rather
-/// than runtime atlas patches so the renderer can preserve that mechanism.
-#[derive(Debug, Clone)]
-pub struct AtlasGpuAnimationPlan {
-    pub atlas_width: u32,
-    pub atlas_height: u32,
-    pub padding: u32,
-    pub mip_level: u32,
-    pub sprites: Vec<AtlasGpuAnimationSprite>,
-}
-
-#[derive(Debug, Clone)]
-pub struct AtlasGpuAnimationSprite {
-    pub id: String,
-    pub destination: AtlasRect,
-    pub content_width: u32,
-    pub content_height: u32,
-    pub animation: SpriteAnimation,
-    pub frames: Vec<AtlasGpuAnimationFrame>,
-}
-
-#[derive(Debug, Clone)]
-pub struct AtlasGpuAnimationFrame {
-    pub index: u32,
-    pub mips: Vec<SpriteMipLevel>,
 }
 
 /// Precomputed source-frame mip chains for an atlas' animated sprites.

@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use anyhow::{bail, Result};
-use bbb_pack::{
-    PostEffectCatalog, PostEffectInput, PostEffectShaderKey, PostEffectShaderStage,
-    PostEffectUniformValue,
+use bbb_render_types::{
+    PostEffectInput, PostEffectResourceProjection, PostEffectUniformValue, ShaderSourceKey,
+    ShaderStage,
 };
 use sha2::{Digest, Sha256};
 
@@ -50,17 +50,17 @@ impl PostEffectGraphRuntime {
         format: wgpu::TextureFormat,
         width: u32,
         height: u32,
-        catalog: &PostEffectCatalog,
+        resources: &PostEffectResourceProjection,
     ) -> Result<Self> {
         let generation =
-            PostEffectGraphGeneration::new(device, queue, format, width, height, catalog)?;
+            PostEffectGraphGeneration::new(device, queue, format, width, height, resources)?;
         for graph_id in REQUIRED_GRAPH_IDS {
             if !generation.contains_graph(graph_id) {
                 bail!("selected post-effect catalog is missing required graph {graph_id}");
             }
         }
         let depth_copies = PostEffectDepthCopies::new(device, width, height)?;
-        let vanilla_transparency_direct = catalog_has_vanilla_26_1_transparency(catalog);
+        let vanilla_transparency_direct = resources_have_vanilla_26_1_transparency(resources);
         Ok(Self {
             generation,
             depth_copies,
@@ -204,8 +204,8 @@ impl PostEffectGraphRuntime {
     }
 }
 
-fn catalog_has_vanilla_26_1_transparency(catalog: &PostEffectCatalog) -> bool {
-    let Some(graph) = catalog.graph("minecraft:transparency") else {
+fn resources_have_vanilla_26_1_transparency(resources: &PostEffectResourceProjection) -> bool {
+    let Some(graph) = resources.graph("minecraft:transparency") else {
         return false;
     };
     let Some(final_target) = graph.internal_targets.get("minecraft:final") else {
@@ -287,27 +287,27 @@ fn catalog_has_vanilla_26_1_transparency(catalog: &PostEffectCatalog) -> bool {
     [
         (
             "minecraft:core/screenquad",
-            PostEffectShaderStage::Vertex,
+            ShaderStage::Vertex,
             "c4a7088b7fb8fe75793f9499597426ee32b989c3e972f221fc9e9c8a6cc0a55e",
         ),
         (
             "minecraft:post/transparency",
-            PostEffectShaderStage::Fragment,
+            ShaderStage::Fragment,
             "f2fbfa88584afe39fd0ecba7e530b8c5faa35177ef4ea73eda636be145dd2c8a",
         ),
         (
             "minecraft:post/blit",
-            PostEffectShaderStage::Fragment,
+            ShaderStage::Fragment,
             "5be94ececa9950834ff5b2864efbd1946fc0342f882f5b8a929e18412388a06b",
         ),
     ]
     .into_iter()
     .all(|(id, stage, expected_sha256)| {
-        let key = PostEffectShaderKey {
+        let key = ShaderSourceKey {
             id: id.to_string(),
             stage,
         };
-        catalog.shader(&key).is_some_and(|shader| {
+        resources.shader(&key).is_some_and(|shader| {
             format!("{:x}", Sha256::digest(shader.source.as_bytes())) == expected_sha256
         })
     })

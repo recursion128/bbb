@@ -31,10 +31,10 @@ flowchart LR
 | protocol | wire 类型、codec、26.1 生成事实 | socket、世界对象 | bytes ↔ typed packet | 连接版本固定；未知/越界输入拒绝。`bbb-protocol` |
 | net/runtime | socket、连接阶段、收发队列 | 世界语义 | typed packet → ordered events | handshake/configuration/play/closed。`bbb-net`、`bbb-native` |
 | registries/data | 当前 session registry 与 holder 解析 | GPU 资源 | configuration data → queryable ids | 重连重建；无效引用保留诊断或拒绝。`bbb-world`、`bbb-protocol` |
-| resource pack/assets | pack stack、asset-index/object-store、解码预算 | 绘制状态 | providers → `ClientResourceGeneration` | reload 原子发布，失败保留旧 generation。`bbb-pack`、`bbb-item-model` |
+| resource pack/assets | pack stack、asset-index/object-store、解码预算与 immutable CPU catalog | 绘制状态 | providers → `ClientResourceGeneration` → `bbb-render-types` 窄投影 | reload 原子发布，失败保留旧 generation。`bbb-pack`、`bbb-item-model` |
 | world | chunk、entity、block entity、UI canonical state | GPU/audio backend | play packet/local action → world/effects | session scoped；断线清理。`bbb-world` |
 | renderer input | 一帧一致的 terrain/entity/UI projection | canonical world | world + resources → frame | 每帧重建或增量提取；缺资源走明确 placeholder。`bbb-native`、`bbb-render-types` |
-| renderer | GPU resources、pipelines、排序 | 游戏权威状态 | frame → presented image | swapchain/pack generation scoped。`bbb-renderer` |
+| renderer | GPU resources、pipelines、排序 | 游戏权威状态、pack resolver/catalog | frame + 纯资源投影 → presented image | swapchain/pack generation scoped；生产依赖不反向指向 `bbb-pack`。`bbb-renderer` |
 | native control/input | window events、local intent、control snapshot | 服务端权威移动 | OS input → intent/packet | focus 与连接阶段限定。`bbb-native`、`bbb-control` |
 | UI | screen/HUD transient presentation | packet truth | world/input/resources → quads/text | screen lifecycle；缺字体使用 missing glyph。`bbb-native`、`bbb-render-types` |
 | audio | device/backend voices | 世界音效真值 | world audio event → playback | backend 重建；无设备时静默且可诊断。`bbb-audio` |

@@ -1,4 +1,4 @@
-use bbb_pack::{PostEffectUniform, PostEffectUniformValue};
+use bbb_render_types::{PostEffectUniform, PostEffectUniformValue};
 
 use super::PostEffectGlobals;
 
@@ -110,7 +110,7 @@ impl Std140Writer {
 
 #[cfg(test)]
 mod tests {
-    use bbb_pack::{PostEffectUniform, PostEffectUniformValue};
+    use bbb_render_types::{PostEffectUniform, PostEffectUniformValue};
 
     use super::*;
 

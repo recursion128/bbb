@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bbb_pack::PostEffectCatalog;
+use bbb_render_types::{CoreShaderSourceProjection, PostEffectResourceProjection};
 
 use crate::{post_effect_graph::PostEffectGraphRuntime, Renderer};
 
@@ -18,14 +18,53 @@ pub(crate) struct RendererResourceReloadCheckpoint {
 }
 
 impl Renderer {
-    pub fn reload_post_effect_graphs(&mut self, catalog: &PostEffectCatalog) -> Result<()> {
+    pub fn reload_core_shaders(
+        &mut self,
+        resources: &CoreShaderSourceProjection,
+        allow_embedded_fallback: bool,
+    ) -> Result<()> {
+        let next = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
+            crate::gpu::create_terrain_core_pipeline_generation(
+                &self.device,
+                self.config.format,
+                &self.terrain_bind_group_layout,
+                &self.lightmap_sample_bind_group_layout,
+                resources,
+                self.terrain_texture_filtering,
+                allow_embedded_fallback,
+            )
+        })?;
+        let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
+        let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
+        let previous_translucent =
+            std::mem::replace(&mut self.terrain_translucent_pipeline, next.translucent);
+        let previous_generation = self.core_shader_generation.replace(next.generation);
+        if self.resource_reload_in_progress() {
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.terrain_solid_pipeline = previous_solid;
+                renderer.terrain_cutout_pipeline = previous_cutout;
+                renderer.terrain_translucent_pipeline = previous_translucent;
+                renderer.core_shader_generation = previous_generation;
+            }));
+        }
+        Ok(())
+    }
+
+    pub fn core_shader_generation(&self) -> Option<u64> {
+        self.core_shader_generation
+    }
+
+    pub fn reload_post_effect_graphs(
+        &mut self,
+        resources: &PostEffectResourceProjection,
+    ) -> Result<()> {
         let next = PostEffectGraphRuntime::new(
             &self.device,
             &self.queue,
             self.config.format,
             self.config.width,
             self.config.height,
-            catalog,
+            resources,
         )?;
         let previous = self.post_effect_graphs.replace(next);
         if self.resource_reload_in_progress() {
@@ -914,6 +953,23 @@ mod tests {
                 "derived HUD owner {owner} is missing from the transaction checkpoint"
             );
         }
+    }
+
+    #[test]
+    fn renderer_production_dependency_points_at_pure_render_types_not_pack_loaders() {
+        let manifest = include_str!("../Cargo.toml");
+        let dependencies = manifest
+            .split_once("[dependencies]")
+            .expect("renderer dependency section")
+            .1
+            .split_once("[dev-dependencies]")
+            .expect("renderer dev-dependency section")
+            .0;
+        assert!(dependencies.contains("bbb-render-types"));
+        assert!(
+            !dependencies.contains("bbb-pack"),
+            "renderer production code must not regain a pack loader dependency"
+        );
     }
 
     fn fail_at(stage: usize, fail_after: usize) -> Result<()> {

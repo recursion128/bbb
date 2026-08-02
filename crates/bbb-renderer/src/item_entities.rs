@@ -1,7 +1,7 @@
 use std::mem;
 
 use anyhow::{anyhow, bail, Result};
-use bbb_pack::AtlasMipPatch;
+use bbb_render_types::AtlasMipPatch;
 use glam::Vec3;
 
 use crate::{

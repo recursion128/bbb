@@ -94,7 +94,7 @@ impl EntityEquipmentAsset {
 }
 
 /// Renderer-side CPU catalog in the same sorted-id order as
-/// `bbb_pack::EquipmentAssetCatalog`.
+/// The pack-owned equipment asset catalog.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EntityEquipmentAssetCatalog {
     generation: u64,

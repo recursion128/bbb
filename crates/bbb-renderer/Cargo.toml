@@ -14,7 +14,6 @@ lifecycle-soak = []
 
 [dependencies]
 anyhow = { workspace = true }
-bbb-pack = { path = "../bbb-pack" }
 bbb-render-types = { path = "../bbb-render-types" }
 bytemuck = { workspace = true }
 glam = { workspace = true }
@@ -28,6 +27,7 @@ wgpu = { workspace = true, features = ["glsl", "naga-ir"] }
 winit = { workspace = true }
 
 [dev-dependencies]
+bbb-pack = { path = "../bbb-pack" }
 bbb-protocol = { path = "../bbb-protocol" }
 criterion = { workspace = true }
 

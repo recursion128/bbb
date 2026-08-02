@@ -48,10 +48,20 @@ struct PreparedNativeResourceReload {
     particles: NativeParticleResources,
     items: NativeItemRuntime,
     post_effects: PostEffectCatalog,
-    _shader_sources: ShaderSourceCatalog,
-    _periodic_notifications: PeriodicNotificationCatalog,
+    shader_sources: ShaderSourceCatalog,
+    periodic_notifications: PeriodicNotificationCatalog,
     block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
+}
+
+pub(crate) fn prepare_native_shader_resources(
+    roots: &PackRoots,
+) -> Result<(ShaderSourceCatalog, PostEffectCatalog)> {
+    let shader_sources =
+        ShaderSourceCatalog::load(roots).context("prepare shader sources for reload")?;
+    let post_effects = PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)
+        .context("prepare post-effect graphs for reload")?;
+    Ok((shader_sources, post_effects))
 }
 
 pub(crate) struct ResourceReloadSimulationCommit {
@@ -99,6 +109,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
     terrain_textures: &mut TerrainTextureState,
     entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
     terrain_upload: &mut TerrainUploadState,
+    hud_render_runtime: &mut crate::runtime::HudRenderRuntime,
     renderer: &mut bbb_renderer::Renderer,
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
@@ -119,6 +130,7 @@ pub(crate) fn apply_server_resource_pack_reload_effect(
         terrain_textures,
         entity_variant_textures,
         terrain_upload,
+        hud_render_runtime,
         renderer,
         client_locale,
         particle_status,
@@ -167,6 +179,7 @@ fn apply_native_resource_reload(
     terrain_textures: &mut TerrainTextureState,
     entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
     terrain_upload: &mut TerrainUploadState,
+    hud_render_runtime: &mut crate::runtime::HudRenderRuntime,
     renderer: &mut bbb_renderer::Renderer,
     client_locale: &str,
     particle_status: bbb_protocol::packets::ClientParticleStatus,
@@ -198,67 +211,79 @@ fn apply_native_resource_reload(
             stage: "prepare",
             error,
         })?;
+    let periodic_notification_generation = prepared.periodic_notifications.generation();
+    let periodic_notification_schedule =
+        crate::runtime::HudRenderRuntime::prepare_periodic_notifications(
+            &prepared.periodic_notifications,
+        )
+        .map_err(|error| NativeResourceReloadFailure {
+            stage: "prepare",
+            error,
+        })?;
 
     let cutout_leaves = terrain_textures.cutout_leaves();
+    let core_shader_resources = prepared.shader_sources.renderer_projection();
+    let post_effect_resources = prepared.post_effects.renderer_projection();
     let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_resource_reload(|renderer| {
             renderer
-                .reload_post_effect_graphs(&prepared.post_effects)
-                .context("compile post-effect graphs during resource reload")
-                .and_then(|()| {
-                    upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)
-                })
-                .and_then(|()| {
-                    try_load_terrain_textures(renderer, &prepared.roots, cutout_leaves)
-                        .context("upload terrain resources during resource reload")
-                })
-                .and_then(|textures| {
-                    try_load_hud_textures(renderer, &prepared.roots)
-                        .context("upload HUD resources during resource reload")?;
-                    renderer
-                        .set_default_text_right_to_left(prepared.items.language_bidirectional());
-                    let win_screen_resources = WinScreenResources::load(
-                        &prepared.roots,
-                        username,
-                        &renderer.hud_text_measurements(),
-                    )
-                    .context("prepare win-screen resources during resource reload")?;
-                    try_load_entity_model_textures(
-                        renderer,
-                        &prepared.roots,
-                        prepared.items.equipment_asset_catalog(),
-                        prepared.items.resource_generation(),
-                    )
-                    .context("upload entity resources during resource reload")?;
-                    try_load_sky_textures(renderer, &prepared.roots)
-                        .context("upload sky resources during resource reload")?;
-                    match prepared.audio {
-                        PreparedAudioReload::Existing(reload) => {
-                            let audio = audio_runtime.as_mut().context(
-                                "existing native audio runtime disappeared during reload",
-                            )?;
-                            audio.commit_reload(reload);
-                        }
-                        PreparedAudioReload::Disabled => {}
-                    }
-                    if let Some(audio) = audio_runtime.as_mut() {
-                        audio.set_sound_event_registry(sound_events);
-                        audio.set_jukebox_song_registry(jukebox_songs);
-                        *audio_status = audio.counters();
-                    }
-                    // Map pixels remain canonical world data, while every map
-                    // atlas/bind group is resource-generation-derived. Do this
-                    // only after every fallible upload has succeeded, inside the
-                    // same render-thread transaction.
-                    renderer.invalidate_map_texture_residency();
-                    renderer.invalidate_item_model_resources();
-                    Ok((textures, win_screen_resources))
-                })
+                .reload_core_shaders(&core_shader_resources, false)
+                .context("compile core shader pipelines during resource reload")?;
+            renderer
+                .reload_post_effect_graphs(&post_effect_resources)
+                .context("compile post-effect graphs during resource reload")?;
+            upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)?;
+            let textures = try_load_terrain_textures(renderer, &prepared.roots, cutout_leaves)
+                .context("upload terrain resources during resource reload")?;
+            try_load_hud_textures(renderer, &prepared.roots)
+                .context("upload HUD resources during resource reload")?;
+            renderer.set_default_text_right_to_left(prepared.items.language_bidirectional());
+            let win_screen_resources = WinScreenResources::load(
+                &prepared.roots,
+                username,
+                &renderer.hud_text_measurements(),
+            )
+            .context("prepare win-screen resources during resource reload")?;
+            try_load_entity_model_textures(
+                renderer,
+                &prepared.roots,
+                prepared.items.equipment_asset_catalog(),
+                prepared.items.resource_generation(),
+            )
+            .context("upload entity resources during resource reload")?;
+            try_load_sky_textures(renderer, &prepared.roots)
+                .context("upload sky resources during resource reload")?;
+            match prepared.audio {
+                PreparedAudioReload::Existing(reload) => {
+                    let audio = audio_runtime
+                        .as_mut()
+                        .context("existing native audio runtime disappeared during reload")?;
+                    audio.commit_reload(reload);
+                }
+                PreparedAudioReload::Disabled => {}
+            }
+            if let Some(audio) = audio_runtime.as_mut() {
+                audio.set_sound_event_registry(sound_events);
+                audio.set_jukebox_song_registry(jukebox_songs);
+                *audio_status = audio.counters();
+            }
+            // Map pixels remain canonical world data, while every map
+            // atlas/bind group is resource-generation-derived. Do this
+            // only after every fallible upload has succeeded, inside the
+            // same render-thread transaction.
+            renderer.invalidate_map_texture_residency();
+            renderer.invalidate_item_model_resources();
+            Ok((textures, win_screen_resources))
         })
         .map_err(|error| NativeResourceReloadFailure {
             stage: "commit",
             error,
         })?;
+    hud_render_runtime.install_periodic_notifications(
+        periodic_notification_generation,
+        periodic_notification_schedule,
+        std::time::Instant::now(),
+    );
     prepared
         .particles
         .simulation
@@ -423,10 +448,7 @@ fn prepare_native_resource_reload(
         .context("prepare particle resources for reload")?;
     let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
         .context("prepare item, model, texture, and language resources for reload")?;
-    let shader_sources =
-        ShaderSourceCatalog::load(&roots).context("prepare shader sources for reload")?;
-    let post_effects = PostEffectCatalog::load_with_shader_catalog(&roots, &shader_sources)
-        .context("prepare post-effect graphs for reload")?;
+    let (shader_sources, post_effects) = prepare_native_shader_resources(&roots)?;
     let periodic_notifications = roots
         .load_periodic_notification_catalog()
         .context("prepare periodic notifications for reload")?;
@@ -446,8 +468,8 @@ fn prepare_native_resource_reload(
         particles,
         items,
         post_effects,
-        _shader_sources: shader_sources,
-        _periodic_notifications: periodic_notifications,
+        shader_sources,
+        periodic_notifications,
         block_destroy_profiles,
         block_sound_profiles,
     })
@@ -1178,7 +1200,7 @@ mod tests {
             .find(".transactional_resource_reload(|renderer|")
             .expect("reload should retain accepted renderer owners");
         let post_effect_commit = source
-            .find(".reload_post_effect_graphs(&prepared.post_effects)")
+            .find(".reload_post_effect_graphs(&post_effect_resources)")
             .expect("reload should compile and install the prepared post-effect generation");
         let atlas_commit = source
             .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
@@ -1193,10 +1215,10 @@ mod tests {
             .find("let win_screen_resources = WinScreenResources::load(")
             .expect("reload should measure win-screen text with the prepared direction");
         let residency_barrier = source
-            .find("                renderer.invalidate_item_model_resources();\n")
+            .find("renderer.invalidate_item_model_resources();")
             .expect("successful reload should advance the item residency generation");
         let audio_commit = source
-            .find("                        audio.commit_reload(reload);\n")
+            .find("audio.commit_reload(reload);")
             .expect("audio should commit inside the renderer transaction barrier");
         let simulation_commit = source
             .find("    prepared\n        .particles\n        .simulation")
@@ -1211,10 +1233,10 @@ mod tests {
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
         let shader_prepare = source
-            .find("ShaderSourceCatalog::load(&roots)")
+            .find("ShaderSourceCatalog::load(roots)")
             .expect("shader sources should be prepared once on the CPU boundary");
         let post_effect_prepare = source
-            .find("PostEffectCatalog::load_with_shader_catalog(&roots, &shader_sources)")
+            .find("PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)")
             .expect("post effects should consume the shared shader preparation");
         let periodic_prepare = source
             .find(".load_periodic_notification_catalog()")
@@ -1229,6 +1251,51 @@ mod tests {
         assert!(!source.contains(&legacy_post_effect_loader));
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));
+    }
+
+    #[test]
+    fn shader_prepare_and_generation_commit_have_one_native_path() {
+        let reload = include_str!("resource_reload.rs");
+        let main = include_str!("main.rs");
+        let reload_production = reload
+            .split_once("\n#[cfg(test)]")
+            .expect("resource reload production/test boundary")
+            .0;
+        let main_production = main
+            .split_once("\n#[cfg(test)]")
+            .map_or(main, |(production, _)| production);
+        assert_eq!(
+            reload_production
+                .matches("ShaderSourceCatalog::load(")
+                .count()
+                + main_production
+                    .matches("ShaderSourceCatalog::load(")
+                    .count(),
+            1,
+            "startup and reload must share one shader preparation owner"
+        );
+        let transaction = reload
+            .find(".transactional_resource_reload(|renderer|")
+            .expect("renderer transaction");
+        let core = reload
+            .find(".reload_core_shaders(&core_shader_resources, false)")
+            .expect("core shader generation commit");
+        let post = reload
+            .find(".reload_post_effect_graphs(&post_effect_resources)")
+            .expect("post-effect generation commit");
+        let transaction_result = reload
+            .find("stage: \"commit\"")
+            .expect("renderer transaction result");
+        let periodic = reload
+            .find("hud_render_runtime.install_periodic_notifications(")
+            .expect("periodic schedule commit");
+        assert!(transaction < core && core < post && post < transaction_result);
+        assert!(
+            transaction_result < periodic,
+            "the non-fallible periodic schedule commit must follow a successful GPU/audio barrier"
+        );
+        assert!(!reload_production.contains("_shader_sources:"));
+        assert!(!reload_production.contains("_periodic_notifications:"));
     }
     use std::{
         path::PathBuf,

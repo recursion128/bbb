@@ -4,6 +4,10 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use bbb_render_types::{
+    CoreShaderSourceProjection, ShaderSource, ShaderSourceImport, ShaderSourceKey,
+    ShaderSourceLoadFailure, ShaderStage,
+};
 use regex::Regex;
 
 use crate::{
@@ -14,62 +18,6 @@ use crate::{
 const MAX_SHADER_SOURCE_RESOURCES: u64 = 512;
 const MAX_SHADER_IMPORT_DEPTH: u32 = 32;
 const RETAINED_SHADER_SOURCE_BYTES: u64 = 256;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ShaderStage {
-    Vertex,
-    Fragment,
-}
-
-impl ShaderStage {
-    pub fn extension(self) -> &'static str {
-        match self {
-            Self::Vertex => ".vsh",
-            Self::Fragment => ".fsh",
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Vertex => "vertex",
-            Self::Fragment => "fragment",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ShaderSourceKey {
-    pub id: String,
-    pub stage: ShaderStage,
-}
-
-impl std::fmt::Display for ShaderSourceKey {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{} ({})", self.id, self.stage.as_str())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShaderSource {
-    pub key: ShaderSourceKey,
-    pub resource_id: String,
-    pub pack_id: String,
-    pub source: String,
-    pub imports: Vec<ShaderSourceImport>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShaderSourceImport {
-    pub resource_id: String,
-    pub pack_id: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShaderSourceLoadFailure {
-    pub resource_id: String,
-    pub pack_id: String,
-    pub error: String,
-}
 
 /// Immutable CPU preparation of Vanilla `ShaderManager.Configs.shaderSources`.
 ///
@@ -169,6 +117,10 @@ impl ShaderSourceCatalog {
 
     pub fn sources(&self) -> &BTreeMap<ShaderSourceKey, ShaderSource> {
         &self.sources
+    }
+
+    pub fn renderer_projection(&self) -> CoreShaderSourceProjection {
+        CoreShaderSourceProjection::new(self.generation, Arc::clone(&self.sources))
     }
 
     pub fn load_failures(&self) -> &[ShaderSourceLoadFailure] {

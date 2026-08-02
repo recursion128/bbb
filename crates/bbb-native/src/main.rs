@@ -105,7 +105,8 @@ use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResour
 use resource_reload::{
     apply_item_runtime_world_defaults, apply_server_resource_pack_reload_effect,
     block_destroy_profiles_for_world, block_sound_profiles_for_world,
-    client_resource_pack_diagnostics, item_particle_sprite_uvs, SELECTED_LANGUAGE_PROBE_KEY,
+    client_resource_pack_diagnostics, item_particle_sprite_uvs, prepare_native_shader_resources,
+    SELECTED_LANGUAGE_PROBE_KEY,
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, hud_player_list_is_visible,
@@ -745,15 +746,24 @@ fn main() -> Result<()> {
         args.background_for_chat_only,
     );
     if let Some(roots) = pack_roots.as_ref() {
-        let post_effects = bbb_pack::ShaderSourceCatalog::load(roots).and_then(|shader_sources| {
-            bbb_pack::PostEffectCatalog::load_with_shader_catalog(roots, &shader_sources)
-        });
-        match post_effects.and_then(|catalog| renderer.reload_post_effect_graphs(&catalog)) {
+        let shader_resources =
+            prepare_native_shader_resources(roots).map(|(shader_sources, post_effects)| {
+                (
+                    shader_sources.renderer_projection(),
+                    post_effects.renderer_projection(),
+                )
+            });
+        match shader_resources.and_then(|(core, post)| {
+            renderer.transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&core, true)?;
+                renderer.reload_post_effect_graphs(&post)
+            })
+        }) {
             Ok(()) => {}
             Err(error) => {
                 tracing::warn!(
                     %error,
-                    "continuing with embedded post-effect fallback after startup load failure"
+                    "continuing with embedded shader fallback after startup load failure"
                 );
             }
         }
@@ -877,6 +887,27 @@ fn main() -> Result<()> {
     let mut platform_exit_requested = false;
     let mut render_effect_consumer = RenderEffectConsumer::default();
     let mut hud_render_runtime = HudRenderRuntime::default();
+    if let Some(roots) = pack_roots.as_ref() {
+        match roots
+            .load_periodic_notification_catalog()
+            .and_then(|catalog| {
+                let generation = catalog.generation();
+                HudRenderRuntime::prepare_periodic_notifications(&catalog)
+                    .map(|schedule| (generation, schedule))
+            }) {
+            Ok((generation, schedule)) => hud_render_runtime.install_periodic_notifications(
+                generation,
+                schedule,
+                Instant::now(),
+            ),
+            Err(error) => {
+                tracing::warn!(
+                    %error,
+                    "continuing without periodic notifications after startup load failure"
+                );
+            }
+        }
+    }
     let simulation_input_runtime =
         simulation::input_commands::SimulationInputRuntime::new(window.inner_size(), false);
     let mut renderer_counters = control_renderer_counters(renderer.counters());
@@ -1034,6 +1065,7 @@ fn main() -> Result<()> {
                 &mut terrain_textures,
                 &mut entity_variant_textures,
                 &mut terrain_upload,
+                &mut hud_render_runtime,
                 &mut renderer,
                 &args.client_locale,
                 client_particle_status,

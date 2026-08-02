@@ -1,6 +1,14 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use anyhow::{bail, Context, Result};
+use bbb_render_types::{
+    PostEffectGraph, PostEffectInput, PostEffectInternalTarget, PostEffectPass,
+    PostEffectResourceProjection, PostEffectTextureImage, PostEffectUniform,
+    PostEffectUniformValue, ShaderSource, ShaderSourceImport, ShaderSourceKey, ShaderStage,
+};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -8,9 +16,7 @@ use crate::{
     image::decode_png_file_rgba_with_budget,
     resources::{PackResourceStack, ResourceLocation},
     roots::PackRoots,
-    shader_sources::{
-        ShaderSource, ShaderSourceCatalog, ShaderSourceImport, ShaderSourceKey, ShaderStage,
-    },
+    shader_sources::ShaderSourceCatalog,
 };
 
 const MAX_POST_EFFECT_GRAPHS: u64 = 64;
@@ -31,10 +37,10 @@ const RETAINED_UNIFORM_BYTES: u64 = 128;
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PostEffectCatalog {
     generation: u64,
-    graphs: BTreeMap<String, PostEffectGraph>,
-    shader_keys: BTreeSet<PostEffectShaderKey>,
+    graphs: Arc<BTreeMap<String, PostEffectGraph>>,
+    shader_keys: Arc<BTreeSet<PostEffectShaderKey>>,
     shader_sources: ShaderSourceCatalog,
-    textures: BTreeMap<String, PostEffectTextureImage>,
+    textures: Arc<BTreeMap<String, PostEffectTextureImage>>,
 }
 
 impl PostEffectCatalog {
@@ -126,10 +132,10 @@ impl PostEffectCatalog {
         stack.ensure_resource_data_admitted()?;
         Ok(Self {
             generation,
-            graphs,
-            shader_keys,
+            graphs: Arc::new(graphs),
+            shader_keys: Arc::new(shader_keys),
             shader_sources,
-            textures,
+            textures: Arc::new(textures),
         })
     }
 
@@ -157,6 +163,16 @@ impl PostEffectCatalog {
         &self.shader_sources
     }
 
+    pub fn renderer_projection(&self) -> PostEffectResourceProjection {
+        PostEffectResourceProjection::new(
+            self.generation,
+            Arc::clone(&self.graphs),
+            Arc::clone(&self.shader_keys),
+            self.shader_sources.renderer_projection(),
+            Arc::clone(&self.textures),
+        )
+    }
+
     pub fn texture(&self, texture_id: &str) -> Option<&PostEffectTextureImage> {
         let texture_id = ResourceLocation::parse(texture_id).ok()?.id();
         self.textures.get(&texture_id)
@@ -171,92 +187,10 @@ impl PostEffectCatalog {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct PostEffectGraph {
-    pub id: String,
-    pub pack_id: String,
-    pub internal_targets: BTreeMap<String, PostEffectInternalTarget>,
-    pub passes: Vec<PostEffectPass>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PostEffectInternalTarget {
-    pub width: Option<u32>,
-    pub height: Option<u32>,
-    pub persistent: bool,
-    pub clear_color_argb: i32,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PostEffectPass {
-    pub vertex_shader: String,
-    pub fragment_shader: String,
-    pub inputs: Vec<PostEffectInput>,
-    pub output: String,
-    pub uniforms: BTreeMap<String, Vec<PostEffectUniform>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum PostEffectInput {
-    Target {
-        sampler_name: String,
-        target: String,
-        use_depth_buffer: bool,
-        bilinear: bool,
-    },
-    Texture {
-        sampler_name: String,
-        location: String,
-        width: u32,
-        height: u32,
-        bilinear: bool,
-    },
-}
-
-impl PostEffectInput {
-    pub fn sampler_name(&self) -> &str {
-        match self {
-            Self::Target { sampler_name, .. } | Self::Texture { sampler_name, .. } => sampler_name,
-        }
-    }
-
-    pub fn bilinear(&self) -> bool {
-        match self {
-            Self::Target { bilinear, .. } | Self::Texture { bilinear, .. } => *bilinear,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PostEffectUniform {
-    pub name: String,
-    pub value: PostEffectUniformValue,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum PostEffectUniformValue {
-    Int(i32),
-    IVec3([i32; 3]),
-    Float(f32),
-    Vec2([f32; 2]),
-    Vec3([f32; 3]),
-    Vec4([f32; 4]),
-    Matrix4x4([f32; 16]),
-}
-
 pub type PostEffectShaderStage = ShaderStage;
 pub type PostEffectShaderKey = ShaderSourceKey;
 pub type PostEffectShaderSource = ShaderSource;
 pub type PostEffectShaderImport = ShaderSourceImport;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PostEffectTextureImage {
-    pub id: String,
-    pub resource_id: String,
-    pub pack_id: String,
-    pub size: [u32; 2],
-    pub rgba: Vec<u8>,
-}
 
 #[derive(Debug, Default, Deserialize)]
 struct RawPostEffectGraph {
