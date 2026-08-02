@@ -108,6 +108,12 @@
 ^crates/bbb-renderer/src/hud(/.*)?[.]rs$	fallback
 ^crates/bbb-renderer/src/(camera|render|item_models|offscreen|sky|transparency)[.]rs$	fallback
 ^crates/bbb-renderer/src/item_models/.*[.]rs$	fallback
+# Core shader startup may build the embedded terrain pipelines only when the
+# prepared source projection is empty. Selected/server generations pass false,
+# a missing required selected terrain source fails, and the renderer transaction
+# retains the previous complete generation; this flag is recovery material, not
+# an unsupported current-surface branch.
+^crates/bbb-renderer/src/(resource_reload|gpu)[.]rs$	allow_embedded_fallback|startup_without_sources
 # Renderer/control residency fallback fields are observations for the explicit
 # bounded owner overflow path. The path preserves every visible item/map and is
 # not a required-packet, canonical-state, or default renderer fallback.
