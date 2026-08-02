@@ -1159,6 +1159,10 @@ class PlayableGateScriptContractTests(unittest.TestCase):
             interaction.index("minecraft:smooth_stone"),
             interaction.index("_tap_mouse("),
         )
+        self.assertIn("_probe_block(address, column_x, feet_y - 1, column_z)", interaction)
+        self.assertIn("_probe_block(address, column_x, feet_y - 2, column_z)", interaction)
+        self.assertIn('probe.get("block_name") == "minecraft:smooth_stone"', interaction)
+        self.assertIn("for probe in probes", interaction)
 
     def test_instant_gameplay_clicks_use_atomic_control_taps(self):
         source = MODULE_PATH.read_text(encoding="utf-8")

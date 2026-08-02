@@ -1494,9 +1494,14 @@ def drive_block_interaction(
     _await_value(
         deadline,
         "smooth stone support column under the centered player",
-        lambda: _probe_block(address, column_x, feet_y - 1, column_z),
-        lambda probe: probe is not None
-        and probe.get("block_name") == "minecraft:smooth_stone",
+        lambda: (
+            _probe_block(address, column_x, feet_y - 1, column_z),
+            _probe_block(address, column_x, feet_y - 2, column_z),
+        ),
+        lambda probes: all(
+            probe is not None and probe.get("block_name") == "minecraft:smooth_stone"
+            for probe in probes
+        ),
     )
     supporting = _probe_block(address, column_x, feet_y - 1, column_z)
     below = _probe_block(address, column_x, feet_y - 2, column_z)
