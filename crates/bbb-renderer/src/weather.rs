@@ -443,8 +443,24 @@ pub(crate) fn create_lightning_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-lightning-pipeline")
+    shaders: Option<&crate::core_shaders::AdaptedLightningShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_color_pipeline(
+            device,
+            format,
+            camera_bind_group_layout,
+            "bbb-selected-lightning",
+            &shaders.vertex,
+            &shaders.fragment,
+            lightning_vertex_layout(),
+            Some(LIGHTNING_BLEND),
+            LIGHTNING_PIPELINE_CULL_MODE,
+            LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED,
+            LIGHTNING_PIPELINE_DEPTH_COMPARE,
+        );
+    }
+    Ok(RenderPipelineBuilder::new(device, "bbb-lightning-pipeline")
         .shader("bbb-lightning-shader", LIGHTNING_SHADER)
         .layout("bbb-lightning-pipeline-layout", &[camera_bind_group_layout])
         .vertex_buffers(&[lightning_vertex_layout()])
@@ -455,7 +471,7 @@ pub(crate) fn create_lightning_pipeline(
             LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED,
             LIGHTNING_PIPELINE_DEPTH_COMPARE,
         ))
-        .build()
+        .build())
 }
 
 pub(crate) fn create_weather_texture_gpu(

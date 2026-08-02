@@ -73,15 +73,16 @@ Matrix route: `resources-reload-listeners`
   selected `core/glint` source now own one atomic pipeline generation. Remaining active work is
   the rest of the current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
-  The exhaustive source guard classifies all 87 renderer pipeline owners: 51 are in the selected
-  core generation, 26 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
+  The exhaustive source guard classifies all 87 renderer pipeline owners: 53 are in the selected
+  core generation, 24 map to a pending Vanilla static pipeline/core shader, and 10 are evidenced
   post-effect/internal or BBB-only fallback lanes without a one-to-one static owner. The single
   `core/entity` adapter now preloads and atomically swaps breeze/energy scroll, guardian/end-crystal
   beam, dynamic/resident z-offset, resident cutout/cutout-z-offset/pattern/translucent-no-cull with
   the original 14 entity variants. One `rendertype_end_portal` adapter likewise projects the world,
   resident-item and HUD layouts for all five portal/gateway owners. One outline adapter now owns both
   entity cull variants and the resident-item projection; the beacon-beam adapter preserves atlas repeat,
-  fragment-depth fog and both depth-write variants. The next cursor is two lightning-shader owners.
+  fragment-depth fog and both depth-write variants. One lightning adapter now feeds weather lightning
+  and dragon rays without absorbing the separate depth replay. The next cursor is three line owners.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.

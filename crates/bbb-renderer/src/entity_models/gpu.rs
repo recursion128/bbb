@@ -2834,8 +2834,24 @@ pub(crate) fn create_entity_model_dragon_rays_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    create_entity_model_position_color_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedLightningShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_color_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-entity-model-dragon-rays",
+            &shaders.vertex,
+            &shaders.fragment,
+            entity_model_vertex_layout(),
+            Some(ENTITY_MODEL_DRAGON_RAYS_BLEND),
+            ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        );
+    }
+    Ok(create_entity_model_position_color_pipeline(
         device,
         format,
         bind_group_layout,
@@ -2844,7 +2860,7 @@ pub(crate) fn create_entity_model_dragon_rays_pipeline(
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
         wgpu::ColorWrites::ALL,
-    )
+    ))
 }
 
 pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(

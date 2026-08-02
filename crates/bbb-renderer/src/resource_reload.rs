@@ -275,6 +275,33 @@ impl BeaconBeamCorePipelines {
     }
 }
 
+struct LightningCorePipelines {
+    dragon_rays: wgpu::RenderPipeline,
+    lightning: wgpu::RenderPipeline,
+}
+
+impl LightningCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedLightningShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            dragon_rays: crate::entity_models::create_entity_model_dragon_rays_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+            lightning: crate::weather::create_lightning_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                shaders,
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -295,6 +322,7 @@ struct CorePipelineGeneration {
     end_portal: Option<EndPortalCorePipelines>,
     outline: Option<OutlineCorePipelines>,
     beacon_beam: Option<BeaconBeamCorePipelines>,
+    lightning: Option<LightningCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -420,6 +448,13 @@ impl CorePipelineGeneration {
         let beacon_beam = (!startup_without_sources)
             .then(|| BeaconBeamCorePipelines::prepare(renderer, beacon_beam_shaders.as_ref()))
             .transpose()?;
+        let lightning_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_lightning_shaders(resources))
+            .transpose()?
+            .flatten();
+        let lightning = (!startup_without_sources)
+            .then(|| LightningCorePipelines::prepare(renderer, lightning_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -434,6 +469,7 @@ impl CorePipelineGeneration {
             end_portal,
             outline,
             beacon_beam,
+            lightning,
         })
     }
 
@@ -639,6 +675,13 @@ impl CorePipelineGeneration {
                 &mut beacon_beam.translucent,
                 &mut renderer.entity_model_beacon_beam_translucent_pipeline,
             );
+        }
+        if let Some(lightning) = self.lightning.as_mut() {
+            std::mem::swap(
+                &mut lightning.dragon_rays,
+                &mut renderer.entity_model_dragon_rays_pipeline,
+            );
+            std::mem::swap(&mut lightning.lightning, &mut renderer.lightning_pipeline);
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
     }
@@ -1597,8 +1640,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            52,
-            "51 GPU handles plus the publication generation must share one mapping"
+            54,
+            "53 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1632,6 +1675,13 @@ mod tests {
                 .count(),
             1,
             "both beacon-beam consumers must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_lightning_shaders(resources)")
+                .count(),
+            1,
+            "dragon rays and weather lightning must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1735,11 +1785,9 @@ mod tests {
         let pending = [
             ("block_destroy_pipeline", "CRUMBLING/core/rendertype_crumbling"),
             ("debug_text_pipeline", "TEXT/core/rendertype_text"),
-            ("entity_model_dragon_rays_pipeline", "DRAGON_RAYS/core/rendertype_lightning"),
             ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
             ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
-            ("lightning_pipeline", "LIGHTNING/core/rendertype_lightning"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("display_text_background_pipeline", "TEXT_BACKGROUND/core/rendertype_text_background"),
@@ -1778,10 +1826,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 51, "selected core generation changed");
+        assert_eq!(selected.len(), 53, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            26,
+            24,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

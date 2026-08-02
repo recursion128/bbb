@@ -1585,8 +1585,12 @@ impl Renderer {
             );
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_dragon_rays_pipeline =
-            create_entity_model_dragon_rays_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_dragon_rays_pipeline = create_entity_model_dragon_rays_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            None,
+        )?;
         let entity_model_dragon_rays_depth_pipeline =
             create_entity_model_dragon_rays_depth_pipeline(
                 &device,
@@ -1706,7 +1710,7 @@ impl Renderer {
             &lightmap_sample_bind_group_layout,
         );
         let lightning_pipeline =
-            create_lightning_pipeline(&device, format, &terrain_bind_group_layout);
+            create_lightning_pipeline(&device, format, &terrain_bind_group_layout, None)?;
         let world_border_pipeline =
             create_world_border_pipeline(&device, format, &terrain_bind_group_layout);
         let item_entity_pipeline = create_item_entity_pipeline(

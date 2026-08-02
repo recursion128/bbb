@@ -15,6 +15,7 @@ const GLINT_SHADER_ID: &str = "minecraft:core/glint";
 const END_PORTAL_SHADER_ID: &str = "minecraft:core/rendertype_end_portal";
 const OUTLINE_SHADER_ID: &str = "minecraft:core/rendertype_outline";
 const BEACON_BEAM_SHADER_ID: &str = "minecraft:core/rendertype_beacon_beam";
+const LIGHTNING_SHADER_ID: &str = "minecraft:core/rendertype_lightning";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -72,6 +73,11 @@ pub(crate) struct AdaptedOutlineShaders {
 }
 
 pub(crate) struct AdaptedBeaconBeamShaders {
+    pub(crate) vertex: String,
+    pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedLightningShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
 }
@@ -319,6 +325,30 @@ pub(crate) fn adapt_selected_beacon_beam_shaders(
     Ok(Some(AdaptedBeaconBeamShaders {
         vertex: adapt_beacon_beam_atlas_vertex(&vertex)?,
         fragment,
+    }))
+}
+
+pub(crate) fn adapt_selected_lightning_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedLightningShaders>> {
+    let vertex = resources
+        .source_by_id(LIGHTNING_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_lightning vertex stage",
+        )?;
+    let fragment = resources
+        .source_by_id(LIGHTNING_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_lightning fragment stage",
+        )?;
+    if !shader_source_is_selected(vertex) && !shader_source_is_selected(fragment) {
+        return Ok(None);
+    }
+    Ok(Some(AdaptedLightningShaders {
+        vertex: adapt_lightning_stage(&vertex.source, true)
+            .context("adapt selected lightning vertex shader")?,
+        fragment: adapt_lightning_stage(&fragment.source, false)
+            .context("adapt selected lightning fragment shader")?,
     }))
 }
 
@@ -620,6 +650,12 @@ fn adapt_beacon_beam_stage(source: &str, vertex_stage: bool) -> Result<String> {
             }],
         )
     }
+}
+
+fn adapt_lightning_stage(source: &str, vertex_stage: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    bind_lightning_stage_locations(&source, vertex_stage)
 }
 
 fn specialize_glint_vertex(
@@ -1843,6 +1879,30 @@ fn bind_beacon_beam_stage_locations(source: &str, vertex_stage: bool) -> Result<
         })
 }
 
+fn bind_lightning_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
+        &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 1, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "vertexColor", 2, true),
+        ]
+    } else {
+        &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec4", "vertexColor", 2, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ]
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2091,6 +2151,46 @@ void main() {
         assert!(fragment.contains("bbbUvRectMin + fract(texCoord0) * bbbUvRectSize"));
         assert!(fragment.contains("fragmentDistance = -ProjMat[3].z"));
         assert_eq!(fragment.matches("layout(set = 0, binding = 1)").count(), 1);
+    }
+
+    #[test]
+    fn lightning_adapter_projects_shared_position_color_and_fog_varyings() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    vertexColor = Color;
+}
+"#;
+        let vertex = adapt_lightning_stage(vertex, true).expect("lightning vertex projection");
+        assert!(vertex.contains("layout(location = 0) in vec3 Position"));
+        assert!(vertex.contains("layout(location = 1) in vec4 Color"));
+        assert!(vertex.contains("layout(location = 2) out vec4 vertexColor"));
+
+        let fragment = r#"#version 330
+layout(std140) uniform DynamicTransforms { vec4 ColorModulator; };
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    fragColor = vertexColor * ColorModulator * (1.0 - total_fog_value(sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd));
+}
+"#;
+        let fragment =
+            adapt_lightning_stage(fragment, false).expect("lightning fragment projection");
+        assert!(fragment.contains("layout(location = 0) in float sphericalVertexDistance"));
+        assert!(fragment.contains("layout(location = 1) in float cylindricalVertexDistance"));
+        assert!(fragment.contains("layout(location = 2) in vec4 vertexColor"));
+        assert!(fragment.contains("total_fog_value"));
     }
 
     #[test]
@@ -2372,6 +2472,14 @@ void main() {
             id: BEACON_BEAM_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let lightning_vertex_key = ShaderSourceKey {
+            id: LIGHTNING_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let lightning_fragment_key = ShaderSourceKey {
+            id: LIGHTNING_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -2563,6 +2671,28 @@ void main() { gl_Position = vec4(Position, 1.0); }
                         key: beacon_beam_fragment_key,
                         resource_id:
                             "minecraft:shaders/core/rendertype_beacon_beam.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    lightning_vertex_key.clone(),
+                    ShaderSource {
+                        key: lightning_vertex_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_lightning.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    lightning_fragment_key.clone(),
+                    ShaderSource {
+                        key: lightning_fragment_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_lightning.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -3146,6 +3276,70 @@ void main() {
             .expect_err("filtering a required beacon-beam stage must reject the generation");
         assert!(error.to_string().contains("rendertype_beacon_beam"));
         assert_eq!(renderer.core_shader_generation(), Some(91));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_lightning_shader_preloads_weather_and_dragon_variants_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-lightning-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_lightning.fsh"),
+            r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + vertexColor.a;
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0) + vec4(keep * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected lightning shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(101, selected)
+            .expect("selected lightning generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected weather/dragon lightning variants compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(101));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_lightning\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected lightning filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(102, filtered)
+            .expect("filtered lightning generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required lightning stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_lightning"));
+        assert_eq!(renderer.core_shader_generation(), Some(101));
 
         std::fs::remove_dir_all(root).unwrap();
     }
