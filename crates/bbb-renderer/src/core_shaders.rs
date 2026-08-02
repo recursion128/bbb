@@ -17,6 +17,8 @@ const OUTLINE_SHADER_ID: &str = "minecraft:core/rendertype_outline";
 const BEACON_BEAM_SHADER_ID: &str = "minecraft:core/rendertype_beacon_beam";
 const LIGHTNING_SHADER_ID: &str = "minecraft:core/rendertype_lightning";
 const LINES_SHADER_ID: &str = "minecraft:core/rendertype_lines";
+const TEXT_SHADER_ID: &str = "minecraft:core/rendertype_text";
+const TEXT_SEE_THROUGH_SHADER_ID: &str = "minecraft:core/rendertype_text_see_through";
 
 pub(crate) struct AdaptedTerrainShaders {
     pub(crate) vertex: String,
@@ -86,6 +88,14 @@ pub(crate) struct AdaptedLightningShaders {
 pub(crate) struct AdaptedLineShaders {
     pub(crate) vertex: String,
     pub(crate) fragment: String,
+}
+
+pub(crate) struct AdaptedTextShaders {
+    pub(crate) debug_vertex: String,
+    pub(crate) display_vertex: String,
+    pub(crate) fragment: String,
+    pub(crate) see_through_vertex: String,
+    pub(crate) see_through_fragment: String,
 }
 
 pub(crate) fn adapt_terrain_shaders(
@@ -379,6 +389,50 @@ pub(crate) fn adapt_selected_line_shaders(
             .context("adapt selected line vertex shader")?,
         fragment: adapt_line_stage(&fragment.source, false)
             .context("adapt selected line fragment shader")?,
+    }))
+}
+
+pub(crate) fn adapt_selected_text_shaders(
+    resources: &CoreShaderSourceProjection,
+) -> Result<Option<AdaptedTextShaders>> {
+    let vertex = resources
+        .source_by_id(TEXT_SHADER_ID, ShaderStage::Vertex)
+        .context("prepared core shaders are missing minecraft:core/rendertype_text vertex stage")?;
+    let fragment = resources
+        .source_by_id(TEXT_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_text fragment stage",
+        )?;
+    let see_vertex = resources
+        .source_by_id(TEXT_SEE_THROUGH_SHADER_ID, ShaderStage::Vertex)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_text_see_through vertex stage",
+        )?;
+    let see_fragment = resources
+        .source_by_id(TEXT_SEE_THROUGH_SHADER_ID, ShaderStage::Fragment)
+        .context(
+            "prepared core shaders are missing minecraft:core/rendertype_text_see_through fragment stage",
+        )?;
+    if ![vertex, fragment, see_vertex, see_fragment]
+        .into_iter()
+        .any(shader_source_is_selected)
+    {
+        return Ok(None);
+    }
+    let vertex = adapt_text_stage(&vertex.source, true, false)
+        .context("adapt selected text vertex shader")?;
+    Ok(Some(AdaptedTextShaders {
+        debug_vertex: project_text_vertex_inputs(&vertex, true)?,
+        display_vertex: project_text_vertex_inputs(&vertex, false)?,
+        fragment: adapt_text_stage(&fragment.source, false, false)
+            .context("adapt selected text fragment shader")?,
+        see_through_vertex: project_see_through_text_vertex_inputs(&adapt_text_stage(
+            &see_vertex.source,
+            true,
+            true,
+        )?)?,
+        see_through_fragment: adapt_text_stage(&see_fragment.source, false, true)
+            .context("adapt selected see-through text fragment shader")?,
     }))
 }
 
@@ -713,6 +767,70 @@ fn adapt_line_stage(source: &str, vertex_stage: bool) -> Result<String> {
         source
     };
     bind_line_stage_locations(&source, vertex_stage)
+}
+
+fn adapt_text_stage(source: &str, vertex_stage: bool, see_through: bool) -> Result<String> {
+    let source = remove_vanilla_uniform_blocks(source)?;
+    let source = insert_camera_projection(&require_webgpu_glsl_version(&source), false)?;
+    let source = if see_through {
+        source
+    } else {
+        adapt_entity_lightmap(&source)?
+            .replace("in ivec2 UV2;", "in vec2 UV2;")
+            .replace("sample_lightmap(Sampler2, UV2)", "sample_lightmap(UV2)")
+    };
+    let source = hoist_combined_sampler_declarations(&source)?;
+    let source = bind_text_stage_locations(&source, vertex_stage, see_through)?;
+    adapt_combined_samplers(
+        &source,
+        &[
+            SamplerBinding {
+                source_name: "Sampler0".to_string(),
+                texture_group: 0,
+                texture_binding: 1,
+                sampler_group: 0,
+                sampler_binding: 2,
+            },
+            SamplerBinding {
+                source_name: "Sampler2".to_string(),
+                texture_group: 1,
+                texture_binding: 0,
+                sampler_group: 1,
+                sampler_binding: 1,
+            },
+        ],
+    )
+}
+
+fn project_text_vertex_inputs(source: &str, debug: bool) -> Result<String> {
+    let (color_location, uv_location) = if debug { (1, 2) } else { (2, 1) };
+    let source = replace_required(
+        source,
+        "layout(location = 1) in vec4 Color;",
+        &format!("layout(location = {color_location}) in vec4 Color;"),
+        "selected text color input projection",
+    )?;
+    replace_required(
+        &source,
+        "layout(location = 2) in vec2 UV0;",
+        &format!("layout(location = {uv_location}) in vec2 UV0;"),
+        "selected text UV input projection",
+    )
+}
+
+fn project_see_through_text_vertex_inputs(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 1) in vec4 Color;",
+        "layout(location = 2) in vec4 Color;",
+        "selected see-through text color input projection",
+    )?;
+    replace_required(
+        &source,
+        "layout(location = 2) in vec2 UV0;",
+        "layout(location = 1) in vec2 UV0;",
+        "selected see-through text UV input projection",
+    )
 }
 
 fn specialize_glint_vertex(
@@ -1332,6 +1450,66 @@ pub(crate) fn create_selected_line_pipeline(
                     wgpu::CompareFunction::LessEqual,
                 )
             }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn create_selected_text_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layouts: &[&wgpu::BindGroupLayout],
+    label: &str,
+    vertex_source: &str,
+    fragment_source: &str,
+    vertex_layout: wgpu::VertexBufferLayout<'_>,
+    depth: Option<wgpu::DepthStencilState>,
+    cull_mode: Option<wgpu::Face>,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-text-vertex-shader",
+        vertex_source.to_string(),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected text vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-text-fragment-shader",
+        fragment_source.to_string(),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected text fragment for {label}"))?;
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-text-pipeline-layout"),
+        bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[vertex_layout],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: depth,
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &fragment,
@@ -2052,6 +2230,49 @@ fn bind_line_stage_locations(source: &str, vertex_stage: bool) -> Result<String>
         })
 }
 
+fn bind_text_stage_locations(
+    source: &str,
+    vertex_stage: bool,
+    see_through: bool,
+) -> Result<String> {
+    let declarations: &[(&str, &str, &str, u32, bool)] = match (vertex_stage, see_through) {
+        (true, false) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 1, true),
+            ("in", "vec2", "UV0", 2, true),
+            ("in", "vec2", "UV2", 3, true),
+            ("out", "float", "sphericalVertexDistance", 0, true),
+            ("out", "float", "cylindricalVertexDistance", 1, true),
+            ("out", "vec4", "vertexColor", 2, true),
+            ("out", "vec2", "texCoord0", 3, true),
+        ],
+        (false, false) => &[
+            ("in", "float", "sphericalVertexDistance", 0, true),
+            ("in", "float", "cylindricalVertexDistance", 1, true),
+            ("in", "vec4", "vertexColor", 2, true),
+            ("in", "vec2", "texCoord0", 3, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+        (true, true) => &[
+            ("in", "vec3", "Position", 0, true),
+            ("in", "vec4", "Color", 1, true),
+            ("in", "vec2", "UV0", 2, true),
+            ("out", "vec4", "vertexColor", 0, true),
+            ("out", "vec2", "texCoord0", 1, true),
+        ],
+        (false, true) => &[
+            ("in", "vec4", "vertexColor", 0, true),
+            ("in", "vec2", "texCoord0", 1, true),
+            ("out", "vec4", "fragColor", 0, true),
+        ],
+    };
+    declarations
+        .iter()
+        .try_fold(source.to_string(), |source, declaration| {
+            bind_optional_declaration(&source, *declaration)
+        })
+}
+
 fn bind_particle_stage_locations(source: &str, vertex_stage: bool) -> Result<String> {
     let declarations: &[(&str, &str, &str, u32, bool)] = if vertex_stage {
         &[
@@ -2383,6 +2604,60 @@ void main() {
     }
 
     #[test]
+    fn text_adapter_projects_debug_display_lightmap_and_see_through_inputs() {
+        let vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+in ivec2 UV2;
+uniform sampler2D Sampler2;
+out float sphericalVertexDistance;
+out float cylindricalVertexDistance;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    sphericalVertexDistance = fog_spherical_distance(Position);
+    cylindricalVertexDistance = fog_cylindrical_distance(Position);
+    vertexColor = Color * sample_lightmap(Sampler2, UV2);
+    texCoord0 = UV0;
+}
+"#;
+        let vertex = adapt_text_stage(vertex, true, false).expect("text vertex projection");
+        let debug = project_text_vertex_inputs(&vertex, true).expect("debug text projection");
+        assert!(debug.contains("layout(location = 1) in vec4 Color"));
+        assert!(debug.contains("layout(location = 2) in vec2 UV0"));
+        assert!(debug.contains("layout(location = 3) in vec2 UV2"));
+        assert!(debug.contains("sample_lightmap(UV2)"));
+        let display = project_text_vertex_inputs(&vertex, false).expect("display text projection");
+        assert!(display.contains("layout(location = 2) in vec4 Color"));
+        assert!(display.contains("layout(location = 1) in vec2 UV0"));
+
+        let see_vertex = r#"#version 330
+layout(std140) uniform Projection { mat4 ProjMat; };
+layout(std140) uniform DynamicTransforms { mat4 ModelViewMat; vec4 ColorModulator; };
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+out vec4 vertexColor;
+out vec2 texCoord0;
+void main() {
+    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    vertexColor = Color;
+    texCoord0 = UV0;
+}
+"#;
+        let see_vertex = adapt_text_stage(see_vertex, true, true).expect("see-through text vertex");
+        let see_vertex = project_see_through_text_vertex_inputs(&see_vertex)
+            .expect("see-through display projection");
+        assert!(see_vertex.contains("layout(location = 2) in vec4 Color"));
+        assert!(see_vertex.contains("layout(location = 1) in vec2 UV0"));
+        assert!(!see_vertex.contains("Sampler2"));
+    }
+
+    #[test]
     fn position_color_consumers_select_their_exact_camera_projection() {
         let vertex_key = ShaderSourceKey {
             id: POSITION_COLOR_SHADER_ID.to_string(),
@@ -2677,6 +2952,22 @@ void main() {
             id: LINES_SHADER_ID.to_string(),
             stage: ShaderStage::Fragment,
         };
+        let text_vertex_key = ShaderSourceKey {
+            id: TEXT_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let text_fragment_key = ShaderSourceKey {
+            id: TEXT_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
+        let text_see_through_vertex_key = ShaderSourceKey {
+            id: TEXT_SEE_THROUGH_SHADER_ID.to_string(),
+            stage: ShaderStage::Vertex,
+        };
+        let text_see_through_fragment_key = ShaderSourceKey {
+            id: TEXT_SEE_THROUGH_SHADER_ID.to_string(),
+            stage: ShaderStage::Fragment,
+        };
         CoreShaderSourceProjection::new(
             generation,
             Arc::new(BTreeMap::from([
@@ -2910,6 +3201,48 @@ void main() { gl_Position = vec4(Position, 1.0); }
                     ShaderSource {
                         key: lines_fragment_key,
                         resource_id: "minecraft:shaders/core/rendertype_lines.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_vertex_key.clone(),
+                    ShaderSource {
+                        key: text_vertex_key,
+                        resource_id: "minecraft:shaders/core/rendertype_text.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_fragment_key.clone(),
+                    ShaderSource {
+                        key: text_fragment_key,
+                        resource_id: "minecraft:shaders/core/rendertype_text.fsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_see_through_vertex_key.clone(),
+                    ShaderSource {
+                        key: text_see_through_vertex_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_text_see_through.vsh".to_string(),
+                        pack_id: "vanilla".to_string(),
+                        source: String::new(),
+                        imports: Vec::new(),
+                    },
+                ),
+                (
+                    text_see_through_fragment_key.clone(),
+                    ShaderSource {
+                        key: text_see_through_fragment_key,
+                        resource_id:
+                            "minecraft:shaders/core/rendertype_text_see_through.fsh".to_string(),
                         pack_id: "vanilla".to_string(),
                         source: String::new(),
                         imports: Vec::new(),
@@ -3621,6 +3954,85 @@ void main() {
             .expect_err("filtering a required line stage must reject the generation");
         assert!(error.to_string().contains("rendertype_lines"));
         assert_eq!(renderer.core_shader_generation(), Some(111));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 resources and a GPU adapter"]
+    fn selected_text_shaders_preload_debug_display_and_see_through_and_filter_rolls_back() {
+        let root = unique_temp_dir("selected-text-shader");
+        let overlay = root.join("overlay");
+        write_pack_metadata(&overlay, None);
+        let normal_fragment = r#"#version 330
+uniform sampler2D Sampler0;
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    float keep = sphericalVertexDistance + cylindricalVertexDistance + texCoord0.x;
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a) + vec4(keep * 0.0);
+}
+"#;
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_text.fsh"),
+            normal_fragment,
+        );
+        write_text(
+            &overlay.join("assets/minecraft/shaders/core/rendertype_text_see_through.fsh"),
+            r#"#version 330
+uniform sampler2D Sampler0;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(0.0, 1.0, 0.0, vertexColor.a + texCoord0.x * 0.0);
+}
+"#,
+        );
+        let base = bbb_pack::PackRoots::discover().expect("local vanilla roots");
+        let selected =
+            bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [overlay.clone()])
+                .expect("selected text shader pack");
+        let roots = base
+            .clone()
+            .with_client_resource_generation(121, selected)
+            .expect("selected text generation");
+        let catalog = bbb_pack::ShaderSourceCatalog::load(&roots).expect("selected shader catalog");
+        let Some(mut renderer) = crate::Renderer::new_offscreen(32, 32) else {
+            std::fs::remove_dir_all(root).unwrap();
+            return;
+        };
+        renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&catalog.renderer_projection(), false)
+            })
+            .expect("selected debug/display text variants compile atomically");
+        assert_eq!(renderer.core_shader_generation(), Some(121));
+
+        let filter = root.join("filter");
+        write_pack_metadata(
+            &filter,
+            Some(
+                r#","filter":{"block":[{"namespace":"minecraft","path":"shaders/core/rendertype_text(?:_see_through)?\\.(?:vsh|fsh)"}]}"#,
+            ),
+        );
+        let filtered = bbb_pack::SelectedClientPackStack::from_startup_dirs(&base, [filter])
+            .expect("selected text filter pack");
+        let filtered_roots = base
+            .with_client_resource_generation(122, filtered)
+            .expect("filtered text generation");
+        let filtered_catalog =
+            bbb_pack::ShaderSourceCatalog::load(&filtered_roots).expect("filtered shader catalog");
+        let error = renderer
+            .transactional_resource_reload(|renderer| {
+                renderer.reload_core_shaders(&filtered_catalog.renderer_projection(), false)
+            })
+            .expect_err("filtering a required text stage must reject the generation");
+        assert!(error.to_string().contains("rendertype_text"));
+        assert_eq!(renderer.core_shader_generation(), Some(121));
 
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -337,6 +337,43 @@ impl LineCorePipelines {
     }
 }
 
+struct TextCorePipelines {
+    debug: wgpu::RenderPipeline,
+    display: wgpu::RenderPipeline,
+    display_see_through: wgpu::RenderPipeline,
+}
+
+impl TextCorePipelines {
+    fn prepare(
+        renderer: &Renderer,
+        shaders: Option<&crate::core_shaders::AdaptedTextShaders>,
+    ) -> Result<Self> {
+        Ok(Self {
+            debug: crate::debug_text_billboards::create_debug_text_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            display: crate::item_models::create_display_text_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+            display_see_through: crate::item_models::create_display_text_see_through_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.terrain_bind_group_layout,
+                &renderer.lightmap_sample_bind_group_layout,
+                shaders,
+            )?,
+        })
+    }
+}
+
 /// One fully prepared set of core-shader GPU owners.
 ///
 /// This is the only generation-shaped owner for core pipelines. Family values
@@ -359,6 +396,7 @@ struct CorePipelineGeneration {
     beacon_beam: Option<BeaconBeamCorePipelines>,
     lightning: Option<LightningCorePipelines>,
     lines: Option<LineCorePipelines>,
+    text: Option<TextCorePipelines>,
 }
 
 impl CorePipelineGeneration {
@@ -498,6 +536,13 @@ impl CorePipelineGeneration {
         let lines = (!startup_without_sources)
             .then(|| LineCorePipelines::prepare(renderer, line_shaders.as_ref()))
             .transpose()?;
+        let text_shaders = (!startup_without_sources)
+            .then(|| crate::core_shaders::adapt_selected_text_shaders(resources))
+            .transpose()?
+            .flatten();
+        let text = (!startup_without_sources)
+            .then(|| TextCorePipelines::prepare(renderer, text_shaders.as_ref()))
+            .transpose()?;
         Ok(Self {
             generation: Some(resources.generation()),
             terrain,
@@ -514,6 +559,7 @@ impl CorePipelineGeneration {
             beacon_beam,
             lightning,
             lines,
+            text,
         })
     }
 
@@ -736,6 +782,14 @@ impl CorePipelineGeneration {
             std::mem::swap(
                 &mut lines.chunk_border_always_on_top,
                 &mut renderer.chunk_border_always_on_top_pipeline,
+            );
+        }
+        if let Some(text) = self.text.as_mut() {
+            std::mem::swap(&mut text.debug, &mut renderer.debug_text_pipeline);
+            std::mem::swap(&mut text.display, &mut renderer.display_text_pipeline);
+            std::mem::swap(
+                &mut text.display_see_through,
+                &mut renderer.display_text_see_through_pipeline,
             );
         }
         std::mem::swap(&mut self.generation, &mut renderer.core_shader_generation);
@@ -1695,8 +1749,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            57,
-            "56 GPU handles plus the publication generation must share one mapping"
+            60,
+            "59 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -1744,6 +1798,13 @@ mod tests {
                 .count(),
             1,
             "all pre-expanded line consumers must share one selected-source adapter"
+        );
+        assert_eq!(
+            production
+                .matches("adapt_selected_text_shaders(resources)")
+                .count(),
+            1,
+            "debug and display text glyph consumers must share one selected-source adapter"
         );
         assert_eq!(
             production
@@ -1846,15 +1907,12 @@ mod tests {
         #[rustfmt::skip]
         let pending = [
             ("block_destroy_pipeline", "CRUMBLING/core/rendertype_crumbling"),
-            ("debug_text_pipeline", "TEXT/core/rendertype_text"),
             ("entity_model_dragon_rays_depth_pipeline", "DRAGON_RAYS_DEPTH/core/position"),
             ("entity_model_leash_pipeline", "LEASH/core/rendertype_leash"),
             ("entity_model_water_mask_pipeline", "WATER_MASK/core/rendertype_water_mask"),
             ("world_border_pipeline", "WORLD_BORDER/core/rendertype_world_border"),
             ("entity_shadow_pipeline", "ENTITY_SHADOW/core/rendertype_entity_shadow"),
             ("display_text_background_pipeline", "TEXT_BACKGROUND/core/rendertype_text_background"),
-            ("display_text_pipeline", "TEXT/core/rendertype_text"),
-            ("display_text_see_through_pipeline", "TEXT_SEE_THROUGH/core/rendertype_text_see_through"),
             ("resident_item_model_solid_no_cutout_pipeline", "SOLID_BLOCK/core/block"),
             ("lightmap_pipeline", "LIGHTMAP/core/lightmap"),
             ("entity_outline_composite_pipeline", "ENTITY_OUTLINE_BLIT/core/blit_screen"),
@@ -1885,10 +1943,10 @@ mod tests {
         ];
 
         assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 56, "selected core generation changed");
+        assert_eq!(selected.len(), 59, "selected core generation changed");
         assert_eq!(
             pending.len(),
-            21,
+            18,
             "pending static-core classification changed"
         );
         assert_eq!(fixed.len(), 10, "fixed/fallback classification changed");

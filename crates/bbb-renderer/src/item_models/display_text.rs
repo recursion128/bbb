@@ -5,6 +5,7 @@
 //! untextured background before font glyphs. Normal text uses the
 //! `text_polygon_offset` depth state; see-through text disables depth and fog.
 
+use anyhow::Result;
 use bbb_render_types::{visual_order, HudFontGlyphBook, HudObfuscatedRandom};
 use glam::{Mat4, Vec3};
 
@@ -841,10 +842,24 @@ pub(crate) fn create_display_text_pipeline(
     format: wgpu::TextureFormat,
     atlas_layout: &wgpu::BindGroupLayout,
     lightmap_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
+    shaders: Option<&crate::core_shaders::AdaptedTextShaders>,
+) -> Result<wgpu::RenderPipeline> {
     let mut depth = depth_stencil_state(DEPTH_FORMAT, true, wgpu::CompareFunction::LessEqual);
     depth.bias = TEXT_POLYGON_OFFSET_DEPTH_BIAS;
-    display_text_pipeline(
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_text_pipeline(
+            device,
+            format,
+            &[atlas_layout, lightmap_layout],
+            "bbb-selected-display-text-polygon-offset",
+            &shaders.display_vertex,
+            &shaders.fragment,
+            item_model_vertex_layout(),
+            Some(depth),
+            None,
+        );
+    }
+    Ok(display_text_pipeline(
         device,
         format,
         atlas_layout,
@@ -852,7 +867,7 @@ pub(crate) fn create_display_text_pipeline(
         "bbb-display-text-polygon-offset-pipeline",
         DISPLAY_TEXT_SHADER,
         Some(depth),
-    )
+    ))
 }
 
 pub(crate) fn create_display_text_see_through_pipeline(
@@ -860,8 +875,22 @@ pub(crate) fn create_display_text_see_through_pipeline(
     format: wgpu::TextureFormat,
     atlas_layout: &wgpu::BindGroupLayout,
     lightmap_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    display_text_pipeline(
+    shaders: Option<&crate::core_shaders::AdaptedTextShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_text_pipeline(
+            device,
+            format,
+            &[atlas_layout, lightmap_layout],
+            "bbb-selected-display-text-see-through",
+            &shaders.see_through_vertex,
+            &shaders.see_through_fragment,
+            item_model_vertex_layout(),
+            None,
+            None,
+        );
+    }
+    Ok(display_text_pipeline(
         device,
         format,
         atlas_layout,
@@ -869,7 +898,7 @@ pub(crate) fn create_display_text_see_through_pipeline(
         "bbb-display-text-see-through-pipeline",
         DISPLAY_TEXT_SEE_THROUGH_SHADER,
         None,
-    )
+    ))
 }
 
 #[cfg(test)]

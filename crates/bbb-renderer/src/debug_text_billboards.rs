@@ -1,3 +1,4 @@
+use anyhow::Result;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
@@ -284,22 +285,42 @@ pub(super) fn create_debug_text_pipeline(
     format: wgpu::TextureFormat,
     camera_texture_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    RenderPipelineBuilder::new(device, "bbb-debug-text-pipeline")
-        .shader("bbb-debug-text-shader", DEBUG_TEXT_SHADER)
-        .layout(
-            "bbb-debug-text-pipeline-layout",
+    shaders: Option<&crate::core_shaders::AdaptedTextShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_text_pipeline(
+            device,
+            format,
             &[camera_texture_bind_group_layout, lightmap_bind_group_layout],
-        )
-        .vertex_buffers(&[debug_text_vertex_layout()])
-        .color_target(format, Some(DEBUG_TEXT_BLEND))
-        .depth_stencil(depth_stencil_state(
-            DEPTH_FORMAT,
-            DEBUG_TEXT_DEPTH_WRITE_ENABLED,
-            DEBUG_TEXT_DEPTH_COMPARE,
-        ))
-        .cull_mode(DEBUG_TEXT_CULL_MODE)
-        .build()
+            "bbb-selected-debug-text",
+            &shaders.debug_vertex,
+            &shaders.fragment,
+            debug_text_vertex_layout(),
+            Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                DEBUG_TEXT_DEPTH_WRITE_ENABLED,
+                DEBUG_TEXT_DEPTH_COMPARE,
+            )),
+            DEBUG_TEXT_CULL_MODE,
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-debug-text-pipeline")
+            .shader("bbb-debug-text-shader", DEBUG_TEXT_SHADER)
+            .layout(
+                "bbb-debug-text-pipeline-layout",
+                &[camera_texture_bind_group_layout, lightmap_bind_group_layout],
+            )
+            .vertex_buffers(&[debug_text_vertex_layout()])
+            .color_target(format, Some(DEBUG_TEXT_BLEND))
+            .depth_stencil(depth_stencil_state(
+                DEPTH_FORMAT,
+                DEBUG_TEXT_DEPTH_WRITE_ENABLED,
+                DEBUG_TEXT_DEPTH_COMPARE,
+            ))
+            .cull_mode(DEBUG_TEXT_CULL_MODE)
+            .build(),
+    )
 }
 
 fn debug_text_vertex_layout() -> wgpu::VertexBufferLayout<'static> {

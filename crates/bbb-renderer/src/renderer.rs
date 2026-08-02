@@ -1496,7 +1496,8 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let entity_model_pipeline = create_entity_model_pipeline(
             &device,
             format,
@@ -1757,13 +1758,15 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let display_text_see_through_pipeline = create_display_text_see_through_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
-        );
+            None,
+        )?;
         let resident_item_model_pipeline = create_resident_item_model_pipeline(
             &device,
             format,
