@@ -37,22 +37,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 # Todo
 
-## Vanilla external-client mechanism coverage census
-
-Owner: `scripts` + `docs/wiki` + all semantic crate owners
-
-Matrix route: `coverage-external-client-census`
-
-- **Vanilla 26.1 external-client coverage census is `active`.** Rebuild a
-  source-derived inventory for protocol/listener decisions, registries,
-  entity/render/provider/menu/reload/input/lifecycle surfaces and explicit
-  out-of-scope top-level owners. Map every inventory owner to one stable
-  mechanism row or scoped classification, re-audit every existing
-  `equivalent`, register all real gaps without implementing them, and add
-  offline bilateral route/evidence/stale-output gates. Close only when the
-  generated inventory reports zero unmapped owners and matrix/ledger routes are
-  mechanically bidirectional.
-
 ## Client runtime lifecycle and diagnostics
 
 Owner: `bbb-native` + `bbb-control`

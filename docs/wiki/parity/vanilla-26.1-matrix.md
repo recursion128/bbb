@@ -82,7 +82,7 @@
 | `items-versioned-property-surface` | items | 26.1 item-model property bootstraps | generated item-model catalogs | no unregistered target-version property | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `rendering-nondeterministic-golden-exclusions` | rendering/tests | official render pipeline/driver | semantic/pixel focused evidence | no cross-driver full-frame golden hash | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
 | `diagnostics-client-only-inspection-exclusions` | diagnostics | F3/F3+I client-visible owners | protocol-backed local diagnostics | no server-private/integrated/options-only state | `not-needed` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
-| `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `active` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py` | [ledger](../../unsupported-features.md) |
+| `coverage-external-client-census` | workflow | selected Vanilla external-client owner corpus | generated inventory/matrix/ledger lint | owner mapping、evidence、bilateral routes、stale checks | `equivalent` | `scripts/client_mechanism_inventory.py`、`scripts/docs_wiki_lint.py` | Vanilla owner corpus 或 census schema 变化时重开 |
 | `docs-chinese-mechanism-wiki` | workflow | local Vanilla source corpus | docs Wiki/inventory/lint | IDs、routes、source/BBB evidence、stale output | `equivalent` | `scripts/docs_wiki_lint.py`、`scripts/tests/test_docs_lint.py` | 目标版本或 canonical owner 变化时重开 |
 
 ## 审计摘要

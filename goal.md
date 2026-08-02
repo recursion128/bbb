@@ -408,11 +408,11 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
-- p1-generated-facts: active
-- p2-non-entity: maintenance
-- p2-hud: maintenance
+- p1-generated-facts: maintenance
+- p2-non-entity: active
+- p2-hud: active
 - p3-resources: active
-- p4-delivery: maintenance
+- p4-delivery: active
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -428,55 +428,33 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### P1：可机械推导的 vanilla 事实
 
-状态：`active`。当前只推进下列 coverage census；不在同一 slice 实现其发现的 gap。
-
-#### 工程合同：Vanilla 26.1 外部客户端机制 coverage census
-
-- 边界/完成：CLI 外部多人客户端的 startup→session→resource/world/render/input/UI/audio/
-  lifecycle/security/diagnostics；IntegratedServer、单人、Realms、telemetry/options UI 仍进入
-  inventory 并附 owner、not-needed 依据和精确 reopen。完成要求 generated inventory 的
-  unmapped owner=0，matrix/ledger/goal route 双向为 0，existing equivalent 全部重审。
-- inventory 方法/粒度：只用共享 `scripts/vanilla_java_source.py` Tree-sitter frontend，复用
-  packet/registry/entity coverage；按一个 Vanilla class/method 决策或同质 lifecycle、一个 BBB
-  projection、一组 evidence/route 拆分。禁止 regex/括号扫描和手写可生成表。
-- evidence owner：允许唯一版本化 `docs/vanilla-client-mechanism-inventory-26.1.json` 保存稳定排序
-  source owners/mapping/hash；Markdown 仍只有 parity matrix，gap 仍只有 unsupported ledger，
-  长期机制事实仍进对应 Wiki。
-- Phase A：从 GameProtocols/listeners、ClientPacketListener/ClientLevel/LocalPlayer/
-  MultiPlayerGameMode、registries、entity/renderer/layer/block-entity/particle providers、
-  MenuScreens、Minecraft reload listeners、Gui/GameRenderer/LevelRenderer、language/font/sound、
-  keyboard/mouse/platform/serverbound call sites 与范围外 top owners 构造 inventory/schema。
-- Phase B：逐域映射 owner，拆分 broad row，重审 equivalent；证据不足降级并登记 ledger，
-  不实现 gap。Phase C：扩展 docs lint/coverage 做 ID/status/evidence/BBB path、inventory→matrix、
-  ledger↔matrix、stale-input/output 双向检查及 missing/duplicate/broken-route fixtures。
-- Phase D：运行 extractor/fixtures、coverage-status、docs-lint、fmt/diff-check，完整 diff review、
-  正常提交并 full gate；产品行为不变，不刷新 playable。
-- 非目标/安全：不改 runtime feature，不联网，不提交官方源码/asset/capture；本地 Vanilla tree
-  缺失按现有显式降级规则。开工 HEAD `efa5d2f6d` 已 full/live-gated；只在完整 census 干净提交
-  且 full gate 后停止，或 source/tool 外部 blocker 经复现并保持 ledger active。
+状态：`maintenance`。外部客户端 owner inventory、source/generator stale check、
+inventory→matrix 与 ledger↔matrix 双向映射由唯一版本化 JSON、共享 Tree-sitter frontend 和
+docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状态或 route 必须先使离线
+机械检查恢复为 unmapped/断链 0；inventory 自身不拥有任务状态。
 
 ### P2：非实体客户端行为 closeout
 
-状态：`maintenance`。packet/registry/item/entity coverage 均无 open row，
-unsupported 账本也无相关 active 项；world/block-entity、movement/interaction、
-particle/level-event、audio、相机介质与跨域 side-effect 的关闭证据见生成 coverage、
-focused tests、紧凑 milestone 索引及 playable gate。后续 vertical slice 仍须贯通 protocol summary、
-canonical state、runtime effect/counter 与适用 presentation。
+状态：`active`。packet/registry/item/entity generated coverage 仍无 open row，但 census 已将
+`ClientLevel`、`LocalPlayer`、`MultiPlayerGameMode` 的 broad completion 判断降级并登记为
+决策级 active 工程。按账本逐项贯通 canonical state、runtime effect/counter、presentation 和
+适用 live interaction；不得用已有 codec/state 字段替代 consumer evidence。
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`maintenance`。账本对应域没有相关 active item；screen/HUD/font/debug 与
-deterministic screenshot/pixel evidence 由 focused tests、可玩证据与 Git history 维护。
-`context_entity_type` 仍按自己的 `Reopen when ...` deferred。启动配置继续只走
-CLI，F3+I entity payload 继续由 entity owner 唯一负责。
+状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
+Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级为账本中的有界
+active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
+不得借此加入 title、singleplayer、Realms 或 options UI。
 
 ### P3：动态资源 presentation breadth
 
 状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、
 原子 immutable resource generation、font/language/sound 与动态 presentation owner 已由 Wiki
-资源机制页、focused tests 和 playable diagnostics 覆盖。当前 ledger 仅保留 provider 已可达但
-native window consumer 尚未接入的 root icon gap；panorama、built-in pack ZIP 与 Realms 对应
-surface 按账本保留为 `not-needed`。
+资源机制页、focused tests 和 playable diagnostics 覆盖。当前 ledger 保留 20 个 reload-listener
+consumer 的逐族 prepare/apply/rollback 审计，以及 provider 已可达但 native window consumer
+尚未接入的 root icon gap；panorama、built-in pack ZIP 与 Realms 对应 surface 按账本保留为
+`not-needed`。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
   immutable resource generation；`BuiltInRegistries.BLOCK` / `ENTITY_TYPE`
@@ -493,12 +471,14 @@ surface 按账本保留为 `not-needed`。
   pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
   schema、pack stack 或 cache owner。
 
-本工程关闭后恢复 maintenance；以后只有目标 index/pack 语义变化、统一 resolver 回退或新
-current-surface consumer 出现时重开。
+reload-listener 与 window-icon 两项关闭后恢复 maintenance；以后只有目标 index/pack 语义
+变化、统一 resolver 回退或新 current-surface consumer 出现时重开。
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`maintenance`。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
+状态：`active`。census 已把 runtime/crash、input/accessibility/window、persistence/profile/
+secure-session 的 consumer/lifecycle 证据缺口登记为内部 active 工程；它们先按账本实现并刷新
+适用 live/lifecycle/platform gate。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
 关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。

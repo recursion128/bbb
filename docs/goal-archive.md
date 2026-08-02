@@ -41,6 +41,8 @@
   Git-only 保留，`docs/` allowlist、30 文件 inventory 与 focused fixtures 防止回流。
 - **2026-08-02（indexed default pack）**：asset index 30 成为统一 lazy `vanilla`
   provider，font、language、sound 经共享 pack stack 完成真实 zh_cn、OGG 与 CJK 验收。
+- **2026-08-02（external-client census）**：2,927 个 source-derived owner 的唯一 JSON
+  inventory、细分 parity matrix 与离线 evidence/双向 route/stale-output 门禁建立。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
