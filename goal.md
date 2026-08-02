@@ -400,6 +400,49 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
+### 当前工程合同：Vanilla reload-listener generation 收口
+
+状态：`active`。单一语义目标是把 `Minecraft` 按注册顺序安装的 20 个 client resource
+reload listener 逐个映射到 BBB 的同一 immutable resource generation：当前 surface
+均从共享 stack prepare、在 render-thread barrier 一次 apply，失败保留上一完整 generation。
+
+Vanilla 依据冻结为 `Minecraft` 第 528～627 行的注册顺序、
+`PreparableReloadListener` / `SimpleReloadInstance` 的 shared state/barrier 及各 listener
+的 prepare/apply。`ShaderManager` 必须覆盖 core/include、post effect、静态 pipeline
+preload 与恢复，不能以 post effect 冒充全部 shader consumer；
+`PeriodicNotificationManager` 的 host ISO3、delay/period、reload reset 和 system toast
+属于当前 surface。title-only `SplashManager` 与仅对 Vanilla OpenGL 生效、由 improved-
+transparency options/报告读取的 `GpuWarnlistManager` 仍须留在 20 行表并写 reopen evidence。
+
+边界/API：pack 唯一拥有 priority/filter/path/预算和 CPU catalog；native 只编排 generation，
+把纯 shader source/define 投影给 renderer、periodic catalog 投影给 HUD；renderer 独占 GPU
+owner，audio 独占 buffer/device。`bbb-renderer` 不依赖 `bbb-pack`，不新增 resolver/stack/
+分 listener generation；startup 与 server/startup/selected reload 共享准备实现。
+
+非目标：title/panorama、options UI、Realms carousel、pass 重排、audio mixer、window
+icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合法 Vanilla core shader
+存在时，selected/server override/filter 必须驱动对应当前 pipeline，不能静默忽略。
+
+串行阶段：
+
+1. **Phase A — 逐 owner 合同**：Wiki 建立 20 行稳定表，记录顺序、查询/失败、BBB owner、
+   surface、prepare/apply/rollback evidence 与 reopen condition；机械锁定 20/20。
+2. **Phase B — bounded prepare**：补齐缺失的 core-shader/include 与 periodic-notification
+   catalog；复用 pack priority/filter，限制资源数、单项/累计 bytes、include 深度/环和
+   notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
+3. **Phase C — 原子 consumer**：renderer pipeline、regional toast 与既有各 consumer
+   纳入一次 transaction；逐 stage 注入失败，旧 GPU/HUD/audio/simulation/schedule 均保留。
+4. **Phase D — 真实验收与收口**：以本地 26.1 source/default assets 和 selected/server
+   fixture 验证 core shader override/filter、三色 colormap、cloud、waypoint、model/entity/
+   particle/font/language/sound 及 KOR periodic fixture；更新矩阵/账本/Wiki、做完整 diff
+   review 并删除 active 项。
+
+focused tests 覆盖受影响的 pack/renderer/native/audio；每阶段跑 docs lint（适用）、fmt、
+diff check/source guards。A 文档、B catalog、C GPU/runtime checkpoint 均干净提交；C 前后及
+最终 HEAD full gate。行为变化刷新 fixture/live playable。安全停止只允许在 checkpoint
+full-gated 且账本保留精确 active 子项，或有复现命令/机械重启条件的外部 blocker；规模、
+无 GPU/audio 设备或内部未实现不是 external blocker。
+
 ## 客户端差异优先级
 
 路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在

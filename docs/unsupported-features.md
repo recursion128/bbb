@@ -62,8 +62,14 @@ Matrix route: `resources-reload-listeners`
   has not proven a prepare/apply/rollback projection for every registered
   texture, shader, atlas, color, model, equipment, entity, block-entity,
   particle, waypoint, level/cloud, GPU-warning and regional-compliance owner.
-  Classify each against current external surfaces, implement the required
-  consumers, and retain the previous immutable generation on any failure.
+  The active engineering contract is frozen in `goal.md`. Phase A must retain
+  all 20 registrations in exact source order and distinguish existing consumer
+  evidence from two confirmed gaps: `ShaderManager` core shader/include source
+  and static-pipeline preload are not closed by the post-effect runtime, while
+  `PeriodicNotificationManager` has no host-country schedule/system-toast
+  consumer. Classify the title-only splash and Vanilla-OpenGL/options-only GPU
+  warnlist with exact owner/reopen evidence, implement every in-scope consumer,
+  and retain the previous immutable generation on any failure.
 
 ## ClientLevel world and effect decision surface
 
