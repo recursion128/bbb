@@ -62,8 +62,7 @@ Matrix route: `resources-reload-listeners`
   has not proven a prepare/apply/rollback projection for every registered
   texture, shader, atlas, color, model, equipment, entity, block-entity,
   particle, waypoint, level/cloud, GPU-warning and regional-compliance owner.
-  The active engineering contract is frozen in `goal.md`. The 20 registrations
-  are mechanically retained in exact source order. Phase B now prepares one
+  The 20 registrations are mechanically retained in exact source order. Phase B prepares one
   bounded `ShaderSourceCatalog` shared by core and post-effect shaders and one
   bounded `PeriodicNotificationCatalog`; priority/filter/import, malformed-empty
   fallback and generation evidence are covered. Host-country schedule/system-toast
@@ -73,9 +72,24 @@ Matrix route: `resources-reload-listeners`
   variants now own one atomic pipeline generation. Remaining active work is the rest of the
   current static-pipeline projection/preload surface;
   embedded WGSL alone is not evidence that selected core shader overrides are consumed.
+  The full-gated/playable safe-stop cursor is exactly `core/glint`: the entity,
+  armor-entity, dynamic-item, resident-item and HUD-item glint pipelines must next consume
+  one selected source generation before the remaining static families are classified.
   The title-only splash and Vanilla-OpenGL/options-only GPU
   warnlist retain exact owner/reopen evidence. Every in-scope consumer must keep
   the previous immutable generation on any failure.
+
+## Architecture convergence and drift prevention
+
+Owner: `bbb-renderer` (selected)；`bbb-native` (unselected follow-up)
+
+Matrix route: `resources-reload-listeners`
+
+| Candidate / canonical input | Current owner and duplication | Direction / lifetime / fallback | API, callers, tests and deletion | Risk / benefit / route |
+| --- | --- | --- | --- | --- |
+| **Selected: core pipeline generation** / `CoreShaderSourceProjection` | `resource_reload.rs` plus four family `*Generation` containers and a 7-value tuple; 27 handle/generation mappings are written once for install and again for rollback | pack → render-types → renderer; resource generation; embedded startup recovery and selected/filter failure retain the old generation | one public production entry; existing five selected-family GPU acceptances and transaction rollback; delete old generation names, tuple and mirrored `previous_*` path | drift high, behavior risk high, 5 owner shapes, deletion/API-test payoff high; active contract in `goal.md` |
+| Reloadable HUD owner inventory / pack image projection | `take_hud_resource_owners!` is the manual owner table and currently repeats `hud_creative_scroller`; renderer checkpoint lifetime, exact-owner rollback | native → renderer only; resource generation; missing textures use existing fallback | many upload callers and exhaustive checkpoint test; a future slice must remove the duplicate and establish uniqueness/stale guard without generating a second field table | drift high, behavior risk high, broad owner count, deletion payoff low; reopen via this route after the selected slice |
+| Native prepared → simulation commit projection / prepared catalogs | `PreparedNativeResourceReload` and `ResourceReloadSimulationCommit` intentionally separate prepare from apply but manually project matching resource fields | pack → native barrier → world/renderer/audio; server-pack generation; failure keeps accepted roots | one reload caller plus startup wrappers that already delegate to `try_load_*`; rollback tests exist, but field-pair stale guard is incomplete | drift medium, behavior risk high, cross-owner 4, narrowing payoff medium; reopen via this route after a dedicated field-pair audit |
 
 ## ClientLevel world and effect decision surface
 

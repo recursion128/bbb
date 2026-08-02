@@ -400,49 +400,48 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
-### 当前工程合同：Vanilla reload-listener generation 收口
+### 当前工程合同：BBB 架构收敛与防漂移——core pipeline generation
 
-状态：`active`。单一语义目标是把 `Minecraft` 按注册顺序安装的 20 个 client resource
-reload listener 逐个映射到 BBB 的同一 immutable resource generation：当前 surface
-均从共享 stack prepare、在 render-thread barrier 一次 apply，失败保留上一完整 generation。
+状态：`active`。单一语义目标是在不改变资源、渲染或 fallback 行为的前提下，让
+`bbb-renderer` 的 core shader GPU pipeline 只有一个 generation owner 和一份
+renderer-field 映射；全部生产调用仍经 `Renderer::reload_core_shaders`。
 
-Vanilla 依据冻结为 `Minecraft` 第 528～627 行的注册顺序、
-`PreparableReloadListener` / `SimpleReloadInstance` 的 shared state/barrier 及各 listener
-的 prepare/apply。`ShaderManager` 必须覆盖 core/include、post effect、静态 pipeline
-preload 与恢复，不能以 post effect 冒充全部 shader consumer；
-`PeriodicNotificationManager` 的 host ISO3、delay/period、reload reset 和 system toast
-属于当前 surface。title-only `SplashManager` 与仅对 Vanilla OpenGL 生效、由 improved-
-transparency options/报告读取的 `GpuWarnlistManager` 仍须留在 20 行表并写 reopen evidence。
+Vanilla 行为冻结为 `ShaderManager.apply`：完整准备 `Configs`，对 static pipeline 全量
+precompile，任一失败不发布新 compilation cache。BBB 输入仍是
+`CoreShaderSourceProjection`；pack priority/filter/include/budget 由 `bbb-pack` 唯一解释，
+renderer 只消费 immutable source projection，且生产依赖不得指向 `bbb-pack`。
 
-边界/API：pack 唯一拥有 priority/filter/path/预算和 CPU catalog；native 只编排 generation，
-把纯 shader source/define 投影给 renderer、periodic catalog 投影给 HUD；renderer 独占 GPU
-owner，audio 独占 buffer/device。`bbb-renderer` 不依赖 `bbb-pack`，不新增 resolver/stack/
-分 listener generation；startup 与 server/startup/selected reload 共享准备实现。
+唯一 owner 冻结为 `resource_reload.rs` 内部私有 `CorePipelineGeneration`：prepare 在
+`capture_gpu_errors` 内构造当前已接线的 26 个 pipeline handle，不变更 renderer；commit
+用一份 `swap_with_renderer` 映射同步替换 generation 与 handles，rollback 复用同一映射。
+startup 的 embedded recovery、selected/server override/filter、pipeline state、draw 顺序、
+预算与 retained bytes 均不变；stale server-pack ack 仍由 native generation barrier 拒绝。
 
-非目标：title/panorama、options UI、Realms carousel、pass 重排、audio mixer、window
-icon 及其他 feature。repo-native WGSL 可作缺失/损坏恢复材料；合法 Vanilla core shader
-存在时，selected/server override/filter 必须驱动对应当前 pipeline，不能静默忽略。
+删除目标：7 元 staging tuple、`Terrain/Entity/Item/ParticleCorePipelineGeneration` 四个伪
+generation 类型、`previous_entity/item/particle/...` 安装镜像和第二份 rollback 赋值。
+保留窄 family pipeline value group；公共 `reload_core_shaders` 与 generation query 不扩宽，
+内部 owner 不进入 `bbb-render-types`、world、native 或 pack。
+
+非目标：迁移新的 shader family、改变 WGSL/GLSL adapter、pass/state/renderer field、修改
+pack resolver、HUD owner 清单、native resource commit 结构或任何产品 surface。
 
 串行阶段：
 
-1. **Phase A — 逐 owner 合同（完成）**：Wiki 建立 20 行稳定表，记录顺序、查询/失败、BBB owner、
-   surface、prepare/apply/rollback evidence 与 reopen condition；机械锁定 20/20。
-2. **Phase B — bounded prepare（完成）**：补齐缺失的 core-shader/include 与 periodic-notification
-   catalog；复用 pack priority/filter，限制资源数、单项/累计 bytes、include 深度/环和
-   notification count，focused test 覆盖 override/filter、缺失、损坏及 retained bytes。
-3. **Phase C — 原子 consumer**：regional toast、`core/terrain`、14 entity、4 item、3 个
-   particle/weather 与 2 个 position-color variant 已进入统一 projection/barrier；继续迁移其余
-   static pipeline，逐 stage 失败须保留旧 GPU/HUD/audio/simulation/schedule。
-4. **Phase D — 真实验收与收口**：以本地 26.1 source/default assets 和 selected/server
-   fixture 验证 core shader override/filter、三色 colormap、cloud、waypoint、model/entity/
-   particle/font/language/sound 及 KOR periodic fixture；更新矩阵/账本/Wiki、做完整 diff
-   review 并删除 active 项。
+1. **Phase A — 只读审计（完成）**：重读三份架构权威文档和 Vanilla `ShaderManager`，机械
+   核对 production caller、generation 类型、两份 field mapping、fallback 与 tests；候选表在 ledger。
+2. **Phase B — 合同与基线（完成）**：冻结上述 owner/API/prepare/swap/rollback、删除清单、
+   focused tests、source guards、checkpoint 与安全停止点；开工 HEAD 已 full-gated/playable。
+3. **Phase C — 单 owner 迁移**：先建私有 generation，迁移唯一 production caller，再删除旧
+   tuple、类型名和双份 install/restore；不得保留 shadow read/write 或兼容路径。
+4. **Phase D — 验收收口**：更新 canonical ownership/Wiki 与 ledger，完整 diff review 后正常
+   提交并 full gate；因产品行为不变不刷新 playable，若验收暴露行为变化则必须刷新。
 
-focused tests 覆盖受影响的 pack/renderer/native/audio；每阶段跑 docs lint（适用）、fmt、
-diff check/source guards。A 文档、B catalog、C GPU/runtime checkpoint 均干净提交；C 前后及
-最终 HEAD full gate。行为变化刷新 fixture/live playable。安全停止只允许在 checkpoint
-full-gated 且账本保留精确 active 子项，或有复现命令/机械重启条件的外部 blocker；规模、
-无 GPU/audio 设备或内部未实现不是 external blocker。
+focused tests：renderer selected terrain/entity/item/particle/position-color 与 injected rollback、
+native stale reload ack/单一 shader path、pack shader budget/retained bytes；新增反向 guard 锁定
+一个私有 generation、一次 field mapping、零旧 `*CorePipelineGeneration` 名称且无 pack 反向依赖。
+每阶段执行 docs lint、fmt、diff check、workspace check；实现 checkpoint 与最终 HEAD full gate。
+安全停止只允许合同或实现 checkpoint 已 full-gated 且 ledger 保持精确 active route，或出现有
+复现命令和机械重启条件的外部 blocker；内部实现困难不是 blocker。
 
 ## 客户端差异优先级
 
