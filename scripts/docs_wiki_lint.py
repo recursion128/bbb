@@ -306,6 +306,8 @@ class WikiLint:
         if owner_ids != sorted(owner_ids):
             self.fail("client mechanism inventory owners are not stably sorted")
 
+        self.check_reload_listener_projections(owners, mechanisms)
+
         for mechanism_id, mechanism in mechanisms.items():
             if mechanism_id not in rows:
                 self.fail(f"unmapped inventory mechanism id {mechanism_id}")
@@ -435,6 +437,75 @@ class WikiLint:
             f"client inventory {len(owner_ids)} owners/{len(mechanisms)} mechanisms, "
             f"unmapped 0, {source_message}"
         )
+
+    def check_reload_listener_projections(
+        self, owners: list[object], mechanisms: dict[str, object]
+    ) -> None:
+        mechanism_id = "resources-reload-listeners"
+        if mechanism_id not in mechanisms:
+            return
+        relative = Path("docs/wiki/mechanisms/resources/offline-asset-trust.md")
+        path = self.repo / relative
+        if not path.is_file():
+            self.fail(f"reload-listener projection table missing: {relative}")
+            return
+        text = path.read_text(encoding="utf-8")
+        start_marker = "<!-- reload-listener-projections:start -->"
+        end_marker = "<!-- reload-listener-projections:end -->"
+        if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+            self.fail("reload-listener projection table markers are missing or duplicated")
+            return
+        table = text.split(start_marker, 1)[1].split(end_marker, 1)[0]
+        projection_rows: list[tuple[int, str, str]] = []
+        for line in table.splitlines():
+            if re.fullmatch(r"\|\s*\d+\s*\|.*", line) is None:
+                continue
+            cells = [cell.strip() for cell in line.strip().split("|")[1:-1]]
+            if len(cells) != 7:
+                self.fail(f"malformed reload-listener projection row: {line}")
+                continue
+            owner_match = re.fullmatch(r"`([^`]+)`", cells[1])
+            status_match = re.fullmatch(r"`([^`]+)`", cells[5])
+            if owner_match is None or status_match is None:
+                self.fail(f"malformed reload-listener owner/status cell: {line}")
+                continue
+            status = status_match.group(1)
+            if status not in {"existing", "active", "not-needed"}:
+                self.fail(f"illegal reload-listener projection status {status!r}")
+            projection_rows.append((int(cells[0]), owner_match.group(1), status))
+
+        def source_order(item: dict[str, object]) -> tuple[object, object, object]:
+            source = item.get("source")
+            if not isinstance(source, dict):
+                source = {}
+            return (
+                source.get("path", ""),
+                source.get("line", 0),
+                item.get("owner_id", ""),
+            )
+
+        expected = sorted(
+            (
+                item
+                for item in owners
+                if isinstance(item, dict)
+                and item.get("mechanism_id") == mechanism_id
+            ),
+            key=source_order,
+        )
+        expected_rows = [
+            (index, item.get("owner_id"))
+            for index, item in enumerate(expected, start=1)
+        ]
+        actual_rows = [
+            (index, owner_id) for index, owner_id, _status in projection_rows
+        ]
+        if actual_rows != expected_rows:
+            self.fail(
+                "reload-listener projection table is stale: "
+                f"expected {len(expected_rows)} source-ordered owners, "
+                f"found {len(actual_rows)}"
+            )
 
     def check_inventory(self, all_markdown: list[Path]) -> None:
         inventory = (

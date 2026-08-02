@@ -3,12 +3,15 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCS_LINT = REPO_ROOT / "scripts" / "docs-lint.sh"
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from docs_wiki_lint import WikiLint
 
 
 ROADMAP_STATUSES = """\
@@ -24,6 +27,34 @@ ROADMAP_STATUSES = """\
 
 
 class DocsLintTests(unittest.TestCase):
+    def reload_projection_fixture(
+        self, repo: Path, owner_ids: list[str]
+    ) -> tuple[WikiLint, list[dict[str, object]], dict[str, object]]:
+        page = repo / "docs/wiki/mechanisms/resources/offline-asset-trust.md"
+        page.parent.mkdir(parents=True, exist_ok=True)
+        table_rows = "\n".join(
+            f"| {index} | `{owner_id}` | listener | bbb | owner | `existing` | evidence |"
+            for index, owner_id in enumerate(owner_ids, start=1)
+        )
+        page.write_text(
+            "<!-- reload-listener-projections:start -->\n"
+            "| 序 | Inventory owner | Vanilla | BBB | apply | 状态 | Evidence |\n"
+            "| ---: | --- | --- | --- | --- | --- | --- |\n"
+            f"{table_rows}\n"
+            "<!-- reload-listener-projections:end -->\n",
+            encoding="utf-8",
+        )
+        owners = [
+            {
+                "mechanism_id": "resources-reload-listeners",
+                "owner_id": owner_id,
+                "source": {"path": "fixture/Minecraft.java", "line": 10 + index},
+            }
+            for index, owner_id in enumerate(owner_ids)
+        ]
+        mechanisms: dict[str, object] = {"resources-reload-listeners": {}}
+        return WikiLint(repo), owners, mechanisms
+
     def sync_inventory(self, repo: Path) -> None:
         paths = sorted(
             str(path.relative_to(repo)) for path in repo.rglob("*.md")
@@ -489,6 +520,42 @@ Matrix routes: `fixture-not-needed`
 
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("lacks locatable evidence", result.stdout)
+
+    def test_reload_listener_projection_matches_inventory_source_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lint, owners, mechanisms = self.reload_projection_fixture(
+                Path(directory), ["registration:reload:0", "registration:reload:1"]
+            )
+            lint.check_reload_listener_projections(owners, mechanisms)
+
+        self.assertEqual(lint.issues, [])
+
+    def test_reload_listener_projection_missing_owner_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lint, owners, mechanisms = self.reload_projection_fixture(
+                Path(directory), ["registration:reload:0"]
+            )
+            owners.append(
+                {
+                    "mechanism_id": "resources-reload-listeners",
+                    "owner_id": "registration:reload:1",
+                    "source": {"path": "fixture/Minecraft.java", "line": 12},
+                }
+            )
+            lint.check_reload_listener_projections(owners, mechanisms)
+
+        self.assertIn("reload-listener projection table is stale", lint.issues[0])
+
+    def test_reload_listener_projection_reordered_owner_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            lint, owners, mechanisms = self.reload_projection_fixture(
+                Path(directory), ["registration:reload:1", "registration:reload:0"]
+            )
+            owners[0]["source"] = {"path": "fixture/Minecraft.java", "line": 12}
+            owners[1]["source"] = {"path": "fixture/Minecraft.java", "line": 11}
+            lint.check_reload_listener_projections(owners, mechanisms)
+
+        self.assertIn("reload-listener projection table is stale", lint.issues[0])
 
 
 if __name__ == "__main__":

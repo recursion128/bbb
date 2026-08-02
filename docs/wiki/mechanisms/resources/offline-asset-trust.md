@@ -86,6 +86,36 @@ vanilla。单个缺失、size 不符或 SHA-1 不符 object 在其 consumer 打�
 Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generation 加载失败时，运行时
 保留上一代及其 diagnostics；成功后预算、catalog、atlas 与 audio owner 一起换代。
 
+### Reload listener 逐 owner 投影
+
+下表顺序直接对应 `Minecraft` 的注册顺序。`existing` 只表示当前已有候选 consumer evidence，
+仍须随本工程逐项完成 prepare/apply/rollback 验证；它不是 parity matrix 的关闭状态。
+
+<!-- reload-listener-projections:start -->
+| 序 | Inventory owner | Vanilla listener / 查询 | BBB projection | apply / rollback owner | 状态 | Evidence / reopen |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
+| 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | post effect 已接；core shader 尚未接 current pipelines | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
+| 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
+| 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
+| 7 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:6` | `FontManager`：definition/provider/reference prepare 后替换 `FontSet` | unified stack font catalog + atlas | renderer font/HUD cache checkpoint | `existing` | `crates/bbb-item-model/src/font.rs` |
+| 8 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:7` | `GrassColorReloadListener`：读取 grass colormap | `TerrainColorMaps.grass` | terrain generation | `existing` | `crates/bbb-pack/src/colors.rs` |
+| 9 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:8` | `FoliageColorReloadListener`：读取 foliage colormap | `TerrainColorMaps.foliage` | terrain generation | `existing` | `crates/bbb-pack/src/colors.rs` |
+| 10 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:9` | `DryFoliageColorReloadListener`：读取 dry-foliage colormap | `TerrainColorMaps.dry_foliage` | terrain generation | `existing` | `crates/bbb-pack/src/colors.rs` |
+| 11 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:10` | `ModelManager`：discover/bake block/item models | `NativeItemRuntime` + terrain model catalog | item/terrain generation | `existing` | `crates/bbb-item-model/src/item_runtime.rs` |
+| 12 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:11` | `EquipmentAssetManager`：解析 `equipment/*.json` | `EquipmentAssetCatalog` | world defaults + entity textures 同代提交 | `existing` | `crates/bbb-pack/src/equipment_assets.rs` |
+| 13 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:12` | `EntityRenderDispatcher`：重建 entity/avatar/mannequin renderer map | entity model texture/mesh generation | renderer entity owner checkpoint | `existing` | `crates/bbb-native/src/entity_assets.rs` |
+| 14 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:13` | `BlockEntityRenderDispatcher`：重建 block-entity renderer map | shared block-entity model/texture presentation | renderer entity/HUD owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
+| 15 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:14` | `ParticleResources`：definition→sprite set→atlas | `NativeParticleResources::load` | simulation + renderer particle owner 同代提交 | `existing` | `crates/bbb-native/src/particle_runtime.rs` |
+| 16 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:15` | `WaypointStyleManager`：解析 `waypoint_style/*.json` | `WaypointStyleCatalog` | HUD waypoint owner checkpoint | `existing` | `crates/bbb-pack/src/waypoint_styles.rs` |
+| 17 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:16` | `LevelRenderer`：重建 outline/sky renderer | post/sky resources + reload all chunks | renderer transaction + terrain reload request | `existing` | `crates/bbb-native/src/resource_reload.rs` |
+| 18 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:17` | `CloudRenderer`：decode cloud cells，apply 标记 mesh rebuild | `try_load_sky_textures` cloud data | renderer sky/cloud checkpoint | `existing` | `crates/bbb-native/src/sky_assets.rs` |
+| 19 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:18` | `GpuWarnlistManager`：只在 Vanilla OpenGL backend 匹配 regex | BBB shipping backend 非 OpenGL，且无 improved-transparency options UI | 无 current consumer | `not-needed` | [ledger](../../../unsupported-features.md)；支持 OpenGL/options warning 时重开 |
+| 20 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:19` | `PeriodicNotificationManager`：host ISO3 选择、delay/period system toast | 尚无 regional catalog/schedule | native HUD runtime，须随 generation 原子替换 | `active` | [ledger](../../../unsupported-features.md) |
+<!-- reload-listener-projections:end -->
+
 ## BBB 实现映射
 
 `bbb-pack/src/asset_index.rs` 负责可信 descriptor 与 lazy integrity；

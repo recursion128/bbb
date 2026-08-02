@@ -429,6 +429,12 @@ Matrix routes: `resources-indexed-panorama`, `resources-indexed-built-in-packs`,
   overlay, but the CLI-direct external client has no title/menu panorama
   surface. The seven PNGs remain provider-reachable and intentionally lazy.
   Reopen when a title/menu panorama surface enters the declared product.
+- **Title splash reload listener.** Vanilla `SplashManager.prepare` reads
+  `minecraft:texts/splashes.txt`, but its only consumer is
+  `TitleScreen.init` calling `Minecraft.getSplashManager().getSplash()`.
+  The CLI-direct client has no title screen. Reopen when a title screen enters
+  the product; merely exposing the resource through the default pack does not
+  create a consumer.
 - **Indexed built-in resource-pack ZIPs.** `ClientPackSource` exposes
   `programmer_art` and `high_contrast` through the pack repository/options
   selection surface. bbb accepts explicit startup/server packs but has no
@@ -648,6 +654,15 @@ Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-u
 - **In-game options UI and vanilla options-file persistence.** Configuration
   stays at command-line startup (for example `--advanced-item-tooltips`); bbb
   does not add an in-game configuration UI or call vanilla `Options.save()`.
+- **Vanilla OpenGL GPU warnlist reload listener.**
+  `GpuWarnlistManager.Preparations.apply` returns warnings only when
+  `GpuDevice.getBackendName()` is exactly `OpenGL`; its behavioral consumer is
+  the improved-transparency branch in `Options`/`VideoSettingsScreen`, with an
+  optional copy in `Minecraft.fillSystemReport`. BBB ships the wgpu primary
+  Vulkan/Metal/DX12 backends and has no in-game options UI, so the Vanilla
+  predicate is always empty. Reopen when an OpenGL backend or the corresponding
+  improved-transparency warning choice enters the supported product; then the
+  diagnostics copy must be wired in the same slice.
 - **Custom/datapack attribute tooltip definitions.** Vanilla 26.1 registers
   `minecraft:attribute` through `BuiltInRegistries.registerSimple`; `Attribute`
   has no direct element codec and the registry is absent from both
