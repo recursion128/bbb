@@ -96,7 +96,7 @@ Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generat
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:0` | `LanguageManager`：metadata 后构造 selected language | `NativeItemRuntime::load_with_locale` | item runtime + renderer bidi 同代提交 | `existing` | `crates/bbb-native/src/resource_reload.rs` |
 | 2 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:1` | `TextureManager`：重读所有 `ReloadableTexture`，缺失用 missing texture | terrain/HUD/entity/sky/item/particle texture loaders | renderer texture owner checkpoint | `existing` | `crates/bbb-renderer/src/resource_reload.rs` |
-| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；`core/terrain` 驱动当前 solid/cutout/translucent pipeline，其余 current static pipeline 仍待迁移 | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
+| 3 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:2` | `ShaderManager`：枚举 core/include/post-effect，preload 静态 pipeline | `ShaderSourceCatalog` 与 post effect 共享预处理；`core/terrain` 与 13 个 current entity surface variant 驱动同一原子 pipeline generation，其余 current static pipeline 仍待迁移 | renderer pipeline generation | `active` | [ledger](../../../unsupported-features.md) |
 | 4 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:3` | `SoundManager`：按 stack 合并 `sounds.json` 并 reload engine | `NativeAudioRuntime::prepare_reload` | audio commit 位于 renderer barrier 末端 | `existing` | `crates/bbb-native/src/audio_runtime.rs` |
 | 5 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:4` | `SplashManager`：读取 `texts/splashes.txt`，仅 `TitleScreen` 取值 | 无 title splash surface | 无 consumer | `not-needed` | [ledger](../../../unsupported-features.md)；title screen 进入范围时重开 |
 | 6 | `registration:reload-listener:net.minecraft.client.Minecraft#registerReloadListener:5` | `AtlasManager`：prepare/stitch/upload 15 个 known atlas | terrain/item/particle/HUD/entity atlas loaders | renderer atlas checkpoint | `existing` | `crates/bbb-native/src/resource_reload.rs` |
@@ -124,8 +124,9 @@ import depth 和 generation retained bytes；`PostEffectCatalog` 只引用该 im
 保留 Vanilla 的缺失/损坏→空准备语义；安全预算拒绝仍使整个 generation 失败。两者均携带
 resource generation。CPU catalog 只在 `bbb-pack` 解释 pack；不可变 shader/atlas 值经
 `bbb-render-types` 投影，`bbb-renderer` 的生产依赖不读取 pack。Phase C 已把
-`core/terrain` 三个当前 pipeline 与 post graph 放进同一 renderer transaction；构建任一
-pipeline 或后续 atlas/HUD/entity/sky/audio owner 失败会恢复旧 pipeline generation。
+`core/terrain` 三个当前 pipeline、13 个 entity surface variant 与 post graph 放进同一
+renderer transaction；构建任一 pipeline 或后续 atlas/HUD/entity/sky/audio owner 失败会
+恢复旧 pipeline generation。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
 推进 elapsed。剩余 ShaderManager 工作是把其它 current static pipeline 迁入同一投影与预载。

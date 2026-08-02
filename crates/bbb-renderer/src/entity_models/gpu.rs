@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use bbb_render_types::CoreShaderSourceProjection;
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
@@ -2225,6 +2226,347 @@ pub(crate) fn create_entity_model_pipeline(
             wgpu::CompareFunction::LessEqual,
         ))
         .build()
+}
+
+pub(crate) struct EntityCorePipelineGeneration {
+    pub(crate) textured: wgpu::RenderPipeline,
+    pub(crate) textured_cull: wgpu::RenderPipeline,
+    pub(crate) solid: wgpu::RenderPipeline,
+    pub(crate) solid_z_offset_forward: wgpu::RenderPipeline,
+    pub(crate) cutout_z_offset: wgpu::RenderPipeline,
+    pub(crate) armor_cutout: wgpu::RenderPipeline,
+    pub(crate) armor_decal: wgpu::RenderPipeline,
+    pub(crate) armor_translucent: wgpu::RenderPipeline,
+    pub(crate) translucent: wgpu::RenderPipeline,
+    pub(crate) banner_pattern: wgpu::RenderPipeline,
+    pub(crate) translucent_cull: wgpu::RenderPipeline,
+    pub(crate) translucent_emissive: wgpu::RenderPipeline,
+    pub(crate) eyes: wgpu::RenderPipeline,
+}
+
+pub(crate) fn create_entity_core_pipeline_generation(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    resources: &CoreShaderSourceProjection,
+) -> Result<EntityCorePipelineGeneration> {
+    let Some(shaders) = crate::core_shaders::adapt_selected_entity_shaders(resources)? else {
+        return Ok(EntityCorePipelineGeneration {
+            textured: create_entity_model_textured_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            textured_cull: create_entity_model_textured_cull_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            solid: create_entity_model_solid_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            solid_z_offset_forward: create_entity_model_solid_z_offset_forward_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            cutout_z_offset: create_entity_model_cutout_z_offset_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            armor_cutout: create_entity_model_armor_cutout_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            armor_decal: create_entity_model_armor_decal_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            armor_translucent: create_entity_model_armor_translucent_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            translucent: create_entity_model_translucent_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            banner_pattern: create_entity_model_banner_pattern_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            translucent_cull: create_entity_model_translucent_cull_pipeline(
+                device,
+                format,
+                bind_group_layout,
+                lightmap_bind_group_layout,
+            ),
+            translucent_emissive: create_entity_model_translucent_emissive_pipeline(
+                device,
+                format,
+                bind_group_layout,
+            ),
+            eyes: create_entity_model_eyes_pipeline(device, format, bind_group_layout),
+        });
+    };
+
+    let build = |label: &'static str,
+                 defines: &[(&str, Option<&str>)],
+                 blend: Option<wgpu::BlendState>,
+                 depth_write_enabled: bool,
+                 depth_compare: wgpu::CompareFunction,
+                 cull_mode: Option<wgpu::Face>,
+                 uses_lightmap: bool| {
+        create_selected_entity_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            lightmap_bind_group_layout,
+            label,
+            &shaders,
+            defines,
+            blend,
+            depth_write_enabled,
+            depth_compare,
+            cull_mode,
+            uses_lightmap,
+        )
+    };
+    let alpha = Some("0.1");
+    Ok(EntityCorePipelineGeneration {
+        textured: build(
+            "bbb-selected-entity-cutout",
+            &[("ALPHA_CUTOUT", alpha), ("PER_FACE_LIGHTING", None)],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+            true,
+        )?,
+        textured_cull: build(
+            "bbb-selected-entity-cutout-cull",
+            &[("ALPHA_CUTOUT", alpha)],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_CULL_MODE,
+            true,
+        )?,
+        solid: build(
+            "bbb-selected-entity-solid",
+            &[],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_CULL_MODE,
+            true,
+        )?,
+        solid_z_offset_forward: build(
+            "bbb-selected-entity-solid-z-offset-forward",
+            &[("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZForward"))],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_CULL_MODE,
+            true,
+        )?,
+        cutout_z_offset: build(
+            "bbb-selected-entity-cutout-z-offset",
+            &[
+                ("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZ")),
+                ("ALPHA_CUTOUT", alpha),
+                ("PER_FACE_LIGHTING", None),
+            ],
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+            true,
+        )?,
+        armor_cutout: build(
+            "bbb-selected-armor-cutout",
+            &[
+                ("ALPHA_CUTOUT", alpha),
+                ("NO_OVERLAY", None),
+                ("PER_FACE_LIGHTING", None),
+            ],
+            ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+            ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_ARMOR_CULL_MODE,
+            true,
+        )?,
+        armor_decal: build(
+            "bbb-selected-armor-decal",
+            &[
+                ("ProjMat", Some("bbbCamera.BbbViewProjViewOffsetZ")),
+                ("ALPHA_CUTOUT", alpha),
+                ("NO_OVERLAY", None),
+                ("PER_FACE_LIGHTING", None),
+            ],
+            ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+            ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
+            ENTITY_MODEL_ARMOR_CULL_MODE,
+            true,
+        )?,
+        armor_translucent: build(
+            "bbb-selected-armor-translucent",
+            &[
+                ("ALPHA_CUTOUT", alpha),
+                ("NO_OVERLAY", None),
+                ("PER_FACE_LIGHTING", None),
+            ],
+            ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND,
+            ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_ARMOR_CULL_MODE,
+            true,
+        )?,
+        translucent: build(
+            "bbb-selected-entity-translucent",
+            &[("ALPHA_CUTOUT", alpha), ("PER_FACE_LIGHTING", None)],
+            ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+            true,
+        )?,
+        banner_pattern: build(
+            "bbb-selected-banner-pattern",
+            &[("NO_OVERLAY", None)],
+            ENTITY_MODEL_BANNER_PATTERN_BLEND,
+            ENTITY_MODEL_BANNER_PATTERN_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_BANNER_PATTERN_DEPTH_COMPARE,
+            ENTITY_MODEL_BANNER_PATTERN_CULL_MODE,
+            true,
+        )?,
+        translucent_cull: build(
+            "bbb-selected-entity-translucent-cull",
+            &[("ALPHA_CUTOUT", alpha)],
+            ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+            true,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_CULL_MODE,
+            true,
+        )?,
+        translucent_emissive: build(
+            "bbb-selected-entity-translucent-emissive",
+            &[
+                ("ALPHA_CUTOUT", alpha),
+                ("PER_FACE_LIGHTING", None),
+                ("EMISSIVE", None),
+            ],
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            false,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+            false,
+        )?,
+        eyes: build(
+            "bbb-selected-entity-eyes",
+            &[
+                ("EMISSIVE", None),
+                ("NO_OVERLAY", None),
+                ("NO_CARDINAL_LIGHTING", None),
+            ],
+            Some(ENTITY_MODEL_EYES_BLEND),
+            ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            ENTITY_MODEL_EYES_CULL_MODE,
+            false,
+        )?,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn create_selected_entity_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    shaders: &crate::core_shaders::AdaptedEntityShaders,
+    defines: &[(&str, Option<&str>)],
+    blend: Option<wgpu::BlendState>,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
+    cull_mode: Option<wgpu::Face>,
+    uses_lightmap: bool,
+) -> Result<wgpu::RenderPipeline> {
+    let vertex = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-entity-vertex-shader",
+        crate::core_shaders::shader_with_defines(&shaders.vertex, defines),
+        wgpu::naga::ShaderStage::Vertex,
+    )
+    .with_context(|| format!("compile selected entity vertex for {label}"))?;
+    let fragment = crate::post_effect_graph::create_glsl_module(
+        device,
+        "bbb-selected-entity-fragment-shader",
+        crate::core_shaders::shader_with_defines(&shaders.fragment, defines),
+        wgpu::naga::ShaderStage::Fragment,
+    )
+    .with_context(|| format!("compile selected entity fragment for {label}"))?;
+    let bind_group_layouts = if uses_lightmap {
+        vec![bind_group_layout, lightmap_bind_group_layout]
+    } else {
+        vec![bind_group_layout]
+    };
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-selected-entity-pipeline-layout"),
+        bind_group_layouts: &bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+    Ok(
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &vertex,
+                entry_point: "main",
+                buffers: &[entity_model_textured_vertex_layout()],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode,
+                ..Default::default()
+            },
+            depth_stencil: Some(depth_stencil_state(
+                DEPTH_FORMAT,
+                depth_write_enabled,
+                depth_compare,
+            )),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &fragment,
+                entry_point: "main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview: None,
+        }),
+    )
 }
 
 pub(crate) fn create_entity_model_textured_pipeline(

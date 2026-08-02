@@ -844,8 +844,9 @@ fn create_selected_terrain_pipeline(
     blend: Option<wgpu::BlendState>,
     alpha_cutout: Option<&str>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex_source = shader_with_define(&shaders.vertex, "ALPHA_CUTOUT", alpha_cutout);
-    let fragment_source = shader_with_define(&shaders.fragment, "ALPHA_CUTOUT", alpha_cutout);
+    let defines = alpha_cutout.map_or_else(Vec::new, |value| vec![("ALPHA_CUTOUT", Some(value))]);
+    let vertex_source = crate::core_shaders::shader_with_defines(&shaders.vertex, &defines);
+    let fragment_source = crate::core_shaders::shader_with_defines(&shaders.fragment, &defines);
     let vertex = crate::post_effect_graph::create_glsl_module(
         device,
         "bbb-selected-terrain-vertex-shader",
@@ -893,20 +894,6 @@ fn create_selected_terrain_pipeline(
             }),
             multiview: None,
         }),
-    )
-}
-
-fn shader_with_define(source: &str, name: &str, value: Option<&str>) -> String {
-    let Some(value) = value else {
-        return source.to_string();
-    };
-    let newline = source
-        .find('\n')
-        .expect("adapted terrain shader always has a version line");
-    format!(
-        "{}#define {name} {value}\n{}",
-        &source[..=newline],
-        &source[newline + 1..]
     )
 }
 

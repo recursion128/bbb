@@ -23,28 +23,109 @@ impl Renderer {
         resources: &CoreShaderSourceProjection,
         allow_embedded_fallback: bool,
     ) -> Result<()> {
-        let next = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
-            crate::gpu::create_terrain_core_pipeline_generation(
-                &self.device,
-                self.config.format,
-                &self.terrain_bind_group_layout,
-                &self.lightmap_sample_bind_group_layout,
-                resources,
-                self.terrain_texture_filtering,
-                allow_embedded_fallback,
-            )
-        })?;
+        let (next, next_entity) =
+            crate::post_effect_graph::capture_gpu_errors(&self.device, || {
+                let terrain = crate::gpu::create_terrain_core_pipeline_generation(
+                    &self.device,
+                    self.config.format,
+                    &self.terrain_bind_group_layout,
+                    &self.lightmap_sample_bind_group_layout,
+                    resources,
+                    self.terrain_texture_filtering,
+                    allow_embedded_fallback,
+                )?;
+                let entity = if allow_embedded_fallback && resources.source_count() == 0 {
+                    None
+                } else {
+                    Some(
+                        crate::entity_models::create_entity_core_pipeline_generation(
+                            &self.device,
+                            self.config.format,
+                            &self.terrain_bind_group_layout,
+                            &self.lightmap_sample_bind_group_layout,
+                            resources,
+                        )?,
+                    )
+                };
+                Ok((terrain, entity))
+            })?;
         let previous_solid = std::mem::replace(&mut self.terrain_solid_pipeline, next.solid);
         let previous_cutout = std::mem::replace(&mut self.terrain_cutout_pipeline, next.cutout);
         let previous_translucent =
             std::mem::replace(&mut self.terrain_translucent_pipeline, next.translucent);
         let previous_generation = self.core_shader_generation.replace(next.generation);
+        let previous_entity =
+            next_entity.map(|next| crate::entity_models::EntityCorePipelineGeneration {
+                textured: std::mem::replace(
+                    &mut self.entity_model_textured_pipeline,
+                    next.textured,
+                ),
+                textured_cull: std::mem::replace(
+                    &mut self.entity_model_textured_cull_pipeline,
+                    next.textured_cull,
+                ),
+                solid: std::mem::replace(&mut self.entity_model_solid_pipeline, next.solid),
+                solid_z_offset_forward: std::mem::replace(
+                    &mut self.entity_model_solid_z_offset_forward_pipeline,
+                    next.solid_z_offset_forward,
+                ),
+                cutout_z_offset: std::mem::replace(
+                    &mut self.entity_model_cutout_z_offset_pipeline,
+                    next.cutout_z_offset,
+                ),
+                armor_cutout: std::mem::replace(
+                    &mut self.entity_model_armor_cutout_pipeline,
+                    next.armor_cutout,
+                ),
+                armor_decal: std::mem::replace(
+                    &mut self.entity_model_armor_decal_pipeline,
+                    next.armor_decal,
+                ),
+                armor_translucent: std::mem::replace(
+                    &mut self.entity_model_armor_translucent_pipeline,
+                    next.armor_translucent,
+                ),
+                translucent: std::mem::replace(
+                    &mut self.entity_model_translucent_pipeline,
+                    next.translucent,
+                ),
+                banner_pattern: std::mem::replace(
+                    &mut self.entity_model_banner_pattern_pipeline,
+                    next.banner_pattern,
+                ),
+                translucent_cull: std::mem::replace(
+                    &mut self.entity_model_translucent_cull_pipeline,
+                    next.translucent_cull,
+                ),
+                translucent_emissive: std::mem::replace(
+                    &mut self.entity_model_translucent_emissive_pipeline,
+                    next.translucent_emissive,
+                ),
+                eyes: std::mem::replace(&mut self.entity_model_eyes_pipeline, next.eyes),
+            });
         if self.resource_reload_in_progress() {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.terrain_solid_pipeline = previous_solid;
                 renderer.terrain_cutout_pipeline = previous_cutout;
                 renderer.terrain_translucent_pipeline = previous_translucent;
                 renderer.core_shader_generation = previous_generation;
+                if let Some(previous) = previous_entity {
+                    renderer.entity_model_textured_pipeline = previous.textured;
+                    renderer.entity_model_textured_cull_pipeline = previous.textured_cull;
+                    renderer.entity_model_solid_pipeline = previous.solid;
+                    renderer.entity_model_solid_z_offset_forward_pipeline =
+                        previous.solid_z_offset_forward;
+                    renderer.entity_model_cutout_z_offset_pipeline = previous.cutout_z_offset;
+                    renderer.entity_model_armor_cutout_pipeline = previous.armor_cutout;
+                    renderer.entity_model_armor_decal_pipeline = previous.armor_decal;
+                    renderer.entity_model_armor_translucent_pipeline = previous.armor_translucent;
+                    renderer.entity_model_translucent_pipeline = previous.translucent;
+                    renderer.entity_model_banner_pattern_pipeline = previous.banner_pattern;
+                    renderer.entity_model_translucent_cull_pipeline = previous.translucent_cull;
+                    renderer.entity_model_translucent_emissive_pipeline =
+                        previous.translucent_emissive;
+                    renderer.entity_model_eyes_pipeline = previous.eyes;
+                }
             }));
         }
         Ok(())
