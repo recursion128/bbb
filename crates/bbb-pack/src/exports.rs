@@ -1,3 +1,4 @@
+pub use crate::asset_index::VanillaAssetIndexObservation;
 pub use crate::atlas::{
     AtlasAnimationMipCache, AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite,
     AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasMipPatch, AtlasPacker, AtlasRect,
@@ -62,7 +63,9 @@ pub use crate::resource_budget::{
     MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
 };
 pub use crate::resource_textures::ResourceTextureImage;
-pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
+pub use crate::resources::{
+    PackResource, PackResourceStack, PackRootResource, ResourceIntegrity, ResourceLocation,
+};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
 pub use crate::selected_packs::{
     ClientPackCompatibility, ClientPackPosition, ClientPackSelection, ClientPackSource,

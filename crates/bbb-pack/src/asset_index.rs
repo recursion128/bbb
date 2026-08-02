@@ -1,25 +1,43 @@
 use std::{
     collections::BTreeMap,
     fs::File,
-    io::{Read, Take},
+    io::Read,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
-use sha1::{Digest, Sha1};
 
-use crate::ResourceLocation;
+use crate::{ResourceIntegrity, ResourceLocation};
 
 const MAX_VERSION_METADATA_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_ASSET_INDEX_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_ASSET_INDEX_OBJECTS: usize = 100_000;
+const MAX_ASSET_OBJECT_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+const ASSET_INDEX_ENTRY_LOGICAL_BYTES: u64 = 128;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct VanillaAssetIndex {
     index_id: String,
     objects_dir: PathBuf,
     objects: BTreeMap<String, AssetObject>,
+    retained_logical_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IndexedAsset {
+    pub(crate) path: PathBuf,
+    pub(crate) integrity: ResourceIntegrity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VanillaAssetIndexObservation {
+    pub index_id: String,
+    pub object_count: usize,
+    pub exposed_resource_count: usize,
+    pub root_resource_count: usize,
+    pub retained_logical_bytes: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -40,7 +58,7 @@ struct AssetIndexDocument {
     objects: BTreeMap<String, AssetObject>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 struct AssetObject {
     hash: String,
     size: u64,
@@ -89,33 +107,121 @@ impl VanillaAssetIndex {
                 MAX_ASSET_INDEX_OBJECTS
             );
         }
+        let mut total_object_bytes = 0_u64;
         for (name, object) in &document.objects {
             validate_asset_key(name)
                 .with_context(|| format!("invalid Vanilla asset-index key {name:?}"))?;
             validate_sha1(&object.hash, &format!("asset object {name:?} SHA-1"))?;
+            if object.size > MAX_ASSET_OBJECT_BYTES {
+                bail!(
+                    "Vanilla asset object {name:?} is {} bytes, exceeding the {} byte limit",
+                    object.size,
+                    MAX_ASSET_OBJECT_BYTES
+                );
+            }
+            total_object_bytes = total_object_bytes
+                .checked_add(object.size)
+                .context("Vanilla asset-index total object size overflow")?;
+            if total_object_bytes > MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES {
+                bail!(
+                    "Vanilla asset index declares {total_object_bytes} object bytes, exceeding the {} byte limit",
+                    MAX_ASSET_INDEX_TOTAL_OBJECT_BYTES
+                );
+            }
         }
+        let retained_logical_bytes =
+            document
+                .objects
+                .iter()
+                .try_fold(0_u64, |total, (name, object)| -> Result<u64> {
+                    let entry_bytes = u64::try_from(name.len())
+                        .context("Vanilla asset-index key length overflow")?
+                        .checked_add(
+                            u64::try_from(object.hash.len()).expect("SHA-1 length fits u64"),
+                        )
+                        .and_then(|bytes| bytes.checked_add(ASSET_INDEX_ENTRY_LOGICAL_BYTES))
+                        .context("Vanilla asset-index retained byte count overflow")?;
+                    total
+                        .checked_add(entry_bytes)
+                        .context("Vanilla asset-index retained byte count overflow")
+                })?;
 
         Ok(Some(Self {
             index_id: version.asset_index.id,
             objects_dir: assets_dir.join("objects"),
             objects: document.objects,
+            retained_logical_bytes,
         }))
     }
 
-    pub(crate) fn resolve(&self, location: &ResourceLocation) -> Result<Option<PathBuf>> {
+    pub(crate) fn resource(&self, location: &ResourceLocation) -> Option<IndexedAsset> {
         let key = format!("{}/{}", location.namespace(), location.path());
-        let Some(object) = self.objects.get(&key) else {
-            return Ok(None);
-        };
-        let object_path = self.objects_dir.join(&object.hash[..2]).join(&object.hash);
-        verify_file(
-            &object_path,
-            object.size,
-            &object.hash,
-            &format!("Vanilla asset {key:?} from index {}", self.index_id),
-        )?;
-        Ok(Some(object_path))
+        self.objects
+            .get(&key)
+            .map(|object| self.indexed_asset(object))
     }
+
+    pub(crate) fn root_resource(&self, path: &str) -> Option<IndexedAsset> {
+        self.objects
+            .get(path)
+            .map(|object| self.indexed_asset(object))
+    }
+
+    pub(crate) fn list_resources<'a>(
+        &'a self,
+        path_prefix: &'a str,
+        extension: &'a str,
+    ) -> impl Iterator<Item = (ResourceLocation, IndexedAsset)> + 'a {
+        self.objects.iter().filter_map(move |(key, object)| {
+            let location = resource_location_for_asset_key(key).ok()?;
+            if !matches!(location.namespace(), "minecraft" | "realms")
+                || !resource_path_is_below(location.path(), path_prefix)
+                || !location.path().ends_with(extension)
+            {
+                return None;
+            }
+            Some((location, self.indexed_asset(object)))
+        })
+    }
+
+    pub(crate) fn observation(&self) -> VanillaAssetIndexObservation {
+        let exposed_resource_count = self
+            .objects
+            .keys()
+            .filter_map(|key| resource_location_for_asset_key(key).ok())
+            .filter(|location| matches!(location.namespace(), "minecraft" | "realms"))
+            .count();
+        let root_resource_count = self
+            .objects
+            .keys()
+            .filter(|key| !key.contains('/') || key.starts_with("icons/"))
+            .count();
+        VanillaAssetIndexObservation {
+            index_id: self.index_id.clone(),
+            object_count: self.objects.len(),
+            exposed_resource_count,
+            root_resource_count,
+            retained_logical_bytes: self.retained_logical_bytes,
+        }
+    }
+
+    fn indexed_asset(&self, object: &AssetObject) -> IndexedAsset {
+        IndexedAsset {
+            path: self.objects_dir.join(&object.hash[..2]).join(&object.hash),
+            integrity: ResourceIntegrity {
+                size: object.size,
+                sha1: object.hash.clone(),
+            },
+        }
+    }
+}
+
+fn resource_path_is_below(path: &str, prefix: &str) -> bool {
+    prefix.is_empty()
+        || path == prefix
+        || path
+            .strip_prefix(prefix)
+            .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
 fn read_json_file_limited<T: serde::de::DeserializeOwned>(
@@ -149,40 +255,11 @@ fn read_json_file_limited<T: serde::de::DeserializeOwned>(
 
 fn verify_file(path: &Path, expected_size: u64, expected_sha1: &str, label: &str) -> Result<()> {
     validate_sha1(expected_sha1, &format!("{label} SHA-1"))?;
-    let file = File::open(path).with_context(|| format!("open {label} {}", path.display()))?;
-    let actual_size = file
-        .metadata()
-        .with_context(|| format!("read {label} metadata {}", path.display()))?
-        .len();
-    if actual_size != expected_size {
-        bail!(
-            "{label} {} has size {actual_size}, expected {expected_size}",
-            path.display()
-        );
+    ResourceIntegrity {
+        size: expected_size,
+        sha1: expected_sha1.to_string(),
     }
-    let actual_sha1 = hash_reader(file.take(expected_size + 1), label)?;
-    if actual_sha1 != expected_sha1 {
-        bail!(
-            "{label} {} has SHA-1 {actual_sha1}, expected {expected_sha1}",
-            path.display()
-        );
-    }
-    Ok(())
-}
-
-fn hash_reader(mut reader: Take<File>, label: &str) -> Result<String> {
-    let mut sha1 = Sha1::new();
-    let mut buffer = [0_u8; 64 * 1024];
-    loop {
-        let count = reader
-            .read(&mut buffer)
-            .with_context(|| format!("hash {label}"))?;
-        if count == 0 {
-            break;
-        }
-        sha1.update(&buffer[..count]);
-    }
-    Ok(format!("{:x}", sha1.finalize()))
+    .verify(path, label)
 }
 
 fn validate_index_id(id: &str) -> Result<()> {
@@ -227,6 +304,7 @@ fn validate_asset_key(key: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha1::{Digest, Sha1};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -242,11 +320,14 @@ mod tests {
 
         let catalog = VanillaAssetIndex::discover(&root).unwrap().unwrap();
         let location = ResourceLocation::parse("minecraft:font/unifont.zip").unwrap();
-        let resolved = catalog.resolve(&location).unwrap().unwrap();
-        assert_eq!(std::fs::read(resolved).unwrap(), object);
+        let resolved = catalog.resource(&location).unwrap();
+        resolved
+            .integrity
+            .verify(&resolved.path, "Vanilla asset")
+            .unwrap();
+        assert_eq!(std::fs::read(resolved.path).unwrap(), object);
         assert!(catalog
-            .resolve(&ResourceLocation::parse("minecraft:font/missing.zip").unwrap())
-            .unwrap()
+            .resource(&ResourceLocation::parse("minecraft:font/missing.zip").unwrap())
             .is_none());
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -267,14 +348,19 @@ mod tests {
             .join(&object_hash[..2])
             .join(&object_hash);
         std::fs::write(&path, b"changed").unwrap();
-        let error = catalog
-            .resolve(&ResourceLocation::parse("minecraft:font/unifont.zip").unwrap())
+        let resolved = catalog
+            .resource(&ResourceLocation::parse("minecraft:font/unifont.zip").unwrap())
+            .unwrap();
+        let error = resolved
+            .integrity
+            .verify(&resolved.path, "Vanilla asset")
             .unwrap_err()
             .to_string();
         assert!(error.contains("has size"), "{error}");
         std::fs::write(&path, b"font archivf").unwrap();
-        let error = catalog
-            .resolve(&ResourceLocation::parse("minecraft:font/unifont.zip").unwrap())
+        let error = resolved
+            .integrity
+            .verify(&resolved.path, "Vanilla asset")
             .unwrap_err()
             .to_string();
         assert!(error.contains("has SHA-1"), "{error}");
@@ -331,8 +417,12 @@ mod tests {
             .join(&object_hash[..2])
             .join(&object_hash);
         std::fs::remove_file(object_path).unwrap();
-        let error = catalog
-            .resolve(&ResourceLocation::parse("minecraft:font/unifont.zip").unwrap())
+        let resolved = catalog
+            .resource(&ResourceLocation::parse("minecraft:font/unifont.zip").unwrap())
+            .unwrap();
+        let error = resolved
+            .integrity
+            .verify(&resolved.path, "Vanilla asset")
             .unwrap_err()
             .to_string();
         assert!(error.contains("open Vanilla asset"), "{error}");
@@ -344,7 +434,27 @@ mod tests {
         assert!(validate_index_id("../30").is_err());
         assert!(validate_asset_key("minecraft/../escape").is_err());
         assert!(validate_asset_key("minecraft\\font/unifont.zip").is_err());
+        assert!(validate_asset_key("minecraft//absolute").is_err());
+        assert!(validate_asset_key("Minecraft/font/unifont.zip").is_err());
+        assert!(validate_asset_key("minecraft/font/\0.zip").is_err());
         assert!(validate_asset_key("pack.mcmeta").is_ok());
+    }
+
+    #[test]
+    fn rejects_unbounded_declared_object_size_without_opening_an_object() {
+        let root = fixture_root("oversized-object");
+        let hash = "0".repeat(40);
+        let index = format!(
+            r#"{{"objects":{{"minecraft/sounds/huge.ogg":{{"hash":"{hash}","size":{}}}}}}}"#,
+            MAX_ASSET_OBJECT_BYTES + 1
+        );
+        write_fixture(&root, &index, &hash, b"");
+        let error = VanillaAssetIndex::discover(&root).unwrap_err().to_string();
+        assert!(
+            error.contains("exceeding the 536870912 byte limit"),
+            "{error}"
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     fn write_fixture(root: &Path, index: &str, object_hash: &str, object: &[u8]) {

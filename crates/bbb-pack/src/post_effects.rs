@@ -1424,13 +1424,15 @@ mod tests {
         vanilla: &Path,
         overlays: impl IntoIterator<Item = PathBuf>,
     ) -> PackRoots {
+        let mut packs = vec![vanilla.to_path_buf()];
+        packs.extend(overlays);
         PackRoots::from_paths(
             root.to_path_buf(),
-            vanilla.to_path_buf(),
-            vanilla.join("assets/minecraft"),
+            root.join("empty-vanilla"),
+            root.join("empty-vanilla/assets/minecraft"),
             None,
         )
-        .with_resource_pack_dirs(overlays)
+        .with_resource_pack_dirs(packs)
     }
 
     fn asset(root: &Path, namespace: &str, path: &str) -> PathBuf {

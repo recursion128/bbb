@@ -7,8 +7,10 @@ use std::{
 use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::{de::DeserializeOwned, Deserialize};
+use sha1::{Digest, Sha1};
 
 use crate::{
+    asset_index::{IndexedAsset, VanillaAssetIndex},
     image::{
         PngDecodeBudget, ResourceImageGenerationBudget, ResourceImageMemoryObservation,
         MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES,
@@ -64,6 +66,63 @@ pub struct PackResource {
     pub location: ResourceLocation,
     pub path: PathBuf,
     pub metadata_path: Option<PathBuf>,
+    pub integrity: Option<ResourceIntegrity>,
+    pub metadata_integrity: Option<ResourceIntegrity>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackRootResource {
+    pub pack_id: String,
+    pub path: PathBuf,
+    pub integrity: Option<ResourceIntegrity>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceIntegrity {
+    pub size: u64,
+    pub sha1: String,
+}
+
+impl ResourceIntegrity {
+    pub fn verify(&self, path: &Path, label: &str) -> Result<()> {
+        let file = std::fs::File::open(path)
+            .with_context(|| format!("open {label} {}", path.display()))?;
+        let actual_size = file
+            .metadata()
+            .with_context(|| format!("read {label} metadata {}", path.display()))?
+            .len();
+        if actual_size != self.size {
+            bail!(
+                "{label} {} has size {actual_size}, expected {}",
+                path.display(),
+                self.size
+            );
+        }
+        let maximum = self
+            .size
+            .checked_add(1)
+            .context("resource integrity read limit overflow")?;
+        let mut reader = std::io::Read::take(file, maximum);
+        let mut sha1 = Sha1::new();
+        let mut buffer = [0_u8; 64 * 1024];
+        loop {
+            let count = std::io::Read::read(&mut reader, &mut buffer)
+                .with_context(|| format!("hash {label}"))?;
+            if count == 0 {
+                break;
+            }
+            sha1.update(&buffer[..count]);
+        }
+        let actual_sha1 = format!("{:x}", sha1.finalize());
+        if actual_sha1 != self.sha1 {
+            bail!(
+                "{label} {} has SHA-1 {actual_sha1}, expected {}",
+                path.display(),
+                self.sha1
+            );
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -162,16 +221,8 @@ impl PackResourceStack {
         let entries = packs
             .iter()
             .map(|pack| {
-                PackEntry::prepare(
-                    pack.id.clone(),
-                    pack.root.clone(),
-                    pack.metadata.as_ref(),
-                    matches!(
-                        pack.source,
-                        ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
-                    ),
-                )
-                .with_context(|| format!("prepare selected client pack {}", pack.id))
+                PackEntry::prepare(pack, Arc::clone(&data_budget))
+                    .with_context(|| format!("prepare selected client pack {}", pack.id))
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Self::from_parts(roots, entries, image_budget, data_budget))
@@ -220,6 +271,7 @@ impl PackResourceStack {
         resource: &PackResource,
         label: &str,
     ) -> Result<T> {
+        self.validate_resource(resource, label)?;
         self.read_json_file(&resource.path, label)
     }
 
@@ -232,7 +284,52 @@ impl PackResourceStack {
     }
 
     pub fn read_text_resource(&self, resource: &PackResource, label: &str) -> Result<String> {
+        self.validate_resource(resource, label)?;
         self.read_text_file(&resource.path, label)
+    }
+
+    pub fn validate_resource(&self, resource: &PackResource, label: &str) -> Result<()> {
+        if let Some(integrity) = &resource.integrity {
+            integrity.verify(&resource.path, label)?;
+        }
+        Ok(())
+    }
+
+    pub fn validate_resource_metadata(&self, resource: &PackResource, label: &str) -> Result<()> {
+        if let (Some(path), Some(integrity)) =
+            (&resource.metadata_path, &resource.metadata_integrity)
+        {
+            integrity.verify(path, label)?;
+        }
+        Ok(())
+    }
+
+    pub fn root_resource_stack(&self, path: &str) -> Result<Vec<PackRootResource>> {
+        validate_resource_path(path)?;
+        Ok(self
+            .pack_entries()
+            .iter()
+            .filter_map(|pack| pack.root_resource(path))
+            .collect())
+    }
+
+    pub fn read_json_root_resource<T: DeserializeOwned>(
+        &self,
+        resource: &PackRootResource,
+        label: &str,
+    ) -> Result<T> {
+        if let Some(integrity) = &resource.integrity {
+            integrity.verify(&resource.path, label)?;
+        }
+        self.read_json_file(&resource.path, label)
+    }
+
+    pub fn vanilla_asset_index_observation(&self) -> Option<crate::VanillaAssetIndexObservation> {
+        self.pack_entries().iter().find_map(|pack| {
+            pack.indexed_assets
+                .as_ref()
+                .map(|index| index.observation())
+        })
     }
 
     pub fn read_text_file(&self, path: &Path, label: &str) -> Result<String> {
@@ -281,6 +378,14 @@ impl PackResourceStack {
         let mut namespaces = BTreeMap::new();
         let mut admission = ResourceListingAdmission::new(Arc::clone(&self.data_budget));
         for pack in self.pack_entries() {
+            if pack.vanilla_namespaces {
+                for namespace in ["minecraft", "realms"] {
+                    if !namespaces.contains_key(namespace) {
+                        admission.admit(namespace, &format!("{domain} namespaces"))?;
+                    }
+                    namespaces.insert(namespace.to_string(), namespace.to_string());
+                }
+            }
             for content_root in pack.content_roots(domain) {
                 let domain_root = content_root.join(domain);
                 if !domain_root.is_dir() {
@@ -329,8 +434,12 @@ impl PackResourceStack {
         let pack_entries = self.pack_entries();
         for (pack_index, pack) in pack_entries.iter().enumerate().rev() {
             if let Some(mut resource) = pack.get_resource(domain, location) {
-                resource.metadata_path =
-                    metadata_path_for_resource(domain, location, &pack_entries, pack_index);
+                if let Some(metadata) =
+                    metadata_for_resource(domain, location, pack_entries, pack_index)
+                {
+                    resource.metadata_path = Some(metadata.path);
+                    resource.metadata_integrity = metadata.integrity;
+                }
                 return Some(resource);
             }
             if pack.is_filtered(location) {
@@ -374,9 +483,13 @@ impl PackResourceStack {
         for pack in self.pack_entries().iter().rev() {
             if let Some(mut resource) = pack.get_resource(domain, location) {
                 if !filter_metadata {
-                    resource.metadata_path = metadata_location
+                    if let Some(metadata) = metadata_location
                         .as_ref()
-                        .and_then(|location| pack.resource_path(domain, location));
+                        .and_then(|location| pack.resource_file(domain, location))
+                    {
+                        resource.metadata_path = Some(metadata.path);
+                        resource.metadata_integrity = metadata.integrity;
+                    }
                 }
                 resources.push(resource);
             }
@@ -437,8 +550,12 @@ impl PackResourceStack {
         Ok(resources
             .into_iter()
             .map(|(location, (pack_index, mut resource))| {
-                resource.metadata_path =
-                    metadata_path_for_resource(domain, &location, &pack_entries, pack_index);
+                if let Some(metadata) =
+                    metadata_for_resource(domain, &location, pack_entries, pack_index)
+                {
+                    resource.metadata_path = Some(metadata.path);
+                    resource.metadata_integrity = metadata.integrity;
+                }
                 resource
             })
             .collect())
@@ -474,6 +591,7 @@ impl PackResourceStack {
                     {
                         for resource in stack {
                             resource.metadata_path = None;
+                            resource.metadata_integrity = None;
                         }
                     }
                     true
@@ -482,9 +600,13 @@ impl PackResourceStack {
             for (location, mut resource) in
                 pack.list_resources(domain, path_prefix, extension, &mut admission)?
             {
-                resource.metadata_path = metadata_location(&location)
+                if let Some(metadata) = metadata_location(&location)
                     .ok()
-                    .and_then(|metadata_location| pack.resource_path(domain, &metadata_location));
+                    .and_then(|metadata_location| pack.resource_file(domain, &metadata_location))
+                {
+                    resource.metadata_path = Some(metadata.path);
+                    resource.metadata_integrity = metadata.integrity;
+                }
                 resources.entry(location).or_default().push(resource);
             }
         }
@@ -549,6 +671,8 @@ fn collect_resources(
                 location,
                 path: path.clone(),
                 metadata_path: None,
+                integrity: None,
+                metadata_integrity: None,
             },
         );
     }
@@ -581,9 +705,17 @@ fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> P
 #[derive(Debug)]
 struct PackEntry {
     pack_id: String,
+    root: PathBuf,
     asset_content_roots: Vec<PathBuf>,
     data_content_roots: Vec<PathBuf>,
     filter: Option<PackFilter>,
+    indexed_assets: Option<Arc<VanillaAssetIndex>>,
+    vanilla_namespaces: bool,
+}
+
+struct ResourceFile {
+    path: PathBuf,
+    integrity: Option<ResourceIntegrity>,
 }
 
 impl PackEntry {
@@ -595,26 +727,45 @@ impl PackEntry {
         let metadata = read_pack_resource_metadata(&root, &data_budget)
             .ok()
             .flatten();
-        Self::from_metadata(pack_id, root, metadata, false)
+        Self::from_metadata(pack_id, root, metadata, false, None, false)
             .expect("lenient unmanaged pack metadata cannot fail")
     }
 
     fn prepare(
-        pack_id: String,
-        root: PathBuf,
-        selected_metadata: Option<&crate::ClientPackMetadata>,
-        metadata_required: bool,
+        pack: &SelectedClientPack,
+        data_budget: Arc<ResourceDataGenerationBudget>,
     ) -> Result<Self> {
-        let metadata = selected_metadata
-            .map(|metadata| {
-                serde_json::from_value::<RawPackMetadata>(metadata.document().clone())
-                    .context("decode client pack resource metadata sections")
-            })
-            .transpose()?;
+        let metadata_required = matches!(
+            pack.source,
+            ClientPackSource::Startup { .. } | ClientPackSource::Server { .. }
+        );
+        let metadata = if matches!(pack.source, ClientPackSource::Unmanaged) {
+            read_pack_resource_metadata(&pack.root, &data_budget)
+                .ok()
+                .flatten()
+        } else {
+            pack.metadata
+                .as_ref()
+                .map(|metadata| {
+                    serde_json::from_value::<RawPackMetadata>(metadata.document().clone())
+                        .context("decode client pack resource metadata sections")
+                })
+                .transpose()?
+        };
         if metadata_required && metadata.is_none() {
-            bail!("missing pack.mcmeta in {}", root.display());
+            bail!("missing pack.mcmeta in {}", pack.root.display());
         }
-        Self::from_metadata(pack_id, root, metadata, true)
+        if let Some(index) = &pack.indexed_vanilla_assets {
+            data_budget.reserve_indexed_assets_once(index.observation().retained_logical_bytes)?;
+        }
+        Self::from_metadata(
+            pack.id.clone(),
+            pack.root.clone(),
+            metadata,
+            !matches!(pack.source, ClientPackSource::Unmanaged),
+            pack.indexed_vanilla_assets.as_ref().map(Arc::clone),
+            matches!(pack.source, ClientPackSource::Vanilla),
+        )
     }
 
     fn from_metadata(
@@ -622,6 +773,8 @@ impl PackEntry {
         root: PathBuf,
         metadata: Option<RawPackMetadata>,
         strict: bool,
+        indexed_assets: Option<Arc<VanillaAssetIndex>>,
+        vanilla_namespaces: bool,
     ) -> Result<Self> {
         let filter = match metadata
             .as_ref()
@@ -640,9 +793,12 @@ impl PackEntry {
             content_roots(&root, metadata.as_ref(), SERVER_DATA_PACK_FORMAT, strict)?;
         Ok(Self {
             pack_id,
+            root,
             asset_content_roots,
             data_content_roots,
             filter,
+            indexed_assets,
+            vanilla_namespaces,
         })
     }
 
@@ -660,19 +816,56 @@ impl PackEntry {
     }
 
     fn get_resource(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
-        self.resource_path(domain, location)
-            .map(|path| PackResource {
+        self.resource_file(domain, location)
+            .map(|file| PackResource {
                 pack_id: self.pack_id.clone(),
                 location: location.clone(),
-                path,
+                path: file.path,
                 metadata_path: None,
+                integrity: file.integrity,
+                metadata_integrity: None,
             })
     }
 
-    fn resource_path(&self, domain: &str, location: &ResourceLocation) -> Option<PathBuf> {
+    fn resource_file(&self, domain: &str, location: &ResourceLocation) -> Option<ResourceFile> {
+        if self.vanilla_namespaces && !matches!(location.namespace(), "minecraft" | "realms") {
+            return None;
+        }
+        if domain == "assets" {
+            if let Some(indexed) = self
+                .indexed_assets
+                .as_ref()
+                .and_then(|index| index.resource(location))
+            {
+                return Some(resource_file_from_indexed(indexed));
+            }
+        }
         self.content_roots(domain).iter().rev().find_map(|root| {
             let path = resource_path_in(root, domain, location);
-            path.is_file().then_some(path)
+            path.is_file().then_some(ResourceFile {
+                path,
+                integrity: None,
+            })
+        })
+    }
+
+    fn root_resource(&self, path: &str) -> Option<PackRootResource> {
+        if let Some(indexed) = self
+            .indexed_assets
+            .as_ref()
+            .and_then(|index| index.root_resource(path))
+        {
+            return Some(PackRootResource {
+                pack_id: self.pack_id.clone(),
+                path: indexed.path,
+                integrity: Some(indexed.integrity),
+            });
+        }
+        let path = self.root.join(path);
+        path.is_file().then_some(PackRootResource {
+            pack_id: self.pack_id.clone(),
+            path,
+            integrity: None,
         })
     }
 
@@ -709,6 +902,10 @@ impl PackEntry {
                 if validate_resource_namespace(&namespace).is_err() {
                     continue;
                 }
+                if self.vanilla_namespaces && !matches!(namespace.as_str(), "minecraft" | "realms")
+                {
+                    continue;
+                }
                 let list_root = namespace_dir.join(path_prefix);
                 if !list_root.is_dir() {
                     continue;
@@ -725,7 +922,32 @@ impl PackEntry {
                 )?;
             }
         }
+        if domain == "assets" {
+            if let Some(index) = &self.indexed_assets {
+                for (location, indexed) in index.list_resources(path_prefix, extension) {
+                    admission.admit(&location.id(), "Vanilla indexed resources")?;
+                    resources.insert(
+                        location.clone(),
+                        PackResource {
+                            pack_id: self.pack_id.clone(),
+                            location,
+                            path: indexed.path,
+                            metadata_path: None,
+                            integrity: Some(indexed.integrity),
+                            metadata_integrity: None,
+                        },
+                    );
+                }
+            }
+        }
         Ok(resources)
+    }
+}
+
+fn resource_file_from_indexed(indexed: IndexedAsset) -> ResourceFile {
+    ResourceFile {
+        path: indexed.path,
+        integrity: Some(indexed.integrity),
     }
 }
 
@@ -733,16 +955,16 @@ fn metadata_location(location: &ResourceLocation) -> Result<ResourceLocation> {
     location.with_suffix(".mcmeta")
 }
 
-fn metadata_path_for_resource(
+fn metadata_for_resource(
     domain: &str,
     location: &ResourceLocation,
     pack_entries: &[PackEntry],
     resource_pack_index: usize,
-) -> Option<PathBuf> {
+) -> Option<ResourceFile> {
     let metadata_location = metadata_location(location).ok()?;
     for pack in pack_entries[resource_pack_index..].iter().rev() {
-        if let Some(path) = pack.resource_path(domain, &metadata_location) {
-            return Some(path);
+        if let Some(file) = pack.resource_file(domain, &metadata_location) {
+            return Some(file);
         }
         if pack.is_filtered(&metadata_location) {
             break;

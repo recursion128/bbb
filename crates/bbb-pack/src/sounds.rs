@@ -1007,7 +1007,9 @@ mod tests {
     fn sound_catalog_loads_all_namespaces_from_resource_stack() {
         let root = unique_temp_dir("sound-stack-namespaces");
         let base = root.join("sources").join(MC_VERSION);
-        let custom_assets = base.join("assets").join("custom");
+        let custom_pack = root.join("packs/custom");
+        let custom_assets = custom_pack.join("assets").join("custom");
+        std::fs::create_dir_all(base.join("assets/minecraft")).unwrap();
         write_file(
             &custom_assets
                 .join("sounds")
@@ -1023,7 +1025,9 @@ mod tests {
             }"#,
         );
 
-        let roots = PackRoots::from_root(&root).unwrap();
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([custom_pack]);
         let catalog = roots.load_sound_catalog().unwrap();
         let event = catalog.event("custom:ambient.wind").unwrap();
 

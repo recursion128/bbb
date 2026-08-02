@@ -3,7 +3,7 @@ use std::{
     io::Read,
     path::Path,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
 };
@@ -52,6 +52,7 @@ pub(crate) struct ResourceDataGenerationBudget {
     text_documents: AtomicU64,
     listing_entries: AtomicU64,
     derived_logical_bytes: AtomicU64,
+    indexed_assets_charged: AtomicBool,
     rejections: AtomicU64,
 }
 
@@ -69,6 +70,7 @@ impl ResourceDataGenerationBudget {
             text_documents: AtomicU64::new(0),
             listing_entries: AtomicU64::new(0),
             derived_logical_bytes: AtomicU64::new(0),
+            indexed_assets_charged: AtomicBool::new(false),
             rejections: AtomicU64::new(0),
         })
     }
@@ -263,6 +265,17 @@ impl ResourceDataGenerationBudget {
         self.reserve(logical_bytes, label)?;
         self.derived_logical_bytes
             .fetch_add(logical_bytes, Ordering::Relaxed);
+        Ok(())
+    }
+
+    pub(crate) fn reserve_indexed_assets_once(&self, logical_bytes: u64) -> Result<()> {
+        if self.indexed_assets_charged.swap(true, Ordering::AcqRel) {
+            return Ok(());
+        }
+        if let Err(error) = self.reserve_derived(logical_bytes, "retained Vanilla asset index") {
+            self.indexed_assets_charged.store(false, Ordering::Release);
+            return Err(error);
+        }
         Ok(())
     }
 

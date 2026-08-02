@@ -59,15 +59,16 @@ pub struct SelectedClientPack {
     pub compatibility: ClientPackCompatibility,
     pub selection: ClientPackSelection,
     pub metadata: Option<ClientPackMetadata>,
+    pub(crate) indexed_vanilla_assets: Option<Arc<crate::asset_index::VanillaAssetIndex>>,
 }
 
 impl SelectedClientPack {
-    fn vanilla(root: PathBuf) -> Self {
+    fn vanilla(roots: &PackRoots) -> Self {
         let current = crate::server_pack::client_resource_pack_format();
         Self {
             id: "vanilla".to_string(),
             source: ClientPackSource::Vanilla,
-            root,
+            root: roots.sources_dir.clone(),
             supported_formats: ServerPackFormatRange {
                 min: current,
                 max: current,
@@ -79,6 +80,7 @@ impl SelectedClientPack {
                 fixed_position: false,
             },
             metadata: None,
+            indexed_vanilla_assets: roots.indexed_vanilla_assets(),
         }
     }
 
@@ -99,6 +101,7 @@ impl SelectedClientPack {
                 fixed_position: false,
             },
             metadata: Some(metadata),
+            indexed_vanilla_assets: None,
         })
     }
 
@@ -129,6 +132,7 @@ impl SelectedClientPack {
                 fixed_position: true,
             },
             metadata: Some(metadata),
+            indexed_vanilla_assets: None,
         })
     }
 
@@ -149,6 +153,7 @@ impl SelectedClientPack {
                 fixed_position: false,
             },
             metadata: None,
+            indexed_vanilla_assets: None,
         }
     }
 }
@@ -223,7 +228,7 @@ impl SelectedClientPackStack {
         roots: &PackRoots,
         dirs: impl IntoIterator<Item = PathBuf>,
     ) -> Result<Self> {
-        let mut packs = vec![SelectedClientPack::vanilla(roots.sources_dir.clone())];
+        let mut packs = vec![SelectedClientPack::vanilla(roots)];
         for (argument_index, root) in dirs.into_iter().enumerate() {
             packs.push(
                 SelectedClientPack::startup(argument_index, root)
@@ -273,7 +278,7 @@ impl SelectedClientPackStack {
     }
 
     pub(crate) fn from_unmanaged_roots(roots: &PackRoots) -> Self {
-        let mut packs = vec![SelectedClientPack::vanilla(roots.sources_dir.clone())];
+        let mut packs = vec![SelectedClientPack::vanilla(roots)];
         packs.extend(
             roots
                 .resource_pack_dirs()

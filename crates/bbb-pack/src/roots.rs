@@ -66,6 +66,12 @@ impl PackRoots {
         let root = std::env::var_os("BBB_MC_CODE_ROOT")
             .or_else(|| std::env::var_os("MC_CODE_ROOT"))
             .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME")
+                    .map(PathBuf::from)
+                    .map(|home| home.join("Work/mc-code"))
+                    .filter(|root| root.join("sources").join(MC_VERSION).is_dir())
+            })
             .unwrap_or_else(|| PathBuf::from(DEFAULT_MC_CODE_ROOT));
         Ok(Self::from_root(root)?.with_generated_assets_dir(discover_generated_assets_dir()))
     }
@@ -220,14 +226,16 @@ impl PackRoots {
         if let Some(generation) = self.client_resource_generation() {
             return generation.resources().clone();
         }
-        let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
-        roots.push(self.sources_dir.clone());
-        roots.extend(self.resource_pack_dirs.iter().cloned());
-        PackResourceStack::from_roots_with_budgets(
-            roots,
+        PackResourceStack::prepare_selected_client_packs_with_budgets(
+            self.selected_client_packs_or_unmanaged().packs(),
             Arc::clone(&self.resource_image_budget),
             Arc::clone(&self.resource_data_budget),
         )
+        .expect("lenient unmanaged resource stack preparation cannot fail")
+    }
+
+    pub(crate) fn indexed_vanilla_assets(&self) -> Option<Arc<VanillaAssetIndex>> {
+        self.indexed_vanilla_assets.as_ref().map(Arc::clone)
     }
 
     /// Resolves one selected client resource while treating the launcher's
@@ -239,38 +247,7 @@ impl PackRoots {
         &self,
         location: &ResourceLocation,
     ) -> Result<Option<crate::PackResource>> {
-        let stack = self.resource_stack();
-        let selected = stack.get_resource(location);
-        let vanilla_pack_id = if self.client_resource_generation().is_some() {
-            "vanilla"
-        } else {
-            "unmanaged/0"
-        };
-        let selected_is_vanilla = selected
-            .as_ref()
-            .is_some_and(|resource| resource.pack_id == vanilla_pack_id);
-        if selected.is_some() && !selected_is_vanilla {
-            return Ok(selected);
-        }
-        if selected.is_none() && stack.filters_lower_priority_resource(location) {
-            return Ok(None);
-        }
-        let Some(index) = &self.indexed_vanilla_assets else {
-            return Ok(selected);
-        };
-        let Some(path) = index.resolve(location)? else {
-            return Ok(selected);
-        };
-        let metadata_path = index.resolve(&location.with_suffix(".mcmeta")?)?;
-        Ok(Some(crate::PackResource {
-            pack_id: selected.as_ref().map_or_else(
-                || "vanilla-index".to_string(),
-                |resource| resource.pack_id.clone(),
-            ),
-            location: location.clone(),
-            path,
-            metadata_path,
-        }))
+        Ok(self.resource_stack().get_resource(location))
     }
 
     fn resource_pack_stack(&self) -> PackResourceStack {
@@ -655,36 +632,71 @@ mod tests {
         let source = root.join("sources/26.1/assets/minecraft/font/test.zip");
         std::fs::create_dir_all(source.parent().unwrap()).unwrap();
         std::fs::write(&source, b"source stub").unwrap();
+        std::fs::write(source.with_extension("zip.mcmeta"), b"source metadata").unwrap();
 
         let indexed = b"indexed complete archive";
-        let object_hash = format!("{:x}", Sha1::digest(indexed));
-        let index = format!(
-            r#"{{"objects":{{"minecraft/font/test.zip":{{"hash":"{object_hash}","size":{}}}}}}}"#,
-            indexed.len()
+        let indexed_metadata = br#"{"texture":{"blur":true}}"#;
+        write_asset_index_fixture(
+            &root,
+            &[
+                ("minecraft/font/test.zip", indexed, true),
+                ("minecraft/font/test.zip.mcmeta", indexed_metadata, true),
+                ("minecraft/sounds/unrelated-missing.ogg", b"missing", false),
+                ("realms/lang/en_us.json", br#"{"realm":"Realm"}"#, true),
+                ("icons/icon_16x16.png", b"icon", true),
+                ("pack.mcmeta", br#"{"language":{}}"#, true),
+            ],
         );
-        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
-        write_json(
-            &root.join("downloads/26.1/26.1.json"),
-            &format!(
-                r#"{{"assetIndex":{{"id":"30","sha1":"{index_hash}","size":{}}}}}"#,
-                index.len()
-            ),
-        );
-        write_json(&root.join("downloads/26.1/assets/indexes/30.json"), &index);
-        let object_path = root
-            .join("downloads/26.1/assets/objects")
-            .join(&object_hash[..2])
-            .join(&object_hash);
-        std::fs::create_dir_all(object_path.parent().unwrap()).unwrap();
-        std::fs::write(&object_path, indexed).unwrap();
 
         let location = ResourceLocation::parse("minecraft:font/test.zip").unwrap();
         let roots = PackRoots::from_root(&root).unwrap();
-        let resource = roots
-            .resource_with_indexed_vanilla_fallback(&location)
-            .unwrap()
+        let stack = roots.resource_stack();
+        assert_eq!(stack.namespaces().unwrap(), ["minecraft", "realms"]);
+        let resource = stack.get_resource(&location).unwrap();
+        assert_eq!(resource.pack_id, "vanilla");
+        assert_eq!(
+            stack
+                .read_text_resource(&resource, "indexed test")
+                .unwrap()
+                .as_bytes(),
+            indexed
+        );
+        assert_eq!(
+            std::fs::read(resource.metadata_path.as_ref().unwrap()).unwrap(),
+            indexed_metadata
+        );
+        stack
+            .validate_resource_metadata(&resource, "indexed test metadata")
             .unwrap();
-        assert_eq!(std::fs::read(resource.path).unwrap(), indexed);
+        let listed = stack.list_resources("font", ".zip").unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].location, location);
+        let root_resources = stack.root_resource_stack("pack.mcmeta").unwrap();
+        assert_eq!(root_resources.len(), 1);
+        let root_metadata: serde_json::Value = stack
+            .read_json_root_resource(&root_resources[0], "Vanilla root metadata")
+            .unwrap();
+        assert_eq!(root_metadata, serde_json::json!({"language": {}}));
+        let observation = stack.vanilla_asset_index_observation().unwrap();
+        assert_eq!(observation.index_id, "30");
+        assert_eq!(observation.object_count, 6);
+        assert_eq!(observation.exposed_resource_count, 4);
+        assert_eq!(observation.root_resource_count, 2);
+        let realms = stack
+            .get_resource(&ResourceLocation::parse("realms:lang/en_us.json").unwrap())
+            .unwrap();
+        assert_eq!(realms.pack_id, "vanilla");
+        let charged_before = roots
+            .resource_data_memory_observation()
+            .derived_logical_bytes;
+        let _second_stack = roots.resource_stack();
+        assert_eq!(
+            roots
+                .resource_data_memory_observation()
+                .derived_logical_bytes,
+            charged_before,
+            "the shared generation must retain-charge the index only once"
+        );
 
         let high = root.join("packs/high");
         let high_resource = high.join("assets/minecraft/font/test.zip");
@@ -696,6 +708,14 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(std::fs::read(resource.path).unwrap(), b"selected override");
+        let stack = roots.resource_stack().get_resource_stack(&location);
+        assert_eq!(
+            stack
+                .iter()
+                .map(|resource| resource.pack_id.as_str())
+                .collect::<Vec<_>>(),
+            ["vanilla", "unmanaged/0"]
+        );
 
         // Pack identity, rather than filesystem ancestry, decides precedence.
         // A selected pack is allowed to live below the source checkout.
@@ -732,6 +752,36 @@ mod tests {
             .unwrap()
             .is_none());
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn write_asset_index_fixture(root: &Path, objects: &[(&str, &[u8], bool)]) {
+        let mut document_objects = serde_json::Map::new();
+        for (name, bytes, materialize) in objects {
+            let hash = format!("{:x}", Sha1::digest(bytes));
+            document_objects.insert(
+                (*name).to_string(),
+                serde_json::json!({"hash": hash, "size": bytes.len()}),
+            );
+            if *materialize {
+                let object_path = root
+                    .join("downloads/26.1/assets/objects")
+                    .join(&hash[..2])
+                    .join(&hash);
+                std::fs::create_dir_all(object_path.parent().unwrap()).unwrap();
+                std::fs::write(object_path, bytes).unwrap();
+            }
+        }
+        let index =
+            serde_json::to_string(&serde_json::json!({"objects": document_objects})).unwrap();
+        let index_hash = format!("{:x}", Sha1::digest(index.as_bytes()));
+        write_json(
+            &root.join("downloads/26.1/26.1.json"),
+            &format!(
+                r#"{{"assetIndex":{{"id":"30","sha1":"{index_hash}","size":{}}}}}"#,
+                index.len()
+            ),
+        );
+        write_json(&root.join("downloads/26.1/assets/indexes/30.json"), &index);
     }
 
     #[test]
@@ -868,7 +918,13 @@ mod tests {
         );
 
         let roots = PackRoots::from_root(&root).unwrap();
-        let sources = roots.load_block_texture_sources().unwrap();
+        let custom_pack = root.join("packs/custom");
+        std::fs::create_dir_all(custom_pack.join("assets")).unwrap();
+        std::fs::rename(&example_assets, custom_pack.join("assets/example")).unwrap();
+        let sources = roots
+            .with_resource_pack_dirs([custom_pack])
+            .load_block_texture_sources()
+            .unwrap();
         assert_eq!(
             sources,
             vec![
