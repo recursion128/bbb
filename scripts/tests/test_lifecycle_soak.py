@@ -150,7 +150,7 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
             }
             if mode == "kick"
             else None,
-            "app_quit_response": {"queued": True},
+            "app_quit_response": {"running": False},
             "quiescent_snapshot": snapshot,
             "process_metrics": {
                 "rss_bytes": 100_000_000,

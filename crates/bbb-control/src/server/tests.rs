@@ -182,6 +182,7 @@ fn app_quit_queues_shutdown_for_the_simulation_owner() {
     );
 
     assert!(response.ok);
+    assert_eq!(response.result.unwrap()["running"], false);
     assert!(state.snapshot.load().app.running);
     assert!(state.requests.lock().unwrap().shutdown_requested);
 }

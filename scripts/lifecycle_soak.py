@@ -232,7 +232,7 @@ def validate_iteration(
             f"iteration {iteration}.kick_process_metrics",
         )
         app_quit = termination.get("app_quit_response")
-        if not isinstance(app_quit, dict) or app_quit.get("queued") is not True:
+        if not isinstance(app_quit, dict) or app_quit.get("running") is not False:
             raise SoakFailure(
                 f"iteration {iteration}: kick screen did not exit through app.quit"
             )

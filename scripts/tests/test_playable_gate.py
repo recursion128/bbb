@@ -1201,6 +1201,8 @@ class PlayableGateTerminationTests(unittest.TestCase):
                                 }
                             }
                         }
+                    if method == "app.quit":
+                        return {"running": False}
                     return {"queued": True}
 
                 def kick(_command, _request):
@@ -1256,7 +1258,7 @@ class PlayableGateTerminationTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     evidence["app_quit_response"],
-                    {"queued": True},
+                    {"running": False},
                 )
 
     def test_kick_disconnect_rejects_control_close_even_with_server_receipt(self):
