@@ -65,33 +65,6 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 Matrix route: `rendering-entity-layer-registration`
 
 <!-- architecture-candidates:start -->
-- **`arch-entity-equipment-test-fallback` is `active`.**
-  - Semantic mechanism: entity equipment asset selection for armor, wings and saddles.
-  - Canonical input: one resolved resource-generation equipment asset catalog plus entity
-    render state.
-  - Owners: `crates/bbb-renderer/src/entity_models/equipment.rs` carries a test-only
-    `legacy_static_fallback` mode that changes many production branches in
-    `crates/bbb-renderer/src/entity_models/textured.rs`.
-  - Production callers: `crates/bbb-renderer/src/entity_models/textured.rs` branches on
-    the legacy flag for armor, saddle, wings, baby and overlay layers.
-  - Direction: resource equipment catalog → resolved immutable catalog → entity layer
-    emission; tests must use that same production resolver.
-  - Lifetime: one renderer resource generation; catalog preparation is immutable and a
-    failed reload keeps the previous resolved catalog.
-  - Ordering/fallback/rollback: preserve actual production first-provider equipment
-    lookup, missing-layer fallback, layer order and prior-generation rollback.
-  - Public API: remove the compatibility boolean, constructor and query from the resolved
-    catalog; tests construct explicit catalog fixtures.
-  - Delete: `legacy_static_fallback`, `legacy_static_fallback()` and every
-    `uses_legacy_static_fallback()` production branch.
-  - Evidence: `crates/bbb-renderer/src/entity_models/textured.rs` and
-    `crates/bbb-renderer/src/entity_models/gui_preview.rs` focused equipment/layer tests
-    plus a reverse source guard.
-  - Risk/benefit/rank: drift high, current product risk medium, one crate, deletion high,
-    API narrowing medium and focused verification high; rank 1/2.
-  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
-  - Reopen condition: reopen only if an official asset-free renderer path becomes a
-    production surface with an explicit Vanilla owner.
 - **`arch-entity-textured-shader-single-source` is `active`.**
   - Semantic mechanism: entity textured sampling, lighting, overlay and fog shader source.
   - Canonical input: one entity vertex/texture projection and the pipeline's cull mode.
@@ -111,7 +84,7 @@ Matrix route: `rendering-entity-layer-registration`
   - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
     pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
   - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
-    narrowing low and focused verification high; rank 2/2.
+    narrowing low and focused verification high; rank 1/1.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if a future shader requires a decision not representable
     by cull state and `front_facing` in the shared source.
