@@ -461,6 +461,29 @@ Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级
 active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
 不得借此加入 title、singleplayer、Realms 或 options UI。
 
+### Active 工程合同：外部会话屏幕 inventory 拆分
+
+- 语义边界：只将 generated client-mechanism inventory 中混合的
+  `ui-multiplayer-screen-surface` 拆为 `ui-chat-screen-surface`、
+  `ui-death-screen-surface`、`ui-disconnected-screen-surface` 与
+  `ui-pause-screen-surface`；canonical input 为本地 26.1 的四个 Screen 类。
+- 冻结证据：Tree-sitter method surface 必须稳定得到 25/18/8/15
+  个 owner，旧 mechanism owner 数为零，inventory 总 owner 数不变；四条
+  matrix/ledger route 各自可独立判定和验收。
+- 阶段：A 重读源码并冻结计数；B 修改唯一 inventory manifest/evidence
+  并重生 JSON；C 拆分 matrix 与唯一 ledger route；D 运行 fixture、
+  stale/source guard、per-commit checks、提交和 full gate。
+- 非目标：不改 production Rust、screen 行为、状态、渲染、输入或
+  lifecycle，不提高任何 parity 状态。
+- focused evidence：inventory extractor/generator 单测覆盖四类精确计数、
+  旧 ID 消失、断链与 stale output；运行 docs-lint fixtures、`scripts/docs-lint.sh`、
+  `cargo fmt --all --check`、`git diff --check` 和非测试 workspace check。
+- checkpoint：当前 HEAD 已 full-gated；本 source-inventory 变更作为一个高风险
+  提交，提交后立即运行 full gate，通过前不启动断线屏幕实现。
+- 安全停止点：仅限本合同干净提交，或四路由完整且 full-gated
+  的干净提交；blocker 仅限本地 Vanilla tree 缺失或 CST 经复现无法
+  区分这四个已冻结 owner surface。
+
 ### P3：动态资源 presentation breadth
 
 状态：`maintenance`。selected/startup/server pack、indexed default vanilla provider、push/pop、
