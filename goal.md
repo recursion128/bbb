@@ -422,25 +422,26 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。唯一 active 工程合同是
-`arch-census-external-production`：只读审计外部多人客户端当前 production path，
-不修改 production 实现，只修正机械 evidence、matrix/ledger 分类和路线状态。
+状态：`active`。唯一 active 工程合同是 `arch-post-effect-id-owner`：不改变画面或
+pack 行为，把六个 Vanilla 26.1 built-in post-chain identity 的 admission 和 dispatch
+收敛到一个 renderer-private typed owner。
 
-- inventory 以 Cargo metadata、现有 2,927-owner Vanilla mechanism JSON、crate 公开 API
-  与 production caller 为输入；按 protocol/net/world/pack/item-model/native/
-  render-types/renderer/audio/control 的 semantic owner 和 generation/session 边界分类。
-- 候选只接受可复现的多 owner/resolver/cache/projection，反向依赖、可漂移
-  手写事实，混合 prepare/apply/commit/rollback，过宽 API，双路 fallback，缺失
-  reverse/stale guard，或无调用旧路径；文件大小、样式偏好和未来设想不入账。
-- 机械 evidence 归现有 inventory/docs lint；census 可收紧候选 table 的 stable ID、
-  路由、owner/path 与 stale-output 检查，不新建第二份 dependency inventory。
-- 串行阶段：冻结合同→盘点 owner/API/caller/lifetime→逐项反证和排序→登记唯一
-  ledger route→docs-lint fixtures/source guards→审查、提交和 full gate。
-- focused 验收覆盖重复 ID、断链 route、失效 owner/path、stale evidence；
-  `scripts/docs-lint.sh`、Python fixtures、fmt、diff check 和非测试 workspace check 必过。
-- census 完成的 checkpoint 是干净提交后 `scripts/cargo-dev.sh gate`。安全停止点只是
-  full-gated census 结果：所有真实候选已有单一 route，且广泛/未可验收条目已拆分或剔除。
-  之后按 hardest-ready-first 一次只关闭一项；候选清零才把本路线改为 `maintenance`。
+- 权威 owner 是 `GameRenderer.checkEntityPostEffect/processBlurEffect/render`、
+  `LevelRenderer.getTransparencyChain/renderLevel` 与 `ShaderManager.getPostChain`；输入是
+  selected resource generation 的 graph IDs，priority/filter/fallback 保持现状。
+- dependency 固定为 pack CPU projection → typed post-effect ID → graph runtime/frame
+  consumer；camera/outline/transparency/blur 不再自行匹配 resource 字符串。公开边界不扩大。
+- prepare 编译完整 catalog，六个 required graph 全部存在才可 commit；resize/reload
+  失败继续保留上一 generation。执行顺序保持 outline → camera effect → GUI blur，且
+  world transparency 仍在 clouds/weather 后按原 graph 路径合成。
+- 删除 `REQUIRED_GRAPH_IDS`、`contains_camera_graph`、camera fallback enum 的 ID resolver
+  及 render raw-ID 调用；不改 graph codec、shader、target、renderer pass 或 pack 语义。
+- 阶段：typed owner/单次解析→迁移全部 production caller→删除旧 resolver→reverse
+  guard/Wiki/ledger 收口。focused tests 覆盖六 ID、camera 三分支、selected generation
+  admission、失败 rollback、outline/transparency/blur pass order 与旧调用点为零。
+- 每阶段过 renderer focused tests、docs lint、fmt、diff check 和 workspace check；最终
+  正常提交并 full gate。安全停止点仅是可构建且旧路径已全删的干净 checkpoint；只有
+  可复现的外部 GPU/backend 无法执行既有 offscreen acceptance 才算 blocker。
 
 ### P1：可玩 Session 端到端门禁
 
