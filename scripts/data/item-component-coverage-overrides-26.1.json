@@ -1306,7 +1306,7 @@
       "observable_consumers": {
         "evidence": [
           "vanilla:net/minecraft/client/renderer/item/properties/select/ComponentContents.java#get",
-          "crates/bbb-item-model/src/item_runtime/icon_model.rs#Self::DamageType",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
           "crates/bbb-world/src/registries/item_component_initializers.rs#damage_type_default_uses_session_order_and_patch_remove_precedence"
         ],
@@ -1963,7 +1963,7 @@
           "vanilla:net/minecraft/client/player/LocalPlayer.java#itemUseSpeedMultiplier",
           "crates/bbb-world/src/client/local_player_movement.rs#local_player_is_slow_due_to_using_item",
           "crates/bbb-world/src/client/local_player_movement.rs#local_player_using_item_speed_multiplier",
-          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_applies_default_use_effects_slowdown_and_sprint_suppression",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch",
           "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_can_sprint_override_preserves_sprint_speed"
         ],
         "gap": null,
@@ -2314,7 +2314,7 @@
           "vanilla:net/minecraft/world/item/ItemStack.java#getRarity",
           "vanilla:net/minecraft/client/renderer/item/properties/select/ComponentContents.java#get",
           "crates/bbb-item-model/src/item_runtime/tooltip.rs#item_rarity_for_stack",
-          "crates/bbb-item-model/src/item_runtime/icon_model.rs#Self::Rarity",
+          "crates/bbb-item-model/src/item_runtime/icon_model.rs#component_id::VANILLA_DATA_COMPONENT_RARITY_TYPE_ID",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_resolves_component_select_values",
           "crates/bbb-item-model/src/item_runtime/tests.rs#native_item_runtime_loads_client_item_fixture_and_keeps_missingno_fallback"
         ],
@@ -2384,7 +2384,7 @@
           "vanilla:net/minecraft/world/item/ItemStack.java#hasFoil",
           "crates/bbb-protocol/src/packets/inventory.rs#pub fn has_foil",
           "crates/bbb-protocol/src/packets/inventory.rs#item_stack_has_foil_uses_glint_override_before_enchantments",
-          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_materials",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names",
           "crates/bbb-native/src/item_models/tests.rs#item_stack_foil_mode_projects_vanilla_special_context_scale",
           "crates/bbb-native/src/runtime/tests.rs#hud_item_foil_for_stack_projects_special_clock_and_compass_glint"
         ],
@@ -2406,7 +2406,7 @@
           "crates/bbb-protocol/src/packets/data_components/catalog.rs#enchantment_glint_override_descriptor_round_trips_booleans_and_rejects_missing_atomically",
           "crates/bbb-protocol/src/packets/tests.rs#encodes_set_creative_mode_slot_enchantment_glint_override_component",
           "crates/bbb-protocol/src/packets/inventory.rs#item_stack_has_foil_uses_glint_override_before_enchantments",
-          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_worn_armor_materials",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names",
           "crates/bbb-native/src/item_models/tests.rs#item_stack_foil_mode_projects_vanilla_special_context_scale",
           "crates/bbb-native/src/runtime/tests.rs#hud_item_foil_for_stack_projects_special_clock_and_compass_glint"
         ],
@@ -4281,9 +4281,8 @@
         "evidence": [
           "vanilla:net/minecraft/client/renderer/entity/layers/HumanoidArmorLayer.java#public static boolean shouldRender",
           "vanilla:net/minecraft/client/renderer/entity/layers/HumanoidArmorLayer.java#private void renderArmorPiece",
-          "crates/bbb-world/src/entities/store.rs#fn patched_equippable_asset_for_slot",
-          "crates/bbb-world/src/entities/store.rs#let armor_material",
-          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor"
+          "crates/bbb-world/src/entities/store.rs#fn effective_equipment_asset",
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names"
         ],
         "gap": null,
         "status": "complete"
@@ -4307,7 +4306,7 @@
           "crates/bbb-protocol/src/packets/data_components.rs#decodes_additional_item_data_components",
           "crates/bbb-native/src/input/component_patch.rs#equippable_encoder_preserves_holders_and_codec_defaults",
           "crates/bbb-world/src/client/dialog/body/component_value/equippable/tests.rs#rejects_malformed_equippable_records",
-          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor"
+          "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names"
         ],
         "gap": null,
         "status": "complete"

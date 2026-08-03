@@ -1102,6 +1102,7 @@ def render_data_component_types(
         "// Wire codecs remain hand-bound in packets/data_components/catalog.rs.",
         "",
         "pub use crate::packets::data_components::catalog::{",
+        "    copy_data_component_value_summary, encode_data_component_value_summary,",
         "    vanilla_data_component_descriptor, vanilla_data_component_descriptors, DataComponentDescriptor,",
         "};",
         "",
