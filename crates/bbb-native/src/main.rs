@@ -701,7 +701,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     tracing::info!(
         target_os = std::env::consts::OS,
         target_arch = std::env::consts::ARCH,
-        window_backend = window_backend.label(),
+        window_backend = %window_backend.label(),
         scale_factor = window.scale_factor(),
         width = window_size.width,
         height = window_size.height,

@@ -312,6 +312,7 @@ mod tests {
             .find("ClientInputState::new(window.has_focus())")
             .unwrap();
         assert!(build < install && install < ime && ime < input);
+        assert!(main.contains("window_backend = %window_backend.label()"));
         assert!(!main.contains("icons/icon_"));
         assert!(!main.contains("minecraft.icns"));
     }
