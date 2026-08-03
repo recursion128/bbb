@@ -408,6 +408,33 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
+### 当前工程合同：indexed panorama 断线页背景 vertical path
+
+目标：复刻 `Screen.extractBackground/extractPanorama`、`Panorama.extractRenderState`、
+`GuiRenderer.render`、`CubeMap.render/registerTextures` 与 `CubeMapTexture.loadContents` 的
+无 level、非 in-game screen 路径；本合同是高风险 pack/native/renderer generation 工程。
+
+- `bbb-pack::PanoramaCatalog` 是唯一 CPU owner，经现有 `PackResourceStack` 解析
+  `_1,_3,_5,_4,_0,_2` 六面与 overlay，保持 selected/startup/server priority、filter、
+  lazy indexed integrity、PNG/image budget 和同尺寸校验；不新增 index 专用 resolver。
+- native 只在既有 resource transaction 内编排 catalog→GPU apply，并由
+  `HudRenderRuntime` 以 realtime delta、默认 speed 1.0、每 tick 0.1°和 wrapDegrees 唯一
+  推进 spin；immutable screen projection 传给 renderer，stale generation 不可命中新代。
+- renderer 独占 cubemap texture/pipeline/overlay GPU lifetime：85° FOV、X=10°、Y=`-spin`；
+  draw 顺序固定为 cubemap→overlay→blur barrier→32px menu background→screen widgets。
+  任一 face/overlay decode、维度或 GPU apply 失败不发布半套资源；reload 恢复上一完整
+  generation，startup 无旧代时沿用现有 menu-background fallback。
+- 本 slice 只服务已可达 `DisconnectedScreen`；不增加 TitleScreen、splash、Realms、
+  pack-selection/options UI，不改 world renderer、screen layout/input/narration 或下游 blur 算法。
+- 阶段：A catalog/order/override/filter/budget 与真实 index-30 acceptance；B cubemap GPU、
+  spin、blur strata、rollback 和 offscreen pixels；C live kick diagnostics、Wiki/matrix/ledger
+  收口。focused evidence 覆盖缺失/损坏/尺寸不符、全套原子 publish、selected/filter、
+  face orientation、rotation/wrap、draw order、失败保留旧代、retained bytes 与 reverse guard。
+- A 完成后、跨入 GPU owner、最终 closeout 均运行受影响 focused tests 和适用 full gate；
+  产品画面变化后刷新 fixture/live/lifecycle。安全停止点只允许 A 的 full-gated catalog
+  checkpoint（账本保持 active）或完整 full-gated vertical path；blocker 仅限本地 catalog/
+  offscreen 已通过而外部 compositor/GPU/server live 可复现失败并有精确重启条件。
+
 ## 客户端差异优先级
 
 路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在

@@ -408,9 +408,15 @@ Matrix routes: `resources-indexed-panorama`, `resources-indexed-built-in-packs`,
   overlay. The reachable `DisconnectedScreen` is a non-in-game `Screen`, so
   `Screen.extractBackground` makes this seven-PNG family a reachable consumer
   before blur and `menu_background.png`; the unified provider already exposes
-  the objects, but no renderer consumer exists. Implement it as a separate
-  resource/presentation slice, preserving lazy generation rollback and without
-  adding a title screen.
+  the objects, but no renderer consumer exists. The active contract is `goal.md`
+  “indexed panorama 断线页背景 vertical path”: `bbb-pack::PanoramaCatalog` must
+  be the only CPU catalog, native must only orchestrate resource generation and
+  realtime spin, and renderer must own the cubemap/overlay GPU lifetime. Delete
+  the menu-only production bypass after six-face order/dimensions, selected/filter,
+  budget, blur strata, rollback, offscreen pixels and real index-30 live kick
+  diagnostics pass; do not add a title screen. Reopen after closure only when
+  the cube/overlay resource identity, screen-background order or GPU generation
+  contract changes.
 - **Title splash reload listener.** Vanilla `SplashManager.prepare` reads
   `minecraft:texts/splashes.txt`, but its only consumer is
   `TitleScreen.init` calling `Minecraft.getSplashManager().getSplash()`.
