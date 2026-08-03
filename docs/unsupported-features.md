@@ -142,13 +142,6 @@ Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
   externally unverified. Reopen when an account owner provisions an ephemeral
   legal credential pair and controlled Vanilla 26.1 online-mode server runner that
   redacts process/log material and can assert that complete sequence.
-- **Vanilla `SkinManager` trusted texture-set lifecycle is `active`.** The current
-  URL-only body cache discards the packed-property signature state, publishes
-  skin/cape/elytra independently, and clears retained CPU state at resource/session
-  edges. The frozen engineering contract in `goal.md` closes all eight generated
-  owners with Services `PROFILE_PROPERTY` verification, exact URL/cache identity,
-  all-of fallback and retained-image GPU re-publication before this matrix route can
-  become equivalent.
 - **Client persistence and secure-chat/social/reporting decisions remain `active`.**
   The census has not proven the 158 persistence owners or 21 security owners and
   their atomic recovery, online/offline service boundary and live consumer behavior.
@@ -297,7 +290,8 @@ Lifecycle invariants (not todos): vanilla, startup and server packs share one
 validated low-to-high selected stack and immutable generation; CPU consumers
 prepare from that stack, renderer/audio owners commit atomically, and control
 publishes source/priority/failure plus bounded dynamic-texture observations.
-Skin/cape/elytra requests share one exact resource/session-generation cache.
+Skin/cape/elytra requests share one process-lifetime CPU owner; resource/session
+generations only own GPU delivery and cannot force a second HTTP/cache resolver.
 
 - Synchronized custom block/entity registry identities are `not-needed`:
   Vanilla 26.1 `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` contains neither

@@ -281,47 +281,6 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
-### 当前 active 工程合同：Vanilla SkinManager 可信纹理集合生命周期
-
-单一目标：复刻 Vanilla 26.1 `SkinManager` 的八个 source-derived owner，把 profile
-property 信任判定、skin/cape/elytra 集合解析、bounded download/cache、默认皮肤 fallback
-和 GPU presentation 重建收敛为一个 `bbb-item-model` owner。远端 `PlayerInfo` 只接受
-Services `PROFILE_PROPERTY` key 验证为 signed 的集合；本地玩家和 profile item 保留
-insecure 可见性。完成时删除 URL-only cache、分离 cape/elytra resolver 和边沿清空 CPU cache。
-
-- Vanilla 依据：已重新核对 `SkinManager.{SkinManager,createLookup,get,registerTextures}`、
-  `SkinManager.TextureCache.{TextureCache,getOrLoad,registerTexture,getTextureLocation}`、
-  `SkinTextureDownloader`、`PlayerInfo.createSkinLookup/getSkin`、`PlayerSkinRenderCache`、
-  `PlayerSkin.with`、`DefaultPlayerSkin`；本地 authlib 7.0.63 class evidence 锁定
-  `SHA1withRSA`、`http|https` + 精确 `textures.minecraft.net`、URL basename hash 和两类 key。
-- 唯一 owner/API：`bbb-item-model::skin_runtime` 拥有 lookup key、三类 remote texture 状态、
-  下载/budget/disk identity/失败/presentation generation；`NativeItemRuntime` 只给出窄
-  lookup/drain/commit。net 准备 bounded key set，world 保留不可变 projection，native 传查询坐标
-  并在 render thread commit，renderer 只拥有 GPU atlas/handle。
-- 顺序/fallback：key 为 UUID + 完整 packed property；无签名为 unsigned，有签名但无匹配 key 或
-  非法 base64 为 invalid；远端 unsigned/invalid 直接用 UUID 默认皮肤且不发 HTTP。本地/profile
-  item 可显示 insecure。URL/JSON 非法或任一 download/decode/upload 失败时全集合不发布，pending
-  用默认皮肤；patch 只在完整 base 后覆盖并变为 insecure，pack 仍服从 generation/filter/fallback。
-- 生命周期/rollback：Services 两类 key 一次 bounded prepare 后跨 play、reconfiguration 和
-  transfer 保留；profile-result access TTL 15 秒，texture/disk identity 跨 session/reload 保留。
-  边沿只使 GPU projection 失效并从 retained CPU image 重交付；stale result 只写相同完整 key，
-  reload 失败保留上一 pack-backed generation。
-- identity/budget：按 authlib URL basename 去重，disk/resource id 使用 Guava
-  `hashUnencodedChars` 等价 SHA-1 分层路径，full URL 仍判冲突；保留 PNG、entry、queue、resident、
-  delivery byte 上限并增加 profile/key count/byte 上限；禁止 eager HTTP 和未验证域名请求。
-- 串行阶段：A 已完成只读调用链/Vanilla/authlib 审计并冻结本合同；B 扩展 Services key set 与
-  trust/domain/hash；C 建唯一 texture-set owner、迁移全部 caller 并删旧路径；D 接 native/GPU
-  重交付和 reload rollback；E focused/真实 acceptance、guard、Wiki/matrix/ledger、final gate。
-- focused tests：两类 key 预算，signed/unsigned/invalid，非法 URL，UUID+property/15 秒 TTL，disk
-  hash/path，三类去重，pending/all-of/failure fallback，local/remote/item trust，generation 重交付、
-  stale key、retained bytes，reload rollback；所有 player/HUD/skull/item caller 只走新 owner，并以
-  source guard 禁止 URL-only cache、分离 resolver 和 session CPU clear 恢复。
-- checkpoint/acceptance/停止：B 的跨 net/world trust contract和 D 的跨 item/native/renderer
-  lifetime 后 full gate，累计四提交和最终 HEAD 同样 gate。真实 acceptance 用 bounded RSA/HTTP
-  fixture 贯通 signed property→三类 PNG→GPU，并跑 offline Wayland/Vulkan playable 的 reload、
-  disconnect/quit；可无凭据取得公开 signed profile 时另跑不入库 smoke。只可在干净 gated、仍
-  active 且无双路径的 commit 停止；仅可复现的 Services/profile endpoint/GPU runner 缺失算 blocker。
-
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
 同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla

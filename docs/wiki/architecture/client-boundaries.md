@@ -64,6 +64,32 @@ failure 进入既有 `RuntimeFailure`/crash-report owner，超时会 abort 并 r
 startup failure 时的 abort safety net，不能替代 production `shutdown_and_join`；focused source guard
 锁定唯一调用点及 simulation→network→snapshot 顺序。
 
+<a id="profile-texture-trust-and-presentation"></a>
+
+## Profile texture 信任与 presentation
+
+`bbb-item-model::skin_runtime` 是 profile property、默认皮肤、skin/cape/elytra 集合和远端
+PNG CPU 生命周期的唯一 semantic owner。net 在连接前 bounded prepare Services 的
+`PROFILE_PROPERTY` key；world 只保存不可变 profile projection；native 传入“本地/远端”查询坐标，
+drain 已解码图像并在 render thread 回报 GPU commit；renderer 只拥有 atlas、handle 和当前
+presentation generation，不反向读取 profile、HTTP 或磁盘 cache。
+
+lookup key 使用 UUID 与完整 packed `textures` property。带签名 property 按 SHA-1/RSA 和 bounded
+Services key set 验证；远端 `PlayerInfo` 的 unsigned/invalid 集合直接使用 UUID 默认皮肤且不发
+HTTP，本地玩家与 profile item 可使用 insecure 集合。URL 只接受 `http|https` 和精确
+`textures.minecraft.net`，按 authlib basename 复用 type-specific texture，完整 URL 冲突则失败；
+磁盘 identity 使用 Guava `hashUnencodedChars` 等价 SHA-1。skin、cape、elytra 必须全部成功后才发布，
+任一 URL/download/decode/upload 失败都会使整个 base set 保持默认 fallback；pack-backed patch 仍从
+同一 immutable resource generation 查询并遵守 priority/filter。
+
+profile-result access cache 的 TTL 是 15 秒；bounded texture entry、decoded PNG 和磁盘 identity 属于
+进程生命周期。disconnect、transfer 或 resource generation 边沿只失效 renderer projection，保留的
+CPU 图像在新 generation 重交付而不重复 HTTP。resource reload 先完成所有 CPU/GPU/audio fallible
+prepare/commit，再把 process owner 移入新 `NativeItemRuntime`；失败时旧 generation 和其 texture owner
+完全不动。control counters 同时报告 profile-set/asset/key bytes 与 async queue/resident/delivery bytes；
+source guard 禁止恢复 URL-only skin cache、分离 cape/elytra resolver 或 generation-keyed CPU shadow
+cache。
+
 ## Fatal failure 与 crash report
 
 `bbb-native::crash_report` 是 fatal diagnostics 的唯一 owner。startup `Result`、main panic、
