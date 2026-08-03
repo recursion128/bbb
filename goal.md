@@ -422,10 +422,37 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。当前处于候选关闭后的 gate checkpoint；本 checkpoint 不启动另一项实现。
-`HEAD` 通过 full gate 与适用 live playable 后，才从唯一 ledger 的剩余候选按 rank 冻结下一份
-active 工程合同。若 gate 失败则只对当前提交 fix-forward；不存在把内部失败改记为外部 blocker
-的停止路径。
+状态：`active`。唯一 active 工程合同是 `arch-hud-item-resident-projection`：不改变 GUI
+item 像素、pack/model 选择或 GPU 生命周期，把 ordinary/special/composite HUD item 收敛为一份
+有序 immutable resident-layer projection。
+
+- Vanilla owner 是 `GuiGraphicsExtractor.item` → `ItemModelResolver.updateForTopItem`、
+  `CuboidItemModelWrapper`/`SpecialModelWrapper`/`CompositeModel.update` →
+  `ItemStackRenderState.submit` 与 `GuiRenderer.prepareItemElements`；GUI query context、model
+  identity、child layer 顺序、transform、lighting、foil 与 atlas reuse 均按本地 26.1 源码保持。
+- 唯一跨边界 projection 固定为 `HudBlockItemModel { layers, lighting, foil }`；geometry layer
+  显式携带 atlas、identity、geometry class、source、transform、tint，special layer 携带 model
+  与 transform。dependency 只允许 item/resource owner → native immutable projection → renderer
+  residency/GPU，renderer 不反向查询 item runtime、pack 或 terrain resolver。
+- ordinary quad fallback 仍使用当前 resource id、block atlas、GUI display transform 与 solid→
+  translucent phase；generated/special composite 仍使用 item atlas并保持 resolver layer 顺序。
+  selected/startup/server priority、filter、missing fallback、foil phase、full-bright、scissor 与
+  submit order 不变。
+- CPU projection 随 resource/world/input cache key 重建；frame 只提交不可变 layers。renderer
+  residency 继续拒绝 stale generation；完整 reload prepare/commit 失败保留上一 generation，
+  不新增 cache、双写或 compatibility branch。
+- 删除 `HudBlockItemModel.identity/quads/gui_display`、empty-layer compatibility sentinel、HUD
+  alternate resolver、`push_hud_block_item_instance` 和全部旧 shape constructor；公共结构只剩
+  单一 layer collection、lighting 与 foil。非目标是 item-model selector、terrain bake、shader、
+  atlas allocator、HUD layout、screen 或 renderer pipeline 行为。
+- 阶段：普通/复合 projection 统一→迁移全部 renderer/native/test caller→删除旧 branch/helper→
+  reverse guard/Wiki/ledger 收口。focused tests 覆盖普通 solid/translucent atlas/order/transform、
+  generated+special composite 顺序、bundle context、foil/scissor/full-bright、empty sanitize、
+  generation stale/rollback、offscreen hotbar/scissor pixels与旧字段/branch production 为零。
+- 受影响 native/renderer focused tests、真实本地 default resource item projection、GPU offscreen、
+  docs lint、fmt、diff check、workspace check 后正常提交；最终 full gate，表现路径适用时刷新
+  live playable。安全停止点仅为所有 caller 已迁移、旧 path 已删且可构建的干净 checkpoint；
+  只有现有本地 GPU/Wayland runner 可复现失败且代码无法消除才算 blocker。
 
 ### P1：可玩 Session 端到端门禁
 
