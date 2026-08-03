@@ -1326,6 +1326,46 @@ fn input_key_queues_request() {
 }
 
 #[test]
+fn input_text_queues_bounded_owned_request() {
+    let state = test_control_state();
+    let response = dispatch(
+        ControlRequest {
+            method: "input.text".to_string(),
+            params: json!({"text": "hello 中"}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::Text {
+            text: "hello 中".to_string(),
+        }]
+    );
+    assert!(
+        !dispatch(
+            ControlRequest {
+                method: "input.text".to_string(),
+                params: json!({}),
+            },
+            &state,
+        )
+        .ok
+    );
+    assert!(
+        !dispatch(
+            ControlRequest {
+                method: "input.text".to_string(),
+                params: json!({"text": "x".repeat(4097)}),
+            },
+            &state,
+        )
+        .ok
+    );
+}
+
+#[test]
 fn input_mouse_button_queues_request() {
     let state = test_control_state();
     let response = dispatch(

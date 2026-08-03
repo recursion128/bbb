@@ -242,6 +242,7 @@ struct NativeRenderEffectSink<'a> {
     player_reporting_narration: &'a mut ScreenNarrationRuntime,
     death_screen_narration: &'a mut ScreenNarrationRuntime,
     disconnected_screen_narration: &'a mut ScreenNarrationRuntime,
+    chat_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
@@ -446,6 +447,18 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     }
                 };
                 self.disconnected_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::ChatScreenInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.chat_screen_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::ChatNarration { kind, text } => {
@@ -920,6 +933,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut player_reporting_narration = ScreenNarrationRuntime::default();
     let mut death_screen_narration = ScreenNarrationRuntime::default();
     let mut disconnected_screen_narration = ScreenNarrationRuntime::default();
+    let mut chat_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
     let mut platform_exit_requested = false;
@@ -1079,6 +1093,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                     player_reporting_narration: &mut player_reporting_narration,
                     death_screen_narration: &mut death_screen_narration,
                     disconnected_screen_narration: &mut disconnected_screen_narration,
+                    chat_screen_narration: &mut chat_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
                         .as_mut()
@@ -1169,7 +1184,9 @@ fn run_client(args: startup::Args) -> Result<()> {
             || hud_player_list_narration_from_world(published_world, item_runtime.as_ref()),
         );
         narrate_command_suggestion_change(
-            render_publication.input.command_suggestion_narration(),
+            (!published_input.chat_entry_is_active())
+                .then(|| render_publication.input.command_suggestion_narration())
+                .flatten(),
             &mut last_command_suggestion_narration,
             item_runtime.as_ref(),
             narrator_runtime
@@ -1386,6 +1403,13 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .is_some()
                             .then(|| hud_render_runtime.disconnected_screen_narration())
                             .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    chat_screen_narration.tick(
+                        hud_render_runtime.chat_screen_narration(),
                         Instant::now(),
                         narrator_runtime
                             .as_mut()

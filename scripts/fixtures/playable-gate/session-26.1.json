@@ -24,12 +24,26 @@
  "chat_interaction": {
   "chat_command_commands_delta": 1,
   "chat_message_commands_delta": 1,
+  "command_status_observed": true,
   "command_echoed": true,
+  "draft_restored": true,
   "duration_seconds": 1.5,
+  "history_restored": true,
+  "input_path": true,
   "message": "bbb gate chat probe",
   "message_echoed": true,
+  "message_status_observed": true,
   "server_logged_emote": true,
   "server_logged_message": true
+ },
+ "chat_restriction": {
+  "blocked_message_not_sent": true,
+  "commands_allowed": true,
+  "messages_allowed": false,
+  "restricted_prompt_reachable": true,
+  "screen": "chat",
+  "status_observed": true,
+  "visibility": "system"
  },
  "client_locale": "en_us",
  "container_interaction": {

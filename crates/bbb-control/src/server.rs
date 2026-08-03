@@ -49,6 +49,7 @@ pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
             version: version.into(),
             running: true,
             disconnected_screen: None,
+            chat_screen: None,
         },
         ..ControlSnapshot::default()
     }))
@@ -545,7 +546,8 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 result: None,
                 error: Some(
                     "input.key requires param key in \
-                     forward/backward/left/right/jump/sneak/sprint/hotbar1-9/inventory"
+                     forward/backward/left/right/jump/sneak/sprint/hotbar1-9/inventory/\
+                     chat/command/enter/escape/up/down/page_up/page_down/backspace"
                         .to_string(),
                 ),
             };
@@ -560,6 +562,47 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         let pending = submit_control!(
             state,
             ControlWriteRequest::Input(InputControlRequest::Key { key, pressed })
+        );
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": pending
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "input.text" {
+        const MAX_INPUT_TEXT_UTF16_UNITS: usize = 4_096;
+        const MAX_INPUT_TEXT_BYTES: usize = MAX_INPUT_TEXT_UTF16_UNITS * 4;
+        let Some(text) = string_param(&request.params, "text") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("input.text requires string param text".to_string()),
+            };
+        };
+        if text.len() > MAX_INPUT_TEXT_BYTES
+            || text
+                .encode_utf16()
+                .take(MAX_INPUT_TEXT_UTF16_UNITS + 1)
+                .count()
+                > MAX_INPUT_TEXT_UTF16_UNITS
+        {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(format!(
+                    "input.text text exceeds {MAX_INPUT_TEXT_UTF16_UNITS} UTF-16 units"
+                )),
+            };
+        }
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::Text {
+                text: text.to_string(),
+            })
         );
         return ControlResponse {
             ok: true,

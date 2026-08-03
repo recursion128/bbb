@@ -480,6 +480,18 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             return;
         }
+        if context.input.chat_restrictions_screen_is_open() {
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::MouseMove,
+            ));
+            self.request_cursor_capture(false, context.platform);
+            return;
+        }
+        if context.input.chat_entry_is_active() {
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::MouseMove,
+            ));
+        }
         if self.code_of_conduct_overlay.handle_cursor_moved(
             context.world,
             previous_cursor_position,
@@ -697,6 +709,27 @@ impl SimulationInputRuntime {
             }
             return;
         }
+        if context.input.chat_restrictions_screen_is_open() {
+            self.request_cursor_capture(false, context.platform);
+            handle_key_input_with_item_runtime(
+                context.input,
+                context.net_counters,
+                context.world,
+                context.net_commands,
+                context.item_runtime.as_ref(),
+                physical_key,
+                state,
+                self.surface_size,
+                &self.text_measurements,
+                None,
+            );
+            if matches!(state, ElementState::Pressed) {
+                context.platform.submit(PlatformEffect::ChatScreenInput(
+                    ScreenNarrationScheduleInput::KeyboardAction,
+                ));
+            }
+            return;
+        }
         if self.code_of_conduct_overlay.is_visible(context.world) {
             let overlay_input = self.code_of_conduct_overlay.handle_key_input(
                 context.world,
@@ -892,6 +925,7 @@ impl SimulationInputRuntime {
         }
         flush_platform_effects(&queued_effects, context.platform);
 
+        let chat_screen_was_open = context.input.chat_entry_is_active();
         let container_open = context.world.open_container_id().is_some();
         let recipe_book_open = recipe_book_screen_is_open(context.world);
         let dialog_open = context.world.dialog_screen_is_open();
@@ -1013,6 +1047,13 @@ impl SimulationInputRuntime {
             &self.text_measurements,
             Some(&mut clipboard),
         );
+        if matches!(state, ElementState::Pressed)
+            && (chat_screen_was_open || context.input.chat_entry_is_active())
+        {
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
         flush_platform_effects(&queued_effects, context.platform);
         if !social_interactions_open
             && context.world.social_interactions_screen().is_some()
@@ -1204,6 +1245,7 @@ impl SimulationInputRuntime {
     }
 
     fn apply_ime_commit(&mut self, text: &str, context: &mut SimulationInputContext<'_, '_, '_>) {
+        let chat_screen_was_open = context.input.chat_entry_is_active();
         context.input.clear_dialog_ime_preedit();
         context.input.clear_sign_editor_ime_preedit();
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -1308,6 +1350,11 @@ impl SimulationInputRuntime {
             text,
             &self.text_measurements,
         );
+        if chat_screen_was_open || context.input.chat_entry_is_active() {
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
         if recipe_book_screen_is_open(context.world) {
             context.platform.submit(PlatformEffect::RecipeBookInput(
                 ScreenNarrationScheduleInput::KeyboardAction,
@@ -1348,6 +1395,9 @@ impl SimulationInputRuntime {
             if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
                 self.apply_chat_hit_target(chat_target, context);
             }
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::MouseAction,
+            ));
             return;
         }
         if self.code_of_conduct_overlay.is_visible(context.world) {
@@ -1647,6 +1697,9 @@ impl SimulationInputRuntime {
         }
         if context.input.command_entry_is_active() {
             self.request_cursor_capture(false, context.platform);
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::MouseAction,
+            ));
             if context.input.handle_command_suggestion_mouse_input(
                 context.world,
                 button,
@@ -2133,6 +2186,12 @@ impl SimulationInputRuntime {
         request: InputControlRequest,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        let narrates_chat = matches!(
+            &request,
+            InputControlRequest::Text { .. } | InputControlRequest::Key { pressed: true, .. }
+        );
+        let chat_screen_was_open = context.input.chat_entry_is_active()
+            || context.input.chat_restrictions_screen_is_open();
         apply_control_input_request_with_effects(
             request,
             context.input,
@@ -2147,6 +2206,15 @@ impl SimulationInputRuntime {
             context.level_random,
             context.audio_events,
         );
+        if narrates_chat
+            && (chat_screen_was_open
+                || context.input.chat_entry_is_active()
+                || context.input.chat_restrictions_screen_is_open())
+        {
+            context.platform.submit(PlatformEffect::ChatScreenInput(
+                ScreenNarrationScheduleInput::KeyboardAction,
+            ));
+        }
     }
 
     fn request_cursor_capture(

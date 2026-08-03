@@ -764,11 +764,27 @@ pub(crate) struct ClientInputState {
 /// Gameplay movement accumulators, outbound request queues, click timing, and
 /// crash/query state remain owned only by the simulation-side input owner.
 #[derive(Debug, Clone)]
-pub(crate) struct RenderInputPublication(ClientInputState);
+pub(crate) struct RenderInputPublication {
+    state: ClientInputState,
+    recent_chat_count: usize,
+    has_latest_chat_draft: bool,
+    save_chat_drafts: bool,
+}
 
 impl RenderInputPublication {
     pub(crate) fn as_state(&self) -> &ClientInputState {
-        &self.0
+        &self.state
+    }
+
+    pub(crate) fn chat_screen_status(
+        &self,
+        visibility: bbb_world::ChatVisibilityState,
+    ) -> Option<bbb_control::ChatScreenStatus> {
+        let mut status = self.state.chat_screen_status(visibility)?;
+        status.recent_count = self.recent_chat_count;
+        status.has_latest_draft = self.has_latest_chat_draft;
+        status.save_chat_drafts = self.save_chat_drafts;
+        Some(status)
     }
 }
 
@@ -1389,7 +1405,7 @@ impl ClientInputState {
     /// state, and query transactions remain private to the mutable simulation
     /// owner and therefore cannot add heap work to every publication.
     pub(crate) fn render_publication(&self) -> RenderInputPublication {
-        RenderInputPublication(Self {
+        let state = Self {
             focused: self.focused,
             shift_left_down: self.shift_left_down,
             shift_right_down: self.shift_right_down,
@@ -1476,6 +1492,7 @@ impl ClientInputState {
             merchant_focused_trade_row: self.merchant_focused_trade_row,
             chat_entry: self.chat_entry.clone(),
             chat_scroll_lines: self.chat_scroll_lines,
+            chat_restrictions_screen: self.chat_restrictions_screen.clone(),
             structure_block_editor: self.structure_block_editor.clone(),
             jigsaw_block_editor: self.jigsaw_block_editor.clone(),
             test_block_editor: self.test_block_editor.clone(),
@@ -1488,7 +1505,13 @@ impl ClientInputState {
             player_reporting: self.player_reporting.clone(),
             social_interactions: self.social_interactions.clone(),
             ..Self::default()
-        })
+        };
+        RenderInputPublication {
+            state,
+            recent_chat_count: self.recent_chat.len(),
+            has_latest_chat_draft: self.latest_chat_draft.is_some(),
+            save_chat_drafts: self.save_chat_drafts,
+        }
     }
 
     pub(crate) fn dialog_mouse_click_is_double(
@@ -2395,6 +2418,50 @@ impl ClientInputState {
                 ChatEntryOwner::CommandBlock(_) | ChatEntryOwner::MinecartCommandBlock(_) => None,
             })
             .unwrap_or_default()
+    }
+
+    pub(crate) fn chat_screen_status(
+        &self,
+        visibility: bbb_world::ChatVisibilityState,
+    ) -> Option<bbb_control::ChatScreenStatus> {
+        let (entry, generation, screen) =
+            if let Some(restrictions) = self.chat_restrictions_screen.as_ref() {
+                (
+                    &restrictions.previous,
+                    restrictions.generation,
+                    bbb_control::ChatScreenControlKind::Restrictions,
+                )
+            } else {
+                let entry = self.chat_entry.as_ref()?;
+                let ChatEntryOwner::Chat(chat) = &entry.owner else {
+                    return None;
+                };
+                (
+                    entry,
+                    chat.revision,
+                    bbb_control::ChatScreenControlKind::Chat,
+                )
+            };
+        let ChatEntryOwner::Chat(chat) = &entry.owner else {
+            return None;
+        };
+        Some(bbb_control::ChatScreenStatus {
+            generation,
+            screen,
+            method: match chat.method {
+                ChatMethod::Message => bbb_control::ChatMethodControl::Message,
+                ChatMethod::Command => bbb_control::ChatMethodControl::Command,
+            },
+            input_utf16_units: entry.text.encode_utf16().count(),
+            input_text: entry.text.clone(),
+            draft: chat.is_draft,
+            history_position: chat.history_pos,
+            recent_count: self.recent_chat.len(),
+            has_latest_draft: self.latest_chat_draft.is_some(),
+            save_chat_drafts: self.save_chat_drafts,
+            can_send_messages: visibility == bbb_world::ChatVisibilityState::Full,
+            can_send_commands: visibility != bbb_world::ChatVisibilityState::Hidden,
+        })
     }
 
     pub(crate) fn insert_chat_screen_text(
@@ -12004,6 +12071,17 @@ pub(crate) fn handle_key_input_with_item_runtime(
                     counters,
                     net_commands,
                     ChatMethod::Message,
+                    true,
+                );
+                return;
+            }
+            KeyCode::Slash => {
+                open_chat_entry(
+                    input,
+                    world,
+                    counters,
+                    net_commands,
+                    ChatMethod::Command,
                     true,
                 );
                 return;

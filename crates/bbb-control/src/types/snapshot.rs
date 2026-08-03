@@ -16,6 +16,8 @@ pub struct AppStatus {
     pub running: bool,
     #[serde(default)]
     pub disconnected_screen: Option<DisconnectedScreenStatus>,
+    #[serde(default)]
+    pub chat_screen: Option<ChatScreenStatus>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,6 +29,39 @@ pub struct DisconnectedScreenStatus {
     pub reason_truncated: bool,
     pub report_to_server_available: bool,
     pub report_directory_available: bool,
+}
+
+/// Bounded immutable view of the native-owned ChatScreen lifecycle. Recent
+/// messages and draft contents remain private; control receives only the
+/// currently displayed edit value and scalar process-lifetime diagnostics.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatScreenStatus {
+    pub generation: u64,
+    pub screen: ChatScreenControlKind,
+    pub method: ChatMethodControl,
+    pub input_text: String,
+    pub input_utf16_units: usize,
+    pub draft: bool,
+    pub history_position: usize,
+    pub recent_count: usize,
+    pub has_latest_draft: bool,
+    pub save_chat_drafts: bool,
+    pub can_send_messages: bool,
+    pub can_send_commands: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatScreenControlKind {
+    Chat,
+    Restrictions,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatMethodControl {
+    Message,
+    Command,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -146,7 +181,7 @@ pub enum NetControlRequest {
 /// replayed through the exact native handlers real window events use
 /// (`handle_key_input` / `handle_mouse_motion`), so focus, screen and sprint
 /// side effects stay on the canonical input path.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum InputControlRequest {
     Focus {
@@ -155,6 +190,9 @@ pub enum InputControlRequest {
     Key {
         key: InputKeyControl,
         pressed: bool,
+    },
+    Text {
+        text: String,
     },
     LookDelta {
         dx: f64,
@@ -192,6 +230,7 @@ impl ControlWriteRequest {
         let dynamic = match self {
             Self::Screenshot { path } => path.capacity(),
             Self::Net(request) => net_control_request_retained_bytes(request),
+            Self::Input(InputControlRequest::Text { text }) => text.capacity(),
             Self::Shutdown | Self::CodeOfConduct(_) | Self::Input(_) => 0,
         };
         std::mem::size_of::<Self>().saturating_add(dynamic)
@@ -336,6 +375,15 @@ pub enum InputKeyControl {
     Hotbar8,
     Hotbar9,
     Inventory,
+    Chat,
+    Command,
+    Enter,
+    Escape,
+    Up,
+    Down,
+    PageUp,
+    PageDown,
+    Backspace,
 }
 
 impl InputKeyControl {
@@ -358,6 +406,15 @@ impl InputKeyControl {
             "hotbar8" => Some(Self::Hotbar8),
             "hotbar9" => Some(Self::Hotbar9),
             "inventory" => Some(Self::Inventory),
+            "chat" => Some(Self::Chat),
+            "command" => Some(Self::Command),
+            "enter" => Some(Self::Enter),
+            "escape" => Some(Self::Escape),
+            "up" => Some(Self::Up),
+            "down" => Some(Self::Down),
+            "page_up" => Some(Self::PageUp),
+            "page_down" => Some(Self::PageDown),
+            "backspace" => Some(Self::Backspace),
             _ => None,
         }
     }
@@ -579,6 +636,7 @@ impl ControlState {
                     version: version.into(),
                     running: true,
                     disconnected_screen: None,
+                    chat_screen: None,
                 },
                 ..ControlSnapshot::default()
             })),
@@ -660,6 +718,14 @@ mod tests {
         assert_eq!(
             empty.retained_logical_bytes(),
             std::mem::size_of::<ControlWriteRequest>()
+        );
+
+        let mut text = String::with_capacity(64);
+        text.push_str("chat");
+        let text_request = ControlWriteRequest::Input(InputControlRequest::Text { text });
+        assert_eq!(
+            text_request.retained_logical_bytes(),
+            std::mem::size_of::<ControlWriteRequest>() + 64
         );
     }
 

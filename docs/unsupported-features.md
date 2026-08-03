@@ -106,21 +106,6 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
 `ui-pause-screen-surface`
 
-- **The 25-owner `ChatScreen` decision surface is `active`.** The generated
-  inventory maps every `ChatScreen` method, and the existing native path owns
-  bounded 256-UTF-16 editing, command suggestions, message hit testing and
-  packet send, but `ClientInputState` has no recent/draft/history/exit-reason
-  owner, visibility restrictions do not prevent send, focus/screen replacement
-  can discard interrupted input, and the render projection drops inherited
-  `Style.insertion`, restricted prompt/info and ChatScreen narration. Close the
-  active goal contract only when one process-lifetime native owner supplies all
-  edit/history/draft/permission decisions, every production caller is migrated,
-  normal versus Shift component clicks and stale targets are proved, renderer
-  and narration consume bounded immutable projections, and UI-driven live
-  message/command plus machine-readable draft/history/restriction evidence pass.
-  In-game chat settings, launcher/profile policy inputs and disk command-history
-  persistence remain outside this slice under their existing product/ledger
-  owners; they must not become a second ChatScreen resolver.
 - **The 16-owner `DeathScreen` decision surface is `active`.** Audit delay,
   respawn, hardcore/quit, clickable cause, link confirmation, narration and
   render lifecycle against the existing death-screen owner; close only with

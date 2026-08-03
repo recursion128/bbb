@@ -1,6 +1,7 @@
 import argparse
 import copy
 import importlib.util
+import inspect
 import json
 import re
 import socket
@@ -320,6 +321,33 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
             playable_gate.GateFailure, "chat_message_commands_delta"
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_direct_chat_bypass_without_screen_status_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["chat_interaction"]["input_path"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "chat_interaction.input_path"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_restricted_chat_machine_status_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["chat_restriction"]["blocked_message_not_sent"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure,
+            "chat_restriction.blocked_message_not_sent",
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_live_chat_driver_cannot_restore_direct_net_send_bypass(self):
+        source = inspect.getsource(playable_gate.drive_chat_interaction)
+        self.assertIn('"input.text"', inspect.getsource(playable_gate._input_text))
+        self.assertIn('_tap_key(address, "chat")', source)
+        self.assertIn('_tap_key(address, "command")', source)
+        self.assertNotIn("net.send_chat_message", source)
+        self.assertNotIn("_send_chat_command", source)
 
     def test_missing_hotbar_interaction_section_fails(self):
         evidence = copy.deepcopy(self.fixture)

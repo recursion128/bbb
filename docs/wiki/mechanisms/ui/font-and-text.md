@@ -52,6 +52,22 @@ glyph。默认 options 为 `uniform=false`、`jp=false`。
 definition 与 unihex ZIP 不再经过字体专用 indexed fallback；它们和 language/sound 一样
 只使用默认 `vanilla` pack 所在的共享 stack。
 
+### ChatScreen 文本与生命周期 owner
+
+`ui-chat-screen-surface` 的唯一可变 owner 是 simulation `ClientInputState`：它持有
+MESSAGE/COMMAND、256 UTF-16 edit value、recent≤100、latest draft、history buffer/position、
+exit reason 与 restriction previous-screen state。Full/System/Hidden 权限只从同 generation
+`ChatPresentationConfig.visibility` 查询；普通 component click 重新解析 canonical click event，
+Shift click 只插入 inherited `Style.insertion`，两者都校验 level/delivery/resource/screen revision。
+
+renderer 只接收 bounded rich runs、draft style、restricted prompt/screen 和 hit target，不持有
+click/insertion payload；control `input.key`/`input.text` 重放同一 key/IME handler，并从 immutable
+simulation generation 发布当前 edit value 与 scalar history/draft/permission 状态。screen narration
+复用统一 delayed `ScreenNarrationRuntime`。RestrictionsScreen 返回时恢复原 ChatScreen；其他
+screen replacement 以 INTERRUPTED 收口，成功提交以 DONE 收口，失败提交保留当前 generation。
+playable live gate 禁止 `net.send_chat_*` 捷径，并分别验证 Full 的 draft/history/message/command
+roundtrip 与 System 的 blocked-message/allowed-command machine status。
+
 ## Vanilla/BBB 对照
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
@@ -70,6 +86,7 @@ definition 与 unihex ZIP 不再经过字体专用 indexed fallback；它们和 
 - first-provider-wins 不得被 HashMap iteration 或 atlas packing 顺序改变。
 - unihex codepoint、line width、ZIP entries、expanded bytes 与 atlas size 都有上限。
 - 所有消费者使用同一 glyph metrics；不能为 CJK 单独硬编码宽度。
+- ChatScreen renderer/control 不得恢复独立 edit、permission、click 或 recent/draft owner。
 
 ## 聚焦测试（focused tests）和真实证据
 

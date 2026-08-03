@@ -197,6 +197,8 @@ status_raw_json="$artifact_dir/status-raw.json"
 probe_json="$artifact_dir/probe.json"
 evidence_json="$artifact_dir/evidence.json"
 termination_json="$artifact_dir/termination.json"
+restricted_client_log="$artifact_dir/restricted-client.log"
+chat_restriction_json="$artifact_dir/chat-restriction.json"
 server_command="$artifact_dir/server-command.fifo"
 transfer_server_command="$artifact_dir/transfer-server-command.fifo"
 server_pack_dir="$artifact_dir/server-pack-http"
@@ -212,11 +214,18 @@ control_port=${BBB_PLAYABLE_CONTROL_PORT:-}
 if [ -z "$control_port" ]; then
   control_port=$(run_python reserve-port)
 fi
+restricted_control_port=$(run_python reserve-port)
+while [ "$restricted_control_port" = "$server_port" ] ||
+  [ "$restricted_control_port" = "$control_port" ]
+do
+  restricted_control_port=$(run_python reserve-port)
+done
 transfer_server_port=${BBB_PLAYABLE_TRANSFER_PORT:-}
 if [ -z "$transfer_server_port" ]; then
   transfer_server_port=$(run_python reserve-port)
   while [ "$transfer_server_port" = "$server_port" ] ||
-    [ "$transfer_server_port" = "$control_port" ]
+    [ "$transfer_server_port" = "$control_port" ] ||
+    [ "$transfer_server_port" = "$restricted_control_port" ]
   do
     transfer_server_port=$(run_python reserve-port)
   done
@@ -224,6 +233,7 @@ fi
 server_pack_port=$(run_python reserve-port)
 while [ "$server_pack_port" = "$server_port" ] ||
   [ "$server_pack_port" = "$control_port" ] ||
+  [ "$server_pack_port" = "$restricted_control_port" ] ||
   [ "$server_pack_port" = "$transfer_server_port" ]
 do
   server_pack_port=$(run_python reserve-port)
@@ -242,12 +252,15 @@ exec 3<>"$server_command"
 exec 4<>"$transfer_server_command"
 if [ "$server_port" = "$control_port" ] ||
   [ "$server_port" = "$transfer_server_port" ] ||
-  [ "$control_port" = "$transfer_server_port" ]
+  [ "$control_port" = "$transfer_server_port" ] ||
+  [ "$restricted_control_port" = "$server_port" ] ||
+  [ "$restricted_control_port" = "$control_port" ] ||
+  [ "$restricted_control_port" = "$transfer_server_port" ]
 then
   echo "playable gate: server, transfer-server, and control ports must differ" >&2
   exit 2
 fi
-for playable_port in "$server_port" "$transfer_server_port" "$control_port"; do
+for playable_port in "$server_port" "$transfer_server_port" "$control_port" "$restricted_control_port"; do
   case "$playable_port" in
     ''|*[!0-9]*|0)
       echo "playable gate: ports must be positive integers" >&2
@@ -303,10 +316,11 @@ printf 'eula=true\n' >"$transfer_server_dir/eula.txt"
 server_pid=
 transfer_server_pid=
 client_pid=
+restricted_client_pid=
 server_pack_http_pid=
 cleanup() {
   trap - 0 HUP INT TERM
-  for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
+  for pid in "$client_pid" "$restricted_client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
       kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
     fi
@@ -314,7 +328,7 @@ cleanup() {
   remaining=5
   while [ "$remaining" -gt 0 ]; do
     any_running=false
-    for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
+    for pid in "$client_pid" "$restricted_client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
       if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
         any_running=true
       fi
@@ -325,7 +339,7 @@ cleanup() {
     sleep 1
     remaining=$((remaining - 1))
   done
-  for pid in "$client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
+  for pid in "$client_pid" "$restricted_client_pid" "$server_pid" "$transfer_server_pid" "$server_pack_http_pid"; do
     if [ -n "$pid" ]; then
       if kill -0 "$pid" 2>/dev/null; then
         kill -KILL -"$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
@@ -440,6 +454,7 @@ RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
     --server-resource-pack-policy accept \
     --server-resource-pack-cache-dir "$server_pack_cache" \
     --client-locale "$client_locale" \
+    --client-save-chat-drafts true \
     --client-vsync false \
     --client-framerate-limit 30 \
     </dev/null >"$client_log" 2>&1 &
@@ -467,6 +482,56 @@ then
   echo "playable gate evidence: transfer server log: $transfer_server_log" >&2
   exit 1
 fi
+
+echo "playable gate: launching system-visibility ChatScreen acceptance client"
+RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
+  setsid "$client_bin" \
+    --server "127.0.0.1:$server_port" \
+    --username bbb-restricted \
+    --connect-server \
+    --control "127.0.0.1:$restricted_control_port" \
+    --server-resource-pack-policy decline \
+    --client-locale "$client_locale" \
+    --client-chat-visibility system \
+    --client-vsync false \
+    --client-framerate-limit 30 \
+    </dev/null >"$restricted_client_log" 2>&1 &
+restricted_client_pid=$!
+if ! run_python collect-chat-restriction \
+  --control "127.0.0.1:$restricted_control_port" \
+  --timeout "$timeout_seconds" \
+  --output "$chat_restriction_json"
+then
+  echo "playable gate evidence: restricted client log: $restricted_client_log" >&2
+  exit 1
+fi
+remaining=$timeout_seconds
+while kill -0 "$restricted_client_pid" 2>/dev/null && [ "$remaining" -gt 0 ]; do
+  restricted_state=$(ps -o stat= -p "$restricted_client_pid" 2>/dev/null || true)
+  case "$restricted_state" in
+    *Z*) break ;;
+  esac
+  sleep 1
+  remaining=$((remaining - 1))
+done
+if kill -0 "$restricted_client_pid" 2>/dev/null; then
+  restricted_state=$(ps -o stat= -p "$restricted_client_pid" 2>/dev/null || true)
+  case "$restricted_state" in
+    *Z*) ;;
+    *)
+      echo "playable gate failed: restricted client did not exit after app.quit" >&2
+      exit 1
+      ;;
+  esac
+fi
+if ! wait "$restricted_client_pid"; then
+  echo "playable gate failed: restricted client exited unsuccessfully" >&2
+  exit 1
+fi
+restricted_client_pid=
+run_python merge-chat-restriction \
+  --evidence "$evidence_json" \
+  --restriction "$chat_restriction_json"
 
 run_python assert \
   --evidence "$evidence_json" \

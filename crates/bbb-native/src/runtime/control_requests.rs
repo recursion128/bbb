@@ -29,7 +29,7 @@ use crate::{
     input::{
         handle_focus_change, handle_key_input_with_item_runtime,
         handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
-        ClientInputState,
+        handle_text_input_with_item_runtime, ClientInputState,
     },
     runtime::LevelEventSoundRandomState,
     NativeItemRuntime,
@@ -98,6 +98,17 @@ pub(crate) fn apply_control_input_request_with_effects(
                 surface_size,
                 &crate::input::FallbackTextMeasurer,
                 None,
+            );
+        }
+        InputControlRequest::Text { text } => {
+            handle_text_input_with_item_runtime(
+                input,
+                counters,
+                world,
+                net_commands,
+                item_runtime,
+                &text,
+                &crate::input::FallbackTextMeasurer,
             );
         }
         InputControlRequest::LookDelta { dx, dy } => {
@@ -191,6 +202,15 @@ fn input_key_code(key: InputKeyControl) -> KeyCode {
         InputKeyControl::Hotbar8 => KeyCode::Digit8,
         InputKeyControl::Hotbar9 => KeyCode::Digit9,
         InputKeyControl::Inventory => KeyCode::KeyE,
+        InputKeyControl::Chat => KeyCode::KeyT,
+        InputKeyControl::Command => KeyCode::Slash,
+        InputKeyControl::Enter => KeyCode::Enter,
+        InputKeyControl::Escape => KeyCode::Escape,
+        InputKeyControl::Up => KeyCode::ArrowUp,
+        InputKeyControl::Down => KeyCode::ArrowDown,
+        InputKeyControl::PageUp => KeyCode::PageUp,
+        InputKeyControl::PageDown => KeyCode::PageDown,
+        InputKeyControl::Backspace => KeyCode::Backspace,
     }
 }
 
@@ -751,6 +771,142 @@ mod tests {
 
         assert!(requests.lock().unwrap().input_requests.is_empty());
         assert!(world.inventory().local_inventory_open);
+    }
+
+    #[test]
+    fn control_text_production_has_one_native_handler_and_no_chat_net_bypass() {
+        let source = include_str!("control_requests.rs");
+        let production = source
+            .split_once("#[cfg(test)]\nmod tests")
+            .expect("test module boundary")
+            .0;
+        let text_arm = production
+            .split_once("InputControlRequest::Text { text } => {")
+            .expect("text input arm")
+            .1
+            .split_once("InputControlRequest::LookDelta")
+            .expect("following input arm")
+            .0;
+        assert_eq!(
+            text_arm
+                .matches("handle_text_input_with_item_runtime(")
+                .count(),
+            1
+        );
+        assert!(!text_arm.contains("queue_chat_message_command"));
+        assert!(!text_arm.contains("queue_chat_command"));
+    }
+
+    #[test]
+    fn pump_control_chat_text_and_history_use_the_real_screen_handlers() {
+        let requests = TestControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            for request in [
+                InputControlRequest::Key {
+                    key: InputKeyControl::Chat,
+                    pressed: true,
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Chat,
+                    pressed: false,
+                },
+                InputControlRequest::Text {
+                    text: "history message".to_string(),
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Enter,
+                    pressed: true,
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Enter,
+                    pressed: false,
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Chat,
+                    pressed: true,
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Chat,
+                    pressed: false,
+                },
+                InputControlRequest::Key {
+                    key: InputKeyControl::Up,
+                    pressed: true,
+                },
+            ] {
+                guard.input_requests.push(request);
+            }
+        }
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        let status = input
+            .chat_screen_status(world.chat_presentation_config().visibility)
+            .expect("reopened chat screen");
+        assert_eq!(status.screen, bbb_control::ChatScreenControlKind::Chat);
+        assert_eq!(status.input_text, "history message");
+        assert_eq!(status.input_utf16_units, 15);
+        assert_eq!(status.history_position, 0);
+        assert_eq!(status.recent_count, 1);
+        assert!(!status.draft);
+    }
+
+    #[test]
+    fn pump_control_command_key_opens_slash_entry_through_the_real_handler() {
+        let requests = TestControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Command,
+                pressed: true,
+            });
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Command,
+                pressed: false,
+            });
+            guard.input_requests.push(InputControlRequest::Text {
+                text: "me proof".to_string(),
+            });
+        }
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        let status = input
+            .chat_screen_status(world.chat_presentation_config().visibility)
+            .expect("slash command entry");
+        assert_eq!(status.method, bbb_control::ChatMethodControl::Command);
+        assert_eq!(status.input_text, "/me proof");
     }
 
     #[test]

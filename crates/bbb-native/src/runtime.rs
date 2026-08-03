@@ -672,6 +672,7 @@ pub(crate) struct HudRenderRuntime {
     social_interactions_narration: Option<ScreenNarrationFrame>,
     player_reporting_narration: Option<ScreenNarrationFrame>,
     disconnected_screen_narration: Option<ScreenNarrationFrame>,
+    chat_screen_narration: Option<ScreenNarrationFrame>,
     death_screen_narration: Option<ScreenNarrationFrame>,
     game_event_screen_narration: Option<ScreenNarrationFrame>,
     win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
@@ -822,6 +823,10 @@ impl HudRenderRuntime {
 
     pub(crate) fn disconnected_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.disconnected_screen_narration.as_ref()
+    }
+
+    pub(crate) fn chat_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.chat_screen_narration.as_ref()
     }
 
     fn win_screen_lines(
@@ -3623,6 +3628,8 @@ pub(crate) fn update_renderer_from_publication(
         death_screen_narration_frame(input, world, item_runtime);
     hud_render_runtime.disconnected_screen_narration =
         disconnected_screen_narration_frame(input, item_runtime);
+    hud_render_runtime.chat_screen_narration =
+        chat_screen_narration_frame(input, world, item_runtime);
     hud_render_runtime.social_interactions_narration = hud_social_interactions_screen
         .is_some()
         .then(|| social_interactions_narration_frame(input, world, item_runtime))
@@ -6310,6 +6317,86 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn chat_screen_narration_frame(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<ScreenNarrationFrame> {
+    let status = input.chat_screen_status(world.chat_presentation_config().visibility)?;
+    if status.screen == bbb_control::ChatScreenControlKind::Restrictions {
+        let screen = hud_chat_restrictions_screen(input, world, item_runtime, None)?;
+        let mut frame = ScreenNarrationFrame::default();
+        frame.add(NarratedElementKind::Title, 0, screen.title);
+        frame.add(NarratedElementKind::Hint, 0, screen.reason.text);
+        frame.add(
+            NarratedElementKind::Hint,
+            1,
+            screen
+                .permissions
+                .iter()
+                .map(|permission| permission.text.as_str())
+                .collect::<Vec<_>>()
+                .join(". "),
+        );
+        add_game_event_button_narration(&mut frame, item_runtime, &screen.done, 1, 1);
+        return Some(frame);
+    }
+
+    let mut frame = ScreenNarrationFrame::default();
+    frame.add(
+        NarratedElementKind::Title,
+        0,
+        localized_gui_text(item_runtime, "chat_screen.title", "Chat screen"),
+    );
+    let usage = localized_gui_text(
+        item_runtime,
+        "chat_screen.usage",
+        "Input message and press Enter to send",
+    );
+    let usage = if status.can_send_messages && status.can_send_commands {
+        usage
+    } else {
+        [
+            usage,
+            localized_gui_text(
+                item_runtime,
+                "chat_screen.restricted.narration",
+                "Chat is restricted. Go to the Restrictions screen in World Options.",
+            ),
+        ]
+        .join(". ")
+    };
+    frame.add(NarratedElementKind::Usage, 0, usage);
+    if !status.input_text.is_empty() {
+        frame.add(
+            NarratedElementKind::Title,
+            1,
+            localized_gui_text_with_args(
+                item_runtime,
+                "chat_screen.message",
+                "Message to send: %1$s",
+                &[&status.input_text],
+            ),
+        );
+    }
+    let edit_box_label = localized_gui_text(item_runtime, "chat.editBox", "chat");
+    let mut edit_box = localized_gui_text_with_args(
+        item_runtime,
+        "gui.narrate.editBox",
+        "%1$s edit box: %2$s",
+        &[&edit_box_label, &status.input_text],
+    );
+    if let Some(suggestion) = input.command_suggestion_narration() {
+        edit_box.push_str(". ");
+        edit_box.push_str(&localized_command_suggestion_narration(
+            item_runtime,
+            suggestion,
+        ));
+    }
+    frame.add(NarratedElementKind::Title, 2, edit_box);
+    Some(frame)
 }
 
 fn disconnected_screen_narration_frame(

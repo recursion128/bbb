@@ -12,12 +12,12 @@ pub use net::{
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{
-    AppStatus, CodeOfConductControlRequest, ContainerChangedSlotControl,
-    ContainerClickControlRequest, ContainerClickSlotControlRequest, ContainerInputControl,
-    ControlRequestSink, ControlSnapshot, ControlState, ControlSubmitError, ControlSubmitReceipt,
-    ControlWorldSnapshot, ControlWriteRequest, CreativeModeItemStackControl,
-    CreativeModeSlotControlRequest, DifficultyControl, DisconnectedScreenStatus, GameModeControl,
-    HashedComponentPatchControl, HashedStackControl, InputControlRequest, InputKeyControl,
-    InputMouseButtonControl, NetControlRequest, RecipeBookTypeControl, SharedControlRequests,
-    SharedSnapshot, SharedWorld,
+    AppStatus, ChatMethodControl, ChatScreenControlKind, ChatScreenStatus,
+    CodeOfConductControlRequest, ContainerChangedSlotControl, ContainerClickControlRequest,
+    ContainerClickSlotControlRequest, ContainerInputControl, ControlRequestSink, ControlSnapshot,
+    ControlState, ControlSubmitError, ControlSubmitReceipt, ControlWorldSnapshot,
+    ControlWriteRequest, CreativeModeItemStackControl, CreativeModeSlotControlRequest,
+    DifficultyControl, DisconnectedScreenStatus, GameModeControl, HashedComponentPatchControl,
+    HashedStackControl, InputControlRequest, InputKeyControl, InputMouseButtonControl,
+    NetControlRequest, RecipeBookTypeControl, SharedControlRequests, SharedSnapshot, SharedWorld,
 };

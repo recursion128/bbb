@@ -148,7 +148,12 @@ def _object(value: Any, path: str) -> dict[str, Any]:
     return value
 
 
-def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) -> None:
+def validate_evidence(
+    evidence: dict[str, Any],
+    expected_protocol_version: int,
+    *,
+    require_chat_restriction: bool = True,
+) -> None:
     """Apply the phase/order and canonical-state assertions to one capture."""
 
     if evidence.get("schema") != 12:
@@ -247,6 +252,8 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     _validate_entity_interaction(evidence.get("entity_interaction"))
     _validate_container_interaction(evidence.get("container_interaction"))
     _validate_chat_interaction(evidence.get("chat_interaction"))
+    if require_chat_restriction:
+        _validate_chat_restriction(evidence.get("chat_restriction"))
     _validate_hotbar_interaction(evidence.get("hotbar_interaction"))
     _validate_sound_particle_push(evidence.get("sound_particle_push"))
     _validate_inventory_interaction(evidence.get("inventory_interaction"))
@@ -616,6 +623,11 @@ def _validate_chat_interaction(chat_interaction: Any) -> None:
         "command_echoed",
         "server_logged_message",
         "server_logged_emote",
+        "input_path",
+        "draft_restored",
+        "history_restored",
+        "message_status_observed",
+        "command_status_observed",
     ):
         if chat_interaction.get(key) is not True:
             raise GateFailure(f"chat_interaction.{key} must be true")
@@ -626,6 +638,24 @@ def _validate_chat_interaction(chat_interaction: Any) -> None:
                 f"chat_interaction.{key} must record at least one observed "
                 f"command, got {value!r}"
             )
+
+
+def _validate_chat_restriction(chat_restriction: Any) -> None:
+    chat_restriction = _object(chat_restriction, "chat_restriction")
+    if chat_restriction.get("visibility") != "system":
+        raise GateFailure("chat_restriction.visibility must be system")
+    if chat_restriction.get("screen") != "chat":
+        raise GateFailure("chat_restriction.screen must be chat")
+    for key in (
+        "status_observed",
+        "restricted_prompt_reachable",
+        "blocked_message_not_sent",
+        "commands_allowed",
+    ):
+        if chat_restriction.get(key) is not True:
+            raise GateFailure(f"chat_restriction.{key} must be true")
+    if chat_restriction.get("messages_allowed") is not False:
+        raise GateFailure("chat_restriction.messages_allowed must be false")
 
 
 def _validate_hotbar_interaction(hotbar_interaction: Any) -> None:
@@ -1218,6 +1248,26 @@ def finalize_termination(args: argparse.Namespace) -> None:
 
 def _press_key(address: tuple[str, int], key: str, pressed: bool) -> None:
     _control_request(address, "input.key", {"key": key, "pressed": pressed})
+
+
+def _tap_key(address: tuple[str, int], key: str) -> None:
+    _press_key(address, key, True)
+    _press_key(address, key, False)
+
+
+def _input_text(address: tuple[str, int], text: str) -> None:
+    _control_request(address, "input.text", {"text": text})
+
+
+def _chat_screen_status(address: tuple[str, int]) -> dict[str, Any] | None:
+    status = _control_request(address, "app.status")
+    if not isinstance(status, dict):
+        return None
+    app = status.get("app")
+    if not isinstance(app, dict):
+        return None
+    chat = app.get("chat_screen")
+    return chat if isinstance(chat, dict) else None
 
 
 def _local_player_pose(address: tuple[str, int]) -> dict[str, Any]:
@@ -2181,10 +2231,8 @@ def _chat_message_contents(address: tuple[str, int]) -> list[str]:
 def drive_chat_interaction(
     address: tuple[str, int], server_log: Path, timeout_seconds: float
 ) -> dict[str, Any]:
-    """Send a player chat message and a chat command through the outbound
-    chat pipeline (timestamps, salts, and last-seen acknowledgements) and
-    require the full round trip: the server logging both, and the broadcast
-    coming back into the canonical chat state the HUD renders from."""
+    """Drive T and slash ChatScreen entry through native key/IME handlers,
+    then require draft/history status plus both server round trips."""
 
     started_at = time.monotonic()
     deadline = started_at + timeout_seconds
@@ -2192,7 +2240,53 @@ def drive_chat_interaction(
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
     _require_connected(net_before, "before chat interaction")
 
-    _control_request(address, "net.send_chat_message", {"message": CHAT_PROBE_MESSAGE})
+    _control_request(address, "input.focus", {"focused": True})
+    _tap_key(address, "chat")
+    _await_value(
+        deadline,
+        "ChatScreen to open from T",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("screen") == "chat"
+        and value.get("method") == "message",
+    )
+    draft_text = "bbb gate draft"
+    _input_text(address, draft_text)
+    _await_value(
+        deadline,
+        "ChatScreen draft source text",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict) and value.get("input_text") == draft_text,
+    )
+    _tap_key(address, "escape")
+    _await_value(
+        deadline,
+        "ChatScreen intentional close",
+        lambda: _chat_screen_status(address),
+        lambda value: value is None,
+    )
+    _tap_key(address, "chat")
+    restored_draft = _await_value(
+        deadline,
+        "saved ChatScreen draft restoration",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("input_text") == draft_text
+        and value.get("draft") is True
+        and value.get("has_latest_draft") is True,
+    )
+    _tap_key(address, "backspace")
+    _input_text(address, CHAT_PROBE_MESSAGE)
+    message_status = _await_value(
+        deadline,
+        "ChatScreen message edit status",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("input_text") == CHAT_PROBE_MESSAGE
+        and value.get("method") == "message"
+        and value.get("input_utf16_units") == len(CHAT_PROBE_MESSAGE),
+    )
+    _tap_key(address, "enter")
     _await_value(
         deadline,
         "the chat message queue acknowledgement",
@@ -2212,7 +2306,37 @@ def drive_chat_interaction(
         lambda count: count >= 1,
     )
 
-    _send_chat_command(address, f"me {CHAT_PROBE_EMOTE}", deadline)
+    _tap_key(address, "chat")
+    _tap_key(address, "up")
+    restored_history = _await_value(
+        deadline,
+        "ChatScreen recent-history restoration",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("input_text") == CHAT_PROBE_MESSAGE
+        and int(value.get("recent_count", 0)) >= 1,
+    )
+    _tap_key(address, "escape")
+
+    command_before = _net_counter(address, "chat_command_commands_queued")
+    _tap_key(address, "command")
+    command_text = f"me {CHAT_PROBE_EMOTE}"
+    _input_text(address, command_text)
+    command_status = _await_value(
+        deadline,
+        "slash ChatScreen command edit status",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("input_text") == f"/{command_text}"
+        and value.get("method") == "command",
+    )
+    _tap_key(address, "enter")
+    _await_value(
+        deadline,
+        "the chat command queue acknowledgement",
+        lambda: _net_counter(address, "chat_command_commands_queued"),
+        lambda value: value > command_before,
+    )
     _await_value(
         deadline,
         "the emote broadcast to return into the canonical chat state",
@@ -2238,10 +2362,71 @@ def drive_chat_interaction(
         "command_echoed": True,
         "server_logged_message": True,
         "server_logged_emote": True,
+        "input_path": True,
+        "draft_restored": restored_draft.get("draft") is True,
+        "history_restored": restored_history.get("input_text") == CHAT_PROBE_MESSAGE,
+        "message_status_observed": message_status.get("method") == "message",
+        "command_status_observed": command_status.get("method") == "command",
         "chat_message_commands_delta": _delta("chat_message_commands_queued"),
         "chat_command_commands_delta": _delta("chat_command_commands_queued"),
         "duration_seconds": time.monotonic() - started_at,
     }
+
+
+def collect_chat_restriction(args: argparse.Namespace) -> None:
+    host, raw_port = args.control.rsplit(":", 1)
+    address = (host, int(raw_port))
+    deadline = time.monotonic() + args.timeout
+    _await_value(
+        deadline,
+        "restricted client Play session",
+        lambda: _control_request(address, "net.counters"),
+        lambda value: isinstance(value, dict)
+        and value.get("connected") is True
+        and value.get("state") == "Play",
+    )
+    _control_request(address, "input.focus", {"focused": True})
+    _tap_key(address, "chat")
+    initial = _await_value(
+        deadline,
+        "system-visibility ChatScreen status",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("screen") == "chat"
+        and value.get("can_send_messages") is False
+        and value.get("can_send_commands") is True,
+    )
+    before = _net_counter(address, "chat_message_commands_queued")
+    blocked_text = "bbb restricted message"
+    _input_text(address, blocked_text)
+    _tap_key(address, "enter")
+    blocked = _await_value(
+        deadline,
+        "restricted message to remain in ChatScreen",
+        lambda: _chat_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("input_text") == blocked_text,
+    )
+    after = _net_counter(address, "chat_message_commands_queued")
+    result = {
+        "visibility": "system",
+        "screen": initial.get("screen"),
+        "status_observed": True,
+        "restricted_prompt_reachable": initial.get("can_send_messages") is False,
+        "messages_allowed": initial.get("can_send_messages"),
+        "commands_allowed": initial.get("can_send_commands"),
+        "blocked_message_not_sent": after == before
+        and blocked.get("input_text") == blocked_text,
+    }
+    _tap_key(address, "escape")
+    _control_request(address, "app.quit")
+    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+
+
+def merge_chat_restriction(args: argparse.Namespace) -> None:
+    evidence = _load_json(args.evidence)
+    evidence["chat_restriction"] = _load_json(args.restriction)
+    args.evidence.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
 
 
 def _selected_hotbar_slot(address: tuple[str, int]) -> int | None:
@@ -3809,7 +3994,11 @@ def collect_live(args: argparse.Namespace) -> None:
         )
         raise
     evidence = _write_live_evidence(args, status, last_snapshot, timeline, scenarios)
-    validate_evidence(evidence, _parse_protocol_version(args.protocol_source))
+    validate_evidence(
+        evidence,
+        _parse_protocol_version(args.protocol_source),
+        require_chat_restriction=False,
+    )
 
 
 def _parse_protocol_version(path: Path) -> int:
@@ -3879,6 +4068,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--client-locale", choices=("en_us", "ar_sa", "zh_cn"), required=True
     )
 
+    restriction = subparsers.add_parser(
+        "collect-chat-restriction",
+        help="capture system-visibility ChatScreen control evidence",
+    )
+    restriction.add_argument("--control", required=True)
+    restriction.add_argument("--timeout", type=float, required=True)
+    restriction.add_argument("--output", type=Path, required=True)
+
+    merge_restriction = subparsers.add_parser(
+        "merge-chat-restriction", help="merge bounded ChatScreen evidence"
+    )
+    merge_restriction.add_argument("--evidence", type=Path, required=True)
+    merge_restriction.add_argument("--restriction", type=Path, required=True)
+
     terminate = subparsers.add_parser(
         "terminate-live", help="capture quiescence and request ordered client shutdown"
     )
@@ -3939,6 +4142,12 @@ def main(argv: list[str] | None = None) -> int:
             print("playable gate: headless Login/Configuration/Play probe passed")
         elif args.command == "collect-live":
             collect_live(args)
+        elif args.command == "collect-chat-restriction":
+            if args.timeout <= 0:
+                raise GateFailure("--timeout must be positive")
+            collect_chat_restriction(args)
+        elif args.command == "merge-chat-restriction":
+            merge_chat_restriction(args)
         elif args.command == "terminate-live":
             if args.client_pid <= 0:
                 raise GateFailure("--client-pid must be positive")

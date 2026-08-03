@@ -256,6 +256,9 @@ fn publish_control_views(
         let mut app = current.app.clone();
         app.running = publication.running;
         app.disconnected_screen = publication.input.disconnected_screen_status();
+        app.chat_screen = publication
+            .input
+            .chat_screen_status(publication.world.chat_presentation_config().visibility);
         ControlSnapshot {
             generation: publication.generation,
             app,
@@ -274,7 +277,11 @@ mod tests {
         runtime::{HudDebugNetworkSampler, HudDebugTpsSampler},
         simulation::input_commands::SimulationInputRuntime,
     };
-    use winit::dpi::PhysicalSize;
+    use winit::{
+        dpi::PhysicalSize,
+        event::ElementState,
+        keyboard::{KeyCode, PhysicalKey},
+    };
 
     fn test_control_state() -> bbb_control::ControlState {
         bbb_control::ControlState::new(
@@ -405,6 +412,70 @@ mod tests {
         assert_eq!(status.reason_preview.len(), 256);
         assert!(status.reason_truncated);
         assert_eq!(status.reason_retained_bytes, 300);
+    }
+
+    #[test]
+    fn chat_screen_status_is_bounded_and_published_with_its_world_permissions() {
+        let control = test_control_state();
+        let mut world = WorldStore::new();
+        let mut chat = world.chat_presentation_config().clone();
+        chat.visibility = bbb_world::ChatVisibilityState::System;
+        world.set_chat_presentation_config(chat);
+        let mut client_input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        crate::input::handle_key_input(
+            &mut client_input,
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::KeyT),
+            ElementState::Pressed,
+        );
+        crate::input::handle_text_input(
+            &mut client_input,
+            &mut counters,
+            &mut world,
+            &None,
+            "draft 中",
+        );
+        assert!(client_input.open_chat_restrictions_screen());
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let initial = input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &counters,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            Instant::now(),
+        );
+        let _publisher = SimulationPublisher::new(
+            initial,
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+
+        let snapshot = control.snapshot.load_full();
+        let status = snapshot.app.chat_screen.as_ref().expect("chat status");
+        assert_eq!(
+            status.screen,
+            bbb_control::ChatScreenControlKind::Restrictions
+        );
+        assert_eq!(status.input_text, "draft 中");
+        assert_eq!(status.input_utf16_units, 7);
+        assert!(!status.can_send_messages);
+        assert!(status.can_send_commands);
+        assert!(client_input.close_chat_restrictions_screen());
+        assert_eq!(
+            snapshot.app.chat_screen.as_ref().unwrap().screen,
+            bbb_control::ChatScreenControlKind::Restrictions
+        );
     }
 
     #[test]

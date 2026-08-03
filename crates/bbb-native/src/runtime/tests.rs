@@ -952,6 +952,42 @@ fn restrictions_projection_uses_the_canonical_chat_visibility_permissions() {
 }
 
 #[test]
+fn chat_and_restrictions_reuse_the_screen_narration_frame_owner() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut config = world.chat_presentation_config().clone();
+    config.visibility = bbb_world::ChatVisibilityState::System;
+    world.set_chat_presentation_config(config);
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyT),
+        winit::event::ElementState::Pressed,
+    );
+    crate::input::handle_text_input(&mut input, &mut counters, &mut world, &None, "hello");
+    let chat = chat_screen_narration_frame(&input, &world, None)
+        .expect("chat narration")
+        .all_text_for_test();
+    assert!(chat.contains("Chat screen"));
+    assert!(chat.contains("Message to send: hello"));
+    assert!(chat.contains("chat edit box: hello"));
+    assert!(chat.contains("Chat is restricted"));
+
+    assert!(input.open_chat_restrictions_screen());
+    let restrictions = chat_screen_narration_frame(&input, &world, None)
+        .expect("restriction narration")
+        .all_text_for_test();
+    assert!(restrictions.contains("Restrictions"));
+    assert!(restrictions.contains("Player chat is restricted"));
+    assert!(restrictions.contains("You can't send chat messages"));
+    assert!(restrictions.contains("You can send commands"));
+    assert!(restrictions.contains("Done button"));
+}
+
+#[test]
 fn component_hover_show_item_reuses_the_native_item_tooltip_builder() {
     use bbb_protocol::{ComponentHoverEvent, NbtSummaryEntry, NbtSummaryValue};
 
