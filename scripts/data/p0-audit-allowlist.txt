@@ -114,6 +114,11 @@
 # retains the previous complete generation; this flag is recovery material, not
 # an unsupported current-surface branch.
 ^crates/bbb-renderer/src/(resource_reload|gpu)[.]rs$	allow_embedded_fallback|startup_without_sources
+# The exhaustive renderer pipeline source guard classifies ten handles without
+# one-to-one Vanilla static-core owners. Eight are post-graph/internal copies and
+# two are explicitly BBB presentation lanes; the test rejects any unclassified
+# or overlapping owner, so these labels cannot silently admit a production gap.
+^crates/bbb-renderer/src/resource_reload[.]rs$	two are BBB fallback presentation lanes|minecraft:(blur|entity_outline) post fallback|BBB (colored entity|billboard item) fallback|fixed/fallback classification changed
 # Renderer/control residency fallback fields are observations for the explicit
 # bounded owner overflow path. The path preserves every visible item/map and is
 # not a required-packet, canonical-state, or default renderer fallback.
@@ -215,3 +220,8 @@
 
 # Documentation pointers in code comments are explicitly non-P0 audit context.
 ^crates/.*/.*[.]rs$	docs/unsupported-features[.]md
+# Vanilla window-icon startup deliberately skips resource reads on Wayland or an
+# unsupported backend and retains the platform default icon after bounded
+# root-resource/decode/apply failure. These diagnostics do not mask a renderer,
+# resource-provider, or canonical-state fallback.
+^crates/bbb-native/src/window_icon[.]rs$	Self::SkipUnsupported => "unsupported-skip"|window_icon_status = "fallback"
