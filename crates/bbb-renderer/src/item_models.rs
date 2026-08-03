@@ -140,19 +140,14 @@ pub enum GuiItemLightingEntry {
     EntityInUi,
 }
 
-/// A GUI slot's resident 3D item: a block-model asset or special entity-backed
-/// geometry, its resolved `gui` display transform, and the vanilla GUI lighting
-/// entry. Block geometry reuses the resource-generation GPU owner across frames;
-/// special geometry reuses the renderer's resident special-item owner.
+/// A GUI slot's single ordered resident projection: ordinary/generated geometry
+/// and special entity-backed geometry, plus vanilla GUI lighting and foil state.
+/// Block geometry reuses the resource-generation GPU owner across frames; special
+/// geometry reuses the renderer's resident special-item owner.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudBlockItemModel {
-    /// Selected generated and `minecraft:special` leaves. When non-empty,
-    /// `identity` and `quads` are intentionally empty compatibility fields and
-    /// are not submitted.
-    pub resident_layers: Arc<[HudResidentItemLayer]>,
-    pub identity: ItemModelAssetIdentity,
-    pub quads: Arc<[ItemModelQuad]>,
-    pub gui_display: Mat4,
+    /// Selected geometry and `minecraft:special` leaves in resolver order.
+    pub layers: Arc<[HudResidentItemLayer]>,
     pub lighting: GuiItemLightingEntry,
     /// Vanilla `ItemStack.hasFoil()` projected by the native layer for the stack occupying this GUI
     /// slot. When true, solid and translucent quads also submit through the matching vanilla item
@@ -160,12 +155,13 @@ pub struct HudBlockItemModel {
     pub foil: bool,
 }
 
-/// One selected layer in a GUI resident special/composite item. Its transform
-/// combines that leaf's base-model GUI display properties with its parsed
-/// local transform; the HUD placement remains outside this value.
+/// One selected layer in a GUI resident item. Its transform combines that leaf's
+/// base-model GUI display properties with its parsed local transform; the HUD
+/// placement remains outside this value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum HudResidentItemLayer {
-    Generated {
+    Geometry {
+        atlas: ItemModelAtlasKind,
         identity: ItemModelAssetIdentity,
         geometry_class: ItemModelGeometryClass,
         source: ItemModelAssetSource,

@@ -53,6 +53,8 @@
   outbound baseline 分离，movement/vehicle/combat/FOV 统一读取 world owner。
 - **2026-08-03（fatal runtime crash lifecycle）**：startup/main/worker/render fatal 汇入单一
   bounded report owner，ordered shutdown 后原子发布并以非零状态退出。
+- **2026-08-03（HUD item projection convergence）**：ordinary/generated/special/composite GUI
+  item 收敛到单一 ordered resident-layer projection，旧 quad compatibility resolver 全部删除。
 - **2026-08-03（external network terminal close）**：connection/relay task 归入单一
   bounded lifecycle owner，并在 simulation 后、backend drop 前完成 signal/join。
 - **2026-08-03（lifecycle terminal budget ownership）**：版本化 manifest 统一拥有三个

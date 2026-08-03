@@ -65,14 +65,15 @@ use bbb_renderer::{
     HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
     HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
     HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelGeometryClass,
-    LevelLighting, LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
+    ItemModelGeometryClass, ItemModelQuad, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -5307,7 +5308,7 @@ fn block_item_3d_model_with_owner_team_color(
         let gui_fallback = item_runtime
             .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
             .unwrap_or_default();
-        let mut resident_layers = Vec::new();
+        let mut layers = Vec::new();
         for layer in resolved.into_iter().flat_map(|resolved| resolved.layers) {
             match layer {
                 ResolvedItemModelLayer::Ordinary {
@@ -5320,11 +5321,12 @@ fn block_item_3d_model_with_owner_team_color(
                             &display_transform.unwrap_or(gui_fallback),
                             false,
                         ) * crate::item_models::special_item_leaf_matrix(transformation);
-                    resident_layers.extend(
+                    layers.extend(
                         item_runtime
                             .generated_item_layers_for_icon(icon)
                             .into_iter()
-                            .map(|layer| HudResidentItemLayer::Generated {
+                            .map(|layer| HudResidentItemLayer::Geometry {
+                                atlas: ItemModelAtlasKind::Items,
                                 identity: ItemModelAssetIdentity::new(
                                     layer.asset_id,
                                     Arc::<str>::from("generated"),
@@ -5357,7 +5359,7 @@ fn block_item_3d_model_with_owner_team_color(
                         None,
                         None,
                     ) {
-                        resident_layers.push(HudResidentItemLayer::Special {
+                        layers.push(HudResidentItemLayer::Special {
                             model,
                             transform: crate::item_models::display_matrix(
                                 &display_transform.unwrap_or(gui_fallback),
@@ -5370,16 +5372,9 @@ fn block_item_3d_model_with_owner_team_color(
                 }
             }
         }
-        if !resident_layers.is_empty() {
+        if !layers.is_empty() {
             return Some(HudBlockItemModel {
-                resident_layers: resident_layers.into(),
-                identity: ItemModelAssetIdentity::new(
-                    Arc::<str>::from("minecraft:special"),
-                    Arc::<str>::from("gui"),
-                    0,
-                ),
-                quads: Arc::from([]),
-                gui_display: glam::Mat4::IDENTITY,
+                layers: layers.into(),
                 lighting: GuiItemLightingEntry::Items3d,
                 foil: item.has_foil(),
             });
@@ -5393,18 +5388,40 @@ fn block_item_3d_model_with_owner_team_color(
     let gui = item_runtime
         .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
         .unwrap_or_default();
+    let transform = crate::item_models::display_matrix(&gui, false);
+    let layers = hud_block_geometry_layers(resource_id, quads, transform);
     Some(HudBlockItemModel {
-        resident_layers: Arc::from([]),
-        identity: ItemModelAssetIdentity::new(
-            Arc::<str>::from(resource_id),
-            Arc::<str>::from("default"),
-            0,
-        ),
-        quads,
-        gui_display: crate::item_models::display_matrix(&gui, false),
+        layers,
         lighting: GuiItemLightingEntry::Items3d,
         foil: item.has_foil(),
     })
+}
+
+fn hud_block_geometry_layers(
+    resource_id: &str,
+    quads: Arc<[ItemModelQuad]>,
+    transform: glam::Mat4,
+) -> Arc<[HudResidentItemLayer]> {
+    let identity = ItemModelAssetIdentity::new(resource_id, "default", 0);
+    [
+        ItemModelGeometryClass::Solid,
+        ItemModelGeometryClass::Translucent,
+    ]
+    .into_iter()
+    .filter(|geometry_class| {
+        let translucent = *geometry_class == ItemModelGeometryClass::Translucent;
+        quads.iter().any(|quad| quad.translucent == translucent)
+    })
+    .map(|geometry_class| HudResidentItemLayer::Geometry {
+        atlas: ItemModelAtlasKind::Blocks,
+        identity: identity.clone(),
+        geometry_class,
+        source: ItemModelAssetSource::Quads(Arc::clone(&quads)),
+        transform,
+        tint: [1.0; 4],
+    })
+    .collect::<Vec<_>>()
+    .into()
 }
 
 /// The hotbar's 3D block items (vanilla inventory item rendering): for each slot holding a block item,

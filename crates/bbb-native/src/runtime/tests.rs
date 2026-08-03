@@ -14163,10 +14163,9 @@ fn gui_item_model_projects_special_leaf_into_resident_geometry() {
     )
     .expect("special leaf should use GUI resident geometry");
 
-    assert!(model.quads.is_empty());
     assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
     assert!(matches!(
-        model.resident_layers.as_ref(),
+        model.layers.as_ref(),
         [HudResidentItemLayer::Special {
             model: bbb_renderer::SpecialItemModel::Trident { .. },
             ..
@@ -14174,6 +14173,132 @@ fn gui_item_model_projects_special_leaf_into_resident_geometry() {
     ));
 
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn gui_block_geometry_projection_has_one_ordered_resident_layer_sequence() {
+    let solid = ItemModelQuad {
+        corners: [[0.0; 3]; 4],
+        uvs: [[0.0; 2]; 4],
+        tint: [1.0; 4],
+        normal: [0.0, 0.0, 1.0],
+        shade: 1.0,
+        translucent: false,
+    };
+    let translucent = ItemModelQuad {
+        translucent: true,
+        ..solid
+    };
+    let transform = glam::Mat4::from_translation(glam::Vec3::new(1.0, 2.0, 3.0));
+
+    let layers = hud_block_geometry_layers(
+        "minecraft:test_block",
+        Arc::from([solid, translucent]),
+        transform,
+    );
+
+    assert_eq!(layers.len(), 2);
+    for (layer, expected_class) in layers.iter().zip([
+        ItemModelGeometryClass::Solid,
+        ItemModelGeometryClass::Translucent,
+    ]) {
+        let HudResidentItemLayer::Geometry {
+            atlas,
+            identity,
+            geometry_class,
+            source,
+            transform: actual_transform,
+            tint,
+        } = layer
+        else {
+            panic!("block quad projection must only contain geometry layers");
+        };
+        assert_eq!(*atlas, ItemModelAtlasKind::Blocks);
+        assert_eq!(identity.model_id(), "minecraft:test_block");
+        assert_eq!(identity.variant(), "default");
+        assert_eq!(*geometry_class, expected_class);
+        assert!(matches!(source, ItemModelAssetSource::Quads(_)));
+        assert_eq!(*actual_transform, transform);
+        assert_eq!(*tint, [1.0; 4]);
+    }
+}
+
+#[test]
+fn native_hud_item_projection_has_no_empty_layer_compatibility_branch() {
+    let source = include_str!("../runtime.rs");
+    let projection_start = source
+        .find("fn block_item_3d_model_with_owner_team_color(")
+        .expect("native HUD item projection owner");
+    let projection_end = source[projection_start..]
+        .find("fn hotbar_block_item_models(")
+        .map(|offset| projection_start + offset)
+        .expect("end of native HUD item projection owner");
+    let projection = &source[projection_start..projection_end];
+
+    assert_eq!(
+        projection.matches("fn hud_block_geometry_layers(").count(),
+        1
+    );
+    assert!(projection.contains("let layers = hud_block_geometry_layers("));
+    for removed_path in [
+        "layers: Arc::from([])",
+        "model.identity",
+        "model.quads",
+        "model.gui_display",
+    ] {
+        assert!(
+            !projection.contains(removed_path),
+            "removed native compatibility projection returned: {removed_path}"
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires local vanilla 26.1 resources"]
+fn local_vanilla_hud_block_item_projection_reaches_one_resident_owner() {
+    let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+    let item_runtime = NativeItemRuntime::load(&roots).expect("load local Vanilla item runtime");
+    let images = roots
+        .load_block_texture_images()
+        .expect("load local Vanilla block textures");
+    let models = roots
+        .load_block_model_catalog()
+        .expect("load local Vanilla block models");
+    let atlas = bbb_pack::AtlasPacker::new(2048, 1)
+        .expect("create Vanilla-width block atlas packer")
+        .stitch_mips_with_max_level(&images, 4)
+        .expect("stitch local Vanilla block atlas");
+    let terrain = TerrainTextureState::from_layout(&atlas.layout, Some(models), None, None);
+    let stone = item_stack(
+        item_runtime
+            .item_protocol_id("minecraft:stone")
+            .expect("Vanilla stone item id"),
+        1,
+    );
+    let model = block_item_3d_model(
+        &WorldStore::new(),
+        &stone,
+        Some(&item_runtime),
+        &terrain,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        ItemModelKeybindContext::default(),
+        0,
+    )
+    .expect("real stone item projects block geometry");
+    assert!(!model.layers.is_empty());
+    assert!(model.layers.iter().all(|layer| matches!(
+        layer,
+        HudResidentItemLayer::Geometry {
+            atlas: ItemModelAtlasKind::Blocks,
+            source: ItemModelAssetSource::Quads(_),
+            ..
+        }
+    )));
 }
 
 #[test]
@@ -14234,7 +14359,7 @@ fn gui_item_model_reuses_bundle_selected_context_for_special_leaf() {
     )
     .expect("selected bundle child should retain its special leaf");
     assert!(model
-        .resident_layers
+        .layers
         .iter()
         .any(|layer| matches!(layer, HudResidentItemLayer::Special { .. })));
 
@@ -14242,7 +14367,7 @@ fn gui_item_model_reuses_bundle_selected_context_for_special_leaf() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_selected_bundle_child_resident_layers() {
+fn hud_inventory_screen_projects_selected_bundle_child_layers() {
     let root = unique_runtime_temp_dir("inventory-bundle-selected-special-item");
     write_runtime_special_item_assets(&root);
     let item_runtime =
@@ -14284,14 +14409,14 @@ fn hud_inventory_screen_projects_selected_bundle_child_resident_layers() {
         .as_ref()
         .expect("selected bundle child resident model");
     assert!(matches!(
-        model.resident_layers.as_ref(),
+        model.layers.as_ref(),
         [
-            HudResidentItemLayer::Generated { .. },
+            HudResidentItemLayer::Geometry { .. },
             HudResidentItemLayer::Special {
                 model: bbb_renderer::SpecialItemModel::Trident { .. },
                 ..
             },
-            HudResidentItemLayer::Generated { .. },
+            HudResidentItemLayer::Geometry { .. },
         ]
     ));
 
@@ -14347,7 +14472,7 @@ fn gui_item_model_reuses_live_carried_context_for_special_leaf() {
     )
     .expect("cursor item should resolve the carried special branch");
     assert!(matches!(
-        model.resident_layers.as_ref(),
+        model.layers.as_ref(),
         [HudResidentItemLayer::Special {
             model: bbb_renderer::SpecialItemModel::Bell { .. },
             ..

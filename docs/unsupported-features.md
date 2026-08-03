@@ -62,34 +62,9 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix routes: `rendering-entity-layer-registration`, `rendering-hud-step-surface`
+Matrix route: `rendering-entity-layer-registration`
 
 <!-- architecture-candidates:start -->
-- **`arch-hud-item-resident-projection` is `active`.**
-  - Semantic mechanism: resolved HUD item-model CPU projection and renderer submission.
-  - Canonical input: one resolved Vanilla item stack display state with ordered layers,
-    transform, lighting, foil and texture identity.
-  - Owners: `crates/bbb-renderer/src/item_models.rs` exposes `resident_layers` beside
-    compatibility `identity`/`quads`, while `crates/bbb-renderer/src/hud.rs` resolves both.
-  - Production callers: `crates/bbb-native/src/runtime.rs` constructs either resident
-    layers or the compatibility quad fields before HUD upload.
-  - Direction: item/resource owner → immutable HUD resident-layer projection → renderer;
-    HUD submission must not select between two independently shaped projections.
-  - Lifetime: one resource generation and frame snapshot; stale generation uploads are
-    rejected and reload failure keeps the prior resident assets.
-  - Ordering/fallback/rollback: preserve first-layer order, render-type/filter fallback,
-    transforms, lighting, foil, atlas identity and generation rollback.
-  - Public API: one `HudBlockItemModel` layer collection; no top-level compatibility
-    identity/quads branch.
-  - Delete: compatibility fields, empty-layer sentinel, alternate HUD submit branch and
-    all constructors of the old shape.
-  - Evidence: `crates/bbb-native/src/runtime/tests.rs` and
-    `crates/bbb-renderer/src/hud.rs` residency, atlas, ordering and source-guard tests.
-  - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion medium, API
-    narrowing high and pixel/focused verification high; rank 1/3.
-  - Goal route: `architecture-convergence`; `rendering-hud-step-surface`.
-  - Reopen condition: reopen only if Vanilla introduces a HUD item presentation that
-    cannot be expressed as an ordered resident layer.
 - **`arch-entity-equipment-test-fallback` is `active`.**
   - Semantic mechanism: entity equipment asset selection for armor, wings and saddles.
   - Canonical input: one resolved resource-generation equipment asset catalog plus entity
@@ -113,7 +88,7 @@ Matrix routes: `rendering-entity-layer-registration`, `rendering-hud-step-surfac
     `crates/bbb-renderer/src/entity_models/gui_preview.rs` focused equipment/layer tests
     plus a reverse source guard.
   - Risk/benefit/rank: drift high, current product risk medium, one crate, deletion high,
-    API narrowing medium and focused verification high; rank 2/3.
+    API narrowing medium and focused verification high; rank 1/2.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if an official asset-free renderer path becomes a
     production surface with an explicit Vanilla owner.
@@ -136,7 +111,7 @@ Matrix routes: `rendering-entity-layer-registration`, `rendering-hud-step-surfac
   - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
     pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
   - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
-    narrowing low and focused verification high; rank 3/3.
+    narrowing low and focused verification high; rank 2/2.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if a future shader requires a decision not representable
     by cull state and `front_facing` in the shared source.

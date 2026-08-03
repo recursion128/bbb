@@ -51,6 +51,28 @@ sequence 产生 platform effect；软阈值只合并相邻高频 tail value，�
 不静默丢失。当前 hard retained budget 缺口仍由唯一 feature ledger 跟踪，不由 control crate
 复制一个队列来掩盖。
 
+## HUD item resident projection owner
+
+Vanilla `GuiGraphicsExtractor.item` 只构造一个 `ItemStackRenderState`，
+`ItemModelResolver.updateForTopItem` 按 resolver child 顺序追加 geometry/special layer，最后由
+`ItemStackRenderState.submit` 顺序提交。BBB 对应地只跨边界传递
+`HudBlockItemModel { layers, lighting, foil }`：native/item owner 在 GUI query context 下解析
+resource id、display/local transform、atlas、geometry class、source 和 tint；renderer 只把同一份
+immutable ordered layers 投影为 resident asset、instance 或 special-item submission，不反向查询
+item runtime、terrain model 或 pack stack。
+
+普通 block quad 只形成存在几何的 solid→translucent layers，并继续使用 blocks atlas；generated
+与 special/composite child 使用各自 items/entity owner，保持 child order、foil phase、full-bright、
+scissor 与 submit order。顶层 compatibility `identity/quads/gui_display`、empty-layer sentinel 和
+第二条 HUD submit helper 已删除；source guard 固定 projection 只有 layers/lighting/foil，且 renderer
+生产消费只遍历一次 `model.layers`。
+
+CPU projection 随 resource/world/input snapshot 重建，但 static geometry 仍由 renderer residency
+按 asset identity 复用。frame commit 只消费不可变 projection；stale resource generation 被拒绝，
+reload prepare 或后续 GPU/audio owner 失败时继续保留上一完整 generation。真实 26.1 default
+resources 的 1506 个 item definition/registry、stone block projection，以及 offscreen hotbar/glint/
+scissor pixels共同验证这条唯一数据流。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

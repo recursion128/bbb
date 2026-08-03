@@ -1,7 +1,6 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, HashMap};
+#[cfg(test)]
+use std::sync::Arc;
 
 use anyhow::{bail, Result};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -12,10 +11,12 @@ use crate::entity_models::{
 };
 use crate::item_models::{
     GuiItemLightingEntry, HudBlockItemModel, HudResidentItemLayer, ItemModelAssetRequest,
-    ItemModelAssetSource, ItemModelAtlasKind, ItemModelDrawPhase, ItemModelDrawTarget,
-    ItemModelFoil, ItemModelGeometryClass, ItemModelInstanceRequest, ItemModelResidencyFrame,
-    SpecialItemInstanceRequest, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    ItemModelDrawPhase, ItemModelDrawTarget, ItemModelFoil, ItemModelGeometryClass,
+    ItemModelInstanceRequest, ItemModelResidencyFrame, SpecialItemInstanceRequest,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
+#[cfg(test)]
+use crate::item_models::{ItemModelAssetSource, ItemModelAtlasKind};
 use crate::Renderer;
 
 mod book;
@@ -8735,160 +8736,80 @@ fn append_hud_block_item_model_residency(
     scissor: Option<crate::item_models::ItemModelScissorRect>,
 ) {
     debug_assert_eq!(model.lighting, GuiItemLightingEntry::Items3d);
-    let transform = placement * model.gui_display;
     let foil = ItemModelFoil::from_has_foil(model.foil);
-    if !model.resident_layers.is_empty() {
-        for layer in model.resident_layers.iter() {
-            let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
-                .expect("resident GUI item instance order overflow");
-            match layer {
-                HudResidentItemLayer::Generated {
-                    identity,
-                    geometry_class,
-                    source,
-                    transform: layer_transform,
-                    tint,
-                } => {
-                    frame.assets.push(ItemModelAssetRequest {
-                        identity: identity.clone(),
-                        atlas: ItemModelAtlasKind::Items,
-                        geometry_class: *geometry_class,
-                        source: source.clone(),
-                    });
-                    let base_phase = match geometry_class {
-                        ItemModelGeometryClass::Solid => ItemModelDrawPhase::Solid,
-                        ItemModelGeometryClass::Translucent => ItemModelDrawPhase::Translucent,
-                    };
+    for layer in model.layers.iter() {
+        let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
+            .expect("resident GUI item instance order overflow");
+        match layer {
+            HudResidentItemLayer::Geometry {
+                atlas,
+                identity,
+                geometry_class,
+                source,
+                transform,
+                tint,
+            } => {
+                frame.assets.push(ItemModelAssetRequest {
+                    identity: identity.clone(),
+                    atlas: *atlas,
+                    geometry_class: *geometry_class,
+                    source: source.clone(),
+                });
+                let base_phase = match geometry_class {
+                    ItemModelGeometryClass::Solid => ItemModelDrawPhase::Solid,
+                    ItemModelGeometryClass::Translucent => ItemModelDrawPhase::Translucent,
+                };
+                frame.instances.push(ItemModelInstanceRequest {
+                    identity: identity.clone(),
+                    atlas: *atlas,
+                    geometry_class: *geometry_class,
+                    transform: placement * *transform,
+                    tint: *tint,
+                    light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                    overlay: ITEM_MODEL_NO_OVERLAY,
+                    foil,
+                    target,
+                    phase: base_phase,
+                    submit_order,
+                    scissor,
+                });
+                if foil != ItemModelFoil::None {
                     frame.instances.push(ItemModelInstanceRequest {
                         identity: identity.clone(),
-                        atlas: ItemModelAtlasKind::Items,
+                        atlas: *atlas,
                         geometry_class: *geometry_class,
-                        transform: transform * *layer_transform,
+                        transform: placement * *transform,
                         tint: *tint,
                         light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
                         overlay: ITEM_MODEL_NO_OVERLAY,
                         foil,
                         target,
-                        phase: base_phase,
-                        submit_order,
+                        phase: match geometry_class {
+                            ItemModelGeometryClass::Solid => ItemModelDrawPhase::Glint,
+                            ItemModelGeometryClass::Translucent => {
+                                ItemModelDrawPhase::GlintTranslucent
+                            }
+                        },
+                        submit_order: submit_order.saturating_add(1),
                         scissor,
                     });
-                    if foil != ItemModelFoil::None {
-                        frame.instances.push(ItemModelInstanceRequest {
-                            identity: identity.clone(),
-                            atlas: ItemModelAtlasKind::Items,
-                            geometry_class: *geometry_class,
-                            transform: transform * *layer_transform,
-                            tint: *tint,
-                            light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                            overlay: ITEM_MODEL_NO_OVERLAY,
-                            foil,
-                            target,
-                            phase: match geometry_class {
-                                ItemModelGeometryClass::Solid => ItemModelDrawPhase::Glint,
-                                ItemModelGeometryClass::Translucent => {
-                                    ItemModelDrawPhase::GlintTranslucent
-                                }
-                            },
-                            submit_order: submit_order.saturating_add(1),
-                            scissor,
-                        });
-                    }
                 }
-                HudResidentItemLayer::Special {
-                    model: special_model,
-                    transform: layer_transform,
-                } => frame.special_items.push(SpecialItemInstanceRequest {
-                    model: special_model.clone(),
-                    transform: transform * *layer_transform,
-                    light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
-                    overlay: ITEM_MODEL_NO_OVERLAY,
-                    foil,
-                    target,
-                    submit_order,
-                    scissor,
-                }),
             }
-        }
-        return;
-    }
-    for (geometry_class, base_phase, glint_phase) in [
-        (
-            ItemModelGeometryClass::Solid,
-            ItemModelDrawPhase::Solid,
-            ItemModelDrawPhase::Glint,
-        ),
-        (
-            ItemModelGeometryClass::Translucent,
-            ItemModelDrawPhase::Translucent,
-            ItemModelDrawPhase::GlintTranslucent,
-        ),
-    ] {
-        let translucent = geometry_class == ItemModelGeometryClass::Translucent;
-        if !model
-            .quads
-            .iter()
-            .any(|quad| quad.translucent == translucent)
-        {
-            continue;
-        }
-        frame.assets.push(ItemModelAssetRequest {
-            identity: model.identity.clone(),
-            atlas: ItemModelAtlasKind::Blocks,
-            geometry_class,
-            source: ItemModelAssetSource::Quads(Arc::clone(&model.quads)),
-        });
-        push_hud_block_item_instance(
-            frame,
-            model,
-            geometry_class,
-            transform,
-            foil,
-            target,
-            base_phase,
-            scissor,
-        );
-        if foil != ItemModelFoil::None {
-            push_hud_block_item_instance(
-                frame,
-                model,
-                geometry_class,
+            HudResidentItemLayer::Special {
+                model: special_model,
                 transform,
+            } => frame.special_items.push(SpecialItemInstanceRequest {
+                model: special_model.clone(),
+                transform: placement * *transform,
+                light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
+                overlay: ITEM_MODEL_NO_OVERLAY,
                 foil,
                 target,
-                glint_phase,
+                submit_order,
                 scissor,
-            );
+            }),
         }
     }
-}
-
-fn push_hud_block_item_instance(
-    frame: &mut ItemModelResidencyFrame,
-    model: &HudBlockItemModel,
-    geometry_class: ItemModelGeometryClass,
-    transform: glam::Mat4,
-    foil: ItemModelFoil,
-    target: ItemModelDrawTarget,
-    phase: ItemModelDrawPhase,
-    scissor: Option<crate::item_models::ItemModelScissorRect>,
-) {
-    let submit_order = u32::try_from(frame.instances.len() + frame.special_items.len())
-        .expect("item instance order overflow");
-    frame.instances.push(ItemModelInstanceRequest {
-        identity: model.identity.clone(),
-        atlas: ItemModelAtlasKind::Blocks,
-        geometry_class,
-        transform,
-        tint: [1.0; 4],
-        light: ITEM_MODEL_FULL_BRIGHT_LIGHT,
-        overlay: ITEM_MODEL_NO_OVERLAY,
-        foil,
-        target,
-        phase,
-        submit_order,
-        scissor,
-    });
 }
 
 fn hud_mob_effect_natural_cmp(a: &HudMobEffect, b: &HudMobEffect) -> std::cmp::Ordering {
@@ -20606,8 +20527,7 @@ fn sanitize_hud_inventory_ghost_item(item: HudInventoryGhostItem) -> Option<HudI
 
 /// A 3D block-item icon is only worth carrying when it has geometry to draw.
 fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
-    model.lighting == GuiItemLightingEntry::Items3d
-        && (!model.resident_layers.is_empty() || !model.quads.is_empty())
+    model.lighting == GuiItemLightingEntry::Items3d && !model.layers.is_empty()
 }
 
 fn sign_model_wood_index(wood: SignModelWood) -> usize {
@@ -21704,11 +21624,42 @@ mod tests {
         crate::item_models::ItemModelAssetIdentity::new("minecraft:test_block", "default", 0)
     }
 
-    fn test_hud_block_item_model() -> HudBlockItemModel {
+    fn test_hud_block_item_model_with_quads(
+        quads: Vec<crate::item_models::ItemModelQuad>,
+        transform: glam::Mat4,
+        lighting: GuiItemLightingEntry,
+        foil: bool,
+    ) -> HudBlockItemModel {
+        let quads: Arc<[crate::item_models::ItemModelQuad]> = quads.into();
+        let identity = test_hud_block_item_identity();
+        let layers = [
+            ItemModelGeometryClass::Solid,
+            ItemModelGeometryClass::Translucent,
+        ]
+        .into_iter()
+        .filter(|geometry_class| {
+            let translucent = *geometry_class == ItemModelGeometryClass::Translucent;
+            quads.iter().any(|quad| quad.translucent == translucent)
+        })
+        .map(|geometry_class| HudResidentItemLayer::Geometry {
+            atlas: ItemModelAtlasKind::Blocks,
+            identity: identity.clone(),
+            geometry_class,
+            source: ItemModelAssetSource::Quads(Arc::clone(&quads)),
+            transform,
+            tint: [1.0; 4],
+        })
+        .collect::<Vec<_>>();
         HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![crate::item_models::ItemModelQuad {
+            layers: layers.into(),
+            lighting,
+            foil,
+        }
+    }
+
+    fn test_hud_block_item_model() -> HudBlockItemModel {
+        test_hud_block_item_model_with_quads(
+            vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
                     [16.0, 0.0, 8.0],
@@ -21720,11 +21671,55 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }]
-            .into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
+            }],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        )
+    }
+
+    #[test]
+    fn hud_item_projection_has_one_ordered_layer_owner_without_compatibility_fields() {
+        let item_models = include_str!("item_models.rs");
+        let model_start = item_models
+            .find("pub struct HudBlockItemModel {")
+            .expect("HUD item projection owner");
+        let model_end = item_models[model_start..]
+            .find("pub enum HudResidentItemLayer {")
+            .map(|offset| model_start + offset)
+            .expect("resident layer projection follows the model");
+        let model = &item_models[model_start..model_end];
+        assert!(model.contains("pub layers: Arc<[HudResidentItemLayer]>,"));
+        for removed_field in ["pub identity:", "pub quads:", "pub gui_display:"] {
+            assert!(
+                !model.contains(removed_field),
+                "removed compatibility field returned: {removed_field}"
+            );
+        }
+
+        let hud = include_str!("hud.rs");
+        let append_start = hud
+            .find("fn append_hud_block_item_model_residency(")
+            .expect("single HUD resident projection consumer");
+        let append_end = hud[append_start..]
+            .find("fn hud_mob_effect_natural_cmp(")
+            .map(|offset| append_start + offset)
+            .expect("end of HUD item projection consumer");
+        let append = &hud[append_start..append_end];
+        assert_eq!(
+            append.matches("for layer in model.layers.iter()").count(),
+            1
+        );
+        for removed_path in [
+            "model.identity",
+            "model.quads",
+            "model.gui_display",
+            "push_hud_block_item_instance",
+        ] {
+            assert!(
+                !append.contains(removed_path),
+                "alternate HUD item resolver returned: {removed_path}"
+            );
         }
     }
 
@@ -22563,10 +22558,8 @@ mod tests {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
         };
-        let model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![crate::item_models::ItemModelQuad {
+        let model = test_hud_block_item_model_with_quads(
+            vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
                     [16.0, 0.0, 8.0],
@@ -22578,12 +22571,11 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }]
-            .into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        };
+            }],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        );
         renderer.set_hud_advancement_toasts(vec![HudAdvancementToast {
             frame_label: "Advancement Made!".to_string(),
             frame_label_color: 0xFF_FF_00,
@@ -22735,14 +22727,12 @@ mod tests {
         };
         let mut translucent = solid.clone();
         translucent.translucent = true;
-        let model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![solid, translucent].into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: true,
-        };
+        let model = test_hud_block_item_model_with_quads(
+            vec![solid, translucent],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            true,
+        );
 
         let mut frame = ItemModelResidencyFrame::default();
         let scissor = crate::item_models::ItemModelScissorRect::new(4, 5, 6, 7);
@@ -22755,6 +22745,24 @@ mod tests {
         );
 
         assert_eq!(frame.assets.len(), 2);
+        assert_eq!(
+            frame
+                .assets
+                .iter()
+                .map(|asset| (asset.atlas, asset.geometry_class))
+                .collect::<Vec<_>>(),
+            [
+                (ItemModelAtlasKind::Blocks, ItemModelGeometryClass::Solid),
+                (
+                    ItemModelAtlasKind::Blocks,
+                    ItemModelGeometryClass::Translucent,
+                ),
+            ]
+        );
+        assert!(frame
+            .assets
+            .iter()
+            .all(|asset| matches!(asset.source, ItemModelAssetSource::Quads(_))));
         assert_eq!(frame.instances.len(), 4);
         assert_eq!(
             frame
@@ -22787,15 +22795,12 @@ mod tests {
         let gui_display = glam::Mat4::from_scale(glam::Vec3::splat(2.0));
         let placement = glam::Mat4::from_translation(glam::Vec3::new(4.0, 5.0, 6.0));
         let model = HudBlockItemModel {
-            resident_layers: Arc::from([HudResidentItemLayer::Special {
+            layers: Arc::from([HudResidentItemLayer::Special {
                 model: crate::item_models::SpecialItemModel::Bell {
                     texture: crate::item_models::SpecialItemTexture::Static(texture),
                 },
-                transform: leaf_transform,
+                transform: gui_display * leaf_transform,
             }]),
-            identity: test_hud_block_item_identity(),
-            quads: Arc::from([]),
-            gui_display,
             lighting: GuiItemLightingEntry::Items3d,
             foil: true,
         };
@@ -22873,14 +22878,12 @@ mod tests {
             translucent: false,
         };
         let mut models: Vec<Option<HudBlockItemModel>> = vec![None; HUD_HOTBAR_SLOTS];
-        models[slot] = Some(HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![quad].into(),
+        models[slot] = Some(test_hud_block_item_model_with_quads(
+            vec![quad],
             gui_display,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        });
+            GuiItemLightingEntry::Items3d,
+            false,
+        ));
         renderer.set_hud_hotbar_block_item_models(models);
         renderer
             .set_item_model_residency_frame(ItemModelResidencyFrame::default())
@@ -22959,13 +22962,13 @@ mod tests {
             shade: 1.0,
             translucent: false,
         };
-        let model = || HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: Arc::from([quad.clone()]),
-            gui_display: Mat4::from_translation(Vec3::splat(-0.5)),
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
+        let model = || {
+            test_hud_block_item_model_with_quads(
+                vec![quad.clone()],
+                Mat4::from_translation(Vec3::splat(-0.5)),
+                GuiItemLightingEntry::Items3d,
+                false,
+            )
         };
         let floating_item = |x, scissor| HudInventoryItem {
             x,
@@ -23832,14 +23835,12 @@ mod tests {
             lighting: GuiItemLightingEntry::Items3d,
             ..valid_icon.clone()
         };
-        let empty_block_model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: Arc::from([]),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        };
+        let empty_block_model = test_hud_block_item_model_with_quads(
+            Vec::new(),
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        );
         let slot = |mode, x, icon, block_model| HudDebugGameModeSwitcherSlot {
             mode,
             x,
@@ -24587,14 +24588,12 @@ mod tests {
             shade: 1.0,
             translucent: false,
         };
-        let model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![quad].into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        };
+        let model = test_hud_block_item_model_with_quads(
+            vec![quad],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        );
         let slot = |mode, x, block_model| HudDebugGameModeSwitcherSlot {
             mode,
             x,
@@ -24636,10 +24635,8 @@ mod tests {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
         };
-        let model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![crate::item_models::ItemModelQuad {
+        let model = test_hud_block_item_model_with_quads(
+            vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
                     [16.0, 0.0, 8.0],
@@ -24651,12 +24648,11 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }]
-            .into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        };
+            }],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        );
         renderer.set_hud_stats_screen(Some(HudStatsScreen {
             title: "Stats".to_string(),
             loading_text: "Loading".to_string(),
@@ -29808,10 +29804,8 @@ mod tests {
         let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
             return;
         };
-        let model = HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: vec![crate::item_models::ItemModelQuad {
+        let model = test_hud_block_item_model_with_quads(
+            vec![crate::item_models::ItemModelQuad {
                 corners: [
                     [0.0, 0.0, 8.0],
                     [16.0, 0.0, 8.0],
@@ -29823,12 +29817,11 @@ mod tests {
                 normal: [0.0, 0.0, 1.0],
                 shade: 1.0,
                 translucent: false,
-            }]
-            .into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
-        };
+            }],
+            glam::Mat4::IDENTITY,
+            GuiItemLightingEntry::Items3d,
+            false,
+        );
         renderer.set_hud_hotbar_block_item_models(vec![Some(model.clone())]);
         let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
         screen.slots.push(HudInventorySlot {
@@ -31179,13 +31172,13 @@ mod tests {
             shade: 1.0,
             translucent: false,
         };
-        let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
-            resident_layers: Arc::from([]),
-            identity: test_hud_block_item_identity(),
-            quads: quads.into(),
-            gui_display: glam::Mat4::IDENTITY,
-            lighting: GuiItemLightingEntry::Items3d,
-            foil: false,
+        let model = |quads: Vec<crate::item_models::ItemModelQuad>| {
+            test_hud_block_item_model_with_quads(
+                quads,
+                glam::Mat4::IDENTITY,
+                GuiItemLightingEntry::Items3d,
+                false,
+            )
         };
 
         // A slot whose block model has geometry keeps it; one with no quads drops it (None).
@@ -31212,14 +31205,12 @@ mod tests {
             x: 0,
             y: 0,
             icon: None,
-            block_model: Some(HudBlockItemModel {
-                resident_layers: Arc::from([]),
-                identity: test_hud_block_item_identity(),
-                quads: vec![quad].into(),
-                gui_display: glam::Mat4::IDENTITY,
-                lighting: GuiItemLightingEntry::ItemsFlat,
-                foil: false,
-            }),
+            block_model: Some(test_hud_block_item_model_with_quads(
+                vec![quad],
+                glam::Mat4::IDENTITY,
+                GuiItemLightingEntry::ItemsFlat,
+                false,
+            )),
         });
         assert!(wrong_lighting.block_model.is_none());
 
