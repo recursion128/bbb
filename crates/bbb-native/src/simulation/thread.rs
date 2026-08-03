@@ -114,8 +114,10 @@ impl SimulationThread {
         let Some(join) = self.join.take() else {
             return Ok(());
         };
-        self.mailbox
-            .enqueue(super::commands::SimulationCommand::Shutdown);
+        self.mailbox.enqueue_or_report(
+            super::commands::SimulationCommand::Shutdown,
+            "simulation thread shutdown",
+        );
         join_result(join)
     }
 }
@@ -142,6 +144,14 @@ impl<F: Fn()> Drop for ExitWake<'_, F> {
     }
 }
 
+struct MailboxCloseGuard(SimulationMailbox);
+
+impl Drop for MailboxCloseGuard {
+    fn drop(&mut self) {
+        self.0.close();
+    }
+}
+
 fn run_scheduled<T>(
     mailbox: SimulationMailbox,
     outputs: mpsc::Sender<T>,
@@ -149,6 +159,7 @@ fn run_scheduled<T>(
     render_wake: impl Fn(),
     mut step: impl FnMut(Instant, bool) -> ScheduledStep<T>,
 ) -> Result<(), RuntimeFailure> {
+    let _close_mailbox_on_exit = MailboxCloseGuard(mailbox.clone());
     let mut deadline = Instant::now();
     loop {
         // Capture before stepping so work published while this step is running
@@ -278,7 +289,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::simulation::commands::SimulationCommand;
+    use crate::simulation::commands::{SimulationCommand, SimulationMailboxSubmitError};
 
     #[test]
     fn blocked_render_consumer_does_not_stall_deadlines_or_external_network_wake() {
@@ -340,8 +351,12 @@ mod tests {
                 .recv_timeout(Duration::from_millis(200))
                 .expect("tick deadline should continue while render is blocked");
         }
-        mailbox.enqueue(SimulationCommand::Shutdown);
+        mailbox.enqueue(SimulationCommand::Shutdown).unwrap();
         assert_eq!(worker.join().unwrap(), Ok(()));
+        assert_eq!(
+            mailbox.enqueue(SimulationCommand::FocusChanged(true)),
+            Err(SimulationMailboxSubmitError::Closed)
+        );
         assert!(network_applied.load(Ordering::SeqCst) >= 1);
         assert!(stepped.load(Ordering::SeqCst) >= 5);
         let blocked_backlog = output_backlog.snapshot();
@@ -399,12 +414,16 @@ mod tests {
             attempt_rx.recv_timeout(Duration::from_millis(200)).unwrap(),
             (2, false, false)
         );
-        mailbox.enqueue(SimulationCommand::Shutdown);
+        mailbox.enqueue(SimulationCommand::Shutdown).unwrap();
         assert_eq!(
             attempt_rx.recv_timeout(Duration::from_millis(200)).unwrap(),
             (3, false, true)
         );
         assert_eq!(worker.join().unwrap(), Ok(()));
+        assert_eq!(
+            mailbox.enqueue(SimulationCommand::FocusChanged(true)),
+            Err(SimulationMailboxSubmitError::Closed)
+        );
         assert_eq!(receive_output(&output_rx, &output_backlog), Ok(1));
         assert_eq!(receive_output(&output_rx, &output_backlog), Ok(3));
         assert!(matches!(

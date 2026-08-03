@@ -78,6 +78,8 @@
   统一读取 generation-local resolved catalog，删除测试开关驱动的静态 resolver 与兼容分支。
 - **2026-08-03（entity textured shader convergence）**：solid、cutout、translucent 与 z-offset
   pipeline 统一派生自单一 renderer-private source，cull descriptor 成为唯一单双面决策。
+- **2026-08-03（simulation mailbox hard budget）**：五类 producer 收敛到独立
+  count/retained-byte 分区、背压与 terminal close，control 拒绝及 generation diagnostics 可观测。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

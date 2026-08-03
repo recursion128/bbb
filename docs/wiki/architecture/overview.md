@@ -35,7 +35,7 @@ flowchart LR
 | world | chunk、entity、block entity、UI canonical state | GPU/audio backend | play packet/local action → world/effects | session scoped；断线清理。`bbb-world` |
 | renderer input | 一帧一致的 terrain/entity/UI projection | canonical world | world + resources → frame | 每帧重建或增量提取；缺资源走明确 placeholder。`bbb-native`、`bbb-render-types` |
 | renderer | GPU resources、pipelines、排序 | 游戏权威状态、pack resolver/catalog | frame + 纯资源投影 → presented image | swapchain/pack generation scoped；生产依赖不反向指向 `bbb-pack`。`bbb-renderer` |
-| native control/input | window events、local intent、control snapshot | 服务端权威移动、第二 command queue | OS/control intent → one native simulation mailbox → intent/packet | sink 构造时绑定；全局 sequence 与 barrier drain。`bbb-native`、`bbb-control` |
+| native control/input | window events、local intent、control snapshot | 服务端权威移动、第二 command queue | OS/control intent → one bounded native simulation mailbox → intent/packet | sink 构造时绑定；全局 sequence、按 producer class 分区的 count/retained-byte backpressure 与 barrier drain。`bbb-native`、`bbb-control` |
 | UI | screen/HUD transient presentation | packet truth | world/input/resources → quads/text | screen lifecycle；缺字体使用 missing glyph。`bbb-native`、`bbb-render-types` |
 | audio | device/backend voices | 世界音效真值 | world audio event → playback | backend 重建；无设备时静默且可诊断。`bbb-audio` |
 | persistence | options/server/hotbar 等本地文件 | session world | typed snapshot ↔ atomic files | lazy load/save；错误恢复有边界。相关 native modules |

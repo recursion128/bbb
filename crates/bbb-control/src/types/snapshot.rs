@@ -238,10 +238,46 @@ fn hashed_stack_retained_bytes(stack: &HashedStackControl) -> usize {
         .saturating_add(components.removed_components.len().saturating_mul(set_node))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ControlSubmitReceipt {
+    pub pending: usize,
+    pub retained_bytes: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ControlSubmitError {
+    Oversized {
+        retained_bytes: usize,
+        retained_byte_limit: usize,
+    },
+    Closed,
+}
+
+impl fmt::Display for ControlSubmitError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Oversized {
+                retained_bytes,
+                retained_byte_limit,
+            } => write!(
+                formatter,
+                "control command retains {retained_bytes} bytes, limit {retained_byte_limit}"
+            ),
+            Self::Closed => formatter.write_str("simulation command mailbox is closed"),
+        }
+    }
+}
+
+impl std::error::Error for ControlSubmitError {}
+
 /// Runtime-owned destination for ordered control writes.
 pub trait ControlRequestSink: Send + Sync {
-    /// Submits one request and returns the destination's pending depth.
-    fn submit(&self, request: ControlWriteRequest) -> usize;
+    /// Submits one request and returns its accepted queue observation. A
+    /// terminal or oversized destination must fail explicitly.
+    fn submit(
+        &self,
+        request: ControlWriteRequest,
+    ) -> Result<ControlSubmitReceipt, ControlSubmitError>;
 }
 
 /// In-world mouse buttons the control API can drive; replayed through the
@@ -497,7 +533,10 @@ impl SharedControlRequests {
         Self { sink }
     }
 
-    pub fn submit(&self, request: ControlWriteRequest) -> usize {
+    pub fn submit(
+        &self,
+        request: ControlWriteRequest,
+    ) -> Result<ControlSubmitReceipt, ControlSubmitError> {
         self.sink.submit(request)
     }
 }
@@ -564,13 +603,19 @@ mod tests {
     }
 
     impl ControlRequestSink for RecordingSink {
-        fn submit(&self, request: ControlWriteRequest) -> usize {
+        fn submit(
+            &self,
+            request: ControlWriteRequest,
+        ) -> Result<ControlSubmitReceipt, ControlSubmitError> {
             let mut requests = self
                 .requests
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             requests.push(request);
-            requests.len()
+            Ok(ControlSubmitReceipt {
+                pending: requests.len(),
+                retained_bytes: 0,
+            })
         }
     }
 
@@ -619,7 +664,7 @@ mod tests {
         ];
 
         for (index, request) in submitted.iter().cloned().enumerate() {
-            assert_eq!(requests.submit(request), index + 1);
+            assert_eq!(requests.submit(request).unwrap().pending, index + 1);
         }
         assert_eq!(
             *sink

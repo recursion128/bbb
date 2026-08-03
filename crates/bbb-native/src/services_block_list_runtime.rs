@@ -267,14 +267,17 @@ impl ServicesBlockListRuntime {
             let mailbox = self.mailbox.clone();
             let task = self.handle.spawn(async move {
                 let result = source.submit_player_report(request.report).await;
-                mailbox.enqueue(SimulationCommand::PlayerReportSubmissionCompletion(
-                    PlayerReportSubmissionCompletion {
-                        service_generation: pending.service_generation,
-                        report_id,
-                        attempt: request.attempt,
-                        result,
-                    },
-                ));
+                mailbox.enqueue_or_report(
+                    SimulationCommand::PlayerReportSubmissionCompletion(
+                        PlayerReportSubmissionCompletion {
+                            service_generation: pending.service_generation,
+                            report_id,
+                            attempt: request.attempt,
+                            result,
+                        },
+                    ),
+                    "player report submission completion",
+                );
             });
             self.pending_player_report_abort = Some(task.abort_handle());
         }
@@ -403,14 +406,15 @@ impl ServicesBlockListRuntime {
         let mailbox = self.mailbox.clone();
         self.handle.spawn(async move {
             let refresh = source.refresh(now_epoch_seconds).await;
-            mailbox.enqueue(SimulationCommand::ServicesBlockListCompletion(
-                ServicesBlockListCompletion {
+            mailbox.enqueue_or_report(
+                SimulationCommand::ServicesBlockListCompletion(ServicesBlockListCompletion {
                     generation,
                     result: refresh.result,
                     next_refresh_epoch_seconds: refresh.next_refresh_epoch_seconds,
                     completed_epoch_seconds: chrono::Utc::now().timestamp(),
-                },
-            ));
+                }),
+                "services block-list completion",
+            );
         });
     }
 }

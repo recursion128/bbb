@@ -10,7 +10,10 @@ use super::params::{
 };
 use super::*;
 use crate::types::{AudioCounters, NetCounters, RecipeBookTypeControl};
-use crate::{ControlRequestSink, ControlWriteRequest, SharedControlRequests};
+use crate::{
+    ControlRequestSink, ControlSubmitError, ControlSubmitReceipt, ControlWriteRequest,
+    SharedControlRequests,
+};
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_MERCHANT_ID};
 use bbb_protocol::packets::{
@@ -86,12 +89,15 @@ impl RecordingControlRequestSink {
 }
 
 impl ControlRequestSink for RecordingControlRequestSink {
-    fn submit(&self, request: ControlWriteRequest) -> usize {
+    fn submit(
+        &self,
+        request: ControlWriteRequest,
+    ) -> Result<ControlSubmitReceipt, ControlSubmitError> {
         let mut requests = self
             .requests
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        match request {
+        let pending = match request {
             ControlWriteRequest::Shutdown => {
                 requests.shutdown_requested = true;
                 1
@@ -112,7 +118,23 @@ impl ControlRequestSink for RecordingControlRequestSink {
                 requests.input_requests.push(request);
                 requests.input_requests.len()
             }
-        }
+        };
+        Ok(ControlSubmitReceipt {
+            pending,
+            retained_bytes: 0,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct ClosedControlRequestSink;
+
+impl ControlRequestSink for ClosedControlRequestSink {
+    fn submit(
+        &self,
+        _request: ControlWriteRequest,
+    ) -> Result<ControlSubmitReceipt, ControlSubmitError> {
+        Err(ControlSubmitError::Closed)
     }
 }
 
@@ -162,6 +184,28 @@ fn app_quit_queues_shutdown_for_the_simulation_owner() {
     assert!(response.ok);
     assert!(state.snapshot.load().app.running);
     assert!(state.requests.lock().unwrap().shutdown_requested);
+}
+
+#[test]
+fn write_dispatch_reports_a_closed_command_owner() {
+    let state = ControlState::new(
+        "test",
+        SharedControlRequests::new(Arc::new(ClosedControlRequestSink)),
+    );
+    let response = dispatch(
+        ControlRequest {
+            method: "net.request_stats".to_string(),
+            params: serde_json::Value::Null,
+        },
+        &state,
+    );
+
+    assert!(!response.ok);
+    assert!(response.result.is_none());
+    assert_eq!(
+        response.error.as_deref(),
+        Some("control command rejected: simulation command mailbox is closed")
+    );
 }
 
 #[test]
@@ -292,7 +336,10 @@ fn dispatcher_read_methods_have_no_live_world_or_blocking_pool_path() {
         .expect("paired control-view loader is present");
     assert!(!source.contains("state.world.read"));
     assert!(!source.contains("spawn_blocking"));
-    assert!(source.contains("state.requests.submit("));
+    assert!(source.contains("macro_rules! submit_control"));
+    assert!(dispatcher.contains("submit_control!("));
+    assert_eq!(source.matches(".requests.submit(").count(), 1);
+    assert!(source.contains("control command rejected: {error}"));
     assert!(!source.contains(".net_requests.push("));
     assert!(!source.contains(".input_requests.push("));
     assert!(!source.contains(".code_of_conduct_requests.push("));

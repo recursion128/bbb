@@ -258,22 +258,28 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
         match effect {
             PlatformEffect::SetCursorCapture(capture) => {
                 set_cursor_capture(self.window, self.cursor_captured, capture);
-                self.mailbox
-                    .enqueue(SimulationCommand::CursorCaptureResult {
+                self.mailbox.enqueue_or_report(
+                    SimulationCommand::CursorCaptureResult {
                         captured: *self.cursor_captured,
-                    });
+                    },
+                    "cursor capture result",
+                );
             }
             PlatformEffect::ClipboardWrite(text) => {
                 let success = self.clipboard.set_debug_clipboard_text(&text);
-                self.mailbox
-                    .enqueue(SimulationCommand::ClipboardWriteResult { success });
+                self.mailbox.enqueue_or_report(
+                    SimulationCommand::ClipboardWriteResult { success },
+                    "clipboard write result",
+                );
             }
             PlatformEffect::OpenUri(url) => {
                 let success = platform::open_uri(&url)
                     .map_err(|err| tracing::warn!(?err, %url, "failed to open dialog URI"))
                     .is_ok();
-                self.mailbox
-                    .enqueue(SimulationCommand::OpenUriResult { url, success });
+                self.mailbox.enqueue_or_report(
+                    SimulationCommand::OpenUriResult { url, success },
+                    "open URI result",
+                );
             }
             PlatformEffect::Screenshot(path) => self.control_screenshots.push_back(path),
             PlatformEffect::ReloadTerrain => self.terrain_upload.request_reload_all_chunks(),
@@ -795,9 +801,10 @@ fn run_client(args: startup::Args) -> Result<()> {
             .transpose()?
             .unwrap_or_default(),
     );
-    simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
-        renderer.hud_text_measurements(),
-    ));
+    simulation_mailbox.enqueue_or_report(
+        SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
+        "startup text measurements",
+    );
     load_entity_model_textures(
         &mut renderer,
         pack_roots.as_ref(),
@@ -1096,10 +1103,14 @@ fn run_client(args: startup::Args) -> Result<()> {
                 &args.username,
             );
             non_entity_render_extraction.invalidate_resources();
-            simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
-                renderer.hud_text_measurements(),
-            ));
-            simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
+            simulation_mailbox.enqueue_or_report(
+                SimulationCommand::TextMeasurements(renderer.hud_text_measurements()),
+                "reload text measurements",
+            );
+            simulation_mailbox.enqueue_or_report(
+                SimulationCommand::ResourceReloadAck(Box::new(ack)),
+                "resource reload acknowledgement",
+            );
         }
         let latest_publication = shared_publication.load_full();
         if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
@@ -1157,7 +1168,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                         target.exit();
                         return;
                     }
-                    simulation_mailbox.enqueue(SimulationCommand::SurfaceResized(size));
+                    simulation_mailbox.enqueue_or_report(
+                        SimulationCommand::SurfaceResized(size),
+                        "surface resize",
+                    );
                 }
                 event
                     if enqueue_simulation_window_event(
@@ -1660,8 +1674,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                                 DebugProfilingLifecycle::ReportFailed { error }
                             }
                         };
-                        simulation_mailbox
-                            .enqueue(SimulationCommand::DebugProfilingLifecycle(lifecycle));
+                        simulation_mailbox.enqueue_or_report(
+                            SimulationCommand::DebugProfilingLifecycle(lifecycle),
+                            "debug profiling lifecycle",
+                        );
                     }
                     if let Some(interval) = frame_interval {
                         next_redraw_at = Instant::now() + interval;
@@ -1674,7 +1690,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                 ..
             } => {
                 if cursor_captured {
-                    simulation_mailbox.enqueue(SimulationCommand::MouseMotion { delta });
+                    simulation_mailbox.enqueue_or_report(
+                        SimulationCommand::MouseMotion { delta },
+                        "device mouse motion",
+                    );
                 }
             }
             Event::UserEvent(()) => {
@@ -1871,7 +1890,7 @@ fn enqueue_simulation_window_event(
         WindowEvent::MouseWheel { delta, .. } => SimulationCommand::MouseWheel { delta: *delta },
         _ => return false,
     };
-    mailbox.enqueue(command);
+    mailbox.enqueue_or_report(command, "window event");
     true
 }
 

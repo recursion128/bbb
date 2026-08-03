@@ -3205,11 +3205,12 @@ pub(crate) fn update_renderer_from_publication(
     if let Some((generation, delta_ticks)) =
         HudRenderRuntime::win_screen_realtime_delta_ticks(win_generation, hud_frame_delta)
     {
-        mailbox.enqueue(
+        mailbox.enqueue_or_report(
             crate::simulation::commands::SimulationCommand::GameEventScreenRenderDelta {
                 generation,
                 delta_ticks,
             },
+            "game event screen render delta",
         );
     }
     hud_debug_fps_sampler.record_frame(render_started_at);
@@ -3310,13 +3311,14 @@ pub(crate) fn update_renderer_from_publication(
             hud_air_state,
             !input.hide_gui() && game_mode_can_hurt_player,
         ) {
-            mailbox.enqueue(
+            mailbox.enqueue_or_report(
                 crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
                     level_generation: world.client_level_generation(),
                     position,
                     volume: sound.volume,
                     pitch: sound.pitch,
                 },
+                "HUD air bubble sound",
             );
         }
     }
@@ -4723,11 +4725,12 @@ pub(crate) fn update_renderer_from_publication(
             player_section_compiled_and_visible,
         )
     {
-        mailbox.enqueue(
+        mailbox.enqueue_or_report(
             crate::simulation::commands::SimulationCommand::TerrainReadiness {
                 level_generation,
                 player_section_compiled_and_visible,
             },
+            "terrain readiness",
         );
     }
     let pump_elapsed = pump_started_at.elapsed();

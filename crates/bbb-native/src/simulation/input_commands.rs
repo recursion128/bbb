@@ -357,7 +357,7 @@ impl SimulationInputRuntime {
                 }
             }
             SimulationCommand::ResourceReloadAck(ack) => {
-                apply_resource_reload_ack(ack, context);
+                apply_resource_reload_ack(*ack, context);
             }
             SimulationCommand::TerrainReadiness {
                 level_generation,

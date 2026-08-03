@@ -47,9 +47,20 @@ level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐�
 所有 producer 在 mailbox 的同一短 mutex 内取得全局 sequence。simulation 按 barrier drain，
 单个 `ControlWriteRequest` 直接进入 code-of-conduct、net 或 input handler；不会再按 request
 family 复制到可独立重排的 shadow queue。shutdown 仍是 ordered command，screenshot 仍由同一
-sequence 产生 platform effect；软阈值只合并相邻高频 tail value，离散命令与 key/button release
-不静默丢失。当前 hard retained budget 缺口仍由唯一 feature ledger 跟踪，不由 control crate
-复制一个队列来掩盖。
+sequence 产生 platform effect。platform input、control、render feedback、async completion、
+lifecycle 五类各有独立 count/retained-logical-byte 分区；soft threshold 只合并相邻高频 tail
+value，硬上限饱和则在 drain condvar 背压，不能向其它 class 借位，也不静默丢失离散命令、
+key/button release、ordered interaction 或 shutdown。logical bytes 计入 command inline owner、
+递归 owned capacity；大型 resource-reload ack 以 boxed ownership 入队，但 box owner 与 data/image
+generation charged bytes 仍全部记账。
+
+单命令越过本 class byte limit 返回 `oversized`。simulation worker 无论正常返回、runtime failure
+或 panic unwind 都先原子 close mailbox，再唤醒所有 producer；后续提交返回 `closed`，control
+dispatcher 会把拒绝作为失败响应而非伪报 queued。`SimulationCore::step` 在 barrier drain 后把
+总量及每 class 的 current/peak count/bytes、blocked/coalesced 和 rejection counters 写入同一
+generation 的 `NetCounters`。所有 production producer 使用显式 result 或
+`enqueue_or_report`；reverse source guard 禁止恢复 unchecked enqueue。reload/readiness/services
+completion 的 generation 判定仍只归原 consumer，mailbox 不复制 session state。
 
 ## HUD item resident projection owner
 

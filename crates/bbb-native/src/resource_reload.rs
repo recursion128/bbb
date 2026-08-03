@@ -90,6 +90,52 @@ impl std::fmt::Debug for ResourceReloadAck {
     }
 }
 
+impl ResourceReloadAck {
+    pub(crate) fn mailbox_retained_logical_bytes(&self) -> usize {
+        let selected_pack_bytes = self
+            .diagnostics
+            .selected_packs
+            .capacity()
+            .saturating_mul(std::mem::size_of::<ClientResourcePackDiagnostic>())
+            .saturating_add(
+                self.diagnostics
+                    .selected_packs
+                    .iter()
+                    .map(|pack| {
+                        pack.id
+                            .capacity()
+                            .saturating_add(pack.source.capacity())
+                            .saturating_add(pack.compatibility.capacity())
+                    })
+                    .fold(0usize, usize::saturating_add),
+            );
+        let diagnostic_strings = [
+            self.diagnostics.indexed_asset_index_id.as_ref(),
+            self.diagnostics.selected_language.as_ref(),
+            self.diagnostics.selected_language_probe_key.as_ref(),
+            self.diagnostics.selected_language_probe_value.as_ref(),
+            self.diagnostics.last_reload_failure_stage.as_ref(),
+            self.diagnostics.last_reload_error.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .map(String::capacity)
+        .fold(0usize, usize::saturating_add);
+        let generation_bytes = self
+            .diagnostics
+            .data_logical_charged_bytes
+            .saturating_add(self.diagnostics.image_rgba_charged_bytes)
+            .try_into()
+            .unwrap_or(usize::MAX);
+        let result_error_bytes = self.result.as_ref().err().map_or(0, String::capacity);
+        selected_pack_bytes
+            .saturating_add(diagnostic_strings)
+            .saturating_add(generation_bytes)
+            .saturating_add(result_error_bytes)
+            .saturating_add(std::mem::size_of::<Self>())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_server_resource_pack_reload_effect(
     effect: ResourceReloadEffect,

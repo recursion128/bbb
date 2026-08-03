@@ -133,6 +133,7 @@ impl SimulationCore {
         tick_deadline_reached: bool,
     ) -> Option<SimulationStepResult> {
         let commands = self.command_mailbox.drain_through_barrier();
+        self.net_counters.simulation_command_mailbox = self.command_mailbox.observation();
         let network_work_pending = self
             .net_events
             .as_ref()
@@ -359,6 +360,30 @@ mod tests {
     }
 
     #[test]
+    fn mailbox_diagnostics_follow_drain_and_precede_publication() {
+        let source = include_str!("simulation.rs");
+        let step = source
+            .split_once("pub(crate) fn step(")
+            .expect("step")
+            .1
+            .split_once("pub(crate) fn next_tick_deadline")
+            .expect("step end")
+            .0;
+        let drain = step
+            .find("self.command_mailbox.drain_through_barrier()")
+            .expect("mailbox drain");
+        let diagnostics = step
+            .find("self.net_counters.simulation_command_mailbox")
+            .expect("mailbox diagnostics");
+        let publication = step
+            .find("self.publisher.publish(")
+            .expect("simulation publication");
+
+        assert!(drain < diagnostics);
+        assert!(diagnostics < publication);
+    }
+
+    #[test]
     fn environment_audio_diagnostics_follow_tick_and_precede_publication() {
         let source = include_str!("simulation.rs");
         let step = source
@@ -572,8 +597,14 @@ mod mailbox {
     #[test]
     fn discrete_commands_keep_global_fifo_order_through_the_barrier() {
         let mailbox = SimulationMailbox::default();
-        let first = mailbox.enqueue(SimulationCommand::FocusChanged(true));
-        let second = mailbox.enqueue(SimulationCommand::FocusChanged(false));
+        let first = mailbox
+            .enqueue(SimulationCommand::FocusChanged(true))
+            .unwrap()
+            .sequence;
+        let second = mailbox
+            .enqueue(SimulationCommand::FocusChanged(false))
+            .unwrap()
+            .sequence;
 
         let drained = mailbox.drain_through_barrier();
         assert_eq!(

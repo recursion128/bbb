@@ -28,6 +28,21 @@ use self::params::{
     RENAME_ITEM_MAX_NAME_CHARS,
 };
 
+macro_rules! submit_control {
+    ($state:expr, $request:expr) => {{
+        match $state.requests.submit($request) {
+            Ok(receipt) => receipt.pending,
+            Err(error) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(format!("control command rejected: {error}")),
+                };
+            }
+        }
+    }};
+}
+
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     Arc::new(ArcSwap::from_pointee(ControlSnapshot {
         app: AppStatus {
@@ -77,7 +92,7 @@ async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
 
 fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     if request.method == "app.quit" {
-        state.requests.submit(ControlWriteRequest::Shutdown);
+        submit_control!(state, ControlWriteRequest::Shutdown);
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"running": false})),
@@ -94,9 +109,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             };
         };
         let path = path.to_string();
-        state
-            .requests
-            .submit(ControlWriteRequest::Screenshot { path: path.clone() });
+        submit_control!(
+            state,
+            ControlWriteRequest::Screenshot { path: path.clone() }
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"queued": true, "path": path})),
@@ -106,9 +122,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
 
     if request.method == "net.accept_code_of_conduct" {
         let remember = bool_param(&request.params, "remember").unwrap_or(false);
-        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
-            CodeOfConductControlRequest::Accept { remember },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::CodeOfConduct(CodeOfConductControlRequest::Accept { remember },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -121,9 +138,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.decline_code_of_conduct" {
-        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
-            CodeOfConductControlRequest::Decline,
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::CodeOfConduct(CodeOfConductControlRequest::Decline,)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -135,9 +153,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.clear_code_of_conduct_acceptance" {
-        let pending = state.requests.submit(ControlWriteRequest::CodeOfConduct(
-            CodeOfConductControlRequest::ClearAcceptance,
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::CodeOfConduct(CodeOfConductControlRequest::ClearAcceptance,)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -158,12 +177,12 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::ChatMessage {
-                    message: message.to_string(),
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ChatMessage {
+                message: message.to_string(),
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -184,12 +203,12 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::ChatCommand {
-                    command: command.to_string(),
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ChatCommand {
+                command: command.to_string(),
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -220,12 +239,13 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::CommandSuggestionRequest {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::CommandSuggestionRequest {
                 id,
                 command: command.to_string(),
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -267,14 +287,15 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.query_block_entity_tag requires integer param z".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::QueryBlockEntityTag {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::QueryBlockEntityTag {
                 transaction_id,
                 x,
                 y,
                 z,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -302,12 +323,13 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.query_entity_tag requires integer param entity_id".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::QueryEntityTag {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::QueryEntityTag {
                 transaction_id,
                 entity_id,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -326,9 +348,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.spectate_entity requires integer param entity_id".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::SpectateEntity { entity_id },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SpectateEntity { entity_id },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -359,9 +382,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::TeleportToEntity { uuid },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::TeleportToEntity { uuid },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -383,9 +407,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending = state
-            .requests
-            .submit(ControlWriteRequest::Net(change_difficulty));
+        let pending = submit_control!(state, ControlWriteRequest::Net(change_difficulty));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -407,9 +429,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending = state
-            .requests
-            .submit(ControlWriteRequest::Net(change_game_mode));
+        let pending = submit_control!(state, ControlWriteRequest::Net(change_game_mode));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -428,9 +448,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.lock_difficulty requires boolean param locked".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::LockDifficulty { locked },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::LockDifficulty { locked },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -457,12 +478,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             };
         }
         let slot = slot as u8;
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::SetHeldSlot {
-                    slot,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SetHeldSlot { slot })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -481,12 +500,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.set_flying requires boolean param flying".to_string()),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::SetFlying {
-                    flying,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SetFlying { flying })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -505,12 +522,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.focus requires boolean param focused".to_string()),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Input(InputControlRequest::Focus {
-                    focused,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::Focus { focused })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -541,12 +556,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.key requires boolean param pressed".to_string()),
             };
         };
-        let pending = state
-            .requests
-            .submit(ControlWriteRequest::Input(InputControlRequest::Key {
-                key,
-                pressed,
-            }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::Key { key, pressed })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -576,9 +589,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.mouse_button requires boolean param pressed".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Input(
-            InputControlRequest::MouseButton { button, pressed },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::MouseButton { button, pressed },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -601,12 +615,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Input(InputControlRequest::MouseTap {
-                    button,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::MouseTap { button })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -628,13 +640,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("input.look_delta requires finite number params dx and dy".to_string()),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Input(InputControlRequest::LookDelta {
-                    dx,
-                    dy,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Input(InputControlRequest::LookDelta { dx, dy })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -646,9 +655,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.perform_respawn" {
-        let pending = state
-            .requests
-            .submit(ControlWriteRequest::Net(NetControlRequest::PerformRespawn));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::PerformRespawn)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -660,9 +670,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.request_stats" {
-        let pending = state
-            .requests
-            .submit(ControlWriteRequest::Net(NetControlRequest::RequestStats));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::RequestStats)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -674,9 +685,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.request_game_rule_values" {
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::RequestGameRuleValues,
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::RequestGameRuleValues,)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -709,14 +721,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.place_recipe requires boolean param use_max_items".to_string()),
             };
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::PlaceRecipe {
-                    container_id,
-                    recipe_index,
-                    use_max_items,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::PlaceRecipe {
+                container_id,
+                recipe_index,
+                use_max_items,
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -756,13 +768,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::ChangeRecipeBookSettings {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ChangeRecipeBookSettings {
                 book_type,
                 open,
                 filtering,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -781,9 +794,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.mark_recipe_seen requires integer param recipe_index".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::MarkRecipeSeen { recipe_index },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::MarkRecipeSeen { recipe_index },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -811,12 +825,12 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 )),
             };
         }
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::RenameItem {
-                    name: name.to_string(),
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::RenameItem {
+                name: name.to_string(),
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -855,14 +869,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::EditBook {
-                    slot,
-                    pages,
-                    title,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::EditBook { slot, pages, title })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -912,16 +922,16 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::SignUpdate {
-                    x,
-                    y,
-                    z,
-                    is_front_text,
-                    lines,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SignUpdate {
+                x,
+                y,
+                z,
+                is_front_text,
+                lines,
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -950,11 +960,12 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         }
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::OpenAdvancementsTab {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::OpenAdvancementsTab {
                 tab: tab.to_string(),
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -966,9 +977,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     }
 
     if request.method == "net.close_advancements_screen" {
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::CloseAdvancementsScreen,
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::CloseAdvancementsScreen,)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -994,12 +1006,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.select_trade requires item >= 0".to_string()),
             };
         }
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::SelectTrade {
-                    item,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SelectTrade { item })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1031,13 +1041,13 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::SetBeacon {
-                    primary_effect,
-                    secondary_effect,
-                }));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SetBeacon {
+                primary_effect,
+                secondary_effect,
+            })
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1068,9 +1078,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some(err),
             };
         }
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::SetCreativeModeSlot(request),
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SetCreativeModeSlot(request),)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1107,12 +1118,13 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         }
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::SelectBundleItem {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::SelectBundleItem {
                 slot_id,
                 selected_item_index,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1142,12 +1154,13 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::ContainerButtonClick {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ContainerButtonClick {
                 container_id,
                 button_id,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1170,12 +1183,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                     };
                 }
             };
-        let pending =
-            state
-                .requests
-                .submit(ControlWriteRequest::Net(NetControlRequest::ContainerClick(
-                    click,
-                )));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ContainerClick(click,))
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1199,9 +1210,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 };
             }
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::ContainerClickSlot(click),
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ContainerClickSlot(click),)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1220,9 +1232,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 error: Some("net.container_close requires integer param container_id".to_string()),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::ContainerClose { container_id },
-        ));
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ContainerClose { container_id },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1262,13 +1275,14 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
                 ),
             };
         };
-        let pending = state.requests.submit(ControlWriteRequest::Net(
-            NetControlRequest::ContainerSlotStateChanged {
+        let pending = submit_control!(
+            state,
+            ControlWriteRequest::Net(NetControlRequest::ContainerSlotStateChanged {
                 slot_id,
                 container_id,
                 new_state,
-            },
-        ));
+            },)
+        );
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
