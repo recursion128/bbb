@@ -247,6 +247,10 @@ impl PackRoots {
         Arc::clone(&self.resource_data_budget)
     }
 
+    pub(crate) fn resource_image_budget(&self) -> Arc<ResourceImageGenerationBudget> {
+        Arc::clone(&self.resource_image_budget)
+    }
+
     pub fn ensure_resource_data_admitted(&self) -> Result<()> {
         self.resource_data_budget.ensure_admitted()
     }

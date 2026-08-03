@@ -6,7 +6,6 @@ use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{KeyCode, PhysicalKey},
-    raw_window_handle::{HasDisplayHandle, RawDisplayHandle},
     window::{CursorGrabMode, CursorIcon, Window},
 };
 
@@ -78,6 +77,7 @@ mod startup;
 mod terrain_runtime;
 mod weather_effect_runtime;
 mod win_screen_resources;
+mod window_icon;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
@@ -696,21 +696,18 @@ fn run_client(args: startup::Args) -> Result<()> {
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
-    let window_backend = match window.display_handle()?.as_raw() {
-        RawDisplayHandle::Wayland(_) => "wayland",
-        RawDisplayHandle::Xlib(_) | RawDisplayHandle::Xcb(_) => "x11",
-        _ => "other",
-    };
+    let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
     let window_size = window.inner_size();
     tracing::info!(
         target_os = std::env::consts::OS,
         target_arch = std::env::consts::ARCH,
-        window_backend = %window_backend,
+        window_backend = window_backend.label(),
         scale_factor = window.scale_factor(),
         width = window_size.width,
         height = window_size.height,
         "native platform window created"
     );
+    window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
     input.set_client_text_filtering_enabled(args.client_text_filtering);

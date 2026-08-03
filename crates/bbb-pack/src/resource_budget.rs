@@ -81,6 +81,19 @@ impl ResourceDataGenerationBudget {
     }
 
     fn reserve(&self, logical_bytes: u64, label: &str) -> Result<()> {
+        self.reserve_with_policy(logical_bytes, label, true)
+    }
+
+    fn reserve_optional(&self, logical_bytes: u64, label: &str) -> Result<()> {
+        self.reserve_with_policy(logical_bytes, label, false)
+    }
+
+    fn reserve_with_policy(
+        &self,
+        logical_bytes: u64,
+        label: &str,
+        sticky_rejection: bool,
+    ) -> Result<()> {
         let next = self
             .charged_logical_bytes
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |charged| {
@@ -90,10 +103,20 @@ impl ResourceDataGenerationBudget {
             })
             .map(|previous| previous + logical_bytes)
             .map_err(|charged| {
-                self.reject(format!(
-                    "resource data generation would use more than {} logical bytes while loading {label} (currently charged {charged}, requested {logical_bytes})",
+                let prefix = if sticky_rejection {
+                    "resource data generation"
+                } else {
+                    "optional resource data"
+                };
+                let message = format!(
+                    "{prefix} would use more than {} logical bytes while loading {label} (currently charged {charged}, requested {logical_bytes})",
                     self.max_logical_bytes
-                ))
+                );
+                if sticky_rejection {
+                    self.reject(message)
+                } else {
+                    anyhow::anyhow!(message)
+                }
             })?;
         self.peak_charged_logical_bytes
             .fetch_max(next, Ordering::Relaxed);
@@ -250,6 +273,51 @@ impl ResourceDataGenerationBudget {
             .with_context(|| format!("decode UTF-8 text {label} {}", path.display()))?;
         self.text_documents.fetch_add(1, Ordering::Relaxed);
         Ok(text)
+    }
+
+    pub(crate) fn read_optional_binary(
+        &self,
+        path: &Path,
+        maximum: u64,
+        label: &str,
+    ) -> Result<Vec<u8>> {
+        let file =
+            File::open(path).with_context(|| format!("open binary {label} {}", path.display()))?;
+        let file_bytes = file
+            .metadata()
+            .with_context(|| format!("read binary metadata for {label} {}", path.display()))?
+            .len();
+        if file_bytes > maximum {
+            bail!(
+                "binary {label} {} is {file_bytes} bytes, exceeding the {maximum} byte limit",
+                path.display()
+            );
+        }
+        self.reserve_optional(file_bytes, label)?;
+        self.derived_logical_bytes
+            .fetch_add(file_bytes, Ordering::Relaxed);
+
+        let capacity = usize::try_from(file_bytes)
+            .with_context(|| format!("binary {label} file size does not fit usize"))?;
+        let mut bytes = Vec::with_capacity(capacity);
+        file.take(maximum + 1)
+            .read_to_end(&mut bytes)
+            .with_context(|| format!("read binary {label} {}", path.display()))?;
+        if bytes.len() as u64 > maximum {
+            bail!(
+                "binary {label} {} grew beyond the {maximum} byte limit while being read",
+                path.display()
+            );
+        }
+        let actual_bytes = u64::try_from(bytes.len())
+            .with_context(|| format!("binary {label} byte length does not fit u64"))?;
+        if actual_bytes > file_bytes {
+            let growth = actual_bytes - file_bytes;
+            self.reserve_optional(growth, label)?;
+            self.derived_logical_bytes
+                .fetch_add(growth, Ordering::Relaxed);
+        }
+        Ok(bytes)
     }
 
     pub(crate) fn reserve_listing_entry(&self, path_bytes: u64, label: &str) -> Result<()> {

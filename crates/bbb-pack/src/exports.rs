@@ -85,6 +85,9 @@ pub use crate::sprites::{
 pub use crate::tags::{TagCatalog, TagDefinition};
 pub use crate::waypoint_styles::{WaypointStyle, WaypointStyleCatalog};
 pub use crate::win_screen::WinScreenTextResources;
+pub use crate::window_icons::{
+    MacOsWindowIcon, StandardWindowIcon, WindowIconCatalog, WindowIconFamily, WindowIconSet,
+};
 pub use bbb_render_types::{
     AtlasGpuAnimationFrame, AtlasGpuAnimationPlan, AtlasGpuAnimationSprite, AtlasMipPatch,
     AtlasRect, CoreShaderSourceProjection, PostEffectGraph, PostEffectInput,
