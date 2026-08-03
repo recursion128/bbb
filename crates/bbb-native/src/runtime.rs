@@ -3911,7 +3911,7 @@ pub(crate) fn update_renderer_from_publication(
                 || hud_player_reporting_screen.is_some()
                 || hud_game_event_screen.is_some(),
         );
-    let hud_duration = hud_started_at.elapsed();
+    let mut hud_duration = hud_started_at.elapsed();
     let item_pre_started_at = Instant::now();
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
     // `gameRenderer.tick`, and `level.tickEntities`; these projections read the post-tick snapshot.
@@ -4053,33 +4053,6 @@ pub(crate) fn update_renderer_from_publication(
         .as_deref()
         .map(AudioEventSink::counters)
         .unwrap_or_else(|| audio_status.clone());
-    let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(
-        hud_debug_overlay_at_partial_tick_with_camera_poses(
-            input,
-            world,
-            camera_pose,
-            camera_entity_pose,
-            entity_partial_tick,
-            item_runtime,
-            terrain_textures,
-            &renderer_counters,
-            gpu_utilization,
-            render_distance_chunks,
-            surface_size,
-            hud_debug_fps_sampler,
-            client_framerate_limit,
-            client_vsync,
-            hud_debug_network_sampler,
-            hud_debug_tps_sampler,
-            net_counters,
-            &hud_audio_counters,
-            current_post_effect_id,
-        ),
-        input
-            .debug_profiler_chart_visible()
-            .then_some(hud_debug_profiler_chart)
-            .flatten(),
-    );
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
@@ -4650,6 +4623,39 @@ pub(crate) fn update_renderer_from_publication(
     // the renderer later collects particle vertices.
     renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
     non_entity_render_extraction.record_debug_capacity_growths(&debug_buffers);
+    // Vanilla `GameRenderer.extract` completes the full `LevelRenderer.extractLevel` projection
+    // before GUI extraction. The entity statistics entry therefore reads the exact survivor count
+    // from this frame, not the total count or a previous-frame cache.
+    let hud_debug_started_at = Instant::now();
+    let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(
+        hud_debug_overlay_at_partial_tick_with_camera_poses(
+            input,
+            world,
+            entity_render_extraction.visible_entity_render_state_count(),
+            camera_pose,
+            camera_entity_pose,
+            entity_partial_tick,
+            item_runtime,
+            terrain_textures,
+            &renderer_counters,
+            gpu_utilization,
+            render_distance_chunks,
+            surface_size,
+            hud_debug_fps_sampler,
+            client_framerate_limit,
+            client_vsync,
+            hud_debug_network_sampler,
+            hud_debug_tps_sampler,
+            net_counters,
+            &hud_audio_counters,
+            current_post_effect_id,
+        ),
+        input
+            .debug_profiler_chart_visible()
+            .then_some(hud_debug_profiler_chart)
+            .flatten(),
+    );
+    hud_duration += hud_debug_started_at.elapsed();
     let DebugRenderExtractionBuffers {
         filled_boxes: debug_filled_boxes,
         filled_rects: debug_filled_rects,
@@ -8661,11 +8667,42 @@ fn hud_debug_overlay(
     tps_sampler: &HudDebugTpsSampler,
     net_counters: &NetCounters,
 ) -> Option<HudDebugOverlay> {
-    let audio_counters = AudioCounters::default();
-    let terrain_textures = TerrainTextureState::default();
-    hud_debug_overlay_at_partial_tick(
+    hud_debug_overlay_with_visible_entity_count(
         input,
         world,
+        world.entity_count(),
+        camera_pose,
+        surface_size,
+        fps_sampler,
+        client_framerate_limit,
+        client_vsync,
+        network_sampler,
+        tps_sampler,
+        net_counters,
+    )
+}
+
+#[cfg(test)]
+fn hud_debug_overlay_with_visible_entity_count(
+    input: &ClientInputState,
+    world: &WorldStore,
+    visible_entity_render_state_count: usize,
+    camera_pose: Option<CameraPose>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    fps_sampler: &HudDebugFpsSampler,
+    client_framerate_limit: u32,
+    client_vsync: bool,
+    network_sampler: &HudDebugNetworkSampler,
+    tps_sampler: &HudDebugTpsSampler,
+    net_counters: &NetCounters,
+) -> Option<HudDebugOverlay> {
+    let audio_counters = AudioCounters::default();
+    let terrain_textures = TerrainTextureState::default();
+    hud_debug_overlay_at_partial_tick_with_camera_poses(
+        input,
+        world,
+        visible_entity_render_state_count,
+        camera_pose,
         camera_pose,
         1.0,
         None,
@@ -8709,6 +8746,7 @@ fn hud_debug_overlay_at_partial_tick(
     hud_debug_overlay_at_partial_tick_with_camera_poses(
         input,
         world,
+        world.entity_count(),
         camera_pose,
         camera_pose,
         entity_partial_tick,
@@ -8732,6 +8770,7 @@ fn hud_debug_overlay_at_partial_tick(
 fn hud_debug_overlay_at_partial_tick_with_camera_poses(
     input: &ClientInputState,
     world: &WorldStore,
+    visible_entity_render_state_count: usize,
     camera_pose: Option<CameraPose>,
     interaction_camera_pose: Option<CameraPose>,
     entity_partial_tick: f32,
@@ -8866,7 +8905,10 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
         }
     }
     if entry_enabled(DebugScreenEntryId::EntityRenderStats) {
-        left_lines.push(hud_debug_entity_render_stats_line(world));
+        left_lines.push(hud_debug_entity_render_stats_line(
+            world,
+            visible_entity_render_state_count,
+        ));
     }
     if entry_enabled(DebugScreenEntryId::ParticleRenderStats) {
         left_lines.push(hud_debug_particle_render_stats_line(renderer_counters));
@@ -10198,10 +10240,15 @@ fn hud_debug_chunk_generation_stats_lines(
     None
 }
 
-fn hud_debug_entity_render_stats_line(world: &WorldStore) -> String {
-    let entity_count = world.entity_count();
+fn hud_debug_entity_render_stats_line(
+    world: &WorldStore,
+    visible_entity_render_state_count: usize,
+) -> String {
+    let total_entity_count = world.entity_count();
     let simulation_distance = world.local_player().simulation_distance.unwrap_or(0);
-    format!("E: {entity_count}/{entity_count}, SD: {simulation_distance}")
+    format!(
+        "E: {visible_entity_render_state_count}/{total_entity_count}, SD: {simulation_distance}"
+    )
 }
 
 fn hud_debug_particle_render_stats_line(counters: &bbb_renderer::RendererCounters) -> String {

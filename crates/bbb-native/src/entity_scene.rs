@@ -397,6 +397,15 @@ impl EntityRenderExtractionScratch {
         self.observation
     }
 
+    /// The number of `EntityRenderState` equivalents extracted for the current frame.
+    ///
+    /// Vanilla records this immediately after `LevelRenderer.extractVisibleEntities`; it is
+    /// intentionally the survivor count rather than the number of model instances because one
+    /// entity can emit multiple renderer-owned pieces.
+    pub(crate) fn visible_entity_render_state_count(&self) -> usize {
+        self.survivors.len()
+    }
+
     pub(crate) fn recycle_instances(&mut self, mut instances: Vec<EntityModelInstance>) {
         instances.clear();
         self.instances = instances;

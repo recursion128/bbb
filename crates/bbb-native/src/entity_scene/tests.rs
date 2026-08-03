@@ -689,6 +689,18 @@ fn visible_entity_source_orders_dispatcher_before_current_section_gate() {
 }
 
 #[test]
+fn visible_entity_render_state_count_reads_the_current_survivor_owner() {
+    let mut scratch = EntityRenderExtractionScratch::default();
+    scratch.survivors.extend([
+        render_candidate(1, VANILLA_ENTITY_TYPE_PLAYER_ID, [0.0, 64.0, 0.0]),
+        render_candidate(2, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, [0.0, 64.0, -2.0]),
+    ]);
+    scratch.observation.survivors = 99;
+
+    assert_eq!(scratch.visible_entity_render_state_count(), 2);
+}
+
+#[test]
 fn visibility_first_culling_keeps_catalog_exceptions_and_custom_bounds() {
     let camera = CameraPose {
         position: [0.0; 3],

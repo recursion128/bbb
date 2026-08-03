@@ -955,8 +955,54 @@ LEVEL_RENDERER_EFFECT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LEVEL_RENDERER_DIAGNOSTICS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/entity_scene.rs#visible_entity_render_state_count",
+                "crates/bbb-native/src/runtime.rs#hud_debug_entity_render_stats_line",
+            ),
+            (
+                "crates/bbb-native/src/entity_scene/tests.rs#visible_entity_render_state_count_reads_the_current_survivor_owner",
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_current_frame_entity_render_stats_under_reduced_debug_info",
+                "crates/bbb-native/src/runtime/tests.rs#level_diagnostics_have_one_current_frame_collection_and_finalize_path",
+            ),
+        ),
+        ("getEntityStatistics",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#begin_debug_frame",
+                "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#dynamic_debug_buffers_retain_capacity_and_count_only_growth_edges",
+                "crates/bbb-native/src/runtime/tests.rs#level_diagnostics_have_one_current_frame_collection_and_finalize_path",
+            ),
+        ),
+        ("collectPerFrameGizmos",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+                "crates/bbb-renderer/src/render.rs#debug_filled_box_pass",
+                "crates/bbb-renderer/src/render.rs#debug_always_on_top_text_pass",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#renderer_frame_reuses_dynamic_debug_buffers_and_keeps_stable_game_test_lane",
+                "crates/bbb-renderer/src/render.rs#debug_gizmo_passes_run_after_translucent_features_before_translucent_terrain",
+                "crates/bbb-renderer/src/render.rs#always_on_top_debug_text_runs_after_composition_with_cleared_depth",
+            ),
+        ),
+        ("finalizeGizmoCollection",),
+    ),
+)
+
 LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
+    "rendering-level-diagnostics-gizmos": LEVEL_RENDERER_DIAGNOSTICS_OWNER_EVIDENCE,
     "rendering-level-effect-lifecycle": LEVEL_RENDERER_EFFECT_OWNER_EVIDENCE,
     "rendering-level-frame-graph": LEVEL_RENDERER_FRAME_OWNER_EVIDENCE,
     "rendering-level-scene-projection": LEVEL_RENDERER_SCENE_OWNER_EVIDENCE,

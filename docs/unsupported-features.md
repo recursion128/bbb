@@ -82,24 +82,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
 - **The registered block-entity and remaining frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
   one mechanically reachable evidence cell for every 27 block-entity
-  registration, 70 GUI owner, 46 game-renderer owner and the two open
-  LevelRenderer mechanisms. Split only by semantic owner and preserve the
+  registration, 70 GUI owner, 46 game-renderer owner and the one open
+  LevelRenderer mechanism. Split only by semantic owner and preserve the
   single frame-extract/submission path.
   The generated inventory routes the 77 `LevelRenderer` methods into seven
   total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
   29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. Each of the two remaining open
-  mechanisms remains here until its own single-semantics slice supplies
+  diagnostics/gizmos 3 and light query 3. The one remaining open
+  mechanism remains here until its own single-semantics slice supplies
   consumer evidence.
-- **`rendering-level-diagnostics-gizmos` is the current active engineering
-  slice.** BBB already has one frame-local debug extraction and the standard /
-  always-on-top renderer passes, but its entity statistics currently report
-  total/total before current-frame visibility extraction and all three Vanilla
-  owners lack fail-closed consumer evidence. Publish the exact current-frame
-  visible/total/simulation-distance line through the existing single frame
-  projection and prove collection/finalization ordering without adding a
-  second collector. Contract and safe stops are in
-  `goal.md#active-工程合同levelrenderer-diagnosticsgizmos`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment

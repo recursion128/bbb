@@ -4981,7 +4981,7 @@ fn hud_debug_overlay_suppresses_custom_chunk_generation_stats_without_integrated
 }
 
 #[test]
-fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_info() {
+fn hud_debug_overlay_projects_current_frame_entity_render_stats_under_reduced_debug_info() {
     let mut world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
     world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
@@ -4993,9 +4993,10 @@ fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_inf
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    let overlay = hud_debug_overlay(
+    let overlay = hud_debug_overlay_with_visible_entity_count(
         &input,
         &world,
+        1,
         Some(CameraPose {
             position: [0.5, 0.0, -2.5],
             y_rot: 0.0,
@@ -5012,8 +5013,12 @@ fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_inf
     )
     .expect("entity render stats should be allowed under reduced debug info");
 
-    assert_eq!(overlay.left_lines, vec!["E: 2/2, SD: 12".to_string()]);
+    assert_eq!(overlay.left_lines, vec!["E: 1/2, SD: 12".to_string()]);
     assert!(overlay.right_lines.is_empty());
+    assert_eq!(
+        hud_debug_entity_render_stats_line(&WorldStore::new(), 0),
+        "E: 0/0, SD: 0"
+    );
 }
 
 #[test]
@@ -8274,6 +8279,63 @@ fn renderer_frame_reuses_dynamic_debug_buffers_and_keeps_stable_game_test_lane()
     assert!(frame_source.contains("pub(crate) debug_lines: Vec<DebugLine>"));
     assert!(frame_source.contains("renderer.replace_debug_lines(frame.debug_lines);"));
     assert!(frame_source.contains("renderer.set_game_test_highlights(boxes, text_billboards)"));
+}
+
+#[test]
+fn level_diagnostics_have_one_current_frame_collection_and_finalize_path() {
+    let runtime_source = include_str!("../runtime.rs");
+    let update = runtime_source
+        .split_once("pub(crate) fn update_renderer_from_publication(")
+        .expect("renderer publication owner")
+        .1
+        .split_once("\nfn renderer_particle_block_fluid_surface_sample(")
+        .expect("renderer publication owner end")
+        .0;
+    let visibility = update
+        .find("visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick(")
+        .expect("current-frame entity visibility extraction");
+    let visible_count = update
+        .find("entity_render_extraction.visible_entity_render_state_count()")
+        .expect("same-frame visible entity count");
+    let hud = update
+        .find("let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(")
+        .expect("HUD debug extraction");
+    let collect = update
+        .find("let mut debug_buffers = non_entity_render_extraction.begin_debug_frame();")
+        .expect("single frame-local gizmo collection");
+    let commit = update
+        .find("let recycled_debug_buffers = apply_renderer_frame(")
+        .expect("single immutable renderer commit");
+    let recycle = update
+        .find("non_entity_render_extraction.recycle_debug_buffers(recycled_debug_buffers);")
+        .expect("post-commit buffer recycle");
+
+    assert!(visibility < collect && collect < hud && hud < visible_count);
+    assert!(visible_count < commit && commit < recycle);
+    assert_eq!(update.matches("begin_debug_frame()").count(), 1);
+    assert_eq!(update.matches("apply_renderer_frame(").count(), 1);
+    assert_eq!(update.matches("recycle_debug_buffers(").count(), 1);
+    assert!(!runtime_source.contains("E: {entity_count}/{entity_count}"));
+
+    let frame_source = include_str!("render_extract.rs");
+    assert_eq!(
+        frame_source
+            .matches("renderer.replace_debug_filled_boxes(frame.debug_filled_boxes);")
+            .count(),
+        1
+    );
+    assert_eq!(
+        frame_source
+            .matches("renderer.replace_debug_text_billboards(frame.debug_text_billboards);")
+            .count(),
+        1
+    );
+    assert_eq!(
+        frame_source
+            .matches("renderer.replace_debug_lines(frame.debug_lines);")
+            .count(),
+        1
+    );
 }
 
 #[test]

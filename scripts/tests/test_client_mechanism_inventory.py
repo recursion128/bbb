@@ -379,6 +379,31 @@ public class Owner {
                     )
                 )
 
+    def test_diagnostics_owner_without_implementation_test_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { String getEntityStatistics() { return null; } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.LEVEL_RENDERER_DIAGNOSTICS_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "rendering",
+                        "rendering-level-diagnostics-gizmos",
+                        relative,
+                    )
+                )
+
     def test_direct_field_return_is_a_support_accessor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

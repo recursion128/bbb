@@ -433,34 +433,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
-### Active 工程合同：LevelRenderer diagnostics/gizmos
-
-目标：关闭 `rendering-level-diagnostics-gizmos` 的 `getEntityStatistics`、
-`collectPerFrameGizmos`、`finalizeGizmoCollection` 共 3 owner。Vanilla 依据为
-`GameRenderer.extract` 的 level-before-GUI 顺序、`LevelRenderer.extractVisibleEntities` /
-上述三方法、`Gizmos` 与 `SimpleGizmoCollector`。实证缺口是 BBB 在本帧可见性提取前输出
-`E: total/total`；现有单帧 gizmo 汇聚与标准/always-on-top pass 尚无逐 owner fail-closed evidence。
-
-唯一 flow：world/input/resource canonical facts → native 本帧 entity visibility 与 debug gizmo
-提取 → 一个 immutable `RendererFrame` → renderer 标准 pass（translucent features 后、translucent
-terrain 前）及 cleared-depth late always-on-top pass。动态 gizmo 每帧重建并清空；GameTest marker
-按 level generation/revision 替换，remote selection cache 按 level generation 清除；renderer 不反向
-读取 world/pack。当前外部客户端 source 无 `persistForMillis`/`fadeOut` 调用，IntegratedServer
-per-tick gizmo 为已登记 not-needed，故不引入第二个通用 collector 或 shadow lifetime。
-
-阶段：A 冻结 3 owner、extract/order/lifetime/budget；B 将 HUD entity stats 移到同帧 visibility
-之后并传递 exact survivor/total/simulation-distance 窄值；C 复验唯一 debug buffer 汇聚、GameTest
-generation、standard/always-on-top 分类、pass 顺序与 stale clear，生成 3/3 evidence；D 更新
-Wiki/matrix/ledger、focused/full/playable 收口。非目标：light query、debug renderer 几何、HUD 其它
-entry、IntegratedServer、renderer pipeline/resource reload、screen、audio 或协议格式。
-
-Focused tests：visible != total、reduced-debug custom entry 与 zero/default distance；level extract 在 GUI
-stats 前；single begin/finalize/apply production path；空帧清旧数据、GameTest generation replacement、
-remote selection stale generation；标准与 always-on-top phase/depth；debug packet payload/collection 既有
-上限及 frame buffer reuse；3 evidence cells 缺 symbol/test fail closed，旧 total/total resolver 不可恢复。
-合同提交先 full gate；实现后 checkpoint/final full gate 和 fixture/live playable。安全停止点仅限干净
-full-gated checkpoint；blocker 仅限真实 window/GPU/live 外部失败且 CPU/source evidence 已通过。
-
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

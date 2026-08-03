@@ -123,6 +123,25 @@ entries 和 local stage，但与 Vanilla 的长期 `LevelRenderer` 一样不重�
 `block_destructions_ignored`，`block_destructions_tracked` 始终给出当前 retained count。stage projection
 只分配本帧 immutable 值，不保留第二 generation；缺 destroy texture 继续产生零 overlay。
 
+### Level diagnostics 与 gizmo finalize
+
+Vanilla `GameRenderer.extract` 先完成 `LevelRenderer.extractLevel`，再提取 GUI；因此
+`getEntityStatistics` 读取的是本帧 `extractVisibleEntities` 已写入的 render-state 数、level entity 总数
+和 server simulation distance。BBB 对应地在唯一 entity visibility scratch 完成本帧 survivor 集后，
+才构造 `E: visible/total, SD: distance`；survivor 数不从 model-instance 数反推，因为一个 entity 可以
+产生多个 renderer piece。reduced-debug 的自定义 entry 仍可显示，未收到 distance 时保持 0。
+
+所有外部多人可达 gizmo 经过同一个 frame-local owner：world/input/resource facts → native
+`DebugRenderExtractionBuffers` → immutable `RendererFrame` → renderer debug passes。普通 box/rect/text/line
+在 translucent features 后、translucent terrain 前 finalize；`setAlwaysOnTop` 的当前客户端调用均为文字，
+它们在 composition 后清 depth 的 late pass 提交。空帧以 replace 清除旧动态 geometry，vector 只回收容量；
+GameTest marker 按 level generation/revision 替换，remote brain selection 按 level generation 清除。
+
+Vanilla 26.1 客户端源码没有 `persistForMillis` 或 `fadeOut` 的生产调用；client per-tick collector 因而没有
+需要复制的长期 gizmo owner，IntegratedServer per-tick gizmo 已按外部客户端边界登记 not-needed。BBB
+不增加第二个通用 collector/shadow lifetime；debug subscription packet 的 2 MiB payload、65,536 collection
+value 上限和既有 world expiry 继续约束外部输入，renderer 不反向读取 packet、world 或 pack。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -159,6 +178,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | level scene extract/submit | `LevelRenderer` 15 scene owners | world → native immutable frame projection → renderer pass/target | `equivalent` | generated 15-owner evidence、selection phase/style、32-block crack、offscreen pixel tests |
 | level frame graph | `LevelRenderer` 14 frame owners | CLI/native `LevelFrameRoute` → renderer targets/passes | `equivalent` | generated 14-owner evidence、regular/improved pixels/counters、selected graph rollback |
 | level effect lifetime | `LevelRenderer` 4 effect owners | world breaking state + native weather tick → immutable effect/overlay consumers | `equivalent` | generated 4-owner evidence、20/400/freeze/teardown/budget/source-guard tests |
+| level diagnostics/gizmos | `LevelRenderer` 3 diagnostics owners | native current-frame visibility/debug projection → renderer standard/late passes | `equivalent` | generated 3-owner evidence、visible/total、generation/stale-clear/pass-order tests |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -222,14 +242,18 @@ weather→expiry→later-effect 顺序、crack/block-entity crumbling 与 missin
 reverse guard 要求 production 只调用一次 world stage projection，并禁止 native 旧 resolver 恢复；generated
 inventory 为 4 个 owner 保存 implementation/test cell，缺 cell、失效 symbol 或 stale output 均失败。
 
+diagnostics 由 current-frame visible/total 测试、single collect/commit/recycle reverse guard、GameTest/remote
+generation tests、empty-frame stale clear 以及 standard/always-on-top pass/depth tests 覆盖；generated
+inventory 为 3 个 owner 保存 fail-closed implementation/test cell。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect lifecycle 均已通过；新 block state、
-pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
+当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect/diagnostics lifecycle 均已通过；
+新 block state、pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 
 ## 账本/goal 路由
