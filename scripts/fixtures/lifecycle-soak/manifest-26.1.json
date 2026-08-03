@@ -5,6 +5,7 @@
   "seed": "bbb-lifecycle-soak-26.1",
   "iterations": 3,
   "per_iteration_timeout_seconds": 420,
+  "terminal_quiescence_timeout_seconds": 120,
   "total_timeout_seconds": 1500,
   "termination_modes": [
     "quit",

@@ -37,6 +37,23 @@ class LifecycleSoakManifestTests(unittest.TestCase):
         ):
             lifecycle_soak.validate_manifest(manifest)
 
+    def test_terminal_quiescence_budget_must_be_positive_and_bounded(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["terminal_quiescence_timeout_seconds"] = 0
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure,
+            "terminal_quiescence_timeout_seconds must be a positive integer",
+        ):
+            lifecycle_soak.validate_manifest(manifest)
+
+        manifest["terminal_quiescence_timeout_seconds"] = (
+            manifest["per_iteration_timeout_seconds"] + 1
+        )
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "must not exceed the per-iteration budget"
+        ):
+            lifecycle_soak.validate_manifest(manifest)
+
     def test_both_terminal_modes_are_required(self):
         manifest = copy.deepcopy(self.manifest)
         manifest["termination_modes"] = ["quit"] * manifest["iterations"]
@@ -213,6 +230,14 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
 
 
 class LifecycleSoakScriptContractTests(unittest.TestCase):
+    def test_runner_projects_the_manifest_terminal_budget_without_a_shadow_literal(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'manifest["terminal_quiescence_timeout_seconds"]', source
+        )
+        self.assertNotIn('"BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": "60"', source)
+
     def test_wrapper_builds_feature_binary_and_records_only_passing_report(self):
         source = (
             REPO_ROOT / "scripts" / "lifecycle-soak-gate.sh"

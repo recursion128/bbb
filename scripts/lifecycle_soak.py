@@ -94,6 +94,15 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         manifest.get("per_iteration_timeout_seconds"),
         "manifest.per_iteration_timeout_seconds",
     )
+    terminal_quiescence = _positive_int(
+        manifest.get("terminal_quiescence_timeout_seconds"),
+        "manifest.terminal_quiescence_timeout_seconds",
+    )
+    if terminal_quiescence > per_iteration:
+        raise SoakFailure(
+            "manifest.terminal_quiescence_timeout_seconds must not exceed "
+            "the per-iteration budget"
+        )
     total = _positive_int(
         manifest.get("total_timeout_seconds"), "manifest.total_timeout_seconds"
     )
@@ -349,6 +358,9 @@ def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, An
         "seed": manifest["seed"],
         "iteration_budget": manifest["iterations"],
         "per_iteration_timeout_seconds": manifest["per_iteration_timeout_seconds"],
+        "terminal_quiescence_timeout_seconds": manifest[
+            "terminal_quiescence_timeout_seconds"
+        ],
         "total_timeout_seconds": manifest["total_timeout_seconds"],
         "iterations": [],
         "process_trends": None,
@@ -373,7 +385,9 @@ def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, An
                     "BBB_PLAYABLE_TIMEOUT_SECONDS": str(
                         manifest["per_iteration_timeout_seconds"]
                     ),
-                    "BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": "60",
+                    "BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": str(
+                        manifest["terminal_quiescence_timeout_seconds"]
+                    ),
                     "BBB_PLAYABLE_TERMINATION_MODE": mode,
                     "BBB_LIFECYCLE_SOAK_MANIFEST": str(args.manifest.resolve()),
                 }
