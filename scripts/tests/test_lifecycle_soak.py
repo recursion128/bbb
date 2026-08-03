@@ -136,6 +136,7 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
         return {
             "mode": mode,
             "kick_disconnected": mode == "kick",
+            "kick_disconnect_receipt": "net-counters" if mode == "kick" else None,
             "quiescent_snapshot": snapshot,
             "process_metrics": {
                 "rss_bytes": 100_000_000,
@@ -201,6 +202,15 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             lifecycle_soak.SoakFailure, "kick did not reach disconnected"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 2, self.evidence(), termination
+            )
+
+        termination["kick_disconnected"] = True
+        termination["kick_disconnect_receipt"] = None
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "kick disconnect receipt is invalid"
         ):
             lifecycle_soak.validate_iteration(
                 self.manifest, 2, self.evidence(), termination

@@ -293,7 +293,9 @@ quiescence 的观察预算。当前脚本内另有未验证的 60 秒字面量�
   terminal-phase 预算；`scripts/lifecycle_soak.py` 只校验并投影给
   `playable-gate.sh`，不再保留独立字面量。该预算必须为正整数且不得
   使三个 terminal phase 总和超过 per-iteration budget；quiescence、kick-disconnect
-  和 process-exit 各有独立 deadline，120 秒为当前冻结值。
+  和 process-exit 各有独立 deadline，120 秒为当前冻结值。kick-disconnect 必须先有
+  目标 Vanilla 服的精确 kick receipt；客户端终态由 `net.connected=false`，或控制端
+  随断线关闭后紧接着的零退出且进程消失共同证明，不能把控制端口关闭单独当作成功。
 - 非目标：不改 terrain queue/mesh/revision 逻辑，不降低 chunk/section 工作量，
   不放宽任一终态 gauge，不改 network shutdown 或产品 runtime。
 - 阶段：A 固化 60/180 秒复现与 owner；B 增加 manifest 字段、边界校验和

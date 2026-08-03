@@ -34,6 +34,9 @@ EXPECTED_PHASES = [
     "initial_chunk_local_player_spawn",
 ]
 
+KICK_SERVER_LOG_RECEIPT = "Kicked bbb-playablegate: bbb lifecycle soak kick"
+SERVER_LOG_TAIL_LIMIT_BYTES = 1024 * 1024
+
 # Vanilla 26.1 ordering authority: ServerLoginPacketListenerImpl switches to
 # configuration, SynchronizeRegistriesTask sends SelectKnownPacks before its
 # registry-data/update-tags response, and JoinWorldTask sends FinishConfiguration
@@ -1103,6 +1106,7 @@ def terminate_live(args: argparse.Namespace) -> None:
         "mode": args.mode,
         "client_pid": args.client_pid,
         "kick_disconnected": False,
+        "kick_disconnect_receipt": None,
         "quiescent_snapshot": None,
         "terminal_gauges": None,
         "process_metrics": None,
@@ -1136,14 +1140,12 @@ def terminate_live(args: argparse.Namespace) -> None:
                 "kick bbb-playablegate bbb lifecycle soak kick",
             )
             disconnect_deadline = time.monotonic() + args.timeout
-            disconnected = _await_value(
+            result["kick_disconnect_receipt"] = _await_kick_disconnect(
                 disconnect_deadline,
-                "official-server kick disconnect",
-                lambda: _control_request(address, "net.counters"),
-                lambda value: isinstance(value, dict)
-                and value.get("connected") is False,
+                address,
+                args.transfer_server_log,
             )
-            result["kick_disconnected"] = disconnected.get("connected") is False
+            result["kick_disconnected"] = True
         else:
             result["app_quit_response"] = _control_request(address, "app.quit")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
@@ -2837,6 +2839,50 @@ def _server_console_command(path: Path, command: str) -> None:
         sink.flush()
 
 
+def _server_log_has_kick_receipt(path: Path) -> bool:
+    try:
+        with path.open("rb") as source:
+            source.seek(0, 2)
+            size = source.tell()
+            source.seek(max(0, size - SERVER_LOG_TAIL_LIMIT_BYTES))
+            tail = source.read(SERVER_LOG_TAIL_LIMIT_BYTES)
+    except FileNotFoundError:
+        return False
+    return KICK_SERVER_LOG_RECEIPT.encode("utf-8") in tail
+
+
+def _await_kick_disconnect(
+    deadline: float,
+    address: tuple[str, int],
+    server_log: Path,
+) -> str:
+    last_value: Any = None
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        server_receipt = _server_log_has_kick_receipt(server_log)
+        try:
+            last_value = _control_request(address, "net.counters")
+            if (
+                server_receipt
+                and isinstance(last_value, dict)
+                and last_value.get("connected") is False
+            ):
+                return "net-counters"
+        except OSError as error:
+            last_error = error
+            if server_receipt:
+                return "control-closed"
+        except (GateFailure, ValueError, json.JSONDecodeError) as error:
+            last_error = error
+        time.sleep(0.1)
+    detail = f"; last error: {last_error}" if last_error is not None else ""
+    raise GateFailure(
+        "timed out waiting for official-server kick receipt and client disconnect; "
+        f"server receipt: {_server_log_has_kick_receipt(server_log)}; "
+        f"last value: {last_value!r}{detail}"
+    )
+
+
 def _dimension_name(address: tuple[str, int]) -> str | None:
     level_state = _control_request(address, "world.level_state")
     level = level_state.get("level") if isinstance(level_state, dict) else None
@@ -3764,6 +3810,7 @@ def _build_parser() -> argparse.ArgumentParser:
     terminate.add_argument("--mode", choices=("quit", "kick"), required=True)
     terminate.add_argument("--manifest", type=Path, required=True)
     terminate.add_argument("--transfer-server-command", type=Path, required=True)
+    terminate.add_argument("--transfer-server-log", type=Path, required=True)
     terminate.add_argument("--client-pid", type=int, required=True)
     terminate.add_argument("--timeout", type=float, required=True)
     terminate.add_argument("--output", type=Path, required=True)

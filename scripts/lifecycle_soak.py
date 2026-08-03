@@ -208,8 +208,18 @@ def validate_iteration(
             f"iteration {iteration}: termination mode {termination.get('mode')!r} "
             f"does not match {expected_mode!r}"
         )
-    if expected_mode == "kick" and termination.get("kick_disconnected") is not True:
-        raise SoakFailure(f"iteration {iteration}: kick did not reach disconnected state")
+    if expected_mode == "kick":
+        if termination.get("kick_disconnected") is not True:
+            raise SoakFailure(
+                f"iteration {iteration}: kick did not reach disconnected state"
+            )
+        if termination.get("kick_disconnect_receipt") not in (
+            "net-counters",
+            "control-closed",
+        ):
+            raise SoakFailure(
+                f"iteration {iteration}: kick disconnect receipt is invalid"
+            )
     if termination.get("exit_status") != 0:
         raise SoakFailure(
             f"iteration {iteration}: client exit status is "

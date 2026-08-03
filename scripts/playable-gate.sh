@@ -477,6 +477,7 @@ if [ -n "$termination_mode" ]; then
     --mode "$termination_mode" \
     --manifest "$termination_manifest" \
     --transfer-server-command "$transfer_server_command" \
+    --transfer-server-log "$transfer_server_log" \
     --client-pid "$client_pid" \
     --timeout "$termination_timeout_seconds" \
     --output "$termination_json"
