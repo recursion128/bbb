@@ -746,7 +746,7 @@ fn entity_model_cutout_z_offset_shader() -> String {
 }
 
 fn entity_model_solid_z_offset_forward_shader() -> String {
-    ENTITY_MODEL_TEXTURED_CULL_SHADER
+    ENTITY_MODEL_TEXTURED_SHADER
         .replace(
             "    minecraft_light1: vec4<f32>,\n};",
             "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n    view_proj_view_offset_z_forward: mat4x4<f32>,\n};",
@@ -762,8 +762,7 @@ fn entity_model_solid_z_offset_forward_shader() -> String {
 }
 
 fn entity_model_solid_shader() -> String {
-    ENTITY_MODEL_TEXTURED_CULL_SHADER
-        .replace("    if sample.a < 0.1 {\n        discard;\n    }\n", "")
+    ENTITY_MODEL_TEXTURED_SHADER.replace("    if sample.a < 0.1 {\n        discard;\n    }\n", "")
 }
 
 pub(super) const ENTITY_MODEL_ARMOR_SHADER: &str = r#"
@@ -882,196 +881,6 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
     let texel = sample * input.tint;
     let light_color = sample_lightmap(input.light);
     return apply_fog(vec4<f32>(texel.rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
-}
-"#;
-
-pub(super) const ENTITY_MODEL_TEXTURED_CULL_SHADER: &str = r#"
-struct Camera {
-    view_proj: mat4x4<f32>,
-    lightmap_factors: vec4<f32>,
-    lightmap_effects: vec4<f32>,
-    block_light_tint: vec4<f32>,
-    sky_light_color: vec4<f32>,
-    ambient_color: vec4<f32>,
-    night_vision_color: vec4<f32>,
-    camera_position: vec4<f32>,
-    fog_color: vec4<f32>,
-    fog_distances: vec4<f32>,
-    fog_visibility_ends: vec4<f32>,
-    minecraft_light0: vec4<f32>,
-    minecraft_light1: vec4<f32>,
-};
-
-@group(0) @binding(0)
-var<uniform> camera: Camera;
-
-@group(0) @binding(1)
-var entity_texture_atlas: texture_2d<f32>;
-
-@group(0) @binding(2)
-var entity_sampler: sampler;
-
-@group(1) @binding(0)
-var lightmap_texture: texture_2d<f32>;
-
-@group(1) @binding(1)
-var lightmap_sampler: sampler;
-
-struct VertexIn {
-    @location(0) position: vec3<f32>,
-    @location(1) uv: vec2<f32>,
-    @location(2) tint: vec4<f32>,
-    @location(3) light: vec2<f32>,
-    @location(4) overlay: vec2<f32>,
-    @location(5) normal: vec3<f32>,
-    @location(6) standalone_local_uv: vec2<f32>,
-    @location(7) standalone_pixel_origin: vec2<f32>,
-    @location(8) standalone_size_flags: vec4<f32>,
-};
-
-struct VertexOut {
-    @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) tint: vec4<f32>,
-    @location(2) light: vec2<f32>,
-    @location(3) overlay: vec2<f32>,
-    @location(4) normal: vec3<f32>,
-    @location(5) spherical_distance: f32,
-    @location(6) cylindrical_distance: f32,
-    @location(7) standalone_local_uv: vec2<f32>,
-    @location(8) standalone_pixel_origin: vec2<f32>,
-    @location(9) standalone_size_flags: vec4<f32>,
-};
-
-fn resolve_standalone_texel_coordinate(coordinate: i32, extent: i32, clamp_address: bool) -> i32 {
-    if clamp_address {
-        return clamp(coordinate, 0, extent - 1);
-    }
-    return ((coordinate % extent) + extent) % extent;
-}
-
-fn load_standalone_texel(
-    coordinate: vec2<i32>,
-    pixel_origin: vec2<i32>,
-    size: vec2<i32>,
-    clamp_address: bool,
-) -> vec4<f32> {
-    let resolved = vec2<i32>(
-        resolve_standalone_texel_coordinate(coordinate.x, size.x, clamp_address),
-        resolve_standalone_texel_coordinate(coordinate.y, size.y, clamp_address),
-    );
-    return textureLoad(entity_texture_atlas, pixel_origin + resolved, 0);
-}
-
-fn sample_entity_texture(
-    atlas_uv: vec2<f32>,
-    local_uv: vec2<f32>,
-    pixel_origin_value: vec2<f32>,
-    size_flags: vec4<f32>,
-) -> vec4<f32> {
-    let atlas_sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
-    if size_flags.x < 0.5 || size_flags.y < 0.5 {
-        return atlas_sample;
-    }
-
-    let pixel_origin = vec2<i32>(round(pixel_origin_value));
-    let size = vec2<i32>(round(size_flags.xy));
-    let size_f = vec2<f32>(size);
-    let clamp_address = size_flags.w > 0.5;
-    if size_flags.z < 0.5 {
-        let coordinate = vec2<i32>(floor(local_uv * size_f));
-        return load_standalone_texel(coordinate, pixel_origin, size, clamp_address);
-    }
-
-    let sample_position = local_uv * size_f - vec2<f32>(0.5);
-    let lower = vec2<i32>(floor(sample_position));
-    let weight = fract(sample_position);
-    let top = mix(
-        load_standalone_texel(lower, pixel_origin, size, clamp_address),
-        load_standalone_texel(lower + vec2<i32>(1, 0), pixel_origin, size, clamp_address),
-        weight.x,
-    );
-    let bottom = mix(
-        load_standalone_texel(lower + vec2<i32>(0, 1), pixel_origin, size, clamp_address),
-        load_standalone_texel(lower + vec2<i32>(1, 1), pixel_origin, size, clamp_address),
-        weight.x,
-    );
-    return mix(top, bottom, weight.y);
-}
-
-fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
-    let uv = clamp(
-        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
-        vec2<f32>(0.5 / 16.0),
-        vec2<f32>(15.5 / 16.0),
-    );
-    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
-}
-
-fn diffuse_light(normal: vec3<f32>) -> f32 {
-    let light0 = normalize(camera.minecraft_light0.xyz);
-    let light1 = normalize(camera.minecraft_light1.xyz);
-    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
-    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
-}
-
-fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
-    if (vertex_distance <= fog_start) {
-        return 0.0;
-    }
-    if (vertex_distance >= fog_end) {
-        return 1.0;
-    }
-    return (vertex_distance - fog_start) / (fog_end - fog_start);
-}
-
-fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
-    let fog_value = max(
-        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
-        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
-    );
-    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
-}
-
-@vertex
-fn vs_main(input: VertexIn) -> VertexOut {
-    var out: VertexOut;
-    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
-    out.uv = input.uv;
-    out.tint = input.tint;
-    out.light = input.light;
-    out.overlay = input.overlay;
-    out.normal = normalize(input.normal);
-    let fog_pos = input.position - camera.camera_position.xyz;
-    out.spherical_distance = length(fog_pos);
-    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
-    out.standalone_local_uv = input.standalone_local_uv;
-    out.standalone_pixel_origin = input.standalone_pixel_origin;
-    out.standalone_size_flags = input.standalone_size_flags;
-    return out;
-}
-
-@fragment
-fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let sample = sample_entity_texture(
-        input.uv,
-        input.standalone_local_uv,
-        input.standalone_pixel_origin,
-        input.standalone_size_flags,
-    );
-    if sample.a < 0.1 {
-        discard;
-    }
-    let texel = sample * input.tint;
-    var rgb = texel.rgb;
-    if (input.overlay.y < 8.0) {
-        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
-    } else {
-        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
-        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
-    }
-    let light_color = sample_lightmap(input.light);
-    return apply_fog(vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -2559,7 +2368,7 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
         bind_group_layout,
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-textured-cull",
-        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+        ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
         ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_CULL_MODE,
@@ -3298,7 +3107,7 @@ pub(crate) fn create_entity_model_translucent_cull_pipeline(
         bind_group_layout,
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-translucent-cull",
-        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+        ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
         ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_CULL_MODE,
@@ -5845,12 +5654,12 @@ mod tests {
         ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SCROLL_SHADER,
         ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
-        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND, ENTITY_MODEL_TEXTURED_CULL_SHADER,
-        ENTITY_MODEL_TEXTURED_DEPTH_COMPARE, ENTITY_MODEL_TEXTURED_SHADER,
-        ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
-        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
-        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
-        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
+        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND, ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+        ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
+        ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_WATER_MASK_SHADER,
     };
     use crate::entity_models::geometry::{EntityModelTexturedMesh, EntityModelTexturedVertex};
     use crate::{EntityModelInstance, EntityModelKind};
@@ -6119,11 +5928,6 @@ mod tests {
                 "let sample = sample_entity_texture(",
             ),
             (
-                "entity textured cull",
-                ENTITY_MODEL_TEXTURED_CULL_SHADER,
-                "let sample = sample_entity_texture(",
-            ),
-            (
                 "breezeWind scroll",
                 ENTITY_MODEL_SCROLL_SHADER,
                 "let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv)",
@@ -6146,6 +5950,35 @@ mod tests {
                 "{label} shader must not cut out post-tint alpha"
             );
         }
+    }
+
+    #[test]
+    fn embedded_entity_textured_pipelines_have_one_shader_source() {
+        let source = include_str!("gpu.rs");
+        let tests_start = source
+            .find("#[cfg(test)]")
+            .expect("gpu tests module is present");
+        let implementation = &source[..tests_start];
+        assert_eq!(
+            implementation
+                .matches("pub(super) const ENTITY_MODEL_TEXTURED_SHADER")
+                .count(),
+            1,
+            "the embedded entity textured WGSL has one declaration owner"
+        );
+        let deleted_cull_owner = ["ENTITY_MODEL_TEXTURED_", "CULL_SHADER"].concat();
+        assert!(
+            !implementation.contains(&deleted_cull_owner),
+            "a cull-specific entity textured WGSL owner was restored"
+        );
+        assert!(
+            ENTITY_MODEL_TEXTURED_SHADER.contains("@builtin(front_facing) front_facing: bool")
+                && ENTITY_MODEL_TEXTURED_SHADER
+                    .contains("per_face_diffuse_light(input.normal, front_facing)"),
+            "the shared source must preserve Vanilla PER_FACE_LIGHTING for no-cull surfaces"
+        );
+        assert_eq!(ENTITY_MODEL_SURFACE_CULL_MODE, Some(wgpu::Face::Back));
+        assert_eq!(ENTITY_MODEL_SURFACE_NO_CULL_MODE, None);
     }
 
     #[test]
@@ -6235,8 +6068,8 @@ mod tests {
         assert!(
             shader.contains("sample_lightmap(input.light)")
                 && shader.contains("input.overlay")
-                && shader.contains("diffuse_light(input.normal)"),
-            "vanilla ENTITY_SOLID keeps LightTexture, overlay, and culling-shaped lighting"
+                && shader.contains("per_face_diffuse_light(input.normal, front_facing)"),
+            "entitySolid derives from the shared textured source; its cull descriptor admits only front-facing lighting"
         );
         assert!(
             !shader.contains("if sample.a < 0.1") && !shader.contains("discard"),
@@ -6259,9 +6092,8 @@ mod tests {
         assert!(
             shader.contains("sample_lightmap(input.light)")
                 && shader.contains("input.overlay")
-                && shader.contains("diffuse_light(input.normal)")
-                && !shader.contains("per_face_diffuse_light"),
-            "vanilla ENTITY_SOLID keeps lightmap/overlay and one-sided cull lighting"
+                && shader.contains("per_face_diffuse_light(input.normal, front_facing)"),
+            "entitySolid keeps lightmap/overlay while the cull descriptor makes the shared front/back decision one-sided"
         );
     }
 

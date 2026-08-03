@@ -65,29 +65,6 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 Matrix route: `rendering-entity-layer-registration`
 
 <!-- architecture-candidates:start -->
-- **`arch-entity-textured-shader-single-source` is `active`.**
-  - Semantic mechanism: entity textured sampling, lighting, overlay and fog shader source.
-  - Canonical input: one entity vertex/texture projection and the pipeline's cull mode.
-  - Owners: `crates/bbb-renderer/src/entity_models/gpu.rs` embeds two nearly identical WGSL
-    sources whose only decision difference is back-face diffuse lighting.
-  - Production callers: `crates/bbb-renderer/src/entity_models/gpu.rs` compiles both sources
-    into cutout/solid pipeline variants and derives z-offset variants separately.
-  - Direction: one renderer-private shader source → pipeline descriptors with cull state →
-    GPU submission; pipeline selection must not duplicate texture resolution.
-  - Lifetime: one backend shader/pipeline generation; preparation is transactional and
-    failed compilation keeps the previous renderer generation.
-  - Ordering/fallback/rollback: preserve alpha cutout, overlay, atlas/standalone sampling,
-    front/back diffuse lighting, cull state and pipeline-generation rollback.
-  - Public API: keep one renderer-private shader source; cull remains descriptor state.
-  - Delete: `ENTITY_MODEL_TEXTURED_CULL_SHADER`, its duplicate texture/light/fog resolver
-    body and derived-source call sites.
-  - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
-    pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
-  - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
-    narrowing low and focused verification high; rank 1/1.
-  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
-  - Reopen condition: reopen only if a future shader requires a decision not representable
-    by cull state and `front_facing` in the shared source.
 <!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
 

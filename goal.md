@@ -413,7 +413,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-hud: active
 - p3-resources: maintenance
 - p4-delivery: active
-- architecture-convergence: active
+- architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -422,39 +422,8 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。唯一 active 工程合同是 `arch-entity-textured-shader-single-source`：不改变 entity
-texture、lighting、overlay、fog、alpha cutout、cull 或 GPU generation 行为，把内嵌 textured entity
-WGSL 的 cull/no-cull 副本收敛为一份 renderer-private source。
-
-- Vanilla owner 是 `RenderPipelines.ENTITY_SNIPPET`、`ENTITY_SOLID(_Z_OFFSET_FORWARD)`、
-  `ENTITY_CUTOUT_CULL`、`ENTITY_CUTOUT(_Z_OFFSET)`、`ENTITY_TRANSLUCENT(_CULL)`，以及
-  `assets/minecraft/shaders/core/entity.vsh`/`entity.fsh`。`PER_FACE_LIGHTING` 只给 no-cull pipeline
-  定义，fragment 用 `gl_FrontFacing` 在 front/back normal 间选择；cull pipeline 对存活 fragment 只取
-  front diffuse。alpha cutout 在 sample 后、tint 前，随后 overlay、lightmap 和 fog。
-- 唯一 semantic owner 固定为 `ENTITY_MODEL_TEXTURED_SHADER`：同一 WGSL 保留
-  `@builtin(front_facing)` 与 `per_face_diffuse_light`；pipeline descriptor 的 cull mode 是唯一单双面
-  决策。开启 back-face cull 时存活 fragment 的 `front_facing=true`，与旧 cull source 的
-  `diffuse_light(normal)` 决策等价；no-cull 仍对背面用 `diffuse_light(-normal)`。
-- dependency 只允许 renderer-private source → solid/cutout/translucent 与 z-offset derived source →
-  `RenderPipelineBuilder` descriptor → GPU submission。删除 `ENTITY_MODEL_TEXTURED_CULL_SHADER`、重复的
-  texture/standalone/lightmap/overlay/fog body 和全部引用；不增加 runtime branch、trait、facade、公开 API
-  或 shader shadow cache。selected resource shader adapter 与其它特殊 entity shader不是本 slice 范围。
-- `entity_model_solid_shader` 和 `entity_model_solid_z_offset_forward_shader` 继续只从共享 source 派生：
-  solid 删除 alpha-cutout block，z-offset 只替换 projection matrix；blend、depth write/compare、cull、
-  atlas/standalone sampling、overlay、lightmap、fog 和 draw order 保持。无 fallback 行为变化。
-- embedded 与 selected shader/pipeline 仍在现有 renderer resource transaction 中完整 prepare；全部
-  pipeline compile 成功后才发布，任一失败保留上一 generation，不引入 session/generation 状态。
-- 非目标是迁移 GLSL→WGSL adapter、修改 pipeline family、shader公式、renderer pass order、entity mesh/
-  atlas、screen/HUD 或修复任何 parity 行为；若发现旧两份 source 已有真实像素差异，登记独立 parity
-  gap，不在结构 slice 中改变产品合同。
-- 阶段：锁定两份 source 的唯一语义差→所有 embedded caller 改读共享 source→删除 duplicate constant→
-  reverse guard/Wiki/ledger 收口。focused tests覆盖 source 单一性、alpha-cutout/sample/tint 次序、
-  front/back diffuse 等价、solid 派生、cull/no-cull descriptor、WGSL compile、offscreen entity pixels、
-  selected generation compile/rollback与旧 symbol production 为零。
-- 执行 renderer shader/pipeline focused tests、适用本地 selected entity shader GPU acceptance、docs-lint
-  fixtures、fmt、diff check、workspace check与完整 diff review后正常提交；该高风险 checkpoint 必须
-  full gate。产品行为预期不变，fixture playable刷新。只有代码无法消除、已复现的 GPU/Wayland runner
-  故障才是 blocker；安全停止点仅为所有 embedded caller 已迁移、duplicate source 已删除且工作树可构建。
+状态：`maintenance`。新发现的真实重复 owner、resolver、projection 或 generation shadow state
+必须先在唯一 ledger 登记有界候选并把本路线恢复为 `active`；不得用持续代码质量口号制造无界任务。
 
 ### P1：可玩 Session 端到端门禁
 

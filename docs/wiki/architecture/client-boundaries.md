@@ -94,6 +94,20 @@ generation 成功后才替换；任一步失败继续保留上一 resolved catal
 命中新 generation。反向 source guard 禁止恢复 legacy flag、静态 armor/saddle/wings resolver 或
 asset-free compatibility 分支。
 
+## Entity textured shader owner
+
+Vanilla `RenderPipelines.ENTITY_SNIPPET` 只在 no-cull pipeline 启用 `PER_FACE_LIGHTING`，
+`entity.fsh` 再用 `gl_FrontFacing` 选择正、反法线；启用 back-face cull 时，存活 fragment
+恒走正面光照。BBB 因而只保留一份 renderer-private `ENTITY_MODEL_TEXTURED_SHADER`，统一拥有
+atlas/standalone texture sampling、alpha cutout、tint、overlay、lightmap、正反面 diffuse 与 fog。
+pipeline descriptor 的 cull mode 是单双面行为的唯一决策，不再用第二份 shader source 表达同一事实。
+
+solid pipeline 从共享 source 派生时只删除 alpha-cutout block；z-offset 变体只替换 projection
+matrix。cutout/solid/translucent 的 blend、depth、cull、draw order 与 texture fallback 均保持在各自
+descriptor/资源 owner。共享 shader 仍随 renderer resource transaction 一次 prepare 和发布：任一
+pipeline 编译失败保留上一完整 generation，不产生独立 shader cache 或 compatibility 路径。反向
+source guard 锁定共享声明唯一，并禁止旧 cull shader owner 恢复。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration
