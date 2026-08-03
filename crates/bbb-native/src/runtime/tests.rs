@@ -23,10 +23,26 @@ fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallbac
     let open = advance
         .find("input.open_disconnected_screen(")
         .expect("terminal screen publication");
+    let reset_resource_packs = advance
+        .find("world.reset_resource_pack_session();")
+        .expect("server-pack session reset");
+    let stop_audio = advance
+        .find("audio_events.stop_all_sounds();")
+        .expect("common-listener disconnect audio stop");
+    let stop_receipt = advance
+        .find("net_counters.remote_disconnect_audio_stop_requests")
+        .expect("phase-aware audio stop receipt");
+    let cursor = advance
+        .find("input_runtime.request_terminal_screen_cursor(platform_effects);")
+        .expect("terminal screen cursor request");
     let input = advance
         .find("input_runtime.apply_commands(")
         .expect("input application");
-    assert!(drain < open && open < input);
+    assert!(drain < reset_resource_packs);
+    assert!(reset_resource_packs < open && open < stop_receipt);
+    assert!(stop_receipt < stop_audio);
+    assert!(stop_audio < cursor && cursor < input);
+    assert_eq!(advance.matches("stop_all_sounds()").count(), 1);
     assert!(!advance.contains("request_network_terminal_shutdown"));
     assert!(advance.contains("world.clear_client_level();"));
     assert!(advance.contains("world.reset_registry_session();"));
@@ -99,6 +115,10 @@ fn disconnected_screen_title_tracks_vanilla_listener_phase() {
         disconnected_screen_title_for_state(Some("Play")),
         DisconnectedScreenTitle::ConnectionLost
     );
+    assert!(!remote_disconnect_stops_audio(None));
+    assert!(!remote_disconnect_stops_audio(Some("Login")));
+    assert!(remote_disconnect_stops_audio(Some("Configuration")));
+    assert!(remote_disconnect_stops_audio(Some("Play")));
 }
 
 #[test]

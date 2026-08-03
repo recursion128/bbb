@@ -252,6 +252,20 @@ def validate_iteration(
                 f"iteration {iteration}: panorama retained bytes do not match "
                 "the six 1024x1024 index-30 faces plus 1x1 overlay"
             )
+        kick_net = _object(
+            termination.get("kick_net_counters"),
+            f"iteration {iteration}.kick_net_counters",
+        )
+        audio_stop_requests = kick_net.get("remote_disconnect_audio_stop_requests")
+        if (
+            not isinstance(audio_stop_requests, int)
+            or isinstance(audio_stop_requests, bool)
+            or audio_stop_requests != 1
+        ):
+            raise SoakFailure(
+                f"iteration {iteration}: common-listener disconnect did not request "
+                "exactly one phase-aware audio stop"
+            )
         _object(
             termination.get("kick_process_metrics"),
             f"iteration {iteration}.kick_process_metrics",
@@ -337,6 +351,9 @@ def validate_iteration(
             }
             if expected_mode == "kick"
             else None
+        ),
+        "kick_audio_stop_requests": (
+            audio_stop_requests if expected_mode == "kick" else None
         ),
         "fault_receipts": fault_receipts,
         "terminal_gauges": gauges,

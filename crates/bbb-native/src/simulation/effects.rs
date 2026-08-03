@@ -356,7 +356,15 @@ mod tests {
 
         fn stop_jukebox_song(&mut self, _state: &JukeboxLevelEventState) {}
 
-        fn stop_sound(&mut self, _state: &StopSoundEventState) {}
+        fn stop_sound(&mut self, state: &StopSoundEventState) {
+            self.log
+                .borrow_mut()
+                .push(if state.source.is_none() && state.name.is_none() {
+                    "stop_all"
+                } else {
+                    "stop_filtered"
+                });
+        }
 
         fn set_music_gain(&mut self, _gain: f32) {
             self.log.borrow_mut().push("music_gain");
@@ -371,6 +379,7 @@ mod tests {
             _command: TickEntitySoundPositionsCommand,
             _tickable_sounds: &[TickableEntitySoundState],
         ) {
+            self.log.borrow_mut().push("tick_entity_positions");
         }
     }
 
@@ -444,6 +453,32 @@ mod tests {
             .expect("resource reload effect")
     }
 
+    fn disconnect_reload_batch(sequence: u64, generation: u64) -> RenderEffectBatch {
+        let collector = RenderEffectCollector::new(sequence, AudioCounters::default());
+        let mut audio = collector.audio();
+        audio.play_local_sound(&local_sound());
+        audio.stop_all_sounds();
+        audio.tick_entity_sound_positions(
+            TickEntitySoundPositionsCommand {
+                listener: None,
+                entities: Vec::new(),
+                tickable_sounds: Vec::new(),
+            },
+            &[],
+        );
+        drop(audio);
+        collector
+            .finish(Some(ResourceReloadEffect {
+                request: ServerResourcePackReload {
+                    generation,
+                    server_packs: Vec::new(),
+                },
+                sound_events: SoundEventRegistry::default(),
+                jukebox_songs: JukeboxSongRegistry::default(),
+            }))
+            .expect("disconnect effects plus terminal resource reload")
+    }
+
     #[test]
     fn empty_step_does_not_create_an_effect_batch() {
         assert!(RenderEffectCollector::new(1, AudioCounters::default())
@@ -479,6 +514,24 @@ mod tests {
                 "ambient_loops",
                 "audio"
             ]
+        );
+    }
+
+    #[test]
+    fn disconnect_audio_stop_is_fifo_after_packet_audio_and_before_terminal_reload() {
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let mut audio = RecordingAudio { log: log.clone() };
+        let mut render = RecordingParticles { log: log.clone() };
+        let mut consumer = RenderEffectConsumer::default();
+
+        let reload = consumer
+            .consume(disconnect_reload_batch(1, 7), Some(&mut audio), &mut render)
+            .unwrap()
+            .expect("terminal resource reload is returned after FIFO effects");
+        assert_eq!(reload.request.generation, 7);
+        assert_eq!(
+            *log.borrow(),
+            ["audio", "stop_all", "tick_entity_positions"]
         );
     }
 

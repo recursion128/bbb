@@ -1133,6 +1133,7 @@ def terminate_live(args: argparse.Namespace) -> None:
         "kick_disconnect_receipt": None,
         "kick_disconnected_screen": None,
         "kick_renderer_counters": None,
+        "kick_net_counters": None,
         "kick_process_metrics": None,
         "quiescent_snapshot": None,
         "terminal_gauges": None,
@@ -1182,6 +1183,10 @@ def terminate_live(args: argparse.Namespace) -> None:
             result["kick_renderer_counters"] = _await_kick_panorama(
                 disconnect_deadline,
                 address,
+            )
+            result["kick_net_counters"] = _object(
+                _control_request(address, "net.counters"),
+                "net.counters",
             )
             result["kick_process_metrics"] = _process_metrics(args.client_pid)
             result["app_quit_response"] = _control_request(address, "app.quit")

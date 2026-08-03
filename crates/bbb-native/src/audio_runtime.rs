@@ -32,6 +32,12 @@ pub(crate) trait AudioEventSink {
     fn stop_sound(&mut self, state: &StopSoundEventState);
     fn set_music_gain(&mut self, gain: f32);
     fn sync_ambient_loops(&mut self, loops: &[AmbientLoopSoundState]);
+    fn stop_all_sounds(&mut self) {
+        self.stop_sound(&StopSoundEventState {
+            source: None,
+            name: None,
+        });
+    }
     fn stop_music(&mut self) {
         self.stop_sound(&StopSoundEventState {
             source: Some(

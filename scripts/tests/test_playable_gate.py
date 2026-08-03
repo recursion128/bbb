@@ -1167,6 +1167,7 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     "disconnected",
                     "app.status",
                     "panorama",
+                    "net.counters",
                     "metrics",
                     "app.quit",
                 ],
@@ -1204,6 +1205,8 @@ class PlayableGateTerminationTests(unittest.TestCase):
                         }
                     if method == "app.quit":
                         return {"running": False}
+                    if method == "net.counters":
+                        return {"remote_disconnect_audio_stop_requests": 1}
                     return {"queued": True}
 
                 def kick(_command, _request):
@@ -1267,6 +1270,12 @@ class PlayableGateTerminationTests(unittest.TestCase):
                 self.assertEqual(
                     evidence["kick_disconnect_receipt"],
                     "net-counters" if mode == "kick" else None,
+                )
+                self.assertEqual(
+                    evidence["kick_net_counters"],
+                    {"remote_disconnect_audio_stop_requests": 1}
+                    if mode == "kick"
+                    else None,
                 )
                 self.assertEqual(
                     evidence["app_quit_response"],

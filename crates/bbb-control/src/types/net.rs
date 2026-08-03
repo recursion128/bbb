@@ -112,6 +112,10 @@ pub struct NetCounters {
     #[serde(default, with = "client_resource_diagnostics_arc")]
     pub client_resources: Arc<ClientResourceDiagnostics>,
     pub state: Option<String>,
+    /// Common-listener remote disconnects that requested Vanilla's unfiltered
+    /// SoundManager stop before the terminal resource-pack reload.
+    #[serde(default)]
+    pub remote_disconnect_audio_stop_requests: u64,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
     #[serde(default)]

@@ -2632,7 +2632,9 @@ pub(crate) fn advance_simulation(
         *net_events = None;
     }
     if let Some(reason) = remote_disconnect {
-        let title = disconnected_screen_title_for_state(net_counters.state.as_deref());
+        let listener_state = net_counters.state.as_deref();
+        let title = disconnected_screen_title_for_state(listener_state);
+        let stop_audio = remote_disconnect_stops_audio(listener_state);
         world.clear_client_level();
         world.reset_registry_session();
         world.reset_resource_pack_session();
@@ -2644,6 +2646,14 @@ pub(crate) fn advance_simulation(
                 bug_report_link: None,
             },
         );
+        if stop_audio {
+            net_counters.remote_disconnect_audio_stop_requests = net_counters
+                .remote_disconnect_audio_stop_requests
+                .saturating_add(1);
+            if let Some(audio_events) = audio_events.as_deref_mut() {
+                audio_events.stop_all_sounds();
+            }
+        }
         input_runtime.request_terminal_screen_cursor(platform_effects);
     }
     world.expire_game_test_highlight_markers_at(monotonic_millis());
@@ -3162,6 +3172,10 @@ fn disconnected_screen_title_for_state(
     } else {
         crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectFailed
     }
+}
+
+fn remote_disconnect_stops_audio(state: Option<&str>) -> bool {
+    matches!(state, Some("Configuration" | "Play"))
 }
 
 pub(crate) fn update_renderer_from_publication(
