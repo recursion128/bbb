@@ -131,7 +131,8 @@ Matrix routes: `input-keyboard-routing`, `input-mouse-routing`, `input-key-mappi
 
 Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 
-Matrix routes: `persistence-client-files`, `identity-profile-skins`, `security-secure-chat-reporting`
+Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
+`identity-skin-presentation`, `security-secure-chat-reporting`
 
 - **Authenticated profile-key prepare/refresh lifetime is `active`.** Vanilla
   `Minecraft.prepareForMultiplayer` starts `AccountProfileKeyPairManager`

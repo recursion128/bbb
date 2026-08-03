@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "6701509630025211ab744f20ad7dcb3e214c03bbac7b70c09daac85c6b0c3030"
+      "sha256": "9ac28aac43916cad73f11c371d4c29861ab8f2c9921d74725624fea9d4cbf745"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -38,11 +38,19 @@
       ],
       "owner_count": 157
     },
-    "identity-profile-skins": {
+    "identity-profile-key-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-net/src/chat_session.rs",
+        "crates/bbb-net/src/chat_session/runtime.rs",
+        "crates/bbb-net/src/event_stream.rs"
+      ],
+      "owner_count": 8
+    },
+    "identity-skin-presentation": {
       "bbb_evidence": [
         "crates/bbb-item-model/src/skin_runtime.rs"
       ],
-      "owner_count": 16
+      "owner_count": 8
     },
     "input-key-mapping": {
       "bbb_evidence": [
@@ -15375,7 +15383,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "constructor",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#AccountProfileKeyPairManager(final UserApiService userApiService,final UUID profileId,final Path gameDirectory)",
       "scope": "external-client",
       "source": {
@@ -15388,7 +15396,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#fetchProfileKeyPair(final UserApiService userApiService)",
       "scope": "external-client",
       "source": {
@@ -15401,7 +15409,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#parsePublicKey(final KeyPairResponse response)",
       "scope": "external-client",
       "source": {
@@ -15414,7 +15422,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#prepareKeyPair()",
       "scope": "external-client",
       "source": {
@@ -15427,7 +15435,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#readOrFetchProfileKeyPair(final Optional <ProfileKeyPair> cachedKeyPair)",
       "scope": "external-client",
       "source": {
@@ -15440,7 +15448,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#readProfileKeyPair()",
       "scope": "external-client",
       "source": {
@@ -15453,7 +15461,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#shouldRefreshKeyPair()",
       "scope": "external-client",
       "source": {
@@ -15466,7 +15474,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-profile-key-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.AccountProfileKeyPairManager#writeProfileKeyPair(final @Nullable ProfileKeyPair profileKeyPair)",
       "scope": "external-client",
       "source": {
@@ -24410,7 +24418,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "constructor",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager#SkinManager(final Path skinsDirectory,final Services services,final SkinTextureDownloader skinTextureDownloader,final Executor mainThreadExecutor)",
       "scope": "external-client",
       "source": {
@@ -24423,7 +24431,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager#createLookup(final GameProfile profile,final boolean requireSecure)",
       "scope": "external-client",
       "source": {
@@ -24436,7 +24444,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager#get(final GameProfile profile)",
       "scope": "external-client",
       "source": {
@@ -24449,7 +24457,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager#registerTextures(final UUID profileId,final MinecraftProfileTextures textures)",
       "scope": "external-client",
       "source": {
@@ -24462,7 +24470,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "constructor",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager.TextureCache#TextureCache(final Path root,final Type type)",
       "scope": "external-client",
       "source": {
@@ -24475,7 +24483,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager.TextureCache#getOrLoad(final MinecraftProfileTexture texture)",
       "scope": "external-client",
       "source": {
@@ -24488,7 +24496,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager.TextureCache#getTextureLocation(final String textureHash)",
       "scope": "external-client",
       "source": {
@@ -24501,7 +24509,7 @@
       "category": "identity",
       "domain": "identity",
       "kind": "method",
-      "mechanism_id": "identity-profile-skins",
+      "mechanism_id": "identity-skin-presentation",
       "owner_id": "method:net.minecraft.client.resources.SkinManager.TextureCache#registerTexture(final MinecraftProfileTexture textureInfo)",
       "scope": "external-client",
       "source": {

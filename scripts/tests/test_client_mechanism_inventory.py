@@ -55,6 +55,25 @@ public class Owner {
             builder.hashes[relative], hashlib.sha256(source.encode("utf-8")).hexdigest()
         )
 
+    def test_profile_key_and_skin_owners_are_distinct_lifecycles(self) -> None:
+        by_source = {surface.source_path: surface for surface in inventory.METHOD_SURFACES}
+        profile_keys = by_source[
+            "net/minecraft/client/multiplayer/AccountProfileKeyPairManager.java"
+        ]
+        skins = by_source["net/minecraft/client/resources/SkinManager.java"]
+
+        self.assertEqual(profile_keys.mechanism_id, "identity-profile-key-lifecycle")
+        self.assertEqual(skins.mechanism_id, "identity-skin-presentation")
+        self.assertNotEqual(profile_keys.mechanism_id, skins.mechanism_id)
+        self.assertIn(
+            "crates/bbb-net/src/chat_session/runtime.rs",
+            inventory.MECHANISM_EVIDENCE[profile_keys.mechanism_id],
+        )
+        self.assertEqual(
+            inventory.MECHANISM_EVIDENCE[skins.mechanism_id],
+            ("crates/bbb-item-model/src/skin_runtime.rs",),
+        )
+
     def test_registration_surface_ignores_comments_and_string_literals(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
