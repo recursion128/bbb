@@ -127,11 +127,11 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   exact no-surface classifications. Split only by semantic owner and preserve
   the single frame-extract/submission path.
 - **Smithing result equipment preview asset projection is `missing`.**
-  `bbb-native::apply_smithing_result_equipment` still publishes only legacy
-  material fields, while the textured equipment renderer consumes the
-  generation-matched equipment asset id. Reopen as a behavior slice against
-  Vanilla smithing preview ownership; do not preserve the legacy projection in
-  the architecture candidate to mask this missing consumer path.
+  `bbb-native::apply_smithing_result_equipment` does not publish the
+  generation-matched equipment asset id consumed by the textured equipment
+  renderer. Reopen as a behavior slice against Vanilla smithing preview
+  ownership; do not restore a legacy material projection to mask this missing
+  consumer path.
 
 ## Multiplayer screen surface closure
 

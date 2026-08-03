@@ -433,8 +433,37 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`active`。census 的三个 ready 候选及排序只由 `docs/unsupported-features.md` 拥有；
 逐项提交并 full-gate，清零后恢复 `maintenance`。
 
-当前无 active 架构工程合同；下一候选只能在前一实现提交 full-gated 后，以独立 contract commit
-冻结。候选事实、排序与删除目标继续只由 architecture ledger 拥有。
+当前 active 工程合同：`arch-falling-dust-static-color-facts`。
+
+- Vanilla owner：26.1 `FallingDustParticle.Provider.createParticle`、`FallingBlock.getDustColor`、
+  `BlockColors.getTintSource` 与 `BlockBehaviour.BlockStateBase.getMapColor`。顺序固定为：非 air
+  且 invisible 时拒绝；否则 falling-block dust 覆盖；其余先查 layer 0 dynamic tint，缺失时
+  用 state 构造期缓存的 map color。
+- 唯一静态事实 owner：`bbb-protocol::block_state_types` 的 26.1 checked generated facts；
+  canonical input 是 bounded global block-state id；唯一窄查询返回 provider 是否接受、
+  optional dust RGB 与 static map RGB。非法 id 返回 `None`，native 保留当前 unknown-id
+  provider fallback；resource name/property 不进入查询 API。
+- Direction：Java runtime probe → deterministic generator/stale check → protocol immutable facts
+  → native decision → renderer projection。dynamic tint/biome sample 仍由 native 的
+  generation-matched catalog 提供；renderer 不读取 protocol、world、pack 或 block resource。
+- Lifetime：静态 facts 只随 protocol version 更换，无 resource/session shadow cache；native
+  generation 原子替换 dynamic tint catalog，prepare 失败保留上一完整 catalog；本 slice 不改边界。
+- 删除 `block_map_color` 的 handwritten constants、name/property/family resolver、duplicate
+  tests 与 production caller；迁移后删除模块，不保留 compatibility resolver、双读或 shadow path。
+- Public API：只新增一个 immutable value projection 和一个 block-state-id query；不暴露
+  generator storage、resource names/properties、pack catalog 或 native consumer internals。
+- 非目标：particle physics/random、sprite/atlas、renderer、biome tint、packet codec 和其他
+  block facts；probe 若揭示当前行为不等价，登记独立 parity route，不偷混行为修复。
+- Focused evidence：generator fixtures 覆盖顺序、缺失/乱序、非法 boolean/color/sentinel、
+  palette bound/stale；protocol 覆盖全量、越界与代表 states；native 覆盖 rejection、
+  dust→dynamic→map、颜色完整性与 random sequence；reverse guard 禁止旧重建路径复活。
+- Gate：运行 generator `--check`、Python fixtures、受影响 protocol/native focused tests、
+  reverse/source guards、docs-lint fixtures、`scripts/docs-lint.sh`、workspace non-test check、
+  `cargo fmt --all --check`、`git diff --check` 与完整 diff review；正常提交后运行
+  `scripts/cargo-dev.sh gate`。行为中性，不刷新 playable/live stamp；如验收证明行为变化则
+  在交付前按 gate policy 刷新适用 stamp。
+- 安全停止点：旧 production path 删除且实现 commit full-gated，或 probe/JDK/Vanilla input
+  经复现证明为 BBB 无法消除并附重启条件的 blocker；其余失败 fix-forward。此前不启动 piston。
 
 ### P1：可玩 Session 端到端门禁
 
