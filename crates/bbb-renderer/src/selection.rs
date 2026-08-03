@@ -12,6 +12,26 @@ pub struct SelectionBox {
     pub max: [f32; 3],
 }
 
+/// The render phase selected from Vanilla's baked block-state material flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BlockSelectionPhase {
+    BeforeTranslucent,
+    AfterTranslucent,
+}
+
+/// Immutable per-frame block-hit outline projection.
+///
+/// Native control resolves block shape, resource-generation material flags, surface-scaled width,
+/// and accessibility style before this crosses into the renderer. The renderer owns only GPU
+/// residency and pass placement.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlockSelectionRenderState {
+    pub boxes: Vec<SelectionBox>,
+    pub phase: BlockSelectionPhase,
+    pub line_width: f32,
+    pub high_contrast: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SelectionColoredBox {
     pub min: [f32; 3],
@@ -188,6 +208,9 @@ const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_att
 const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
 const DEFAULT_SELECTION_OUTLINE_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 const DEFAULT_SELECTION_LINE_WIDTH: f32 = 1.0;
+const HIGH_CONTRAST_SELECTION_BACKGROUND_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+const HIGH_CONTRAST_SELECTION_BACKGROUND_WIDTH: f32 = 7.0;
+const HIGH_CONTRAST_SELECTION_COLOR: [f32; 4] = [87.0 / 255.0, 1.0, 225.0 / 255.0, 1.0];
 const SELECTION_LINES_DEPTH_WRITE: bool = true;
 const TRANSLUCENT_DEBUG_LINES_DEPTH_WRITE: bool = false;
 const DEBUG_LINE_NEAR_PLANE: f32 = 0.05;
@@ -298,6 +321,14 @@ pub(super) struct SelectionOutlineGpu {
     pub(super) always_on_top_vertex_count: u32,
 }
 
+pub(super) struct BlockSelectionGpu {
+    pub(super) state: BlockSelectionRenderState,
+    pub(super) secondary_vertex_buffer: Option<wgpu::Buffer>,
+    pub(super) secondary_vertex_count: u32,
+    pub(super) vertex_buffer: wgpu::Buffer,
+    pub(super) vertex_count: u32,
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct SelectionVertex {
@@ -333,6 +364,32 @@ pub(super) fn create_selection_outline_gpu(
         vertex_count: vertices.len() as u32,
         always_on_top_vertex_buffer,
         always_on_top_vertex_count: always_on_top_vertices.len() as u32,
+    }
+}
+
+pub(super) fn create_block_selection_gpu(
+    device: &wgpu::Device,
+    state: BlockSelectionRenderState,
+) -> BlockSelectionGpu {
+    let (secondary_vertices, vertices) = block_selection_vertices(&state);
+    let secondary_vertex_buffer = (!secondary_vertices.is_empty()).then(|| {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bbb-block-selection-secondary-vertices"),
+            contents: bytemuck::cast_slice(&secondary_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        })
+    });
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-block-selection-vertices"),
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    BlockSelectionGpu {
+        state,
+        secondary_vertex_buffer,
+        secondary_vertex_count: secondary_vertices.len() as u32,
+        vertex_buffer,
+        vertex_count: vertices.len() as u32,
     }
 }
 
@@ -515,6 +572,41 @@ pub(super) fn create_chunk_border_always_on_top_pipeline(
 
 fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
     selection_outline_vertices_for(outline, false)
+}
+
+fn block_selection_vertices(
+    state: &BlockSelectionRenderState,
+) -> (Vec<SelectionVertex>, Vec<SelectionVertex>) {
+    let mut secondary_vertices = Vec::with_capacity(if state.high_contrast {
+        state.boxes.len() * 72
+    } else {
+        0
+    });
+    if state.high_contrast {
+        for outline_box in &state.boxes {
+            secondary_vertices.extend(selection_box_vertices_with_width(
+                outline_box.min,
+                outline_box.max,
+                HIGH_CONTRAST_SELECTION_BACKGROUND_COLOR,
+                HIGH_CONTRAST_SELECTION_BACKGROUND_WIDTH,
+            ));
+        }
+    }
+    let (color, width) = if state.high_contrast {
+        (HIGH_CONTRAST_SELECTION_COLOR, state.line_width)
+    } else {
+        (DEFAULT_SELECTION_OUTLINE_COLOR, state.line_width)
+    };
+    let mut vertices = Vec::with_capacity(state.boxes.len() * 72);
+    for outline_box in &state.boxes {
+        vertices.extend(selection_box_vertices_with_width(
+            outline_box.min,
+            outline_box.max,
+            color,
+            width,
+        ));
+    }
+    (secondary_vertices, vertices)
 }
 
 fn selection_outline_always_on_top_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
@@ -871,6 +963,44 @@ mod tests {
         assert_eq!(vertices[2].position, [2.002, 1.998, 2.998]);
         assert_eq!(vertices[66].position, [0.998, 1.998, 4.002]);
         assert_eq!(vertices[71].position, [0.998, 3.002, 4.002]);
+    }
+
+    #[test]
+    fn block_selection_vertices_use_surface_width_and_normal_vanilla_color() {
+        let state = BlockSelectionRenderState {
+            boxes: vec![SelectionBox {
+                min: [1.0, 2.0, 3.0],
+                max: [2.0, 3.0, 4.0],
+            }],
+            phase: BlockSelectionPhase::BeforeTranslucent,
+            line_width: 3.75,
+            high_contrast: false,
+        };
+        let (secondary, primary) = block_selection_vertices(&state);
+        assert!(secondary.is_empty());
+        assert_eq!(primary.len(), 72);
+        assert_eq!(primary[0].color, DEFAULT_SELECTION_OUTLINE_COLOR);
+        assert_eq!(primary[0].line_width, 3.75);
+    }
+
+    #[test]
+    fn high_contrast_block_selection_emits_secondary_before_cyan_primary() {
+        let state = BlockSelectionRenderState {
+            boxes: vec![SelectionBox {
+                min: [1.0, 2.0, 3.0],
+                max: [2.0, 3.0, 4.0],
+            }],
+            phase: BlockSelectionPhase::AfterTranslucent,
+            line_width: 2.5,
+            high_contrast: true,
+        };
+        let (secondary, primary) = block_selection_vertices(&state);
+        assert_eq!(secondary.len(), 72);
+        assert_eq!(secondary[0].color, HIGH_CONTRAST_SELECTION_BACKGROUND_COLOR);
+        assert_eq!(secondary[0].line_width, 7.0);
+        assert_eq!(primary.len(), 72);
+        assert_eq!(primary[0].color, HIGH_CONTRAST_SELECTION_COLOR);
+        assert_eq!(primary[0].line_width, 2.5);
     }
 
     #[test]

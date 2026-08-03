@@ -8,22 +8,22 @@
 use std::sync::Arc;
 
 use bbb_renderer::{
-    BlockDestroyOverlay, DebugFilledBox, DebugFilledRect, DebugLine, DebugTextBillboard,
-    DisplayTextSurface, EntityFlameSurface, EntityModelInstance, EntityNameTagSurface,
-    EntityShadowSurface, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
-    FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
-    HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
-    HudChatInteraction, HudChatMessage, HudChatRestrictionsScreen, HudCommandBlockEditorScreen,
-    HudCommandSuggestions, HudComponentTextRun, HudCrosshairAttackIndicator,
-    HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
-    HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay,
-    HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect,
-    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
-    HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
-    HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
-    HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    BlockDestroyOverlay, BlockSelectionRenderState, DebugFilledBox, DebugFilledRect, DebugLine,
+    DebugTextBillboard, DisplayTextSurface, EntityFlameSurface, EntityModelInstance,
+    EntityNameTagSurface, EntityShadowSurface, FirstPersonMapBackgroundSurface,
+    FirstPersonMapBackgroundTexture, FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast,
+    HudAirSupply, HudBlockItemModel, HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay,
+    HudChatContext, HudChatInteraction, HudChatMessage, HudChatRestrictionsScreen,
+    HudCommandBlockEditorScreen, HudCommandSuggestions, HudComponentTextRun,
+    HudCrosshairAttackIndicator, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,
+    HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
+    HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen,
+    HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface,
+    HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
+    HudPlayerListScore, HudPlayerReportingControl, HudPlayerReportingControlKind,
+    HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
+    HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
     HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
@@ -2936,7 +2936,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) cloud_frame: CloudFrame,
     pub(crate) weather_render_state: WeatherRenderState,
     pub(crate) world_border_render_state: WorldBorderRenderState,
-    pub(crate) selection_outline: Option<SelectionOutline>,
+    pub(crate) block_selection: Option<BlockSelectionRenderState>,
     pub(crate) chunk_border_outline: Option<SelectionOutline>,
     pub(crate) entity_scene_outline: Option<SelectionOutline>,
     pub(crate) debug_filled_boxes: Vec<DebugFilledBox>,
@@ -3464,7 +3464,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_cloud_frame(frame.cloud_frame);
     renderer.set_weather_render_state(frame.weather_render_state);
     renderer.set_world_border_render_state(frame.world_border_render_state);
-    renderer.set_selection_outline(frame.selection_outline);
+    renderer.set_block_selection(frame.block_selection);
     renderer.set_chunk_border_outline(frame.chunk_border_outline);
     renderer.set_entity_scene_outline(frame.entity_scene_outline);
     let filled_boxes = renderer.replace_debug_filled_boxes(frame.debug_filled_boxes);

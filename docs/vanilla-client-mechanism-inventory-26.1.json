@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "ca73f02d08470bb3f18e95aba7bcd1200f4c9d68c20405ffb6356c76c024fd95"
+      "sha256": "48c2af8fb93575d2c4abab62eb3ba902afb082bfaa45b275ee569dae5aa72984"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -245,7 +245,8 @@
         "crates/bbb-native/src/runtime/render_extract.rs",
         "crates/bbb-renderer/src/render.rs"
       ],
-      "owner_count": 15
+      "owner_count": 15,
+      "owner_evidence_count": 15
     },
     "rendering-level-section-lifecycle": {
       "bbb_evidence": [
@@ -25071,6 +25072,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#blockChanged(final BlockGetter level,final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state",
+          "crates/bbb-native/src/runtime/tests.rs#block_selection_has_one_production_projection_and_no_legacy_resolver_path"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25224,6 +25235,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#destroyBlockProgress(final int id,final BlockPos pos,final int progress)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/entity_scene.rs#entity_scene_outline_from_world_at_partial_tick",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_stays_in_main_pass_and_post_chain_runs_before_clouds"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25252,6 +25273,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#endFrame()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/entity_scene.rs#entity_scene_outline_from_world_at_partial_tick",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_stays_in_main_pass_and_post_chain_runs_before_clouds"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25266,6 +25297,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#entityOutlineTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#block_destroy_overlays_from_stages",
+          "crates/bbb-native/src/runtime.rs#apply_block_entity_crumbling"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_use_camera_eye_and_vanilla_thirty_two_block_center_bound",
+          "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_include_server_progress_and_keep_highest_per_position"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25280,6 +25321,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractBlockDestroyAnimation(final Camera camera,final LevelRenderState levelRenderState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/crosshair.rs#block_selection_from_camera",
+          "crates/bbb-native/src/runtime.rs#block_selection_render_state"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crosshair.rs#block_selection_rejects_target_outside_world_border",
+          "crates/bbb-native/src/runtime/tests.rs#block_selection_projection_uses_current_material_catalog_surface_width_and_style"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25294,6 +25345,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractBlockOutline(final Camera camera,final LevelRenderState levelRenderState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/entity_scene.rs#visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/entity_scene/tests.rs#visible_entity_source_orders_dispatcher_before_current_section_gate"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25308,6 +25367,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractEntity(final Entity entity,final float partialTickTime)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state",
+          "crates/bbb-native/src/runtime/tests.rs#block_selection_has_one_production_projection_and_no_legacy_resolver_path"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25322,6 +25391,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractLevel(final DeltaTracker deltaTracker,final Camera camera,final float deltaPartialTick)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/block_entity_visibility.rs#retain_visible_block_entity_instances"
+        ],
+        "tests": [
+          "crates/bbb-native/src/block_entity_visibility.rs#compiled_section_gate_precedes_camera_frustum_submission",
+          "crates/bbb-native/src/block_entity_visibility.rs#ordinary_models_use_the_containing_section_as_the_frustum_unit"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25336,6 +25414,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractVisibleBlockEntities(final Camera camera,final float deltaPartialTick,final LevelRenderState levelRenderState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/entity_scene.rs#visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/entity_scene/tests.rs#visible_entity_source_orders_dispatcher_before_current_section_gate"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25862,6 +25948,18 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#removeProgress(final BlockDestructionProgress block)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#block_selection_before_translucent_pass",
+          "crates/bbb-renderer/src/render.rs#item_entity_line_target_pass",
+          "crates/bbb-renderer/src/selection.rs#create_block_selection_gpu"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#block_selection_phase_brackets_translucent_terrain_and_has_one_draw_lane",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths",
+          "crates/bbb-renderer/src/selection.rs#high_contrast_block_selection_emits_secondary_before_cyan_primary"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -25876,6 +25974,18 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#renderBlockOutline(final MultiBufferSource.BufferSource bufferSource,final PoseStack poseStack,final boolean onlyTranslucentBlocks,final LevelRenderState levelRenderState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#block_selection_before_translucent_pass",
+          "crates/bbb-renderer/src/render.rs#item_entity_line_target_pass",
+          "crates/bbb-renderer/src/selection.rs#create_block_selection_gpu"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#block_selection_phase_brackets_translucent_terrain_and_has_one_draw_lane",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths",
+          "crates/bbb-renderer/src/selection.rs#high_contrast_block_selection_emits_secondary_before_cyan_primary"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -26168,6 +26278,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/entity_scene.rs#entity_scene_outline_from_world_at_partial_tick",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets",
+          "crates/bbb-renderer/src/render.rs#entity_outline_target_stays_in_main_pass_and_post_chain_runs_before_clouds"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -26182,6 +26302,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#shouldShowEntityOutlines()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#block_destroy_overlay_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#block_destroy_overlays_draw_in_translucent_feature_phase_before_translucent_terrain"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -26196,6 +26324,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitBlockDestroyAnimation(final PoseStack poseStack,final SubmitNodeCollector submitNodeCollector,final LevelRenderState levelRenderState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+          "crates/bbb-renderer/src/render.rs#main_world_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#lit_entity_draws_sample_dynamic_lightmap_texture"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -26210,6 +26347,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitBlockEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeStorage submitNodeStorage)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+          "crates/bbb-renderer/src/render.rs#main_world_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#entity_translucent_features_draw_after_depth_copies_and_before_translucent_terrain"
+        ]
+      },
       "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
@@ -40535,6 +40681,7 @@
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
       "rendering-level-backend-lifecycle",
+      "rendering-level-scene-projection",
       "rendering-level-section-lifecycle"
     ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",

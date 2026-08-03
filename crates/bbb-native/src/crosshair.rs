@@ -4,7 +4,9 @@ use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
-use bbb_renderer::{CameraPose, SelectionOutline};
+#[cfg(test)]
+use bbb_renderer::SelectionOutline;
+use bbb_renderer::{CameraPose, SelectionBox};
 #[cfg(test)]
 use bbb_world::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID;
 use bbb_world::{
@@ -41,10 +43,16 @@ pub(crate) enum CrosshairTarget {
     Entity(CrosshairEntityHit),
 }
 
-pub(crate) fn selection_outline_from_camera(
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct BlockSelectionProjection {
+    pub(crate) pos: BlockPos,
+    pub(crate) boxes: Vec<SelectionBox>,
+}
+
+pub(crate) fn block_selection_from_camera(
     world: &WorldStore,
     pose: Option<CameraPose>,
-) -> Option<SelectionOutline> {
+) -> Option<BlockSelectionProjection> {
     let hit = crosshair_block_hit_from_camera(world, pose)?;
     // Vanilla `GameRenderer.shouldRenderBlockOutline` narrows spectator block
     // hits to states with a live `MenuProvider`. bbb's ordinary block-selection
@@ -53,16 +61,23 @@ pub(crate) fn selection_outline_from_camera(
     if world.local_player_is_spectator() {
         return None;
     }
+    if !world.world_border().contains_block_pos(hit.pos) {
+        return None;
+    }
     if world.local_player_is_adventure()
         && !world.local_selected_main_hand_can_break_block_in_adventure_mode(hit.pos)
         && !world.local_selected_main_hand_can_place_on_block_in_adventure_mode(hit.pos)
     {
         return None;
     }
-    match world.probe_block(hit.pos) {
+    let outline = match world.probe_block(hit.pos) {
         Some(probe) => selection_outline_for_probe(&probe),
         None => Some(selection_outline_for_block(hit.pos)),
-    }
+    }?;
+    Some(BlockSelectionProjection {
+        pos: hit.pos,
+        boxes: outline.boxes,
+    })
 }
 
 fn crosshair_block_hit_from_camera(
@@ -1103,8 +1118,9 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary,
         AttackRangeSummary, BlockHolderSetSummary, BlockPredicateSummary, EntityDataValue,
-        EntityDataValueKind, EntityPositionSync, GameEvent, InteractionHand, ItemStackSummary,
-        PlayerAbilities, SetEntityData, SetPlayerInventory, Vec3d as ProtocolVec3d,
+        EntityDataValueKind, EntityPositionSync, GameEvent, InitializeBorder, InteractionHand,
+        ItemStackSummary, PlayerAbilities, SetEntityData, SetPlayerInventory,
+        Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -1989,10 +2005,10 @@ mod tests {
         });
         let pose = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
 
-        assert_eq!(selection_outline_from_camera(&world, pose), None);
+        assert_eq!(block_selection_from_camera(&world, pose), None);
 
         set_selected_can_place_on(&mut world, "minecraft:grass_block");
-        assert!(selection_outline_from_camera(&world, pose).is_some());
+        assert!(block_selection_from_camera(&world, pose).is_some());
     }
 
     #[test]
@@ -2014,7 +2030,7 @@ mod tests {
         });
 
         assert_eq!(
-            selection_outline_from_camera(&world, Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0))),
+            block_selection_from_camera(&world, Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0))),
             None
         );
     }
@@ -2219,6 +2235,36 @@ mod tests {
             "z: expected {}, got {}",
             expected[2],
             actual.z
+        );
+    }
+
+    #[test]
+    fn block_selection_rejects_target_outside_world_border() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+            })
+        );
+        world.apply_initialize_border(InitializeBorder {
+            new_center_x: 0.0,
+            new_center_z: 0.0,
+            old_size: 2.0,
+            new_size: 2.0,
+            lerp_time: 0,
+            new_absolute_max_size: 29_999_984,
+            warning_blocks: 5,
+            warning_time: 15,
+        });
+
+        assert_eq!(
+            block_selection_from_camera(&world, Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0))),
+            None
         );
     }
 }

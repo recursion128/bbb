@@ -78,6 +78,7 @@ use bbb_renderer::{
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
+use bbb_renderer::{BlockSelectionPhase, BlockSelectionRenderState};
 use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, vanilla_entity_type_is_living,
     BlockPos, CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
@@ -113,9 +114,10 @@ use crate::{
     component_text::{localized_component_runs, visit_localized_template, LocalizedTemplatePart},
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     crosshair::{
-        crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
-        debug_looking_at_fluid_hit_from_camera, debug_targeted_entity_from_camera_at_partial_tick,
-        selection_outline_from_camera, CrosshairTarget,
+        block_selection_from_camera, crosshair_target_from_camera_at_partial_tick,
+        debug_looking_at_block_hit_from_camera, debug_looking_at_fluid_hit_from_camera,
+        debug_targeted_entity_from_camera_at_partial_tick, BlockSelectionProjection,
+        CrosshairTarget,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -3210,6 +3212,7 @@ pub(crate) fn update_renderer_from_publication(
         damage_tilt_strength,
         view_bobbing,
         entity_shadows,
+        high_contrast_block_outline,
         hud_debug_profiler_chart,
     } = context;
     let state = publication
@@ -4510,9 +4513,18 @@ pub(crate) fn update_renderer_from_publication(
     );
     // Vanilla `Minecraft.renderFrame` calls `pick(partialTicks)` before
     // `GameRenderer.extract`; block/entity outline extraction reads that post-input camera state.
-    let selection_outline = (!input.hide_gui())
-        .then(|| selection_outline_from_camera(world, camera_entity_pose))
-        .flatten();
+    let block_selection = (!input.hide_gui())
+        .then(|| block_selection_from_camera(world, camera_entity_pose))
+        .flatten()
+        .map(|selection| {
+            block_selection_render_state(
+                world,
+                terrain_textures,
+                selection,
+                surface_size.width,
+                high_contrast_block_outline,
+            )
+        });
     let chunk_border_outline = debug_chunk_border_outline(input, world, camera_pose);
     let entity_scene_outline = debug_entity_scene_outline(input, world, entity_partial_tick);
     let remote_debug_selection = input.remote_debug_renderers();
@@ -4627,6 +4639,7 @@ pub(crate) fn update_renderer_from_publication(
             world,
             terrain_textures,
             &block_destroy_stages,
+            camera_pose,
         ))
     };
     let world_debug_duration = world_debug_started_at.elapsed();
@@ -4787,7 +4800,7 @@ pub(crate) fn update_renderer_from_publication(
             cloud_frame,
             weather_render_state,
             world_border_render_state,
-            selection_outline,
+            block_selection,
             chunk_border_outline,
             entity_scene_outline,
             debug_filled_boxes,
@@ -5135,9 +5148,29 @@ fn block_destroy_overlays_from_stages(
     world: &WorldStore,
     textures: &TerrainTextureState,
     stages: &[(BlockPos, u8)],
+    camera_pose: Option<CameraPose>,
 ) -> Vec<BlockDestroyOverlay> {
+    let Some(camera) = camera_pose
+        .map(camera_eye_position)
+        .map(|camera| camera.map(f64::from))
+    else {
+        return Vec::new();
+    };
     stages
         .iter()
+        .filter(|(pos, _stage)| {
+            let center = [
+                f64::from(pos.x) + 0.5,
+                f64::from(pos.y) + 0.5,
+                f64::from(pos.z) + 0.5,
+            ];
+            center
+                .into_iter()
+                .zip(camera)
+                .map(|(center, camera)| (center - camera).powi(2))
+                .sum::<f64>()
+                <= 1024.0
+        })
         .filter_map(|(pos, stage)| {
             let uv = textures.destroy_stage_uv_rect(*stage)?;
             Some(BlockDestroyOverlay {
@@ -5147,6 +5180,36 @@ fn block_destroy_overlays_from_stages(
             })
         })
         .collect()
+}
+
+fn block_selection_render_state(
+    world: &WorldStore,
+    textures: &TerrainTextureState,
+    selection: BlockSelectionProjection,
+    surface_width: u32,
+    high_contrast: bool,
+) -> BlockSelectionRenderState {
+    let phase = world
+        .probe_block(selection.pos)
+        .and_then(|probe| {
+            probe.block_name.map(|block_name| {
+                textures.block_model_has_translucent_material(
+                    &block_name,
+                    &probe.block_properties,
+                    probe.material,
+                )
+            })
+        })
+        .filter(|translucent| *translucent)
+        .map_or(BlockSelectionPhase::BeforeTranslucent, |_| {
+            BlockSelectionPhase::AfterTranslucent
+        });
+    BlockSelectionRenderState {
+        boxes: selection.boxes,
+        phase,
+        line_width: (surface_width as f32 / 1920.0 * 2.5).max(2.5),
+        high_contrast,
+    }
 }
 
 /// Projects Vanilla `BlockEntityRenderState.breakProgress` onto the block-entity model instances

@@ -153,6 +153,39 @@ impl BlockModelCatalog {
             RawBlockstateSelection::Variants(variants) => variants,
             RawBlockstateSelection::Empty => return Some(BlockRenderModel::empty()),
         };
+        self.build_block_render_model(variants)
+    }
+
+    /// Returns the complete baked-model candidate set whose material flags determine whether
+    /// Vanilla draws a selected block outline before or after translucent terrain.
+    ///
+    /// This is not a geometry-selection API: weighted variants and multipart selectors have
+    /// intentionally broader flag aggregation rules than the per-position model resolver.
+    pub fn block_material_models(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<Vec<BlockRenderModel>> {
+        let blockstate_stack = self.blockstates.get(&normalize_block_id(block_name))?;
+        let mut selected = None;
+        for blockstate in blockstate_stack {
+            if let Some(selection) = blockstate.material_flag_variants(properties) {
+                selected = Some(selection);
+            }
+        }
+        match selected? {
+            RawBlockstateSelection::Empty => Some(Vec::new()),
+            RawBlockstateSelection::Variants(variants) => variants
+                .into_iter()
+                .map(|variant| self.build_block_render_model(vec![variant]))
+                .collect(),
+        }
+    }
+
+    fn build_block_render_model(
+        &self,
+        variants: Vec<blockstates::RawModelVariant>,
+    ) -> Option<BlockRenderModel> {
         let mut face_textures = None;
         let mut particle_texture = None;
         let mut use_ambient_occlusion = None;

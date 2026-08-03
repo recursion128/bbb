@@ -540,6 +540,38 @@ impl TerrainTextureState {
         render_shape
     }
 
+    /// Mirrors Vanilla `BlockStateModel.hasMaterialFlag(BakedQuad.FLAG_TRANSLUCENT)` using the
+    /// current immutable block-model catalog and the same atlas-alpha projection as terrain mesh
+    /// baking. Weighted and multipart aggregation is owned by `BlockModelCatalog`.
+    pub(crate) fn block_model_has_translucent_material(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+        material: bbb_world::TerrainMaterialClass,
+    ) -> bool {
+        self.block_models
+            .as_ref()
+            .and_then(|models| models.block_material_models(block_name, properties))
+            .is_some_and(|models| {
+                models.into_iter().any(|model| {
+                    let fallback_transparency =
+                        self.face_texture_transparencies(&model.face_textures);
+                    let shape = self.terrain_render_shape(
+                        block_name,
+                        material,
+                        model.shape,
+                        [self.fallback_index; 6],
+                        [TerrainTint::WHITE; 6],
+                        fallback_transparency,
+                        None,
+                        None,
+                        None,
+                    );
+                    render_shape_has_translucent_material(&shape, fallback_transparency)
+                })
+            })
+    }
+
     pub(super) fn block_render_data(
         &self,
         block_name: Option<&str>,
@@ -1960,6 +1992,40 @@ fn force_translucent(force: bool) -> TerrainTransparency {
         TerrainTransparency::TRANSLUCENT
     } else {
         TerrainTransparency::OPAQUE
+    }
+}
+
+fn render_shape_has_translucent_material(
+    shape: &TerrainRenderShape,
+    fallback: [TerrainTransparency; 6],
+) -> bool {
+    let translucent = |value: &TerrainTransparency| value.has_translucent;
+    match shape {
+        TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => {
+            fallback.iter().any(translucent)
+        }
+        TerrainRenderShape::Crosses(crosses) => crosses
+            .iter()
+            .flat_map(|cross| cross.face_transparency.iter())
+            .any(translucent),
+        TerrainRenderShape::Box {
+            face_present,
+            face_transparency,
+            ..
+        } => face_present
+            .iter()
+            .zip(face_transparency)
+            .any(|(present, transparency)| *present && transparency.has_translucent),
+        TerrainRenderShape::Boxes(boxes) => boxes.iter().any(|model_box| {
+            model_box
+                .face_present
+                .iter()
+                .zip(model_box.face_transparency)
+                .any(|(present, transparency)| *present && transparency.has_translucent)
+        }),
+        TerrainRenderShape::Quads(quads) => {
+            quads.iter().any(|quad| quad.transparency.has_translucent)
+        }
     }
 }
 

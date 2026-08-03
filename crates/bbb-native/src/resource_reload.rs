@@ -1230,6 +1230,9 @@ mod tests {
         let atlas_commit = source
             .find("upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)")
             .expect("reload should install generation-matched atlases");
+        let terrain_commit = source
+            .find("let textures = try_load_terrain_textures")
+            .expect("reload should upload terrain material metadata inside the transaction");
         let hud_commit = source
             .find("try_load_hud_textures(renderer, &prepared.roots)")
             .expect("reload should install generation-matched HUD resources");
@@ -1260,9 +1263,13 @@ mod tests {
         let item_publish = source
             .find("*item_runtime = Some(prepared.items);")
             .expect("prepared item generation publish");
+        let terrain_publish = source
+            .find("*terrain_textures = next_terrain_textures;")
+            .expect("prepared terrain material generation publish");
 
         assert!(transaction < atlas_commit);
-        assert!(atlas_commit < hud_commit);
+        assert!(atlas_commit < terrain_commit);
+        assert!(terrain_commit < hud_commit);
         assert!(hud_commit < panorama_commit);
         assert!(panorama_commit < language_direction_commit);
         assert!(language_direction_commit < win_screen_commit);
@@ -1270,6 +1277,7 @@ mod tests {
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
         assert!(transaction_result < skin_owner_adoption);
+        assert!(transaction_result < terrain_publish);
         assert!(skin_owner_adoption < item_publish);
         assert_eq!(
             production

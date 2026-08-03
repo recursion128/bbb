@@ -235,8 +235,8 @@ pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
 };
 pub use crate::selection::{
-    DebugLine, SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint,
-    SelectionTextLabel,
+    BlockSelectionPhase, BlockSelectionRenderState, DebugLine, SelectionBox, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SelectionPoint, SelectionTextLabel,
 };
 pub use crate::sky::{
     CelestialTextureImage, CelestialTextureKind, SkyEnvironment, SkyMoonPhase, SkyboxKind,

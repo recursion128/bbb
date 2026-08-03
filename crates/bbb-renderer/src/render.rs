@@ -26,7 +26,7 @@ use crate::{
         ParticleVertexBatches,
     },
     post_effect_graph::{PostEffectGlobals, PostEffectTransparencyTargets, VanillaPostEffect},
-    selection::{debug_line_vertex_batches, selection_lines_vertices},
+    selection::{debug_line_vertex_batches, selection_lines_vertices, BlockSelectionPhase},
     vignette::VignetteUniform,
     weather::{build_lightning_mesh, build_weather_mesh},
     world_border::build_world_border_mesh,
@@ -71,6 +71,8 @@ const DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL: &str = "bbb-native-debug-always-on-to
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
+const BLOCK_SELECTION_BEFORE_TRANSLUCENT_PASS_LABEL: &str =
+    "bbb-native-block-selection-before-translucent-pass";
 const OPAQUE_PARTICLE_MAIN_PASS_LABEL: &str = "bbb-native-opaque-particle-main-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
@@ -201,6 +203,7 @@ impl Renderer {
         self.block_destroy_overlay_pass(&mut encoder, &mut stats);
         self.ordered_custom_and_text_feature_pass(&mut encoder, &mut stats);
         self.entity_outline_target_pass(&mut encoder, &mut stats);
+        self.block_selection_before_translucent_pass(&mut encoder, &mut stats);
         self.translucent_target_pass(&mut encoder, &mut stats);
         self.item_entity_line_target_pass(&mut encoder, &mut stats);
         self.particle_target_pass(&mut encoder, &mut stats, particle_vertex_batches);
@@ -1766,6 +1769,53 @@ impl Renderer {
             })
     }
 
+    fn block_selection_before_translucent_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        let Some(selection) = self
+            .block_selection
+            .as_ref()
+            .filter(|selection| selection.state.phase == BlockSelectionPhase::BeforeTranslucent)
+        else {
+            return;
+        };
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(BLOCK_SELECTION_BEFORE_TRANSLUCENT_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.item_entity_target.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.item_entity_target.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+        if let Some(secondary) = &selection.secondary_vertex_buffer {
+            pass.set_pipeline(&self.translucent_debug_line_pipeline);
+            pass.set_vertex_buffer(0, secondary.slice(..));
+            pass.draw(0..selection.secondary_vertex_count, 0..1);
+            stats.pipeline_switches += 1;
+        }
+        pass.set_pipeline(&self.selection_pipeline);
+        pass.set_vertex_buffer(0, selection.vertex_buffer.slice(..));
+        pass.draw(0..selection.vertex_count, 0..1);
+        stats.pipeline_switches += 1;
+        stats.selection_draw_calls += 1;
+    }
+
     fn translucent_target_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -1861,7 +1911,11 @@ impl Renderer {
             bytemuck::cast_slice(&debug_line_batches.translucent),
         );
         let item_entity_view = &self.item_entity_target.view;
-        if self.selection_outline.is_some()
+        let block_selection_after_translucent = self
+            .block_selection
+            .as_ref()
+            .filter(|selection| selection.state.phase == BlockSelectionPhase::AfterTranslucent);
+        if block_selection_after_translucent.is_some()
             || self.chunk_border_outline.is_some()
             || self.entity_scene_outline.is_some()
             || has_fishing_lines
@@ -1890,11 +1944,21 @@ impl Renderer {
                 timestamp_writes: None,
             });
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            if let Some(secondary) = block_selection_after_translucent
+                .and_then(|selection| selection.secondary_vertex_buffer.as_ref())
+            {
+                let selection = block_selection_after_translucent
+                    .expect("secondary block selection has parent state");
+                pass.set_pipeline(&self.translucent_debug_line_pipeline);
+                pass.set_vertex_buffer(0, secondary.slice(..));
+                pass.draw(0..selection.secondary_vertex_count, 0..1);
+                stats.pipeline_switches += 1;
+            }
             let chunk_border_has_standard_vertices = self
                 .chunk_border_outline
                 .as_ref()
                 .is_some_and(|outline| outline.vertex_count > 0);
-            if self.selection_outline.is_some()
+            if block_selection_after_translucent.is_some()
                 || chunk_border_has_standard_vertices
                 || self.entity_scene_outline.is_some()
                 || has_fishing_lines
@@ -1902,9 +1966,9 @@ impl Renderer {
             {
                 pass.set_pipeline(&self.selection_pipeline);
                 stats.pipeline_switches += 1;
-                if let Some(outline) = &self.selection_outline {
-                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                    pass.draw(0..outline.vertex_count, 0..1);
+                if let Some(selection) = block_selection_after_translucent {
+                    pass.set_vertex_buffer(0, selection.vertex_buffer.slice(..));
+                    pass.draw(0..selection.vertex_count, 0..1);
                     stats.selection_draw_calls += 1;
                 }
                 if let Some(outline) = &self.chunk_border_outline {
@@ -5440,6 +5504,7 @@ mod tests {
         "block_destroy_overlay_pass",
         "ordered_custom_and_text_feature_pass",
         "entity_outline_target_pass",
+        "block_selection_before_translucent_pass",
         "translucent_target_pass",
         "item_entity_line_target_pass",
         "particle_target_pass",
@@ -5675,6 +5740,55 @@ mod tests {
         assert!(text_body.contains("self.item_frame_map_text_font_atlas.as_ref()"));
         assert!(text_body.contains("view: &self.main_target.view"));
         assert!(text_body.contains("view: &self.depth.view"));
+    }
+
+    #[test]
+    fn block_selection_phase_brackets_translucent_terrain_and_has_one_draw_lane() {
+        let before = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "block_selection_before_translucent_pass")
+            .expect("solid block selection step");
+        let translucent = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "translucent_target_pass")
+            .expect("translucent terrain step");
+        let after = FRAME_STEPS
+            .iter()
+            .position(|step| *step == "item_entity_line_target_pass")
+            .expect("translucent block selection lane");
+        assert!(before < translucent && translucent < after);
+
+        let source = include_str!("render.rs");
+        let before_start = source
+            .find("fn block_selection_before_translucent_pass(")
+            .expect("solid selection pass");
+        let before_end = source[before_start..]
+            .find("\n    fn translucent_target_pass(")
+            .map(|offset| before_start + offset)
+            .expect("solid selection pass boundary");
+        let before_body = &source[before_start..before_end];
+        assert!(before_body.contains("BlockSelectionPhase::BeforeTranslucent"));
+        assert!(before_body.contains("stats.selection_draw_calls += 1"));
+
+        let after_start = source
+            .find("fn item_entity_line_target_pass(")
+            .expect("line target pass");
+        let after_end = source[after_start..]
+            .find("\n    fn particle_target_pass(")
+            .map(|offset| after_start + offset)
+            .expect("line target pass boundary");
+        let after_body = &source[after_start..after_end];
+        assert!(after_body.contains("BlockSelectionPhase::AfterTranslucent"));
+        assert_eq!(
+            before_body
+                .matches("stats.selection_draw_calls += 1")
+                .count()
+                + after_body
+                    .matches("stats.selection_draw_calls += 1")
+                    .count(),
+            2,
+            "each mutually exclusive phase has one logical draw counter"
+        );
     }
 
     #[test]

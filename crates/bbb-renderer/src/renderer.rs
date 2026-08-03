@@ -124,9 +124,10 @@ use crate::{
         VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
     },
     selection::{
-        create_chunk_border_always_on_top_pipeline, create_selection_outline_gpu,
-        create_selection_pipeline, create_translucent_debug_line_pipeline, sanitize_debug_lines,
-        DebugLine, SelectionOutline, SelectionOutlineGpu,
+        create_block_selection_gpu, create_chunk_border_always_on_top_pipeline,
+        create_selection_outline_gpu, create_selection_pipeline,
+        create_translucent_debug_line_pipeline, sanitize_debug_lines, BlockSelectionGpu,
+        BlockSelectionRenderState, DebugLine, SelectionOutline, SelectionOutlineGpu,
     },
     sky::{
         create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
@@ -703,7 +704,7 @@ pub struct Renderer {
     pub(super) entity_name_tag_surfaces: Vec<EntityNameTagSurface>,
     pub(super) item_frame_map_text_font_atlas: Option<ItemFrameMapTextFontAtlasGpu>,
     pub(super) map_surface_residency: MapSurfaceResidency,
-    pub(super) selection_outline: Option<SelectionOutlineGpu>,
+    pub(super) block_selection: Option<BlockSelectionGpu>,
     pub(super) chunk_border_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) debug_filled_boxes: Vec<DebugFilledBox>,
@@ -2458,7 +2459,7 @@ impl Renderer {
             entity_name_tag_surfaces: Vec::new(),
             item_frame_map_text_font_atlas: None,
             map_surface_residency,
-            selection_outline: None,
+            block_selection: None,
             chunk_border_outline: None,
             entity_scene_outline: None,
             debug_filled_boxes: Vec::new(),
@@ -3199,17 +3200,16 @@ impl Renderer {
         self.game_test_highlight_text_billboards = sanitize_debug_text_billboards(text_billboards);
     }
 
-    pub fn set_selection_outline(&mut self, outline: Option<SelectionOutline>) {
+    pub fn set_block_selection(&mut self, state: Option<BlockSelectionRenderState>) {
         if self
-            .selection_outline
+            .block_selection
             .as_ref()
-            .map(|selection| &selection.outline)
-            == outline.as_ref()
+            .map(|selection| &selection.state)
+            == state.as_ref()
         {
             return;
         }
-        self.selection_outline =
-            outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
+        self.block_selection = state.map(|state| create_block_selection_gpu(&self.device, state));
     }
 
     pub fn set_chunk_border_outline(&mut self, outline: Option<SelectionOutline>) {

@@ -669,8 +669,123 @@ LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LEVEL_RENDERER_SCENE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/entity_scene.rs#entity_scene_outline_from_world_at_partial_tick",
+                "crates/bbb-renderer/src/render.rs#entity_outline_target_pass",
+            ),
+            (
+                "crates/bbb-native/src/entity_scene/tests.rs#entity_scene_outline_projects_pick_bounds_for_all_visible_targets",
+                "crates/bbb-renderer/src/render.rs#entity_outline_target_stays_in_main_pass_and_post_chain_runs_before_clouds",
+            ),
+        ),
+        ("doEntityOutline", "shouldShowEntityOutlines", "entityOutlineTarget"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+                "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state",
+                "crates/bbb-native/src/runtime/tests.rs#block_selection_has_one_production_projection_and_no_legacy_resolver_path",
+            ),
+        ),
+        ("extractLevel", "checkPoseStack"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/entity_scene.rs#visible_entity_model_instances_from_world_with_variant_textures_at_partial_tick",),
+            ("crates/bbb-native/src/entity_scene/tests.rs#visible_entity_source_orders_dispatcher_before_current_section_gate",),
+        ),
+        ("extractVisibleEntities", "extractEntity"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+                "crates/bbb-renderer/src/render.rs#main_world_pass",
+            ),
+            ("crates/bbb-renderer/src/render.rs#entity_translucent_features_draw_after_depth_copies_and_before_translucent_terrain",),
+        ),
+        ("submitEntities",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/block_entity_visibility.rs#retain_visible_block_entity_instances",),
+            (
+                "crates/bbb-native/src/block_entity_visibility.rs#compiled_section_gate_precedes_camera_frustum_submission",
+                "crates/bbb-native/src/block_entity_visibility.rs#ordinary_models_use_the_containing_section_as_the_frustum_unit",
+            ),
+        ),
+        ("extractVisibleBlockEntities",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#apply_renderer_frame",
+                "crates/bbb-renderer/src/render.rs#main_world_pass",
+            ),
+            ("crates/bbb-renderer/src/render.rs#lit_entity_draws_sample_dynamic_lightmap_texture",),
+        ),
+        ("submitBlockEntities",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#block_destroy_overlays_from_stages",
+                "crates/bbb-native/src/runtime.rs#apply_block_entity_crumbling",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_use_camera_eye_and_vanilla_thirty_two_block_center_bound",
+                "crates/bbb-native/src/runtime/tests.rs#block_destroy_overlays_include_server_progress_and_keep_highest_per_position",
+            ),
+        ),
+        ("extractBlockDestroyAnimation",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#block_destroy_overlay_pass",),
+            ("crates/bbb-renderer/src/render.rs#block_destroy_overlays_draw_in_translucent_feature_phase_before_translucent_terrain",),
+        ),
+        ("submitBlockDestroyAnimation",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/crosshair.rs#block_selection_from_camera",
+                "crates/bbb-native/src/runtime.rs#block_selection_render_state",
+            ),
+            (
+                "crates/bbb-native/src/crosshair.rs#block_selection_rejects_target_outside_world_border",
+                "crates/bbb-native/src/runtime/tests.rs#block_selection_projection_uses_current_material_catalog_surface_width_and_style",
+            ),
+        ),
+        ("extractBlockOutline",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#block_selection_before_translucent_pass",
+                "crates/bbb-renderer/src/render.rs#item_entity_line_target_pass",
+                "crates/bbb-renderer/src/selection.rs#create_block_selection_gpu",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#block_selection_phase_brackets_translucent_terrain_and_has_one_draw_lane",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths",
+                "crates/bbb-renderer/src/selection.rs#high_contrast_block_selection_emits_secondary_before_cyan_primary",
+            ),
+        ),
+        ("renderBlockOutline", "renderHitOutline"),
+    ),
+)
+
 LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
+    "rendering-level-scene-projection": LEVEL_RENDERER_SCENE_OWNER_EVIDENCE,
     "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
 }
 

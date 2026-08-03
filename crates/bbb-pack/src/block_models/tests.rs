@@ -1052,6 +1052,104 @@ fn block_model_catalog_selects_weighted_variants_from_seed() {
         blue.face_textures.get(BlockModelFace::North),
         "minecraft:block/blue"
     );
+    let material_models = catalog
+        .block_material_models("minecraft:test_block", &BTreeMap::new())
+        .unwrap();
+    assert_eq!(material_models.len(), 2);
+    assert_eq!(
+        material_models[0].face_textures.get(BlockModelFace::North),
+        "minecraft:block/red"
+    );
+    assert_eq!(
+        material_models[1].face_textures.get(BlockModelFace::North),
+        "minecraft:block/blue"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_material_flags_include_inactive_multipart_selectors() {
+    let root = unique_temp_dir("block-model-multipart-material-flags");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "multipart": [
+                { "when": { "lit": "false" }, "apply": { "model": "minecraft:block/solid" } },
+                { "when": { "lit": "true" }, "apply": [
+                    { "model": "minecraft:block/glow_a" },
+                    { "model": "minecraft:block/glow_b" }
+                ] }
+            ]
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("cube_all.json"),
+        r##"{
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" }, "up": { "texture": "#all" },
+                    "north": { "texture": "#all" }, "south": { "texture": "#all" },
+                    "west": { "texture": "#all" }, "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    for (model, texture) in [
+        ("solid", "stone"),
+        ("glow_a", "glow_a"),
+        ("glow_b", "glow_b"),
+    ] {
+        write_json(
+            &asset_root
+                .join("models")
+                .join("block")
+                .join(format!("{model}.json")),
+            &format!(
+                r##"{{
+                    "parent": "minecraft:block/cube_all",
+                    "textures": {{ "all": "minecraft:block/{texture}" }}
+                }}"##
+            ),
+        );
+    }
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let properties = BTreeMap::from([("lit".to_string(), "false".to_string())]);
+    let rendered = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+    assert_eq!(
+        rendered.face_textures.get(BlockModelFace::North),
+        "minecraft:block/stone"
+    );
+    let material_models = catalog
+        .block_material_models("minecraft:test_block", &properties)
+        .unwrap();
+    assert_eq!(material_models.len(), 3);
+    assert_eq!(
+        material_models
+            .iter()
+            .map(|model| model.face_textures.get(BlockModelFace::North))
+            .collect::<Vec<_>>(),
+        [
+            "minecraft:block/stone",
+            "minecraft:block/glow_a",
+            "minecraft:block/glow_b",
+        ]
+    );
 
     std::fs::remove_dir_all(root).unwrap();
 }

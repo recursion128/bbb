@@ -56,6 +56,47 @@ impl RawBlockstate {
             RawBlockstateSelection::Variants(variants)
         })
     }
+
+    /// Returns every model whose baked material flags contribute to this block-state model.
+    ///
+    /// Vanilla's `WeightedVariants.materialFlags` ORs every weighted candidate for the matched
+    /// variants entry, while `MultiPartModel.SharedBakedState.materialFlags` ORs every selector
+    /// model regardless of whether that selector matches the current state. This is deliberately
+    /// separate from `select_variants`, which chooses the geometry rendered for one position.
+    pub(super) fn material_flag_variants(
+        &self,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<RawBlockstateSelection> {
+        let mut best_variant = None;
+        let mut best_score = 0usize;
+        for (key, variant) in &self.variants {
+            let Some(score) = variant_key_match_score(key, properties) else {
+                continue;
+            };
+            if best_variant.is_none() || score >= best_score {
+                best_score = score;
+                best_variant = Some(variant);
+            }
+        }
+        if let Some(variant) = best_variant {
+            return Some(RawBlockstateSelection::Variants(variant.all_models()));
+        }
+
+        if self.multipart.is_empty() {
+            return None;
+        }
+
+        let variants = self
+            .multipart
+            .iter()
+            .flat_map(|case| case.apply.all_models())
+            .collect::<Vec<_>>();
+        Some(if variants.is_empty() {
+            RawBlockstateSelection::Empty
+        } else {
+            RawBlockstateSelection::Variants(variants)
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +124,13 @@ impl RawBlockstateVariant {
         match self {
             Self::One(model) => Some(model.clone()),
             Self::Many(models) => select_weighted_model(models, seed),
+        }
+    }
+
+    fn all_models(&self) -> Vec<RawModelVariant> {
+        match self {
+            Self::One(model) => vec![model.clone()],
+            Self::Many(models) => models.clone(),
         }
     }
 }

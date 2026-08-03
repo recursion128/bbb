@@ -170,6 +170,26 @@ public class Owner {
                 for owner in backend_owners
             )
         )
+        scene_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-level-scene-projection"
+        ]
+        self.assertEqual(len(scene_owners), 15)
+        self.assertEqual(
+            value["mechanisms"]["rendering-level-scene-projection"][
+                "owner_evidence_count"
+            ],
+            15,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in scene_owners
+            )
+        )
 
     def test_unclassified_level_renderer_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -240,6 +260,31 @@ public class Owner {
                         "render-step",
                         "rendering",
                         "rendering-level-backend-lifecycle",
+                        relative,
+                    )
+                )
+
+    def test_scene_owner_without_implementation_test_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { void extractBlockOutline() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.LEVEL_RENDERER_SCENE_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "rendering",
+                        "rendering-level-frame-graph",
                         relative,
                     )
                 )

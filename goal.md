@@ -433,32 +433,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
-### Active 工程合同：LevelRenderer scene projection
-
-目标：关闭 `rendering-level-scene-projection` 的 entity/block-entity extract→submit、entity outline、
-block selection、block-destroy overlay 与 value-stack invariant 共 15 个 owner。Vanilla 依据为
-`LevelRenderer.extractLevel`、`extract/submitVisible*`、`extract/renderBlockOutline`、
-`extract/submitBlockDestroyAnimation`、`doEntityOutline`；当前实证缺口是 selection 未携带 model
-translucent phase、线宽固定 1px 且无 high-contrast projection，crack overlay 未按 camera-center 32 格过滤。
-
-唯一 flow：world 只拥有 entity/block/block-destruction 真值；当前 resource generation 的 native terrain
-catalog 决定 block model translucent flag，native 以一个 immutable `BlockSelectionRenderState` 连同同帧
-entity/block-entity/crack projection 提交；renderer 只拥有 GPU mesh、solid-before/translucent-after pass 和
-outline target。删除旧 `Option<SelectionOutline>` block-selection API，不增 pack/world 反向读取或 shadow path。
-
-阶段：A 冻结 15 owner 的 exact gate/order/evidence；B 接入 selected-block resource phase、appropriate
-line width、CLI high-contrast style，并拆分 translucent terrain 前后唯一 submission；C 增加 crack 32 格
-camera-center bound，复验 entity/passenger/camera、block-entity 0.3 section gate、outline target 与 generation
-替换，生成 15/15 fail-closed cells/reverse guard；D Wiki/matrix/ledger、offscreen/live/full gate 收口。
-非目标：entity/block-entity registration 内容、frame graph 其余 pass、debug gizmo、模型重构或 options UI。
-
-Focused tests：solid/translucent selected-pack phase 与 reload rollback；2.5px/宽屏线宽；high-contrast
-black 7px→cyan primary 顺序；before/after translucent pass 及 offscreen pixels；camera center 32 格边界；
-entity dispatcher→section→camera gate、block-entity fade/global/crumbling；outline target/post chain；单一 frame
-commit、旧 setter/无界 crack path 为零；15 evidence cell 对缺 symbol/test fail closed。实现提交后 checkpoint
-full gate；最终 full gate、fixture/live playable 与适用 offscreen acceptance。安全停止点仅限干净 full-gated
-checkpoint；blocker 仅限可复现 GPU/window 外部失败且 CPU/source/offscreen evidence 已通过。
-
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

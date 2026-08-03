@@ -7999,8 +7999,8 @@ fn renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state(
             "let camera_entity_pose = camera_pose_from_world_at_partial_tick(world, entity_partial_tick)",
         )
         .expect("pump should extract the interaction camera pose before outlines");
-    let selection_outline = source
-        .find("let selection_outline = (!input.hide_gui())")
+    let block_selection = source
+        .find("let block_selection = (!input.hide_gui())")
         .expect("pump should F1-gate the normal selection outline");
     let entity_scene_outline = source
         .find("let entity_scene_outline =")
@@ -8021,7 +8021,7 @@ fn renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state(
     for extraction in [
         targeted_entity,
         attack_indicator,
-        selection_outline,
+        block_selection,
         entity_scene_outline,
     ] {
         assert!(
@@ -8034,6 +8034,47 @@ fn renderer_frame_crosshair_feedback_and_outlines_share_post_input_camera_state(
     assert!(source.contains(
         "camera_pose,\n        targeted_entity_id,\n        world.local_player().camera.entity_id,"
     ));
+}
+
+#[test]
+fn block_selection_has_one_production_projection_and_no_legacy_resolver_path() {
+    let runtime = include_str!("../runtime.rs");
+    let render_extract = include_str!("render_extract.rs");
+    let crosshair = include_str!("../crosshair.rs");
+    let renderer = include_str!("../../../bbb-renderer/src/renderer.rs");
+    let selection = include_str!("../../../bbb-renderer/src/selection.rs");
+
+    let old_crosshair_resolver = ["selection_outline", "_from_camera"].concat();
+    let old_renderer_setter = ["set_selection", "_outline"].concat();
+    assert!(!crosshair.contains(&old_crosshair_resolver));
+    assert!(!runtime.contains(&old_crosshair_resolver));
+    assert!(!renderer.contains(&old_renderer_setter));
+    assert!(!render_extract.contains(&old_renderer_setter));
+    assert_eq!(
+        runtime
+            .matches("block_selection_from_camera(world, camera_entity_pose)")
+            .count(),
+        1
+    );
+    assert_eq!(
+        render_extract
+            .matches("renderer.set_block_selection(frame.block_selection)")
+            .count(),
+        1
+    );
+    assert_eq!(renderer.matches("pub fn set_block_selection(").count(), 1);
+    let projection = selection
+        .split_once("pub struct BlockSelectionRenderState")
+        .expect("public block selection projection")
+        .1
+        .split_once("}\n")
+        .expect("projection boundary")
+        .0;
+    assert!(projection.contains("pub boxes: Vec<SelectionBox>"));
+    assert!(projection.contains("pub phase: BlockSelectionPhase"));
+    assert!(!projection.contains("Pack"));
+    assert!(!projection.contains("TerrainTexture"));
+    assert!(!projection.contains("WorldStore"));
 }
 
 #[test]
@@ -13769,7 +13810,7 @@ fn camera_perspective_render_extraction_separates_view_and_interaction_poses() {
         )
         .expect("entity picking stays on the camera entity");
     let selection = source
-        .find("selection_outline_from_camera(world, camera_entity_pose)")
+        .find("block_selection_from_camera(world, camera_entity_pose)")
         .expect("block picking stays on the camera entity");
     let frame = source
         .find("camera_pose,\n            camera_hurt_effect,")
@@ -24977,7 +25018,17 @@ fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position(
     );
 
     let stages = block_destroy_stages_from_world(&world);
-    let overlays = block_destroy_overlays_from_stages(&world, &textures, &stages);
+    let overlays = block_destroy_overlays_from_stages(
+        &world,
+        &textures,
+        &stages,
+        Some(CameraPose {
+            position: [0.0, 0.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }),
+    );
 
     assert_eq!(
         stages,
@@ -25035,7 +25086,17 @@ fn block_destroy_overlays_merge_local_stage_with_server_progress_per_position() 
     let textures = destroy_stage_test_textures();
 
     let stages = block_destroy_stages_from_world(&world);
-    let overlays = block_destroy_overlays_from_stages(&world, &textures, &stages);
+    let overlays = block_destroy_overlays_from_stages(
+        &world,
+        &textures,
+        &stages,
+        Some(CameraPose {
+            position: [0.0, 0.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }),
+    );
 
     assert_eq!(stages, vec![(pos, 5)]);
     assert_eq!(overlays.len(), 1);
@@ -25063,7 +25124,113 @@ fn block_destroy_overlays_skip_missing_destroy_stage_textures() {
 
     let stages = block_destroy_stages_from_world(&world);
     assert_eq!(stages, vec![(BlockPos { x: 2, y: 3, z: 4 }, 2)]);
-    assert!(block_destroy_overlays_from_stages(&world, &textures, &stages).is_empty());
+    assert!(block_destroy_overlays_from_stages(
+        &world,
+        &textures,
+        &stages,
+        Some(CameraPose {
+            position: [0.0, 0.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }),
+    )
+    .is_empty());
+}
+
+#[test]
+fn block_destroy_overlays_use_camera_eye_and_vanilla_thirty_two_block_center_bound() {
+    let world = WorldStore::new();
+    let textures = destroy_stage_test_textures();
+    let stages = [
+        (BlockPos { x: 31, y: 0, z: 0 }, 1),
+        (BlockPos { x: 32, y: 0, z: 0 }, 2),
+        (BlockPos { x: 0, y: 33, z: 0 }, 3),
+    ];
+    let camera = Some(CameraPose {
+        position: [-0.5, -1.12, 0.5],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: 1.62,
+    });
+
+    let overlays = block_destroy_overlays_from_stages(&world, &textures, &stages, camera);
+
+    assert_eq!(overlays.len(), 1);
+    assert_eq!(overlays[0].pos, [31, 0, 0]);
+    assert!(block_destroy_overlays_from_stages(&world, &textures, &stages, None).is_empty());
+}
+
+#[test]
+fn block_selection_projection_uses_current_material_catalog_surface_width_and_style() {
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let pos = BlockPos { x: 0, y: 1, z: 3 };
+    set_lightmap_test_block(&mut world, pos, 9);
+    assert_eq!(
+        world.probe_block(pos).unwrap().block_name.as_deref(),
+        Some("minecraft:grass_block")
+    );
+    let selection = || BlockSelectionProjection {
+        pos,
+        boxes: vec![bbb_renderer::SelectionBox {
+            min: [0.0, 1.0, 3.0],
+            max: [1.0, 2.0, 4.0],
+        }],
+    };
+
+    let solid = block_selection_render_state(
+        &world,
+        &TerrainTextureState::default(),
+        selection(),
+        1920,
+        false,
+    );
+    assert_eq!(solid.phase, BlockSelectionPhase::BeforeTranslucent);
+    assert_eq!(solid.line_width, 2.5);
+    assert!(!solid.high_contrast);
+
+    let root = unique_runtime_temp_dir("block-selection-material-phase");
+    let assets = runtime_assets_dir(&root);
+    write_runtime_json(
+        &assets.join("blockstates").join("grass_block.json"),
+        r#"{"variants":{"":{"model":"minecraft:block/grass_block"}}}"#,
+    );
+    write_runtime_json(
+        &assets.join("models").join("block").join("grass_block.json"),
+        r##"{
+            "textures":{"particle":"#all","all":{"sprite":"minecraft:block/glass","force_translucent":true}},
+            "elements":[{"faces":{
+                "down":{"texture":"#all"},"up":{"texture":"#all"},
+                "north":{"texture":"#all"},"south":{"texture":"#all"},
+                "west":{"texture":"#all"},"east":{"texture":"#all"}
+            }}]
+        }"##,
+    );
+    let models = bbb_pack::PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let atlas = bbb_pack::AtlasPacker::new(16, 1)
+        .unwrap()
+        .stitch(&[bbb_pack::SpriteImage::new(
+            "minecraft:block/glass",
+            1,
+            1,
+            vec![255, 255, 255, 255],
+        )
+        .unwrap()])
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, Some(models), None, None);
+    let translucent = block_selection_render_state(&world, &textures, selection(), 3840, true);
+    assert_eq!(translucent.phase, BlockSelectionPhase::AfterTranslucent);
+    assert_eq!(translucent.line_width, 5.0);
+    assert!(translucent.high_contrast);
+
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]

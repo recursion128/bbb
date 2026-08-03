@@ -129,20 +129,23 @@ mod tests {
     use winit::dpi::PhysicalSize;
 
     use crate::hud::HudDrawCommand;
+    use crate::screenshot::ScreenshotPixels;
     use crate::terrain::{TerrainMesh, TerrainVertex};
     use crate::{
-        ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
-        EntityPlayerSkin, HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen,
-        HudComponentTextRun, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,
-        HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton,
-        HudDemoPopupScreen, HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap,
-        HudGameEventButton, HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
+        BlockSelectionPhase, BlockSelectionRenderState, CameraPose, ClearColor,
+        EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef, EntityPlayerSkin,
+        HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen, HudComponentTextRun,
+        HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+        HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
+        HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap, HudGameEventButton,
+        HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
         HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
         HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
         HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
         HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
         HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
-        HudStyledTextRun, HudVignette, HudWinScreen, Renderer, StandaloneTextureSampling,
+        HudStyledTextRun, HudVignette, HudWinScreen, Renderer, SelectionBox,
+        StandaloneTextureSampling,
     };
 
     const WIDTH: u32 = 320;
@@ -283,6 +286,62 @@ mod tests {
                 && (118..=128).contains(&center[1])
                 && (117..=127).contains(&center[2]),
             "sky-14 terrain texel should be daylight-lit, got {center:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_block_selection_renders_both_material_phase_paths() {
+        let Some(mut renderer) = Renderer::new_offscreen(96, 96) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.1,
+            g: 0.1,
+            b: 0.1,
+            a: 1.0,
+        });
+        renderer.set_camera_pose(Some(CameraPose {
+            position: [0.0, 0.0, -3.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }));
+        let state = |phase| BlockSelectionRenderState {
+            boxes: vec![SelectionBox {
+                min: [-0.5, -0.5, 0.0],
+                max: [0.5, 0.5, 1.0],
+            }],
+            phase,
+            line_width: 2.5,
+            high_contrast: true,
+        };
+
+        renderer.set_block_selection(Some(state(BlockSelectionPhase::BeforeTranslucent)));
+        let before = renderer
+            .render_offscreen_frame()
+            .expect("solid-phase selection frame");
+        assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+        renderer.set_block_selection(Some(state(BlockSelectionPhase::AfterTranslucent)));
+        let after = renderer
+            .render_offscreen_frame()
+            .expect("translucent-phase selection frame");
+        assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+        let cyan_pixels = |pixels: &ScreenshotPixels| {
+            pixels
+                .rgba
+                .chunks_exact(4)
+                .filter(|pixel| pixel[0] < 130 && pixel[1] > 200 && pixel[2] > 180)
+                .count()
+        };
+        assert!(
+            cyan_pixels(&before) > 0,
+            "before-translucent lane must draw cyan outline pixels"
+        );
+        assert!(
+            cyan_pixels(&after) > 0,
+            "after-translucent lane must draw cyan outline pixels"
         );
     }
 

@@ -107,6 +107,8 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_show_subtitles: bool,
+    #[arg(long = "high-contrast-block-outline")]
+    pub(crate) high_contrast_block_outline: bool,
     #[arg(
         long = "notification-display-time",
         default_value_t = 1.0,
@@ -1531,6 +1533,16 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--client-view-bobbing=false"]).unwrap();
         assert!(!args.client_view_bobbing);
+    }
+
+    #[test]
+    fn args_accept_high_contrast_block_outline_startup_option() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!defaults.high_contrast_block_outline);
+
+        let configured =
+            Args::try_parse_from(["bbb-native", "--high-contrast-block-outline"]).unwrap();
+        assert!(configured.high_contrast_block_outline);
     }
 
     #[test]

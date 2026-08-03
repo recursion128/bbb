@@ -344,6 +344,11 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
         .load_block_model_catalog()
         .unwrap();
     let textures = TerrainTextureState::from_layout(&atlas.layout, Some(block_models), None, None);
+    assert!(textures.block_model_has_translucent_material(
+        "minecraft:test_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+    ));
     let block_position = BlockRenderPosition { x: 20, y: 70, z: 4 };
     let red = textures
         .moving_block_quads(
@@ -401,6 +406,34 @@ fn moving_block_quads_use_start_seed_and_cardinal_context() {
     assert!(leaves.iter().all(|quad| !quad.translucent));
 
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+#[ignore = "requires local vanilla 26.1 resources"]
+fn local_vanilla_block_material_flags_distinguish_stone_and_glass() {
+    let roots = bbb_pack::PackRoots::discover().expect("discover local Vanilla resources");
+    let images = roots
+        .load_block_texture_images()
+        .expect("load local Vanilla block textures");
+    let models = roots
+        .load_block_model_catalog()
+        .expect("load local Vanilla block models");
+    let atlas = bbb_pack::AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, 1)
+        .expect("create Vanilla block atlas packer")
+        .stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)
+        .expect("stitch local Vanilla block atlas");
+    let textures = TerrainTextureState::from_layout(&atlas.layout, Some(models), None, None);
+
+    assert!(!textures.block_model_has_translucent_material(
+        "minecraft:stone",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+    ));
+    assert!(textures.block_model_has_translucent_material(
+        "minecraft:glass",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Translucent,
+    ));
 }
 
 #[test]

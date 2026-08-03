@@ -65,6 +65,27 @@ crumbling 保持自己的常量 visibility，不被 terrain section fade 污染�
 收到 generation-matched projection 前不自动可见；stale prepare/projection 在改写 residency
 前被拒绝，失败继续使用上一完整 generation。
 
+### Level scene projection 与 block selection
+
+Vanilla `LevelRenderer.extractLevel`、`extract/submitVisibleEntities`、
+`extract/submitVisibleBlockEntities`、`extract/submitBlockDestroyAnimation`、
+`extract/renderBlockOutline` 与 `doEntityOutline` 的 15 个 scene owner 在 BBB 只经过一条数据流：
+
+`bbb-world` entity/block/block-destruction 真值 → native 同帧 immutable projection → renderer-private
+GPU mesh、outline target 与有序 pass submit。
+
+block selection 的 shape 由 world 决定；当前 resource generation 的 block-state model catalog 枚举
+weighted variant 的所有候选以及 multipart 的所有 selector，并以所有候选 material flag 的并集决定
+提交 phase。solid selection 在 translucent terrain 前提交，含 translucent material 的 selection 在其后
+提交。普通轮廓使用黑色 alpha 102、线宽 `max(2.5, surfaceWidth / 1920 * 2.5)`；high-contrast 使用
+7px opaque black secondary 后提交 `0xff57ffe1` primary。world border、spectator/adventure gate 在 native
+投影前执行；block-destroy overlay 只接收与 camera eye 的 block center 距离平方不超过 1024 的条目。
+
+pack 只发布 immutable CPU model catalog，native 只做 generation-matched material/shape/scene 决策，
+renderer 只保留 GPU residency 和 pass placement；三者之间没有 pack/world 反向读取或第二个 selection
+resolver。resource reload 在 renderer transaction 内准备 terrain catalog，全部 fallible owner 成功后才
+一次发布新 terrain generation；失败继续使用上一完整 generation。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -98,6 +119,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | translucent sorting | section sort state | renderer translucent queue | `equivalent` | static/flight/boundary anchors |
 | section compile/cull/fade lifecycle | `LevelRenderer`、`RenderSection`、`SectionOcclusionGraph` | native ordered section projection → renderer uniform | `equivalent` | generated 29-owner evidence、fade/threshold/generation/pixel/selected-shader tests |
 | backend/reload/resize lifecycle | `LevelRenderer` constructor/close/reload/setLevel/allChanged/resize/resetSampler/needsUpdate | world revision → native generation transaction → renderer-private GPU backend | `equivalent` | generated 9-owner evidence、atomic resize/rollback、RAII、resource/level generation tests |
+| level scene extract/submit | `LevelRenderer` 15 scene owners | world → native immutable frame projection → renderer pass/target | `equivalent` | generated 15-owner evidence、selection phase/style、32-block crack、offscreen pixel tests |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -113,6 +135,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 - resize 必须先准备全部 size-dependent owner，再一次性发布 main/depth、transparency、outline、
   cloud、blur、camera/post targets、bind group 与尺寸/counter；任一 prepare 失败保留上一完整
   backend generation，zero-size 不进入 prepare。释放由 renderer RAII owner 完成，不另设 close 路径。
+- block selection phase 必须来自当前 generation 的完整 block-state model material candidate set；不得
+  恢复 native/renderer 的按名称、单候选或独立 pack resolver，也不得在两个 phase 同时提交。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
 - FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
   optional static map fallback。
@@ -137,13 +161,19 @@ prepare 不修改旧尺寸、targets、selected post pixels 或 counters，apply
 atlas sampler owner 与 RAII reverse guard 覆盖非 resize owner；generated inventory 为 9 个 Vanilla
 method 分别保存 implementation/test symbol，旧逐 consumer resize 调用恢复时 source guard 失败。
 
+scene projection 由 native 的 entity/passenger/camera、block-entity fade/global/crumbling、world-border、
+surface-width/high-contrast、resource-generation material phase 和 32-block crack tests 覆盖；renderer
+offscreen test 在真实 GPU 后端分别执行 solid/translucent phase，并验证 cyan high-contrast pixels 与唯一
+logical selection draw。生成 inventory 为 15 个 Vanilla method 分别保存 implementation/test symbol，
+fixture 对缺 cell、失效 symbol、旧 block-selection setter 和双 submission path fail closed。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend lifecycle 均已通过；新 block state、
+当前合同的已知回归矩阵与 LevelRenderer section/backend/scene lifecycle 均已通过；新 block state、
 pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 
