@@ -52,11 +52,16 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 - **The simulation command mailbox needs a hard retained budget.**
   `bbb-native::simulation::commands::SimulationMailbox` only begins tail
   coalescing after a soft threshold; discrete control/window commands still append
-  without a count/byte ceiling. Add explicit producer-class limits and retained-byte
-  diagnostics without silently dropping key/button release, shutdown or ordered
-  interaction commands; prove exact-limit/overflow, wake/barrier order, stale-session
-  rejection and lifecycle soak. Goal route: `p4-delivery`; Vanilla owners are
-  `Minecraft.runTick` event/task draining and `KeyboardHandler`/`MouseHandler` input.
+  without a count/byte ceiling. The single FIFO owner must classify platform input,
+  control, render feedback, asynchronous completion and lifecycle producers, enforce
+  the count/retained-logical-byte quotas frozen in `goal.md`, and apply producer
+  backpressure rather than silently dropping key/button release, shutdown or ordered
+  interaction commands. Oversized and closed-session submissions must fail explicitly;
+  machine diagnostics must expose current/peak count and bytes, blocked submissions,
+  coalescing and rejection totals. Prove exact-limit/overflow, wake/barrier order,
+  close-unblock/stale-generation rejection and lifecycle soak. Goal route:
+  `p4-delivery`; Vanilla owners are `Minecraft.runTick` event/task draining,
+  `BlockableEventLoop.runAllTasks`, and `KeyboardHandler`/`MouseHandler` input callbacks.
 
 ## Architecture drift candidates
 

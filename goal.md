@@ -492,6 +492,36 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
+当前唯一 active 工程合同是 simulation command mailbox hard retained budget：
+
+- Vanilla `KeyboardHandler`/`MouseHandler` 把 native callback 经 `Minecraft.execute` 入
+  `BlockableEventLoop`，`Minecraft.runTick` 在 client tick 前按序 `runAllTasks`；release 更新
+  `KeyMapping`/mouse pressed state。BBB 保持一个 `SimulationMailbox`、全局 sequence、FIFO 与
+  drain barrier，不改变 command apply、wake 或 tick 顺序。
+- producer class 与硬 quota 固定为：platform input 2048 条/8 MiB，control 512 条/8 MiB，
+  render feedback 64 条/1088 MiB（两个现有 512 MiB resource generation budget 加 64 MiB
+  projection headroom），async completion 32 条/1 MiB，lifecycle 1 条/4 KiB。quota 分区为
+  shutdown 留位；总量是各 class 上限之和，不能靠另一 class 借位突破。
+- retained logical bytes 固定为 command inline owner 加 String/Vec/map capacity；font glyph map
+  按 entry capacity，resource reload ack 按 data/image generation charged bytes，control DTO 按
+  nested collection capacity。soft threshold 后相邻 high-rate tail coalescing语义不变。
+- count/bytes 饱和时 producer 在同一 condvar 等待 drain，不丢 release、shutdown 或 interaction；
+  drain 释放 quota 后唤醒。单 command 超 class byte limit 返回 `oversized`；simulation worker
+  退出原子 close mailbox，唤醒所有 waiter并返回 `closed`，control API 不得声称已排队。
+- `NetCounters` 发布 current/peak count/bytes、每 class limit/current/peak、blocked/coalesced、
+  oversized/closed rejection；旧 payload 默认零。generation-bearing reload/readiness/services
+  completion 仍由现有 consumer 拒绝 stale generation，不增加 shadow queue/state。
+- 阶段：retained-size API与诊断 DTO→bounded FIFO admission/drain/close→迁移全部 producer与
+  control error surface→publication/lifecycle wiring→reverse guard、Wiki/ledger 收口。非目标是
+  改 command semantics、input binding、simulation tick、net command queue、renderer output queue、
+  broad lifecycle census 或其它 parity gap。
+- focused tests覆盖每 class exact count/byte limit、oversized、blocked producer drain 后 FIFO、
+  release/shutdown、coalescing、barrier/wake、close unblock、control error、diagnostic publication、
+  stale generation与 retained accounting；运行 control/native tests、fixture/live lifecycle
+  acceptance、docs/fmt/diff/workspace check。核心并发工程最终 full gate 并刷新 live playable；
+  安全停止点仅为全部 producer 已迁移且 bounded mailbox 可构建，重复三轮仍无法启动本地
+  offline server/window runner才构成外部 blocker。
+
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
