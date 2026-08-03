@@ -70,21 +70,23 @@ use crate::{
     profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher},
     skin_runtime::{
         AsyncDynamicTextureRuntime, DynamicPlayerTextureKind, DynamicTextureCacheObservation,
-        HttpSkinPngFetcher,
+        HttpSkinPngFetcher, ProfileTextureAssetKind, ProfileTextureSetCache,
     },
 };
 
 mod icon_model;
 mod item_membership_catalog;
+#[cfg(test)]
 mod profile_skin;
 
+pub use crate::skin_runtime::{
+    default_player_skin_for_profile, default_player_skin_for_profile_id,
+};
+use crate::skin_runtime::{entity_player_skin_model, profile_texture_handle};
 use icon_model::{
     default_item_name_translation_key, item_icon_model_ref_for_definition, CompassTarget,
     CrossbowChargeType, IconResolveContext, ItemIconModel, ResolvedItemIconModelLayer, TimeSource,
 };
-use profile_skin::ProfileSkinCache;
-pub use profile_skin::{default_player_skin_for_profile, default_player_skin_for_profile_id};
-use profile_skin::{entity_player_skin_model, profile_texture_handle};
 
 use crate::font::load_hud_font_atlas;
 
@@ -269,7 +271,7 @@ pub struct NativeItemRuntime {
     profile_texture_resources: PackResourceStack,
     local_dynamic_skins: RefCell<LocalDynamicPlayerSkinCache>,
     local_dynamic_textures: RefCell<LocalDynamicPlayerTextureCache>,
-    profile_skins: RefCell<ProfileSkinCache>,
+    profile_texture_sets: RefCell<ProfileTextureSetCache>,
     local_time_epoch_millis_override: Cell<Option<i64>>,
     time_wobblers: RefCell<HashMap<ItemTimeWobblerKey, ItemNeedleWobbler>>,
     time_randoms: RefCell<HashMap<ItemTimeRandomKey, ItemLegacyRandom>>,
@@ -643,7 +645,7 @@ impl NativeItemRuntime {
             profile_texture_resources: self.profile_texture_resources.clone(),
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
-            profile_skins: RefCell::default(),
+            profile_texture_sets: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(
                 self.local_time_epoch_millis_override.get(),
             ),
@@ -991,7 +993,7 @@ impl NativeItemRuntime {
             profile_texture_resources,
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
-            profile_skins: RefCell::default(),
+            profile_texture_sets: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),
@@ -1056,7 +1058,7 @@ impl NativeItemRuntime {
             profile_texture_resources: PackResourceStack::default(),
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
-            profile_skins: RefCell::default(),
+            profile_texture_sets: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),

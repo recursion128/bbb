@@ -1,5 +1,6 @@
 use super::*;
-use crate::skin_runtime::{AsyncDynamicTextureRuntime, SkinPngFetcher};
+use crate::skin_runtime::{AsyncDynamicTextureRuntime, HttpSkinPngFetcher, SkinPngFetcher};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID,
 };
@@ -18,9 +19,13 @@ use bbb_protocol::tropical_fish_patterns::{
 use bbb_protocol::{ComponentStyle, StyledTextRun};
 use bbb_world::{BannerPatternPresentation, TrimMaterialPresentation, TrimPatternPresentation};
 use chrono::TimeZone;
+use rand::{rngs::StdRng, SeedableRng};
+use rsa::{pkcs8::EncodePublicKey, Pkcs1v15Sign, RsaPrivateKey};
+use sha1::{Digest, Sha1};
 use std::{
-    collections::BTreeMap,
-    io::Cursor,
+    collections::{BTreeMap, VecDeque},
+    io::{Cursor, Read, Write},
+    net::TcpListener,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
@@ -263,7 +268,7 @@ fn independent_simulation_projection_copies_catalogs_without_renderer_async_cach
 }
 
 #[test]
-fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
+fn dynamic_texture_session_edge_retains_cpu_image_and_redelivers_without_fetch() {
     let runtime = NativeItemRuntime::empty_for_test();
     assert_eq!(runtime.profile_presentation_revision(), 0);
     let cache_dir = unique_temp_dir("dynamic-texture-session-reset");
@@ -282,7 +287,11 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
         kind: ResolvableProfileKindSummary::Partial,
         uuid: Some(uuid::Uuid::from_u128(41)),
         name: None,
-        properties: Vec::new(),
+        properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+            name: "textures".to_string(),
+            value: "packed-profile-skin".to_string(),
+            signature: None,
+        }],
         profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
             skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
                 url: url.to_string(),
@@ -296,15 +305,23 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
 
     assert!(runtime.synchronize_dynamic_texture_session(3, true));
     assert_eq!(runtime.profile_presentation_revision(), 1);
-    runtime.mark_profile_skin_resolved(url, 9001);
+    assert!(matches!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::ProfiledDefault(_)
+    ));
+    let first_download = drain_until_player_skin_download_result(&runtime)
+        .pop()
+        .expect("initial skin delivery");
+    let handle = first_download.skin.as_ref().unwrap().handle;
+    runtime.mark_profile_skin_resolved(url, handle);
     assert_eq!(runtime.profile_presentation_revision(), 2);
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-            handle: 9001,
+            handle: resolved,
             status: EntityDynamicPlayerSkinStatus::Ready,
             ..
-        })
+        }) if resolved == handle
     ));
 
     assert!(!runtime.synchronize_dynamic_texture_session(3, true));
@@ -312,10 +329,10 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-            handle: 9001,
+            handle: resolved,
             status: EntityDynamicPlayerSkinStatus::Ready,
             ..
-        })
+        }) if resolved == handle
     ));
 
     assert!(runtime.synchronize_dynamic_texture_session(3, false));
@@ -323,17 +340,88 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
     assert!(matches!(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-            status: EntityDynamicPlayerSkinStatus::Loading,
+            handle: resolved,
+            status: EntityDynamicPlayerSkinStatus::Ready,
             ..
-        })
+        }) if resolved == handle
     ));
     let observation = runtime.dynamic_texture_cache_observation();
     assert!(!observation.accepting_requests);
-    assert_eq!(observation.entries, 0);
-    assert_eq!(observation.resident_bytes, 0);
-    assert_eq!(download_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(observation.profile_sets, 1);
+    assert_eq!(observation.profile_assets, 1);
+    assert!(observation.profile_key_bytes > 0);
+    assert_eq!(observation.entries, 1);
+    assert!(observation.resident_bytes > 0);
+    assert_eq!(download_calls.load(Ordering::Relaxed), 1);
     assert!(runtime.synchronize_dynamic_texture_session(4, true));
     assert_eq!(runtime.profile_presentation_revision(), 4);
+    let redelivery = runtime.drain_dynamic_player_skin_download_results();
+    assert_eq!(redelivery.len(), 1);
+    assert_eq!(redelivery[0].url, url);
+    assert_eq!(redelivery[0].skin.as_ref().unwrap().handle, handle);
+    assert_eq!(download_calls.load(Ordering::Relaxed), 1);
+
+    std::fs::remove_dir_all(cache_dir).unwrap();
+}
+
+#[test]
+fn successful_resource_generation_adopts_one_process_texture_owner_and_redelivers() {
+    let mut previous = NativeItemRuntime::empty_for_test();
+    let cache_dir = unique_temp_dir("dynamic-texture-resource-adoption");
+    let download_calls = Arc::new(AtomicUsize::new(0));
+    previous.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
+        &cache_dir,
+        TestSkinPngFetcher {
+            bytes: player_skin_png_bytes(),
+            calls: download_calls.clone(),
+        },
+    ));
+    previous.synchronize_dynamic_texture_session(5, true);
+    let url = "https://textures.minecraft.net/texture/resource-adoption";
+    let profile = ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::Partial,
+        uuid: Some(uuid::Uuid::from_u128(42)),
+        name: None,
+        properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+            name: "textures".to_string(),
+            value: "packed-resource-adoption".to_string(),
+            signature: None,
+        }],
+        profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+            skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                url: url.to_string(),
+                model: bbb_protocol::packets::PlayerModelTypeSummary::Wide,
+            }),
+            cape: None,
+            elytra: None,
+        }),
+        skin_patch: Default::default(),
+    };
+    previous.player_skin_for_profile(&profile);
+    let initial = drain_until_player_skin_download_result(&previous)
+        .pop()
+        .expect("initial process texture delivery");
+    let handle = initial.skin.as_ref().unwrap().handle;
+    previous.mark_profile_skin_resolved(url, handle);
+
+    let mut prepared = NativeItemRuntime::empty_for_test();
+    prepared.adopt_profile_texture_runtime(&mut previous);
+
+    assert_eq!(previous.dynamic_texture_cache_observation().entries, 0);
+    assert!(matches!(
+        prepared.player_skin_for_profile(&profile),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle: resolved,
+            status: EntityDynamicPlayerSkinStatus::Ready,
+            ..
+        }) if resolved == handle
+    ));
+    let redelivery = prepared.drain_dynamic_player_skin_download_results();
+    assert_eq!(redelivery.len(), 1);
+    assert_eq!(redelivery[0].url, url);
+    assert_eq!(redelivery[0].skin.as_ref().unwrap().handle, handle);
+    assert_eq!(download_calls.load(Ordering::Relaxed), 1);
 
     std::fs::remove_dir_all(cache_dir).unwrap();
 }
@@ -341,9 +429,28 @@ fn dynamic_texture_session_edge_clears_resolved_profile_handles_exactly_once() {
 #[test]
 fn profile_presentation_revision_tracks_skin_failure_after_success() {
     let runtime = NativeItemRuntime::empty_for_test();
-    runtime.mark_profile_skin_resolved("https://example.invalid/skin", 7);
+    let url = "https://textures.minecraft.net/texture/revision-skin";
+    let profile = ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::Partial,
+        uuid: Some(uuid::Uuid::from_u128(43)),
+        name: None,
+        properties: Vec::new(),
+        profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+            skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                url: url.to_string(),
+                model: bbb_protocol::packets::PlayerModelTypeSummary::Wide,
+            }),
+            cape: None,
+            elytra: None,
+        }),
+        skin_patch: Default::default(),
+    };
+    runtime.player_skin_for_profile(&profile);
+    runtime.mark_profile_skin_resolved(url, 7);
     assert_eq!(runtime.profile_presentation_revision(), 1);
-    runtime.mark_profile_skin_failed("https://example.invalid/skin");
+    runtime.mark_profile_skin_resolved(url, 7);
+    assert_eq!(runtime.profile_presentation_revision(), 1);
+    runtime.mark_profile_skin_failed(url);
     assert_eq!(runtime.profile_presentation_revision(), 2);
 }
 
@@ -4379,7 +4486,11 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
         kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
         uuid: Some(uuid::Uuid::from_u128(0)),
         name: None,
-        properties: Vec::new(),
+        properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+            name: "textures".to_string(),
+            value: "packed-custom-head-textures".to_string(),
+            signature: None,
+        }],
         profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
             skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
                 url: skin_url.to_string(),
@@ -4397,14 +4508,9 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     });
     assert_eq!(
         runtime.custom_head_skull_for_stack(&dynamic),
-        Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
-            EntityDynamicPlayerSkin {
-                handle: profile_texture_handle(skin_url),
-                fallback: EntityDefaultPlayerSkin::SlimAlex,
-                model: EntityPlayerSkinModel::Wide,
-                status: EntityDynamicPlayerSkinStatus::Loading,
-            }
-        )))
+        Some(EntityCustomHeadSkull::Player(
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        ))
     );
 
     let skin_download_calls = Arc::new(AtomicUsize::new(0));
@@ -4418,14 +4524,9 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     ));
     assert_eq!(
         runtime.custom_head_skull_for_stack(&dynamic),
-        Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
-            EntityDynamicPlayerSkin {
-                handle: profile_texture_handle(skin_url),
-                fallback: EntityDefaultPlayerSkin::SlimAlex,
-                model: EntityPlayerSkinModel::Wide,
-                status: EntityDynamicPlayerSkinStatus::Loading,
-            }
-        )))
+        Some(EntityCustomHeadSkull::Player(
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        ))
     );
     let downloads = drain_until_player_skin_download_result(&runtime);
     assert_eq!(downloads.len(), 1);
@@ -4438,14 +4539,9 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
     assert_eq!(
         runtime.custom_head_skull_for_stack(&dynamic),
-        Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
-            EntityDynamicPlayerSkin {
-                handle: profile_texture_handle(skin_url),
-                fallback: EntityDefaultPlayerSkin::SlimAlex,
-                model: EntityPlayerSkinModel::Wide,
-                status: EntityDynamicPlayerSkinStatus::Loading,
-            }
-        )))
+        Some(EntityCustomHeadSkull::Player(
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        ))
     );
     assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
 
@@ -4465,14 +4561,9 @@ fn custom_head_skull_projection_resolves_profiled_player_head_default_skins() {
     runtime.mark_profile_skin_failed(skin_url);
     assert_eq!(
         runtime.custom_head_skull_for_stack(&dynamic),
-        Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
-            EntityDynamicPlayerSkin {
-                handle: profile_texture_handle(skin_url),
-                fallback: EntityDefaultPlayerSkin::SlimAlex,
-                model: EntityPlayerSkinModel::Wide,
-                status: EntityDynamicPlayerSkinStatus::Failed,
-            }
-        )))
+        Some(EntityCustomHeadSkull::Player(
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        ))
     );
 
     let mut resource_patched = dynamic.clone();
@@ -4575,6 +4666,15 @@ fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
     let name_calls = Arc::new(AtomicUsize::new(0));
     let id_calls = Arc::new(AtomicUsize::new(0));
     let runtime = NativeItemRuntime::empty_for_test();
+    let cache_dir = unique_temp_dir("resolved-profile-texture-set");
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
+        &cache_dir,
+        TestSkinPngFetcher {
+            bytes: player_skin_png_bytes(),
+            calls: Arc::new(AtomicUsize::new(0)),
+        },
+    ));
     assert_eq!(runtime.profile_presentation_revision(), 0);
     *runtime.profile_resolutions.borrow_mut() = Some(
         crate::profile_resolver::AsyncProfileResolutionRuntime::new(TestProfileFetcher {
@@ -4602,26 +4702,161 @@ fn player_skin_for_profile_resolves_dynamic_owner_before_skin_selection() {
         EntityPlayerSkin::ProfiledDefault(default_player_skin_for_profile(&profile))
     );
 
-    let expected = EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
-        handle: profile_texture_handle("https://textures.minecraft.net/texture/skinhash"),
-        fallback: EntityDefaultPlayerSkin::SlimAlex,
-        model: EntityPlayerSkinModel::Wide,
-        status: EntityDynamicPlayerSkinStatus::Loading,
-    });
-    let mut resolved = None;
     for _ in 0..100 {
-        let skin = runtime.player_skin_for_profile(&profile);
-        if skin == expected {
-            resolved = Some(skin);
+        runtime.player_skin_for_profile(&profile);
+        if id_calls.load(Ordering::Relaxed) == 1 {
             break;
         }
         thread::sleep(Duration::from_millis(10));
     }
 
-    assert_eq!(resolved, Some(expected));
+    let skin_download = drain_until_player_skin_download_result(&runtime)
+        .pop()
+        .expect("resolved profile skin download");
+    let skin_handle = skin_download.skin.as_ref().unwrap().handle;
+    runtime.mark_profile_skin_resolved(&skin_download.url, skin_handle);
+    for download in drain_until_player_texture_download_results(&runtime, 2) {
+        let handle = download.texture.as_ref().unwrap().handle;
+        runtime.mark_profile_texture_resolved(download.kind, &download.url, handle);
+    }
+    assert_eq!(
+        runtime.player_skin_for_profile(&profile),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle: profile_texture_handle("https://textures.minecraft.net/texture/skinhash"),
+            fallback: EntityDefaultPlayerSkin::SlimAlex,
+            model: EntityPlayerSkinModel::Wide,
+            status: EntityDynamicPlayerSkinStatus::Ready,
+        })
+    );
     assert!(runtime.profile_presentation_revision() > 0);
     assert_eq!(name_calls.load(Ordering::Relaxed), 1);
     assert_eq!(id_calls.load(Ordering::Relaxed), 1);
+    std::fs::remove_dir_all(cache_dir).unwrap();
+}
+
+#[test]
+fn signed_remote_profile_reaches_three_http_pngs_as_one_texture_set() {
+    let root = unique_temp_dir("signed-three-texture-http-set");
+    let png = player_skin_png_bytes();
+    let (skin_endpoint, skin_server) = spawn_png_http_response(png.clone());
+    let (cape_endpoint, cape_server) = spawn_png_http_response(png.clone());
+    let (elytra_endpoint, elytra_server) = spawn_png_http_response(png);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let runtime = NativeItemRuntime::empty_for_test();
+    runtime.enable_dynamic_texture_downloads_for_test(AsyncDynamicTextureRuntime::new(
+        0,
+        &root,
+        MappedHttpSkinPngFetcher {
+            inner: HttpSkinPngFetcher::new().unwrap(),
+            endpoints: VecDeque::from([skin_endpoint, cape_endpoint, elytra_endpoint]),
+            calls: calls.clone(),
+        },
+    ));
+
+    let profile_id = uuid::Uuid::from_u128(0x0123_4567_89ab_cdef_0123_4567_89ab_cdef);
+    let skin_url = "https://textures.minecraft.net/texture/http-signed-skin";
+    let cape_url = "https://textures.minecraft.net/texture/http-signed-cape";
+    let elytra_url = "https://textures.minecraft.net/texture/http-signed-elytra";
+    let packed_json = format!(
+        r#"{{"profileId":"{}","profileName":"Alex","textures":{{"SKIN":{{"url":"{skin_url}"}},"CAPE":{{"url":"{cape_url}"}},"ELYTRA":{{"url":"{elytra_url}"}}}}}}"#,
+        profile_id.simple()
+    );
+    let packed_value = STANDARD.encode(packed_json.as_bytes());
+    let mut random = StdRng::seed_from_u64(0x5a17_26_1);
+    let private_key = RsaPrivateKey::new(&mut random, 2048).unwrap();
+    let public_der = private_key.to_public_key().to_public_key_der().unwrap();
+    let signature = private_key
+        .sign(
+            Pkcs1v15Sign::new::<Sha1>(),
+            &Sha1::digest(packed_value.as_bytes()),
+        )
+        .unwrap();
+    let profile_property_keys = vec![public_der.as_bytes().to_vec()];
+    let profile = ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::Partial,
+        uuid: Some(profile_id),
+        name: Some("Alex".to_string()),
+        properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+            name: "textures".to_string(),
+            value: packed_value,
+            signature: Some(STANDARD.encode(signature)),
+        }],
+        profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+            skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                url: skin_url.to_string(),
+                model: bbb_protocol::packets::PlayerModelTypeSummary::Slim,
+            }),
+            cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                url: cape_url.to_string(),
+            }),
+            elytra: Some(bbb_protocol::packets::ProfileTextureSummary {
+                url: elytra_url.to_string(),
+            }),
+        }),
+        skin_patch: Default::default(),
+    };
+
+    assert!(matches!(
+        runtime.player_skin_for_player_info(&profile, false, &profile_property_keys),
+        EntityPlayerSkin::ProfiledDefault(_)
+    ));
+    assert_eq!(
+        runtime.player_profile_texture_for_player_info(
+            &profile,
+            EntityDynamicPlayerTextureKind::Cape,
+            false,
+            &profile_property_keys,
+        ),
+        None
+    );
+    let skin = drain_until_player_skin_download_result(&runtime)
+        .pop()
+        .expect("signed skin HTTP result");
+    let skin_handle = skin.skin.as_ref().expect("decoded skin PNG").handle;
+    runtime.mark_profile_skin_resolved(&skin.url, skin_handle);
+    let textures = drain_until_player_texture_download_results(&runtime, 2);
+    for texture in &textures {
+        let handle = texture
+            .texture
+            .as_ref()
+            .expect("decoded profile PNG")
+            .handle;
+        runtime.mark_profile_texture_resolved(texture.kind, &texture.url, handle);
+    }
+
+    assert!(matches!(
+        runtime.player_skin_for_player_info(&profile, false, &profile_property_keys),
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle,
+            model: EntityPlayerSkinModel::Slim,
+            status: EntityDynamicPlayerSkinStatus::Ready,
+            ..
+        }) if handle == profile_texture_handle(skin_url)
+    ));
+    for (kind, url) in [
+        (EntityDynamicPlayerTextureKind::Cape, cape_url),
+        (EntityDynamicPlayerTextureKind::Elytra, elytra_url),
+    ] {
+        let texture = runtime
+            .player_profile_texture_for_player_info(&profile, kind, false, &profile_property_keys)
+            .expect("complete signed texture set");
+        assert_eq!(texture.handle, profile_texture_handle(url));
+    }
+    assert_eq!(calls.load(Ordering::Relaxed), 3);
+
+    assert!(runtime.synchronize_dynamic_texture_session(1, false));
+    assert!(runtime.synchronize_dynamic_texture_session(2, true));
+    assert_eq!(drain_until_player_skin_download_result(&runtime).len(), 1);
+    assert_eq!(
+        drain_until_player_texture_download_results(&runtime, 2).len(),
+        2
+    );
+    assert_eq!(calls.load(Ordering::Relaxed), 3);
+
+    skin_server.join().unwrap();
+    cape_server.join().unwrap();
+    elytra_server.join().unwrap();
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -4695,7 +4930,7 @@ fn player_profile_queues_dynamic_cape_and_elytra_texture_downloads() {
 }
 
 #[test]
-fn player_profile_resource_texture_patch_suppresses_remote_cape_and_elytra_downloads() {
+fn player_profile_resource_texture_patch_keeps_vanilla_base_downloads() {
     let root = unique_temp_dir("item-runtime-profile-texture-patches");
     let runtime = NativeItemRuntime::empty_for_test();
     let texture_download_calls = Arc::new(AtomicUsize::new(0));
@@ -4740,14 +4975,13 @@ fn player_profile_resource_texture_patch_suppresses_remote_cape_and_elytra_downl
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
     );
-    for _ in 0..10 {
-        assert!(runtime
-            .drain_dynamic_player_texture_download_results()
-            .is_empty());
-        thread::sleep(Duration::from_millis(10));
-    }
-    assert_eq!(runtime.downloaded_player_texture_count(), 0);
-    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+    let downloads = drain_until_player_texture_download_results(&runtime, 2);
+    assert_eq!(downloads.len(), 2);
+    assert!(downloads.iter().all(|download| download
+        .url
+        .starts_with("https://textures.minecraft.net/texture/profile-")));
+    assert_eq!(runtime.downloaded_player_texture_count(), 2);
+    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -4866,13 +5100,22 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
     assert_eq!(cape.handle, profile_texture_handle(&cape_source));
     assert_eq!(elytra.kind, EntityDynamicPlayerTextureKind::Elytra);
     assert_eq!(elytra.handle, profile_texture_handle(&elytra_source));
-    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
 
-    let downloads = runtime.drain_dynamic_player_texture_download_results();
-    assert_eq!(downloads.len(), 2);
+    let mut downloads = runtime.drain_dynamic_player_texture_download_results();
+    for _ in 0..100 {
+        let remote_count = downloads
+            .iter()
+            .filter(|download| download.url.starts_with("https://"))
+            .count();
+        if remote_count == 2 {
+            break;
+        }
+        thread::sleep(Duration::from_millis(10));
+        downloads.extend(runtime.drain_dynamic_player_texture_download_results());
+    }
     let cape_download = downloads
         .iter()
-        .find(|download| download.kind == DynamicPlayerTextureKind::Cape)
+        .find(|download| download.url == cape_source)
         .expect("cape upload");
     assert_eq!(cape_download.url, cape_source);
     let cape_image = cape_download.texture.as_ref().expect("cape image");
@@ -4886,7 +5129,7 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
 
     let elytra_download = downloads
         .iter()
-        .find(|download| download.kind == DynamicPlayerTextureKind::Elytra)
+        .find(|download| download.url == elytra_source)
         .expect("elytra upload");
     assert_eq!(elytra_download.url, elytra_source);
     let elytra_image = elytra_download.texture.as_ref().expect("elytra image");
@@ -4901,7 +5144,7 @@ fn player_profile_resource_texture_patch_loads_local_cape_and_elytra_textures() 
     assert!(runtime
         .drain_dynamic_player_texture_download_results()
         .is_empty());
-    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -4961,11 +5204,13 @@ fn player_profile_resource_texture_patch_failure_does_not_use_remote_or_stale_te
             .player_profile_texture_for_profile(&profile, EntityDynamicPlayerTextureKind::Elytra),
         None
     );
-    assert!(runtime
-        .drain_dynamic_player_texture_download_results()
-        .is_empty());
-    assert_eq!(runtime.downloaded_player_texture_count(), 0);
-    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+    let remote_downloads = drain_until_player_texture_download_results(&runtime, 2);
+    assert_eq!(remote_downloads.len(), 2);
+    assert!(remote_downloads
+        .iter()
+        .all(|download| download.url.starts_with("https://")));
+    assert_eq!(runtime.downloaded_player_texture_count(), 2);
+    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
 
     write_test_rgba_png(
         &assets
@@ -5002,8 +5247,8 @@ fn player_profile_resource_texture_patch_failure_does_not_use_remote_or_stale_te
     assert!(runtime
         .drain_dynamic_player_texture_download_results()
         .is_empty());
-    assert_eq!(runtime.downloaded_player_texture_count(), 0);
-    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(runtime.downloaded_player_texture_count(), 2);
+    assert_eq!(texture_download_calls.load(Ordering::Relaxed), 2);
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -5089,12 +5334,23 @@ fn player_profile_resource_texture_patch_loads_local_body_skin() {
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::Dynamic(expected_skin)
     );
-    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
 
-    let downloads = runtime.drain_dynamic_player_skin_download_results();
-    assert_eq!(downloads.len(), 1);
-    assert_eq!(downloads[0].url, body_source);
-    let image = downloads[0].skin.as_ref().expect("local body skin image");
+    let mut downloads = runtime.drain_dynamic_player_skin_download_results();
+    for _ in 0..100 {
+        if downloads
+            .iter()
+            .any(|download| download.url.starts_with("https://"))
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(10));
+        downloads.extend(runtime.drain_dynamic_player_skin_download_results());
+    }
+    let local_download = downloads
+        .iter()
+        .find(|download| download.url == body_source)
+        .expect("local body skin upload");
+    let image = local_download.skin.as_ref().expect("local body skin image");
     assert_eq!(image.handle, expected_skin.handle);
     assert_eq!(
         image.standalone_sampling,
@@ -5109,7 +5365,7 @@ fn player_profile_resource_texture_patch_loads_local_body_skin() {
     assert!(runtime
         .drain_dynamic_player_skin_download_results()
         .is_empty());
-    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -5160,11 +5416,11 @@ fn player_profile_resource_body_patch_failure_does_not_use_remote_or_stale_skin(
         runtime.player_skin_for_profile(&profile),
         EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
     );
-    assert!(runtime
-        .drain_dynamic_player_skin_download_results()
-        .is_empty());
-    assert_eq!(runtime.downloaded_player_skin_count(), 0);
-    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
+    let remote_downloads = drain_until_player_skin_download_result(&runtime);
+    assert_eq!(remote_downloads.len(), 1);
+    assert!(remote_downloads[0].url.starts_with("https://"));
+    assert_eq!(runtime.downloaded_player_skin_count(), 1);
+    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
 
     let mut body_rgba = Vec::with_capacity((64 * 64 * 4) as usize);
     for y in 0..64 {
@@ -5191,8 +5447,8 @@ fn player_profile_resource_body_patch_failure_does_not_use_remote_or_stale_skin(
     assert!(runtime
         .drain_dynamic_player_skin_download_results()
         .is_empty());
-    assert_eq!(runtime.downloaded_player_skin_count(), 0);
-    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(runtime.downloaded_player_skin_count(), 1);
+    assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
 
     let _ = std::fs::remove_dir_all(root);
 }
@@ -18615,6 +18871,42 @@ fn write_json(path: &Path, contents: &str) {
 struct TestSkinPngFetcher {
     bytes: Vec<u8>,
     calls: Arc<AtomicUsize>,
+}
+
+struct MappedHttpSkinPngFetcher {
+    inner: HttpSkinPngFetcher,
+    endpoints: VecDeque<String>,
+    calls: Arc<AtomicUsize>,
+}
+
+impl SkinPngFetcher for MappedHttpSkinPngFetcher {
+    fn fetch_skin_png(&mut self, url: &str, max_bytes: usize) -> Result<Vec<u8>> {
+        assert!(url.starts_with("https://textures.minecraft.net/texture/"));
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        let endpoint = self.endpoints.pop_front().expect("mapped HTTP endpoint");
+        self.inner.fetch_skin_png(&endpoint, max_bytes)
+    }
+}
+
+fn spawn_png_http_response(body: Vec<u8>) -> (String, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut request = [0u8; 2_048];
+        let request_len = stream.read(&mut request).unwrap();
+        assert!(request[..request_len]
+            .windows(4)
+            .any(|window| window == b"\r\n\r\n"));
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        )
+        .unwrap();
+        stream.write_all(&body).unwrap();
+    });
+    (format!("http://{address}/texture.png"), server)
 }
 
 impl SkinPngFetcher for TestSkinPngFetcher {

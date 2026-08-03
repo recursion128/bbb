@@ -125,6 +125,12 @@ pub struct RendererCounters {
     #[serde(default)]
     pub dynamic_texture_cache_entries: usize,
     #[serde(default)]
+    pub profile_texture_set_entries: usize,
+    #[serde(default)]
+    pub profile_texture_asset_entries: usize,
+    #[serde(default)]
+    pub profile_texture_key_bytes: u64,
+    #[serde(default)]
     pub dynamic_texture_cache_pending: usize,
     #[serde(default)]
     pub dynamic_texture_cache_ready: usize,

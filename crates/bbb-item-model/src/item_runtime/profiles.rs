@@ -159,7 +159,7 @@ pub(super) fn custom_head_skull_for_resource_id(
     dynamic_textures: &RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
     profile_texture_resources: &PackResourceStack,
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
-    profile_skins: &RefCell<ProfileSkinCache>,
+    profile_texture_sets: &RefCell<ProfileTextureSetCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if item_types::vanilla_item_resource_id_matches_type(
         resource_id,
@@ -183,7 +183,7 @@ pub(super) fn custom_head_skull_for_resource_id(
             dynamic_textures,
             profile_texture_resources,
             local_dynamic_skins,
-            profile_skins,
+            profile_texture_sets,
         );
     }
     [
@@ -217,7 +217,7 @@ pub(super) fn custom_head_player_skull(
     dynamic_textures: &RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
     profile_texture_resources: &PackResourceStack,
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
-    profile_skins: &RefCell<ProfileSkinCache>,
+    profile_texture_sets: &RefCell<ProfileTextureSetCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
         return Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
@@ -237,9 +237,15 @@ pub(super) fn custom_head_player_skull(
         &[],
         profile_texture_resources,
         local_dynamic_skins,
-        profile_skins,
+        profile_texture_sets,
     );
-    queue_dynamic_profile_texture_downloads(&profile, player_skin, true, dynamic_textures);
+    queue_dynamic_profile_texture_downloads(
+        &profile,
+        false,
+        &[],
+        profile_texture_sets,
+        dynamic_textures,
+    );
     Some(EntityCustomHeadSkull::Player(player_skin))
 }
 
@@ -249,80 +255,65 @@ pub(super) fn player_skin_for_profile(
     profile_property_keys: &[Vec<u8>],
     profile_texture_resources: &PackResourceStack,
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
-    profile_skins: &RefCell<ProfileSkinCache>,
+    profile_texture_sets: &RefCell<ProfileTextureSetCache>,
 ) -> EntityPlayerSkin {
     let fallback = default_player_skin_for_profile(profile);
-    if let Some(body) = profile.skin_patch.body.as_ref() {
-        if EntityDefaultPlayerSkin::from_texture_path(&body.texture_path).is_none() {
-            if let Some(skin) = local_dynamic_skins.borrow_mut().skin_for_patch(
-                profile_texture_resources,
-                profile,
-                body,
-                fallback,
-            ) {
-                return skin;
-            }
-        }
-    }
-    profile_skins.borrow_mut().player_skin_for_profile(
+    let base = profile_texture_sets.borrow_mut().player_skin_for_profile(
         profile,
         require_secure,
         profile_property_keys,
-    )
+    );
+    if let Some(body) = profile.skin_patch.body.as_ref() {
+        if let Some(default) = EntityDefaultPlayerSkin::from_texture_path(&body.texture_path) {
+            return EntityPlayerSkin::ProfiledDefault(default);
+        }
+        if let Some(skin) = local_dynamic_skins.borrow_mut().skin_for_patch(
+            profile_texture_resources,
+            profile,
+            body,
+            fallback,
+        ) {
+            return skin;
+        }
+        return EntityPlayerSkin::ProfiledDefault(fallback);
+    }
+    base
 }
 
 pub(super) fn queue_dynamic_profile_texture_downloads(
     profile: &ResolvableProfileSummary,
-    player_skin: EntityPlayerSkin,
-    allow_remote_textures: bool,
+    require_secure: bool,
+    profile_property_keys: &[Vec<u8>],
+    profile_texture_sets: &RefCell<ProfileTextureSetCache>,
     dynamic_textures: &RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
 ) {
-    if !allow_remote_textures {
-        return;
-    }
     let mut dynamic_textures = dynamic_textures.borrow_mut();
     let Some(dynamic_textures) = dynamic_textures.as_mut() else {
         return;
     };
-    if let EntityPlayerSkin::Dynamic(skin) = player_skin {
-        if skin.status == EntityDynamicPlayerSkinStatus::Loading {
-            if let Some(url) = profile
-                .profile_textures
-                .as_ref()
-                .and_then(|textures| textures.skin.as_ref())
-                .map(|skin| skin.url.as_str())
-                .filter(|url| crate::skin_runtime::vanilla_profile_texture_hash(url).is_some())
-            {
-                dynamic_textures.queue_skin(skin.handle, url);
+    let requests = profile_texture_sets
+        .borrow_mut()
+        .pending_downloads_for_profile(profile, require_secure, profile_property_keys);
+    for request in requests {
+        let queued = match request.kind {
+            ProfileTextureAssetKind::Skin => {
+                dynamic_textures.queue_skin(request.handle, &request.url)
             }
-        }
-    }
-
-    let Some(textures) = profile.profile_textures.as_ref() else {
-        return;
-    };
-    if profile.skin_patch.cape.is_none() {
-        if let Some(cape) = textures
-            .cape
-            .as_ref()
-            .filter(|cape| crate::skin_runtime::vanilla_profile_texture_hash(&cape.url).is_some())
-        {
-            dynamic_textures.queue_profile(
+            ProfileTextureAssetKind::Cape => dynamic_textures.queue_profile(
                 DynamicPlayerTextureKind::Cape,
-                profile_texture_handle(&cape.url),
-                &cape.url,
-            );
-        }
-    }
-    if profile.skin_patch.elytra.is_none() {
-        if let Some(elytra) = textures.elytra.as_ref().filter(|elytra| {
-            crate::skin_runtime::vanilla_profile_texture_hash(&elytra.url).is_some()
-        }) {
-            dynamic_textures.queue_profile(
+                request.handle,
+                &request.url,
+            ),
+            ProfileTextureAssetKind::Elytra => dynamic_textures.queue_profile(
                 DynamicPlayerTextureKind::Elytra,
-                profile_texture_handle(&elytra.url),
-                &elytra.url,
-            );
+                request.handle,
+                &request.url,
+            ),
+        };
+        if !queued {
+            profile_texture_sets
+                .borrow_mut()
+                .retry_download(request.kind, &request.url);
         }
     }
 }
@@ -330,8 +321,11 @@ pub(super) fn queue_dynamic_profile_texture_downloads(
 pub(super) fn dynamic_player_texture_for_profile(
     profile: &ResolvableProfileSummary,
     kind: EntityDynamicPlayerTextureKind,
+    require_secure: bool,
+    profile_property_keys: &[Vec<u8>],
     profile_texture_resources: &PackResourceStack,
     local_dynamic_textures: &RefCell<LocalDynamicPlayerTextureCache>,
+    profile_texture_sets: &RefCell<ProfileTextureSetCache>,
 ) -> Option<EntityDynamicPlayerTexture> {
     if let Some(patch) = match kind {
         EntityDynamicPlayerTextureKind::Cape => profile.skin_patch.cape.as_ref(),
@@ -344,16 +338,14 @@ pub(super) fn dynamic_player_texture_for_profile(
         );
     }
 
-    let textures = profile.profile_textures.as_ref()?;
-    let url = match kind {
-        EntityDynamicPlayerTextureKind::Cape => textures.cape.as_ref()?.url.as_str(),
-        EntityDynamicPlayerTextureKind::Elytra => textures.elytra.as_ref()?.url.as_str(),
+    let asset_kind = match kind {
+        EntityDynamicPlayerTextureKind::Cape => ProfileTextureAssetKind::Cape,
+        EntityDynamicPlayerTextureKind::Elytra => ProfileTextureAssetKind::Elytra,
     };
-    crate::skin_runtime::vanilla_profile_texture_hash(url)?;
-    Some(EntityDynamicPlayerTexture {
-        handle: profile_texture_handle(url),
-        kind,
-    })
+    let handle = profile_texture_sets
+        .borrow_mut()
+        .player_texture_for_profile(profile, asset_kind, require_secure, profile_property_keys)?;
+    Some(EntityDynamicPlayerTexture { handle, kind })
 }
 
 pub(super) fn load_local_dynamic_player_skin(
@@ -416,6 +408,13 @@ pub(super) fn dynamic_player_texture_download_kind(
     }
 }
 
+fn profile_texture_asset_kind(kind: DynamicPlayerTextureKind) -> ProfileTextureAssetKind {
+    match kind {
+        DynamicPlayerTextureKind::Cape => ProfileTextureAssetKind::Cape,
+        DynamicPlayerTextureKind::Elytra => ProfileTextureAssetKind::Elytra,
+    }
+}
+
 pub(super) fn profile_skin_model(
     profile: &ResolvableProfileSummary,
     fallback: EntityDefaultPlayerSkin,
@@ -452,6 +451,25 @@ pub(super) fn world_item_mining_profile(profile: &PackItemMiningProfile) -> Worl
 }
 
 impl NativeItemRuntime {
+    /// Moves the process-owned SkinManager state into a successfully prepared
+    /// resource generation. Callers invoke this only after every fallible
+    /// prepare/GPU/audio step has committed, so a failed reload leaves the
+    /// previous owner untouched.
+    pub fn adopt_profile_texture_runtime(&mut self, previous: &mut Self) {
+        *self.profile_texture_sets.get_mut() =
+            std::mem::take(previous.profile_texture_sets.get_mut());
+        *self.dynamic_textures.get_mut() = previous.dynamic_textures.get_mut().take();
+        self.dynamic_texture_session
+            .set(previous.dynamic_texture_session.get());
+        self.dynamic_texture_session_generation
+            .set(previous.dynamic_texture_session_generation.get());
+        self.profile_presentation_revision
+            .set(previous.profile_presentation_revision.get());
+        if let Some(runtime) = self.dynamic_textures.get_mut().as_mut() {
+            runtime.reset_resource_generation(self.resource_generation);
+        }
+    }
+
     pub fn custom_head_skull_for_stack(
         &self,
         stack: &ItemStackSummary,
@@ -465,7 +483,7 @@ impl NativeItemRuntime {
             &self.dynamic_textures,
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
-            &self.profile_skins,
+            &self.profile_texture_sets,
         )
     }
 
@@ -477,12 +495,13 @@ impl NativeItemRuntime {
             &[],
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
-            &self.profile_skins,
+            &self.profile_texture_sets,
         );
         queue_dynamic_profile_texture_downloads(
             &profile,
-            player_skin,
-            true,
+            false,
+            &[],
+            &self.profile_texture_sets,
             &self.dynamic_textures,
         );
         player_skin
@@ -496,23 +515,19 @@ impl NativeItemRuntime {
     ) -> EntityPlayerSkin {
         let profile = self.resolved_or_pending_profile(profile);
         let require_secure = !is_local_player;
-        let allow_remote_textures = !require_secure
-            || crate::skin_runtime::profile_texture_signature_state(
-                &profile.properties,
-                profile_property_keys,
-            ) == crate::skin_runtime::ProfileTextureSignatureState::Signed;
         let player_skin = player_skin_for_profile(
             &profile,
             require_secure,
             profile_property_keys,
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
-            &self.profile_skins,
+            &self.profile_texture_sets,
         );
         queue_dynamic_profile_texture_downloads(
             &profile,
-            player_skin,
-            allow_remote_textures,
+            require_secure,
+            profile_property_keys,
+            &self.profile_texture_sets,
             &self.dynamic_textures,
         );
         player_skin
@@ -524,25 +539,29 @@ impl NativeItemRuntime {
         kind: EntityDynamicPlayerTextureKind,
     ) -> Option<EntityDynamicPlayerTexture> {
         let profile = self.resolved_or_pending_profile(profile);
-        let player_skin = player_skin_for_profile(
+        player_skin_for_profile(
             &profile,
             false,
             &[],
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
-            &self.profile_skins,
+            &self.profile_texture_sets,
         );
         queue_dynamic_profile_texture_downloads(
             &profile,
-            player_skin,
-            true,
+            false,
+            &[],
+            &self.profile_texture_sets,
             &self.dynamic_textures,
         );
         dynamic_player_texture_for_profile(
             &profile,
             kind,
+            false,
+            &[],
             &self.profile_texture_resources,
             &self.local_dynamic_textures,
+            &self.profile_texture_sets,
         )
     }
 
@@ -555,33 +574,29 @@ impl NativeItemRuntime {
     ) -> Option<EntityDynamicPlayerTexture> {
         let profile = self.resolved_or_pending_profile(profile);
         let require_secure = !is_local_player;
-        let allow_remote_textures = !require_secure
-            || crate::skin_runtime::profile_texture_signature_state(
-                &profile.properties,
-                profile_property_keys,
-            ) == crate::skin_runtime::ProfileTextureSignatureState::Signed;
-        if !allow_remote_textures {
-            return None;
-        }
-        let player_skin = player_skin_for_profile(
+        player_skin_for_profile(
             &profile,
             require_secure,
             profile_property_keys,
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
-            &self.profile_skins,
+            &self.profile_texture_sets,
         );
         queue_dynamic_profile_texture_downloads(
             &profile,
-            player_skin,
-            true,
+            require_secure,
+            profile_property_keys,
+            &self.profile_texture_sets,
             &self.dynamic_textures,
         );
         dynamic_player_texture_for_profile(
             &profile,
             kind,
+            require_secure,
+            profile_property_keys,
             &self.profile_texture_resources,
             &self.local_dynamic_textures,
+            &self.profile_texture_sets,
         )
     }
 
@@ -667,7 +682,7 @@ impl NativeItemRuntime {
             .unwrap_or_default();
         for result in &results {
             if result.skin.is_none() {
-                self.mark_profile_skin_failed(&result.url);
+                self.mark_profile_asset_failed(ProfileTextureAssetKind::Skin, &result.url);
             }
         }
         local_results.extend(
@@ -685,19 +700,27 @@ impl NativeItemRuntime {
         &self,
     ) -> Vec<NativeDynamicPlayerTextureDownload> {
         let mut results = self.local_dynamic_textures.borrow_mut().drain_results();
-        results.extend(
-            self.dynamic_textures
-                .borrow_mut()
-                .as_mut()
-                .map(|runtime| runtime.drain_profile_results())
-                .unwrap_or_default()
-                .into_iter()
-                .map(|result| NativeDynamicPlayerTextureDownload {
-                    kind: result.kind,
-                    url: result.url,
-                    texture: result.texture,
-                }),
-        );
+        let remote_results = self
+            .dynamic_textures
+            .borrow_mut()
+            .as_mut()
+            .map(|runtime| runtime.drain_profile_results())
+            .unwrap_or_default();
+        for result in &remote_results {
+            if result.texture.is_none() {
+                self.mark_profile_asset_failed(
+                    profile_texture_asset_kind(result.kind),
+                    &result.url,
+                );
+            }
+        }
+        results.extend(remote_results.into_iter().map(|result| {
+            NativeDynamicPlayerTextureDownload {
+                kind: result.kind,
+                url: result.url,
+                texture: result.texture,
+            }
+        }));
         results
     }
 
@@ -727,16 +750,50 @@ impl NativeItemRuntime {
             .unwrap_or(0)
     }
 
-    pub fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
-        self.profile_skins
+    fn mark_profile_asset_resolved(
+        &self,
+        kind: ProfileTextureAssetKind,
+        url: &str,
+        texture_handle: u64,
+    ) {
+        let changed =
+            self.profile_texture_sets
+                .borrow_mut()
+                .mark_resolved(kind, url, texture_handle);
+        if changed {
+            self.advance_profile_presentation_revision();
+        }
+    }
+
+    fn mark_profile_asset_failed(&self, kind: ProfileTextureAssetKind, url: &str) {
+        let changed = self
+            .profile_texture_sets
             .borrow_mut()
-            .mark_resolved(url, texture_handle);
-        self.advance_profile_presentation_revision();
+            .mark_failed(kind, url);
+        if changed {
+            self.advance_profile_presentation_revision();
+        }
+    }
+
+    pub fn mark_profile_skin_resolved(&self, url: &str, texture_handle: u64) {
+        self.mark_profile_asset_resolved(ProfileTextureAssetKind::Skin, url, texture_handle);
     }
 
     pub fn mark_profile_skin_failed(&self, url: &str) {
-        self.profile_skins.borrow_mut().mark_failed(url);
-        self.advance_profile_presentation_revision();
+        self.mark_profile_asset_failed(ProfileTextureAssetKind::Skin, url);
+    }
+
+    pub fn mark_profile_texture_resolved(
+        &self,
+        kind: DynamicPlayerTextureKind,
+        url: &str,
+        texture_handle: u64,
+    ) {
+        self.mark_profile_asset_resolved(profile_texture_asset_kind(kind), url, texture_handle);
+    }
+
+    pub fn mark_profile_texture_failed(&self, kind: DynamicPlayerTextureKind, url: &str) {
+        self.mark_profile_asset_failed(profile_texture_asset_kind(kind), url);
     }
 
     pub fn profile_presentation_revision(&self) -> u64 {
@@ -748,7 +805,8 @@ impl NativeItemRuntime {
     }
 
     pub fn dynamic_texture_cache_observation(&self) -> DynamicTextureCacheObservation {
-        self.dynamic_textures
+        let mut observation = self
+            .dynamic_textures
             .borrow_mut()
             .as_mut()
             .map(|runtime| runtime.observation())
@@ -757,14 +815,19 @@ impl NativeItemRuntime {
                 session_generation: self.dynamic_texture_session_generation.get(),
                 accepting_requests: false,
                 ..DynamicTextureCacheObservation::default()
-            })
+            });
+        let (profile_sets, profile_assets, profile_key_bytes) =
+            self.profile_texture_sets.borrow().accounting();
+        observation.profile_sets = profile_sets;
+        observation.profile_assets = profile_assets;
+        observation.profile_key_bytes = profile_key_bytes;
+        observation
     }
 
-    /// Aligns remote and pack-backed dynamic texture caches with the exact
-    /// network session visible in the immutable publication. A disconnect is
-    /// a distinct owner boundary even before the next connection increments
-    /// `connection_generation`, so late worker results cannot revive handles
-    /// from the previous level/session.
+    /// Aligns the renderer delivery generation with the exact network session
+    /// visible in the immutable publication. Remote decoded images and
+    /// SkinManager result state are process-owned and survive this edge;
+    /// pack-backed patches are rebuilt so they are re-published to the GPU.
     pub fn synchronize_dynamic_texture_session(
         &self,
         connection_generation: u64,
@@ -781,7 +844,6 @@ impl NativeItemRuntime {
             .saturating_add(1);
         self.dynamic_texture_session_generation.set(generation);
         self.advance_profile_presentation_revision();
-        *self.profile_skins.borrow_mut() = ProfileSkinCache::default();
         *self.local_dynamic_skins.borrow_mut() = LocalDynamicPlayerSkinCache::default();
         *self.local_dynamic_textures.borrow_mut() = LocalDynamicPlayerTextureCache::default();
         if let Some(runtime) = self.dynamic_textures.borrow_mut().as_mut() {

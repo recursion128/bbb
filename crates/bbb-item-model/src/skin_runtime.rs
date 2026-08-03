@@ -9,16 +9,20 @@ use std::{
         Arc,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{bail, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use bbb_protocol::packets::GameProfilePropertySummary;
+use bbb_protocol::packets::{
+    GameProfilePropertySummary, PlayerModelTypeSummary, ProfileTexturesSummary,
+    ResolvableProfileSummary,
+};
 use bbb_render_types::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
-    DynamicPlayerTextureImage, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
-    MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
+    DynamicPlayerTextureImage, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
+    EntityDynamicPlayerSkinStatus, EntityPlayerSkin, EntityPlayerSkinModel,
+    MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES, MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
 use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
 use sha1::{Digest, Sha1};
@@ -93,6 +97,500 @@ pub(crate) fn vanilla_profile_texture_cache_hash(texture_hash: &str) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+pub fn default_player_skin_for_profile(
+    profile: &ResolvableProfileSummary,
+) -> EntityDefaultPlayerSkin {
+    if let Some(body) = profile.skin_patch.body.as_ref() {
+        if let Some(skin) = EntityDefaultPlayerSkin::from_texture_path(&body.texture_path) {
+            return skin;
+        }
+    }
+
+    let profile_id = profile
+        .uuid
+        .map(|uuid| uuid.as_u128())
+        .or_else(|| {
+            profile
+                .name
+                .as_deref()
+                .map(|name| bbb_protocol::codec::offline_player_uuid(name).as_u128())
+        })
+        .unwrap_or(0);
+    default_player_skin_for_profile_id(profile_id)
+}
+
+pub fn default_player_skin_for_profile_id(profile_id: u128) -> EntityDefaultPlayerSkin {
+    EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
+}
+
+pub(crate) fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityPlayerSkinModel {
+    match model {
+        PlayerModelTypeSummary::Slim => EntityPlayerSkinModel::Slim,
+        PlayerModelTypeSummary::Wide => EntityPlayerSkinModel::Wide,
+    }
+}
+
+pub(crate) fn profile_texture_handle(url: &str) -> u64 {
+    if let Some(texture_hash) = vanilla_profile_texture_hash(url) {
+        let cache_hash = vanilla_profile_texture_cache_hash(&texture_hash);
+        if let Ok(handle) = u64::from_str_radix(&cache_hash[..16], 16) {
+            return handle;
+        }
+    }
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in url.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
+fn default_player_skin_index(profile_id: u128) -> usize {
+    java_uuid_hash_code(profile_id).rem_euclid(18) as usize
+}
+
+fn java_uuid_hash_code(profile_id: u128) -> i32 {
+    let most = (profile_id >> 64) as u64;
+    let least = profile_id as u64;
+    ((most >> 32) as i32) ^ (most as i32) ^ ((least >> 32) as i32) ^ (least as i32)
+}
+
+pub(crate) const PROFILE_TEXTURE_SET_CACHE_DURATION: Duration = Duration::from_secs(15);
+pub(crate) const MAX_PROFILE_TEXTURE_SET_ENTRIES: usize = 2_048;
+pub(crate) const MAX_PROFILE_TEXTURE_ASSET_ENTRIES: usize = 2_048;
+const MAX_PROFILE_TEXTURE_URL_BYTES: usize = 2_048;
+pub(crate) const MAX_PROFILE_TEXTURE_PROPERTY_BYTES: usize = 65_536;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum ProfileTextureAssetKind {
+    Skin,
+    Cape,
+    Elytra,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ProfileTextureAssetKey {
+    kind: ProfileTextureAssetKind,
+    texture_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ProfileTextureSetKey {
+    profile_id: uuid::Uuid,
+    packed_textures: Option<(String, Option<String>)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProfileTextureAssetState {
+    Loading,
+    Ready(u64),
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProfileTextureAssetEntry {
+    url: String,
+    request_handle: u64,
+    state: ProfileTextureAssetState,
+    queued: bool,
+}
+
+#[derive(Debug, Clone)]
+struct ProfileTextureSetEntry {
+    skin: Option<ProfileTextureAssetKey>,
+    cape: Option<ProfileTextureAssetKey>,
+    elytra: Option<ProfileTextureAssetKey>,
+    model: EntityPlayerSkinModel,
+    signature_state: ProfileTextureSignatureState,
+    failed: bool,
+    last_access: Instant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProfileTextureDownloadRequest {
+    pub(crate) kind: ProfileTextureAssetKind,
+    pub(crate) url: String,
+    pub(crate) handle: u64,
+}
+
+/// Process-lifetime owner for Vanilla's profile-result cache and three
+/// type-specific texture caches. A profile result is visible only after every
+/// referenced base texture has reached the GPU; any failed member falls back
+/// to the complete default set.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ProfileTextureSetCache {
+    sets: HashMap<ProfileTextureSetKey, ProfileTextureSetEntry>,
+    assets: HashMap<ProfileTextureAssetKey, ProfileTextureAssetEntry>,
+    retained_key_bytes: usize,
+}
+
+impl ProfileTextureSetCache {
+    pub(crate) fn player_skin_for_profile(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+        require_secure: bool,
+        profile_property_keys: &[Vec<u8>],
+    ) -> EntityPlayerSkin {
+        self.player_skin_for_profile_at(
+            profile,
+            require_secure,
+            profile_property_keys,
+            Instant::now(),
+        )
+    }
+
+    pub(crate) fn player_skin_for_profile_at(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+        require_secure: bool,
+        profile_property_keys: &[Vec<u8>],
+        now: Instant,
+    ) -> EntityPlayerSkin {
+        let key = self.get_or_register(profile, profile_property_keys, now);
+        let fallback = default_player_skin_for_profile(profile);
+        let entry = self.sets.get(&key).expect("registered profile texture set");
+        if require_secure && entry.signature_state != ProfileTextureSignatureState::Signed {
+            return EntityPlayerSkin::ProfiledDefault(fallback);
+        }
+        if entry.failed || !self.set_is_ready(entry) {
+            return EntityPlayerSkin::ProfiledDefault(fallback);
+        }
+        let Some(asset_key) = entry.skin.as_ref() else {
+            return EntityPlayerSkin::ProfiledDefault(fallback);
+        };
+        let asset = self.assets.get(asset_key).expect("registered skin asset");
+        let ProfileTextureAssetState::Ready(handle) = asset.state else {
+            unreachable!("ready profile set has a non-ready skin")
+        };
+        EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
+            handle,
+            fallback,
+            model: profile
+                .skin_patch
+                .model
+                .map(entity_player_skin_model)
+                .unwrap_or(entry.model),
+            status: EntityDynamicPlayerSkinStatus::Ready,
+        })
+    }
+
+    pub(crate) fn player_texture_for_profile(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+        kind: ProfileTextureAssetKind,
+        require_secure: bool,
+        profile_property_keys: &[Vec<u8>],
+    ) -> Option<u64> {
+        let key = self.get_or_register(profile, profile_property_keys, Instant::now());
+        let entry = self.sets.get(&key).expect("registered profile texture set");
+        if require_secure && entry.signature_state != ProfileTextureSignatureState::Signed {
+            return None;
+        }
+        if entry.failed || !self.set_is_ready(entry) {
+            return None;
+        }
+        let asset_key = match kind {
+            ProfileTextureAssetKind::Skin => entry.skin.as_ref(),
+            ProfileTextureAssetKind::Cape => entry.cape.as_ref(),
+            ProfileTextureAssetKind::Elytra => entry.elytra.as_ref(),
+        }?;
+        match self.assets.get(asset_key)?.state {
+            ProfileTextureAssetState::Ready(handle) => Some(handle),
+            ProfileTextureAssetState::Loading | ProfileTextureAssetState::Failed => None,
+        }
+    }
+
+    pub(crate) fn pending_downloads_for_profile(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+        require_secure: bool,
+        profile_property_keys: &[Vec<u8>],
+    ) -> Vec<ProfileTextureDownloadRequest> {
+        let set_key = self.get_or_register(profile, profile_property_keys, Instant::now());
+        let set = self
+            .sets
+            .get(&set_key)
+            .expect("registered profile texture set");
+        if set.failed
+            || (require_secure && set.signature_state != ProfileTextureSignatureState::Signed)
+        {
+            return Vec::new();
+        }
+        let asset_keys = [&set.skin, &set.cape, &set.elytra]
+            .into_iter()
+            .filter_map(Clone::clone)
+            .collect::<Vec<_>>();
+        let mut pending = asset_keys
+            .into_iter()
+            .filter_map(|key| {
+                let entry = self.assets.get_mut(&key).expect("registered profile asset");
+                (entry.state == ProfileTextureAssetState::Loading && !entry.queued).then(|| {
+                    entry.queued = true;
+                    ProfileTextureDownloadRequest {
+                        kind: key.kind,
+                        url: entry.url.clone(),
+                        handle: entry.request_handle,
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        pending.sort_by(|left, right| {
+            profile_texture_asset_kind_order(left.kind)
+                .cmp(&profile_texture_asset_kind_order(right.kind))
+                .then_with(|| left.url.cmp(&right.url))
+        });
+        pending
+    }
+
+    pub(crate) fn retry_download(&mut self, kind: ProfileTextureAssetKind, url: &str) {
+        if let Some(entry) = self.asset_entry_mut(kind, url) {
+            if entry.state == ProfileTextureAssetState::Loading {
+                entry.queued = false;
+            }
+        }
+    }
+
+    pub(crate) fn mark_resolved(
+        &mut self,
+        kind: ProfileTextureAssetKind,
+        url: &str,
+        texture_handle: u64,
+    ) -> bool {
+        if let Some(entry) = self.asset_entry_mut(kind, url) {
+            let changed = entry.state != ProfileTextureAssetState::Ready(texture_handle);
+            entry.state = ProfileTextureAssetState::Ready(texture_handle);
+            return changed;
+        }
+        false
+    }
+
+    pub(crate) fn mark_failed(&mut self, kind: ProfileTextureAssetKind, url: &str) -> bool {
+        if let Some(entry) = self.asset_entry_mut(kind, url) {
+            let changed = entry.state != ProfileTextureAssetState::Failed;
+            entry.state = ProfileTextureAssetState::Failed;
+            return changed;
+        }
+        false
+    }
+
+    fn get_or_register(
+        &mut self,
+        profile: &ResolvableProfileSummary,
+        profile_property_keys: &[Vec<u8>],
+        now: Instant,
+    ) -> ProfileTextureSetKey {
+        let mut released_key_bytes = 0usize;
+        self.sets.retain(|key, entry| {
+            let retain = now.saturating_duration_since(entry.last_access)
+                < PROFILE_TEXTURE_SET_CACHE_DURATION;
+            if !retain {
+                released_key_bytes =
+                    released_key_bytes.saturating_add(profile_texture_set_key_bytes(key));
+            }
+            retain
+        });
+        self.retained_key_bytes = self.retained_key_bytes.saturating_sub(released_key_bytes);
+        let (key, property_within_budget) = profile_texture_set_key(profile);
+        let signature_state =
+            profile_texture_signature_state(&profile.properties, profile_property_keys);
+        if let Some(entry) = self.sets.get_mut(&key) {
+            entry.last_access = now;
+            if signature_state == ProfileTextureSignatureState::Signed {
+                entry.signature_state = ProfileTextureSignatureState::Signed;
+            }
+            return key;
+        }
+        if self.sets.len() >= MAX_PROFILE_TEXTURE_SET_ENTRIES {
+            if let Some(evicted) = self
+                .sets
+                .iter()
+                .min_by_key(|(_, entry)| entry.last_access)
+                .map(|(key, _)| key.clone())
+            {
+                self.sets.remove(&evicted);
+                self.retained_key_bytes = self
+                    .retained_key_bytes
+                    .saturating_sub(profile_texture_set_key_bytes(&evicted));
+            }
+        }
+        let textures = property_within_budget
+            .then_some(profile.profile_textures.as_ref())
+            .flatten();
+        let fallback = default_player_skin_for_profile_id(key.profile_id.as_u128());
+        let model = textures
+            .and_then(|textures| textures.skin.as_ref())
+            .map(|skin| entity_player_skin_model(skin.model))
+            .unwrap_or_else(|| fallback.model());
+        let (skin, skin_failed) = self.register_asset(
+            ProfileTextureAssetKind::Skin,
+            texture_url(textures, ProfileTextureAssetKind::Skin),
+        );
+        let (cape, cape_failed) = self.register_asset(
+            ProfileTextureAssetKind::Cape,
+            texture_url(textures, ProfileTextureAssetKind::Cape),
+        );
+        let (elytra, elytra_failed) = self.register_asset(
+            ProfileTextureAssetKind::Elytra,
+            texture_url(textures, ProfileTextureAssetKind::Elytra),
+        );
+        let entry = ProfileTextureSetEntry {
+            skin,
+            cape,
+            elytra,
+            model,
+            signature_state,
+            failed: !property_within_budget || skin_failed || cape_failed || elytra_failed,
+            last_access: now,
+        };
+        self.retained_key_bytes = self
+            .retained_key_bytes
+            .saturating_add(profile_texture_set_key_bytes(&key));
+        self.sets.insert(key.clone(), entry);
+        key
+    }
+
+    fn register_asset(
+        &mut self,
+        kind: ProfileTextureAssetKind,
+        url: Option<&str>,
+    ) -> (Option<ProfileTextureAssetKey>, bool) {
+        let Some(url) = url else {
+            return (None, false);
+        };
+        if url.len() > MAX_PROFILE_TEXTURE_URL_BYTES {
+            return (None, true);
+        }
+        let Some(texture_hash) = vanilla_profile_texture_hash(url) else {
+            return (None, true);
+        };
+        let key = ProfileTextureAssetKey { kind, texture_hash };
+        if let Some(existing) = self.assets.get(&key) {
+            return (Some(key), existing.url != url);
+        }
+        if self.assets.len() >= MAX_PROFILE_TEXTURE_ASSET_ENTRIES {
+            return (None, true);
+        }
+        self.assets
+            .entry(key.clone())
+            .or_insert_with(|| ProfileTextureAssetEntry {
+                url: url.to_string(),
+                request_handle: profile_texture_handle(url),
+                state: ProfileTextureAssetState::Loading,
+                queued: false,
+            });
+        (Some(key), false)
+    }
+
+    fn set_is_ready(&self, entry: &ProfileTextureSetEntry) -> bool {
+        [&entry.skin, &entry.cape, &entry.elytra]
+            .into_iter()
+            .filter_map(Option::as_ref)
+            .all(|key| {
+                self.assets
+                    .get(key)
+                    .is_some_and(|asset| matches!(asset.state, ProfileTextureAssetState::Ready(_)))
+            })
+    }
+
+    fn asset_entry_mut(
+        &mut self,
+        kind: ProfileTextureAssetKind,
+        url: &str,
+    ) -> Option<&mut ProfileTextureAssetEntry> {
+        let key = ProfileTextureAssetKey {
+            kind,
+            texture_hash: vanilla_profile_texture_hash(url)?,
+        };
+        self.assets.get_mut(&key)
+    }
+
+    pub(crate) fn set_count(&self) -> usize {
+        self.sets.len()
+    }
+
+    pub(crate) fn asset_count(&self) -> usize {
+        self.assets.len()
+    }
+
+    pub(crate) fn retained_key_bytes(&self) -> usize {
+        self.retained_key_bytes
+    }
+
+    pub(crate) fn accounting(&self) -> (usize, usize, usize) {
+        (
+            self.set_count(),
+            self.asset_count(),
+            self.retained_key_bytes(),
+        )
+    }
+}
+
+fn profile_texture_asset_kind_order(kind: ProfileTextureAssetKind) -> u8 {
+    match kind {
+        ProfileTextureAssetKind::Skin => 0,
+        ProfileTextureAssetKind::Cape => 1,
+        ProfileTextureAssetKind::Elytra => 2,
+    }
+}
+
+fn profile_texture_set_key(profile: &ResolvableProfileSummary) -> (ProfileTextureSetKey, bool) {
+    let profile_id = profile
+        .uuid
+        .or_else(|| {
+            profile
+                .name
+                .as_deref()
+                .map(bbb_protocol::codec::offline_player_uuid)
+        })
+        .unwrap_or_else(uuid::Uuid::nil);
+    let property = profile
+        .properties
+        .iter()
+        .find(|property| property.name == "textures");
+    let property_bytes = property.map_or(0, |property| {
+        property
+            .value
+            .len()
+            .saturating_add(property.signature.as_ref().map_or(0, String::len))
+    });
+    let property_within_budget = property_bytes <= MAX_PROFILE_TEXTURE_PROPERTY_BYTES;
+    let packed_textures = property
+        .filter(|_| property_within_budget)
+        .map(|property| (property.value.clone(), property.signature.clone()));
+    (
+        ProfileTextureSetKey {
+            profile_id,
+            packed_textures,
+        },
+        property_within_budget,
+    )
+}
+
+fn profile_texture_set_key_bytes(key: &ProfileTextureSetKey) -> usize {
+    std::mem::size_of::<uuid::Uuid>().saturating_add(key.packed_textures.as_ref().map_or(
+        0,
+        |(value, signature)| {
+            value
+                .len()
+                .saturating_add(signature.as_ref().map_or(0, String::len))
+        },
+    ))
+}
+
+fn texture_url(
+    textures: Option<&ProfileTexturesSummary>,
+    kind: ProfileTextureAssetKind,
+) -> Option<&str> {
+    let textures = textures?;
+    match kind {
+        ProfileTextureAssetKind::Skin => textures.skin.as_ref().map(|skin| skin.url.as_str()),
+        ProfileTextureAssetKind::Cape => textures.cape.as_ref().map(|texture| texture.url.as_str()),
+        ProfileTextureAssetKind::Elytra => {
+            textures.elytra.as_ref().map(|texture| texture.url.as_str())
+        }
+    }
 }
 
 pub(crate) trait SkinPngFetcher {
@@ -350,8 +848,6 @@ impl From<DynamicPlayerTextureKind> for DynamicTextureRequestKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct DynamicTextureKey {
-    resource_generation: u64,
-    session_generation: u64,
     kind: DynamicTextureRequestKind,
     identity: String,
     handle: u64,
@@ -377,6 +873,9 @@ pub struct DynamicTextureCacheObservation {
     pub resource_generation: u64,
     pub session_generation: u64,
     pub accepting_requests: bool,
+    pub profile_sets: usize,
+    pub profile_assets: usize,
+    pub profile_key_bytes: usize,
     pub entries: usize,
     pub pending: usize,
     pub ready: usize,
@@ -429,9 +928,10 @@ struct AsyncDynamicTextureEntry {
     delivery_pending: bool,
 }
 
-/// One bounded owner for every remote profile texture request. Exact keys keep
-/// resource generation, semantic kind, full URL identity and render handle;
-/// the handle hash is never used as proof of equality.
+/// One bounded process owner for every remote profile texture request. Exact
+/// keys keep semantic kind, full URL identity and render handle; presentation
+/// generations only request re-delivery and never invalidate retained CPU
+/// images or force another network fetch.
 #[derive(Debug)]
 pub(crate) struct AsyncDynamicTextureRuntime {
     resource_generation: u64,
@@ -600,8 +1100,6 @@ impl AsyncDynamicTextureRuntime {
         }
         self.sequence = self.sequence.saturating_add(1);
         let key = DynamicTextureKey {
-            resource_generation: self.resource_generation,
-            session_generation: self.session_generation,
             kind,
             identity: identity.to_owned(),
             handle,
@@ -730,11 +1228,10 @@ impl AsyncDynamicTextureRuntime {
 
     fn drain_worker_results(&mut self) {
         while let Ok(result) = self.result_rx.try_recv() {
-            let is_current_pending = self.entries.get(&result.key).is_some_and(|entry| {
-                matches!(entry.state, AsyncDynamicTextureState::Pending)
-                    && result.key.resource_generation == self.resource_generation
-                    && result.key.session_generation == self.session_generation
-            });
+            let is_current_pending = self
+                .entries
+                .get(&result.key)
+                .is_some_and(|entry| matches!(entry.state, AsyncDynamicTextureState::Pending));
             if !is_current_pending {
                 self.stale_results = self.stale_results.saturating_add(1);
                 continue;
@@ -749,7 +1246,7 @@ impl AsyncDynamicTextureRuntime {
                             .get_mut(&result.key)
                             .expect("admitted dynamic texture entry");
                         entry.state = AsyncDynamicTextureState::Ready(texture);
-                        entry.delivery_pending = true;
+                        entry.delivery_pending = self.accepting_requests;
                         self.ready_entries = self.ready_entries.saturating_add(1);
                         self.resident_bytes = self.resident_bytes.saturating_add(logical_bytes);
                         self.peak_resident_bytes =
@@ -760,7 +1257,7 @@ impl AsyncDynamicTextureRuntime {
                             .get_mut(&result.key)
                             .expect("rejected dynamic texture entry");
                         entry.state = AsyncDynamicTextureState::Failed;
-                        entry.delivery_pending = true;
+                        entry.delivery_pending = self.accepting_requests;
                         self.failed_entries = self.failed_entries.saturating_add(1);
                         self.resident_rejections = self.resident_rejections.saturating_add(1);
                     }
@@ -771,7 +1268,7 @@ impl AsyncDynamicTextureRuntime {
                         .get_mut(&result.key)
                         .expect("failed dynamic texture entry");
                     entry.state = AsyncDynamicTextureState::Failed;
-                    entry.delivery_pending = true;
+                    entry.delivery_pending = self.accepting_requests;
                     self.failed_entries = self.failed_entries.saturating_add(1);
                 }
             }
@@ -783,13 +1280,21 @@ impl AsyncDynamicTextureRuntime {
         session_generation: u64,
         accepting_requests: bool,
     ) {
+        self.drain_worker_results();
         self.session_generation = session_generation;
         self.accepting_requests = accepting_requests;
-        self.entries.clear();
-        self.pending_entries = 0;
-        self.ready_entries = 0;
-        self.failed_entries = 0;
-        self.resident_bytes = 0;
+        for entry in self.entries.values_mut() {
+            entry.delivery_pending =
+                accepting_requests && matches!(entry.state, AsyncDynamicTextureState::Ready(_));
+        }
+    }
+
+    pub(crate) fn reset_resource_generation(&mut self, resource_generation: u64) {
+        self.resource_generation = resource_generation;
+        for entry in self.entries.values_mut() {
+            entry.delivery_pending = self.accepting_requests
+                && matches!(entry.state, AsyncDynamicTextureState::Ready(_));
+        }
     }
 
     pub(crate) fn observation(&mut self) -> DynamicTextureCacheObservation {
@@ -799,6 +1304,9 @@ impl AsyncDynamicTextureRuntime {
             resource_generation: self.resource_generation,
             session_generation: self.session_generation,
             accepting_requests: self.accepting_requests,
+            profile_sets: 0,
+            profile_assets: 0,
+            profile_key_bytes: 0,
             entries: self.entries.len(),
             pending: self.pending_entries,
             ready: self.ready_entries,
@@ -1388,7 +1896,7 @@ mod tests {
     }
 
     #[test]
-    fn unified_dynamic_texture_runtime_discards_previous_generation_result() {
+    fn unified_dynamic_texture_runtime_retains_and_redelivers_across_session_generation() {
         let root = unique_temp_dir("async-dynamic-texture-stale-generation");
         let calls = Arc::new(AtomicUsize::new(0));
         let mut runtime = AsyncDynamicTextureRuntime::new(
@@ -1408,17 +1916,23 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(10));
         }
-        runtime.reset_session_generation(8, true);
+        runtime.reset_session_generation(8, false);
         for _ in 0..100 {
             assert!(runtime.drain_skin_results().is_empty());
-            if runtime.stale_results() == 1 {
+            if runtime.observation().ready == 1 {
                 break;
             }
             thread::sleep(Duration::from_millis(10));
         }
 
-        assert_eq!(runtime.stale_results(), 1);
-        assert_eq!(runtime.downloaded_skin_count(), 0);
+        assert_eq!(runtime.stale_results(), 0);
+        assert_eq!(runtime.downloaded_skin_count(), 1);
+        runtime.reset_session_generation(9, true);
+        let results = runtime.drain_skin_results();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].url, url);
+        assert!(results[0].skin.is_some());
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
         fs::remove_dir_all(root).unwrap();
     }
 

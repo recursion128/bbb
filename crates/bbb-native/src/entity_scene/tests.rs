@@ -8588,6 +8588,9 @@ fn entity_model_instances_use_uuid_default_skin_without_player_info() {
 #[test]
 fn entity_model_instances_use_player_info_profile_skin_for_players() {
     const SLIM_TEXTURES_PROPERTY: &str = "eyJ0aW1lc3RhbXAiOjEsInByb2ZpbGVJZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwicHJvZmlsZU5hbWUiOiJBbGV4IiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9za2luaGFzaCIsIm1ldGFkYXRhIjp7Im1vZGVsIjoic2xpbSJ9fSwiQ0FQRSI6eyJ1cmwiOiJodHRwczovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9jYXBlaGFzaCJ9LCJFTFlUUkEiOnsidXJsIjoiaHR0cHM6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZWx5dHJhaGFzaCJ9fX0=";
+    const SKIN_URL: &str = "https://textures.minecraft.net/texture/skinhash";
+    const CAPE_URL: &str = "https://textures.minecraft.net/texture/capehash";
+    const ELYTRA_URL: &str = "https://textures.minecraft.net/texture/elytrahash";
 
     let mut world = WorldStore::new();
     let player = protocol_add_entity(1552, VANILLA_ENTITY_TYPE_PLAYER_ID, [1.0, 64.0, -2.0]);
@@ -8620,6 +8623,31 @@ fn entity_model_instances_use_player_info_profile_skin_for_players() {
     });
     let runtime = NativeItemRuntime::empty_for_test();
 
+    let pending = entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 1.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 1552)
+        .unwrap();
+    assert!(matches!(
+        pending.kind,
+        EntityModelKind::Player {
+            skin: EntityPlayerSkin::ProfiledDefault(_),
+            ..
+        }
+    ));
+    assert_eq!(pending.render_state.player_cape_texture, None);
+    assert_eq!(pending.render_state.player_elytra_texture, None);
+
+    runtime.mark_profile_skin_resolved(SKIN_URL, 71);
+    runtime.mark_profile_texture_resolved(
+        bbb_item_model::DynamicPlayerTextureKind::Cape,
+        CAPE_URL,
+        72,
+    );
+    runtime.mark_profile_texture_resolved(
+        bbb_item_model::DynamicPlayerTextureKind::Elytra,
+        ELYTRA_URL,
+        73,
+    );
     let instance = entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 1.0)
         .into_iter()
         .find(|instance| instance.entity_id == 1552)
@@ -8632,7 +8660,7 @@ fn entity_model_instances_use_player_info_profile_skin_for_players() {
         panic!("player info textures property should produce a dynamic player skin");
     };
     assert_eq!(skin.model, EntityPlayerSkinModel::Slim);
-    assert_eq!(skin.status, EntityDynamicPlayerSkinStatus::Loading);
+    assert_eq!(skin.status, EntityDynamicPlayerSkinStatus::Ready);
     assert_ne!(skin.handle, 0);
     assert_eq!(parts, PlayerModelPartVisibility::from_vanilla_mask(0));
     let cape = instance

@@ -1935,8 +1935,10 @@ fn drain_dynamic_player_skin_downloads(
                         height = size[1],
                         "failed to upload dynamic player profile texture"
                     );
+                    items.mark_profile_texture_failed(download.kind, &download.url);
                     continue;
                 }
+                items.mark_profile_texture_resolved(download.kind, &download.url, handle);
                 tracing::debug!(
                     kind = ?download.kind,
                     url = %download.url,

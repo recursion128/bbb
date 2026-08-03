@@ -192,10 +192,6 @@ fn apply_native_resource_reload(
         stage: "prepare",
         error,
     })?;
-    prepared.items.enable_http_profile_resolution();
-    prepared
-        .items
-        .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
     prepared
         .roots
         .ensure_resource_data_admitted()
@@ -278,6 +274,18 @@ fn apply_native_resource_reload(
         .particles
         .simulation
         .set_default_item_particle_sprite_ids(&prepared.items);
+
+    // Every fallible reload step has committed. Move the process-owned skin
+    // caches only now so any earlier failure leaves the previous generation
+    // complete and untouched; retained decoded images will be re-published
+    // after the renderer observes the new resource generation.
+    if let Some(previous) = item_runtime.as_mut() {
+        prepared.items.adopt_profile_texture_runtime(previous);
+    }
+    prepared.items.enable_http_profile_resolution();
+    prepared
+        .items
+        .enable_http_player_skin_downloads(player_skin_cache_dir.to_path_buf());
 
     let NativeParticleResources { simulation, render } = prepared.particles;
     let item_defaults = ItemRuntimeWorldDefaults::from_runtime(&prepared.items);
@@ -1209,6 +1217,15 @@ mod tests {
         let simulation_commit = source
             .find("    prepared\n        .particles\n        .simulation")
             .expect("reload should commit the matching simulation resources");
+        let transaction_result = source
+            .find("stage: \"commit\"")
+            .expect("fallible renderer transaction result");
+        let skin_owner_adoption = source
+            .find("prepared.items.adopt_profile_texture_runtime(previous)")
+            .expect("successful reload should move the process skin owner once");
+        let item_publish = source
+            .find("*item_runtime = Some(prepared.items);")
+            .expect("prepared item generation publish");
 
         assert!(transaction < atlas_commit);
         assert!(atlas_commit < hud_commit);
@@ -1217,6 +1234,15 @@ mod tests {
         assert!(atlas_commit < audio_commit);
         assert!(audio_commit < residency_barrier);
         assert!(residency_barrier < simulation_commit);
+        assert!(transaction_result < skin_owner_adoption);
+        assert!(skin_owner_adoption < item_publish);
+        assert_eq!(
+            production
+                .matches("adopt_profile_texture_runtime(previous)")
+                .count(),
+            1,
+            "resource reload must have one post-commit SkinManager owner transfer"
+        );
         let shader_prepare = source
             .find("PostEffectCatalog::load(roots)")
             .expect("shader sources and post effects should share one CPU generation owner");

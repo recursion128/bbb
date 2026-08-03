@@ -19284,6 +19284,9 @@ pub(crate) fn control_renderer_counters(
         non_entity_cache_misses: 0,
         non_entity_rebuilt_owners: 0,
         dynamic_texture_cache_entries: 0,
+        profile_texture_set_entries: 0,
+        profile_texture_asset_entries: 0,
+        profile_texture_key_bytes: 0,
         dynamic_texture_cache_pending: 0,
         dynamic_texture_cache_ready: 0,
         dynamic_texture_cache_failed: 0,
@@ -19309,6 +19312,10 @@ pub(crate) fn project_dynamic_texture_counters(
         .map(NativeItemRuntime::dynamic_texture_cache_observation)
         .unwrap_or_default();
     counters.dynamic_texture_cache_entries = observation.entries;
+    counters.profile_texture_set_entries = observation.profile_sets;
+    counters.profile_texture_asset_entries = observation.profile_assets;
+    counters.profile_texture_key_bytes =
+        observation.profile_key_bytes.try_into().unwrap_or(u64::MAX);
     counters.dynamic_texture_cache_pending = observation.pending;
     counters.dynamic_texture_cache_ready = observation.ready;
     counters.dynamic_texture_cache_failed = observation.failed;

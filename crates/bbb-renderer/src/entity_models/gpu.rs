@@ -5968,9 +5968,27 @@ mod tests {
                 rgba: vec![0xff; 64 * 64 * 4],
             })
             .unwrap();
+        renderer
+            .upload_dynamic_player_texture(bbb_render_types::DynamicPlayerTextureImage {
+                handle: 92,
+                size: [64, 32],
+                standalone_sampling: None,
+                rgba: vec![0x55; 64 * 32 * 4],
+            })
+            .unwrap();
+        renderer
+            .upload_dynamic_player_texture(bbb_render_types::DynamicPlayerTextureImage {
+                handle: 93,
+                size: [64, 32],
+                standalone_sampling: None,
+                rgba: vec![0x66; 64 * 32 * 4],
+            })
+            .unwrap();
         assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
         assert!(renderer.entity_dynamic_player_skin_atlas.is_some());
         assert!(renderer.hud_dynamic_player_faces.contains_key(&91));
+        assert_eq!(renderer.entity_dynamic_player_texture_images.len(), 2);
+        assert!(renderer.entity_dynamic_player_texture_atlas.is_some());
 
         assert!(!renderer.synchronize_dynamic_entity_texture_generation(7, 3, true));
         assert_eq!(renderer.entity_dynamic_player_skin_images.len(), 1);
@@ -5979,6 +5997,8 @@ mod tests {
         assert!(renderer.entity_dynamic_player_skin_images.is_empty());
         assert!(renderer.entity_dynamic_player_skin_atlas.is_none());
         assert!(renderer.hud_dynamic_player_faces.is_empty());
+        assert!(renderer.entity_dynamic_player_texture_images.is_empty());
+        assert!(renderer.entity_dynamic_player_texture_atlas.is_none());
 
         renderer
             .upload_dynamic_player_skin(bbb_render_types::DynamicPlayerSkinImage {
