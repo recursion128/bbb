@@ -91,6 +91,14 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   diagnostics/gizmos 3 and light query 3. The one remaining open
   mechanism remains here until its own single-semantics slice supplies
   consumer evidence.
+- **`rendering-level-light-query` is the current active engineering slice.**
+  BBB duplicates raw-light packing across twelve block-entity scene owners,
+  while terrain, painting, particle and weather callers bypass Vanilla's
+  emissive-rendering and state light-emission decision. Converge them on one
+  generated-fact-backed light-coordinate projection, preserve each caller's
+  exact missing-chunk fallback and remove the old production resolvers. The
+  contract and safe stops are in
+  `goal.md#active-工程合同levelrenderer-light-query`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment

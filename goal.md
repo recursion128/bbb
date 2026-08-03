@@ -433,6 +433,34 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
+### Active 工程合同：LevelRenderer light query
+
+目标：关闭 `rendering-level-light-query` 的两个 `getLightCoords` 与
+`BrightnessGetter.packedBrightness` 共 3 owner。Vanilla 顺序固定为 default getter 按 sky→block
+读取并打包；指定 state 的 `emissiveRendering` 先返回 block/sky 15；否则只把 block 提升到
+`getLightEmission`。Particle 缺 chunk 返回 block 0/sky 15；其它 caller 保持各自既有缺失语义。
+
+唯一 flow：`bbb-protocol` 从 29,873-state runtime report 生成 emission/emissive facts；
+`bbb-render-types::VanillaLightCoords` 唯一拥有 clamp、state override、component max、packed/normalized
+投影；`bbb-world` 以显式 state+BlockPos 采原始 light；native block-entity/painting/particle/weather 与
+renderer terrain/fluid 只消费该 immutable 决策。terrain snapshot 携带窄 state facts，renderer 不按
+block name/material/model 猜测；raw light 仍供 gameplay/audio/debug owner，不被改义。
+
+阶段：A 已冻结 owner、调用面、查询坐标、fallback 与重复 resolver；B 扩展既有 runtime generator、
+protocol facts 和共享纯值 owner；C 接入 world explicit-state query 与 terrain snapshot/mesh 的
+flat/AO/fluid 坐标；D 迁移当前 block-entity、painting、particle、weather caller，删除 12 个私有
+pack resolver；E 生成 3/3 fail-closed evidence，更新 Wiki/matrix/ledger 并完成 focused/full/live。
+非目标：light engine 传播、lightmap 颜色、model element `light_emission`、entity renderer 专用亮度、
+audio mood query、资源 generation、screen、pipeline 或其它 LevelRenderer 机制。
+
+Focused tests：generator 重排/非法 emission/陈旧输出；magma、active/inactive sculk 与普通/发光 state
+facts；emissive 优先、emission max、component max、packed/normalized；explicit state/pos、缺 chunk；
+terrain flat offset/AO/fluid 查询；block-entity double-light、painting、particle sky-only fallback、weather；
+snapshot revision/stale mesh 沿用既有原子替换；3 evidence cell 缺 symbol/test fail closed；生产源码中旧
+私有 pack resolver 和上述 caller 的 raw-light 绕路为零。合同提交先 full gate；实现阶段跨 generator/
+protocol/render boundary 后和最终均 full gate，行为变化刷新 fixture/live。安全停止点仅限干净
+full-gated checkpoint；blocker 仅限可复现的 Vanilla runtime probe 或真实 live 外部失败。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
