@@ -430,13 +430,33 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。`arch-census-external-production-r2` 已对 10 个 production crate、1,097 个
-Rust 文件、23 条正常依赖边、3,123 个公开声明、1,594 个 crate-private 声明及 checked
-Vanilla 2,927-owner inventory 完成只读复审；production 实现与产品行为未在 census 中修改。
+状态：`active`。census 的三个 ready 候选及排序只由 `docs/unsupported-features.md` 拥有；
+逐项提交并 full-gate，清零后恢复 `maintenance`。
 
-三个 ready 候选及其排序、owner/caller、删除目标和 evidence 只由
-`docs/unsupported-features.md` 拥有；逐项提交并 full-gate，清零后恢复 `maintenance`。下一项是
-rank 1 `arch-entity-equipment-shadow-projection`，production 修改前须另冻唯一工程合同。
+当前唯一工程合同 `arch-entity-equipment-shadow-projection-r1`：Vanilla
+`EquipmentLayerRenderer`、`HumanoidArmorLayer`、`SimpleEquipmentLayer`、`WingsLayer` 与
+`CapeLayer.hasLayer` 以当前 resource generation 的 equipment asset id + layer type 查询声明
+顺序；unknown/stale/missing asset 为零层，dye/foil/trim/player texture 仍是逐 stack 窄事实。
+唯一 owner 是 pack CPU `EquipmentAssetCatalog` 经 native prepare/commit barrier 形成
+renderer-private resolved catalog；world/frame 只持 generation-local `EquipmentAssetId` 及上述
+窄事实，下游不得反读 pack，native 不得重做 layer/material 分类。资源 reload 全量 prepare
+成功才原子发布；失败保留上一完整 generation，旧 ID 在新 generation 必须 miss。
+
+删除目标：item-model 的 material/decor/color/static-wings/has-layer 表和 API；world 的对应
+enum、cache、setter、compatibility fallback 与 entity shadow 字段；native 的 material/color
+转换和 layer 重解析；render-types 的静态 layer texture projection；renderer 的
+`EntityArmorMaterial`、legacy color/saddle/has-wings/has-humanoid 字段及调用点。保留独立的
+body-item-present、ridden/reins、harness tag、crackiness、dye/foil/trim 事实。public 边界仅保留
+catalog/id 与不可变窄 projection。Smithing preview 的既有缺口、几何/pipeline、协议和 screen
+均为非目标，不能在本 slice 偷改行为。
+
+串行阶段：先补 renderer-private layer query；再迁移 world/native frame；再迁移 renderer/tests；
+最后删除旧 API、加跨五 crate reverse guard，并更新 Wiki/ledger/archive。focused tests 覆盖
+item-model、world、native、renderer、pack 的 priority/order/filter/fallback、reload 原子替换/
+失败回滚/stale ID、预算及真实本地 equipment catalog acceptance；每阶段执行 docs-lint、fmt、
+diff-check、workspace check，最终完整 gate。目标行为中性，不刷新 playable，除非验收暴露产品
+变化。安全停止点只有旧 production path 为零且 guard 生效后的完整 gated commit，或可复现的
+外部 blocker；失败一律 fix-forward。
 
 ### P1：可玩 Session 端到端门禁
 
