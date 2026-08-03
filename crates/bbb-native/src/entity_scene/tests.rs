@@ -8592,6 +8592,9 @@ fn entity_model_instances_use_player_info_profile_skin_for_players() {
     let mut world = WorldStore::new();
     let player = protocol_add_entity(1552, VANILLA_ENTITY_TYPE_PLAYER_ID, [1.0, 64.0, -2.0]);
     let profile_id = player.uuid;
+    // Vanilla's local lookup accepts an insecure packed property; remote
+    // player-info lookups require a Services-authenticated signature.
+    world.set_local_player_profile_id(profile_id);
     world.apply_add_entity(player);
     world.apply_player_info_update(PlayerInfoUpdate {
         actions: vec![PlayerInfoAction::AddPlayer],
