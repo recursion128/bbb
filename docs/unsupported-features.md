@@ -92,6 +92,14 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   diagnostics/gizmos 3 and light query 3. Each of the six remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
+- **`rendering-level-backend-lifecycle` is the current active engineering
+  slice.** The nine constructor/close/reload/level/invalidation/resize/sampler
+  owners still lack fail-closed implementation plus semantic-test cells, and
+  resize does not yet expose an injectable all-owner prepare/apply rollback
+  boundary. Close only after size-dependent GPU owners publish atomically,
+  level/resource generations retain their existing stale/rollback behavior,
+  and all nine generated owners have exact evidence. The contract and safe
+  stops are in `goal.md#active-工程合同levelrenderer-backend-lifecycle`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
