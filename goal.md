@@ -433,8 +433,31 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`active`。census 的 ready 候选及排序只由 `docs/unsupported-features.md` 拥有；
 逐项提交并 full-gate，清零后恢复 `maintenance`。
 
-当前无 active 架构工程合同；`arch-piston-profile-pack-boundary` 只能在 falling-dust 实现提交
-full-gated 后以独立 contract commit 冻结。
+当前 active 工程合同：`arch-piston-profile-pack-boundary`。
+
+- Vanilla owner：26.1 `PistonStructureResolver` 与 `PistonBaseBlock.isPushable`；每次判定读取 global
+  state 的 reaction、destroy speed 和 block-entity fact，并在 air、显式 immovable、边界、extended
+  piston 之后按 `BLOCK`、`DESTROY`、`PUSH_ONLY`、`NORMAL/IGNORE` 原顺序决策。
+- 唯一 fixed-fact owner：`bbb-protocol::block_state_types` 既有 checked support facts。bounded global
+  state id 查询新增一个公开 reaction enum accessor 及 unbreakable/block-entity boolean accessor；
+  非法 id 返回 `None`，不暴露 generator storage、resource name、pack catalog 或 world consumer。
+- Direction：Java runtime probe → deterministic generator/stale check → protocol immutable facts →
+  world resolver → moving projection；world 不再解析或持有 pack catalog，renderer/native 不读 gameplay facts。
+- Ordering/fallback：保持 12-block、line/collision/branch order、slime/honey、五种 reaction、
+  unloaded-as-air、loaded unknown failure、border/vertical/piston checks 与 destroy/move/event 顺序。
+- Lifetime/rollback：facts 只随 protocol version 更换，无 resource/session shadow cache；resolver 先纯计算
+  完整结果，失败不改变 world，moving apply 继续一次 commit，失败保留旧 world；stale output 必须失败。
+- 删除 pack piston 类型、source-expression resolver、OnceLock、exports 与 `PackRoots` API；迁移全部 caller
+  后删文件，不保留 compatibility resolver、name fallback、双读或 shadow state。
+- 非目标：修改 piston 行为、destroy-progress catalog、registry codec、renderer/audio/screen/resource reload
+  或其他 block facts；若 probe 揭示 parity 缺口，登记独立 route，不混入本 slice。
+- Focused evidence：probe/generator fixtures 覆盖 enum/boolean、id/count、非法值、storage bound/stale；
+  protocol 覆盖全量、越界、五种 reaction 和 flags；world 复验 order/fallback、原子成功/失败保留、
+  unknown/stale generation；reverse guard 禁止 pack module/API、name parser 与旧 identifiers 恢复。
+- Gate：真实 generator/`--check`、Python 与 protocol/world/pack focused tests、reverse guards、docs fixtures/
+  lint、workspace check、fmt、diff-check、review；implementation 提交后 full gate。行为中性不刷新 playable。
+- 安全停止点：旧 production path 删除且提交 full-gated，或 probe/JDK/Vanilla input 经复现确认为外部
+  blocker 并附机械重启条件；其余失败 fix-forward。
 
 ### P1：可玩 Session 端到端门禁
 
