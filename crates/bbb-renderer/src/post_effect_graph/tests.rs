@@ -357,7 +357,11 @@ fn post_effect_graph_resize_recreates_only_size_dependent_targets() {
         .needs_clear
         .get());
 
-    generation.resize(&device, 7, 8).unwrap();
+    let resize = generation
+        .prepare_resize(&device, 7, 8)
+        .unwrap()
+        .expect("size change prepares graph target replacements");
+    generation.apply_resize(resize);
     let graph = &generation.graphs["demo:targets"];
     assert_eq!(graph.targets["demo:full"].size, [7, 8]);
     assert!(graph.targets["demo:full"].needs_clear.get());

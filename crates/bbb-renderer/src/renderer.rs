@@ -20,7 +20,7 @@ use crate::{
         CameraPose, CameraSpinningEffect, CameraUniform, CameraViewBobEffect, ClearColor,
         FogEnvironment, LightmapEnvironment, TerrainBounds, VANILLA_DEFAULT_GLINT_SPEED,
     },
-    camera_post_effect::CameraPostEffectGpu,
+    camera_post_effect::{CameraPostEffectGpu, CameraPostEffectResize},
     clouds::{
         cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
         create_cloud_pipeline, create_cloud_target, create_cloud_texture_data,
@@ -116,7 +116,7 @@ use crate::{
         ParticleUvRect,
     },
     player_skin::{DynamicEntityTextureImage, DynamicPlayerSkinImage},
-    post_effect_graph::PostEffectGraphRuntime,
+    post_effect_graph::{PostEffectGraphRuntime, PostEffectGraphRuntimeResize},
     screen_blur::{
         create_screen_blur_bind_group_layout, create_screen_blur_horizontal_pipeline,
         create_screen_blur_target, create_screen_blur_vertical_pipeline,
@@ -322,6 +322,29 @@ pub enum TerrainTextureFiltering {
     None,
     /// Vanilla's four-tap rotated-grid super-sampling shader path.
     Rgss,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RendererResizePrepareStage {
+    PostEffects,
+    FrameTargets,
+}
+
+struct RendererResizePlan {
+    size: PhysicalSize<u32>,
+    post_effect_graphs: Option<PostEffectGraphRuntimeResize>,
+    screen_blur_target: ScreenBlurTarget,
+    camera_post_effect: CameraPostEffectResize,
+    main_target: MainTarget,
+    depth: DepthTarget,
+    translucent_target: TranslucentTarget,
+    item_entity_target: ItemEntityTarget,
+    particle_target: ParticleTarget,
+    weather_target: WeatherTarget,
+    transparency_final_target: TransparencyFinalTarget,
+    entity_outline_target: EntityOutlineTarget,
+    cloud_target: CloudTarget,
+    transparency_combine_bind_group: TransparencyCombineBindGroup,
 }
 
 pub struct Renderer {
@@ -2749,99 +2772,147 @@ impl Renderer {
         })
     }
 
-    pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {
+    fn prepare_resize(
+        &self,
+        size: PhysicalSize<u32>,
+        mut checkpoint: impl FnMut(RendererResizePrepareStage) -> Result<()>,
+    ) -> Result<RendererResizePlan> {
+        let post_effect_graphs = self
+            .post_effect_graphs
+            .as_ref()
+            .map(|graphs| graphs.prepare_resize(&self.device, size.width, size.height))
+            .transpose()?;
+        checkpoint(RendererResizePrepareStage::PostEffects)?;
+
+        let plan = crate::post_effect_graph::capture_gpu_errors(&self.device, || {
+            let screen_blur_target = create_screen_blur_target(
+                &self.device,
+                &self.screen_blur_bind_group_layout,
+                self.config.format,
+                size.width,
+                size.height,
+            );
+            let camera_post_effect = self.camera_post_effect.prepare_resize(
+                &self.device,
+                size.width,
+                size.height,
+                &self.screen_blur_bind_group_layout,
+            );
+            let main_target =
+                create_main_target(&self.device, self.config.format, size.width, size.height);
+            let depth = create_depth_target(&self.device, size.width, size.height);
+            let translucent_target = create_translucent_target(
+                &self.device,
+                self.config.format,
+                size.width,
+                size.height,
+            );
+            let item_entity_target = create_item_entity_target(
+                &self.device,
+                self.config.format,
+                size.width,
+                size.height,
+            );
+            let particle_target =
+                create_particle_target(&self.device, self.config.format, size.width, size.height);
+            let weather_target =
+                create_weather_target(&self.device, self.config.format, size.width, size.height);
+            let transparency_final_target = create_transparency_final_target(
+                &self.device,
+                &self.transparency_blit_bind_group_layout,
+                self.config.format,
+                size.width,
+                size.height,
+            );
+            let entity_outline_target = create_entity_outline_target(
+                &self.device,
+                &self.entity_outline_bind_group_layout,
+                self.config.format,
+                size.width,
+                size.height,
+            );
+            let cloud_target =
+                create_cloud_target(&self.device, self.config.format, size.width, size.height);
+            let transparency_combine_bind_group = create_transparency_combine_bind_group(
+                &self.device,
+                &self.transparency_combine_bind_group_layout,
+                &main_target,
+                &depth,
+                &translucent_target,
+                &item_entity_target,
+                &particle_target,
+                &weather_target,
+                &cloud_target,
+            );
+            Ok(RendererResizePlan {
+                size,
+                post_effect_graphs,
+                screen_blur_target,
+                camera_post_effect,
+                main_target,
+                depth,
+                translucent_target,
+                item_entity_target,
+                particle_target,
+                weather_target,
+                transparency_final_target,
+                entity_outline_target,
+                cloud_target,
+                transparency_combine_bind_group,
+            })
+        })?;
+        checkpoint(RendererResizePrepareStage::FrameTargets)?;
+        Ok(plan)
+    }
+
+    fn apply_resize(&mut self, plan: RendererResizePlan) {
+        let mut config = self.config.clone();
+        config.width = plan.size.width;
+        config.height = plan.size.height;
+        self.surface.configure(&self.device, &config);
+        if let (Some(graphs), Some(resize)) =
+            (&mut self.post_effect_graphs, plan.post_effect_graphs)
+        {
+            graphs.apply_resize(resize);
+        }
+        self.size = plan.size;
+        self.config = config;
+        self.screen_blur_target = plan.screen_blur_target;
+        self.camera_post_effect
+            .apply_resize(plan.camera_post_effect);
+        self.main_target = plan.main_target;
+        self.depth = plan.depth;
+        self.translucent_target = plan.translucent_target;
+        self.item_entity_target = plan.item_entity_target;
+        self.particle_target = plan.particle_target;
+        self.weather_target = plan.weather_target;
+        self.transparency_final_target = plan.transparency_final_target;
+        self.entity_outline_target = plan.entity_outline_target;
+        self.cloud_target = plan.cloud_target;
+        self.transparency_combine_bind_group = plan.transparency_combine_bind_group;
+        self.update_camera();
+        self.counters.surface_resizes = self.counters.surface_resizes.saturating_add(1);
+        self.counters.width = plan.size.width;
+        self.counters.height = plan.size.height;
+    }
+
+    fn resize_with_prepare_check(
+        &mut self,
+        size: PhysicalSize<u32>,
+        checkpoint: impl FnMut(RendererResizePrepareStage) -> Result<()>,
+    ) -> Result<()> {
         if size.width == 0 || size.height == 0 {
             self.counters.surface_zero_size_skips =
                 self.counters.surface_zero_size_skips.saturating_add(1);
             return Ok(());
         }
-        self.counters.surface_resizes = self.counters.surface_resizes.saturating_add(1);
-        if let Some(post_effect_graphs) = &mut self.post_effect_graphs {
-            post_effect_graphs.resize(&self.device, size.width, size.height)?;
-        }
-        self.size = size;
-        self.config.width = size.width;
-        self.config.height = size.height;
-        self.surface.configure(&self.device, &self.config);
-        self.screen_blur_target = create_screen_blur_target(
-            &self.device,
-            &self.screen_blur_bind_group_layout,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.camera_post_effect.resize(
-            &self.device,
-            self.config.width,
-            self.config.height,
-            &self.screen_blur_bind_group_layout,
-        );
-        self.main_target = create_main_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.depth = create_depth_target(&self.device, self.config.width, self.config.height);
-        self.translucent_target = create_translucent_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.item_entity_target = create_item_entity_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.particle_target = create_particle_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.weather_target = create_weather_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.transparency_final_target = create_transparency_final_target(
-            &self.device,
-            &self.transparency_blit_bind_group_layout,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.entity_outline_target = create_entity_outline_target(
-            &self.device,
-            &self.entity_outline_bind_group_layout,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.cloud_target = create_cloud_target(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-        self.transparency_combine_bind_group = create_transparency_combine_bind_group(
-            &self.device,
-            &self.transparency_combine_bind_group_layout,
-            &self.main_target,
-            &self.depth,
-            &self.translucent_target,
-            &self.item_entity_target,
-            &self.particle_target,
-            &self.weather_target,
-            &self.cloud_target,
-        );
-        self.update_camera();
-        self.counters.width = size.width;
-        self.counters.height = size.height;
+        let plan = self.prepare_resize(size, checkpoint)?;
+        self.apply_resize(plan);
         Ok(())
+    }
+
+    pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {
+        self.resize_with_prepare_check(size, |_| Ok(()))
     }
 
     pub fn counters(&self) -> RendererCounters {
@@ -4293,14 +4364,151 @@ mod tests {
     use super::{
         choose_format, choose_present_mode, translucency_point_of_view,
         translucent_section_draw_order, translucent_section_draw_order_from_visible,
-        translucent_section_is_nearby, TerrainChunkMeshOwner, TerrainSectionMeshOwner,
-        TerrainSectionRenderState, TerrainTranslucentSortState,
+        translucent_section_is_nearby, Renderer, RendererResizePrepareStage, TerrainChunkMeshOwner,
+        TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTranslucentSortState,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
         TerrainMesh, TerrainSectionMesh, TerrainSectionMeshLayers, TerrainVertex,
     };
     use glam::Vec3;
+    use winit::dpi::PhysicalSize;
+
+    fn resize_target_sizes(renderer: &Renderer) -> Vec<wgpu::Extent3d> {
+        vec![
+            renderer.screen_blur_target.texture.size(),
+            renderer.main_target.texture.size(),
+            renderer.depth._texture.size(),
+            renderer.translucent_target._texture.size(),
+            renderer.item_entity_target._texture.size(),
+            renderer.particle_target._texture.size(),
+            renderer.weather_target._texture.size(),
+            renderer.transparency_final_target._texture.size(),
+            renderer.entity_outline_target._texture.size(),
+            renderer.cloud_target._texture.size(),
+        ]
+    }
+
+    #[test]
+    fn resize_prepare_failures_keep_the_previous_complete_backend_generation() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        renderer.set_clear_color(crate::ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer.set_camera_post_effect(Some("minecraft:invert"), true);
+        let previous = renderer.render_offscreen_frame().unwrap();
+        let previous_pixel = previous.pixel(2, 2);
+        let previous_sizes = resize_target_sizes(&renderer);
+        let previous_surface_size = renderer.surface_size();
+
+        for rejected in [
+            RendererResizePrepareStage::PostEffects,
+            RendererResizePrepareStage::FrameTargets,
+        ] {
+            let counters = renderer.counters();
+            let error = renderer
+                .resize_with_prepare_check(PhysicalSize::new(24, 20), |stage| {
+                    if stage == rejected {
+                        anyhow::bail!("injected {stage:?} resize prepare failure");
+                    }
+                    Ok(())
+                })
+                .unwrap_err();
+            assert!(error.to_string().contains("injected"));
+            assert_eq!(renderer.surface_size(), previous_surface_size);
+            assert_eq!(resize_target_sizes(&renderer), previous_sizes);
+            assert_eq!(renderer.counters(), counters);
+            assert_eq!(renderer.current_post_effect_id(), Some("minecraft:invert"));
+
+            let retained = renderer.render_offscreen_frame().unwrap();
+            assert_eq!((retained.width, retained.height), (16, 12));
+            assert_eq!(retained.pixel(2, 2), previous_pixel);
+        }
+
+        let previous_resizes = renderer.counters().surface_resizes;
+        renderer.resize(PhysicalSize::new(24, 20)).unwrap();
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(24, 20));
+        assert!(resize_target_sizes(&renderer).iter().all(|size| {
+            size.width == 24 && size.height == 20 && size.depth_or_array_layers == 1
+        }));
+        assert_eq!(renderer.counters().surface_resizes, previous_resizes + 1);
+        let resized = renderer.render_offscreen_frame().unwrap();
+        assert_eq!((resized.width, resized.height), (24, 20));
+        assert_eq!(resized.pixel(2, 2), previous_pixel);
+    }
+
+    #[test]
+    fn zero_size_resize_skips_prepare_and_preserves_backend_owners() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        let previous_sizes = resize_target_sizes(&renderer);
+        let previous_surface_size = renderer.surface_size();
+        let previous_resizes = renderer.counters().surface_resizes;
+        let previous_skips = renderer.counters().surface_zero_size_skips;
+        let mut prepared = false;
+
+        renderer
+            .resize_with_prepare_check(PhysicalSize::new(0, 12), |_| {
+                prepared = true;
+                Ok(())
+            })
+            .unwrap();
+
+        assert!(!prepared);
+        assert_eq!(renderer.surface_size(), previous_surface_size);
+        assert_eq!(resize_target_sizes(&renderer), previous_sizes);
+        assert_eq!(renderer.counters().surface_resizes, previous_resizes);
+        assert_eq!(
+            renderer.counters().surface_zero_size_skips,
+            previous_skips + 1
+        );
+    }
+
+    #[test]
+    fn production_resize_has_one_prepare_apply_path() {
+        let source = include_str!("renderer.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("renderer production/test boundary")
+            .0;
+        let public_resize = production
+            .split_once("    pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {")
+            .expect("single public resize entry")
+            .1;
+        assert_eq!(
+            production
+                .matches("    pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {")
+                .count(),
+            1
+        );
+        assert!(
+            public_resize.starts_with("\n        self.resize_with_prepare_check(size, |_| Ok(()))")
+        );
+        assert_eq!(production.matches("self.apply_resize(plan);").count(), 1);
+        assert!(!production.contains("post_effect_graphs.resize("));
+        assert!(!production.contains("camera_post_effect.resize("));
+    }
+
+    #[test]
+    fn renderer_backend_gpu_owners_share_one_struct_raii_lifetime() {
+        let source = include_str!("renderer.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("renderer production/test boundary")
+            .0;
+        assert_eq!(production.matches("pub struct Renderer {").count(), 1);
+        assert_eq!(production.matches("Self::with_gpu(").count(), 1);
+        assert!(!production.contains("impl Drop for Renderer"));
+        assert!(!production.contains("ManuallyDrop<"));
+        assert!(!production.contains("std::mem::forget("));
+        assert!(!production.contains("fn close_backend"));
+    }
 
     #[test]
     fn choose_format_requires_vanilla_rgba8_numeric_surface_behavior() {

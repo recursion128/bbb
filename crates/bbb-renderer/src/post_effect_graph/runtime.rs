@@ -9,13 +9,19 @@ use sha2::{Digest, Sha256};
 
 use super::{
     depth::PostEffectDepthCopies, PostEffectExecutionContext, PostEffectExternalTarget,
-    PostEffectGlobals, PostEffectGraphGeneration, VanillaPostEffect,
+    PostEffectGlobals, PostEffectGraphGeneration, PostEffectGraphGenerationResize,
+    VanillaPostEffect,
 };
 
 pub(crate) struct PostEffectGraphRuntime {
     generation: PostEffectGraphGeneration,
     depth_copies: PostEffectDepthCopies,
     vanilla_transparency_direct: bool,
+}
+
+pub(crate) struct PostEffectGraphRuntimeResize {
+    generation: Option<PostEffectGraphGenerationResize>,
+    depth_copies: Option<super::depth::DepthCopyReplacement>,
 }
 
 pub(crate) struct PostEffectTransparencyTargets<'a> {
@@ -70,11 +76,25 @@ impl PostEffectGraphRuntime {
         self.vanilla_transparency_direct
     }
 
-    pub(crate) fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) -> Result<()> {
-        let depth_replacement = self.depth_copies.prepare_resize(device, width, height)?;
-        self.generation.resize(device, width, height)?;
-        self.depth_copies.apply_resize(depth_replacement);
-        Ok(())
+    pub(crate) fn prepare_resize(
+        &self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> Result<PostEffectGraphRuntimeResize> {
+        let depth_copies = self.depth_copies.prepare_resize(device, width, height)?;
+        let generation = self.generation.prepare_resize(device, width, height)?;
+        Ok(PostEffectGraphRuntimeResize {
+            generation,
+            depth_copies,
+        })
+    }
+
+    pub(crate) fn apply_resize(&mut self, resize: PostEffectGraphRuntimeResize) {
+        if let Some(generation) = resize.generation {
+            self.generation.apply_resize(generation);
+        }
+        self.depth_copies.apply_resize(resize.depth_copies);
     }
 
     #[allow(clippy::too_many_arguments)]

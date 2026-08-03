@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "794119a3e68a1c927dbe0ed805155f293a1daa03a835103a645e8153084515e2"
+      "sha256": "ca73f02d08470bb3f18e95aba7bcd1200f4c9d68c20405ffb6356c76c024fd95"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -210,7 +210,8 @@
         "crates/bbb-renderer/src/resource_reload.rs",
         "crates/bbb-native/src/resource_reload.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "rendering-level-diagnostics-gizmos": {
       "bbb_evidence": [
@@ -24889,6 +24890,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.GameRenderer#update(final DeltaTracker deltaTracker,final boolean advanceGameTime)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#pub struct Renderer",
+          "crates/bbb-renderer/src/renderer.rs#pub async fn new"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#renderer_backend_gpu_owners_share_one_struct_raii_lifetime"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "constructor",
@@ -24995,6 +25005,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addWeatherPass(final FrameGraphBuilder frame,final GpuBufferSlice fog)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#request_reload_all_chunks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_reload_request_marks_all_cached_chunks_for_rebuild"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25089,6 +25107,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#clearVisibleSections()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#pub struct Renderer",
+          "crates/bbb-renderer/src/renderer.rs#pub async fn new"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#renderer_backend_gpu_owners_share_one_struct_raii_lifetime"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25631,6 +25658,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#hasRenderedAllSections()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/outline.rs#create_entity_outline_target"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/post_effect_graph/tests.rs#selected_generation_drives_live_entity_outline_graph_before_composite"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25667,6 +25702,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#isSectionCompiledAndVisible(final BlockPos blockPos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_frustum_visibility_key"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25725,6 +25768,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onChunkReadyToRender(final ChunkPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/resource_reload.rs#pub fn transactional_shader_resource_reload"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#local_shader_resource_generation_commits_and_rolls_back_as_one_owner"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25853,6 +25904,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#renderLevel(final GraphicsResourceAllocator resourceAllocator,final DeltaTracker deltaTracker,final boolean renderOutline,final CameraRenderState cameraState,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final Vector4f fogColor,final boolean shouldRenderSky,final ChunkSectionsToRender chunkSectionsToRender)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#upload_terrain_texture_atlas_mips"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25867,6 +25926,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#resetSampler()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#fn prepare_resize"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#resize_prepare_failures_keep_the_previous_complete_backend_generation"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -25991,6 +26058,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlocksDirty(final int x0,final int y0,final int z0,final int x1,final int y1,final int z1)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#synchronize_terrain_level_generation"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#level_generation_change_drops_old_residency_without_reusing_revision_ids"
+        ]
+      },
       "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
@@ -40459,6 +40534,7 @@
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
+      "rendering-level-backend-lifecycle",
       "rendering-level-section-lifecycle"
     ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",

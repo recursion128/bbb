@@ -15,7 +15,9 @@ mod std140;
 mod tests;
 
 use glsl::{adapt_pass_shaders, PassGlslBindings, SamplerBinding};
-pub(crate) use runtime::{PostEffectGraphRuntime, PostEffectTransparencyTargets};
+pub(crate) use runtime::{
+    PostEffectGraphRuntime, PostEffectGraphRuntimeResize, PostEffectTransparencyTargets,
+};
 use std140::{pack_globals, pack_sampler_info, pack_uniforms};
 
 const DEPTH_SAMPLE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
@@ -104,6 +106,11 @@ pub(crate) struct PostEffectGraphGeneration {
     graphs: BTreeMap<String, CompiledGraph>,
 }
 
+struct PostEffectGraphGenerationResize {
+    screen_size: [u32; 2],
+    replacements: BTreeMap<String, BTreeMap<String, CompiledTarget>>,
+}
+
 impl PostEffectGraphGeneration {
     pub(crate) fn new(
         device: &wgpu::Device,
@@ -164,10 +171,15 @@ impl PostEffectGraphGeneration {
         self.graphs.contains_key(graph_id)
     }
 
-    pub(crate) fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) -> Result<()> {
+    fn prepare_resize(
+        &self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> Result<Option<PostEffectGraphGenerationResize>> {
         let screen_size = [width.max(1), height.max(1)];
         if screen_size == self.screen_size {
-            return Ok(());
+            return Ok(None);
         }
         let replacements = capture_gpu_errors(device, || {
             self.graphs
@@ -179,14 +191,20 @@ impl PostEffectGraphGeneration {
                 })
                 .collect::<Result<BTreeMap<_, _>>>()
         })?;
-        for (graph_id, targets) in replacements {
+        Ok(Some(PostEffectGraphGenerationResize {
+            screen_size,
+            replacements,
+        }))
+    }
+
+    fn apply_resize(&mut self, resize: PostEffectGraphGenerationResize) {
+        for (graph_id, targets) in resize.replacements {
             self.graphs
                 .get_mut(&graph_id)
                 .expect("resize plan came from the same graph generation")
                 .apply_resize(targets);
         }
-        self.screen_size = screen_size;
-        Ok(())
+        self.screen_size = resize.screen_size;
     }
 
     pub(crate) fn execute(

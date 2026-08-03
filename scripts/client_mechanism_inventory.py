@@ -607,7 +607,74 @@ LEVEL_RENDERER_SECTION_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
-OWNER_EVIDENCE_MECHANISMS = ("rendering-level-section-lifecycle",)
+LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub struct Renderer",
+                "crates/bbb-renderer/src/renderer.rs#pub async fn new",
+            ),
+            ("crates/bbb-renderer/src/renderer.rs#renderer_backend_gpu_owners_share_one_struct_raii_lifetime",),
+        ),
+        ("LevelRenderer", "close"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/resource_reload.rs#pub fn transactional_shader_resource_reload",),
+            ("crates/bbb-renderer/src/resource_reload.rs#local_shader_resource_generation_commits_and_rolls_back_as_one_owner",),
+        ),
+        ("onResourceManagerReload",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/outline.rs#create_entity_outline_target",),
+            ("crates/bbb-renderer/src/post_effect_graph/tests.rs#selected_generation_drives_live_entity_outline_graph_before_composite",),
+        ),
+        ("initOutline",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#synchronize_terrain_level_generation",),
+            ("crates/bbb-native/src/terrain_runtime.rs#level_generation_change_drops_old_residency_without_reusing_revision_ids",),
+        ),
+        ("setLevel",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#request_reload_all_chunks",),
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_reload_request_marks_all_cached_chunks_for_rebuild",),
+        ),
+        ("allChanged",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#fn prepare_resize",),
+            ("crates/bbb-renderer/src/renderer.rs#resize_prepare_failures_keep_the_previous_complete_backend_generation",),
+        ),
+        ("resize",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#upload_terrain_texture_atlas_mips",),
+            ("crates/bbb-renderer/src/resource_reload.rs#injected_failure_after_each_reload_stage_restores_exact_accepted_owners",),
+        ),
+        ("resetSampler",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_frustum_visibility_key",),
+            ("crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate",),
+        ),
+        ("needsUpdate",),
+    ),
+)
+
+LEVEL_RENDERER_OWNER_EVIDENCE = {
+    "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
+    "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
+}
+
+OWNER_EVIDENCE_MECHANISMS = tuple(LEVEL_RENDERER_OWNER_EVIDENCE)
 
 
 METHOD_SURFACES = (
@@ -902,7 +969,7 @@ class InventoryBuilder:
             signature = self.method_signature(method)
             evidence = None
             if route.mechanism_id in OWNER_EVIDENCE_MECHANISMS:
-                evidence = LEVEL_RENDERER_SECTION_OWNER_EVIDENCE.get(method.name)
+                evidence = LEVEL_RENDERER_OWNER_EVIDENCE[route.mechanism_id].get(method.name)
                 if evidence is None:
                     raise ClientMechanismInventoryError(
                         f"LevelRenderer owner lacks BBB implementation/test evidence: {signature}"

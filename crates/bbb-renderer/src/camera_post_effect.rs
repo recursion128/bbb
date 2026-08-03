@@ -225,6 +225,12 @@ struct CameraPostEffectTargets {
     spider_blit: wgpu::BindGroup,
 }
 
+pub(super) struct CameraPostEffectResize {
+    width: u32,
+    height: u32,
+    targets: CameraPostEffectTargets,
+}
+
 pub(super) struct CameraPostEffectGpu {
     format: wgpu::TextureFormat,
     width: u32,
@@ -315,26 +321,37 @@ impl CameraPostEffectGpu {
         }
     }
 
-    pub(super) fn resize(
-        &mut self,
+    pub(super) fn prepare_resize(
+        &self,
         device: &wgpu::Device,
         width: u32,
         height: u32,
         screen_blur_layout: &wgpu::BindGroupLayout,
-    ) {
-        self.width = width.max(1);
-        self.height = height.max(1);
-        self.targets = create_targets(
+    ) -> CameraPostEffectResize {
+        let width = width.max(1);
+        let height = height.max(1);
+        let targets = create_targets(
             device,
             self.format,
-            self.width,
-            self.height,
+            width,
+            height,
             screen_blur_layout,
             &self.bind_group_layout,
             &self.nearest_sampler,
             &self.linear_sampler,
             &self.uniforms,
         );
+        CameraPostEffectResize {
+            width,
+            height,
+            targets,
+        }
+    }
+
+    pub(super) fn apply_resize(&mut self, resize: CameraPostEffectResize) {
+        self.width = resize.width;
+        self.height = resize.height;
+        self.targets = resize.targets;
     }
 
     pub(super) fn render(
