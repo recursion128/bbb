@@ -2956,23 +2956,20 @@ class ProcessGroup:
         if process.poll() is None:
             try:
                 process.wait(timeout=timeout)
-                return
             except subprocess.TimeoutExpired:
                 pass
-        else:
-            deadline = time.monotonic() + timeout
-            while time.monotonic() < deadline:
-                try:
-                    os.killpg(process.pid, 0)
-                except ProcessLookupError:
-                    return
-                time.sleep(0.05)
+        if self._wait_for_group_exit(process.pid, timeout):
+            return
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             return
         if process.poll() is None:
             process.wait(timeout=timeout)
+        if not self._wait_for_group_exit(process.pid, timeout):
+            raise BenchmarkFailure(
+                f"process group {process.pid} survived SIGKILL cleanup"
+            )
 
     def kill(self, timeout: float = 5.0) -> None:
         process = self.process
@@ -2984,6 +2981,20 @@ class ProcessGroup:
             return
         if process.poll() is None:
             process.wait(timeout=timeout)
+        if not self._wait_for_group_exit(process.pid, timeout):
+            raise BenchmarkFailure(f"process group {process.pid} survived SIGKILL")
+
+    @staticmethod
+    def _wait_for_group_exit(process_group: int, timeout: float) -> bool:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                os.killpg(process_group, 0)
+            except ProcessLookupError:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
 
     def __enter__(self) -> "ProcessGroup":
         self.start()

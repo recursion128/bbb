@@ -1601,11 +1601,16 @@ class CaptureTests(unittest.TestCase):
 
 class ProcessCleanupTests(unittest.TestCase):
     def test_cleanup_terminates_the_process_group(self):
+        child = (
+            "import signal,time; "
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+            "time.sleep(60)"
+        )
         command = [
             sys.executable,
             "-c",
             "import subprocess,time; "
-            "subprocess.Popen(['sleep','60']); "
+            f"subprocess.Popen([{sys.executable!r},'-c',{child!r}]); "
             "time.sleep(60)",
         ]
         group = benchmark.ProcessGroup(
@@ -1615,7 +1620,7 @@ class ProcessCleanupTests(unittest.TestCase):
         )
         process = group.start()
         time.sleep(0.1)
-        group.cleanup(timeout=1.0)
+        group.cleanup(timeout=0.2)
         self.assertIsNotNone(process.poll())
         with self.assertRaises(ProcessLookupError):
             os.killpg(process.pid, 0)
