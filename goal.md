@@ -408,6 +408,30 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
+### 当前工程合同：phase-aware remote-disconnect audio teardown
+
+目标：只关闭 external session typed remote disconnect 的声音 teardown 缺口；Vanilla owner
+是 `ClientHandshakePacketListenerImpl.onDisconnect`、
+`ClientCommonPacketListenerImpl.onDisconnect`、`Minecraft.disconnect` 与
+`updateLevelInEngines(null, stopSound)`，BBB owner 是 simulation terminal 分支、既有
+`AudioEventSink`/`AudioEffect` FIFO 与 `bbb-audio` playback owner。
+
+- Login/尚未进入 common listener 的 connect failure 只发布 `connect.failed`，不得停止既有
+  menu audio；Configuration/Play 的 remote terminal outcome 在 canonical level、registry、
+  server-pack session 清理后追加一个 category/name 均为空的 stop-all。
+- stop-all 与断线前已 drain 的 packet audio 位于同一 lossless effect batch，保持 FIFO，并在
+  terminal server-pack reload apply 之前提交；不得新增第二 resolver、backend shadow queue 或
+  从 audio 反向读取 net/world state。后续空 tickable projection 清除 generation-local identity。
+- 本 slice 不改断线 screen、panorama、network close、resource-pack priority、music selection、
+  decoder/device lifetime或主动本地 close；ConnectScreen 的 stopSound=false 分支保持不变。
+- focused evidence 覆盖 Login/Configuration/Play policy、prior-audio→stop-all→empty-tickable FIFO、
+  resource reload barrier、backend stop-all 对 static/streaming/delayed owner 的清理、production
+  单调用点和反向 source guard；无音频设备的 live lane 仍须通过 disconnect/lifecycle，不能伪称
+  device playback acceptance。
+- 实现、docs/ledger 收口后正常提交并运行 full gate；产品 lifecycle 变化刷新适用 live soak。
+  安全停止点仅为干净 full-gated 实现；blocker 只允许录制 sink/backend focused 已通过而外部
+  audio device runner 可复现失败且有精确重启条件。
+
 ## 客户端差异优先级
 
 路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在
