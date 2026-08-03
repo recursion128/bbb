@@ -70,6 +70,8 @@
   登记 5 个单语义 ready 候选并建立 ID/rank/route/owner/evidence stale 门禁。
 - **2026-08-03（post-effect identity convergence）**：六个 built-in graph 的 admission、
   camera/outline/transparency/blur dispatch 收敛为一个 renderer-private typed owner。
+- **2026-08-03（control mailbox convergence）**：control 五类写请求与 window/services command
+  收敛到构造时绑定的单一 simulation mailbox，删除兼容 queue、sink 后装和分类型 shadow drain。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

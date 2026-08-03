@@ -36,6 +36,21 @@ movement；乘客 tick 保持 rotation、authoritative vehicle movement、latch 
 level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐新 world；队列发送失败
 不推进 baseline，所以下一 tick 会重试而不形成 shadow state。
 
+## Control command 与 simulation mailbox owner
+
+`bbb-control` 只拥有外部 DTO、只读 snapshot 和构造时绑定的
+`SharedControlRequests` sink handle；它不保存 command queue，也没有 sink 后装或替换阶段。
+`bbb-native::simulation::commands::SimulationMailbox` 是 window、control、services producer 的
+唯一 production command owner。startup 先创建 mailbox，再把其 `ControlRequestSink` 注入
+`ControlState`，因此 producer 可见前已经只有一条写路径。
+
+所有 producer 在 mailbox 的同一短 mutex 内取得全局 sequence。simulation 按 barrier drain，
+单个 `ControlWriteRequest` 直接进入 code-of-conduct、net 或 input handler；不会再按 request
+family 复制到可独立重排的 shadow queue。shutdown 仍是 ordered command，screenshot 仍由同一
+sequence 产生 platform effect；软阈值只合并相邻高频 tail value，离散命令与 key/button release
+不静默丢失。当前 hard retained budget 缺口仍由唯一 feature ledger 跟踪，不由 control crate
+复制一个队列来掩盖。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

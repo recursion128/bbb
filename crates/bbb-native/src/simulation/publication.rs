@@ -275,6 +275,15 @@ mod tests {
     };
     use winit::dpi::PhysicalSize;
 
+    fn test_control_state() -> bbb_control::ControlState {
+        bbb_control::ControlState::new(
+            "test",
+            bbb_control::SharedControlRequests::new(Arc::new(
+                crate::simulation::commands::SimulationMailbox::default(),
+            )),
+        )
+    }
+
     fn input<'a>(
         world: &'a WorldStore,
         client_input: &'a ClientInputState,
@@ -315,7 +324,7 @@ mod tests {
 
     #[test]
     fn publication_reuses_world_and_carries_play_session_security() {
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
         let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
@@ -354,7 +363,7 @@ mod tests {
 
     #[test]
     fn camera_eye_height_publication_carries_one_immutable_tick_state() {
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let mut world = WorldStore::new();
         world.set_local_player_pose(bbb_world::LocalPlayerPoseState::default());
         let client_input = ClientInputState::default();
@@ -390,7 +399,7 @@ mod tests {
 
     #[test]
     fn partial_tick_projection_clamps_delayed_renderers() {
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
         let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
@@ -461,7 +470,7 @@ mod tests {
     fn publication_freezes_world_and_publishes_matching_runtime_state() {
         use bbb_protocol::packets::BlockChangedAck;
 
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let mut world = WorldStore::new();
         let client_input = ClientInputState::default();
         let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
@@ -517,7 +526,7 @@ mod tests {
 
     #[test]
     fn input_only_publication_reuses_exact_world_arc_for_render_and_control() {
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let mut world = WorldStore::new();
         let client_input = ClientInputState::default();
         let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
@@ -593,7 +602,7 @@ mod tests {
 
     #[test]
     fn publication_reports_generation_matched_build_duration_and_running_peak() {
-        let control = bbb_control::ControlState::new("test");
+        let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
         let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);

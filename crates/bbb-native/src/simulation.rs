@@ -466,7 +466,7 @@ mod tests {
     }
 
     #[test]
-    fn winit_input_callbacks_only_enqueue_typed_simulation_commands() {
+    fn all_external_commands_enter_one_mailbox_and_apply_without_a_second_queue() {
         let source = include_str!("main.rs");
         let start = source
             .find("Event::WindowEvent { event, window_id }")
@@ -494,6 +494,33 @@ mod tests {
         assert!(advance.contains("input_runtime.apply_commands("));
         assert!(!advance.contains("pump_control_input_requests("));
         assert!(!advance.contains("pump_control_net_requests("));
+
+        assert_eq!(source.matches("SharedControlRequests::new(").count(), 1);
+        assert!(!source.contains("install_sink"));
+        let input_commands = include_str!("simulation/input_commands.rs")
+            .split_once("#[cfg(test)]\nmod tests")
+            .expect("input command test boundary")
+            .0;
+        assert!(!input_commands.contains("SharedControlRequests"));
+        assert!(!input_commands.contains("pump_control_"));
+        let control_requests = include_str!("runtime/control_requests.rs")
+            .split_once("#[cfg(test)]\nmod tests")
+            .expect("control request test boundary")
+            .0;
+        assert!(!control_requests.contains("SharedControlRequests"));
+        assert!(!control_requests.contains("pump_control_"));
+        assert_eq!(
+            control_requests
+                .matches("apply_control_net_request(")
+                .count(),
+            1
+        );
+        assert_eq!(
+            control_requests
+                .matches("apply_control_input_request_with_effects(")
+                .count(),
+            1
+        );
     }
 
     #[test]

@@ -613,7 +613,8 @@ struct InventoryHudLocalState {
 }
 
 pub(crate) use control_requests::{
-    pump_control_input_requests_with_effects, pump_control_net_requests,
+    apply_code_of_conduct_request, apply_control_input_request_with_effects,
+    apply_control_net_request,
 };
 pub(crate) use events::LevelEventSoundRandomState;
 use periodic_notifications::{PeriodicNotificationRuntime, PeriodicNotificationSchedule};

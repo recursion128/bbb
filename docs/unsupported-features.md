@@ -62,36 +62,9 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`, `rendering-hud-step-surface`
+Matrix routes: `rendering-entity-layer-registration`, `rendering-hud-step-surface`
 
 <!-- architecture-candidates:start -->
-- **`arch-control-mailbox-single-path` is `active`.**
-  - Semantic mechanism: external control request submission into simulation ownership.
-  - Canonical input: ordered bounded `ControlWriteRequest`, `InputControlRequest`,
-    code-of-conduct and recipe-book commands.
-  - Owners: `crates/bbb-control/src/types/snapshot.rs` owns both a compatibility mutex
-    queue and an installable `ControlRequestSink` for the same requests.
-  - Production callers: `crates/bbb-native/src/main.rs` installs the simulation mailbox;
-    `crates/bbb-native/src/runtime/control_requests.rs` and control handlers submit to it.
-  - Direction: control transport → one required sink handle → native simulation mailbox;
-    control must not retain a second command state owner.
-  - Lifetime: one client process and simulation mailbox; construction freezes the sink,
-    submission uses one global sequence, and shutdown remains an ordered command.
-  - Ordering/fallback/rollback: preserve producer FIFO, barrier drain, soft-threshold tail
-    coalescing, pending-depth counters and lossless discrete commands; remove only the
-    before/after-install compatibility fallback. Hard retained budgets remain a separate gap.
-  - Public API: narrow `SharedControlRequests` to a constructed sink handle and remove
-    public `ControlRequests`, `lock`, default construction and sink installation.
-  - Delete: compatibility queues, transition branch, compatibility exports and test
-    callers that directly inspect mutable request storage.
-  - Evidence: `crates/bbb-control/src/types/snapshot.rs` and
-    `crates/bbb-native/src/runtime/control_requests.rs` focused FIFO/barrier/shutdown tests
-    plus a zero-old-symbol reverse guard.
-  - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion high, API
-    narrowing high and focused verification high; rank 1/4.
-  - Goal route: `architecture-convergence`; `lifecycle-client-runtime`.
-  - Reopen condition: reopen only if a non-native production runtime requires a distinct
-    mailbox with an explicit constructor and identical ordered semantics.
 - **`arch-hud-item-resident-projection` is `active`.**
   - Semantic mechanism: resolved HUD item-model CPU projection and renderer submission.
   - Canonical input: one resolved Vanilla item stack display state with ordered layers,
@@ -113,7 +86,7 @@ Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`
   - Evidence: `crates/bbb-native/src/runtime/tests.rs` and
     `crates/bbb-renderer/src/hud.rs` residency, atlas, ordering and source-guard tests.
   - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion medium, API
-    narrowing high and pixel/focused verification high; rank 2/4.
+    narrowing high and pixel/focused verification high; rank 1/3.
   - Goal route: `architecture-convergence`; `rendering-hud-step-surface`.
   - Reopen condition: reopen only if Vanilla introduces a HUD item presentation that
     cannot be expressed as an ordered resident layer.
@@ -140,7 +113,7 @@ Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`
     `crates/bbb-renderer/src/entity_models/gui_preview.rs` focused equipment/layer tests
     plus a reverse source guard.
   - Risk/benefit/rank: drift high, current product risk medium, one crate, deletion high,
-    API narrowing medium and focused verification high; rank 3/4.
+    API narrowing medium and focused verification high; rank 2/3.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if an official asset-free renderer path becomes a
     production surface with an explicit Vanilla owner.
@@ -163,7 +136,7 @@ Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`
   - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
     pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
   - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
-    narrowing low and focused verification high; rank 4/4.
+    narrowing low and focused verification high; rank 3/3.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if a future shader requires a decision not representable
     by cull state and `front_facing` in the shared source.

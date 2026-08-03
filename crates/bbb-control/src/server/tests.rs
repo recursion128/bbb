@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::Arc,
+    ops::Deref,
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 use super::params::{
@@ -9,6 +10,7 @@ use super::params::{
 };
 use super::*;
 use crate::types::{AudioCounters, NetCounters, RecipeBookTypeControl};
+use crate::{ControlRequestSink, ControlWriteRequest, SharedControlRequests};
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_MERCHANT_ID};
 use bbb_protocol::packets::{
@@ -63,6 +65,76 @@ use bbb_world::{
 use serde_json::json;
 use uuid::Uuid;
 
+#[derive(Debug, Default)]
+struct RecordedControlRequests {
+    shutdown_requested: bool,
+    screenshot_request: Option<String>,
+    code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
+    net_requests: Vec<NetControlRequest>,
+    input_requests: Vec<InputControlRequest>,
+}
+
+#[derive(Debug, Default)]
+struct RecordingControlRequestSink {
+    requests: Mutex<RecordedControlRequests>,
+}
+
+impl RecordingControlRequestSink {
+    fn lock(&self) -> std::sync::LockResult<MutexGuard<'_, RecordedControlRequests>> {
+        self.requests.lock()
+    }
+}
+
+impl ControlRequestSink for RecordingControlRequestSink {
+    fn submit(&self, request: ControlWriteRequest) -> usize {
+        let mut requests = self
+            .requests
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        match request {
+            ControlWriteRequest::Shutdown => {
+                requests.shutdown_requested = true;
+                1
+            }
+            ControlWriteRequest::Screenshot { path } => {
+                requests.screenshot_request = Some(path);
+                1
+            }
+            ControlWriteRequest::CodeOfConduct(request) => {
+                requests.code_of_conduct_requests.push(request);
+                requests.code_of_conduct_requests.len()
+            }
+            ControlWriteRequest::Net(request) => {
+                requests.net_requests.push(request);
+                requests.net_requests.len()
+            }
+            ControlWriteRequest::Input(request) => {
+                requests.input_requests.push(request);
+                requests.input_requests.len()
+            }
+        }
+    }
+}
+
+struct TestControlState {
+    control: ControlState,
+    requests: Arc<RecordingControlRequestSink>,
+}
+
+impl Deref for TestControlState {
+    type Target = ControlState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.control
+    }
+}
+
+fn test_control_state() -> TestControlState {
+    let requests = Arc::new(RecordingControlRequestSink::default());
+    let control = ControlState::new("test", SharedControlRequests::new(requests.clone()));
+    TestControlState { control, requests }
+}
+
 fn publish_test_world(state: &ControlState, world: WorldStore) {
     let generation = state.snapshot.load().generation.saturating_add(1);
     state.world.store(Arc::new(ControlWorldSnapshot {
@@ -78,7 +150,7 @@ fn publish_test_world(state: &ControlState, world: WorldStore) {
 
 #[test]
 fn app_quit_queues_shutdown_for_the_simulation_owner() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "app.quit".to_string(),
@@ -94,7 +166,7 @@ fn app_quit_queues_shutdown_for_the_simulation_owner() {
 
 #[test]
 fn app_status_reads_world_counters_from_world_store() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
@@ -131,7 +203,7 @@ fn app_status_reads_world_counters_from_world_store() {
 
 #[test]
 fn high_frequency_queries_match_the_published_world_generation() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let mut world = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
         height: 16,
@@ -191,7 +263,7 @@ fn high_frequency_queries_match_the_published_world_generation() {
 
 #[test]
 fn control_reads_retry_until_runtime_and_world_generations_match() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     state.world.store(Arc::new(ControlWorldSnapshot {
         generation: 1,
         world: Arc::new(WorldStore::new()),
@@ -238,7 +310,7 @@ fn dispatcher_read_methods_have_no_live_world_or_blocking_pool_path() {
 
 #[test]
 fn audio_counters_reads_runtime_projection() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     state.snapshot.rcu(|current| {
         let mut next = (**current).clone();
         next.audio = AudioCounters {
@@ -288,7 +360,7 @@ fn audio_counters_reads_runtime_projection() {
 
 #[test]
 fn registries_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.record_registry_data(RegistryData {
@@ -364,7 +436,7 @@ fn registries_reads_canonical_world_state() {
 
 #[test]
 fn level_state_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_login(&ProtocolPlayLogin {
@@ -448,7 +520,7 @@ fn level_state_reads_canonical_world_state() {
 
 #[test]
 fn renderer_screenshot_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "renderer.screenshot".to_string(),
@@ -476,7 +548,7 @@ fn renderer_screenshot_queues_request() {
 
 #[test]
 fn net_accept_code_of_conduct_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.accept_code_of_conduct".to_string(),
@@ -495,7 +567,7 @@ fn net_accept_code_of_conduct_queues_request() {
 
 #[test]
 fn net_accept_code_of_conduct_can_queue_persistent_accept() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.accept_code_of_conduct".to_string(),
@@ -516,7 +588,7 @@ fn net_accept_code_of_conduct_can_queue_persistent_accept() {
 
 #[test]
 fn net_decline_code_of_conduct_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.decline_code_of_conduct".to_string(),
@@ -535,7 +607,7 @@ fn net_decline_code_of_conduct_queues_request() {
 
 #[test]
 fn net_clear_code_of_conduct_acceptance_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.clear_code_of_conduct_acceptance".to_string(),
@@ -553,7 +625,7 @@ fn net_clear_code_of_conduct_acceptance_queues_request() {
 
 #[test]
 fn net_send_chat_command_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.send_chat_command".to_string(),
@@ -583,7 +655,7 @@ fn net_send_chat_command_queues_request() {
 
 #[test]
 fn net_request_command_suggestions_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.request_command_suggestions".to_string(),
@@ -614,7 +686,7 @@ fn net_request_command_suggestions_queues_request() {
 
 #[test]
 fn net_tag_query_block_entity_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.query_block_entity_tag".to_string(),
@@ -640,7 +712,7 @@ fn net_tag_query_block_entity_queues_request() {
 
 #[test]
 fn net_tag_query_block_entity_rejects_missing_or_non_integer_params() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_transaction = dispatch(
         ControlRequest {
             method: "net.query_block_entity_tag".to_string(),
@@ -671,7 +743,7 @@ fn net_tag_query_block_entity_rejects_missing_or_non_integer_params() {
 
 #[test]
 fn net_tag_query_entity_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.query_entity_tag".to_string(),
@@ -695,7 +767,7 @@ fn net_tag_query_entity_queues_request() {
 
 #[test]
 fn net_tag_query_entity_rejects_missing_or_non_integer_params() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_transaction = dispatch(
         ControlRequest {
             method: "net.query_entity_tag".to_string(),
@@ -739,7 +811,7 @@ fn net_tag_query_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_spectate_entity_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.spectate_entity".to_string(),
@@ -760,7 +832,7 @@ fn net_spectate_entity_queues_request() {
 
 #[test]
 fn net_spectate_entity_rejects_missing_or_non_integer_entity_id() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_entity_id = dispatch(
         ControlRequest {
             method: "net.spectate_entity".to_string(),
@@ -791,7 +863,7 @@ fn net_spectate_entity_rejects_missing_or_non_integer_entity_id() {
 
 #[test]
 fn net_teleport_to_entity_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let uuid = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
     let response = dispatch(
         ControlRequest {
@@ -813,7 +885,7 @@ fn net_teleport_to_entity_queues_request() {
 
 #[test]
 fn net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_uuid = dispatch(
         ControlRequest {
             method: "net.teleport_to_entity".to_string(),
@@ -868,7 +940,7 @@ fn net_spectate_and_teleport_to_entity_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_change_difficulty_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
@@ -887,7 +959,7 @@ fn net_change_difficulty_queues_request() {
 
 #[test]
 fn net_change_difficulty_rejects_missing_or_invalid_difficulty() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_difficulty = dispatch(
         ControlRequest {
             method: "net.change_difficulty".to_string(),
@@ -928,7 +1000,7 @@ fn net_change_difficulty_rejects_missing_or_invalid_difficulty() {
 
 #[test]
 fn net_change_game_mode_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let game_modes = ["survival", "creative", "adventure", "spectator"];
 
     for (index, game_mode) in game_modes.iter().enumerate() {
@@ -956,7 +1028,7 @@ fn net_change_game_mode_queues_request() {
 
 #[test]
 fn net_change_game_mode_rejects_missing_non_string_or_invalid_game_mode() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_game_mode = dispatch(
         ControlRequest {
             method: "net.change_game_mode".to_string(),
@@ -1010,7 +1082,7 @@ fn net_change_game_mode_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_lock_difficulty_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.lock_difficulty".to_string(),
@@ -1029,7 +1101,7 @@ fn net_lock_difficulty_queues_request() {
 
 #[test]
 fn net_lock_difficulty_rejects_missing_or_non_bool_locked() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_locked = dispatch(
         ControlRequest {
             method: "net.lock_difficulty".to_string(),
@@ -1075,7 +1147,7 @@ fn net_difficulty_counters_deserialize_with_defaults() {
 
 #[test]
 fn net_set_held_slot_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_held_slot".to_string(),
@@ -1112,7 +1184,7 @@ fn net_set_held_slot_queues_request() {
 
 #[test]
 fn net_set_flying_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_flying".to_string(),
@@ -1140,7 +1212,7 @@ fn net_set_flying_queues_request() {
 
 #[test]
 fn input_focus_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "input.focus".to_string(),
@@ -1167,7 +1239,7 @@ fn input_focus_queues_request() {
 
 #[test]
 fn input_key_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "input.key".to_string(),
@@ -1207,7 +1279,7 @@ fn input_key_queues_request() {
 
 #[test]
 fn input_mouse_button_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "input.mouse_button".to_string(),
@@ -1246,7 +1318,7 @@ fn input_mouse_button_queues_request() {
 
 #[test]
 fn input_mouse_tap_queues_atomic_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "input.mouse_tap".to_string(),
@@ -1276,7 +1348,7 @@ fn input_mouse_tap_queues_atomic_request() {
 
 #[test]
 fn input_look_delta_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "input.look_delta".to_string(),
@@ -1313,7 +1385,7 @@ fn input_look_delta_queues_request() {
 
 #[test]
 fn net_perform_respawn_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.perform_respawn".to_string(),
@@ -1332,7 +1404,7 @@ fn net_perform_respawn_queues_request() {
 
 #[test]
 fn net_client_command_requests_queue_requests() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
 
     let stats = dispatch(
         ControlRequest {
@@ -1363,7 +1435,7 @@ fn net_client_command_requests_queue_requests() {
 
 #[test]
 fn net_place_recipe_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.place_recipe".to_string(),
@@ -1395,7 +1467,7 @@ fn net_place_recipe_queues_request() {
 
 #[test]
 fn net_recipe_book_commands_queue_requests() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let change_response = dispatch(
         ControlRequest {
             method: "net.change_recipe_book_settings".to_string(),
@@ -1460,7 +1532,7 @@ fn net_recipe_book_commands_queue_requests() {
 
 #[test]
 fn net_rename_item_queues_request_and_validates_name() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.rename_item".to_string(),
@@ -1500,7 +1572,7 @@ fn net_rename_item_queues_request_and_validates_name() {
 
 #[test]
 fn net_edit_book_queues_unsigned_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1526,7 +1598,7 @@ fn net_edit_book_queues_unsigned_request() {
 
 #[test]
 fn net_edit_book_queues_signed_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1574,7 +1646,7 @@ fn net_edit_book_queues_signed_request() {
 
 #[test]
 fn net_edit_book_rejects_missing_or_non_array_pages() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_pages = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1597,7 +1669,7 @@ fn net_edit_book_rejects_missing_or_non_array_pages() {
 
 #[test]
 fn net_edit_book_rejects_too_many_pages() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1612,7 +1684,7 @@ fn net_edit_book_rejects_too_many_pages() {
 
 #[test]
 fn net_edit_book_rejects_oversized_page() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1630,7 +1702,7 @@ fn net_edit_book_rejects_oversized_page() {
 
 #[test]
 fn net_edit_book_rejects_oversized_title() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.edit_book".to_string(),
@@ -1649,7 +1721,7 @@ fn net_edit_book_rejects_oversized_title() {
 
 #[test]
 fn net_edit_book_limits_count_utf16_code_units() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     for params in [
         json!({
             "slot": 3,
@@ -1675,7 +1747,7 @@ fn net_edit_book_limits_count_utf16_code_units() {
 
 #[test]
 fn net_update_sign_queues_request_and_validates_lines() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.update_sign".to_string(),
@@ -1741,7 +1813,7 @@ fn net_update_sign_queues_request_and_validates_lines() {
 
 #[test]
 fn net_advancements_open_tab_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
@@ -1762,7 +1834,7 @@ fn net_advancements_open_tab_queues_request() {
 
 #[test]
 fn net_advancements_open_tab_accepts_default_namespace_path() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
@@ -1783,7 +1855,7 @@ fn net_advancements_open_tab_accepts_default_namespace_path() {
 
 #[test]
 fn net_advancements_close_screen_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.close_advancements_screen".to_string(),
@@ -1802,7 +1874,7 @@ fn net_advancements_close_screen_queues_request() {
 
 #[test]
 fn net_advancements_open_tab_rejects_invalid_tab() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     for tab in [
         "",
         "minecraft:",
@@ -1828,7 +1900,7 @@ fn net_advancements_open_tab_rejects_invalid_tab() {
 
 #[test]
 fn net_advancements_open_tab_requires_tab() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let missing_tab = dispatch(
         ControlRequest {
             method: "net.open_advancements_tab".to_string(),
@@ -1851,7 +1923,7 @@ fn net_advancements_open_tab_requires_tab() {
 
 #[test]
 fn net_select_trade_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.select_trade".to_string(),
@@ -1888,7 +1960,7 @@ fn net_select_trade_queues_request() {
 
 #[test]
 fn net_set_beacon_queues_both_effects() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
@@ -1910,7 +1982,7 @@ fn net_set_beacon_queues_both_effects() {
 
 #[test]
 fn net_set_beacon_queues_null_and_missing_effects_as_none() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
@@ -1931,7 +2003,7 @@ fn net_set_beacon_queues_null_and_missing_effects_as_none() {
 
 #[test]
 fn net_set_beacon_rejects_non_integer_effects() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_beacon".to_string(),
@@ -1963,7 +2035,7 @@ fn net_set_beacon_counter_deserializes_with_default() {
 
 #[test]
 fn net_set_creative_mode_slot_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
@@ -1997,7 +2069,7 @@ fn net_set_creative_mode_slot_queues_request() {
 
 #[test]
 fn net_set_creative_mode_slot_defaults_missing_item_to_empty_drop() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
@@ -2020,7 +2092,7 @@ fn net_set_creative_mode_slot_defaults_missing_item_to_empty_drop() {
 
 #[test]
 fn net_set_creative_mode_slot_rejects_invalid_item_stack() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.set_creative_mode_slot".to_string(),
@@ -2059,7 +2131,7 @@ fn net_set_creative_mode_slot_counter_deserializes_with_default() {
 
 #[test]
 fn net_select_bundle_item_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.select_bundle_item".to_string(),
@@ -2123,7 +2195,7 @@ fn net_select_bundle_item_queues_request() {
 
 #[test]
 fn net_container_button_click_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.container_button_click".to_string(),
@@ -2154,7 +2226,7 @@ fn net_container_button_click_queues_request() {
 
 #[test]
 fn net_container_click_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.container_click".to_string(),
@@ -2226,7 +2298,7 @@ fn net_container_click_queues_request() {
 
 #[test]
 fn net_container_click_slot_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.container_click_slot".to_string(),
@@ -2267,7 +2339,7 @@ fn net_container_click_slot_queues_request() {
 
 #[test]
 fn net_container_close_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.container_close".to_string(),
@@ -2295,7 +2367,7 @@ fn net_container_close_queues_request() {
 
 #[test]
 fn net_container_slot_state_changed_queues_request() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let response = dispatch(
         ControlRequest {
             method: "net.container_slot_state_changed".to_string(),
@@ -2327,7 +2399,7 @@ fn net_container_slot_state_changed_queues_request() {
 
 #[test]
 fn client_hud_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_system_chat(SystemChat::plain("Server restart soon", false));
@@ -2366,7 +2438,7 @@ fn client_hud_reads_canonical_world_state() {
 
 #[test]
 fn client_inventory_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         let mut locked_stack = item_stack(43, 2);
@@ -2458,7 +2530,7 @@ fn client_inventory_reads_canonical_world_state() {
 
 #[test]
 fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_open_screen(OpenScreen {
@@ -2564,7 +2636,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
 
 #[test]
 fn client_recipe_book_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_recipe_book_add(RecipeBookAdd {
@@ -2629,7 +2701,7 @@ fn client_recipe_book_reads_canonical_world_state() {
 
 #[test]
 fn client_recipes_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_update_recipes(UpdateRecipes {
@@ -2683,7 +2755,7 @@ fn client_recipes_reads_canonical_world_state() {
 
 #[test]
 fn client_chat_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_disguised_chat(ProtocolDisguisedChat {
@@ -2750,7 +2822,7 @@ fn client_chat_reads_canonical_world_state() {
 
 #[test]
 fn client_combat_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_player_combat_kill(PlayerCombatKill {
@@ -2778,7 +2850,7 @@ fn client_combat_reads_canonical_world_state() {
 
 #[test]
 fn client_cooldowns_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_cooldown(Cooldown {
@@ -2828,7 +2900,7 @@ fn client_cooldowns_reads_canonical_world_state() {
 
 #[test]
 fn client_effects_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_explosion(ProtocolExplosion {
@@ -2929,7 +3001,7 @@ fn client_effects_reads_canonical_world_state() {
 
 #[test]
 fn client_stats_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_award_stats(AwardStats {
@@ -2992,7 +3064,7 @@ fn client_stats_reads_canonical_world_state() {
 
 #[test]
 fn client_waypoints_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let waypoint_id = uuid::Uuid::from_u128(0x00112233445566778899aabbccddeeff);
     {
         let mut store = WorldStore::new();
@@ -3043,7 +3115,7 @@ fn client_waypoints_reads_canonical_world_state() {
 
 #[test]
 fn client_ui_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_low_disk_space_warning();
@@ -3115,7 +3187,7 @@ fn client_ui_reads_canonical_world_state() {
 
 #[test]
 fn client_audio_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_sound_event(SoundEvent {
@@ -3186,7 +3258,7 @@ fn client_audio_reads_canonical_world_state() {
 
 #[test]
 fn client_debug_game_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_debug_block_value(DebugBlockValue {
@@ -3247,7 +3319,7 @@ fn client_debug_game_reads_canonical_world_state() {
 
 #[test]
 fn client_debug_query_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_tag_query(TagQuery {
@@ -3275,7 +3347,7 @@ fn client_debug_query_reads_canonical_world_state() {
 
 #[test]
 fn client_command_suggestions_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_custom_chat_completions(CustomChatCompletions {
@@ -3308,7 +3380,7 @@ fn client_command_suggestions_reads_canonical_world_state() {
 
 #[test]
 fn client_features_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_update_enabled_features(UpdateEnabledFeatures {
@@ -3338,7 +3410,7 @@ fn client_features_reads_canonical_world_state() {
 
 #[test]
 fn client_known_packs_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_select_known_packs(
@@ -3370,7 +3442,7 @@ fn client_known_packs_reads_canonical_world_state() {
 
 #[test]
 fn apply_diagnostics_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.record_apply_error("light_update", "invalid light payload");
@@ -3400,7 +3472,7 @@ fn apply_diagnostics_reads_canonical_world_state() {
 
 #[test]
 fn command_tree_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_commands(command_tree("say"));
@@ -3427,7 +3499,7 @@ fn command_tree_reads_canonical_world_state() {
 
 #[test]
 fn last_block_changed_ack_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
@@ -3448,7 +3520,7 @@ fn last_block_changed_ack_reads_canonical_world_state() {
 
 #[test]
 fn client_block_events_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         assert!(store.apply_block_destruction(BlockDestruction {
@@ -3509,7 +3581,7 @@ fn client_block_events_reads_canonical_world_state() {
 
 #[test]
 fn world_border_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_initialize_border(InitializeBorder {
@@ -3558,7 +3630,7 @@ fn world_border_reads_canonical_world_state() {
 
 #[test]
 fn client_advancements_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_update_advancements(UpdateAdvancements {
@@ -3599,7 +3671,7 @@ fn client_advancements_reads_canonical_world_state() {
 
 #[test]
 fn client_local_player_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_player_abilities(PlayerAbilities {
@@ -3654,7 +3726,7 @@ fn client_local_player_reads_canonical_world_state() {
 
 #[test]
 fn client_player_info_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     let profile_id = Uuid::from_u128(0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);
     {
         let mut store = WorldStore::new();
@@ -3728,7 +3800,7 @@ fn client_player_info_reads_canonical_world_state() {
 
 #[test]
 fn client_scoreboard_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         assert!(store.apply_set_objective(SetObjective {
@@ -3808,7 +3880,7 @@ fn client_scoreboard_reads_canonical_world_state() {
 
 #[test]
 fn client_maps_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         assert!(store.apply_map_item_data(MapItemData {
@@ -3865,7 +3937,7 @@ fn client_maps_reads_canonical_world_state() {
 
 #[test]
 fn last_map_color_patch_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_map_item_data(MapItemData {
@@ -3909,7 +3981,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
 
 #[test]
 fn level_clock_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_world_time(PlayTime {
@@ -3955,7 +4027,7 @@ fn level_clock_reads_canonical_world_state() {
 
 #[test]
 fn server_presentation_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_transfer(Transfer {
@@ -4048,7 +4120,7 @@ fn server_presentation_reads_canonical_world_state() {
 
 #[test]
 fn probes_chunk_and_block_from_world_store() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -4114,7 +4186,7 @@ fn probes_chunk_and_block_from_world_store() {
 
 #[test]
 fn chunk_view_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.insert_decoded_chunk(single_section_chunk());
@@ -4145,7 +4217,7 @@ fn chunk_view_reads_canonical_world_state() {
 
 #[test]
 fn probes_entity_transforms_from_world_store_components() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(7, 3));
@@ -4223,7 +4295,7 @@ fn probes_entity_transforms_from_world_store_components() {
 
 #[test]
 fn last_projectile_power_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
 
     let empty_response = dispatch(
         ControlRequest {
@@ -4282,7 +4354,7 @@ fn last_projectile_power_reads_canonical_world_state() {
 
 #[test]
 fn probe_entity_status_reads_canonical_world_state() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(7, 7));
@@ -4359,7 +4431,7 @@ fn probe_entity_status_reads_canonical_world_state() {
 
 #[test]
 fn entity_pick_targets_probe_exposes_ender_dragon_part_targets() {
-    let state = ControlState::new("test");
+    let state = test_control_state();
     {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(100, 43));

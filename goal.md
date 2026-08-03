@@ -422,26 +422,10 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。唯一 active 工程合同是 `arch-control-mailbox-single-path`：不改变
-control command 行为，删除兼容 mutex queue 与 sink 后装边界，使 simulation mailbox 成为
-唯一 production 写入 owner。
-
-- canonical input 是一个 `ControlWriteRequest`；公开集成固定为
-  `SharedControlRequests::new(Arc<dyn ControlRequestSink>)` 与
-  `ControlState::new(version, requests)`，control → native 单向依赖，sink 构造后不可替换。
-- native `SimulationMailbox` 继续在同一 mutex 内分配全局 sequence；保持 producer FIFO、
-  barrier drain、软阈值 tail coalescing、pending-depth 返回和离散命令不静默丢失。
-  当前缺少硬 retained budget 是独立 parity gap，本纯架构 slice 不改变它。
-- simulation apply 直接把单个 code-of-conduct/net/input request 交给现有 handler，不再构造
-  临时 `SharedControlRequests` shadow queue。shutdown 与 screenshot 保持同一 ordered command。
-- 删除 public `ControlRequests`、`Default/lock/install_sink`、compatibility state/export 和全部
-  production 旧调用；测试改用 test-local recording sink/queue，不向公共 API 泄漏测试结构。
-- 阶段：冻结 constructor→迁移 control/native tests→直连 simulation handler→删除旧路径→
-  reverse guard/Wiki/ledger 收口。focused tests 覆盖五类 submit、全局 FIFO/barrier/coalescing、
-  handler 决策等价、shutdown、pending depth 与旧符号/production caller 为零。
-- 受影响 control/native focused tests、docs lint、fmt、diff check、workspace check 后正常提交；
-  最终 full gate 并刷新 live playable。安全停止点仅为旧 production 路径已删、测试可构建的
-  干净 checkpoint；只有现有 Wayland/server runner 可复现失败且代码无法消除才算 blocker。
+状态：`active`。当前处于候选关闭后的 gate checkpoint；本 checkpoint 不启动另一项实现。
+`HEAD` 通过 full gate 与适用 live playable 后，才从唯一 ledger 的剩余候选按 rank 冻结下一份
+active 工程合同。若 gate 失败则只对当前提交 fix-forward；不存在把内部失败改记为外部 blocker
+的停止路径。
 
 ### P1：可玩 Session 端到端门禁
 

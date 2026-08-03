@@ -5,9 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bbb_control::{
-    CodeOfConductControlRequest, ControlWriteRequest, InputControlRequest, SharedControlRequests,
-};
+use bbb_control::{CodeOfConductControlRequest, ControlWriteRequest, InputControlRequest};
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
@@ -53,11 +51,11 @@ use crate::{
     },
     resource_pack_runtime::ServerResourcePackRuntime,
     runtime::{
-        handle_dialog_cursor_moved_with_measurer,
+        apply_code_of_conduct_request, apply_control_input_request_with_effects,
+        apply_control_net_request, handle_dialog_cursor_moved_with_measurer,
         handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
         handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
-        handle_dialog_text_input_with_measurer, pump_control_input_requests_with_effects,
-        pump_control_net_requests, request_net_disconnect, DialogTextMeasurer,
+        handle_dialog_text_input_with_measurer, request_net_disconnect, DialogTextMeasurer,
     },
 };
 
@@ -653,7 +651,7 @@ impl SimulationInputRuntime {
                 &self.text_measurements,
             );
             if let Some(request) = overlay_input.request {
-                self.apply_control_request(Some(request), None, None, context);
+                self.apply_code_of_conduct_control(request, context);
             }
             self.request_cursor_capture(false, context.platform);
             return;
@@ -1284,7 +1282,7 @@ impl SimulationInputRuntime {
                 &self.text_measurements,
             );
             if let Some(request) = overlay_input.request {
-                self.apply_control_request(Some(request), None, None, context);
+                self.apply_code_of_conduct_control(request, context);
             }
             self.request_cursor_capture(false, context.platform);
             return;
@@ -1987,42 +1985,41 @@ impl SimulationInputRuntime {
                 .platform
                 .submit(PlatformEffect::Screenshot(path.into())),
             ControlWriteRequest::CodeOfConduct(request) => {
-                self.apply_control_request(Some(request), None, None, context);
+                self.apply_code_of_conduct_control(request, context);
             }
             ControlWriteRequest::Net(request) => {
-                self.apply_control_request(None, Some(request), None, context);
+                self.apply_net_control(request, context);
             }
             ControlWriteRequest::Input(request) => {
-                self.apply_control_request(None, None, Some(request), context);
+                self.apply_input_control(request, context);
             }
         }
     }
 
-    fn apply_control_request(
+    fn apply_code_of_conduct_control(
         &mut self,
-        code_of_conduct: Option<CodeOfConductControlRequest>,
-        net: Option<bbb_control::NetControlRequest>,
-        input_request: Option<InputControlRequest>,
+        request: CodeOfConductControlRequest,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
-        // The individual request handlers remain shared with their focused
-        // tests while the external producer has already joined this mailbox.
-        let requests = SharedControlRequests::default();
-        {
-            let mut pending = requests
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            pending.code_of_conduct_requests.extend(code_of_conduct);
-            pending.net_requests.extend(net);
-            pending.input_requests.extend(input_request);
-        }
+        apply_code_of_conduct_request(
+            request,
+            context.net_commands,
+            context.world,
+            context.code_of_conduct.as_deref_mut(),
+        );
+    }
+
+    fn apply_net_control(
+        &mut self,
+        request: bbb_control::NetControlRequest,
+        context: &mut SimulationInputContext<'_, '_, '_>,
+    ) {
         let game_rules_was_open = context.world.game_rules_screen().is_some();
-        pump_control_net_requests(
-            &requests,
+        apply_control_net_request(
+            request,
             context.net_commands,
             context.net_counters,
             context.world,
-            context.code_of_conduct.as_deref_mut(),
         );
         if !game_rules_was_open && context.world.game_rules_screen().is_some() {
             release_active_input(
@@ -2034,8 +2031,15 @@ impl SimulationInputRuntime {
             context.input.sync_game_rules_screen(context.world);
             self.request_cursor_capture(false, context.platform);
         }
-        pump_control_input_requests_with_effects(
-            &requests,
+    }
+
+    fn apply_input_control(
+        &mut self,
+        request: InputControlRequest,
+        context: &mut SimulationInputContext<'_, '_, '_>,
+    ) {
+        apply_control_input_request_with_effects(
+            request,
             context.input,
             context.first_person_hand_presentation,
             context.net_counters,

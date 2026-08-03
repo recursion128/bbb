@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use bbb_control::{AudioCounters, ControlState, NetCounters};
+use bbb_control::{AudioCounters, ControlState, NetCounters, SharedControlRequests};
 use bbb_world::{ChatPresentationConfig, ChatVisibilityState, WorldStore};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 use winit::{
@@ -460,22 +460,22 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut pack_roots = load_pack_roots(&args)?;
     let base_pack_roots = pack_roots.clone();
     let known_packs_manager = load_known_packs_manager(pack_roots.as_ref());
-    let control = ControlState::new(format!(
-        "bbb-native {} / protocol {}",
-        bbb_protocol::MC_VERSION,
-        bbb_protocol::PROTOCOL_VERSION
-    ));
+    let simulation_mailbox = SimulationMailbox::default();
+    let control = ControlState::new(
+        format!(
+            "bbb-native {} / protocol {}",
+            bbb_protocol::MC_VERSION,
+            bbb_protocol::PROTOCOL_VERSION
+        ),
+        SharedControlRequests::new(std::sync::Arc::new(simulation_mailbox.clone())),
+    );
     let snapshot = control.snapshot.clone();
     let published_world = control.world.clone();
-    let simulation_mailbox = SimulationMailbox::default();
     let services_block_lists = ServicesBlockListRuntime::new(
         runtime.handle().clone(),
         simulation_mailbox.clone(),
         services_block_list_client_from_args(&args)?,
     );
-    control
-        .requests
-        .install_sink(std::sync::Arc::new(simulation_mailbox.clone()));
     let mut world = WorldStore::new();
     world.set_local_player_auto_jump_enabled(args.client_auto_jump);
     world.set_tutorial_step(args.tutorial_step.into());

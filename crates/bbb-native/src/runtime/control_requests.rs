@@ -3,7 +3,7 @@ use bbb_control::{
     CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
     GameModeControl, HashedComponentPatchControl, HashedStackControl, InputControlRequest,
     InputKeyControl, InputMouseButtonControl, NetControlRequest, NetCounters,
-    RecipeBookTypeControl, SharedControlRequests,
+    RecipeBookTypeControl,
 };
 use bbb_net::NetCommand;
 #[cfg(test)]
@@ -59,42 +59,9 @@ use crate::{
 /// window input before those handlers run, so its visibility drops synthetic
 /// input here too. Look deltas mirror the real mouse-motion gates; a captured
 /// cursor is implied for control-driven sessions.
-#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn pump_control_input_requests(
-    control_requests: &SharedControlRequests,
-    input: &mut ClientInputState,
-    counters: &mut NetCounters,
-    world: &mut WorldStore,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    item_runtime: Option<&NativeItemRuntime>,
-    code_of_conduct_overlay_visible: bool,
-    surface_size: PhysicalSize<u32>,
-    entity_partial_tick: f32,
-) {
-    let mut random = LevelEventSoundRandomState::default();
-    let mut audio_events = None;
-    let mut first_person_hand_presentation =
-        crate::item_models::FirstPersonHandPresentation::default();
-    pump_control_input_requests_with_effects(
-        control_requests,
-        input,
-        &mut first_person_hand_presentation,
-        counters,
-        world,
-        net_commands,
-        item_runtime,
-        code_of_conduct_overlay_visible,
-        surface_size,
-        entity_partial_tick,
-        &mut random,
-        &mut audio_events,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn pump_control_input_requests_with_effects(
-    control_requests: &SharedControlRequests,
+pub(crate) fn apply_control_input_request_with_effects(
+    request: InputControlRequest,
     input: &mut ClientInputState,
     first_person_hand_presentation: &mut crate::item_models::FirstPersonHandPresentation,
     counters: &mut NetCounters,
@@ -107,59 +74,78 @@ pub(crate) fn pump_control_input_requests_with_effects(
     level_random: &mut LevelEventSoundRandomState,
     audio_events: &mut Option<&mut dyn AudioEventSink>,
 ) {
-    let input_requests = control_requests
-        .lock()
-        .map(|mut guard| std::mem::take(&mut guard.input_requests))
-        .unwrap_or_default();
     if code_of_conduct_overlay_visible {
         return;
     }
-    for request in input_requests {
-        match request {
-            InputControlRequest::Focus { focused } => {
-                handle_focus_change(input, world, counters, net_commands, focused);
+    match request {
+        InputControlRequest::Focus { focused } => {
+            handle_focus_change(input, world, counters, net_commands, focused);
+        }
+        InputControlRequest::Key { key, pressed } => {
+            let state = if pressed {
+                ElementState::Pressed
+            } else {
+                ElementState::Released
+            };
+            handle_key_input_with_item_runtime(
+                input,
+                counters,
+                world,
+                net_commands,
+                item_runtime,
+                PhysicalKey::Code(input_key_code(key)),
+                state,
+                surface_size,
+                &crate::input::FallbackTextMeasurer,
+                None,
+            );
+        }
+        InputControlRequest::LookDelta { dx, dy } => {
+            if crate::runtime_wants_cursor(input, world) || input.command_entry_is_active() {
+                return;
             }
-            InputControlRequest::Key { key, pressed } => {
-                let state = if pressed {
-                    ElementState::Pressed
-                } else {
-                    ElementState::Released
-                };
-                handle_key_input_with_item_runtime(
-                    input,
-                    counters,
-                    world,
-                    net_commands,
-                    item_runtime,
-                    PhysicalKey::Code(input_key_code(key)),
-                    state,
-                    surface_size,
-                    &crate::input::FallbackTextMeasurer,
-                    None,
-                );
+            handle_mouse_motion(input, (dx, dy));
+        }
+        InputControlRequest::MouseButton { button, pressed } => {
+            // Screens own the cursor through their dedicated handlers (and
+            // the container path has its own net.container_* surface), so
+            // synthetic gameplay clicks only replay while the world owns
+            // the cursor -- mirroring the real captured-cursor click path.
+            if super::input_screen_is_open(input, world)
+                || input.command_entry_is_active()
+                || input.debug_game_mode_switcher_is_open()
+            {
+                return;
             }
-            InputControlRequest::LookDelta { dx, dy } => {
-                if crate::runtime_wants_cursor(input, world) || input.command_entry_is_active() {
-                    continue;
-                }
-                handle_mouse_motion(input, (dx, dy));
+            let state = if pressed {
+                ElementState::Pressed
+            } else {
+                ElementState::Released
+            };
+            handle_mouse_input_at_partial_tick_with_effects_and_presentation(
+                input,
+                first_person_hand_presentation,
+                world,
+                counters,
+                net_commands,
+                input_mouse_button(button),
+                state,
+                entity_partial_tick,
+                level_random,
+                audio_events,
+            );
+        }
+        InputControlRequest::MouseTap { button } => {
+            // A tap is one simulation command: both edges are replayed
+            // before tick advancement can interpret the press as a held
+            // button and repeat a creative-mode destroy or use action.
+            if super::input_screen_is_open(input, world)
+                || input.command_entry_is_active()
+                || input.debug_game_mode_switcher_is_open()
+            {
+                return;
             }
-            InputControlRequest::MouseButton { button, pressed } => {
-                // Screens own the cursor through their dedicated handlers (and
-                // the container path has its own net.container_* surface), so
-                // synthetic gameplay clicks only replay while the world owns
-                // the cursor -- mirroring the real captured-cursor click path.
-                if super::input_screen_is_open(input, world)
-                    || input.command_entry_is_active()
-                    || input.debug_game_mode_switcher_is_open()
-                {
-                    continue;
-                }
-                let state = if pressed {
-                    ElementState::Pressed
-                } else {
-                    ElementState::Released
-                };
+            for state in [ElementState::Pressed, ElementState::Released] {
                 handle_mouse_input_at_partial_tick_with_effects_and_presentation(
                     input,
                     first_person_hand_presentation,
@@ -172,31 +158,6 @@ pub(crate) fn pump_control_input_requests_with_effects(
                     level_random,
                     audio_events,
                 );
-            }
-            InputControlRequest::MouseTap { button } => {
-                // A tap is one simulation command: both edges are replayed
-                // before tick advancement can interpret the press as a held
-                // button and repeat a creative-mode destroy or use action.
-                if super::input_screen_is_open(input, world)
-                    || input.command_entry_is_active()
-                    || input.debug_game_mode_switcher_is_open()
-                {
-                    continue;
-                }
-                for state in [ElementState::Pressed, ElementState::Released] {
-                    handle_mouse_input_at_partial_tick_with_effects_and_presentation(
-                        input,
-                        first_person_hand_presentation,
-                        world,
-                        counters,
-                        net_commands,
-                        input_mouse_button(button),
-                        state,
-                        entity_partial_tick,
-                        level_random,
-                        audio_events,
-                    );
-                }
             }
         }
     }
@@ -335,316 +296,288 @@ fn protocol_game_mode(game_mode: GameModeControl) -> GameType {
     }
 }
 
-pub(crate) fn pump_control_net_requests(
-    control_requests: &SharedControlRequests,
+pub(crate) fn apply_control_net_request(
+    request: NetControlRequest,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     counters: &mut NetCounters,
     world: &mut WorldStore,
-    code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) {
-    let (requests, net_requests) = control_requests
-        .lock()
-        .map(|mut guard| {
-            (
-                std::mem::take(&mut guard.code_of_conduct_requests),
-                std::mem::take(&mut guard.net_requests),
-            )
-        })
-        .unwrap_or_default();
-
-    for request in net_requests {
-        match request {
-            NetControlRequest::ChangeDifficulty { difficulty } => {
-                queue_change_difficulty_command(
-                    counters,
-                    net_commands,
-                    ChangeDifficultyCommand {
-                        difficulty: protocol_difficulty(difficulty),
-                    },
-                );
-            }
-            NetControlRequest::ChangeGameMode { game_mode } => {
-                queue_change_game_mode_command(
-                    counters,
-                    net_commands,
-                    ChangeGameModeCommand {
-                        game_mode: protocol_game_mode(game_mode),
-                    },
-                );
-            }
-            NetControlRequest::LockDifficulty { locked } => {
-                queue_lock_difficulty_command(
-                    counters,
-                    net_commands,
-                    LockDifficultyCommand { locked },
-                );
-            }
-            NetControlRequest::SetHeldSlot { slot } => {
-                select_hotbar_slot(counters, world, net_commands, slot);
-            }
-            NetControlRequest::SetFlying { flying } => {
-                queue_player_abilities_command(counters, world, net_commands, flying);
-            }
-            NetControlRequest::PerformRespawn => {
-                queue_perform_respawn_command(counters, net_commands);
-            }
-            NetControlRequest::RequestStats => {
-                queue_request_stats_command(counters, net_commands);
-            }
-            NetControlRequest::RequestGameRuleValues => {
-                if world.game_rules_screen().is_none()
-                    && world.local_player_has_gamemaster_permission()
-                {
-                    if let Some(container_id) = world.open_container_id() {
-                        world.close_local_container(container_id);
-                        queue_container_close_request_command(counters, net_commands, container_id);
-                    }
-                    if world.open_game_rules_screen() {
-                        queue_request_game_rule_values_command(counters, net_commands);
-                    }
+    match request {
+        NetControlRequest::ChangeDifficulty { difficulty } => {
+            queue_change_difficulty_command(
+                counters,
+                net_commands,
+                ChangeDifficultyCommand {
+                    difficulty: protocol_difficulty(difficulty),
+                },
+            );
+        }
+        NetControlRequest::ChangeGameMode { game_mode } => {
+            queue_change_game_mode_command(
+                counters,
+                net_commands,
+                ChangeGameModeCommand {
+                    game_mode: protocol_game_mode(game_mode),
+                },
+            );
+        }
+        NetControlRequest::LockDifficulty { locked } => {
+            queue_lock_difficulty_command(counters, net_commands, LockDifficultyCommand { locked });
+        }
+        NetControlRequest::SetHeldSlot { slot } => {
+            select_hotbar_slot(counters, world, net_commands, slot);
+        }
+        NetControlRequest::SetFlying { flying } => {
+            queue_player_abilities_command(counters, world, net_commands, flying);
+        }
+        NetControlRequest::PerformRespawn => {
+            queue_perform_respawn_command(counters, net_commands);
+        }
+        NetControlRequest::RequestStats => {
+            queue_request_stats_command(counters, net_commands);
+        }
+        NetControlRequest::RequestGameRuleValues => {
+            if world.game_rules_screen().is_none() && world.local_player_has_gamemaster_permission()
+            {
+                if let Some(container_id) = world.open_container_id() {
+                    world.close_local_container(container_id);
+                    queue_container_close_request_command(counters, net_commands, container_id);
+                }
+                if world.open_game_rules_screen() {
+                    queue_request_game_rule_values_command(counters, net_commands);
                 }
             }
-            NetControlRequest::PlaceRecipe {
-                container_id,
-                recipe_index,
-                use_max_items,
-            } => {
-                queue_place_recipe_command(
-                    counters,
-                    net_commands,
-                    bbb_protocol::packets::PlaceRecipeCommand {
-                        container_id,
-                        recipe_index,
-                        use_max_items,
-                    },
-                );
-            }
-            NetControlRequest::ChangeRecipeBookSettings {
-                book_type,
-                open,
-                filtering,
-            } => {
-                queue_recipe_book_change_settings_command(
-                    counters,
-                    net_commands,
-                    bbb_protocol::packets::RecipeBookChangeSettingsCommand {
-                        book_type: protocol_recipe_book_type(book_type),
-                        open,
-                        filtering,
-                    },
-                );
-            }
-            NetControlRequest::MarkRecipeSeen { recipe_index } => {
-                queue_recipe_book_seen_recipe_command(
-                    counters,
-                    net_commands,
-                    bbb_protocol::packets::RecipeBookSeenRecipeCommand {
-                        recipe: bbb_protocol::packets::RecipeDisplayId {
-                            index: recipe_index,
-                        },
-                    },
-                );
-            }
-            NetControlRequest::EditBook { slot, pages, title } => {
-                queue_edit_book_command(counters, net_commands, EditBook { slot, pages, title });
-            }
-            NetControlRequest::RenameItem { name } => {
-                queue_rename_item_command(counters, net_commands, RenameItem { name });
-            }
-            NetControlRequest::OpenAdvancementsTab { tab } => {
-                queue_seen_advancements_command(
-                    counters,
-                    net_commands,
-                    SeenAdvancements::OpenedTab { tab },
-                );
-            }
-            NetControlRequest::CloseAdvancementsScreen => {
-                queue_seen_advancements_command(
-                    counters,
-                    net_commands,
-                    SeenAdvancements::ClosedScreen,
-                );
-            }
-            NetControlRequest::SelectTrade { item } => {
-                queue_select_trade_command(
-                    counters,
-                    net_commands,
-                    bbb_protocol::packets::SelectTradeCommand { item },
-                );
-            }
-            NetControlRequest::SetBeacon {
-                primary_effect,
-                secondary_effect,
-            } => {
-                queue_set_beacon_command(
-                    counters,
-                    net_commands,
-                    SetBeacon {
-                        primary_effect,
-                        secondary_effect,
-                    },
-                );
-            }
-            NetControlRequest::SetCreativeModeSlot(request) => {
-                queue_set_creative_mode_slot_command(
-                    counters,
-                    net_commands,
-                    protocol_creative_mode_slot(request),
-                );
-            }
-            NetControlRequest::SignUpdate {
-                x,
-                y,
-                z,
-                is_front_text,
-                lines,
-            } => {
-                queue_sign_update_command(
-                    counters,
-                    net_commands,
-                    bbb_protocol::packets::SignUpdate {
-                        pos: ProtocolBlockPos { x, y, z },
-                        is_front_text,
-                        lines,
-                    },
-                );
-            }
-            NetControlRequest::SelectBundleItem {
-                slot_id,
-                selected_item_index,
-            } => {
-                select_bundle_item(counters, world, net_commands, slot_id, selected_item_index);
-            }
-            NetControlRequest::ChatCommand { command } => {
-                queue_chat_command(counters, world, net_commands, command);
-            }
-            NetControlRequest::ChatMessage { message } => {
-                queue_chat_message_command(counters, world, net_commands, message);
-            }
-            NetControlRequest::CommandSuggestionRequest { id, command } => {
-                queue_command_suggestion_request(counters, net_commands, id, command);
-            }
-            NetControlRequest::QueryBlockEntityTag {
-                transaction_id,
-                x,
-                y,
-                z,
-            } => {
-                queue_block_entity_tag_query_command(
-                    counters,
-                    net_commands,
-                    BlockEntityTagQuery {
-                        transaction_id,
-                        pos: ProtocolBlockPos { x, y, z },
-                    },
-                );
-            }
-            NetControlRequest::QueryEntityTag {
-                transaction_id,
-                entity_id,
-            } => {
-                queue_entity_tag_query_command(
-                    counters,
-                    net_commands,
-                    EntityTagQuery {
-                        transaction_id,
-                        entity_id,
-                    },
-                );
-            }
-            NetControlRequest::SpectateEntity { entity_id } => {
-                queue_spectate_entity_command(counters, net_commands, SpectateEntity { entity_id });
-            }
-            NetControlRequest::TeleportToEntity { uuid } => {
-                queue_teleport_to_entity_command(counters, net_commands, TeleportToEntity { uuid });
-            }
-            NetControlRequest::ContainerButtonClick {
-                container_id,
-                button_id,
-            } => {
-                queue_container_button_click_command(
-                    counters,
-                    net_commands,
+        }
+        NetControlRequest::PlaceRecipe {
+            container_id,
+            recipe_index,
+            use_max_items,
+        } => {
+            queue_place_recipe_command(
+                counters,
+                net_commands,
+                bbb_protocol::packets::PlaceRecipeCommand {
                     container_id,
-                    button_id,
-                );
+                    recipe_index,
+                    use_max_items,
+                },
+            );
+        }
+        NetControlRequest::ChangeRecipeBookSettings {
+            book_type,
+            open,
+            filtering,
+        } => {
+            queue_recipe_book_change_settings_command(
+                counters,
+                net_commands,
+                bbb_protocol::packets::RecipeBookChangeSettingsCommand {
+                    book_type: protocol_recipe_book_type(book_type),
+                    open,
+                    filtering,
+                },
+            );
+        }
+        NetControlRequest::MarkRecipeSeen { recipe_index } => {
+            queue_recipe_book_seen_recipe_command(
+                counters,
+                net_commands,
+                bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+                    recipe: bbb_protocol::packets::RecipeDisplayId {
+                        index: recipe_index,
+                    },
+                },
+            );
+        }
+        NetControlRequest::EditBook { slot, pages, title } => {
+            queue_edit_book_command(counters, net_commands, EditBook { slot, pages, title });
+        }
+        NetControlRequest::RenameItem { name } => {
+            queue_rename_item_command(counters, net_commands, RenameItem { name });
+        }
+        NetControlRequest::OpenAdvancementsTab { tab } => {
+            queue_seen_advancements_command(
+                counters,
+                net_commands,
+                SeenAdvancements::OpenedTab { tab },
+            );
+        }
+        NetControlRequest::CloseAdvancementsScreen => {
+            queue_seen_advancements_command(counters, net_commands, SeenAdvancements::ClosedScreen);
+        }
+        NetControlRequest::SelectTrade { item } => {
+            queue_select_trade_command(
+                counters,
+                net_commands,
+                bbb_protocol::packets::SelectTradeCommand { item },
+            );
+        }
+        NetControlRequest::SetBeacon {
+            primary_effect,
+            secondary_effect,
+        } => {
+            queue_set_beacon_command(
+                counters,
+                net_commands,
+                SetBeacon {
+                    primary_effect,
+                    secondary_effect,
+                },
+            );
+        }
+        NetControlRequest::SetCreativeModeSlot(request) => {
+            queue_set_creative_mode_slot_command(
+                counters,
+                net_commands,
+                protocol_creative_mode_slot(request),
+            );
+        }
+        NetControlRequest::SignUpdate {
+            x,
+            y,
+            z,
+            is_front_text,
+            lines,
+        } => {
+            queue_sign_update_command(
+                counters,
+                net_commands,
+                bbb_protocol::packets::SignUpdate {
+                    pos: ProtocolBlockPos { x, y, z },
+                    is_front_text,
+                    lines,
+                },
+            );
+        }
+        NetControlRequest::SelectBundleItem {
+            slot_id,
+            selected_item_index,
+        } => {
+            select_bundle_item(counters, world, net_commands, slot_id, selected_item_index);
+        }
+        NetControlRequest::ChatCommand { command } => {
+            queue_chat_command(counters, world, net_commands, command);
+        }
+        NetControlRequest::ChatMessage { message } => {
+            queue_chat_message_command(counters, world, net_commands, message);
+        }
+        NetControlRequest::CommandSuggestionRequest { id, command } => {
+            queue_command_suggestion_request(counters, net_commands, id, command);
+        }
+        NetControlRequest::QueryBlockEntityTag {
+            transaction_id,
+            x,
+            y,
+            z,
+        } => {
+            queue_block_entity_tag_query_command(
+                counters,
+                net_commands,
+                BlockEntityTagQuery {
+                    transaction_id,
+                    pos: ProtocolBlockPos { x, y, z },
+                },
+            );
+        }
+        NetControlRequest::QueryEntityTag {
+            transaction_id,
+            entity_id,
+        } => {
+            queue_entity_tag_query_command(
+                counters,
+                net_commands,
+                EntityTagQuery {
+                    transaction_id,
+                    entity_id,
+                },
+            );
+        }
+        NetControlRequest::SpectateEntity { entity_id } => {
+            queue_spectate_entity_command(counters, net_commands, SpectateEntity { entity_id });
+        }
+        NetControlRequest::TeleportToEntity { uuid } => {
+            queue_teleport_to_entity_command(counters, net_commands, TeleportToEntity { uuid });
+        }
+        NetControlRequest::ContainerButtonClick {
+            container_id,
+            button_id,
+        } => {
+            queue_container_button_click_command(counters, net_commands, container_id, button_id);
+        }
+        NetControlRequest::ContainerClick(click) => {
+            queue_container_click_command(counters, net_commands, protocol_container_click(click));
+        }
+        NetControlRequest::ContainerClickSlot(click) => {
+            if let Ok(packet) = world.build_container_click_slot(world_container_click_slot(click))
+            {
+                queue_container_click_command(counters, net_commands, packet);
             }
-            NetControlRequest::ContainerClick(click) => {
-                queue_container_click_command(
-                    counters,
-                    net_commands,
-                    protocol_container_click(click),
-                );
-            }
-            NetControlRequest::ContainerClickSlot(click) => {
-                if let Ok(packet) =
-                    world.build_container_click_slot(world_container_click_slot(click))
-                {
-                    queue_container_click_command(counters, net_commands, packet);
-                }
-            }
-            NetControlRequest::ContainerClose { container_id } => {
-                world.close_local_container(container_id);
-                queue_container_close_request_command(counters, net_commands, container_id);
-            }
-            NetControlRequest::ContainerSlotStateChanged {
+        }
+        NetControlRequest::ContainerClose { container_id } => {
+            world.close_local_container(container_id);
+            queue_container_close_request_command(counters, net_commands, container_id);
+        }
+        NetControlRequest::ContainerSlotStateChanged {
+            slot_id,
+            container_id,
+            new_state,
+        } => {
+            queue_container_slot_state_changed_command(
+                counters,
+                net_commands,
                 slot_id,
                 container_id,
                 new_state,
-            } => {
-                queue_container_slot_state_changed_command(
-                    counters,
-                    net_commands,
-                    slot_id,
-                    container_id,
-                    new_state,
-                );
-            }
+            );
         }
     }
+}
 
-    let mut code_of_conduct = code_of_conduct;
-    for request in requests {
-        match request {
-            CodeOfConductControlRequest::Accept { remember } => {
-                let Some(tx) = net_commands else {
-                    continue;
+pub(crate) fn apply_code_of_conduct_request(
+    request: CodeOfConductControlRequest,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    world: &WorldStore,
+    code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+) {
+    match request {
+        CodeOfConductControlRequest::Accept { remember } => {
+            let Some(tx) = net_commands else {
+                return;
+            };
+            if tx.try_send(NetCommand::AcceptCodeOfConduct).is_err() {
+                return;
+            }
+            if let Some(code_of_conduct) = code_of_conduct {
+                let result = if remember {
+                    code_of_conduct.persist_current_world_acceptance(world)
+                } else {
+                    code_of_conduct.clear_connected_server_acceptance()
                 };
-                if tx.try_send(NetCommand::AcceptCodeOfConduct).is_err() {
-                    break;
-                }
-                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
-                    let result = if remember {
-                        code_of_conduct.persist_current_world_acceptance(world)
-                    } else {
-                        code_of_conduct.clear_connected_server_acceptance()
-                    };
-                    if let Err(err) = result {
-                        tracing::warn!(
-                            ?err,
-                            remember,
-                            "failed to update code-of-conduct acceptance store"
-                        );
-                    }
+                if let Err(err) = result {
+                    tracing::warn!(
+                        ?err,
+                        remember,
+                        "failed to update code-of-conduct acceptance store"
+                    );
                 }
             }
-            CodeOfConductControlRequest::Decline => {
-                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
-                    if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
-                        tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
-                    }
-                }
-                if let Some(tx) = net_commands {
-                    if tx.try_send(NetCommand::Disconnect).is_err() {
-                        break;
-                    }
+        }
+        CodeOfConductControlRequest::Decline => {
+            if let Some(code_of_conduct) = code_of_conduct {
+                if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
+                    tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
                 }
             }
-            CodeOfConductControlRequest::ClearAcceptance => {
-                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
-                    if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
-                        tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
-                    }
+            if let Some(tx) = net_commands {
+                if tx.try_send(NetCommand::Disconnect).is_err() {
+                    return;
+                }
+            }
+        }
+        CodeOfConductControlRequest::ClearAcceptance => {
+            if let Some(code_of_conduct) = code_of_conduct {
+                if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
+                    tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
                 }
             }
         }
@@ -654,6 +587,7 @@ pub(crate) fn pump_control_net_requests(
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
+    use std::sync::{Mutex, MutexGuard};
 
     use super::*;
     use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_LOOM_ID};
@@ -662,6 +596,92 @@ mod tests {
         EntityEvent, PlayLogin, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use uuid::Uuid;
+
+    #[derive(Default)]
+    struct TestPendingControlRequests {
+        code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
+        net_requests: Vec<NetControlRequest>,
+        input_requests: Vec<InputControlRequest>,
+    }
+
+    #[derive(Default)]
+    struct TestControlRequests {
+        requests: Mutex<TestPendingControlRequests>,
+    }
+
+    impl TestControlRequests {
+        fn lock(&self) -> std::sync::LockResult<MutexGuard<'_, TestPendingControlRequests>> {
+            self.requests.lock()
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn pump_control_input_requests(
+        control_requests: &TestControlRequests,
+        input: &mut ClientInputState,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        item_runtime: Option<&NativeItemRuntime>,
+        code_of_conduct_overlay_visible: bool,
+        surface_size: PhysicalSize<u32>,
+        entity_partial_tick: f32,
+    ) {
+        let requests = control_requests
+            .lock()
+            .map(|mut guard| std::mem::take(&mut guard.input_requests))
+            .unwrap_or_default();
+        let mut random = LevelEventSoundRandomState::default();
+        let mut audio_events = None;
+        let mut first_person_hand_presentation =
+            crate::item_models::FirstPersonHandPresentation::default();
+        for request in requests {
+            apply_control_input_request_with_effects(
+                request,
+                input,
+                &mut first_person_hand_presentation,
+                counters,
+                world,
+                net_commands,
+                item_runtime,
+                code_of_conduct_overlay_visible,
+                surface_size,
+                entity_partial_tick,
+                &mut random,
+                &mut audio_events,
+            );
+        }
+    }
+
+    fn pump_control_net_requests(
+        control_requests: &TestControlRequests,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+    ) {
+        let (code_of_conduct_requests, net_requests) = control_requests
+            .lock()
+            .map(|mut guard| {
+                (
+                    std::mem::take(&mut guard.code_of_conduct_requests),
+                    std::mem::take(&mut guard.net_requests),
+                )
+            })
+            .unwrap_or_default();
+        for request in net_requests {
+            apply_control_net_request(request, net_commands, counters, world);
+        }
+        let mut code_of_conduct = code_of_conduct;
+        for request in code_of_conduct_requests {
+            apply_code_of_conduct_request(
+                request,
+                net_commands,
+                world,
+                code_of_conduct.as_deref_mut(),
+            );
+        }
+    }
 
     fn operator_world() -> WorldStore {
         let mut world = WorldStore::new();
@@ -698,7 +718,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_opens_local_inventory_through_the_real_key_handler() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
             guard
@@ -735,7 +755,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_selects_hotbar_slot_through_the_real_key_handler() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
             guard
@@ -772,7 +792,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_replays_keys_through_the_real_key_handler() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
             // A Weston-headless window never receives real keyboard focus, so
@@ -834,7 +854,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_drops_input_behind_the_code_of_conduct_overlay() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -865,7 +885,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_replays_clicks_through_the_real_mouse_handler() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
             guard
@@ -901,7 +921,7 @@ mod tests {
 
     #[test]
     fn pump_control_input_requests_replays_atomic_mouse_tap_before_tick_advancement() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
             guard
@@ -937,7 +957,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_chat_command() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -961,7 +981,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_chat_message() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -985,7 +1005,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_signed_chat_command_for_signable_argument() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1017,7 +1037,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_command_suggestion_request() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::CommandSuggestionRequest {
                 id: 18,
@@ -1043,7 +1063,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_tag_query_commands() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::QueryBlockEntityTag {
                 transaction_id: 11,
@@ -1087,7 +1107,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_spectator_entity_commands() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::SpectateEntity { entity_id: 1234 },
@@ -1114,7 +1134,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_sets_held_slot_and_queues_command() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1135,7 +1155,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_sets_flying_when_allowed_and_queues_command() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1169,7 +1189,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_does_not_set_flying_without_permission() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1197,7 +1217,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_perform_respawn() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1216,7 +1236,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_opens_game_rules_once_with_permission() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::RequestStats,
             bbb_control::NetControlRequest::RequestGameRuleValues,
@@ -1238,7 +1258,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_rejects_game_rules_without_permission() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1257,7 +1277,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_place_recipe() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1287,7 +1307,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_difficulty_commands() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::ChangeDifficulty {
                 difficulty: bbb_control::DifficultyControl::Hard,
@@ -1329,7 +1349,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_recipe_book_commands() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.extend([
             bbb_control::NetControlRequest::ChangeRecipeBookSettings {
                 book_type: bbb_control::RecipeBookTypeControl::BlastFurnace,
@@ -1367,7 +1387,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_edit_book() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1397,7 +1417,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_sign_update() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1443,7 +1463,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_rename_item() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1469,7 +1489,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_seen_advancements() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::OpenAdvancementsTab {
                 tab: "minecraft:story/root".to_string(),
@@ -1502,7 +1522,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_select_trade() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1524,7 +1544,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_select_bundle_item() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SelectBundleItem {
                 slot_id: 12,
@@ -1558,7 +1578,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_rejects_invalid_select_bundle_item_index() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SelectBundleItem {
                 slot_id: 12,
@@ -1586,7 +1606,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_set_beacon() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1614,7 +1634,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_set_creative_mode_slot() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::SetCreativeModeSlot(
                 bbb_control::CreativeModeSlotControlRequest {
@@ -1649,7 +1669,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_container_button_click() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerButtonClick {
                 container_id: 7,
@@ -1675,7 +1695,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_container_click() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1737,7 +1757,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_builds_container_click_from_world_inventory() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
@@ -1799,7 +1819,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_builds_container_zero_click_when_local_inventory_is_open() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
@@ -1855,7 +1875,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_skips_container_click_slot_without_open_container() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerClickSlot(
                 bbb_control::ContainerClickSlotControlRequest {
@@ -1878,7 +1898,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_container_close() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1902,7 +1922,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_closes_matching_world_container() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1932,7 +1952,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_container_slot_state_changed() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests.lock().unwrap().net_requests.push(
             bbb_control::NetControlRequest::ContainerSlotStateChanged {
                 slot_id: 12,
@@ -1962,7 +1982,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_queues_code_of_conduct_accept_command() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -1980,7 +2000,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_persists_current_code_of_conduct_hash() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -2015,7 +2035,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_non_persistent_accept_clears_existing_hash() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -2047,7 +2067,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_decline_clears_hash_and_disconnects() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
@@ -2079,7 +2099,7 @@ mod tests {
 
     #[test]
     fn pump_control_net_requests_clear_acceptance_does_not_send_accept_command() {
-        let requests = bbb_control::SharedControlRequests::default();
+        let requests = TestControlRequests::default();
         requests
             .lock()
             .unwrap()
