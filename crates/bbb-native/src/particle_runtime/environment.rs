@@ -1,5 +1,6 @@
 use bbb_item_model::NativeItemRuntime;
 use bbb_protocol::{
+    block_state_types::vanilla_falling_dust_static_facts,
     packets::{vanilla_particle_command_options, VanillaParticleCommandOptions, Vec3d},
     particle_types::{
         vanilla_particle_type_id_for_resource_id, VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
@@ -20,11 +21,11 @@ use bbb_world::{
 };
 
 use super::{
-    argb_particle_color, falling_dust_color_for_block_state_id, particle_biome_blend_at,
-    particle_item_option_state_for_stack, particle_provider_accepts_spawn, random_between,
-    rgb_particle_color_u32, EnvironmentParticleColorSource, EnvironmentParticleSpawn,
-    LevelParticleSpawnContext, ParticleBiomeSampler, ParticleCommandResolver,
-    ParticleOptionRenderState, SimpleParticleTemplate,
+    argb_particle_color, particle_biome_blend_at, particle_item_option_state_for_stack,
+    particle_provider_accepts_spawn, random_between, rgb_particle_color_u32,
+    EnvironmentParticleColorSource, EnvironmentParticleSpawn, LevelParticleSpawnContext,
+    ParticleBiomeSampler, ParticleCommandResolver, ParticleOptionRenderState,
+    SimpleParticleTemplate,
 };
 use crate::biome_tint::is_foliage_tinted_block;
 
@@ -301,7 +302,9 @@ fn environment_particle_option_render_state(
         {
             ParticleOptionRenderState {
                 color: if particle_type_id == VANILLA_PARTICLE_TYPE_FALLING_DUST_ID {
-                    falling_dust_color_for_block_state_id(*block_state_id)
+                    vanilla_falling_dust_static_facts(*block_state_id)
+                        .and_then(|facts| facts.falling_block_dust_color_rgb())
+                        .map(rgb_particle_color_u32)
                 } else {
                     None
                 },

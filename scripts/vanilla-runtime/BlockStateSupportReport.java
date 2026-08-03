@@ -1,9 +1,12 @@
 import net.minecraft.SharedConstants;
+import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.SupportType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -12,8 +15,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /**
  * Emits the built-in block-state support, collision, occlusion-face,
  * replaceable, can-occlude, solid-render, redstone-conductor, suffocating,
- * view-blocking, light-dampening, shade-brightness, and legacy liquid facts
- * cached by Vanilla.
+ * view-blocking, light-dampening, shade-brightness, legacy liquid, and
+ * falling-dust static facts cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -42,12 +45,33 @@ public final class BlockStateSupportReport {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         int count = Block.BLOCK_STATE_REGISTRY.size();
+        BlockColors blockColors = BlockColors.createDefault();
         Bootstrap.STDOUT.println("version=26.1 count=" + count);
         for (int id = 0; id < count; id++) {
             BlockState state = Block.BLOCK_STATE_REGISTRY.byId(id);
             if (state == null) {
                 throw new IllegalStateException("missing block state id " + id);
             }
+
+            boolean fallingDustAccepts = state.isAir()
+                || state.getRenderShape() != RenderShape.INVISIBLE;
+            String fallingBlockDustColor = state.getBlock() instanceof FallingBlock fallingBlock
+                ? Integer.toString(
+                    fallingBlock.getDustColor(
+                        state,
+                        EmptyBlockGetter.INSTANCE,
+                        BlockPos.ZERO
+                    ) & 0x00FF_FFFF
+                )
+                : "-";
+            String staticMapColor = blockColors.getTintSource(state, 0) == null
+                ? Integer.toString(
+                    state.getMapColor(
+                        EmptyBlockGetter.INSTANCE,
+                        BlockPos.ZERO
+                    ).col & 0x00FF_FFFF
+                )
+                : "-";
 
             long facts = 0L;
             if (state.isSolid()) {
@@ -89,7 +113,6 @@ public final class BlockStateSupportReport {
             if (state.canBeReplaced()) {
                 facts |= 1L << 38;
             }
-
             Bootstrap.STDOUT.println(
                 id
                     + "\t"
@@ -122,6 +145,12 @@ public final class BlockStateSupportReport {
                     ) * 255.0F)
                     + "\t"
                     + (state.liquid() ? 1 : 0)
+                    + "\t"
+                    + (fallingDustAccepts ? 1 : 0)
+                    + "\t"
+                    + fallingBlockDustColor
+                    + "\t"
+                    + staticMapColor
             );
         }
     }

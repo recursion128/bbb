@@ -9,6 +9,7 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
 };
+use bbb_protocol::block_state_types::vanilla_falling_dust_static_facts;
 use bbb_protocol::item_types::{VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_SPLASH_POTION_ID};
 use bbb_protocol::packets::{
     decode_data_component_patch_summary, BlockPos, ClientParticleStatus,
@@ -939,7 +940,9 @@ fn particle_option_render_state(
             }
             ParticleOptionRenderState {
                 color: if particle_type_id == VANILLA_PARTICLE_TYPE_FALLING_DUST_ID {
-                    falling_dust_color_for_block_state_id(block_state_id)
+                    vanilla_falling_dust_static_facts(block_state_id)
+                        .and_then(|facts| facts.falling_block_dust_color_rgb())
+                        .map(rgb_particle_color_u32)
                 } else {
                     None
                 },
@@ -1116,7 +1119,8 @@ fn particle_provider_accepts_spawn(
     };
     match particle_type_id {
         VANILLA_PARTICLE_TYPE_FALLING_DUST_ID => {
-            falling_dust_provider_accepts_block_state(block.block_state_id)
+            vanilla_falling_dust_static_facts(block.block_state_id)
+                .is_none_or(|facts| facts.provider_accepts())
         }
         VANILLA_PARTICLE_TYPE_BLOCK_ID
         | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
@@ -1564,7 +1568,7 @@ impl LegacyRandom {
 }
 
 mod atlas;
-mod block_map_color;
+mod block_provider_acceptance;
 mod dripstone;
 pub(crate) use dripstone::{pointed_dripstone_drip_context, pointed_dripstone_particle_position};
 mod environment;
@@ -1588,7 +1592,7 @@ mod resolver_player_actions;
 mod resolver_trial_vault;
 
 use atlas::*;
-use block_map_color::*;
+use block_provider_acceptance::*;
 use explosion::*;
 use ids::*;
 pub(crate) use resolver_player_actions::{candle_wick_offsets, local_destroy_hit_particle_state};

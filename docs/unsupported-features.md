@@ -53,23 +53,9 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix routes: `rendering-particle-provider-registration`, `world-client-level-decisions`
+Matrix route: `world-client-level-decisions`
 
 <!-- architecture-candidates:start -->
-- **`arch-falling-dust-static-color-facts` is `active`.**
-  - Semantic mechanism: Vanilla falling-dust static color selection after the dynamic block-tint branch.
-  - Canonical input: fixed Vanilla 26.1 block-state id and the official FallingBlock dust-color/map-color result.
-  - Owners: `crates/bbb-native/src/particle_runtime/block_map_color.rs` currently reconstructs source facts by resource name and properties; `crates/bbb-protocol/src/block_state_types.rs` is the target versioned block-state fact owner.
-  - Production callers: `crates/bbb-native/src/particle_runtime/environment.rs` and `crates/bbb-native/src/particle_runtime/resolver_core.rs` query the handwritten resolver.
-  - Direction: Vanilla runtime probe to checked generated protocol facts to native particle projection; biome/block tint remains a separate runtime input and renderer consumes only the resolved color.
-  - Lifetime: immutable per target version with exact stale-output failure; no resource or session shadow cache.
-  - Ordering/fallback/rollback: preserve FallingBlock dust override before dynamic BlockColors tint before static map color, invisible-render rejection and invalid-id None fallback.
-  - Public API: one bounded block-state-id query returning optional static dust/map colors; no resource-name or property API crosses into native.
-  - Delete: handwritten map-color constants, family/name/property match tables and their duplicate tests once generated exact-output fixtures own the facts.
-  - Evidence: `crates/bbb-native/src/particle_runtime/tests.rs`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` provide behavior anchors and the reusable runtime-fact generator pattern.
-  - Risk/benefit/rank: drift high; behavior high; cross-owner count two; deletion high; API narrowing medium; generation risk medium; testability high; rank 1/2.
-  - Goal route: `architecture-convergence`; `rendering-particle-provider-registration`.
-  - Reopen condition: reopen only when the target block-state registry changes or production again derives falling-dust static colors from resource names/properties.
 - **`arch-piston-profile-pack-boundary` is `active`.**
   - Semantic mechanism: fixed block-state piston push-reaction lookup used by client piston movement projection.
   - Canonical input: Vanilla 26.1 global block-state id and its official push reaction.
@@ -81,7 +67,7 @@ Matrix routes: `rendering-particle-provider-registration`, `world-client-level-d
   - Public API: one protocol block-state support-fact enum/query consumed privately by world.
   - Delete: the pack piston profile module/exports/load API, world pack-catalog import and source-expression runtime parse path.
   - Evidence: `crates/bbb-world/src/piston_blocks.rs`, `scripts/vanilla-runtime/BlockStateSupportReport.java`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` cover behavior and the exact generated owner.
-  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 2/2.
+  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 1/1.
   - Goal route: `architecture-convergence`; `world-client-level-decisions`.
   - Reopen condition: reopen only if piston reaction becomes session/resource-defined or world again reads a pack-owned parser/catalog for fixed gameplay facts.
 <!-- architecture-candidates:end -->

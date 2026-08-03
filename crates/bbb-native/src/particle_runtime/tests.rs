@@ -3097,6 +3097,25 @@ fn falling_dust_decodes_block_particle_option_metadata() {
 }
 
 #[test]
+fn falling_dust_unknown_block_state_keeps_the_existing_provider_fallback() {
+    let mut resolver = test_resolver(0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
+    packet.particle.raw_options =
+        block_particle_options(bbb_protocol::block_state_types::VANILLA_BLOCK_STATE_COUNT);
+
+    let batch = resolver.resolve_level_particles(&packet);
+
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch.commands[0].option_color, None);
+    assert_eq!(
+        batch.commands[0].option_block,
+        Some(ParticleBlockOptionState {
+            block_state_id: bbb_protocol::block_state_types::VANILLA_BLOCK_STATE_COUNT,
+        })
+    );
+}
+
+#[test]
 fn falling_dust_decodes_falling_block_dust_colors() {
     for (block_state_id, block_name, expected_color) in [
         (
@@ -5821,7 +5840,10 @@ fn falling_dust_colors_cover_all_accepted_vanilla_block_states() {
     let mut missing = std::collections::BTreeSet::new();
 
     for block_state in bbb_world::BlockStateRegistry::vanilla_26_1().iter() {
-        if !falling_dust_provider_accepts_block_state(block_state.id) {
+        if !vanilla_falling_dust_static_facts(block_state.id)
+            .unwrap()
+            .provider_accepts()
+        {
             continue;
         }
 
@@ -5841,6 +5863,32 @@ fn falling_dust_colors_cover_all_accepted_vanilla_block_states() {
         missing.is_empty(),
         "missing falling_dust colors: {missing:#?}"
     );
+}
+
+#[test]
+fn falling_dust_production_sources_do_not_restore_handwritten_static_fact_resolvers() {
+    let production_sources = [
+        include_str!("../particle_runtime.rs"),
+        include_str!("environment.rs"),
+        include_str!("resolver_core.rs"),
+    ];
+    for forbidden in [
+        "block_map_color",
+        "falling_dust_color_for_block_state_id",
+        "falling_dust_map_color_for_block_state_id",
+        "falling_dust_color_for_block_name",
+        "vanilla_static_map_color_for_block_state",
+        "MAP_COLOR_STONE",
+    ] {
+        assert!(
+            production_sources.iter().all(|source| !source
+                .split("#[cfg(test)]")
+                .next()
+                .unwrap()
+                .contains(forbidden)),
+            "production falling-dust path restored forbidden resolver fact {forbidden}"
+        );
+    }
 }
 
 #[test]

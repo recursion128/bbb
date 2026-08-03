@@ -49,6 +49,19 @@ configuration/runtime 以 global block-state id 查生成的 26.1 facts；world 
 `bbb-renderer/src/terrain.rs::TerrainCell`。剔除/AO/light/cardinal shade 在
 `bbb-renderer/src/terrain/mesh/emitter.rs`，layer/透明提交在 terrain renderer。
 
+### FallingDust 静态事实边界
+
+`FallingDustParticle.Provider.createParticle` 的 context-free 决策同样归版本化 block-state
+facts，而不由 native 按 resource name/property 重建。checked-in runtime probe 逐 state 记录：
+非 air invisible rejection、`FallingBlock.getDustColor` 的 optional RGB，以及仅当
+`BlockColors.getTintSource(state,0)` 缺失时才可用的 optional cached map RGB。
+
+`bbb-protocol::block_state_types::vanilla_falling_dust_static_facts` 是唯一公开查询，输入只允许
+bounded 26.1 global state id；非法 id 返回 `None`。native 先用 falling-block dust override，
+否则查询当前 resource generation 的 dynamic/biome tint，最后才使用 generated optional map
+color，并只把 resolved RGBA 交给 renderer。静态 facts 只随 protocol version 变化；dynamic
+tint catalog 仍随 resource generation 原子替换，prepare 失败保留上一完整 generation。
+
 ## Vanilla/BBB 对照
 
 | 机制行为 | Vanilla 26.1 | BBB owner/path | 状态 | 验证证据 |
@@ -59,6 +72,7 @@ configuration/runtime 以 global block-state id 查生成的 26.1 facts；world 
 | block/sky/cardinal light | lighter + level shade | terrain vertex light | `equivalent` | full block/glowstone anchors |
 | layer routing | `SectionCompiler` material layer | terrain batches | `equivalent` | cutout/translucent tests + anchors |
 | translucent sorting | section sort state | renderer translucent queue | `equivalent` | static/flight/boundary anchors |
+| falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
 
@@ -66,6 +80,8 @@ configuration/runtime 以 global block-state id 查生成的 26.1 facts；world 
 - 查询相邻坐标、opposite direction 与判断顺序必须与 Vanilla 一致。
 - chunk 边缘需要跨 chunk 邻居；unloaded 不能伪装成 air 后永久缓存。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
+- FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
+  optional static map fallback。
 
 ## 聚焦测试（focused tests）和真实证据
 
@@ -73,6 +89,10 @@ configuration/runtime 以 global block-state id 查生成的 26.1 facts；world 
 renderer mesh tests 覆盖内部面、shape、AO、方向光照、邻 chunk 和透明面。共同 replay
 在 `static_orbit`、`preloaded_flight`、`chunk_boundary_crossing` 保存同 tick ROI 与
 RenderDoc 非空 draw evidence。
+
+FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
+断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
+reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 

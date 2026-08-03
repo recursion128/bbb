@@ -24,9 +24,11 @@ use render_facts_26_1::{
     VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS,
 };
 use support_facts_26_1::{
-    VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_LIGHT_DAMPENING,
+    VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS,
+    VANILLA_BLOCK_STATE_FALLING_DUST_ACCEPTS_BITS, VANILLA_BLOCK_STATE_LIGHT_DAMPENING,
     VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS,
     VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
+    VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES, VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE,
     VANILLA_BLOCK_STATE_SUFFOCATING_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
     VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE, VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS,
 };
@@ -379,6 +381,55 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
         liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+    })
+}
+
+/// Context-free Vanilla 26.1 facts selected by
+/// `FallingDustParticle.Provider.createParticle` around its live block-tint branch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaFallingDustStaticFacts {
+    provider_accepts: bool,
+    falling_block_dust_color_rgb: Option<u32>,
+    map_color_rgb: Option<u32>,
+}
+
+impl VanillaFallingDustStaticFacts {
+    pub const fn provider_accepts(self) -> bool {
+        self.provider_accepts
+    }
+
+    pub const fn falling_block_dust_color_rgb(self) -> Option<u32> {
+        self.falling_block_dust_color_rgb
+    }
+
+    pub const fn map_color_rgb(self) -> Option<u32> {
+        self.map_color_rgb
+    }
+}
+
+/// Returns the immutable falling-dust provider facts for one built-in state.
+///
+/// The optional falling-block color has priority over live block tint. For a
+/// non-falling block, consumers query their generation-matched tint catalog
+/// before using the optional `map_color_rgb` fallback.
+pub fn vanilla_falling_dust_static_facts(id: i32) -> Option<VanillaFallingDustStaticFacts> {
+    let id = usize::try_from(vanilla_block_state_id(id)?).ok()?;
+    let state_id = u16::try_from(id).ok()?;
+    let falling_block_dust_color_rgb = VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS
+        .binary_search_by_key(&state_id, |(state_id, _)| *state_id)
+        .ok()
+        .map(|index| VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS[index].1);
+    let map_color_index = usize::from(*VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES.get(id)?);
+    Some(VanillaFallingDustStaticFacts {
+        provider_accepts: VANILLA_BLOCK_STATE_FALLING_DUST_ACCEPTS_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        falling_block_dust_color_rgb,
+        map_color_rgb: map_color_index.checked_sub(1).and_then(|index| {
+            VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE
+                .get(index)
+                .copied()
+        }),
     })
 }
 
@@ -952,6 +1003,113 @@ mod tests {
         assert_eq!(vanilla_block_state_support_facts(-1), None);
         assert_eq!(
             vanilla_block_state_support_facts(VANILLA_BLOCK_STATE_COUNT),
+            None
+        );
+    }
+
+    #[test]
+    fn falling_dust_static_facts_use_the_runtime_generated_state_palette() {
+        let report: BlockStateReport =
+            serde_json::from_str(VANILLA_BLOCK_STATES_26_1_JSON).unwrap();
+        let state_id = |name: &str, properties: &[(&str, &str)]| {
+            report
+                .states
+                .iter()
+                .find(|state| {
+                    state.name == name
+                        && properties.iter().all(|(property, value)| {
+                            state
+                                .properties
+                                .get(*property)
+                                .is_some_and(|actual| actual == value)
+                        })
+                })
+                .unwrap()
+                .id
+        };
+
+        assert_eq!(
+            VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_FALLING_DUST_ACCEPTS_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_FALLING_DUST_ACCEPTS_BITS
+                .iter()
+                .map(|word| word.count_ones())
+                .sum::<u32>(),
+            29_790
+        );
+        assert_eq!(VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE.len(), 62);
+        assert!(VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES
+            .iter()
+            .all(|index| *index == 0
+                || usize::from(*index) <= VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE.len()));
+        assert_eq!(
+            VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES
+                .iter()
+                .filter(|index| **index != 0)
+                .count(),
+            28_229
+        );
+        assert_eq!(VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS.len(), 32);
+        assert!(VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS
+            .windows(2)
+            .all(|pair| pair[0].0 < pair[1].0));
+        assert!(VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS
+            .iter()
+            .all(
+                |(state_id, color)| i32::from(*state_id) < VANILLA_BLOCK_STATE_COUNT
+                    && *color <= 0xFF_FFFF
+            ));
+
+        let air = vanilla_falling_dust_static_facts(state_id("minecraft:air", &[])).unwrap();
+        assert!(air.provider_accepts());
+        assert_eq!(air.falling_block_dust_color_rgb(), None);
+        assert_eq!(air.map_color_rgb(), Some(0x00_0000));
+        assert!(
+            !vanilla_falling_dust_static_facts(state_id("minecraft:barrier", &[]))
+                .unwrap()
+                .provider_accepts()
+        );
+
+        for (name, dust_color, map_color) in [
+            ("minecraft:sand", 0xDB_D3_A0, 0xF7_E9_A3),
+            ("minecraft:red_sand", 0xA9_58_21, 0xD8_7F_33),
+            ("minecraft:anvil", 0xA7_A7_A7, 0xA7_A7_A7),
+            ("minecraft:white_concrete_powder", 0xFF_FF_FF, 0xFF_FF_FF),
+            ("minecraft:dragon_egg", 0x00_00_00, 0x19_19_19),
+        ] {
+            let facts = vanilla_falling_dust_static_facts(state_id(name, &[])).unwrap();
+            assert!(facts.provider_accepts(), "{name}");
+            assert_eq!(
+                facts.falling_block_dust_color_rgb(),
+                Some(dust_color),
+                "{name}"
+            );
+            assert_eq!(facts.map_color_rgb(), Some(map_color), "{name}");
+        }
+
+        let bed_foot =
+            vanilla_falling_dust_static_facts(state_id("minecraft:white_bed", &[("part", "foot")]))
+                .unwrap();
+        let bed_head =
+            vanilla_falling_dust_static_facts(state_id("minecraft:white_bed", &[("part", "head")]))
+                .unwrap();
+        assert_eq!(bed_foot.map_color_rgb(), Some(0xFF_FF_FF));
+        assert_eq!(bed_head.map_color_rgb(), Some(0xC7_C7_C7));
+        assert_eq!(
+            vanilla_falling_dust_static_facts(state_id("minecraft:birch_leaves", &[]))
+                .unwrap()
+                .map_color_rgb(),
+            None
+        );
+        assert_eq!(vanilla_falling_dust_static_facts(-1), None);
+        assert_eq!(
+            vanilla_falling_dust_static_facts(VANILLA_BLOCK_STATE_COUNT),
             None
         );
     }

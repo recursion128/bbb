@@ -94,7 +94,7 @@
   component interaction、narration 与 T/Slash control/live lifecycle 收敛到单一 native owner。
 - **2026-08-03（DeathScreen decision surface）**：16-owner delay、draft/report return、
   normal/hardcore、URL、resource/pixel 与 native-input live respawn 收敛为单一路径。
-- **2026-08-03（entity equipment projection convergence）**：所有 layer/material/颜色影子收敛为 generation-local asset id 与 renderer-private catalog 唯一查询。
+- **2026-08-03（equipment/falling-dust convergence）**：equipment 影子收敛为 generation-local asset id；FallingDust 静态颜色改由 29,873-state generated protocol facts 唯一查询。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

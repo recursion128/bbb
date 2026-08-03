@@ -1033,7 +1033,11 @@ impl ParticleCommandResolver {
                             .get(&block_state_id)
                             .copied()
                     });
-                block_tint.or_else(|| falling_dust_map_color_for_block_state_id(block_state_id))
+                block_tint.or_else(|| {
+                    vanilla_falling_dust_static_facts(block_state_id)
+                        .and_then(|facts| facts.map_color_rgb())
+                        .map(rgb_particle_color_u32)
+                })
             }
             _ => None,
         }
