@@ -571,6 +571,7 @@ impl TerrainSectionOcclusionGraph {
         self.valid
     }
 
+    #[cfg(test)]
     pub(super) fn reachable_sections(&self) -> &TerrainCoordinateSet<SectionPosition> {
         &self.reachable_sections
     }

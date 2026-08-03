@@ -174,9 +174,9 @@ pub(crate) fn adapt_terrain_shaders(
         return Ok(None);
     };
     Ok(Some(AdaptedTerrainShaders {
-        vertex: adapt_terrain_stage(&vertex.source, true, use_rgss)
+        vertex: adapt_terrain_stage(&vertex.source, true, use_rgss, true)
             .context("adapt selected terrain vertex shader")?,
-        fragment: adapt_terrain_stage(&fragment.source, false, use_rgss)
+        fragment: adapt_terrain_stage(&fragment.source, false, use_rgss, true)
             .context("adapt selected terrain fragment shader")?,
     }))
 }
@@ -792,9 +792,22 @@ fn shader_source_is_selected(source: &bbb_render_types::ShaderSource) -> bool {
             .any(|import| import.pack_id != "vanilla")
 }
 
-fn adapt_terrain_stage(source: &str, vertex_stage: bool, use_rgss: bool) -> Result<String> {
+fn adapt_terrain_stage(
+    source: &str,
+    vertex_stage: bool,
+    use_rgss: bool,
+    section_visibility: bool,
+) -> Result<String> {
     let source = remove_vanilla_uniform_blocks(source)?;
     let source = insert_camera_projection(&require_webgpu_glsl_version(&source), use_rgss)?;
+    let source = if section_visibility && !vertex_stage {
+        source.replace(
+            "#define ChunkVisibility 1.0",
+            "layout(std140, set = 2, binding = 0) uniform BbbTerrainSection { vec4 BbbTerrainSectionVisibility; };\n#define ChunkVisibility BbbTerrainSectionVisibility.x",
+        )
+    } else {
+        source
+    };
     let source = adapt_terrain_sampler_helpers(&source);
     let source = hoist_combined_sampler_declarations(&source)?;
     let source = bind_terrain_stage_locations(&source, vertex_stage)?;
@@ -1454,7 +1467,7 @@ fn adapt_static_core_stage(
 }
 
 fn adapt_crumbling_stage(source: &str, vertex_stage: bool) -> Result<String> {
-    let source = adapt_terrain_stage(source, vertex_stage, false)?;
+    let source = adapt_terrain_stage(source, vertex_stage, false, false)?;
     if vertex_stage {
         let source = [
             "layout(location = 1) in vec4 Color;",
@@ -3374,6 +3387,39 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("Position"), "{error}");
+    }
+
+    #[test]
+    fn terrain_adapter_binds_section_visibility_without_leaking_into_crumbling() {
+        let source = r#"#version 330
+in vec3 Position;
+in vec4 Color;
+in vec2 UV0;
+in ivec2 UV2;
+void main() { gl_Position = vec4(Position, 1.0); }
+"#;
+        let terrain_vertex =
+            adapt_terrain_stage(source, true, false, true).expect("terrain vertex adapter");
+        assert!(!terrain_vertex.contains("BbbTerrainSectionVisibility"));
+
+        let fragment = r#"#version 330
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+out vec4 fragColor;
+void main() { fragColor = vertexColor; }
+"#;
+        let terrain_fragment =
+            adapt_terrain_stage(fragment, false, false, true).expect("terrain fragment adapter");
+        assert!(terrain_fragment.contains("set = 2, binding = 0"));
+        assert!(terrain_fragment.contains("#define ChunkVisibility BbbTerrainSectionVisibility.x"));
+        assert!(!terrain_fragment.contains("#define ChunkVisibility 1.0"));
+
+        let crumbling =
+            adapt_terrain_stage(source, true, false, false).expect("crumbling base adapter");
+        assert!(!crumbling.contains("BbbTerrainSectionVisibility"));
+        assert!(crumbling.contains("#define ChunkVisibility 1.0"));
     }
 
     #[test]

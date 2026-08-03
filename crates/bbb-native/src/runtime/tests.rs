@@ -3644,9 +3644,7 @@ fn camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers() {
 #[test]
 fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
     let runtime = include_str!("../runtime.rs");
-    assert!(
-        runtime.contains("terrain_visible_sections: terrain_upload.renderer_visible_sections(),")
-    );
+    assert!(runtime.contains("terrain_sections: terrain_upload.renderer_sections(),"));
     let refresh = runtime
         .find("terrain_upload.refresh_frame_visibility(terrain_visibility_context);")
         .expect("current frustum publishes the graph result");
@@ -3668,12 +3666,10 @@ fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
 
     let frame_source = include_str!("render_extract.rs");
     let field = frame_source
-        .find(
-            "pub(crate) terrain_visible_sections: Option<&'a [bbb_renderer::TerrainSectionMeshOwner]>",
-        )
+        .find("pub(crate) terrain_sections: &'a [bbb_renderer::TerrainSectionRenderState]")
         .expect("renderer frame carries terrain visibility");
     let setter = frame_source
-        .find("renderer.set_terrain_visible_sections(frame.terrain_visible_sections);")
+        .find("renderer.set_terrain_section_states(frame.terrain_sections);")
         .expect("renderer frame applies terrain visibility");
     assert!(
         field < setter,
@@ -3682,8 +3678,12 @@ fn terrain_visibility_wiring_commits_only_through_renderer_frame() {
 
     let terrain_runtime = include_str!("../terrain_runtime.rs");
     assert!(
-        !terrain_runtime.contains("renderer.set_terrain_visible_sections"),
+        !terrain_runtime.contains("renderer.set_terrain_section_states"),
         "terrain runtime must publish visibility to RendererFrame instead of mutating renderer state"
+    );
+    assert!(
+        !frame_source.contains("set_terrain_visible_sections"),
+        "the old binary terrain visibility projection must not return"
     );
 }
 

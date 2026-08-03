@@ -4774,7 +4774,7 @@ pub(crate) fn update_renderer_from_publication(
             // Vanilla consumes the asynchronously published
             // `SectionOcclusionGraph.currentGraph` during frame visibility
             // extraction (`SectionOcclusionGraph.addSectionsInFrustum`).
-            terrain_visible_sections: terrain_upload.renderer_visible_sections(),
+            terrain_sections: terrain_upload.renderer_sections(),
             camera_pose,
             camera_hurt_effect,
             camera_view_bob_effect,

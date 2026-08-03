@@ -130,6 +130,27 @@ public class Owner {
         )
         self.assertNotIn("rendering-level-step-surface", value["mechanisms"])
 
+        section_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-level-section-lifecycle"
+        ]
+        self.assertEqual(len(section_owners), 29)
+        self.assertEqual(
+            value["mechanisms"]["rendering-level-section-lifecycle"][
+                "owner_evidence_count"
+            ],
+            29,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in section_owners
+            )
+        )
+
     def test_unclassified_level_renderer_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -149,6 +170,31 @@ public class Owner {
                         "render-step",
                         "rendering",
                         "rendering-level-frame-graph",
+                        relative,
+                    )
+                )
+
+    def test_section_owner_without_implementation_test_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { void compileSections() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.LEVEL_RENDERER_SECTION_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "rendering",
+                        "rendering-level-section-lifecycle",
                         relative,
                     )
                 )

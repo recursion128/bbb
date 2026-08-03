@@ -438,6 +438,7 @@ class WikiLint:
 
         owners = value.get("owners")
         mechanisms = value.get("mechanisms")
+        selection_contract = value.get("selection_contract")
         source_files = value.get("source_files")
         generator_inputs = value.get("generator_inputs")
         summary = value.get("summary")
@@ -447,12 +448,51 @@ class WikiLint:
         if not isinstance(source_files, list) or not isinstance(generator_inputs, list):
             self.fail("client mechanism inventory source hash lists are malformed")
             return "client mechanism inventory invalid"
+        owner_evidence_mechanisms_value = (
+            selection_contract.get("owner_evidence_mechanisms", [])
+            if isinstance(selection_contract, dict)
+            else []
+        )
+        if not isinstance(owner_evidence_mechanisms_value, list) or not all(
+            isinstance(item, str) and item for item in owner_evidence_mechanisms_value
+        ):
+            self.fail("client mechanism owner evidence contract is malformed")
+            owner_evidence_mechanisms: set[str] = set()
+        else:
+            owner_evidence_mechanisms = set(owner_evidence_mechanisms_value)
+
+        def check_evidence_paths(evidence: object, label: str) -> bool:
+            if not isinstance(evidence, list) or not evidence:
+                self.fail(f"{label} lacks BBB evidence")
+                return False
+            for evidence_path in evidence:
+                evidence_file = ""
+                evidence_symbol = ""
+                separator = ""
+                if isinstance(evidence_path, str):
+                    evidence_file, separator, evidence_symbol = evidence_path.partition("#")
+                if (
+                    not isinstance(evidence_path, str)
+                    or Path(evidence_file).is_absolute()
+                    or ".." in Path(evidence_file).parts
+                    or not (self.repo / evidence_file).exists()
+                ):
+                    self.fail(f"stale BBB evidence path for {label}: {evidence_path!r}")
+                    continue
+                if separator and (
+                    not evidence_symbol
+                    or evidence_symbol
+                    not in (self.repo / evidence_file).read_text(encoding="utf-8")
+                ):
+                    self.fail(f"stale BBB evidence symbol for {label}: {evidence_path!r}")
+            return True
 
         owner_ids: list[str] = []
         owner_mechanisms: Counter[str] = Counter()
         owner_categories: Counter[str] = Counter()
         owner_domains: Counter[str] = Counter()
         owner_roles: Counter[str] = Counter()
+        owner_evidence_counts: Counter[str] = Counter()
         declared_sources: set[str] = set()
         for item in source_files:
             if not isinstance(item, dict):
@@ -532,6 +572,29 @@ class WikiLint:
                 or source.get("line", 0) < 1
             ):
                 self.fail(f"invalid source locator for Vanilla owner {owner_id}")
+            owner_evidence = item.get("bbb_evidence")
+            if mechanism_id in owner_evidence_mechanisms:
+                if not isinstance(owner_evidence, dict) or set(owner_evidence) != {
+                    "implementation",
+                    "tests",
+                }:
+                    self.fail(
+                        f"inventory owner {owner_id} lacks implementation/test BBB evidence"
+                    )
+                else:
+                    owner_evidence_counts[mechanism_id] += 1
+                    check_evidence_paths(
+                        owner_evidence.get("implementation"),
+                        f"inventory owner {owner_id} implementation",
+                    )
+                    check_evidence_paths(
+                        owner_evidence.get("tests"),
+                        f"inventory owner {owner_id} tests",
+                    )
+            elif owner_evidence is not None:
+                self.fail(
+                    f"inventory owner {owner_id} has evidence outside the declared owner evidence contract"
+                )
 
         duplicates = sorted(owner_id for owner_id, count in Counter(owner_ids).items() if count != 1)
         if duplicates:
@@ -549,35 +612,30 @@ class WikiLint:
                 continue
             if mechanism.get("owner_count") != owner_mechanisms[mechanism_id]:
                 self.fail(f"stale owner count for inventory mechanism {mechanism_id}")
+            if mechanism_id in owner_evidence_mechanisms:
+                if mechanism.get("owner_evidence_count") != owner_mechanisms[mechanism_id]:
+                    self.fail(
+                        f"stale owner evidence count for inventory mechanism {mechanism_id}"
+                    )
+                if owner_evidence_counts[mechanism_id] != owner_mechanisms[mechanism_id]:
+                    self.fail(
+                        f"incomplete per-owner BBB evidence for inventory mechanism {mechanism_id}"
+                    )
+            elif "owner_evidence_count" in mechanism:
+                self.fail(
+                    f"inventory mechanism {mechanism_id} has an undeclared owner evidence count"
+                )
             evidence = mechanism.get("bbb_evidence")
-            if not isinstance(evidence, list) or not evidence:
-                self.fail(f"inventory mechanism {mechanism_id} lacks BBB evidence")
-                continue
-            for evidence_path in evidence:
-                evidence_file = ""
-                evidence_symbol = ""
-                if isinstance(evidence_path, str):
-                    evidence_file, separator, evidence_symbol = evidence_path.partition("#")
-                if (
-                    not isinstance(evidence_path, str)
-                    or Path(evidence_file).is_absolute()
-                    or ".." in Path(evidence_file).parts
-                    or not (self.repo / evidence_file).exists()
-                ):
-                    self.fail(
-                        f"stale BBB evidence path for inventory mechanism "
-                        f"{mechanism_id}: {evidence_path!r}"
-                    )
-                    continue
-                if separator and (
-                    not evidence_symbol
-                    or evidence_symbol
-                    not in (self.repo / evidence_file).read_text(encoding="utf-8")
-                ):
-                    self.fail(
-                        f"stale BBB evidence symbol for inventory mechanism "
-                        f"{mechanism_id}: {evidence_path!r}"
-                    )
+            check_evidence_paths(evidence, f"inventory mechanism {mechanism_id}")
+
+        unknown_owner_evidence_mechanisms = sorted(
+            owner_evidence_mechanisms - set(mechanisms)
+        )
+        if unknown_owner_evidence_mechanisms:
+            self.fail(
+                "owner evidence contract references unknown inventory mechanisms: "
+                + ", ".join(unknown_owner_evidence_mechanisms)
+            )
 
         expected_summary = {
             "by_category": dict(sorted(owner_categories.items())),

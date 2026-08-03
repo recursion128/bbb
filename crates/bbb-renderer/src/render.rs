@@ -427,6 +427,7 @@ impl Renderer {
                                 if !self.terrain_mesh_is_visible(mesh) {
                                     continue;
                                 }
+                                pass.set_bind_group(2, &mesh.section_bind_group, &[]);
                                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                                 pass.set_index_buffer(
                                     mesh.index_buffer.slice(..),
@@ -447,6 +448,7 @@ impl Renderer {
                                 if !self.terrain_mesh_is_visible(mesh) {
                                     continue;
                                 }
+                                pass.set_bind_group(2, &mesh.section_bind_group, &[]);
                                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                                 pass.set_index_buffer(
                                     mesh.index_buffer.slice(..),
@@ -1814,6 +1816,7 @@ impl Renderer {
                     if !self.terrain_mesh_is_visible(mesh) {
                         continue;
                     }
+                    pass.set_bind_group(2, &mesh.section_bind_group, &[]);
                     pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);

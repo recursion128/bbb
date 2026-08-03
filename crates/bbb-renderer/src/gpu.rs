@@ -34,6 +34,7 @@ const TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED: bool = true;
 const TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = true;
 const TERRAIN_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
+const TERRAIN_SECTION_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
 const TERRAIN_ALPHA_CUTOUT_PLACEHOLDER: &str = "    // __BBB_ALPHA_CUTOUT__";
 const TERRAIN_SAMPLE_PLACEHOLDER: &str = "    // __BBB_TERRAIN_SAMPLE__";
 const TERRAIN_CUTOUT_ALPHA_THRESHOLD: &str = "0.5";
@@ -71,6 +72,13 @@ var lightmap_texture: texture_2d<f32>;
 
 @group(1) @binding(1)
 var lightmap_sampler: sampler;
+
+struct TerrainSection {
+    visibility: vec4<f32>,
+};
+
+@group(2) @binding(0)
+var<uniform> terrain_section: TerrainSection;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
@@ -218,7 +226,11 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let atlas_size = vec2<f32>(textureDimensions(terrain_atlas));
     // __BBB_TERRAIN_SAMPLE__
     // __BBB_ALPHA_CUTOUT__
-    let color = texel * input.vertex_color;
+    let color = mix(
+        vec4<f32>(camera.fog_color.rgb, texel.a * input.vertex_color.a),
+        texel * input.vertex_color,
+        terrain_section.visibility.x,
+    );
     return apply_fog(color, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
@@ -335,6 +347,46 @@ pub(super) fn create_terrain_bind_group_layout(device: &wgpu::Device) -> wgpu::B
             },
         ],
     })
+}
+
+pub(super) fn create_terrain_section_bind_group_layout(
+    device: &wgpu::Device,
+) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-terrain-section-bind-group-layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: TERRAIN_SECTION_BIND_GROUP_VISIBILITY,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    })
+}
+
+pub(super) fn create_terrain_section_uniform(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    visibility: f32,
+) -> (wgpu::Buffer, wgpu::BindGroup) {
+    let value = [visibility.clamp(0.0, 1.0), 0.0, 0.0, 0.0];
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-terrain-section-uniform"),
+        contents: bytemuck::cast_slice(&value),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-terrain-section-bind-group"),
+        layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    });
+    (buffer, bind_group)
 }
 
 pub(super) fn create_camera_buffer(device: &wgpu::Device) -> wgpu::Buffer {
@@ -661,6 +713,7 @@ pub(super) fn create_terrain_solid_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
@@ -668,6 +721,7 @@ pub(super) fn create_terrain_solid_pipeline(
         format,
         camera_bind_group_layout,
         lightmap_bind_group_layout,
+        section_bind_group_layout,
         "bbb-terrain-pipeline",
         TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_OPAQUE_BLEND,
@@ -681,6 +735,7 @@ pub(super) fn create_terrain_cutout_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
@@ -688,6 +743,7 @@ pub(super) fn create_terrain_cutout_pipeline(
         format,
         camera_bind_group_layout,
         lightmap_bind_group_layout,
+        section_bind_group_layout,
         "bbb-terrain-cutout-pipeline",
         TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_OPAQUE_BLEND,
@@ -701,6 +757,7 @@ pub(super) fn create_terrain_translucent_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
 ) -> wgpu::RenderPipeline {
     create_terrain_pipeline_with_options(
@@ -708,6 +765,7 @@ pub(super) fn create_terrain_translucent_pipeline(
         format,
         camera_bind_group_layout,
         lightmap_bind_group_layout,
+        section_bind_group_layout,
         "bbb-terrain-translucent-pipeline",
         TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
         TERRAIN_PIPELINE_TRANSLUCENT_BLEND,
@@ -721,6 +779,7 @@ fn create_terrain_pipeline_with_options(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     label: &'static str,
     depth_write_enabled: bool,
     blend: Option<wgpu::BlendState>,
@@ -732,7 +791,11 @@ fn create_terrain_pipeline_with_options(
         .shader("bbb-terrain-shader", &shader)
         .layout(
             "bbb-terrain-pipeline-layout",
-            &[camera_bind_group_layout, lightmap_bind_group_layout],
+            &[
+                camera_bind_group_layout,
+                lightmap_bind_group_layout,
+                section_bind_group_layout,
+            ],
         )
         .vertex_buffers(&[terrain_vertex_layout()])
         .color_target(format, blend)
@@ -756,6 +819,7 @@ pub(super) fn create_terrain_core_pipelines(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     resources: &CoreShaderSourceProjection,
     texture_filtering: crate::renderer::TerrainTextureFiltering,
     allow_embedded_fallback: bool,
@@ -774,6 +838,7 @@ pub(super) fn create_terrain_core_pipelines(
                 format,
                 camera_bind_group_layout,
                 lightmap_bind_group_layout,
+                section_bind_group_layout,
                 texture_filtering,
             ),
             cutout: create_terrain_cutout_pipeline(
@@ -781,6 +846,7 @@ pub(super) fn create_terrain_core_pipelines(
                 format,
                 camera_bind_group_layout,
                 lightmap_bind_group_layout,
+                section_bind_group_layout,
                 texture_filtering,
             ),
             translucent: create_terrain_translucent_pipeline(
@@ -788,6 +854,7 @@ pub(super) fn create_terrain_core_pipelines(
                 format,
                 camera_bind_group_layout,
                 lightmap_bind_group_layout,
+                section_bind_group_layout,
                 texture_filtering,
             ),
         });
@@ -798,6 +865,7 @@ pub(super) fn create_terrain_core_pipelines(
             format,
             camera_bind_group_layout,
             lightmap_bind_group_layout,
+            section_bind_group_layout,
             "bbb-selected-terrain-pipeline",
             &adapted,
             TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
@@ -809,6 +877,7 @@ pub(super) fn create_terrain_core_pipelines(
             format,
             camera_bind_group_layout,
             lightmap_bind_group_layout,
+            section_bind_group_layout,
             "bbb-selected-terrain-cutout-pipeline",
             &adapted,
             TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
@@ -820,6 +889,7 @@ pub(super) fn create_terrain_core_pipelines(
             format,
             camera_bind_group_layout,
             lightmap_bind_group_layout,
+            section_bind_group_layout,
             "bbb-selected-terrain-translucent-pipeline",
             &adapted,
             TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
@@ -835,6 +905,7 @@ fn create_selected_terrain_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    section_bind_group_layout: &wgpu::BindGroupLayout,
     label: &'static str,
     shaders: &crate::core_shaders::AdaptedTerrainShaders,
     depth_write_enabled: bool,
@@ -852,7 +923,11 @@ fn create_selected_terrain_pipeline(
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-terrain-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout, lightmap_bind_group_layout],
+        bind_group_layouts: &[
+            camera_bind_group_layout,
+            lightmap_bind_group_layout,
+            section_bind_group_layout,
+        ],
         push_constant_ranges: &[],
     });
     Ok(
@@ -1025,7 +1100,8 @@ mod tests {
     #[test]
     fn terrain_shader_consumes_prepacked_vanilla_vertex_color() {
         assert!(TERRAIN_SHADER.contains("@location(1) color: vec4<f32>"));
-        assert!(TERRAIN_SHADER.contains("let color = texel * input.vertex_color"));
+        assert!(TERRAIN_SHADER.contains("texel * input.vertex_color,"));
+        assert!(TERRAIN_SHADER.contains("terrain_section.visibility.x"));
         assert!(!TERRAIN_SHADER.contains("ambient_occlusion"));
         assert!(!TERRAIN_SHADER.contains("input.shade"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));

@@ -610,6 +610,7 @@ impl CorePipelineGeneration {
             renderer.config.format,
             &renderer.terrain_bind_group_layout,
             &renderer.lightmap_sample_bind_group_layout,
+            &renderer.terrain_section_bind_group_layout,
             resources,
             renderer.terrain_texture_filtering,
             allow_embedded_fallback,

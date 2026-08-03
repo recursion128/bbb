@@ -665,6 +665,40 @@ Matrix route: `fixture-valid`
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("stale BBB evidence symbol", result.stdout)
 
+    def test_declared_owner_evidence_mechanism_without_owner_cells_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["selection_contract"]["owner_evidence_mechanisms"] = [
+                "fixture-valid"
+            ]
+            value["mechanisms"]["fixture-valid"]["owner_evidence_count"] = 1
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("lacks implementation/test BBB evidence", result.stdout)
+
+    def test_stale_per_owner_evidence_symbol_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["selection_contract"]["owner_evidence_mechanisms"] = [
+                "fixture-valid"
+            ]
+            value["mechanisms"]["fixture-valid"]["owner_evidence_count"] = 1
+            value["owners"][0]["bbb_evidence"] = {
+                "implementation": ["docs/wiki/glossary.md#missing_owner_symbol"],
+                "tests": ["docs/wiki/glossary.md#核心术语"],
+            }
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("stale BBB evidence symbol for inventory owner", result.stdout)
+
     def test_ledger_route_to_unknown_matrix_id_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))

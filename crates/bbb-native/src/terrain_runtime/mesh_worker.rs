@@ -35,7 +35,7 @@ pub(super) struct TerrainMeshJobKey {
 #[derive(Debug)]
 pub(super) struct TerrainMeshJob {
     pub(super) key: TerrainMeshJobKey,
-    pub(super) priority: (u8, i64, i32, i32),
+    pub(super) priority: (i64, i32, i32),
     pub(super) target: Arc<TerrainChunkSnapshot>,
     pub(super) neighborhood: Vec<Arc<TerrainChunkSnapshot>>,
     pub(super) atlas: Arc<TerrainTextureAtlas>,
@@ -301,7 +301,7 @@ mod tests {
                 mesh_revision: revision,
                 section_count: 1,
             },
-            priority: (1, priority, pos.x, pos.z),
+            priority: (priority, pos.x, pos.z),
             target: Arc::new(TerrainChunkSnapshot::new(
                 pos.x,
                 pos.z,
@@ -360,28 +360,6 @@ mod tests {
                     section_count: 1,
                 })
             }
-        );
-
-        let mut player_queue = TerrainMeshJobQueue::default();
-        for distance in 1..=4 {
-            let pos = ChunkPos {
-                x: distance as i32,
-                z: 0,
-            };
-            assert_eq!(
-                player_queue.submit(job(pos, 1, distance)),
-                TerrainMeshSubmit::Queued { evicted: None }
-            );
-        }
-        let mut player_changed = job(ChunkPos { x: 99, z: 0 }, 1, 99);
-        player_changed.priority.0 = 0;
-        assert!(matches!(
-            player_queue.submit(player_changed),
-            TerrainMeshSubmit::Queued { evicted: Some(_) }
-        ));
-        assert_eq!(
-            player_queue.pop_next().expect("player-changed job").key.pos,
-            ChunkPos { x: 99, z: 0 }
         );
     }
 

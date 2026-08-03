@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "7a7218f7a255de6f4f961f5e815233f8300e13d918825468e70ca2d7ba5081ea"
+      "sha256": "794119a3e68a1c927dbe0ed805155f293a1daa03a835103a645e8153084515e2"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -251,7 +251,8 @@
         "crates/bbb-native/src/terrain_runtime.rs",
         "crates/bbb-renderer/src/terrain.rs"
       ],
-      "owner_count": 29
+      "owner_count": 29,
+      "owner_evidence_count": 29
     },
     "rendering-nondeterministic-golden-exclusions": {
       "bbb_evidence": [
@@ -24944,6 +24945,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addMainPass(final FrameGraphBuilder frame,final Frustum frustum,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final boolean renderOutline,final LevelRenderState levelRenderState,final DeltaTracker deltaTracker,final ProfilerFiller profiler,final ChunkSectionsToRender chunkSectionsToRender)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#accept_terrain_mesh_result"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#partial_worker_result_preserves_unchanged_section_mesh_and_residency"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25000,6 +25009,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#allChanged()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#publish_terrain_frustum_visibility"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25014,6 +25031,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#applyFrustum(final Frustum frustum)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25042,6 +25067,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#checkPoseStack(final PoseStack poseStack)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#publish_terrain_frustum_visibility"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25084,6 +25117,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#collectPerFrameGizmos()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#queue_terrain_chunk_mesh"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#production_compile_order_keeps_vanilla_default_none_policy"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25098,6 +25139,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#compileSections(final Camera camera)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#refresh_terrain_counters"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#terrain_visibility_filter_limits_resident_section_draws_and_counter"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25112,6 +25161,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#countRenderedSections()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#refresh_terrain_visibility"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25336,6 +25393,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getItemEntityTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#selected_terrain_chunks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_selection_keeps_every_server_loaded_chunk_in_distance_order"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25392,6 +25457,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getParticlesTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#refresh_terrain_visibility"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25406,6 +25479,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionOcclusionGraph()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime/mesh_worker.rs#pub(super) struct TerrainMeshWorker"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime/mesh_worker.rs#worker_builds_from_immutable_values_and_joins_on_drop"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25420,6 +25501,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionRenderDispatcher()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters_require_every_selected_section_and_no_pending_job"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25434,6 +25523,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionStatistics()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters_require_every_selected_section_and_no_pending_job"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25476,6 +25573,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getTransparencyChain()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#renderer_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#ordered_frame_projection_refreshes_fade_and_consumer_gate_together"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25504,6 +25609,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getWeatherTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters_require_every_selected_section_and_no_pending_job"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25532,6 +25645,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#initOutline()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#section_residency_is_consumer_visible"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#player_entity_block_entity_and_readiness_share_the_point_three_gate"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25560,6 +25681,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#needsUpdate()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#publish_terrain_frustum_visibility"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25574,6 +25703,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#offsetFrustum(final Frustum frustum)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#accept_terrain_mesh_result"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#partial_worker_result_preserves_unchanged_section_mesh_and_residency"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25602,6 +25739,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onResourceManagerReload(final ResourceManager resourceManager)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#synchronize_chunk_section_residency"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#nearby_and_previously_empty_sections_do_not_restart_fade_on_recompile"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25616,6 +25761,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onSectionBecomingNonEmpty(final long sectionNode)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#set_terrain_section_states"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#terrain_visibility_filter_changes_deterministic_frame_pixels"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25728,6 +25881,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#resize(final int width,final int height)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#resort_translucent_terrain_for_camera"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25742,6 +25903,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#scheduleResort(final SectionRenderDispatcher.RenderSection section,final TranslucencyPointOfView pointOfView,final Vec3 cameraPos,final boolean blockPosChanged,final boolean isNearby)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#resort_translucent_terrain_for_camera"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25756,6 +25925,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#scheduleTranslucentSectionResort(final Vec3 cameraPos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25770,6 +25947,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25784,6 +25969,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final boolean playerChanged)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25812,6 +26005,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setLevel(final @Nullable ClientLevel level)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25826,6 +26027,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25840,6 +26049,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ,final boolean playerChanged)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25854,6 +26071,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirtyWithNeighbors(final int sectionX,final int sectionY,final int sectionZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -25938,6 +26163,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#tick(final Camera camera)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#accept_terrain_mesh_result"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#partial_worker_result_preserves_unchanged_section_mesh_and_residency"
+        ]
+      },
       "category": "render-section",
       "domain": "rendering",
       "kind": "method",
@@ -40225,6 +40458,9 @@
     "java_frontend": "scripts/vanilla_java_source.py",
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
+    "owner_evidence_mechanisms": [
+      "rendering-level-section-lifecycle"
+    ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
     "serverbound_scan_paths": [
       "net/minecraft/client/Minecraft.java",

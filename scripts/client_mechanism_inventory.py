@@ -58,6 +58,12 @@ class MethodRoute:
     role: str = "decision"
 
 
+@dataclass(frozen=True)
+class OwnerEvidence:
+    implementation: tuple[str, ...]
+    tests: tuple[str, ...]
+
+
 def _method_routes(
     *groups: tuple[MethodRoute, tuple[str, ...]],
 ) -> dict[str, MethodRoute]:
@@ -474,6 +480,136 @@ LEVEL_RENDERER_METHOD_ROUTES = _method_routes(
 )
 
 
+def _owner_evidence(
+    *groups: tuple[OwnerEvidence, tuple[str, ...]],
+) -> dict[str, OwnerEvidence]:
+    evidence: dict[str, OwnerEvidence] = {}
+    for owner_evidence, method_names in groups:
+        for method_name in method_names:
+            if method_name in evidence:
+                raise ValueError(f"duplicate owner evidence: {method_name}")
+            evidence[method_name] = owner_evidence
+    return evidence
+
+
+LEVEL_RENDERER_SECTION_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#publish_terrain_frustum_visibility",),
+            ("crates/bbb-native/src/terrain_runtime.rs#frame_visibility_matches_vanilla_two_degree_rotation_gate",),
+        ),
+        ("clearVisibleSections", "applyFrustum", "offsetFrustum"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#refresh_terrain_visibility",),
+            ("crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild",),
+        ),
+        ("cullTerrain", "getSectionOcclusionGraph"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#accept_terrain_mesh_result",),
+            ("crates/bbb-native/src/terrain_runtime.rs#partial_worker_result_preserves_unchanged_section_mesh_and_residency",),
+        ),
+        ("addRecentlyCompiledSection", "update", "onChunkReadyToRender"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#resort_translucent_terrain_for_camera",),
+            ("crates/bbb-renderer/src/renderer.rs#translucent_sort_state_uses_vanilla_block_and_point_of_view_triggers",),
+        ),
+        ("scheduleTranslucentSectionResort", "scheduleResort"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#queue_terrain_chunk_mesh",),
+            ("crates/bbb-native/src/terrain_runtime.rs#production_compile_order_keeps_vanilla_default_none_policy",),
+        ),
+        ("compileSections",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#dirty_terrain_sections",),
+            ("crates/bbb-native/src/terrain_runtime.rs#block_update_packets_rebuild_dirty_sections_and_reuse_stable_layers",),
+        ),
+        (
+            "blockChanged",
+            "setBlockDirty",
+            "setBlocksDirty",
+            "setSectionDirtyWithNeighbors",
+            "setSectionRangeDirty",
+            "setSectionDirty",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#synchronize_chunk_section_residency",),
+            ("crates/bbb-native/src/terrain_runtime.rs#nearby_and_previously_empty_sections_do_not_restart_fade_on_recompile",),
+        ),
+        ("onSectionBecomingNonEmpty",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters",),
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters_require_every_selected_section_and_no_pending_job",),
+        ),
+        ("hasRenderedAllSections", "getSectionStatistics"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#section_residency_is_consumer_visible",),
+            ("crates/bbb-native/src/terrain_runtime.rs#player_entity_block_entity_and_readiness_share_the_point_three_gate",),
+        ),
+        ("isSectionCompiledAndVisible",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#set_terrain_section_states",),
+            ("crates/bbb-renderer/src/renderer.rs#terrain_visibility_filter_changes_deterministic_frame_pixels",),
+        ),
+        ("prepareChunkRenders",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#selected_terrain_chunks",),
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_selection_keeps_every_server_loaded_chunk_in_distance_order",),
+        ),
+        ("getLastViewDistance",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#refresh_terrain_counters",),
+            ("crates/bbb-renderer/src/renderer.rs#terrain_visibility_filter_limits_resident_section_draws_and_counter",),
+        ),
+        ("countRenderedSections",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters",),
+            ("crates/bbb-native/src/terrain_runtime.rs#terrain_residency_counters_require_every_selected_section_and_no_pending_job",),
+        ),
+        ("getTotalSections",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime/mesh_worker.rs#pub(super) struct TerrainMeshWorker",),
+            ("crates/bbb-native/src/terrain_runtime/mesh_worker.rs#worker_builds_from_immutable_values_and_joins_on_drop",),
+        ),
+        ("getSectionRenderDispatcher",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#renderer_sections",),
+            ("crates/bbb-native/src/terrain_runtime.rs#ordered_frame_projection_refreshes_fade_and_consumer_gate_together",),
+        ),
+        ("getVisibleSections",),
+    ),
+)
+
+OWNER_EVIDENCE_MECHANISMS = ("rendering-level-section-lifecycle",)
+
+
 METHOD_SURFACES = (
     MethodSurface("startup", "startup", "startup-client-bootstrap", "net/minecraft/client/main/Main.java"),
     MethodSurface("startup", "startup", "startup-session-identity", "net/minecraft/client/User.java"),
@@ -731,6 +867,7 @@ class InventoryBuilder:
         kind: str,
         scope: str = "external-client",
         role: str | None = None,
+        evidence: OwnerEvidence | None = None,
     ) -> None:
         owner = {
             "category": category,
@@ -744,6 +881,11 @@ class InventoryBuilder:
         }
         if role is not None:
             owner["role"] = role
+        if evidence is not None:
+            owner["bbb_evidence"] = {
+                "implementation": list(evidence.implementation),
+                "tests": list(evidence.tests),
+            }
         self.owners.append(owner)
 
     @staticmethod
@@ -758,6 +900,13 @@ class InventoryBuilder:
         for method in sorted(source.methods, key=lambda item: item.span.start_byte):
             route = self.method_route(source, spec, method)
             signature = self.method_signature(method)
+            evidence = None
+            if route.mechanism_id in OWNER_EVIDENCE_MECHANISMS:
+                evidence = LEVEL_RENDERER_SECTION_OWNER_EVIDENCE.get(method.name)
+                if evidence is None:
+                    raise ClientMechanismInventoryError(
+                        f"LevelRenderer owner lacks BBB implementation/test evidence: {signature}"
+                    )
             self.add_owner(
                 owner_id=f"method:{signature}",
                 category=route.category,
@@ -769,6 +918,7 @@ class InventoryBuilder:
                 kind="constructor" if method.is_constructor else "method",
                 scope=route.scope,
                 role=route.role,
+                evidence=evidence,
             )
 
     @staticmethod
@@ -1050,6 +1200,21 @@ class InventoryBuilder:
         by_category = Counter(str(item["category"]) for item in self.owners)
         by_domain = Counter(str(item["domain"]) for item in self.owners)
         by_mechanism = Counter(str(item["mechanism_id"]) for item in self.owners)
+        owner_evidence_by_mechanism = Counter(
+            str(item["mechanism_id"])
+            for item in self.owners
+            if isinstance(item.get("bbb_evidence"), dict)
+        )
+        incomplete_owner_evidence = sorted(
+            mechanism_id
+            for mechanism_id in OWNER_EVIDENCE_MECHANISMS
+            if owner_evidence_by_mechanism[mechanism_id] != by_mechanism[mechanism_id]
+        )
+        if incomplete_owner_evidence:
+            raise ClientMechanismInventoryError(
+                "mechanisms lack complete per-owner BBB evidence: "
+                f"{incomplete_owner_evidence}"
+            )
         by_role = Counter(
             str(item["role"])
             for item in self.owners
@@ -1068,6 +1233,11 @@ class InventoryBuilder:
                 mechanism_id: {
                     "bbb_evidence": list(MECHANISM_EVIDENCE[mechanism_id]),
                     "owner_count": by_mechanism[mechanism_id],
+                    **(
+                        {"owner_evidence_count": owner_evidence_by_mechanism[mechanism_id]}
+                        if mechanism_id in OWNER_EVIDENCE_MECHANISMS
+                        else {}
+                    ),
                 }
                 for mechanism_id in mechanisms
             },
@@ -1076,6 +1246,7 @@ class InventoryBuilder:
             "selection_contract": {
                 "java_frontend": "scripts/vanilla_java_source.py",
                 "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
+                "owner_evidence_mechanisms": list(OWNER_EVIDENCE_MECHANISMS),
                 "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
                 "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
                 "serverbound_scan_paths": list(SERVERBOUND_SCAN_PATHS),
