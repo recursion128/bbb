@@ -2640,9 +2640,7 @@ pub(crate) fn advance_simulation(
         let listener_state = net_counters.state.as_deref();
         let title = disconnected_screen_title_for_state(listener_state);
         let stop_audio = remote_disconnect_stops_audio(listener_state);
-        world.clear_client_level();
-        world.reset_registry_session();
-        world.reset_resource_pack_session();
+        world.end_connection_session();
         input.open_disconnected_screen(
             title,
             crate::input::disconnected_screen::DisconnectedScreenDetails {

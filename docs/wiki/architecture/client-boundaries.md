@@ -181,6 +181,12 @@ pack 不再导出 piston profile、source-expression resolver 或 `PackRoots` lo
 但一帧 renderer input 必须引用同一 resource generation。断线先停止新 packet 应用，
 再清理 world/backend；control 只能看到最后一个明确标记状态的 snapshot。
 
+外部 client tick 的唯一 deadline 来自 simulation scheduler。正常世界以 50ms 为下限，
+低于 20 TPS 时使用 server tick rate，freeze 仍保持 50ms client tick；外部多人 pause screen
+不冻结 client/world tick。event loop 不另存 tick timer，render/control 只读 publication 的
+tick anchor、interval 与 residual。terminal close 固定由 event loop 依次 join simulation、network，
+再发布 `running=false/connected=false`，不存在第二条 detached shutdown 路径。
+
 机械 owner inventory 不再把 `Minecraft.java` 的 187 个方法当成一个 lifecycle 判断：共享
 Tree-sitter frontend 将 9 个 run/tick/terminal owner、12 个 session replacement owner、3 个 task
 handoff owner 和 10 个 resource recovery owner分别路由，其余决策进入既有 input/render/security/
@@ -192,8 +198,9 @@ diagnostics 或 source-backed 范围外机制。仅“单条 return 且表达式
 
 `bbb-net::DisconnectReason` 是远端 packet/transport terminal outcome 的唯一 bounded
 presentation 输入：relay 保持 FIFO，主动本地 close 不合成 reason，裸 event channel 关闭也不
-伪造远端状态页。simulation 在同一步、应用 window/control input 前清除 client level、registry
-session 与 server-pack session，再由 `ClientInputState` 发布 generation-tagged
+伪造远端状态页。simulation 在同一步、应用 window/control input 前只调用
+`WorldStore::end_connection_session`：它清除 client level、registry、server-pack、listener
+presentation 与 transfer-only carry，再由 `ClientInputState` 发布 generation-tagged
 `DisconnectedScreenRuntime`；Login/尚未建 phase 使用 `connect.failed`，Configuration/Play 使用
 `disconnect.lost`。关闭 receiver 后不会保留一个永久 productive wake source。
 
@@ -214,6 +221,24 @@ back action 进入正常 app shutdown。live kick gate 必须同时观察服务�
 transaction 与 renderer-private cube generation 单向投影；断线页只携带 realtime rotation，不能
 反向读取 pack。renderer 固定在 blur/menu background/widgets 之前提交 cube 与 overlay，reload
 失败保留上一完整 GPU generation，startup catalog 缺失则退回 menu background。
+
+### Connection replacement 与 reconfiguration
+
+`WorldStore` 是 connection/session replacement 的唯一 canonical owner。新 transport 的
+`Connected` edge 调用 `begin_connection_session`；play→configuration 不经过此 edge，因此保留
+`CommonListenerCookie` 的 registry、feature、brand、chat、report 与 links。`StartConfiguration`
+先 flush chat acknowledgement，再恰好清一次 level 并在同一 FIFO effect batch stop-all；后续
+`StateChanged(Configuration)` 只建立 registry candidate，不会再次推进 level generation。初次
+login→configuration 没有旧 level，也不制造 audio stop。
+
+configuration 与 play 的 Transfer 共享一个 teardown：记录 target 后清旧 level、stop-all，
+但对应 Vanilla `Minecraft.disconnect(..., isTransferring=true)` 保留已下载/激活 server pack。
+replacement `Connected` 重建 built-in registry session，并清旧 brand/custom payload/report/links、
+feature flags 与 Code of Conduct packet state；同时保留 `TransferState` 的 cookies、seen players、
+insecure-chat warning guard，以及 `ConnectScreen` 单独传递的 `ServerData`。`ServerData` 拥有的
+accepted Code of Conduct hash 也跨 transfer 保留；`last_transfer` 仅是单调 packet diagnostic，
+连接链终止时由 `end_connection_session` 清除。server-pack async result 仍以 push sequence/reload
+generation 判 stale；transfer 不触发无变化 reload，普通 terminal disconnect 则原子提交空 stack。
 
 ## External network backend terminal close
 

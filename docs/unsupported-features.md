@@ -46,10 +46,10 @@ Matrix routes: `lifecycle-client-runtime`, `lifecycle-session-replacement`,
 `diagnostics-crash-runtime`
 
 - **`lifecycle-external-session-runtime-26-1` is `active`.** The happy live gate
-  does not close the remaining 9 run/tick/terminal, 12 session-replacement,
-  3 task-handoff and 10 resource-recovery decisions. Each group still needs
-  exact BBB symbol/test evidence plus deterministic disconnect, join failure,
-  recovery rollback and stale-generation acceptance. Goal route:
+  must be refreshed for the decision-complete run/tick and session-replacement
+  groups. The remaining 3 task-handoff and 10 resource-recovery decisions still
+  need exact BBB symbol/test evidence plus deterministic join failure, recovery
+  rollback and stale-generation acceptance. Goal route:
   `lifecycle-external-session-runtime-26-1` under `p4-delivery`.
 
 ## Architecture drift candidates

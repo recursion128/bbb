@@ -23,9 +23,9 @@ fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallbac
     let open = advance
         .find("input.open_disconnected_screen(")
         .expect("terminal screen publication");
-    let reset_resource_packs = advance
-        .find("world.reset_resource_pack_session();")
-        .expect("server-pack session reset");
+    let end_session = advance
+        .find("world.end_connection_session();")
+        .expect("terminal connection session reset");
     let stop_audio = advance
         .find("audio_events.stop_all_sounds();")
         .expect("common-listener disconnect audio stop");
@@ -38,15 +38,16 @@ fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallbac
     let input = advance
         .find("input_runtime.apply_commands(")
         .expect("input application");
-    assert!(drain < reset_resource_packs);
-    assert!(reset_resource_packs < open && open < stop_receipt);
+    assert!(drain < end_session);
+    assert!(end_session < open && open < stop_receipt);
     assert!(stop_receipt < stop_audio);
     assert!(stop_audio < cursor && cursor < input);
     assert_eq!(advance.matches("stop_all_sounds()").count(), 1);
     assert!(!advance.contains("request_network_terminal_shutdown"));
-    assert!(advance.contains("world.clear_client_level();"));
-    assert!(advance.contains("world.reset_registry_session();"));
-    assert!(advance.contains("world.reset_resource_pack_session();"));
+    assert_eq!(
+        advance.matches("world.end_connection_session();").count(),
+        1
+    );
     assert!(advance.contains("events.is_closed() && events.is_empty()"));
 }
 

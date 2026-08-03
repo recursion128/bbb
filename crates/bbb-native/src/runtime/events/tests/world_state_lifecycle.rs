@@ -34,6 +34,7 @@ fn configuration_reentry_clears_online_client_level_state() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
     world.apply_add_entity(protocol_add_entity_with_type(55, 1));
     world.set_local_using_item(true);
     let mut counters = NetCounters::default();
@@ -59,6 +60,16 @@ fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
         0,
         vec![RegistryPacketEntry::stub("example:first_server_item")],
     );
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:trade_rebalance".to_string()],
+    });
+    world.apply_custom_payload(bbb_protocol::packets::CustomPayload {
+        id: "minecraft:brand".to_string(),
+        payload: bbb_protocol::packets::CustomPayloadBody::Brand {
+            brand: "first-server".to_string(),
+        },
+    });
+    world.apply_code_of_conduct("First server rules".to_string());
 
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::StateChanged {
@@ -78,15 +89,19 @@ fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
         world.registry_resource_id_by_holder_id("minecraft:item", 0),
         Some("example:first_server_item")
     );
+    assert!(world.is_feature_enabled("minecraft:trade_rebalance"));
+    assert_eq!(world.server_brand(), Some("first-server"));
+    assert!(world.last_code_of_conduct().is_some());
 
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::Connected).unwrap();
     tx.try_send(NetEvent::StateChanged {
         state: bbb_net::ConnectionState::Login,
     })
     .unwrap();
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        1
+        2
     );
     assert!(world
         .resolved_registry_entry_by_resource_id("minecraft:item", "example:first_server_item")
@@ -98,6 +113,12 @@ fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
         ),
         Some("minecraft:snowball")
     );
+    assert_eq!(
+        world.enabled_feature_list(),
+        vec!["minecraft:vanilla".to_string()]
+    );
+    assert!(world.server_brand().is_none());
+    assert!(world.last_code_of_conduct().is_none());
 }
 
 #[test]
@@ -677,6 +698,7 @@ fn configuration_state_change_clears_client_level_state() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
     world.apply_add_entity(protocol_add_entity(55));
     assert!(
         world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
@@ -772,6 +794,82 @@ fn start_configuration_flushes_pending_chat_acknowledgement_before_clearing_leve
         0
     );
     assert_eq!(world.counters().player_chat_acknowledgement_packets, 1);
+}
+
+#[test]
+fn play_reconfiguration_clears_level_and_stops_the_previous_audio_generation() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StartConfiguration).unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(55));
+    let prior_level_generation = world.client_level_generation();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio),),
+        1
+    );
+
+    assert_eq!(
+        world.client_level_generation(),
+        prior_level_generation.saturating_add(1)
+    );
+    assert_eq!(world.entity_count(), 0);
+    assert_eq!(
+        audio.commands,
+        vec![AudioCommand::StopSound(bbb_audio::StopSoundCommand {
+            category: None,
+            name: None,
+        })]
+    );
+}
+
+#[test]
+fn play_reconfiguration_protocol_switch_does_not_clear_the_level_twice() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::StartConfiguration).unwrap();
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
+    let prior_level_generation = world.client_level_generation();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio),),
+        2
+    );
+    assert_eq!(
+        world.client_level_generation(),
+        prior_level_generation.saturating_add(1)
+    );
+    assert_eq!(audio.commands.len(), 1);
+    assert_eq!(counters.state.as_deref(), Some("Configuration"));
+}
+
+#[test]
+fn initial_configuration_transition_does_not_stop_a_nonexistent_level_audio_generation() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio),),
+        1
+    );
+    assert!(audio.commands.is_empty());
 }
 
 #[test]

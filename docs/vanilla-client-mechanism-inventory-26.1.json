@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "e72f0222e15ad22a8716724005f670eeeb60acd2e589498edc7b8bf21641cdc7"
+      "sha256": "63d8a349882f7e1d36ae966750f46c52126271a11e7eae17967242b7eddf37e6"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -80,6 +80,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
         "crates/bbb-native/src/simulation/thread.rs#shutdown_and_join",
+        "crates/bbb-native/src/runtime/tests.rs#entity_client_tick_cadence_tracks_normal_world_tick_rate",
+        "crates/bbb-native/src/runtime/tests.rs#native_pause_screens_never_freeze_external_client_or_running_level_ticks",
         "scripts/playable_gate.py"
       ],
       "owner_count": 9
@@ -93,8 +95,13 @@
     },
     "lifecycle-session-replacement": {
       "bbb_evidence": [
-        "crates/bbb-native/src/runtime/events/dispatcher.rs#remote_disconnect_outcome_observes_reason_in_fifo_order",
-        "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect"
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#session_replacement_has_one_connection_owner_and_frozen_transfer_order",
+        "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#play_reconfiguration_protocol_switch_does_not_clear_the_level_twice",
+        "crates/bbb-world/src/client/server_presentation.rs#new_connection_session_keeps_only_transfer_carry_and_server_data",
+        "crates/bbb-native/src/resource_pack_runtime.rs#transfer_keeps_active_pack_while_terminal_disconnect_unloads_it",
+        "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
+        "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
+        "scripts/playable_gate.py"
       ],
       "owner_count": 12
     },

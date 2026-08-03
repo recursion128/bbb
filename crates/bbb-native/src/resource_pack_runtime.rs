@@ -1169,6 +1169,43 @@ mod tests {
     }
 
     #[test]
+    fn transfer_keeps_active_pack_while_terminal_disconnect_unloads_it() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("session-replacement");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "active");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            materialization: ready_materialization(root.clone()),
+        });
+        runtime.resolve_download_batches();
+        let load = runtime.take_reload().unwrap();
+        assert!(runtime.finish_reload(load.generation, Ok(())));
+        runtime.responses.clear();
+
+        world.apply_transfer(bbb_protocol::packets::Transfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+        world.begin_connection_session(true);
+        runtime.reconcile_world(&world, true);
+        assert!(runtime.take_reload().is_none());
+        assert!(root.exists());
+        assert!(runtime.packs[0].active);
+
+        world.end_connection_session();
+        runtime.reconcile_world(&world, false);
+        let unload = runtime.take_reload().unwrap();
+        assert!(unload.server_packs.is_empty());
+        assert!(runtime.finish_reload(unload.generation, Ok(())));
+        assert!(!root.exists());
+        assert!(runtime.packs.is_empty());
+    }
+
+    #[test]
     fn active_pop_keeps_root_until_unload_reload_succeeds() {
         let mut world = WorldStore::new();
         let id = Uuid::from_u128(1);

@@ -507,7 +507,7 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
   recovery/failure/stale-session 分支。逐 owner evidence 与 deterministic recovery 全过后才删 ledger。
 - Vanilla owner：`Minecraft.run/runTick/tick/renderFrame`、`setLevel/disconnect/clearClientLevel/
   updateLevelInEngines`、`destroy/close/stop`、`wrapRunnable/shouldRun`、pack recovery/crash handoff；多人
-  teardown 先停 packet/task apply，再清 session/backend，最后发布 terminal state。
+  teardown 先停 packet/task apply，再清 session/backend，最后发布 terminal state。当前推进 Phase C。
 - BBB owner/direction：net 只产 ordered events；`SimulationCore` 独占 session apply；`SimulationThread`/
   `NetworkRuntime` 独占 join；event loop 按 simulation→network→terminal snapshot 提交，renderer/audio/
   window 只消费窄 projection；不得新增 shutdown queue、backend-in-world 或 session shadow cache。

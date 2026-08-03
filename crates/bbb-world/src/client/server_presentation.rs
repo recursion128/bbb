@@ -158,6 +158,53 @@ pub struct ServerLinkState {
 }
 
 impl WorldStore {
+    /// Starts a new transport connection while retaining only Vanilla's
+    /// transfer carry plus the `ServerData` object supplied separately to the
+    /// replacement `ConnectScreen`. BBB's last-transfer value is a monotonic
+    /// packet diagnostic, not listener state, and remains observable until the
+    /// connection chain ends.
+    ///
+    /// `TransferState` carries cookies, seen players, and the insecure-chat
+    /// warning guard. A fresh `CommonListenerCookie` resets brand, custom
+    /// payload/report/link state, feature flags, registries, and the pending
+    /// Code of Conduct. `Minecraft.disconnect(..., isTransferring)` separately
+    /// keeps downloaded resource packs only on the transfer path. Play
+    /// reconfiguration does not call this method and therefore keeps its
+    /// CommonListenerCookie state.
+    pub fn begin_connection_session(&mut self, keep_resource_packs: bool) {
+        self.reset_registry_session();
+        self.presentation.server_brand = None;
+        self.presentation.last_custom_payload = None;
+        self.presentation.server_links.clear();
+        self.presentation.custom_report_details.clear();
+        if !keep_resource_packs {
+            self.reset_resource_pack_session();
+        }
+        self.update_server_link_count();
+        self.update_custom_report_detail_count();
+
+        self.features.enabled = crate::ClientFeatureState::default().enabled;
+        self.counters.enabled_features_tracked = self.features.enabled.len();
+        self.client_ui.last_code_of_conduct = None;
+        self.counters.last_code_of_conduct_len = 0;
+    }
+
+    /// Ends a connection chain after a non-transfer disconnect.
+    ///
+    /// The disconnected-screen projection must capture any listener-owned
+    /// details before this call. Unlike transfer, no `ServerData`, cookies,
+    /// seen-player map, or insecure-chat warning guard can reach a future
+    /// listener after the old connection has been dropped.
+    pub fn end_connection_session(&mut self) {
+        self.clear_client_level();
+        self.begin_connection_session(false);
+        self.presentation.server_data = None;
+        self.presentation.server_cookies = ServerCookieState::default();
+        self.presentation.last_transfer = None;
+        self.player_info = crate::PlayerInfoState::default();
+        self.seen_insecure_chat_warning = false;
+    }
+
     pub fn apply_custom_payload(&mut self, packet: ProtocolCustomPayload) -> &CustomPayloadState {
         self.counters.custom_payload_packets += 1;
         let state = CustomPayloadState::from_packet(packet);
@@ -534,6 +581,110 @@ mod tests {
         assert_eq!(counters.custom_payload_packets, 2);
         assert_eq!(counters.custom_payload_brand_packets, 1);
         assert_eq!(counters.custom_payload_unknown_packets, 1);
+    }
+
+    #[test]
+    fn new_connection_session_keeps_only_transfer_carry_and_server_data() {
+        let mut store = WorldStore::new();
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("Original server"),
+            icon_bytes: None,
+        });
+        store.apply_store_cookie("minecraft:transfer", 3, 1);
+        store.apply_custom_payload(ProtocolCustomPayload {
+            id: "minecraft:brand".to_string(),
+            payload: CustomPayloadBody::Brand {
+                brand: "old-brand".to_string(),
+            },
+        });
+        store.apply_transfer(ProtocolTransfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+        store.apply_server_links(ProtocolServerLinks {
+            links: vec![ProtocolServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::BugReport),
+                url: "https://old.example/bug".to_string(),
+            }],
+        });
+        store.apply_custom_report_details(CustomReportDetails {
+            details: BTreeMap::from([("old".to_string(), "detail".to_string())]),
+        });
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            Uuid::from_u128(1),
+            "https://old.example/pack.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            None,
+        ));
+        store.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:trade_rebalance".to_string()],
+        });
+        store.apply_code_of_conduct("Old rules".to_string());
+        store.record_registry("example:old", 0);
+        let old_registry_session = store.registry_access_revision().session;
+
+        store.begin_connection_session(true);
+
+        assert_eq!(
+            store.server_data().map(|data| data.motd.text()),
+            Some("Original server")
+        );
+        assert_eq!(store.last_cookie_key(), Some("minecraft:transfer"));
+        assert_eq!(store.stored_cookie_count(), 1);
+        assert!(store.server_brand().is_none());
+        assert!(store.last_custom_payload().is_none());
+        assert_eq!(
+            store.last_transfer(),
+            Some(&TransferTargetState {
+                host: "next.example.com".to_string(),
+                port: 25566,
+            })
+        );
+        assert!(store.server_links().is_empty());
+        assert!(store.custom_report_details().is_empty());
+        assert_eq!(store.resource_packs().len(), 1);
+        assert_eq!(
+            store.enabled_feature_list(),
+            vec!["minecraft:vanilla".to_string()]
+        );
+        assert!(store.last_code_of_conduct().is_none());
+        assert_eq!(
+            store.registry_access_revision().session,
+            old_registry_session.saturating_add(1)
+        );
+        assert_eq!(store.counters().server_links_tracked, 0);
+        assert_eq!(store.counters().custom_report_details_tracked, 0);
+        assert_eq!(store.counters().resource_packs_tracked, 1);
+        assert_eq!(store.counters().last_code_of_conduct_len, 0);
+    }
+
+    #[test]
+    fn terminal_connection_session_drops_transfer_only_carry() {
+        let mut store = WorldStore::new();
+        store.apply_server_data(ProtocolServerData {
+            motd: RichTextComponent::plain("Old server"),
+            icon_bytes: None,
+        });
+        store.apply_store_cookie("minecraft:transfer", 3, 1);
+        store.apply_transfer(ProtocolTransfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+        let prior_level_generation = store.client_level_generation();
+
+        store.end_connection_session();
+
+        assert_eq!(
+            store.client_level_generation(),
+            prior_level_generation.saturating_add(1)
+        );
+        assert!(store.server_data().is_none());
+        assert_eq!(store.last_cookie_key(), None);
+        assert_eq!(store.stored_cookie_count(), 0);
+        assert!(store.last_transfer().is_none());
+        assert!(store.seen_players().is_empty());
+        assert!(!store.seen_insecure_chat_warning());
     }
 
     #[test]

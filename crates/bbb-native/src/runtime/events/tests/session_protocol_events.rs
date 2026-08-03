@@ -33,10 +33,13 @@ fn transfer_event_updates_world_and_world_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
+    let prior_level_generation = world.client_level_generation();
     let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
 
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio),),
         1
     );
     assert_eq!(
@@ -47,6 +50,17 @@ fn transfer_event_updates_world_and_world_counters() {
         })
     );
     assert_eq!(world.counters().transfer_packets, 1);
+    assert_eq!(
+        world.client_level_generation(),
+        prior_level_generation.saturating_add(1)
+    );
+    assert_eq!(
+        audio.commands,
+        vec![AudioCommand::StopSound(bbb_audio::StopSoundCommand {
+            category: None,
+            name: None,
+        })]
+    );
 }
 
 #[test]
@@ -61,10 +75,13 @@ fn play_transfer_event_updates_world_through_shared_apply() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
+    let prior_level_generation = world.client_level_generation();
     let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
 
     assert_eq!(
-        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio),),
         1
     );
     assert_eq!(
@@ -75,6 +92,17 @@ fn play_transfer_event_updates_world_through_shared_apply() {
         })
     );
     assert_eq!(world.counters().transfer_packets, 1);
+    assert_eq!(
+        world.client_level_generation(),
+        prior_level_generation.saturating_add(1)
+    );
+    assert_eq!(
+        audio.commands,
+        vec![AudioCommand::StopSound(bbb_audio::StopSoundCommand {
+            category: None,
+            name: None,
+        })]
+    );
 }
 
 #[test]

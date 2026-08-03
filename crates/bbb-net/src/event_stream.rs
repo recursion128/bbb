@@ -357,7 +357,9 @@ async fn reconnect_for_transfer(
     stream.player_position_state = PlayerPositionState::default();
     stream.chunk_batch_size = ChunkBatchSizeCalculator::new();
     stream.seen_code_of_conduct = false;
-    stream.accepted_code_of_conduct_hash = None;
+    // Vanilla passes the same `ServerData` object to the transfer connection;
+    // its accepted Code of Conduct hash is separate from `TransferState` and
+    // remains available to the new configuration listener.
 
     emit(&stream.events, NetEvent::Connected).await?;
     emit(
@@ -4825,7 +4827,7 @@ mod tests {
             Some(&vec![1, 2, 3])
         );
         assert!(!stream.seen_code_of_conduct);
-        assert_eq!(stream.accepted_code_of_conduct_hash, None);
+        assert_eq!(stream.accepted_code_of_conduct_hash, Some(123));
         assert!(matches!(events_rx.recv().await, Some(NetEvent::Connected)));
         assert!(matches!(
             events_rx.recv().await,

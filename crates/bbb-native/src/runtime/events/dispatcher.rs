@@ -7,7 +7,8 @@ use bbb_net::{
 use bbb_pack::{JukeboxSongRegistry, JukeboxSongRegistryEntry, SoundEventRegistry};
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, Vec3d as ProtocolVec3d,
+    BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, PlayClientbound,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_protocol::particle_types::{
     VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID,
@@ -246,19 +247,25 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 }
             }
             NetEvent::Play(packet) => {
-                let mut effects = NativePlayEffects {
-                    counters,
-                    net_commands,
-                    audio_events: &mut audio_events,
-                    particle_events: &mut particle_events,
-                    particle_target: &mut particle_target,
-                    item_runtime,
-                    server_list: &mut server_list,
-                };
-                // Other connection-owned leftovers (rotation/movement
-                // responses and resource-pack replies) are already handled by
-                // the event stream.
-                let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
+                let transferring = matches!(&packet, PlayClientbound::Transfer(_));
+                {
+                    let mut effects = NativePlayEffects {
+                        counters,
+                        net_commands,
+                        audio_events: &mut audio_events,
+                        particle_events: &mut particle_events,
+                        particle_target: &mut particle_target,
+                        item_runtime,
+                        server_list: &mut server_list,
+                    };
+                    // Other connection-owned leftovers (rotation/movement
+                    // responses and resource-pack replies) are already handled by
+                    // the event stream.
+                    let _ = world.apply_play_packet(packet, level_event_sound_random, &mut effects);
+                }
+                if transferring {
+                    apply_transfer_session_teardown(world, &mut audio_events);
+                }
             }
             NetEvent::StartConfiguration => {
                 for acknowledgement in
@@ -274,19 +281,29 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     },
                 );
                 world.clear_client_level();
+                // Vanilla routes play reconfiguration through
+                // `Minecraft.clearClientLevel`, whose engine update stops the
+                // current sound generation.  Keep this on the explicit
+                // StartConfiguration edge: the initial login -> configuration
+                // transition has no prior ClientLevel and must not fabricate a
+                // backend stop.
+                if let Some(audio_events) = audio_events.as_deref_mut() {
+                    audio_events.stop_all_sounds();
+                }
             }
             NetEvent::StateChanged {
                 state: ConnectionState::Login,
             } => {
-                // A login listener starts from the client built-in registry
-                // layer. Play reconfiguration reaches Configuration directly
-                // and intentionally retains the current frozen access.
-                world.reset_registry_session();
+                // The preceding Connected event atomically installed the new
+                // connection session. Play reconfiguration reaches
+                // Configuration directly and retains CommonListenerCookie.
             }
             NetEvent::StateChanged {
                 state: ConnectionState::Configuration,
             } => {
-                world.clear_client_level();
+                if world.level_info().is_some() {
+                    world.clear_client_level();
+                }
                 world.begin_registry_configuration();
             }
             NetEvent::StateChanged {
@@ -336,6 +353,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             }
             NetEvent::Transfer(transfer) => {
                 world.apply_transfer(transfer);
+                apply_transfer_session_teardown(world, &mut audio_events);
             }
             NetEvent::ResetChat => {
                 world.apply_reset_chat();
@@ -380,7 +398,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             }
             NetEvent::Connected => {
                 *play_session_encrypted = false;
-                world.reset_resource_pack_session();
+                let keep_resource_packs = world.last_transfer().is_some();
+                world.begin_connection_session(keep_resource_packs);
             }
             NetEvent::Disconnected { .. } => {
                 *play_session_encrypted = false;
@@ -394,6 +413,16 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         }
     }
     drained
+}
+
+fn apply_transfer_session_teardown(
+    world: &mut WorldStore,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+) {
+    world.clear_client_level();
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.stop_all_sounds();
+    }
 }
 
 /// Queues a connection answer the session cannot proceed without (teleport
@@ -1733,6 +1762,37 @@ fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d>
 #[cfg(test)]
 mod terminal_tests {
     use super::*;
+
+    #[test]
+    fn session_replacement_has_one_connection_owner_and_frozen_transfer_order() {
+        let source = include_str!("dispatcher.rs");
+        let production = source
+            .split_once("#[cfg(test)]\nmod terminal_tests")
+            .expect("terminal test module")
+            .0;
+        assert_eq!(
+            production
+                .matches("world.begin_connection_session(")
+                .count(),
+            1
+        );
+        assert_eq!(
+            production
+                .matches("apply_transfer_session_teardown(world, &mut audio_events);")
+                .count(),
+            2
+        );
+        assert!(!production.contains("world.reset_registry_session();"));
+        assert!(!production.contains("world.reset_resource_pack_session();"));
+
+        let teardown = production
+            .split_once("fn apply_transfer_session_teardown(")
+            .expect("transfer teardown owner")
+            .1;
+        let clear = teardown.find("world.clear_client_level();").unwrap();
+        let stop = teardown.find("audio_events.stop_all_sounds();").unwrap();
+        assert!(clear < stop);
+    }
 
     #[test]
     fn play_session_security_tracks_event_and_connection_lifecycle() {
