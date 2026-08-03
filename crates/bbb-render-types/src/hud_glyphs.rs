@@ -461,6 +461,19 @@ impl HudFontGlyphMap {
         self.entries.is_empty()
     }
 
+    /// Logical bytes retained by this immutable glyph projection.
+    ///
+    /// The inline `Vec` owner is part of `Self`; its allocated entry capacity
+    /// is charged separately so a queued projection cannot hide spare
+    /// retained capacity behind its current length.
+    pub fn retained_logical_bytes(&self) -> usize {
+        std::mem::size_of::<Self>().saturating_add(
+            self.entries
+                .capacity()
+                .saturating_mul(std::mem::size_of::<(char, HudAsciiGlyph)>()),
+        )
+    }
+
     pub fn default_right_to_left(&self) -> bool {
         self.default_right_to_left
     }
@@ -693,6 +706,21 @@ mod tests {
         assert_eq!(map.get('é'), Some(first));
         assert_eq!(map.get('e'), None);
         assert_eq!(map.len(), 1);
+    }
+
+    #[test]
+    fn glyph_map_retained_bytes_charge_entry_capacity() {
+        let mut map = HudFontGlyphMap::new();
+        let empty_bytes = map.retained_logical_bytes();
+        assert_eq!(empty_bytes, std::mem::size_of::<HudFontGlyphMap>());
+
+        map.insert_first_wins('a', HudAsciiGlyph::default());
+        assert_eq!(
+            map.retained_logical_bytes(),
+            std::mem::size_of::<HudFontGlyphMap>()
+                + map.entries.capacity() * std::mem::size_of::<(char, HudAsciiGlyph)>()
+        );
+        assert!(map.retained_logical_bytes() > empty_bytes);
     }
 
     #[test]

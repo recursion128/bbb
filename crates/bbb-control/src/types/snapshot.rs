@@ -171,6 +171,73 @@ pub enum ControlWriteRequest {
     Input(InputControlRequest),
 }
 
+impl ControlWriteRequest {
+    /// Logical bytes retained while this request waits in the native
+    /// simulation mailbox. Inline enum storage is charged once; owned heap
+    /// capacities are charged recursively without serializing or allocating.
+    pub fn retained_logical_bytes(&self) -> usize {
+        let dynamic = match self {
+            Self::Screenshot { path } => path.capacity(),
+            Self::Net(request) => net_control_request_retained_bytes(request),
+            Self::Shutdown | Self::CodeOfConduct(_) | Self::Input(_) => 0,
+        };
+        std::mem::size_of::<Self>().saturating_add(dynamic)
+    }
+}
+
+fn net_control_request_retained_bytes(request: &NetControlRequest) -> usize {
+    match request {
+        NetControlRequest::RenameItem { name } => name.capacity(),
+        NetControlRequest::EditBook { pages, title, .. } => pages
+            .capacity()
+            .saturating_mul(std::mem::size_of::<String>())
+            .saturating_add(
+                pages
+                    .iter()
+                    .map(String::capacity)
+                    .fold(0usize, usize::saturating_add),
+            )
+            .saturating_add(title.as_ref().map_or(0, String::capacity)),
+        NetControlRequest::SignUpdate { lines, .. } => lines
+            .iter()
+            .map(String::capacity)
+            .fold(0usize, usize::saturating_add),
+        NetControlRequest::OpenAdvancementsTab { tab } => tab.capacity(),
+        NetControlRequest::ChatCommand { command }
+        | NetControlRequest::CommandSuggestionRequest { command, .. } => command.capacity(),
+        NetControlRequest::ChatMessage { message } => message.capacity(),
+        NetControlRequest::ContainerClick(click) => click
+            .changed_slots
+            .capacity()
+            .saturating_mul(std::mem::size_of::<ContainerChangedSlotControl>())
+            .saturating_add(
+                click
+                    .changed_slots
+                    .iter()
+                    .map(|slot| hashed_stack_retained_bytes(&slot.stack))
+                    .fold(0usize, usize::saturating_add),
+            )
+            .saturating_add(hashed_stack_retained_bytes(&click.carried_item)),
+        _ => 0,
+    }
+}
+
+fn hashed_stack_retained_bytes(stack: &HashedStackControl) -> usize {
+    let HashedStackControl::Item { components, .. } = stack else {
+        return 0;
+    };
+    // BTree collections expose no allocator capacity. Charge each live node
+    // by its value plus three link-sized words, a stable conservative logical
+    // accounting unit independent of the platform allocator implementation.
+    let map_node = std::mem::size_of::<(i32, i32)>() + 3 * std::mem::size_of::<usize>();
+    let set_node = std::mem::size_of::<i32>() + 3 * std::mem::size_of::<usize>();
+    components
+        .added_components
+        .len()
+        .saturating_mul(map_node)
+        .saturating_add(components.removed_components.len().saturating_mul(set_node))
+}
+
 /// Runtime-owned destination for ordered control writes.
 pub trait ControlRequestSink: Send + Sync {
     /// Submits one request and returns the destination's pending depth.
@@ -505,6 +572,36 @@ mod tests {
             requests.push(request);
             requests.len()
         }
+    }
+
+    #[test]
+    fn control_request_retained_bytes_charge_nested_capacities() {
+        let mut page = String::with_capacity(32);
+        page.push_str("page");
+        let mut pages = Vec::with_capacity(4);
+        pages.push(page);
+        let mut title = String::with_capacity(16);
+        title.push_str("title");
+        let request = ControlWriteRequest::Net(NetControlRequest::EditBook {
+            slot: 0,
+            pages,
+            title: Some(title),
+        });
+        let ControlWriteRequest::Net(NetControlRequest::EditBook { pages, title, .. }) = &request
+        else {
+            unreachable!()
+        };
+        let expected = std::mem::size_of::<ControlWriteRequest>()
+            + pages.capacity() * std::mem::size_of::<String>()
+            + pages.iter().map(String::capacity).sum::<usize>()
+            + title.as_ref().map_or(0, String::capacity);
+        assert_eq!(request.retained_logical_bytes(), expected);
+
+        let empty = ControlWriteRequest::Shutdown;
+        assert_eq!(
+            empty.retained_logical_bytes(),
+            std::mem::size_of::<ControlWriteRequest>()
+        );
     }
 
     #[test]

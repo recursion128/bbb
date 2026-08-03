@@ -2,6 +2,39 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// One producer partition in the native simulation command mailbox.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SimulationCommandMailboxClassCounters {
+    pub command_limit: usize,
+    pub retained_byte_limit: u64,
+    pub pending: usize,
+    pub peak_pending: usize,
+    pub retained_bytes: u64,
+    pub peak_retained_bytes: u64,
+    pub blocked_submissions: u64,
+}
+
+/// Bounded command-mailbox observation published with the simulation
+/// generation that consumed it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SimulationCommandMailboxCounters {
+    pub command_limit: usize,
+    pub retained_byte_limit: u64,
+    pub pending: usize,
+    pub peak_pending: usize,
+    pub retained_bytes: u64,
+    pub peak_retained_bytes: u64,
+    pub blocked_submissions: u64,
+    pub coalesced_submissions: u64,
+    pub oversized_rejections: u64,
+    pub closed_rejections: u64,
+    pub platform_input: SimulationCommandMailboxClassCounters,
+    pub control: SimulationCommandMailboxClassCounters,
+    pub render_feedback: SimulationCommandMailboxClassCounters,
+    pub async_completion: SimulationCommandMailboxClassCounters,
+    pub lifecycle: SimulationCommandMailboxClassCounters,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientResourcePackDiagnostic {
     pub priority: usize,
@@ -223,6 +256,10 @@ pub struct NetCounters {
     /// Peak queued simulation outputs observed by the render owner.
     #[serde(default)]
     pub simulation_output_backlog_peak: u64,
+    /// Count/retained-byte budgets and pressure for commands entering the
+    /// single simulation owner.
+    #[serde(default)]
+    pub simulation_command_mailbox: SimulationCommandMailboxCounters,
     /// Largest immutable simulation publication build observed in this
     /// process, in nanoseconds.
     #[serde(default)]
@@ -454,6 +491,7 @@ mod tests {
         object.remove("simulation_render_wakes_coalesced");
         object.remove("simulation_output_backlog_current");
         object.remove("simulation_output_backlog_peak");
+        object.remove("simulation_command_mailbox");
         object.remove("simulation_publication_build_peak_nanos");
         object.remove("simulation_entity_client_tick_nanos");
         object.remove("simulation_entity_client_tick_peak_nanos");
@@ -496,6 +534,10 @@ mod tests {
         assert_eq!(counters.simulation_render_wakes_coalesced, 0);
         assert_eq!(counters.simulation_output_backlog_current, 0);
         assert_eq!(counters.simulation_output_backlog_peak, 0);
+        assert_eq!(
+            counters.simulation_command_mailbox,
+            SimulationCommandMailboxCounters::default()
+        );
         assert_eq!(counters.simulation_publication_build_peak_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_nanos, 0);
         assert_eq!(counters.simulation_entity_client_tick_peak_nanos, 0);

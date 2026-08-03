@@ -8,4 +8,5 @@ pub use crate::types::{
     GameModeControl, HashedComponentPatchControl, HashedStackControl, InputControlRequest,
     InputKeyControl, InputMouseButtonControl, NetControlRequest, NetCounters,
     RecipeBookTypeControl, RendererCounters, SharedControlRequests, SharedSnapshot, SharedWorld,
+    SimulationCommandMailboxClassCounters, SimulationCommandMailboxCounters,
 };
