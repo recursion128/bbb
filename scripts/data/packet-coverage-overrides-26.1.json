@@ -2250,7 +2250,7 @@
           "crates/bbb-world/src/play_apply.rs#player_combat_kill_routes_immediate_respawn_effect_once",
           "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
           "crates/bbb-native/src/input/death_screen.rs#cause_link_is_generation_checked_and_returns_to_same_death_screen",
-          "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_and_quit_focus",
+          "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus",
           "crates/bbb-renderer/src/hud/death_screen.rs#hud_death_screen_main_uses_vanilla_button_rects_and_activation_delay",
           "crates/bbb-renderer/src/offscreen.rs#offscreen_death_screen_draws_gradient_after_ordinary_hud_without_blur",
           "vanilla:net/minecraft/client/gui/screens/DeathScreen.java#extractRenderState",
