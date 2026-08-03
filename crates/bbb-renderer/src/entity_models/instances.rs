@@ -1195,6 +1195,9 @@ entity_render_state! {
     /// equipment item whose equipment asset provides a `NAUTILUS_BODY` layer. Baby living nautilus
     /// skip it because vanilla supplies no baby armor model.
     (with_nautilus_body_equipment_asset) nautilus_body_equipment_asset: Option<EntityEquipmentAssetId> = None;
+    /// Vanilla `NautilusRenderState.bodyArmorItem.isEmpty()`, independent of whether the current
+    /// resource generation recognizes or can render the stack's equipment asset.
+    (with_nautilus_body_item_present) nautilus_body_item_present: bool = false;
     (with_nautilus_body_armor_dye) nautilus_body_armor_dye: Option<u32> = None;
     (with_nautilus_body_armor) nautilus_body_armor: Option<EntityArmorMaterial> = None;
     /// Vanilla armor trim over the adult `NAUTILUS_BODY` equipment model, resolved through the
@@ -3343,6 +3346,7 @@ mod tests {
                 nautilus_saddle_trim: None,
                 nautilus_saddle_foil: false,
                 nautilus_body_equipment_asset: None,
+                nautilus_body_item_present: false,
                 nautilus_body_armor_dye: None,
                 nautilus_body_armor: None,
                 nautilus_body_armor_trim: None,

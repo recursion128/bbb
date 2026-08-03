@@ -4415,6 +4415,8 @@ impl EntityStore {
         } else {
             None
         };
+        let nautilus_body_item_present = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
+            && body_slot_item().is_some();
         let nautilus_body_equipment_asset =
             (is_vanilla_abstract_nautilus_type(identity.entity_type_id)
                 && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
@@ -5558,6 +5560,7 @@ impl EntityStore {
             llama_body_decor_trim,
             llama_body_decor_foil,
             nautilus_body_equipment_asset,
+            nautilus_body_item_present,
             nautilus_body_armor_dye,
             nautilus_body_armor,
             nautilus_body_armor_trim,

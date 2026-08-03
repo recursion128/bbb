@@ -765,7 +765,7 @@ impl EntityModel for NautilusModel {
                 .child_mut("root")
                 .child_mut("shell")
                 .child_mut("corals")
-                .visible = render_state.nautilus_body_armor.is_none();
+                .visible = !render_state.nautilus_body_item_present;
         }
     }
 }

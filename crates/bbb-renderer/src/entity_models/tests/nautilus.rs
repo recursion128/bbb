@@ -834,6 +834,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     );
     let warm_armored_instance = warm
         .with_nautilus_body_armor(Some(EntityArmorMaterial::Netherite))
+        .with_nautilus_body_item_present(true)
         .with_nautilus_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
     let warm_bare = entity_model_textured_meshes(&[warm], &atlas);
     let warm_armored = entity_model_textured_meshes(&[warm_armored_instance], &atlas);
@@ -855,6 +856,52 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert_eq!(
         warm_armored.armor_cutout.vertices.len(),
         zombie_armored.armor_cutout.vertices.len()
+    );
+}
+
+#[test]
+fn zombie_nautilus_corals_follow_body_item_presence_not_asset_classification() {
+    let source = include_str!("../model_layers/nautilus.rs");
+    assert!(source.contains("!render_state.nautilus_body_item_present"));
+    for forbidden in [
+        "render_state.nautilus_body_armor.is_none()",
+        "render_state.nautilus_body_equipment_asset.is_none()",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "coral visibility restored equipment classification dependency `{forbidden}`"
+        );
+    }
+
+    let texture = ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF;
+    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+    let (atlas, _) =
+        build_entity_model_texture_atlas(&[EntityModelTextureImage::new(texture, vec![0x7f; len])])
+            .unwrap();
+    let warm = EntityModelInstance::new(
+        9330,
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let classified_only = warm
+        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
+        .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
+    let nonempty_unclassified = warm.with_nautilus_body_item_present(true);
+    let bare = entity_model_textured_meshes(&[warm], &atlas);
+    let classified_only = entity_model_textured_meshes(&[classified_only], &atlas);
+    let nonempty_unclassified = entity_model_textured_meshes(&[nonempty_unclassified], &atlas);
+
+    assert_eq!(
+        classified_only.cutout.vertices.len(),
+        bare.cutout.vertices.len()
+    );
+    assert_eq!(
+        bare.cutout.vertices.len() - nonempty_unclassified.cutout.vertices.len(),
+        48 * 4,
+        "every non-empty BODY stack hides the 48-face coral subtree"
     );
 }
 

@@ -2909,6 +2909,11 @@ entity_model_source_state! {
     /// because `SimpleEquipmentLayer` supplies no baby armor model.
     #[serde(default)]
     pub nautilus_body_equipment_asset: Option<EquipmentAssetId>,
+    /// Vanilla `NautilusRenderState.bodyArmorItem.isEmpty()`, projected independently of equipment
+    /// asset recognition. `ZombieNautilusCoralModel` hides its coral subtree for every non-empty BODY
+    /// stack, including a stack whose asset is missing, custom, stale or otherwise unrenderable.
+    #[serde(default)]
+    pub nautilus_body_item_present: bool,
     /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
     /// `NAUTILUS_BODY` asset layers.
     #[serde(default)]

@@ -147,11 +147,6 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   generation-matched equipment asset id. Reopen as a behavior slice against
   Vanilla smithing preview ownership; do not preserve the legacy projection in
   the architecture candidate to mask this missing consumer path.
-- **Zombie-nautilus coral body-item visibility is `partial`.** Vanilla
-  `ZombieNautilusCoralModel.setupAnim` hides corals for every nonempty body armor
-  item, while BBB currently infers presence from recognized armor material.
-  Reopen as an entity-presentation behavior slice with an explicit item-presence
-  projection; do not change this decision inside equipment architecture cleanup.
 
 ## Multiplayer screen surface closure
 

@@ -1000,6 +1000,7 @@ pub(super) fn entity_model_instance(
         with_camel_saddle_ridden camel_saddle_ridden,
         with_nautilus_saddle nautilus_saddle,
         with_nautilus_saddle_foil nautilus_saddle_foil,
+        with_nautilus_body_item_present nautilus_body_item_present,
         with_nautilus_body_armor_foil nautilus_body_armor_foil,
         with_happy_ghast_body_item happy_ghast_body_item,
         with_happy_ghast_harness_foil happy_ghast_harness_foil,

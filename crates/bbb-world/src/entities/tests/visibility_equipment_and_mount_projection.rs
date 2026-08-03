@@ -2075,6 +2075,15 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
         )
     }
 
+    fn nautilus_body_item_present(store: &WorldStore, entity_id: i32) -> bool {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .nautilus_body_item_present
+    }
+
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         78,
@@ -2111,6 +2120,13 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
             }],
         }));
     }
+    assert!(nautilus_body_item_present(&store, 78));
+    assert!(nautilus_body_item_present(&store, 79));
+    assert!(!nautilus_body_item_present(&store, 80));
+    assert!(
+        nautilus_body_item_present(&store, 81),
+        "render-state item presence is independent of the missing baby armor model"
+    );
     assert_eq!(
         nautilus_body_armor(&store, 78),
         (None, None, false),
@@ -2165,6 +2181,18 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
         }],
     }));
     assert_eq!(nautilus_body_armor(&store, 78), (None, None, false));
+    assert!(
+        nautilus_body_item_present(&store, 78),
+        "an unclassified non-empty BODY stack still hides zombie-nautilus corals"
+    );
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 78,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(PLAIN_ITEM_ID, 0),
+        }],
+    }));
+    assert!(!nautilus_body_item_present(&store, 78));
 }
 
 #[test]

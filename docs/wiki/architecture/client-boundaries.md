@@ -100,6 +100,11 @@ dye skip/default、首个可绘制 layer 后的 foil、末层 texture 上的 tri
 override、outline 与 submit order 仍由共享 layer emitter 决定。普通测试 helper 使用显式空 catalog，
 equipment 测试则提供带 generation/id 的 catalog fixture，不能通过测试开关改变 production 分支。
 
+装备 stack 自身影响模型的语义不从 catalog readiness 反推。例如 world 从 nautilus BODY slot
+独立投影 `nautilus_body_item_present`，native 只转交该 frame fact；renderer 的
+`ZombieNautilusCoralModel` 对任意非空 stack 隐藏 corals，即使其 asset 为 custom、missing 或
+stale。asset id 仅决定 `NAUTILUS_BODY` layer 是否可绘制，二者没有 fallback 或双写关系。
+
 catalog/owned texture/atlas/GPU pipeline 均在现有 renderer resource transaction 中准备。只有完整
 generation 成功后才替换；任一步失败继续保留上一 resolved catalog 和 atlas，旧 generation id 不会
 命中新 generation。反向 source guard 禁止恢复 legacy flag、静态 armor/saddle/wings resolver 或

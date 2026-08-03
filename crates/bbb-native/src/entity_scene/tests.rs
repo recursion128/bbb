@@ -7901,6 +7901,19 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
             render_state.nautilus_body_armor_foil,
         )
     };
+    let nautilus_body_item_present = |world: &WorldStore, id: i32| {
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
+        .nautilus_body_item_present
+    };
 
     let mut world = WorldStore::new();
     world.set_default_nautilus_body_armor_materials(std::collections::BTreeMap::from([
@@ -7933,6 +7946,12 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
     assert!(world.apply_set_equipment(body_armor(123, IRON_NAUTILUS_ARMOR_ITEM_ID)));
     assert!(world.apply_set_equipment(body_armor(124, NETHERITE_NAUTILUS_ARMOR_ITEM_ID)));
     assert!(world.apply_set_equipment(body_armor(125, IRON_NAUTILUS_ARMOR_ITEM_ID)));
+    assert!(nautilus_body_item_present(&world, 123));
+    assert!(nautilus_body_item_present(&world, 124));
+    assert!(
+        nautilus_body_item_present(&world, 125),
+        "native preserves the non-empty BODY stack independently of baby layer admission"
+    );
 
     assert_eq!(
         nautilus_body_armor(&world, 123),
