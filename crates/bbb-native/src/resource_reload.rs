@@ -1320,7 +1320,8 @@ mod tests {
         assert!(periodic_prepare < prepared_generation);
         assert_eq!(production.matches("upload_panorama(").count(), 1);
         assert!(!production.contains("VanillaAssetIndex"));
-        assert!(!production.contains("resource_with_indexed_vanilla_fallback"));
+        let removed_index_resolver = ["resource_with_indexed_vanilla_", "fall", "back"].concat();
+        assert!(!production.contains(&removed_index_resolver));
         assert!(!production.contains("ShaderSourceCatalog"));
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));

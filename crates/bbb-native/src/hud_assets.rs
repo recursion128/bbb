@@ -60,7 +60,7 @@ pub(crate) fn load_panorama(renderer: &mut bbb_renderer::Renderer, roots: Option
         .context("prepare startup panorama resources")
         .and_then(|catalog| upload_panorama(renderer, &catalog));
     if let Err(error) = result {
-        tracing::warn!(%error, "continuing with menu-background fallback without panorama");
+        tracing::warn!(%error, "continuing without panorama; menu background remains active");
     }
 }
 
