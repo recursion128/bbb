@@ -489,7 +489,7 @@ if [ -n "$termination_mode" ]; then
       Z*|"") break ;;
     esac
     if [ "$(date +%s)" -ge "$termination_deadline" ]; then
-      echo "playable gate failed: client did not exit after app.quit" >&2
+      echo "playable gate failed: client did not exit after termination request" >&2
       echo "playable gate evidence: termination: $termination_json" >&2
       exit 1
     fi

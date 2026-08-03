@@ -9,6 +9,7 @@ import threading
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1086,6 +1087,77 @@ class PlayableGateTerminationTests(unittest.TestCase):
             evidence = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(evidence["exit_status"], 7)
             self.assertTrue(evidence["process_absent"])
+
+    def test_termination_modes_capture_quiescence_before_requesting_exit(self):
+        for mode, expected_order in (
+            ("quit", ["snapshot", "metrics", "app.quit"]),
+            ("kick", ["snapshot", "metrics", "kick", "disconnected"]),
+        ):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "termination.json"
+                manifest = Path(directory) / "manifest.json"
+                manifest.write_text(
+                    json.dumps(
+                        {"terminal_gauges": {"renderer.queue_depth": 0}}
+                    ),
+                    encoding="utf-8",
+                )
+                order = []
+
+                def capture(_address):
+                    order.append("snapshot")
+                    return {"renderer": {"queue_depth": 0}}
+
+                def metrics(_pid):
+                    order.append("metrics")
+                    return {"rss_bytes": 1, "file_descriptors": 1, "threads": 1}
+
+                def control(_address, method, _params=None):
+                    order.append(method)
+                    return {"queued": True}
+
+                def kick(_command, _request):
+                    order.append("kick")
+
+                def disconnected(_deadline, _description, _getter, _predicate):
+                    order.append("disconnected")
+                    return {"connected": False}
+
+                args = argparse.Namespace(
+                    control="127.0.0.1:1",
+                    mode=mode,
+                    manifest=manifest,
+                    transfer_server_command=Path(directory) / "server-command",
+                    client_pid=123,
+                    timeout=1,
+                    output=output,
+                )
+                with (
+                    mock.patch.object(
+                        playable_gate, "_capture_control_snapshot", side_effect=capture
+                    ),
+                    mock.patch.object(
+                        playable_gate, "_process_metrics", side_effect=metrics
+                    ),
+                    mock.patch.object(
+                        playable_gate, "_control_request", side_effect=control
+                    ),
+                    mock.patch.object(
+                        playable_gate, "_server_console_command", side_effect=kick
+                    ),
+                    mock.patch.object(
+                        playable_gate, "_await_value", side_effect=disconnected
+                    ),
+                ):
+                    playable_gate.terminate_live(args)
+
+                self.assertEqual(order, expected_order)
+                evidence = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(evidence["kick_disconnected"], mode == "kick")
+                self.assertEqual(
+                    evidence["app_quit_response"],
+                    {"queued": True} if mode == "quit" else None,
+                )
 
 
 class PlayableGateScriptContractTests(unittest.TestCase):

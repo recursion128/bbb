@@ -1112,20 +1112,6 @@ def terminate_live(args: argparse.Namespace) -> None:
     }
     try:
         deadline = time.monotonic() + args.timeout
-        if args.mode == "kick":
-            _server_console_command(
-                args.transfer_server_command,
-                "kick bbb-playablegate bbb lifecycle soak kick",
-            )
-            disconnected = _await_value(
-                deadline,
-                "official-server kick disconnect",
-                lambda: _control_request(address, "net.counters"),
-                lambda value: isinstance(value, dict)
-                and value.get("connected") is False,
-            )
-            result["kick_disconnected"] = disconnected.get("connected") is False
-
         last_error: Exception | None = None
         while time.monotonic() < deadline:
             try:
@@ -1144,7 +1130,21 @@ def terminate_live(args: argparse.Namespace) -> None:
             )
 
         result["process_metrics"] = _process_metrics(args.client_pid)
-        result["app_quit_response"] = _control_request(address, "app.quit")
+        if args.mode == "kick":
+            _server_console_command(
+                args.transfer_server_command,
+                "kick bbb-playablegate bbb lifecycle soak kick",
+            )
+            disconnected = _await_value(
+                deadline,
+                "official-server kick disconnect",
+                lambda: _control_request(address, "net.counters"),
+                lambda value: isinstance(value, dict)
+                and value.get("connected") is False,
+            )
+            result["kick_disconnected"] = disconnected.get("connected") is False
+        else:
+            result["app_quit_response"] = _control_request(address, "app.quit")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
         result["failure"] = str(error)
         args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
