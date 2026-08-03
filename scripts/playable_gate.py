@@ -1107,6 +1107,8 @@ def terminate_live(args: argparse.Namespace) -> None:
         "client_pid": args.client_pid,
         "kick_disconnected": False,
         "kick_disconnect_receipt": None,
+        "kick_disconnected_screen": None,
+        "kick_process_metrics": None,
         "quiescent_snapshot": None,
         "terminal_gauges": None,
         "process_metrics": None,
@@ -1146,6 +1148,14 @@ def terminate_live(args: argparse.Namespace) -> None:
                 args.transfer_server_log,
             )
             result["kick_disconnected"] = True
+            status = _object(_control_request(address, "app.status"), "app.status")
+            app = _object(status.get("app"), "app.status.app")
+            result["kick_disconnected_screen"] = _object(
+                app.get("disconnected_screen"),
+                "app.status.app.disconnected_screen",
+            )
+            result["kick_process_metrics"] = _process_metrics(args.client_pid)
+            result["app_quit_response"] = _control_request(address, "app.quit")
         else:
             result["app_quit_response"] = _control_request(address, "app.quit")
     except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
@@ -2879,6 +2889,7 @@ def _await_kick_disconnect(
     server_log: Path,
 ) -> str:
     last_value: Any = None
+    last_status: Any = None
     last_error: Exception | None = None
     while time.monotonic() < deadline:
         server_receipt = _server_log_has_kick_receipt(server_log)
@@ -2889,11 +2900,20 @@ def _await_kick_disconnect(
                 and isinstance(last_value, dict)
                 and last_value.get("connected") is False
             ):
-                return "net-counters"
+                last_status = _control_request(address, "app.status")
+                app = last_status.get("app") if isinstance(last_status, dict) else None
+                screen = (
+                    app.get("disconnected_screen") if isinstance(app, dict) else None
+                )
+                if (
+                    isinstance(screen, dict)
+                    and screen.get("title_translation_key") == "disconnect.lost"
+                    and "bbb lifecycle soak kick"
+                    in str(screen.get("reason_preview", ""))
+                ):
+                    return "net-counters"
         except OSError as error:
             last_error = error
-            if server_receipt:
-                return "control-closed"
         except (GateFailure, ValueError, json.JSONDecodeError) as error:
             last_error = error
         time.sleep(0.1)
@@ -2901,7 +2921,7 @@ def _await_kick_disconnect(
     raise GateFailure(
         "timed out waiting for official-server kick receipt and client disconnect; "
         f"server receipt: {_server_log_has_kick_receipt(server_log)}; "
-        f"last value: {last_value!r}{detail}"
+        f"last value: {last_value!r}; last app status: {last_status!r}{detail}"
     )
 
 

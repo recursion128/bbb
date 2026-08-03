@@ -16,13 +16,13 @@ use bbb_renderer::{
     HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
     HudComponentTextRun, HudCrosshairAttackIndicator, HudDeathLinkConfirmationScreen,
     HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
-    HudDebugOverlay, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
-    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect,
-    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
-    HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
-    HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
-    HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
-    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen,
+    HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface,
+    HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
+    HudPlayerListScore, HudPlayerReportingControl, HudPlayerReportingControlKind,
+    HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
+    HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar,
+    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
     HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
@@ -174,6 +174,59 @@ pub(crate) fn hud_death_screen(
         }
     };
     Some(screen)
+}
+
+pub(crate) fn hud_disconnected_screen(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<HudDisconnectedScreen> {
+    let runtime = input.disconnected_screen_runtime()?;
+    Some(HudDisconnectedScreen {
+        generation: runtime.generation,
+        title: localized_gui_text(
+            item_runtime,
+            runtime.title.translation_key(),
+            match runtime.title {
+                crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectFailed => {
+                    "Failed to Connect to the Server"
+                }
+                crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectionLost => {
+                    "Connection Lost"
+                }
+            },
+        ),
+        reason_runs: runtime
+            .details
+            .reason
+            .runs
+            .iter()
+            .map(|run| HudComponentTextRun {
+                visual: HudStyledTextRun {
+                    text: run.text.clone(),
+                    style: HudTextStyle {
+                        bold: run.bold,
+                        italic: run.italic,
+                        underlined: run.underlined,
+                        strikethrough: run.strikethrough,
+                        obfuscated: run.obfuscated,
+                    },
+                    color: run.color,
+                },
+                font: run.font.clone(),
+            })
+            .collect(),
+        report_to_server_label: runtime
+            .details
+            .bug_report_link
+            .as_ref()
+            .map(|_| localized_gui_text(item_runtime, "gui.report_to_server", "Report to Server")),
+        open_report_directory_label: runtime.details.report_directory.as_ref().map(|_| {
+            localized_gui_text(item_runtime, "gui.open_report_dir", "Open Report Directory")
+        }),
+        back_label: localized_gui_text(item_runtime, "gui.toMenu", "Back to Server List"),
+        focused: runtime.focus,
+        hovered: runtime.hovered,
+    })
 }
 
 pub(crate) fn hud_social_interactions_screen(
@@ -2756,6 +2809,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_test_instance_block_editor_screen: Option<HudTestInstanceBlockEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_game_rules_screen: Option<HudGameRulesScreen>,
+    pub(crate) hud_disconnected_screen: Option<HudDisconnectedScreen>,
     pub(crate) hud_death_screen: Option<HudDeathScreen>,
     pub(crate) hud_game_event_screen: Option<HudGameEventScreen>,
     pub(crate) hud_social_interactions_screen: Option<HudSocialInteractionsScreen>,
@@ -3243,6 +3297,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_test_instance_block_editor_screen(frame.hud_test_instance_block_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_game_rules_screen(frame.hud_game_rules_screen);
+    renderer.set_hud_disconnected_screen(frame.hud_disconnected_screen);
     renderer.set_hud_death_screen(frame.hud_death_screen);
     renderer.set_hud_game_event_screen(frame.hud_game_event_screen);
     renderer.set_hud_social_interactions_screen(frame.hud_social_interactions_screen);

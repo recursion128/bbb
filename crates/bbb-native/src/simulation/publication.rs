@@ -255,6 +255,7 @@ fn publish_control_views(
     snapshot.rcu(|current| {
         let mut app = current.app.clone();
         app.running = publication.running;
+        app.disconnected_screen = publication.input.disconnected_screen_status();
         ControlSnapshot {
             generation: publication.generation,
             app,
@@ -359,6 +360,51 @@ mod tests {
         assert_eq!(render.generation, control_snapshot.generation);
         assert!(Arc::ptr_eq(&render.world, &control_world.world));
         assert!(render.play_session_encrypted);
+    }
+
+    #[test]
+    fn disconnected_screen_diagnostics_are_bounded_immutable_publication() {
+        let control = test_control_state();
+        let world = WorldStore::new();
+        let mut client_input = ClientInputState::default();
+        client_input.open_disconnected_screen(
+            crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectionLost,
+            crate::input::disconnected_screen::DisconnectedScreenDetails {
+                reason: bbb_net::DisconnectReason::from_plain("x".repeat(300)),
+                report_directory: None,
+                bug_report_link: None,
+            },
+        );
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let initial = input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        );
+        let _publisher = SimulationPublisher::new(
+            initial,
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+
+        let snapshot = control.snapshot.load_full();
+        let status = snapshot.app.disconnected_screen.as_ref().unwrap();
+        assert_eq!(status.title_translation_key, "disconnect.lost");
+        assert_eq!(status.reason_preview.len(), 256);
+        assert!(status.reason_truncated);
+        assert_eq!(status.reason_retained_bytes, 300);
     }
 
     #[test]

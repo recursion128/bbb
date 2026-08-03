@@ -48,6 +48,7 @@ pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
         app: AppStatus {
             version: version.into(),
             running: true,
+            disconnected_screen: None,
         },
         ..ControlSnapshot::default()
     }))

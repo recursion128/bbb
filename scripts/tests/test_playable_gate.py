@@ -1158,7 +1158,18 @@ class PlayableGateTerminationTests(unittest.TestCase):
     def test_termination_modes_capture_quiescence_before_requesting_exit(self):
         for mode, expected_order in (
             ("quit", ["snapshot", "metrics", "app.quit"]),
-            ("kick", ["snapshot", "metrics", "kick", "disconnected"]),
+            (
+                "kick",
+                [
+                    "snapshot",
+                    "metrics",
+                    "kick",
+                    "disconnected",
+                    "app.status",
+                    "metrics",
+                    "app.quit",
+                ],
+            ),
         ):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / "termination.json"
@@ -1181,6 +1192,15 @@ class PlayableGateTerminationTests(unittest.TestCase):
 
                 def control(_address, method, _params=None):
                     order.append(method)
+                    if method == "app.status":
+                        return {
+                            "app": {
+                                "disconnected_screen": {
+                                    "title_translation_key": "disconnect.lost",
+                                    "reason_preview": "bbb lifecycle soak kick",
+                                }
+                            }
+                        }
                     return {"queued": True}
 
                 def kick(_command, _request):
@@ -1189,7 +1209,7 @@ class PlayableGateTerminationTests(unittest.TestCase):
                 def disconnected(_deadline, _address, _server_log):
                     order.append("disconnected")
                     self.assertEqual(_deadline, 1.75)
-                    return "control-closed"
+                    return "net-counters"
 
                 args = argparse.Namespace(
                     control="127.0.0.1:1",
@@ -1232,14 +1252,14 @@ class PlayableGateTerminationTests(unittest.TestCase):
                 self.assertEqual(evidence["kick_disconnected"], mode == "kick")
                 self.assertEqual(
                     evidence["kick_disconnect_receipt"],
-                    "control-closed" if mode == "kick" else None,
+                    "net-counters" if mode == "kick" else None,
                 )
                 self.assertEqual(
                     evidence["app_quit_response"],
-                    {"queued": True} if mode == "quit" else None,
+                    {"queued": True},
                 )
 
-    def test_kick_disconnect_requires_server_receipt_before_control_close(self):
+    def test_kick_disconnect_rejects_control_close_even_with_server_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
             server_log = Path(directory) / "server.log"
             server_log.write_text(
@@ -1254,14 +1274,44 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     side_effect=ConnectionRefusedError("closed"),
                 ),
                 mock.patch.object(
-                    playable_gate.time, "monotonic", side_effect=[0.0]
+                    playable_gate.time, "monotonic", side_effect=[0.0, 1.0]
                 ),
+                mock.patch.object(playable_gate.time, "sleep"),
+            ):
+                with self.assertRaisesRegex(
+                    playable_gate.GateFailure, "server receipt: True"
+                ):
+                    playable_gate._await_kick_disconnect(
+                        1.0, ("127.0.0.1", 1), server_log
+                    )
+
+    def test_kick_disconnect_requires_live_diagnostic_screen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server_log = Path(directory) / "server.log"
+            server_log.write_text(
+                f"{playable_gate.KICK_SERVER_LOG_RECEIPT}\n", encoding="utf-8"
+            )
+            responses = [
+                {"connected": False},
+                {
+                    "app": {
+                        "disconnected_screen": {
+                            "title_translation_key": "disconnect.lost",
+                            "reason_preview": "bbb lifecycle soak kick",
+                        }
+                    }
+                },
+            ]
+            with mock.patch.object(
+                playable_gate, "_control_request", side_effect=responses
             ):
                 self.assertEqual(
                     playable_gate._await_kick_disconnect(
-                        1.0, ("127.0.0.1", 1), server_log
+                        playable_gate.time.monotonic() + 1.0,
+                        ("127.0.0.1", 1),
+                        server_log,
                     ),
-                    "control-closed",
+                    "net-counters",
                 )
 
     def test_kick_disconnect_rejects_control_close_without_server_receipt(self):

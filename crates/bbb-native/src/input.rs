@@ -177,6 +177,7 @@ mod bundle;
 mod commands;
 mod component_patch;
 pub(crate) mod death_screen;
+pub(crate) mod disconnected_screen;
 pub(crate) mod enchantment_screen;
 pub(crate) mod game_event_screen;
 mod game_rules;
@@ -746,6 +747,7 @@ pub(crate) struct ClientInputState {
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,
+    disconnected_screen: disconnected_screen::DisconnectedScreenInputState,
     death_screen: death_screen::DeathScreenInputState,
     game_event_screen: game_event_screen::GameEventScreenInputState,
     player_reporting: reporting::PlayerReportingInputState,
@@ -1165,7 +1167,8 @@ impl ClientInputState {
     }
 
     fn gameplay_input_screen_is_open(&self, world: &WorldStore) -> bool {
-        self.command_entry_is_active()
+        self.disconnected_screen_runtime().is_some()
+            || self.command_entry_is_active()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
             || self.debug_pause_screen_is_open()
@@ -1331,6 +1334,7 @@ impl ClientInputState {
             test_instance_block_editor: self.test_instance_block_editor.clone(),
             riding_jump_charge_seconds: self.riding_jump_charge_seconds,
             spectator_gui: self.spectator_gui.clone(),
+            disconnected_screen: self.disconnected_screen.clone(),
             death_screen: self.death_screen.clone(),
             game_event_screen: self.game_event_screen.clone(),
             player_reporting: self.player_reporting.clone(),

@@ -582,6 +582,16 @@ pub(crate) fn try_load_hud_textures(
         upload_hud_inworld_menu_background_with_sampling,
         &inworld_menu_background
     )?;
+    let menu_background = gui_texture(
+        roots,
+        "textures/gui/menu_background.png",
+        "minecraft:textures/gui/menu_background",
+    )?;
+    upload_standalone_hud!(
+        renderer,
+        upload_hud_menu_background_with_sampling,
+        &menu_background
+    )?;
     for stats_sprite in HudStatsSprite::ALL {
         let sprite = hud_sprite(&sprites, stats_sprite.sprite_path())?;
         renderer.upload_hud_stats_sprite(

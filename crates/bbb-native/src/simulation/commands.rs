@@ -15,8 +15,9 @@ use bbb_control::{
 };
 use bbb_protocol::packets::Vec3d;
 use bbb_renderer::{
-    HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudFontGlyphMap,
-    HudGameEventHitTarget, HudPlayerReportingHitTarget, HudSocialInteractionsHitTarget,
+    HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudDisconnectedScreenHitTarget,
+    HudFontGlyphMap, HudGameEventHitTarget, HudPlayerReportingHitTarget,
+    HudSocialInteractionsHitTarget,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -133,6 +134,7 @@ pub(crate) enum SimulationCommand {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
@@ -146,6 +148,7 @@ pub(crate) enum SimulationCommand {
     },
     CursorMoved {
         position: PhysicalPosition<f64>,
+        disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
@@ -180,6 +183,10 @@ pub(crate) enum SimulationCommand {
         url: String,
         success: bool,
     },
+    OpenPathResult {
+        path: PathBuf,
+        success: bool,
+    },
     ResourceReloadAck(Box<crate::resource_reload::ResourceReloadAck>),
     TerrainReadiness {
         level_generation: u64,
@@ -206,6 +213,7 @@ impl SimulationCommand {
                 | Self::CursorCaptureResult { .. }
                 | Self::ClipboardWriteResult { .. }
                 | Self::OpenUriResult { .. }
+                | Self::OpenPathResult { .. }
                 | Self::Shutdown
         )
     }
@@ -234,6 +242,7 @@ impl SimulationCommand {
             | Self::CursorCaptureResult { .. }
             | Self::ClipboardWriteResult { .. }
             | Self::OpenUriResult { .. }
+            | Self::OpenPathResult { .. }
             | Self::ResourceReloadAck(_)
             | Self::TerrainReadiness { .. }
             | Self::DebugProfilingLifecycle(_) => SimulationCommandProducerClass::RenderFeedback,
@@ -248,6 +257,7 @@ impl SimulationCommand {
                 .retained_logical_bytes()
                 .saturating_sub(std::mem::size_of::<HudFontGlyphMap>()),
             Self::OpenUriResult { url, .. } => url.capacity(),
+            Self::OpenPathResult { path, .. } => path.capacity(),
             Self::ResourceReloadAck(ack) => ack.mailbox_retained_logical_bytes(),
             Self::DebugProfilingLifecycle(DebugProfilingLifecycle::ReportSaved { path }) => {
                 path.capacity()
@@ -771,6 +781,7 @@ fn try_coalesce_tail(
         (
             SimulationCommand::CursorMoved {
                 position,
+                disconnected_screen_target,
                 death_screen_target,
                 game_event_target,
                 player_reporting_target,
@@ -778,6 +789,7 @@ fn try_coalesce_tail(
             },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
+                disconnected_screen_target: incoming_disconnected_screen_target,
                 death_screen_target: incoming_death_screen_target,
                 game_event_target: incoming_game_event_target,
                 player_reporting_target: incoming_player_reporting_target,
@@ -785,6 +797,7 @@ fn try_coalesce_tail(
             },
         ) => {
             *position = *incoming_position;
+            *disconnected_screen_target = *incoming_disconnected_screen_target;
             *death_screen_target = *incoming_death_screen_target;
             *game_event_target = *incoming_game_event_target;
             *player_reporting_target = *incoming_player_reporting_target;
@@ -1226,6 +1239,7 @@ mod tests {
                 state: ElementState::Released,
                 chat_target: None,
                 book_target: None,
+                disconnected_screen_target: None,
                 death_screen_target: None,
                 game_event_target: None,
                 player_reporting_target: None,
@@ -1309,6 +1323,7 @@ mod tests {
             &mailbox,
             SimulationCommand::CursorMoved {
                 position: PhysicalPosition::new(10.0, 20.0),
+                disconnected_screen_target: None,
                 death_screen_target: Some(HudDeathScreenHitTarget {
                     generation: 7,
                     kind: HudDeathScreenHitTargetKind::Button(HudDeathScreenButton::Respawn),
@@ -1326,6 +1341,7 @@ mod tests {
             &mailbox,
             SimulationCommand::CursorMoved {
                 position: PhysicalPosition::new(30.0, 40.0),
+                disconnected_screen_target: None,
                 death_screen_target: Some(latest),
                 game_event_target: None,
                 player_reporting_target: None,
@@ -1339,6 +1355,7 @@ mod tests {
                 state: ElementState::Pressed,
                 chat_target: None,
                 book_target: None,
+                disconnected_screen_target: None,
                 death_screen_target: Some(latest),
                 game_event_target: None,
                 player_reporting_target: None,
@@ -1366,6 +1383,74 @@ mod tests {
     }
 
     #[test]
+    fn disconnected_screen_targets_survive_cursor_coalescing_and_mouse_barrier() {
+        use bbb_renderer::{HudDisconnectedScreenButton, HudDisconnectedScreenHitTarget};
+
+        let mailbox = SimulationMailbox::with_coalescing_threshold(1);
+        enqueue(
+            &mailbox,
+            SimulationCommand::CursorMoved {
+                position: PhysicalPosition::new(10.0, 20.0),
+                disconnected_screen_target: Some(HudDisconnectedScreenHitTarget {
+                    generation: 7,
+                    button: HudDisconnectedScreenButton::Back,
+                }),
+                death_screen_target: None,
+                game_event_target: None,
+                player_reporting_target: None,
+                social_interactions_target: None,
+            },
+        );
+        let latest = HudDisconnectedScreenHitTarget {
+            generation: 8,
+            button: HudDisconnectedScreenButton::OpenReportDirectory,
+        };
+        enqueue(
+            &mailbox,
+            SimulationCommand::CursorMoved {
+                position: PhysicalPosition::new(30.0, 40.0),
+                disconnected_screen_target: Some(latest),
+                death_screen_target: None,
+                game_event_target: None,
+                player_reporting_target: None,
+                social_interactions_target: None,
+            },
+        );
+        enqueue(
+            &mailbox,
+            SimulationCommand::MouseButton {
+                button: MouseButton::Left,
+                state: ElementState::Pressed,
+                chat_target: None,
+                book_target: None,
+                disconnected_screen_target: Some(latest),
+                death_screen_target: None,
+                game_event_target: None,
+                player_reporting_target: None,
+                social_interactions_target: None,
+            },
+        );
+
+        let drained = mailbox.drain_through_barrier();
+        assert_eq!(drained.len(), 2);
+        assert!(matches!(
+            drained[0].command,
+            SimulationCommand::CursorMoved {
+                position,
+                disconnected_screen_target: Some(target),
+                ..
+            } if position == PhysicalPosition::new(30.0, 40.0) && target == latest
+        ));
+        assert!(matches!(
+            drained[1].command,
+            SimulationCommand::MouseButton {
+                disconnected_screen_target: Some(target),
+                ..
+            } if target == latest
+        ));
+    }
+
+    #[test]
     fn hud_social_interactions_targets_survive_cursor_coalescing_and_mouse_barrier() {
         use bbb_renderer::{
             HudSocialInteractionsFocus, HudSocialInteractionsHitTarget,
@@ -1377,6 +1462,7 @@ mod tests {
             &mailbox,
             SimulationCommand::CursorMoved {
                 position: PhysicalPosition::new(10.0, 20.0),
+                disconnected_screen_target: None,
                 death_screen_target: None,
                 game_event_target: None,
                 player_reporting_target: None,
@@ -1391,6 +1477,7 @@ mod tests {
             &mailbox,
             SimulationCommand::CursorMoved {
                 position: PhysicalPosition::new(30.0, 40.0),
+                disconnected_screen_target: None,
                 death_screen_target: None,
                 game_event_target: None,
                 player_reporting_target: None,
@@ -1404,6 +1491,7 @@ mod tests {
                 state: ElementState::Pressed,
                 chat_target: None,
                 book_target: None,
+                disconnected_screen_target: None,
                 death_screen_target: None,
                 game_event_target: None,
                 player_reporting_target: None,

@@ -71,11 +71,11 @@ index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”�
 | `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | `equivalent` |
 | root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | `equivalent` |
 | window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | `equivalent` |
-| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama` | 是，`minecraft` | CLI 直连客户端无 title/panorama screen | `not-needed`；title/menu panorama 进入产品范围时重开 |
+| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | 断线状态页已接入 `menu_background.png`，但 panorama cube/overlay consumer 尚缺 | `partial`；由 `resources-indexed-panorama` active route 关闭 |
 | built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | `not-needed`；增加内置 pack id 选择或对应 UI/CLI 时重开 |
 | Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | `not-needed`；Realms service/screen 进入范围时重开 |
 
-按 object 计数为：`equivalent=4724`、`partial=0`、`not-needed=25`、
+按 object 计数为：`equivalent=4724`、`partial=7`、`not-needed=18`、
 `deferred-external=0`，合计 4749。not-needed 判断只关闭对应 presentation consumer；这些
 字节仍保持 provider 可达，不会因此被 eager 读取。
 

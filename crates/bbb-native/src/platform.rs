@@ -1,4 +1,7 @@
-use std::process::{Command, Stdio};
+use std::{
+    path::Path,
+    process::{Command, Stdio},
+};
 
 use anyhow::{bail, Context, Result};
 use url::Url;
@@ -64,6 +67,29 @@ pub(crate) fn open_uri(value: &str) -> Result<()> {
         Err(err) => {
             tracing::warn!(?err, "failed to reap URI opener");
         }
+        _ => {}
+    });
+    Ok(())
+}
+
+pub(crate) fn open_path(path: &Path) -> Result<()> {
+    let (program, args): (&str, Vec<_>) = match PlatformTarget::current() {
+        PlatformTarget::Windows => ("explorer", vec![path.as_os_str()]),
+        PlatformTarget::MacOs => ("open", vec![path.as_os_str()]),
+        PlatformTarget::Unix => ("xdg-open", vec![path.as_os_str()]),
+    };
+    let mut child = Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .with_context(|| format!("spawn {program} for path {}", path.display()))?;
+    std::thread::spawn(move || match child.wait() {
+        Ok(status) if !status.success() => {
+            tracing::warn!(?status, "path opener exited unsuccessfully");
+        }
+        Err(err) => tracing::warn!(?err, "failed to reap path opener"),
         _ => {}
     });
     Ok(())

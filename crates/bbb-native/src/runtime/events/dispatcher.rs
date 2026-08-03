@@ -1,6 +1,9 @@
 use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
-use bbb_net::{AcceptTeleportCommand, ConnectionState, NetCommand, NetEvent, PlayerMoveCommand};
+use bbb_net::{
+    AcceptTeleportCommand, ConnectionState, DisconnectReason, NetCommand, NetEvent,
+    PlayerMoveCommand,
+};
 use bbb_pack::{JukeboxSongRegistry, JukeboxSongRegistryEntry, SoundEventRegistry};
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
@@ -169,7 +172,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     mut hud_debug_tps_sampler: Option<&mut HudDebugTpsSampler>,
     mut server_list: Option<&mut ServerListPersistence>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
-    mut network_terminal: Option<&mut bool>,
+    mut remote_disconnect: Option<&mut Option<DisconnectReason>>,
     mut services_block_lists: Option<&mut ServicesBlockListRuntime>,
     wall_clock_epoch_seconds: i64,
 ) -> usize {
@@ -188,16 +191,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                         wall_clock_epoch_seconds,
                     );
                 }
-                if let Some(terminal) = network_terminal.as_deref_mut() {
-                    *terminal = true;
-                }
                 break;
             }
         };
         drained += 1;
-        if matches!(&event, NetEvent::Disconnected { .. }) {
-            if let Some(terminal) = network_terminal.as_deref_mut() {
-                *terminal = true;
+        if let NetEvent::Disconnected {
+            reason: Some(reason),
+        } = &event
+        {
+            if let Some(output) = remote_disconnect.as_deref_mut() {
+                if output.is_none() {
+                    *output = Some(reason.clone());
+                }
             }
         }
 
@@ -1813,16 +1818,19 @@ mod terminal_tests {
     }
 
     #[test]
-    fn terminal_flag_observes_connected_and_disconnected_in_one_drain() {
+    fn remote_disconnect_outcome_observes_reason_in_fifo_order() {
         let (tx, mut rx) = mpsc::channel(4);
         tx.try_send(NetEvent::Connected).unwrap();
-        tx.try_send(NetEvent::Disconnected { reason: None })
-            .unwrap();
+        let reason = DisconnectReason::from_plain("server closed");
+        tx.try_send(NetEvent::Disconnected {
+            reason: Some(reason.clone()),
+        })
+        .unwrap();
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
         let mut play_session_encrypted = true;
         let mut random = LevelEventSoundRandomState::with_seed(0);
-        let mut terminal = false;
+        let mut remote_disconnect = None;
 
         let drained = drain_net_events_with_sinks_and_debug(
             &mut rx,
@@ -1838,13 +1846,13 @@ mod terminal_tests {
             None,
             None,
             &mut random,
-            Some(&mut terminal),
+            Some(&mut remote_disconnect),
             None,
             0,
         );
 
         assert_eq!(drained, 2);
-        assert!(terminal);
+        assert_eq!(remote_disconnect, Some(reason));
         assert!(!counters.connected);
         assert!(!play_session_encrypted);
     }

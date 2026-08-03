@@ -14,6 +14,19 @@ use super::{AudioCounters, NetCounters, RendererCounters};
 pub struct AppStatus {
     pub version: String,
     pub running: bool,
+    #[serde(default)]
+    pub disconnected_screen: Option<DisconnectedScreenStatus>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DisconnectedScreenStatus {
+    pub generation: u64,
+    pub title_translation_key: String,
+    pub reason_preview: String,
+    pub reason_retained_bytes: usize,
+    pub reason_truncated: bool,
+    pub report_to_server_available: bool,
+    pub report_directory_available: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -565,6 +578,7 @@ impl ControlState {
                 app: AppStatus {
                     version: version.into(),
                     running: true,
+                    disconnected_screen: None,
                 },
                 ..ControlSnapshot::default()
             })),

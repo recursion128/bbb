@@ -38,6 +38,12 @@ handshake → status/login → configuration → play 的阶段转换显式发�
 和 world。无效 packet fail closed 或产生明确 disconnect；不认识的动态 holder 不可猜成
 另一个 id。缺 renderer resource 只影响 presentation fallback，不修改 canonical world。
 
+远端 terminal packet/transport error 在 `bbb-net` 收敛为一次 bounded `DisconnectReason`，并保持在
+所有先行 event 之后；本地主动 close 与裸 relay-channel close 都不会产生该值。simulation 在 input
+barrier 前消费它、清空 level/registry/server-pack session 并发布 `ClientInputState` 的断线 screen
+generation，control 与 renderer 只读同一 publication。该路径不会再把远端断线改写为进程退出；
+用户 back/`app.quit` 才进入正常 shutdown lifecycle。
+
 ## 认证 profile key 与 play-local 签名链
 
 Vanilla `ConnectScreen.startConnecting` 在 TCP 建连前调用

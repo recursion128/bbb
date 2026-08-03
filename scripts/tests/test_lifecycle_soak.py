@@ -137,6 +137,20 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
             "mode": mode,
             "kick_disconnected": mode == "kick",
             "kick_disconnect_receipt": "net-counters" if mode == "kick" else None,
+            "kick_disconnected_screen": {
+                "title_translation_key": "disconnect.lost",
+                "reason_preview": "bbb lifecycle soak kick",
+            }
+            if mode == "kick"
+            else None,
+            "kick_process_metrics": {
+                "rss_bytes": 100_000_000,
+                "file_descriptors": 30,
+                "threads": 10,
+            }
+            if mode == "kick"
+            else None,
+            "app_quit_response": {"queued": True},
             "quiescent_snapshot": snapshot,
             "process_metrics": {
                 "rss_bytes": 100_000_000,

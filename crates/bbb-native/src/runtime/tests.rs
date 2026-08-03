@@ -8,6 +8,99 @@ use std::{
 };
 
 #[test]
+fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback() {
+    let source = include_str!("../runtime.rs");
+    let advance = source
+        .split_once("pub(crate) fn advance_simulation(")
+        .expect("advance_simulation")
+        .1
+        .split_once("pub(crate) fn update_renderer_from_publication(")
+        .expect("advance_simulation end")
+        .0;
+    let drain = advance
+        .find("events::drain_net_events_with_sinks_and_debug(")
+        .expect("network drain");
+    let open = advance
+        .find("input.open_disconnected_screen(")
+        .expect("terminal screen publication");
+    let input = advance
+        .find("input_runtime.apply_commands(")
+        .expect("input application");
+    assert!(drain < open && open < input);
+    assert!(!advance.contains("request_network_terminal_shutdown"));
+    assert!(advance.contains("world.clear_client_level();"));
+    assert!(advance.contains("world.reset_registry_session();"));
+    assert!(advance.contains("world.reset_resource_pack_session();"));
+    assert!(advance.contains("events.is_closed() && events.is_empty()"));
+}
+
+#[test]
+fn bare_event_channel_close_cannot_synthesize_remote_disconnect_screen() {
+    let source = include_str!("events/dispatcher.rs");
+    let closed = source
+        .split_once("Err(mpsc::error::TryRecvError::Disconnected) => {")
+        .expect("closed channel branch")
+        .1
+        .split_once("break;")
+        .expect("closed channel branch end")
+        .0;
+    assert!(!closed.contains("remote_disconnect"));
+    assert!(!closed.contains("DisconnectReason"));
+}
+
+#[test]
+fn disconnected_screen_projection_preserves_style_focus_and_narration() {
+    let mut input = ClientInputState::default();
+    let reason = bbb_net::DisconnectReason::from_styled(vec![bbb_protocol::StyledTextRun {
+        text: "Styled reason".to_string(),
+        style: bbb_protocol::ComponentStyle {
+            bold: Some(true),
+            color: Some(0x12_34_56),
+            ..Default::default()
+        },
+    }]);
+    input.open_disconnected_screen(
+        crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectionLost,
+        crate::input::disconnected_screen::DisconnectedScreenDetails {
+            reason,
+            report_directory: None,
+            bug_report_link: None,
+        },
+    );
+
+    let screen = hud_disconnected_screen(&input, None).unwrap();
+    assert_eq!(screen.title, "Connection Lost");
+    assert_eq!(screen.back_label, "Back to Server List");
+    assert_eq!(screen.reason_runs[0].visual.text, "Styled reason");
+    assert!(screen.reason_runs[0].visual.style.bold);
+    assert_eq!(screen.reason_runs[0].visual.color, Some(0x12_34_56));
+    let narration = disconnected_screen_narration_frame(&input, None).unwrap();
+    assert!(narration.all_text_for_test().contains("Styled reason"));
+}
+
+#[test]
+fn disconnected_screen_title_tracks_vanilla_listener_phase() {
+    use crate::input::disconnected_screen::DisconnectedScreenTitle;
+
+    assert_eq!(
+        disconnected_screen_title_for_state(None),
+        DisconnectedScreenTitle::ConnectFailed
+    );
+    assert_eq!(
+        disconnected_screen_title_for_state(Some("Login")),
+        DisconnectedScreenTitle::ConnectFailed
+    );
+    assert_eq!(
+        disconnected_screen_title_for_state(Some("Configuration")),
+        DisconnectedScreenTitle::ConnectionLost
+    );
+    assert_eq!(
+        disconnected_screen_title_for_state(Some("Play")),
+        DisconnectedScreenTitle::ConnectionLost
+    );
+}
+
+#[test]
 fn renderer_surface_recovery_counters_cross_the_control_projection() {
     let source = bbb_renderer::RendererCounters {
         surface_resizes: 2,

@@ -141,6 +141,23 @@ state，不存在 native shadow screen cache。未知 id 的 native 查询返回
 但一帧 renderer input 必须引用同一 resource generation。断线先停止新 packet 应用，
 再清理 world/backend；control 只能看到最后一个明确标记状态的 snapshot。
 
+### 远端断线状态页边界
+
+`bbb-net::DisconnectReason` 是远端 packet/transport terminal outcome 的唯一 bounded
+presentation 输入：relay 保持 FIFO，主动本地 close 不合成 reason，裸 event channel 关闭也不
+伪造远端状态页。simulation 在同一步、应用 window/control input 前清除 client level、registry
+session 与 server-pack session，再由 `ClientInputState` 发布 generation-tagged
+`DisconnectedScreenRuntime`；Login/尚未建 phase 使用 `connect.failed`，Configuration/Play 使用
+`disconnect.lost`。关闭 receiver 后不会保留一个永久 productive wake source。
+
+`ClientInputState` 唯一拥有 focus、hover、Esc-ignore、details/back action 和 bounded control
+diagnostics；render publication 只携带不可变投影。renderer 只拥有居中 layout、200px button、
+menu-background GPU generation 与 generation-tagged hit target，不反向读取 socket、world 或 pack。
+HTTP(S) 和本地 report path 经 simulation→platform effect barrier 执行并返回结果；CLI-direct 产品的
+back action 进入正常 app shutdown。live kick gate 必须同时观察服务器 receipt、
+`net.connected=false`、仍存活进程及 `app.status.app.disconnected_screen`，随后才以 `app.quit` 退出。
+Vanilla 非 in-game screen 还要求 panorama/overlay；该独立资源消费者仍由唯一 gap ledger 保持开放。
+
 ## External network backend terminal close
 
 `bbb-native::network_runtime::NetworkRuntime` 是 external connection future 和 event-relay

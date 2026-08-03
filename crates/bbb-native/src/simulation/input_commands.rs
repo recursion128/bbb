@@ -11,8 +11,8 @@ use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
     HudBookHitTarget, HudBookMode, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
-    HudFontGlyphMap, HudGameEventHitTarget, HudPlayerReportingHitTarget,
-    HudSocialInteractionsHitTarget,
+    HudDisconnectedScreenHitTarget, HudFontGlyphMap, HudGameEventHitTarget,
+    HudPlayerReportingHitTarget, HudSocialInteractionsHitTarget,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -34,10 +34,11 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
-        death_screen::DeathScreenPlatformRequest, flush_local_interaction_sound_actions,
-        game_event_screen::GameEventScreenPlatformRequest, handle_advancements_screen_cursor_moved,
-        handle_advancements_screen_mouse_input, handle_advancements_screen_mouse_wheel,
-        handle_focus_change, handle_inventory_cursor_moved,
+        death_screen::DeathScreenPlatformRequest,
+        disconnected_screen::DisconnectedScreenPlatformRequest,
+        flush_local_interaction_sound_actions, game_event_screen::GameEventScreenPlatformRequest,
+        handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
+        handle_advancements_screen_mouse_wheel, handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
         handle_key_input_with_item_runtime,
         handle_mouse_input_at_partial_tick_with_effects_and_presentation, handle_mouse_motion,
@@ -145,6 +146,13 @@ impl SimulationInputRuntime {
         platform.submit(PlatformEffect::Exit);
     }
 
+    pub(crate) fn request_terminal_screen_cursor(
+        &mut self,
+        platform: &mut PlatformEffectCollector<'_>,
+    ) {
+        self.request_cursor_capture(false, platform);
+    }
+
     pub(crate) fn apply_commands(
         &mut self,
         commands: Vec<SequencedSimulationCommand>,
@@ -230,6 +238,7 @@ impl SimulationInputRuntime {
                 state,
                 chat_target,
                 book_target,
+                disconnected_screen_target,
                 death_screen_target,
                 game_event_target,
                 player_reporting_target,
@@ -240,6 +249,7 @@ impl SimulationInputRuntime {
                     state,
                     chat_target,
                     book_target,
+                    disconnected_screen_target,
                     death_screen_target,
                     game_event_target,
                     player_reporting_target,
@@ -251,6 +261,7 @@ impl SimulationInputRuntime {
             SimulationCommand::MouseWheel { delta } => self.apply_mouse_wheel(delta, context),
             SimulationCommand::CursorMoved {
                 position,
+                disconnected_screen_target,
                 death_screen_target,
                 game_event_target,
                 player_reporting_target,
@@ -258,6 +269,7 @@ impl SimulationInputRuntime {
             } => {
                 self.apply_cursor_moved(
                     position,
+                    disconnected_screen_target,
                     death_screen_target,
                     game_event_target,
                     player_reporting_target,
@@ -298,6 +310,7 @@ impl SimulationInputRuntime {
             SimulationCommand::CursorLeft => {
                 self.cursor_position = None;
                 self.code_of_conduct_overlay.handle_cursor_left();
+                context.input.handle_disconnected_screen_hover(None);
                 context.input.handle_death_screen_hover(None);
                 context.input.handle_game_event_screen_hover(None);
                 context
@@ -354,6 +367,11 @@ impl SimulationInputRuntime {
             SimulationCommand::OpenUriResult { url, success } => {
                 if !success {
                     tracing::warn!(%url, "platform URI open failed");
+                }
+            }
+            SimulationCommand::OpenPathResult { path, success } => {
+                if !success {
+                    tracing::warn!(path = %path.display(), "platform path open failed");
                 }
             }
             SimulationCommand::ResourceReloadAck(ack) => {
@@ -432,6 +450,7 @@ impl SimulationInputRuntime {
     fn apply_cursor_moved(
         &mut self,
         position: PhysicalPosition<f64>,
+        disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
@@ -440,6 +459,18 @@ impl SimulationInputRuntime {
     ) {
         let previous_cursor_position = self.cursor_position;
         self.cursor_position = Some(position);
+        if context.input.disconnected_screen_runtime().is_some() {
+            context
+                .input
+                .handle_disconnected_screen_hover(disconnected_screen_target);
+            context
+                .platform
+                .submit(PlatformEffect::DisconnectedScreenInput(
+                    ScreenNarrationScheduleInput::MouseMove,
+                ));
+            self.request_cursor_capture(false, context.platform);
+            return;
+        }
         if self.code_of_conduct_overlay.handle_cursor_moved(
             context.world,
             previous_cursor_position,
@@ -642,6 +673,21 @@ impl SimulationInputRuntime {
         clipboard_text: Option<String>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        if context.input.disconnected_screen_runtime().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            if let PhysicalKey::Code(code) = physical_key {
+                context.input.handle_disconnected_screen_key(code, state);
+            }
+            collect_disconnected_screen_platform_effects(context.input, context.platform);
+            if matches!(state, ElementState::Pressed) {
+                context
+                    .platform
+                    .submit(PlatformEffect::DisconnectedScreenInput(
+                        ScreenNarrationScheduleInput::KeyboardAction,
+                    ));
+            }
+            return;
+        }
         if self.code_of_conduct_overlay.is_visible(context.world) {
             let overlay_input = self.code_of_conduct_overlay.handle_key_input(
                 context.world,
@@ -1266,12 +1312,28 @@ impl SimulationInputRuntime {
         state: ElementState,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
+        disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
         death_screen_target: Option<HudDeathScreenHitTarget>,
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        if context.input.disconnected_screen_runtime().is_some() {
+            self.request_cursor_capture(false, context.platform);
+            context.input.handle_disconnected_screen_mouse_input(
+                button,
+                state,
+                disconnected_screen_target,
+            );
+            collect_disconnected_screen_platform_effects(context.input, context.platform);
+            context
+                .platform
+                .submit(PlatformEffect::DisconnectedScreenInput(
+                    ScreenNarrationScheduleInput::MouseAction,
+                ));
+            return;
+        }
         if self.code_of_conduct_overlay.is_visible(context.world) {
             let overlay_input = self.code_of_conduct_overlay.handle_mouse_input(
                 context.world,
@@ -2211,7 +2273,8 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
 }
 
 fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &WorldStore) -> bool {
-    world_wants_cursor(world)
+    input.disconnected_screen_runtime().is_some()
+        || world_wants_cursor(world)
         || input.sign_editor_is_active_or_pending(world)
         || input.debug_options_screen_is_open()
         || input.debug_pause_screen_is_open()
@@ -2390,6 +2453,19 @@ fn collect_death_screen_platform_effects(
             DeathScreenPlatformRequest::ClipboardWrite(text) => {
                 PlatformEffect::ClipboardWrite(text)
             }
+        });
+    }
+}
+
+fn collect_disconnected_screen_platform_effects(
+    input: &mut crate::input::ClientInputState,
+    platform: &mut PlatformEffectCollector<'_>,
+) {
+    for request in input.take_disconnected_screen_platform_requests() {
+        platform.submit(match request {
+            DisconnectedScreenPlatformRequest::OpenUri(url) => PlatformEffect::OpenUri(url),
+            DisconnectedScreenPlatformRequest::OpenPath(path) => PlatformEffect::OpenPath(path),
+            DisconnectedScreenPlatformRequest::Exit => PlatformEffect::Exit,
         });
     }
 }

@@ -241,6 +241,7 @@ struct NativeRenderEffectSink<'a> {
     social_interactions_narration: &'a mut ScreenNarrationRuntime,
     player_reporting_narration: &'a mut ScreenNarrationRuntime,
     death_screen_narration: &'a mut ScreenNarrationRuntime,
+    disconnected_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
@@ -279,6 +280,17 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 self.mailbox.enqueue_or_report(
                     SimulationCommand::OpenUriResult { url, success },
                     "open URI result",
+                );
+            }
+            PlatformEffect::OpenPath(path) => {
+                let success = platform::open_path(&path)
+                    .map_err(
+                        |err| tracing::warn!(?err, path = %path.display(), "failed to open path"),
+                    )
+                    .is_ok();
+                self.mailbox.enqueue_or_report(
+                    SimulationCommand::OpenPathResult { path, success },
+                    "open path result",
                 );
             }
             PlatformEffect::Screenshot(path) => self.control_screenshots.push_back(path),
@@ -422,6 +434,18 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     }
                 };
                 self.death_screen_narration
+                    .after_input(input, Instant::now());
+            }
+            PlatformEffect::DisconnectedScreenInput(input) => {
+                let input = match input {
+                    ScreenNarrationScheduleInput::Immediate => ScreenNarrationInput::Immediate,
+                    ScreenNarrationScheduleInput::MouseMove => ScreenNarrationInput::MouseMove,
+                    ScreenNarrationScheduleInput::MouseAction => ScreenNarrationInput::MouseAction,
+                    ScreenNarrationScheduleInput::KeyboardAction => {
+                        ScreenNarrationInput::KeyboardAction
+                    }
+                };
+                self.disconnected_screen_narration
                     .after_input(input, Instant::now());
             }
             PlatformEffect::ChatNarration { kind, text } => {
@@ -893,6 +917,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut social_interactions_narration = ScreenNarrationRuntime::default();
     let mut player_reporting_narration = ScreenNarrationRuntime::default();
     let mut death_screen_narration = ScreenNarrationRuntime::default();
+    let mut disconnected_screen_narration = ScreenNarrationRuntime::default();
     let mut game_event_screen_narration = ScreenNarrationRuntime::default();
     let mut pending_control_screenshots = std::collections::VecDeque::new();
     let mut platform_exit_requested = false;
@@ -1051,6 +1076,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                     social_interactions_narration: &mut social_interactions_narration,
                     player_reporting_narration: &mut player_reporting_narration,
                     death_screen_narration: &mut death_screen_narration,
+                    disconnected_screen_narration: &mut disconnected_screen_narration,
                     game_event_screen_narration: &mut game_event_screen_narration,
                     narrator: narrator_runtime
                         .as_mut()
@@ -1346,6 +1372,18 @@ fn run_client(args: startup::Args) -> Result<()> {
                             && render_publication.world.game_event_screen().is_some())
                         .then(|| hud_render_runtime.game_event_screen_narration())
                         .flatten(),
+                        Instant::now(),
+                        narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                    );
+                    disconnected_screen_narration.tick(
+                        render_publication
+                            .input
+                            .disconnected_screen_runtime()
+                            .is_some()
+                            .then(|| hud_render_runtime.disconnected_screen_narration())
+                            .flatten(),
                         Instant::now(),
                         narrator_runtime
                             .as_mut()
@@ -1771,8 +1809,11 @@ fn enqueue_simulation_window_event(
             *cursor_position = Some(*position);
             window.set_cursor_icon(
                 if renderer
-                    .hud_death_screen_hit_target_at((position.x, position.y))
+                    .hud_disconnected_screen_hit_target_at((position.x, position.y))
                     .is_some()
+                    || renderer
+                        .hud_death_screen_hit_target_at((position.x, position.y))
+                        .is_some()
                     || renderer
                         .hud_game_event_hit_target_at((position.x, position.y))
                         .is_some()
@@ -1793,6 +1834,8 @@ fn enqueue_simulation_window_event(
             );
             SimulationCommand::CursorMoved {
                 position: *position,
+                disconnected_screen_target: renderer
+                    .hud_disconnected_screen_hit_target_at((position.x, position.y)),
                 death_screen_target: renderer
                     .hud_death_screen_hit_target_at((position.x, position.y)),
                 game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
@@ -1844,6 +1887,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position)
                     .and_then(|position| renderer.hud_book_hit_target_at((position.x, position.y)))
+            })
+            .flatten(),
+            disconnected_screen_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_disconnected_screen_hit_target_at((position.x, position.y))
+                })
             })
             .flatten(),
             death_screen_target: (matches!(

@@ -213,12 +213,28 @@ def validate_iteration(
             raise SoakFailure(
                 f"iteration {iteration}: kick did not reach disconnected state"
             )
-        if termination.get("kick_disconnect_receipt") not in (
-            "net-counters",
-            "control-closed",
-        ):
+        if termination.get("kick_disconnect_receipt") != "net-counters":
             raise SoakFailure(
                 f"iteration {iteration}: kick disconnect receipt is invalid"
+            )
+        screen = _object(
+            termination.get("kick_disconnected_screen"),
+            f"iteration {iteration}.kick_disconnected_screen",
+        )
+        if screen.get("title_translation_key") != "disconnect.lost" or (
+            "bbb lifecycle soak kick" not in str(screen.get("reason_preview", ""))
+        ):
+            raise SoakFailure(
+                f"iteration {iteration}: kick disconnect screen diagnostics are invalid"
+            )
+        _object(
+            termination.get("kick_process_metrics"),
+            f"iteration {iteration}.kick_process_metrics",
+        )
+        app_quit = termination.get("app_quit_response")
+        if not isinstance(app_quit, dict) or app_quit.get("queued") is not True:
+            raise SoakFailure(
+                f"iteration {iteration}: kick screen did not exit through app.quit"
             )
     if termination.get("exit_status") != 0:
         raise SoakFailure(

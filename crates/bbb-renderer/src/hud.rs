@@ -23,6 +23,7 @@ mod book;
 mod code_of_conduct;
 mod creative_inventory;
 mod death_screen;
+mod disconnected_screen;
 mod game_event;
 mod game_rules;
 mod gpu;
@@ -57,6 +58,9 @@ pub use self::creative_inventory::{
 pub use self::death_screen::{
     HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
     HudDeathScreen, HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
+};
+pub use self::disconnected_screen::{
+    HudDisconnectedScreen, HudDisconnectedScreenButton, HudDisconnectedScreenHitTarget,
 };
 pub use self::game_event::{
     HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudGameEventButton, HudGameEventHitTarget,
@@ -4176,6 +4180,23 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_menu_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_menu_background = Some(create_repeating_hud_sprite_gpu(
+            &self.device,
+            &self.queue,
+            &self.hud_bind_group_layout,
+            width,
+            height,
+            rgba,
+        )?);
+        Ok(())
+    }
+
     pub fn upload_hud_stats_sprite(
         &mut self,
         sprite: HudStatsSprite,
@@ -5973,6 +5994,23 @@ impl Renderer {
         self.hud_death_screen = screen.and_then(death_screen::sanitize_hud_death_screen);
     }
 
+    pub fn set_hud_disconnected_screen(&mut self, screen: Option<HudDisconnectedScreen>) {
+        self.hud_disconnected_screen =
+            screen.and_then(disconnected_screen::sanitize_hud_disconnected_screen);
+    }
+
+    pub fn hud_disconnected_screen_hit_target_at(
+        &self,
+        position: (f64, f64),
+    ) -> Option<HudDisconnectedScreenHitTarget> {
+        disconnected_screen::hud_disconnected_screen_hit_target_at(
+            self.hud_disconnected_screen.as_ref()?,
+            &self.hud_font_book,
+            self.surface_size(),
+            position,
+        )
+    }
+
     pub fn hud_death_screen_hit_target_at(
         &self,
         position: (f64, f64),
@@ -6235,6 +6273,9 @@ impl Renderer {
     );
     standalone_hud_texture_upload!(
         upload_hud_inworld_menu_background_with_sampling => hud_inworld_menu_background
+    );
+    standalone_hud_texture_upload!(
+        upload_hud_menu_background_with_sampling => hud_menu_background
     );
     standalone_hud_texture_upload!(
         upload_hud_debug_game_mode_switcher_background_with_sampling =>
@@ -6544,6 +6585,7 @@ impl Renderer {
             || self.hud_stats_screen.is_some()
             || self.hud_game_rules_screen.is_some()
             || self.hud_death_screen.is_some()
+            || self.hud_disconnected_screen.is_some()
             || self.hud_game_event_screen.is_some()
             || self.hud_book_screen.is_some()
             || self.hud_debug_options_screen.is_some()
@@ -6578,6 +6620,38 @@ impl Renderer {
         let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
         let sound_subtitle_placement = self.hud_sound_subtitle_placement();
+        if let Some(screen) = &self.hud_disconnected_screen {
+            let screen_blur = (self.hud_screen_blur && self.menu_background_blurriness >= 1.0)
+                .then_some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: 0,
+                });
+            disconnected_screen::push_hud_disconnected_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_menu_background.as_ref(),
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_book,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+            let post_gui_item_start = commands.len();
+            return HudDraws {
+                vertices,
+                commands,
+                post_gui_item_start,
+                screen_blur,
+            };
+        }
         if let Some(screen @ HudGameEventScreen::Win(_)) = &self.hud_game_event_screen {
             if sound_subtitle_placement == Some(HudSoundSubtitlePlacement::BeforeScreen) {
                 push_hud_sound_subtitles(

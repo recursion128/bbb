@@ -135,14 +135,14 @@ mod tests {
         EntityPlayerSkin, HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen,
         HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
         HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
-        HudFontGlyphMap, HudGameEventButton, HudGameEventScreen, HudNineSliceScaling,
-        HudPlayerReportingControl, HudPlayerReportingControlKind,
-        HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
-        HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudSocialInteractionsFocus,
-        HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
-        HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
-        HudSocialInteractionsScreen, HudStatsScrollbarSprite, HudStyledTextRun, HudVignette,
-        HudWinScreen, Renderer,
+        HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap, HudGameEventButton,
+        HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
+        HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
+        HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
+        HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
+        HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+        HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
+        HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
     };
 
     const WIDTH: u32 = 320;
@@ -1361,6 +1361,73 @@ mod tests {
         assert!(
             link[1] > 220 && link[0] < 32,
             "link confirmation must render its 100-wide first button, got {link:?}"
+        );
+    }
+
+    #[test]
+    fn offscreen_disconnected_screen_exclusively_draws_menu_background_and_button() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("ordinary HUD sentinel");
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "Connection LostReasonBack".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 5,
+                    height: 8,
+                    advance: 6,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("test font");
+        renderer
+            .upload_hud_widget_button(1, 1, &[0, 255, 0, 255])
+            .expect("enabled button");
+        renderer
+            .upload_hud_widget_button_disabled(1, 1, &[64, 64, 64, 255])
+            .expect("disabled button");
+        renderer
+            .upload_hud_widget_button_highlighted(1, 1, &[255, 255, 0, 255])
+            .expect("highlighted button");
+        renderer
+            .upload_hud_menu_background(1, 1, &[40, 80, 120, 255])
+            .expect("menu background");
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            title: "Connection Lost".to_string(),
+            reason_runs: vec![HudComponentTextRun::plain("Reason")],
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            back_label: "Back".to_string(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let pixels = renderer
+            .render_offscreen_frame()
+            .expect("disconnected screen frame");
+        let corner = pixels.pixel(4, 4);
+        let back_button = pixels.pixel(WIDTH / 2 - 90, 145);
+        assert!(
+            corner[2] > corner[1] && corner[1] > corner[0],
+            "menu background must cover the whole screen, got {corner:?}"
+        );
+        assert!(
+            back_button[1] > 180 && back_button[0] > 180,
+            "focused back button must cover ordinary HUD with highlighted sprite, got {back_button:?}"
         );
     }
 }

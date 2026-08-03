@@ -16,7 +16,7 @@ pub use snapshot::{
     ContainerClickControlRequest, ContainerClickSlotControlRequest, ContainerInputControl,
     ControlRequestSink, ControlSnapshot, ControlState, ControlSubmitError, ControlSubmitReceipt,
     ControlWorldSnapshot, ControlWriteRequest, CreativeModeItemStackControl,
-    CreativeModeSlotControlRequest, DifficultyControl, GameModeControl,
+    CreativeModeSlotControlRequest, DifficultyControl, DisconnectedScreenStatus, GameModeControl,
     HashedComponentPatchControl, HashedStackControl, InputControlRequest, InputKeyControl,
     InputMouseButtonControl, NetControlRequest, RecipeBookTypeControl, SharedControlRequests,
     SharedSnapshot, SharedWorld,

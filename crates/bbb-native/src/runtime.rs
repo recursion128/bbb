@@ -671,6 +671,7 @@ pub(crate) struct HudRenderRuntime {
     recipe_book_narration: Option<ScreenNarrationFrame>,
     social_interactions_narration: Option<ScreenNarrationFrame>,
     player_reporting_narration: Option<ScreenNarrationFrame>,
+    disconnected_screen_narration: Option<ScreenNarrationFrame>,
     death_screen_narration: Option<ScreenNarrationFrame>,
     game_event_screen_narration: Option<ScreenNarrationFrame>,
     win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
@@ -816,6 +817,10 @@ impl HudRenderRuntime {
 
     pub(crate) fn death_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.death_screen_narration.as_ref()
+    }
+
+    pub(crate) fn disconnected_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.disconnected_screen_narration.as_ref()
     }
 
     fn win_screen_lines(
@@ -2583,7 +2588,7 @@ pub(crate) fn advance_simulation(
     let wall_clock_epoch_seconds = wall_clock_millis_i64().div_euclid(1_000);
     let mut audio_events = audio_events;
     let input_screen_was_open = input_screen_is_open(input, world);
-    let mut network_terminated = false;
+    let mut remote_disconnect = None;
     if let Some(rx) = net_events.as_mut() {
         let audio_events_for_drain = audio_events
             .as_mut()
@@ -2605,10 +2610,31 @@ pub(crate) fn advance_simulation(
             Some(hud_debug_tps_sampler),
             server_list.as_mut(),
             level_event_sound_random,
-            Some(&mut network_terminated),
+            Some(&mut remote_disconnect),
             Some(services_block_lists),
             wall_clock_epoch_seconds,
         );
+    }
+    if net_events
+        .as_ref()
+        .is_some_and(|events| events.is_closed() && events.is_empty())
+    {
+        *net_events = None;
+    }
+    if let Some(reason) = remote_disconnect {
+        let title = disconnected_screen_title_for_state(net_counters.state.as_deref());
+        world.clear_client_level();
+        world.reset_registry_session();
+        world.reset_resource_pack_session();
+        input.open_disconnected_screen(
+            title,
+            crate::input::disconnected_screen::DisconnectedScreenDetails {
+                reason,
+                report_directory: None,
+                bug_report_link: None,
+            },
+        );
+        input_runtime.request_terminal_screen_cursor(platform_effects);
     }
     world.expire_game_test_highlight_markers_at(monotonic_millis());
     world.poll_queued_light_updates();
@@ -2678,9 +2704,6 @@ pub(crate) fn advance_simulation(
     );
     services_block_lists.tick(wall_clock_epoch_seconds);
     services_block_lists.synchronize_player_report_submissions(input, world);
-    if network_terminated {
-        input_runtime.request_network_terminal_shutdown(net_commands, platform_effects);
-    }
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
@@ -3121,6 +3144,16 @@ pub(crate) fn advance_simulation(
     }
 }
 
+fn disconnected_screen_title_for_state(
+    state: Option<&str>,
+) -> crate::input::disconnected_screen::DisconnectedScreenTitle {
+    if matches!(state, Some("Configuration" | "Play")) {
+        crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectionLost
+    } else {
+        crate::input::disconnected_screen::DisconnectedScreenTitle::ConnectFailed
+    }
+}
+
 pub(crate) fn update_renderer_from_publication(
     publication: &SimulationPublication,
     context: SimulationRenderContext<'_>,
@@ -3493,7 +3526,11 @@ pub(crate) fn update_renderer_from_publication(
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
-    let hud_death_screen = hud_death_screen(input, world, item_runtime);
+    let hud_disconnected_screen = hud_disconnected_screen(input, item_runtime);
+    let hud_death_screen = hud_disconnected_screen
+        .is_none()
+        .then(|| hud_death_screen(input, world, item_runtime))
+        .flatten();
     if hud_death_screen.is_some() {
         hud_render_runtime.game_event_screen_narration = None;
     }
@@ -3534,12 +3571,15 @@ pub(crate) fn update_renderer_from_publication(
         )
     })
     .flatten();
-    let exclusive_game_screen_present = hud_death_screen.is_some()
+    let exclusive_game_screen_present = hud_disconnected_screen.is_some()
+        || hud_death_screen.is_some()
         || hud_game_event_screen.is_some()
         || hud_player_reporting_screen.is_some()
         || hud_social_interactions_screen.is_some();
     hud_render_runtime.death_screen_narration =
         death_screen_narration_frame(input, world, item_runtime);
+    hud_render_runtime.disconnected_screen_narration =
+        disconnected_screen_narration_frame(input, item_runtime);
     hud_render_runtime.social_interactions_narration = hud_social_interactions_screen
         .is_some()
         .then(|| social_interactions_narration_frame(input, world, item_runtime))
@@ -4584,6 +4624,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_test_instance_block_editor_screen,
             hud_pause_screen,
             hud_game_rules_screen,
+            hud_disconnected_screen,
             hud_death_screen,
             hud_game_event_screen,
             hud_social_interactions_screen,
@@ -5478,7 +5519,8 @@ fn release_input_if_screen_opened(
 }
 
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
-    world.open_container_id().is_some()
+    input.disconnected_screen_runtime().is_some()
+        || world.open_container_id().is_some()
         || world.death_screen().is_some()
         || world.game_event_screen().is_some()
         || world.dialog_screen_is_open()
@@ -6220,6 +6262,46 @@ fn localized_gui_text(
         .filter(|text| *text != translation_key)
         .unwrap_or(fallback)
         .to_string()
+}
+
+fn disconnected_screen_narration_frame(
+    input: &ClientInputState,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> Option<ScreenNarrationFrame> {
+    let screen = hud_disconnected_screen(input, item_runtime)?;
+    let mut frame = ScreenNarrationFrame::default();
+    frame.add(NarratedElementKind::Title, 0, screen.title.clone());
+    let reason = screen
+        .reason_runs
+        .iter()
+        .map(|run| run.visual.text.as_str())
+        .collect::<String>();
+    if !reason.is_empty() {
+        frame.add(NarratedElementKind::Hint, 0, reason);
+    }
+    let (label, position, total) = match screen.focused {
+        bbb_renderer::HudDisconnectedScreenButton::ReportToServer => (
+            screen.report_to_server_label.as_deref()?,
+            1,
+            1 + usize::from(screen.open_report_directory_label.is_some()) + 1,
+        ),
+        bbb_renderer::HudDisconnectedScreenButton::OpenReportDirectory => (
+            screen.open_report_directory_label.as_deref()?,
+            1 + usize::from(screen.report_to_server_label.is_some()),
+            usize::from(screen.report_to_server_label.is_some()) + 2,
+        ),
+        bbb_renderer::HudDisconnectedScreenButton::Back => (
+            screen.back_label.as_str(),
+            usize::from(screen.report_to_server_label.is_some())
+                + usize::from(screen.open_report_directory_label.is_some())
+                + 1,
+            usize::from(screen.report_to_server_label.is_some())
+                + usize::from(screen.open_report_directory_label.is_some())
+                + 1,
+        ),
+    };
+    add_game_event_button_narration(&mut frame, item_runtime, label, position, total);
+    Some(frame)
 }
 
 fn death_screen_narration_frame(
