@@ -293,7 +293,11 @@ fixture fails them; keep precedence/filter tests next to the loaders.
   12 objects, but bbb's existing native window never consumes them. Wire the
   bounded root-resource decode to the platform window without adding title or
   pack-selection UI; preserve release/snapshot selection and missing/invalid
-  icon fallback diagnostics.
+  icon fallback diagnostics. The active engineering contract is frozen in
+  `goal.md`: `bbb-pack` owns a vanilla-only immutable CPU catalog and budgets;
+  `bbb-native` owns the single startup platform apply. Close only after all
+  production callers use that path, local index 30 proves all 12 objects, and
+  the applicable full/platform gates pass.
 
 ## Resource and dynamic texture generalization
 
