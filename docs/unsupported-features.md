@@ -92,6 +92,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   diagnostics/gizmos 3 and light query 3. Each of the four remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
+- **`rendering-level-frame-graph` is the current active engineering slice.**
+  BBB has one ordered `FRAME_STEPS` orchestrator, but it always allocates and
+  combines improved-transparency targets; Vanilla `getTransparencyChain`
+  instead follows `OptionsRenderState.improvedTransparency` (and panoramic
+  suppression), routing translucent/item/particle/cloud/weather output back to
+  main when false. Add the CLI-owned option, preserve both exact target/depth
+  paths, close all 14 generated owner cells, and prove regular/improved pixels
+  plus atomic resource-generation fallback. Contract and safe stops are in
+  `goal.md#active-工程合同levelrenderer-frame-graph`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment

@@ -229,3 +229,7 @@
 # root-resource/decode/apply failure. These diagnostics do not mask a renderer,
 # resource-provider, or canonical-state fallback.
 ^crates/bbb-native/src/window_icon[.]rs$	Self::SkipUnsupported => "unsupported-skip"|window_icon_status = "fallback"
+# Server-pack reload failure keeps the previously accepted immutable pack stack
+# and schedules Vanilla's one-shot recovery reload. These two diagnostics/tests
+# name that rollback path; they do not select a second resource resolver.
+^crates/bbb-native/src/resource_pack_runtime[.]rs$	recovery reload for the post-failure fallback stack|fallback recovery reload
