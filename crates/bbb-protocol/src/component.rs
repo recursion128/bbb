@@ -59,6 +59,11 @@ pub struct ComponentStyle {
     /// lightweight show-text case while keeping item/entity payloads exact.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hover_event: Option<ComponentHoverEvent>,
+    /// Text inserted by Shift-click in `ChatScreen`. Like every other style
+    /// field this inherits through `Style.applyTo`; it is not itself a click
+    /// event and consumers must ignore it outside insertion-click mode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insertion: Option<String>,
     /// Exact resolved font identifier. Unsupported font providers may fall
     /// back visually, but trust evaluation and cache identity must not lose it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -166,6 +171,7 @@ impl ComponentStyle {
                 .hover_event
                 .clone()
                 .or_else(|| parent.hover_event.clone()),
+            insertion: self.insertion.clone().or_else(|| parent.insertion.clone()),
             font: self.font.clone().or_else(|| parent.font.clone()),
         }
     }
@@ -899,6 +905,10 @@ fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
         },
         click_event: style_click_event(entries),
         hover_event: style_hover_event(entries),
+        insertion: match find_entry(entries, "insertion") {
+            Some(NbtSummaryValue::String(insertion)) => Some(insertion.clone()),
+            _ => None,
+        },
         font: match find_entry(entries, "font") {
             Some(NbtSummaryValue::String(font)) => Some(font.clone()),
             _ => None,
@@ -1077,6 +1087,7 @@ mod tests {
         write_named_byte(&mut payload, "strikethrough", 1);
         write_named_byte(&mut payload, "obfuscated", 1);
         write_named_string(&mut payload, "color", "dark_purple");
+        write_named_string(&mut payload, "insertion", "insert me");
         payload.push(0);
 
         assert_eq!(
@@ -1092,6 +1103,7 @@ mod tests {
                     color: Some(0xAA_00_AA),
                     click_event: None,
                     hover_event: None,
+                    insertion: Some("insert me".to_string()),
                     font: None,
                 },
             }]
@@ -1355,6 +1367,7 @@ mod tests {
         let child = ComponentStyle {
             bold: Some(false),
             color: Some(0x12_34_56),
+            insertion: Some("child insertion".to_string()),
             font: Some("example:child".to_string()),
             ..ComponentStyle::default()
         };
@@ -1369,6 +1382,7 @@ mod tests {
                 }],
                 component: None,
             }),
+            insertion: Some("parent insertion".to_string()),
             font: Some("example:parent".to_string()),
             ..ComponentStyle::default()
         };
@@ -1379,6 +1393,7 @@ mod tests {
                 italic: Some(true),
                 color: Some(0x12_34_56),
                 hover_event: parent.hover_event,
+                insertion: Some("child insertion".to_string()),
                 font: Some("example:child".to_string()),
                 ..ComponentStyle::default()
             }

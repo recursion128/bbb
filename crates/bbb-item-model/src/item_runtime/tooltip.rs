@@ -60,6 +60,7 @@ const LORE_STYLE: ComponentStyle = ComponentStyle {
     color: Some(0xAA_00_AA),
     click_event: None,
     hover_event: None,
+    insertion: None,
     font: None,
 };
 const OMINOUS_BOTTLE_BAD_OMEN_DURATION_TICKS: i32 = 120_000;
@@ -126,6 +127,7 @@ const INSTRUMENT_DESCRIPTION_STYLE: ComponentStyle = ComponentStyle {
     color: Some(TOOLTIP_GRAY_TEXT_COLOR),
     click_event: None,
     hover_event: None,
+    insertion: None,
     font: None,
 };
 #[derive(Debug, Clone, Copy)]
