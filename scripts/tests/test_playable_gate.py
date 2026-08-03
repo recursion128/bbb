@@ -410,6 +410,73 @@ class PlayableGateBlockInteractionTests(unittest.TestCase):
         ):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_server_inventory_move_parser_requires_diamond_boundary_crossing(self):
+        hotbar = (
+            '[Server thread/INFO]: player has the following entity data: '
+            '[{count: 3, Slot: 8b, id: "minecraft:diamond"}]'
+        )
+        main = (
+            '[Server thread/INFO]: player has the following entity data: '
+            '[{count: 3, Slot: 9b, id: "minecraft:diamond"}]'
+        )
+        unrelated = (
+            '[Server thread/INFO]: player has the following entity data: '
+            '[{count: 3, Slot: 9b, id: "minecraft:leaf_litter"}]'
+        )
+
+        self.assertTrue(
+            playable_gate._server_inventory_line_confirms_move(main, True)
+        )
+        self.assertFalse(
+            playable_gate._server_inventory_line_confirms_move(hotbar, True)
+        )
+        self.assertTrue(
+            playable_gate._server_inventory_line_confirms_move(hotbar, False)
+        )
+        self.assertFalse(
+            playable_gate._server_inventory_line_confirms_move(main, False)
+        )
+        self.assertFalse(
+            playable_gate._server_inventory_line_confirms_move(unrelated, True)
+        )
+
+    def test_server_inventory_move_requeries_after_stale_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server_log = Path(directory) / "server.log"
+            server_log.write_text("server ready\n", encoding="utf-8")
+            receipts = iter(
+                (
+                    '[INFO]: player has the following entity data: '
+                    '[{count: 3, Slot: 8b, id: "minecraft:diamond"}]\n',
+                    '[INFO]: player has the following entity data: '
+                    '[{count: 3, Slot: 9b, id: "minecraft:diamond"}]\n',
+                )
+            )
+
+            def query(_path, _command):
+                with server_log.open("a", encoding="utf-8") as sink:
+                    sink.write(next(receipts))
+
+            with (
+                mock.patch.object(
+                    playable_gate, "_server_console_command", side_effect=query
+                ) as command,
+                mock.patch.object(
+                    playable_gate.time,
+                    "monotonic",
+                    side_effect=[0.0, 0.0, 0.5, 1.0, 1.1],
+                ),
+                mock.patch.object(playable_gate.time, "sleep"),
+            ):
+                playable_gate._await_server_inventory_move(
+                    Path(directory) / "server-command",
+                    server_log,
+                    2.0,
+                    True,
+                )
+
+            self.assertEqual(command.call_count, 2)
+
     def test_missing_screenshot_readback_section_fails(self):
         evidence = copy.deepcopy(self.fixture)
         del evidence["screenshot_readback"]

@@ -300,7 +300,9 @@ quiescence 的观察预算。当前脚本内另有未验证的 60 秒字面量�
   不放宽任一终态 gauge，不改 network shutdown 或产品 runtime。
 - 阶段：A 固化 60/180 秒复现与 owner；B 增加 manifest 字段、边界校验和
   fixture/source guard；C 运行 Python focused tests、docs-lint/fmt/diff/check 并提交；
-  D 在干净 tip 重跑三轮 quit/kick/quit soak，最后 full gate 并刷新 stamp。
+  D 在干净 tip 重跑三轮 quit/kick/quit soak，最后 full gate 并刷新 stamp。live 前置
+  acceptance 的服务器权威查询必须按有界 cadence 重取新 receipt，不能把一次跨通道
+  旧读无限复用到整个 terminal budget。
 - checkpoint/安全停止：脚本合同变更视为高风险，实现提交后立即 full gate；
   仅可在干净、已 gated 且本合同/账本仍 active 的 commit 停止。若 120 秒仍
   连续复现同一内部未收敛，则保留精确 counters/artifacts 并 fix-forward；只有无法

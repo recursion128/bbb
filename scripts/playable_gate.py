@@ -2402,6 +2402,7 @@ def drive_sound_particle_push(
 
 PLAYER_MENU_HOTBAR_FIRST_SLOT = 36
 PLAYER_MENU_MAIN_FIRST_SLOT = 9
+SERVER_INVENTORY_QUERY_INTERVAL_SECONDS = 1.0
 
 
 def _inventory_state(address: tuple[str, int]) -> dict[str, Any]:
@@ -2421,6 +2422,50 @@ def _player_menu_stacks(address: tuple[str, int]) -> dict[int, dict[str, Any]]:
         if isinstance(item, dict) and int(item.get("count") or 0) > 0:
             stacks[int(slot.get("slot", -1))] = item
     return stacks
+
+
+def _server_inventory_line_confirms_move(line: str, from_hotbar: bool) -> bool:
+    entries = re.findall(r"\{[^{}]*\}", line)
+    for entry in entries:
+        if "minecraft:diamond" not in entry:
+            continue
+        slot_match = re.search(r"Slot:\s*(\d+)b", entry)
+        if slot_match is None:
+            continue
+        slot = int(slot_match.group(1))
+        if from_hotbar:
+            return PLAYER_MENU_MAIN_FIRST_SLOT <= slot <= 35
+        return slot <= 8
+    return False
+
+
+def _await_server_inventory_move(
+    server_command: Path,
+    server_log: Path,
+    deadline: float,
+    from_hotbar: bool,
+) -> None:
+    marker = "has the following entity data"
+    observed_occurrences = _log_occurrences(server_log, marker)
+    next_query_at = 0.0
+    while time.monotonic() < deadline:
+        text = server_log.read_text(encoding="utf-8", errors="replace")
+        lines = [line for line in text.splitlines() if marker in line]
+        for line in lines[observed_occurrences:]:
+            if _server_inventory_line_confirms_move(line, from_hotbar):
+                return
+        observed_occurrences = len(lines)
+        now = time.monotonic()
+        if now >= next_query_at:
+            _server_console_command(
+                server_command,
+                "data get entity bbb-playablegate Inventory",
+            )
+            next_query_at = now + SERVER_INVENTORY_QUERY_INTERVAL_SECONDS
+        time.sleep(0.1)
+    raise GateFailure(
+        "timed out waiting for the server player data to report the moved stack"
+    )
 
 
 def drive_inventory_interaction(
@@ -2494,37 +2539,14 @@ def drive_inventory_interaction(
 
     # Server-authoritative result: player data slot numbering uses 0-8 for
     # the hotbar and 9-35 for the main inventory; the moved stack must have
-    # crossed that boundary server-side.
-    marker = "has the following entity data"
-    occurrences_before = _log_occurrences(server_log, marker)
-    _server_console_command(
+    # crossed that boundary server-side.  Console commands and network packets
+    # enter the server on independent channels, so repeat the read-only query
+    # at a bounded cadence until a new line observes the post-click state.
+    _await_server_inventory_move(
         server_command,
-        "data get entity bbb-playablegate Inventory",
-    )
-
-    def _server_confirmed() -> bool:
-        text = server_log.read_text(encoding="utf-8", errors="replace")
-        lines = [line for line in text.splitlines() if marker in line]
-        if len(lines) <= occurrences_before:
-            return False
-        entries = re.findall(r"\{[^{}]*\}", lines[-1])
-        for entry in entries:
-            if "minecraft:diamond" not in entry:
-                continue
-            slot_match = re.search(r"Slot:\s*(\d+)b", entry)
-            if slot_match is None:
-                continue
-            slot = int(slot_match.group(1))
-            if from_hotbar:
-                return PLAYER_MENU_MAIN_FIRST_SLOT <= slot <= 35
-            return slot <= 8
-        return False
-
-    _await_value(
+        server_log,
         deadline,
-        "the server player data to report the moved stack",
-        _server_confirmed,
-        lambda value: value is True,
+        from_hotbar,
     )
 
     _control_request(address, "net.container_close", {"container_id": 0})
