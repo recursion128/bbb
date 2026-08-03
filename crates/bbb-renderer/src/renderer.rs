@@ -4997,6 +4997,13 @@ mod tests {
             1,
             [(owner, &[(0, 1)][..], &layers, [0.5, 0.5, -4.0])],
         );
+        renderer.set_terrain_section_states(&[TerrainSectionRenderState {
+            owner: TerrainSectionMeshOwner {
+                chunk: owner,
+                section_y: 0,
+            },
+            visibility: 1.0,
+        }]);
         let vertex_upload_bytes = renderer.counters().terrain_vertex_upload_bytes;
 
         renderer.set_camera_pose(Some(CameraPose {
