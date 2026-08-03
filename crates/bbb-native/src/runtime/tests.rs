@@ -2916,8 +2916,11 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
     let hotbar_icons_extract = source
         .find("let hud_hotbar_item_icons = if ordinary_hotbar {")
         .expect("pump should extract hotbar item icons");
+    let disconnected_screen_extract = source
+        .find("let hud_disconnected_screen = hud_disconnected_screen(input, item_runtime);")
+        .expect("pump should extract disconnected screen HUD state");
     let death_screen_extract = source
-        .find("let hud_death_screen = hud_death_screen(input, world, item_runtime);")
+        .find("let hud_death_screen = hud_disconnected_screen")
         .expect("pump should extract death screen HUD state");
     let game_event_screen_extract = source
         .find("let hud_game_event_screen = hud_death_screen")
@@ -2951,6 +2954,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         selected_slot_extract,
         hotbar_mode_extract,
         hotbar_icons_extract,
+        disconnected_screen_extract,
         death_screen_extract,
         game_event_screen_extract,
         social_interactions_extract,
@@ -2965,8 +2969,22 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
             "HUD frame fields should read one post-input local player snapshot"
         );
     }
+    assert!(
+        disconnected_screen_extract < death_screen_extract,
+        "terminal disconnected screen must suppress lower-priority death/session screens"
+    );
 
     let frame_source = include_str!("render_extract.rs");
+    let disconnected_field = frame_source
+        .find("pub(crate) hud_disconnected_screen: Option<HudDisconnectedScreen>")
+        .expect("RendererFrame must own the disconnected-screen value");
+    let disconnected_setter = frame_source
+        .find("renderer.set_hud_disconnected_screen(frame.hud_disconnected_screen);")
+        .expect("frame apply must forward the disconnected-screen value");
+    assert!(
+        disconnected_field < disconnected_setter,
+        "disconnected-screen state must cross the one-frame renderer boundary"
+    );
     let death_field = frame_source
         .find("pub(crate) hud_death_screen: Option<HudDeathScreen>")
         .expect("RendererFrame must own the death-screen value");
