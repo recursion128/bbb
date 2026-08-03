@@ -433,6 +433,34 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
+### Active 工程合同：LevelRenderer section lifecycle
+
+目标：关闭 `rendering-level-section-lifecycle` 的 29-owner 决策/消费证据，并修复已确认的
+section fade 缺口。Vanilla 依据为 `LevelRenderer` 的 cull/compile/dirty/resort 方法、
+`SectionRenderDispatcher.RenderSection` 与 `SectionOcclusionGraph`；新编译的非近端、非 previously-empty
+section 使用默认 750ms `ChunkVisibility`，`>=0.3` 才供 entity、block entity 与 level-load
+readiness 消费。
+
+唯一 owner/flow：`bbb-world` 仅拥有 chunk/section revision；
+`bbb-native::terrain_runtime::TerrainUploadState` 拥有 level generation、bounded mesh/occlusion prepare、
+首次 resident 时间与有序可见 section frame projection；`bbb-renderer` 只拥有 GPU residency、
+section visibility uniform 与透明层 resort/submit。不保留二值 visible 与 fade 可独立漂移的两套
+projection；旧 generation/result 不得改写新 generation，prepare 失败保留上一完整 residency。
+
+串行阶段：A 锁定 29 owner 对 BBB symbol/test 的 fail-closed evidence；B 建立 native 单一
+section frame projection 与 750ms/0.3 决策；C 接入 embedded/selected terrain shader 的小型有界
+uniform，保持 solid→cutout→translucent 顺序、filter/depth/blend 与 resort 预算；D 更新 canonical
+Wiki/matrix/ledger，focused/pixel/playable 验收后收口。非目标：frame graph、renderer 重构、
+新 options UI/CLI、其他 LevelRenderer 分组。
+
+Focused tests：3D 边界脏化/player priority、queue budget/join/stale generation、occlusion FIFO/partial/frustum、
+visible order/translucent 轮询；新增 near/previously-empty 无 fade、far 0→0.3→1、recompile 不重启、
+level replacement 清理、entity/block-entity/readiness 同阈值、embedded/selected shader 同 uniform、
+29 owner 的实现+语义测试 evidence 可定位且 stale/fail-closed。每阶段运行受影响 crate tests；
+B/C 跨 owner 干净提交后 checkpoint full gate；最终 full gate 并刷新 fixture/live playable 及
+相关 pixel acceptance。安全停止点仅限干净、full-gated checkpoint，账本仍保持 active；blocker
+必须是可复现的 GPU/window 外部失败且 focused headless 路径已通过。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

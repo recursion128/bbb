@@ -91,6 +91,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   29, frame graph 14, scene projection 15, effect lifetime 4,
   diagnostics/gizmos 3 and light query 3. Each open mechanism remains here
   until its own single-semantics slice supplies consumer evidence.
+- **`rendering-level-section-lifecycle` is the current active engineering
+  slice.** Its native mesh/occlusion and renderer residency paths already cover
+  most dirty, compile, cull and resort decisions, but selected core shaders
+  currently replace Vanilla `ChunkVisibility` with constant `1.0` and the
+  native visibility gate has no first-upload 750ms / `>=0.3` lifecycle. Close
+  only after one generation-aware ordered section projection drives terrain,
+  entity, block-entity and readiness consumers, and all 29 generated owners
+  have locatable implementation plus semantic-test evidence. The exact active
+  contract and safe stops are in `goal.md#active-工程合同levelrenderer-section-lifecycle`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
