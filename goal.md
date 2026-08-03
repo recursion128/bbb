@@ -433,33 +433,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
-### Active 工程合同：LevelRenderer backend lifecycle
-
-目标：关闭 `rendering-level-backend-lifecycle` 的 constructor、close、reload/init-outline、
-set-level/all-changed/needs-update、resize 与 sampler reset 共 9 个 owner。Vanilla 依据为
-`LevelRenderer` 对 GPU owner、section backend、outline target、cloud invalidation、surface size 和
-lazy chunk sampler 的固定释放/重建顺序；当前真实缺口是 generated inventory 只有两条宽文件路径，
-且 renderer resize 尚未以可注入失败的 prepare/apply 证明全部 size-dependent owner 原子替换。
-
-唯一 flow：world 只发布 level/resource revision；`bbb-native::TerrainUploadState` 拥有 level generation、
-mesh/occlusion invalidation 和 stale-result rejection；render thread 的 `bbb-renderer::Renderer` 唯一拥有
-surface、targets、post graphs、sampler/pipeline 与 GPU residency。resize 先完整 prepare，再一次 apply；
-prepare 失败保留旧 size/targets/counters。resource reload 沿用唯一 transaction，level replacement 清除
-旧 terrain projection；renderer 不反向读取 world/pack，也不新增 backend shadow generation。
-
-阶段：A 为 9 owner 冻结逐项 implementation+test evidence；B 建立原子 resize plan，覆盖 main/depth、
-transparency、outline、cloud、blur、camera/post graph target 和 bind group；C 复验 level/reload/invalidation、
-RAII close 与 generation rollback，并增加 reverse guard；D 更新 Wiki/matrix/ledger 后 focused、offscreen、
-window resize/live 与 full gate 收口。非目标：frame graph、section visibility、scene/effect/light/diagnostics、
-renderer API 广泛重构或 options UI。
-
-Focused tests：zero-size no-op；resize 成功只发布一致尺寸并保留 selected post generation；每个可注入
-prepare 失败点保留旧 pixels/size/targets/counters；surface-size 驱动 occlusion refresh；level replacement、
-reload-all 与 stale result 清理；resource generation 成功/失败；outline/cloud/sampler owner；9 个 evidence cell
-对缺 symbol/test fail closed。B/C 提交后 checkpoint full gate；最终 full gate 并刷新 fixture/live playable、
-适用 resize/offscreen acceptance。安全停止点仅限干净 full-gated checkpoint；blocker 仅限可复现的
-GPU/window 外部失败且 headless failure injection 已通过。
-
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

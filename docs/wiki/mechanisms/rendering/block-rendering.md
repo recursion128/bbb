@@ -97,6 +97,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | layer routing | `SectionCompiler` material layer | terrain batches | `equivalent` | cutout/translucent tests + anchors |
 | translucent sorting | section sort state | renderer translucent queue | `equivalent` | static/flight/boundary anchors |
 | section compile/cull/fade lifecycle | `LevelRenderer`、`RenderSection`、`SectionOcclusionGraph` | native ordered section projection → renderer uniform | `equivalent` | generated 29-owner evidence、fade/threshold/generation/pixel/selected-shader tests |
+| backend/reload/resize lifecycle | `LevelRenderer` constructor/close/reload/setLevel/allChanged/resize/resetSampler/needsUpdate | world revision → native generation transaction → renderer-private GPU backend | `equivalent` | generated 9-owner evidence、atomic resize/rollback、RAII、resource/level generation tests |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -106,6 +107,12 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 - chunk 边缘需要跨 chunk 邻居；unloaded 不能伪装成 air 后永久缓存。
 - section fade、entity/block-entity/readiness gate 必须来自同一个 generation-matched
   projection；不得恢复 renderer 自动可见 bridge 或独立 binary-visible cache。
+- world 只发布 level/resource revision，native 只拥有 terrain/resource transaction；surface、
+  targets、post graphs、sampler/pipeline 和 GPU residency 只由 renderer backend 拥有。下游不能
+  反向读取 world/pack，也不能增加可独立漂移的 backend generation。
+- resize 必须先准备全部 size-dependent owner，再一次性发布 main/depth、transparency、outline、
+  cloud、blur、camera/post targets、bind group 与尺寸/counter；任一 prepare 失败保留上一完整
+  backend generation，zero-size 不进入 prepare。释放由 renderer RAII owner 完成，不另设 close 路径。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
 - FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
   optional static map fallback。
@@ -124,13 +131,19 @@ Vanilla 26.1 selected terrain shader 的 compile、override/filter 与 rollback 
 consumer。版本化 client mechanism inventory 为全部 29 个 owner 保存实现 symbol 与语义测试
 symbol，docs lint 对缺 cell、失效 symbol 和 stale output fail closed。
 
+backend lifecycle 另由 renderer resize plan 的 success/zero-size/分阶段注入失败测试锁定：
+prepare 不修改旧尺寸、targets、selected post pixels 或 counters，apply 后所有 target 同尺寸且只
+推进一次 counter。level replacement/reload-all/stale mesh、resource reload 成功/失败、outline/cloud、
+atlas sampler owner 与 RAII reverse guard 覆盖非 resize owner；generated inventory 为 9 个 Vanilla
+method 分别保存 implementation/test symbol，旧逐 consumer resize 调用恢复时 source guard 失败。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section lifecycle 均已通过；新 block state、
+当前合同的已知回归矩阵与 LevelRenderer section/backend lifecycle 均已通过；新 block state、
 pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 

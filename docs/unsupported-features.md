@@ -77,7 +77,7 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-backend-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
+Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
 
 - **The registered block-entity and frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
@@ -89,17 +89,9 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   The generated inventory routes the 77 `LevelRenderer` methods into seven
   total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
   29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. Each of the six remaining open
+  diagnostics/gizmos 3 and light query 3. Each of the five remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
-- **`rendering-level-backend-lifecycle` is the current active engineering
-  slice.** The nine constructor/close/reload/level/invalidation/resize/sampler
-  owners still lack fail-closed implementation plus semantic-test cells, and
-  resize does not yet expose an injectable all-owner prepare/apply rollback
-  boundary. Close only after size-dependent GPU owners publish atomically,
-  level/resource generations retain their existing stale/rollback behavior,
-  and all nine generated owners have exact evidence. The contract and safe
-  stops are in `goal.md#active-工程合同levelrenderer-backend-lifecycle`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
