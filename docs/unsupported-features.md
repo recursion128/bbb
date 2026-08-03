@@ -49,11 +49,6 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   close, recovery, backend shutdown, task handoff, and stale-session branch.
   Split them into homogeneous lifecycle decisions and require deterministic
   failure/recovery acceptance in addition to the happy live path.
-- **Fatal runtime crash diagnostics are `active`.** Worker/render fatal paths can
-  currently degrade to log-only event-loop exit, while main-thread panic and
-  startup error have no bounded repo-owned report. The frozen goal slice must
-  route first failure and bounded suppressed failures through one report owner,
-  join/drop runtime owners in order, publish without clobber, and exit nonzero.
 
 ## Architecture drift candidates
 

@@ -43,6 +43,26 @@ level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐�
 但一帧 renderer input 必须引用同一 resource generation。断线先停止新 packet 应用，
 再清理 world/backend；control 只能看到最后一个明确标记状态的 snapshot。
 
+## Fatal failure 与 crash report
+
+`bbb-native::crash_report` 是 fatal diagnostics 的唯一 owner。startup `Result`、main panic、
+simulation panic/join error，以及 render-effect、resize、frame 和 platform event-loop fatal
+只提交 `RuntimeFailure`；首个 failure 保持 canonical，最多 8 个后续 failure 作为 suppressed
+diagnostics。worker、renderer、control 或 snapshot 都不直接写报告。
+
+报告复刻 Vanilla `CrashReport`/`Minecraft.crash` 的 header、UTC time、description、error、
+head/thread/backtrace、category、system details 和 save-once 判断。单字段、category/entry 数、
+suppressed 数、retained bytes（512 KiB）和最终 UTF-8 文本（1 MiB）都有明确预算，Unicode
+截断会写入诊断。目录只来自启动参数 `--crash-report-dir`，默认是 game-directory 语义下的
+`crash-reports`；安全时间戳文件名不含 server/user 输入，临时文件 sync 后用同目录 hard-link
+原子 no-clobber 发布，重名追加序号。
+
+fatal event 先请求 event-loop exit；`LoopExiting` join simulation，closure drop 释放
+renderer/audio/window，`event_loop.run` 返回后外层 runtime 才持久化。保存成功退出 1，写失败
+仍把 bounded report 输出 stderr 并退出 2；正常 close/quit、probe/status/build-info 成功不产报告。
+focused process test 与 production-binary acceptance 都验证“失败生成一份且非零退出，下一进程
+成功且不覆盖旧报告”。
+
 ## 测试责任
 
 protocol 测 byte/类型边界，world 测 ordered apply 与 canonical state，native 测
