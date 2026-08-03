@@ -2960,7 +2960,8 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-native/src/input.rs#normalize_command_entry",
+            "crates/bbb-native/src/input.rs#normalize_chat_message",
+            "crates/bbb-native/src/input.rs#chat_commands_allowed",
             "crates/bbb-world/src/commands.rs#command_requires_signed_arguments",
             "crates/bbb-native/src/input/commands.rs#queue_chat_command",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendCommand",
@@ -2976,6 +2977,7 @@
             "crates/bbb-control/src/server/tests.rs#net_send_chat_command_queues_request",
             "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_chat_command",
             "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_signed_chat_command_for_signable_argument",
+            "crates/bbb-native/src/input/tests.rs#chat_visibility_permissions_gate_messages_commands_and_message_arguments",
             "crates/bbb-native/src/input/tests.rs#command_entry_submits_slash_command_without_leading_slash",
             "crates/bbb-native/src/input/tests.rs#command_entry_with_signable_message_argument_submits_signed_command",
             "crates/bbb-world/src/commands.rs#detects_signable_message_argument_commands"
@@ -3093,7 +3095,8 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-native/src/input.rs#normalize_chat_entry",
+            "crates/bbb-native/src/input.rs#normalize_chat_message",
+            "crates/bbb-native/src/input.rs#chat_messages_allowed",
             "crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_message",
             "crates/bbb-net/src/chat_session/runtime.rs#active_session_mut",
             "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat",
@@ -3113,7 +3116,8 @@
             "crates/bbb-net/src/driver/commands/tests.rs#send_chat_message_encodes_unsigned_chat_packet",
             "crates/bbb-native/src/input/commands.rs#queues_unsigned_chat_message",
             "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message",
-            "crates/bbb-native/src/input/tests.rs#chat_key_submits_message_with_pending_last_seen_update"
+            "crates/bbb-native/src/input/tests.rs#chat_key_submits_message_with_pending_last_seen_update",
+            "crates/bbb-native/src/input/tests.rs#chat_visibility_permissions_gate_messages_commands_and_message_arguments"
           ],
           "gap": null,
           "status": "complete"

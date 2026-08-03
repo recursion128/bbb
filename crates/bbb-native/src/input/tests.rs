@@ -18343,6 +18343,16 @@ fn chat_normalization_matches_java_trim_normalize_space_and_utf16_truncation() {
 }
 
 #[test]
+fn chat_screen_production_keeps_one_normalization_and_permission_owner() {
+    let source = include_str!("../input.rs");
+    assert_eq!(source.matches("fn normalize_chat_message(").count(), 1);
+    assert_eq!(source.matches("fn chat_messages_allowed(").count(), 1);
+    assert_eq!(source.matches("fn chat_commands_allowed(").count(), 1);
+    assert!(!source.contains("fn normalize_command_entry("));
+    assert!(!source.contains("fn normalize_chat_entry("));
+}
+
+#[test]
 fn chat_visibility_permissions_gate_messages_commands_and_message_arguments() {
     let (tx, mut rx) = mpsc::channel(8);
     let commands = Some(tx);
