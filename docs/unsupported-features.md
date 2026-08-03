@@ -92,6 +92,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   diagnostics/gizmos 3 and light query 3. Each of the five remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
+- **`rendering-level-scene-projection` is the current active engineering
+  slice.** Its 15 owners lack exact implementation/test cells, and the current
+  block-selection path neither distinguishes Vanilla's pre/post-translucent
+  phase nor projects appropriate line width/high contrast; block-destroy
+  overlays also omit the 32-block camera-center bound. Close only after one
+  immutable native frame projection drives the two renderer phases, all old
+  selection calls are gone, entity/block-entity gates remain exact, and all 15
+  generated owner cells fail closed. Contract and safe stops are in
+  `goal.md#active-工程合同levelrenderer-scene-projection`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
