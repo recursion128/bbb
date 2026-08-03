@@ -41,6 +41,30 @@ configuration/runtime 以 global block-state id 查生成的 26.1 facts；world 
 携带它们。缺合法 id 时不假造 occlusion 等价事实，使用显式 conservative fallback 并
 暴露诊断。chunk 邻居变化使相关 mesh 失效并重建。
 
+### Level section residency 与可见性
+
+Vanilla `LevelRenderer`、`SectionRenderDispatcher.RenderSection` 与
+`SectionOcclusionGraph` 共同决定 section compile、脏化、frustum/occlusion traversal、
+透明层 resort 和首次 resident fade。BBB 对应的数据流只有一条：
+
+`bbb-world` chunk/section revision → `bbb-native::terrain_runtime::TerrainUploadState`
+的 generation-aware bounded prepare/residency/有序 frame projection →
+`bbb-renderer` GPU residency、每 section visibility uniform 与 layer submit。
+
+native 在 mesh 首次成功 resident 时记录时间。与 camera section center 的距离平方小于
+`768`，或该 section 从 previously-empty 变为非空时，fade duration 为零；其余 section
+使用默认 750ms，并按 Vanilla 的整数毫秒进度生成 `ChunkVisibility`。recompile 保留首次
+resident 时间，不重启 fade；level replacement、reload reset 或 section removal 同时移除
+residency 和 projection。entity、普通 block entity 与 level-load readiness 都查询同一
+projection，并统一以 `visibility >= 0.3` 放行。
+
+renderer 不自行解析 world/pack，也不保留第二份 binary-visible owner。solid、cutout 与
+translucent draw 绑定同一个小型 per-section uniform；embedded shader 和 selected Vanilla
+`terrain.fsh` 均先执行 fog-color→terrain-color 的 `ChunkVisibility` mix，再执行距离 fog。
+crumbling 保持自己的常量 visibility，不被 terrain section fade 污染。新 resident mesh 在
+收到 generation-matched projection 前不自动可见；stale prepare/projection 在改写 residency
+前被拒绝，失败继续使用上一完整 generation。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -72,6 +96,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | block/sky/cardinal light | lighter + level shade | terrain vertex light | `equivalent` | full block/glowstone anchors |
 | layer routing | `SectionCompiler` material layer | terrain batches | `equivalent` | cutout/translucent tests + anchors |
 | translucent sorting | section sort state | renderer translucent queue | `equivalent` | static/flight/boundary anchors |
+| section compile/cull/fade lifecycle | `LevelRenderer`、`RenderSection`、`SectionOcclusionGraph` | native ordered section projection → renderer uniform | `equivalent` | generated 29-owner evidence、fade/threshold/generation/pixel/selected-shader tests |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -79,6 +104,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 - 不得从 `Opaque/Cutout/Translucent`、render shape 或 block name 推导独立 state facts。
 - 查询相邻坐标、opposite direction 与判断顺序必须与 Vanilla 一致。
 - chunk 边缘需要跨 chunk 邻居；unloaded 不能伪装成 air 后永久缓存。
+- section fade、entity/block-entity/readiness gate 必须来自同一个 generation-matched
+  projection；不得恢复 renderer 自动可见 bridge 或独立 binary-visible cache。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
 - FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
   optional static map fallback。
@@ -90,14 +117,22 @@ renderer mesh tests 覆盖内部面、shape、AO、方向光照、邻 chunk 和�
 在 `static_orbit`、`preloaded_flight`、`chunk_boundary_crossing` 保存同 tick ROI 与
 RenderDoc 非空 draw evidence。
 
+section lifecycle 由 native 的 near/previously-empty、far 0→0.3→1、recompile、level
+replacement、stale generation 和三个 consumer 共享阈值测试，以及 renderer 的 uniform
+layout、旧 bridge reverse guard、translucent resort 和 offscreen pixel fade 测试覆盖；本地
+Vanilla 26.1 selected terrain shader 的 compile、override/filter 与 rollback 测试验证同一
+consumer。版本化 client mechanism inventory 为全部 29 个 owner 保存实现 symbol 与语义测试
+symbol，docs lint 对缺 cell、失效 symbol 和 stale output fail closed。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵已通过；新 block state、pack model 或 renderer 优化仍需按机制
-复验，不能靠全图平均误差宣称等价。
+当前合同的已知回归矩阵与 LevelRenderer section lifecycle 均已通过；新 block state、
+pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
+宣称等价。
 
 ## 账本/goal 路由
 

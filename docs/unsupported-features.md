@@ -77,7 +77,7 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-backend-lifecycle`, `rendering-level-section-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
+Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-backend-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
 
 - **The registered block-entity and frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
@@ -89,17 +89,9 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   The generated inventory routes the 77 `LevelRenderer` methods into seven
   total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
   29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. Each open mechanism remains here
-  until its own single-semantics slice supplies consumer evidence.
-- **`rendering-level-section-lifecycle` is the current active engineering
-  slice.** Its native mesh/occlusion and renderer residency paths already cover
-  most dirty, compile, cull and resort decisions, but selected core shaders
-  currently replace Vanilla `ChunkVisibility` with constant `1.0` and the
-  native visibility gate has no first-upload 750ms / `>=0.3` lifecycle. Close
-  only after one generation-aware ordered section projection drives terrain,
-  entity, block-entity and readiness consumers, and all 29 generated owners
-  have locatable implementation plus semantic-test evidence. The exact active
-  contract and safe stops are in `goal.md#active-工程合同levelrenderer-section-lifecycle`.
+  diagnostics/gizmos 3 and light query 3. Each of the six remaining open
+  mechanisms remains here until its own single-semantics slice supplies
+  consumer evidence.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
