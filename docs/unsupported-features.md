@@ -43,12 +43,16 @@ Owner: `bbb-native` + `bbb-control`
 
 Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
-- **The complete external-session runtime lifecycle is `active`.** The live gate
+- **`lifecycle-external-session-runtime-26-1` is `active`.** The live gate
   proves the happy login-to-disconnect path, but the 187 source-derived
   `Minecraft` owners are not yet backed by decision-level evidence for every
   close, recovery, backend shutdown, task handoff, and stale-session branch.
-  Split them into homogeneous lifecycle decisions and require deterministic
-  failure/recovery acceptance in addition to the happy live path.
+  Split all owners into homogeneous lifecycle decisions, existing mechanism
+  routes, accessor-only non-decisions or source-backed out-of-scope rows; then
+  require deterministic failure/recovery and stale-generation acceptance in
+  addition to the happy live path. Goal route:
+  `lifecycle-external-session-runtime-26-1` under `p4-delivery`.
+
 ## Architecture drift candidates
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
