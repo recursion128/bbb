@@ -55,6 +55,8 @@
   bounded report owner，ordered shutdown 后原子发布并以非零状态退出。
 - **2026-08-03（external network terminal close）**：connection/relay task 归入单一
   bounded lifecycle owner，并在 simulation 后、backend drop 前完成 signal/join。
+- **2026-08-03（lifecycle terminal budget ownership）**：版本化 manifest 统一拥有三个
+  独立终态 deadline，并以服务器 receipt、零工作 gauge 与 clean exit 完成三轮 live soak。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

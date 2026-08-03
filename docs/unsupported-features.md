@@ -49,12 +49,6 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   close, recovery, backend shutdown, task handoff, and stale-session branch.
   Split them into homogeneous lifecycle decisions and require deterministic
   failure/recovery acceptance in addition to the happy live path.
-- **Lifecycle terminal-quiescence budget ownership is `active`.** The versioned
-  soak manifest owns the workload and per-iteration budgets, but the runner
-  independently hard-codes 60 seconds for the final pack-pop generation to
-  reach its fixed zero-work gauges. Move that budget into the manifest, validate
-  its bound, and prove the full 49-chunk/1176-section generation plus ordered
-  quit/kick under the single contract without weakening any gauge.
 ## Architecture drift candidates
 
 Owner: `bbb-renderer` + `bbb-native`

@@ -29,6 +29,11 @@ surface lost/outdated/timeout、no-audio fallback、终态 queue/gauge、RSS/FD/
 clean process exit。唯一场景输入是
 `scripts/fixtures/lifecycle-soak/manifest-26.1.json`；成功后写入
 `.git/bbb/last-lifecycle-soak` 与本地 report。fixture 重放不能刷新 live stamp。
+manifest 同时唯一拥有 per-iteration 与 terminal-phase timeout；quiescence、
+kick-disconnect、process-exit 使用三个互不复用且总和受 iteration budget 约束的 deadline。
+kick 必须同时具有目标 Vanilla 服的精确 receipt，并由 control `connected=false`，或
+control 随断线关闭后紧接的零退出和进程消失证明客户端终态。服务器权威状态查询按
+有界 cadence 重取新日志行，不能把跨 console/network 通道的一次旧读复用到整个预算。
 
 `scripts/platform-acceptance-gate.sh` 当前只声明
 `Linux x86_64 / Wayland / Vulkan / windowed external-multiplayer`。它要求 fully gated
