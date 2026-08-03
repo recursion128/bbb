@@ -150,6 +150,13 @@ session 与 server-pack session，再由 `ClientInputState` 发布 generation-ta
 `DisconnectedScreenRuntime`；Login/尚未建 phase 使用 `connect.failed`，Configuration/Play 使用
 `disconnect.lost`。关闭 receiver 后不会保留一个永久 productive wake source。
 
+声音 teardown 沿用同一 terminal effect barrier，而不建立断线专用 backend 路径：Login/connect
+failure 对应 Vanilla `ConnectScreen` 的 `stopSound=false`，不提交 stop；Configuration/Play 在
+level、registry 与 server-pack session 清理后，向既有 `AudioEventSink` 追加一次无 category/name
+过滤的 stop-all。它排在本批次先行 packet audio 之后、terminal resource reload apply 之前；随后
+空 tickable projection 清除旧 generation 的 entity-bound identity。`bbb-audio` 只消费 FIFO effect，
+不反向读取 phase、world 或 pack，stop-all 同时释放 active、streaming 与 delayed playback owner。
+
 `ClientInputState` 唯一拥有 focus、hover、Esc-ignore、details/back action 和 bounded control
 diagnostics；render publication 只携带不可变投影。renderer 只拥有居中 layout、200px button、
 menu-background GPU generation 与 generation-tagged hit target，不反向读取 socket、world 或 pack。

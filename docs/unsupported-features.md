@@ -43,18 +43,6 @@ Owner: `bbb-native` + `bbb-control`
 
 Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
-- **Phase-aware remote-disconnect audio teardown is `active`.** Vanilla 26.1
-  `ClientHandshakePacketListenerImpl.onDisconnect` only replaces the Login screen,
-  while `ClientCommonPacketListenerImpl.onDisconnect` routes Configuration/Play
-  through `Minecraft.disconnect` and `updateLevelInEngines(null, true)`, whose first
-  engine action is `SoundManager.stop()`. BBB clears the canonical level, registry
-  and resource-pack session for every typed remote terminal outcome, but the
-  Configuration/Play effect batch does not yet append the existing unfiltered
-  stop-sound command, so an active backend sound can survive the terminal screen.
-  Close when Login remains non-stopping, Configuration/Play append exactly one
-  stop-all after prior packet audio and before the terminal pack reload, the backend
-  has no retained active/tickable sound owner, and phase/order/source-guard plus
-  lifecycle acceptance pass. Goal route: “phase-aware remote-disconnect audio teardown”.
 - **The complete external-session runtime lifecycle is `active`.** The live gate
   proves the happy login-to-disconnect path, but the 187 source-derived
   `Minecraft` owners are not yet backed by decision-level evidence for every

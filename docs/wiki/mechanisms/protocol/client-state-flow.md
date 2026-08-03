@@ -44,6 +44,11 @@ barrier 前消费它、清空 level/registry/server-pack session 并发布 `Clie
 generation，control 与 renderer 只读同一 publication。该路径不会再把远端断线改写为进程退出；
 用户 back/`app.quit` 才进入正常 shutdown lifecycle。
 
+terminal audio 仍走同一个 `PlayApplyEffects`/native audio FIFO：Login failure 不停止声音，
+Configuration/Play 在先行 packet audio 后提交恰好一次 unfiltered stop-all，再进入 terminal
+resource apply。phase 决策只属于 simulation；audio backend 不缓存 connection/session 状态，下一份
+空 tickable projection 会清除旧 generation 的 entity-bound identity。
+
 ## 认证 profile key 与 play-local 签名链
 
 Vanilla `ConnectScreen.startConnecting` 在 TCP 建连前调用

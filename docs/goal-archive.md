@@ -88,6 +88,8 @@
   session teardown、唯一 input owner 与 immutable renderer/control projection 呈现并保持存活。
 - **2026-08-03（indexed disconnect panorama）**：默认 pack 六面/overlay 经唯一 CPU catalog、
   native transaction 与 renderer-private cube generation 接入可达断线页。
+- **2026-08-03（phase-aware disconnect audio teardown）**：Login 保留 menu audio，
+  Configuration/Play 经既有 effect FIFO 一次 stop-all，并以三轮 live lifecycle 验收。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
