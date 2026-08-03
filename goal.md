@@ -433,6 +433,33 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
+### Active 工程合同：LevelRenderer effect lifecycle
+
+目标：关闭 `rendering-level-effect-lifecycle` 的 `tick`、`destroyBlockProgress`、
+`removeBlockBreakingProgress`、`removeProgress` 共 4 owner。Vanilla 依据为
+`GameRenderer.tick` 283–300、`LevelRenderer` 1148–1178/1390–1412 与
+`BlockDestructionProgress`；实证缺口是 server/local progress 的最高阶段仍由 native
+`block_destroy_stages_from_world` 二次解析，且 4 owner 尚无逐项 fail-closed consumer evidence。
+
+唯一 flow：packet/local interaction → `bbb-world` canonical breaking state 与有序最高阶段投影 →
+native immutable overlay extraction → renderer crumbling pass。running level tick 由 native 单点编排：
+`WeatherEffectRuntime` 先生成 particle/audio effect，再由 world expiry owner 扫描；pause/frozen 不推进，
+每 20 tick 扫描且仅移除 age > 400 的项。renderer/weather cursor 跨 level/resource reload 保留，
+level teardown 清除 breaking entries；无 native shadow resolver/cache。
+
+阶段：A 冻结 4 owner、tick/order/lifetime/budget；B 将 server/local merge 移入 world 窄投影并迁移
+全部 production caller、删除 native resolver；C 复验 weather cursor/effect、id/position update、
+invalid removal、highest-stage、expiry/freeze/teardown 和 overlay consumer，生成 4/4 evidence；D 更新
+Wiki/matrix/ledger、focused/full/playable 收口。非目标：改变挖掘速度/交互 packet、天气 mesh、粒子
+provider、audio mixer、terrain model 或其他 LevelRenderer 机制。
+
+Focused tests：0..9 admission、非法进度 remove、id 改位置、同位置最高 stage、server/local merge；
+weather→expiry→later effects 顺序与 deterministic cursor；pause/frozen/step、20/400 边界、level teardown；
+retained count budget/diagnostics；single world projection production caller、native 旧 resolver 为零；4 evidence
+cells 缺 symbol/test fail closed；crack/block-entity crumbling 与缺 texture fallback 不回退。合同提交先 full
+gate；实现后 checkpoint/final full gate 和 fixture/live playable。安全停止点仅限干净 full-gated
+checkpoint；blocker 仅限真实 window/GPU/live 外部失败且 CPU/source evidence 已通过。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
