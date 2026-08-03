@@ -86,6 +86,8 @@
   拆为 Chat 25、Death 16、Disconnected 8 与 Pause 17 四条独立机制 route。
 - **2026-08-03（remote disconnect screen lifecycle）**：远端 typed terminal outcome 经原子
   session teardown、唯一 input owner 与 immutable renderer/control projection 呈现并保持存活。
+- **2026-08-03（indexed disconnect panorama）**：默认 pack 六面/overlay 经唯一 CPU catalog、
+  native transaction 与 renderer-private cube generation 接入可达断线页。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

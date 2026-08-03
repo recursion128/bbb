@@ -58,6 +58,12 @@ catalog 和 sound catalog/audio decoder 只拥有各自派生状态，不重新�
 - audio：各 namespace 的 `sounds.json` 按 resource-stack 低到高合并，`replace`、file/event
   reference、stream/preload、attenuation 保持既有语义。选中的 file entry 才验证 indexed
   OGG 并交给 bounded decoder；catalog 构建不 eager decode 4564 个声音，也不要求音频设备。
+- panorama：`bbb-pack::PanoramaCatalog` 是六面与 overlay 的唯一 immutable CPU owner；它按
+  Vanilla `_1,_3,_5,_4,_0,_2` layer 顺序从同一 stack 查询，并保持 selected/server priority、
+  filter、lazy integrity、PNG budget 与同尺寸约束。native 只在 resource transaction 中编排
+  GPU apply，并以 realtime tick 推进 screen-local rotation；renderer 独占 cube/overlay GPU
+  generation，按 cube→overlay→blur→menu background→widgets 提交。失败 reload 回滚上一完整
+  generation；startup 无可用 catalog 时只保留现有 menu-background fallback，不建立第二 resolver。
 
 ## Indexed object 消费矩阵
 
@@ -71,11 +77,11 @@ index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”�
 | `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | `equivalent` |
 | root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | `equivalent` |
 | window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | `equivalent` |
-| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | 断线状态页已接入 `menu_background.png`，但 panorama cube/overlay consumer 尚缺 | `partial`；由 `resources-indexed-panorama` active route 关闭 |
+| title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama`, `Screen.extractBackground` | 是，`minecraft` | `PanoramaCatalog`→native generation→断线状态页 cube/overlay GPU consumer | `equivalent` |
 | built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | `not-needed`；增加内置 pack id 选择或对应 UI/CLI 时重开 |
 | Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | `not-needed`；Realms service/screen 进入范围时重开 |
 
-按 object 计数为：`equivalent=4724`、`partial=7`、`not-needed=18`、
+按 object 计数为：`equivalent=4731`、`partial=0`、`not-needed=18`、
 `deferred-external=0`，合计 4749。not-needed 判断只关闭对应 presentation consumer；这些
 字节仍保持 provider 可达，不会因此被 eager 读取。
 

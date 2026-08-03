@@ -156,7 +156,10 @@ menu-background GPU generation 与 generation-tagged hit target，不反向读�
 HTTP(S) 和本地 report path 经 simulation→platform effect barrier 执行并返回结果；CLI-direct 产品的
 back action 进入正常 app shutdown。live kick gate 必须同时观察服务器 receipt、
 `net.connected=false`、仍存活进程及 `app.status.app.disconnected_screen`，随后才以 `app.quit` 退出。
-Vanilla 非 in-game screen 还要求 panorama/overlay；该独立资源消费者仍由唯一 gap ledger 保持开放。
+非 in-game screen 的 panorama/overlay 由 pack 的 immutable `PanoramaCatalog`、native resource
+transaction 与 renderer-private cube generation 单向投影；断线页只携带 realtime rotation，不能
+反向读取 pack。renderer 固定在 blur/menu background/widgets 之前提交 cube 与 overlay，reload
+失败保留上一完整 GPU generation，startup catalog 缺失则退回 menu background。
 
 ## External network backend terminal close
 
