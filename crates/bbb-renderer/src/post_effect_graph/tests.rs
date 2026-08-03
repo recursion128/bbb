@@ -22,6 +22,103 @@ use crate::{
 const TEST_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 #[test]
+fn vanilla_post_effect_identity_owner_is_complete_unique_and_camera_bounded() {
+    let ids = VanillaPostEffect::REQUIRED.map(VanillaPostEffect::id);
+    assert_eq!(
+        ids,
+        [
+            "minecraft:blur",
+            "minecraft:creeper",
+            "minecraft:spider",
+            "minecraft:invert",
+            "minecraft:entity_outline",
+            "minecraft:transparency",
+        ]
+    );
+    assert_eq!(
+        ids.iter().collect::<std::collections::BTreeSet<_>>().len(),
+        6
+    );
+    assert_eq!(
+        VanillaPostEffect::camera_from_id(Some("minecraft:creeper")),
+        Some(VanillaPostEffect::Creeper)
+    );
+    assert_eq!(
+        VanillaPostEffect::camera_from_id(Some("minecraft:spider")),
+        Some(VanillaPostEffect::Spider)
+    );
+    assert_eq!(
+        VanillaPostEffect::camera_from_id(Some("minecraft:invert")),
+        Some(VanillaPostEffect::Invert)
+    );
+    for non_camera in [
+        None,
+        Some("minecraft:blur"),
+        Some("minecraft:entity_outline"),
+        Some("minecraft:transparency"),
+        Some("minecraft:unknown"),
+    ] {
+        assert_eq!(VanillaPostEffect::camera_from_id(non_camera), None);
+    }
+}
+
+#[test]
+fn production_post_effect_dispatch_has_one_id_owner_and_no_legacy_resolver() {
+    let owner = include_str!("../post_effect_graph.rs");
+    for id in [
+        "minecraft:blur",
+        "minecraft:creeper",
+        "minecraft:spider",
+        "minecraft:invert",
+        "minecraft:entity_outline",
+        "minecraft:transparency",
+    ] {
+        assert_eq!(
+            owner.matches(id).count(),
+            1,
+            "{id} must have one canonical production declaration"
+        );
+    }
+
+    let runtime = include_str!("runtime.rs");
+    let render = include_str!("../render.rs");
+    let camera_graph = include_str!("../camera_post_effect/graph.rs")
+        .split_once("#[cfg(test)]")
+        .expect("camera graph tests remain separate from production source")
+        .0;
+    for (path, source) in [
+        ("post_effect_graph/runtime.rs", runtime),
+        ("render.rs", render),
+        ("camera_post_effect/graph.rs", camera_graph),
+    ] {
+        for legacy in [
+            "REQUIRED_GRAPH_IDS",
+            "contains_camera_graph",
+            "enum CameraPostEffect",
+            "CameraPostEffect::from_id",
+        ] {
+            assert!(
+                !source.contains(legacy),
+                "{path} restored legacy post-effect resolver {legacy}"
+            );
+        }
+    }
+    for raw_graph_id in [
+        "\"minecraft:blur\"",
+        "\"minecraft:creeper\"",
+        "\"minecraft:spider\"",
+        "\"minecraft:invert\"",
+    ] {
+        assert!(
+            !runtime.contains(raw_graph_id)
+                && !render.contains(raw_graph_id)
+                && !camera_graph.contains(raw_graph_id),
+            "production consumers restored raw graph dispatch for {raw_graph_id}"
+        );
+    }
+}
+
+#[test]
 fn post_effect_graph_executes_selected_custom_shader_pixels_in_pass_order() {
     let Some((device, queue)) = request_test_device() else {
         return;

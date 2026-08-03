@@ -25,7 +25,7 @@ use crate::{
         ParticleAtlasDrawRange, ParticlePipelineVertexBatch, ParticleTextureAtlasKind,
         ParticleVertexBatches,
     },
-    post_effect_graph::{PostEffectGlobals, PostEffectTransparencyTargets},
+    post_effect_graph::{PostEffectGlobals, PostEffectTransparencyTargets, VanillaPostEffect},
     selection::{debug_line_vertex_batches, selection_lines_vertices},
     vignette::VignetteUniform,
     weather::{build_lightning_mesh, build_weather_mesh},
@@ -2311,7 +2311,7 @@ impl Renderer {
                     &self.device,
                     &self.queue,
                     encoder,
-                    "minecraft:entity_outline",
+                    VanillaPostEffect::EntityOutline,
                     "minecraft:entity_outline",
                     &self.entity_outline_target.view,
                     [self.config.width, self.config.height],
@@ -3049,20 +3049,19 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) -> Result<()> {
+        let effect = self
+            .camera_post_effect_active
+            .then(|| VanillaPostEffect::camera_from_id(self.current_post_effect_id.as_deref()))
+            .flatten();
         if let Some(post_effect_graphs) = &self.post_effect_graphs {
-            let Some(graph_id) = self
-                .camera_post_effect_active
-                .then_some(self.current_post_effect_id.as_deref())
-                .flatten()
-                .filter(|graph_id| post_effect_graphs.contains_camera_graph(graph_id))
-            else {
+            let Some(effect) = effect else {
                 return Ok(());
             };
             let draw_calls = post_effect_graphs.execute_color_graph(
                 &self.device,
                 &self.queue,
                 encoder,
-                graph_id,
+                effect,
                 "minecraft:main",
                 &self.main_target.view,
                 [self.config.width, self.config.height],
@@ -3074,8 +3073,7 @@ impl Renderer {
         }
         let (presentation_texture, presentation_view) = self.presentation_color_target();
         let draw_calls = self.camera_post_effect.render(
-            self.current_post_effect_id.as_deref(),
-            self.camera_post_effect_active,
+            effect,
             presentation_texture,
             presentation_view,
             encoder,
@@ -3528,7 +3526,7 @@ impl Renderer {
                 &self.device,
                 &self.queue,
                 encoder,
-                "minecraft:blur",
+                VanillaPostEffect::Blur,
                 "minecraft:main",
                 &self.main_target.view,
                 [self.config.width, self.config.height],

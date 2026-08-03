@@ -53,35 +53,9 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `rendering-entity-layer-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-step-surface`
+Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`, `rendering-hud-step-surface`
 
 <!-- architecture-candidates:start -->
-- **`arch-post-effect-id-owner` is `active`.**
-  - Semantic mechanism: built-in post-effect identity admission and render dispatch.
-  - Canonical input: the selected resource generation's six Vanilla 26.1 graph IDs.
-  - Owners: `crates/bbb-renderer/src/post_effect_graph/runtime.rs`,
-    `crates/bbb-renderer/src/camera_post_effect/graph.rs` and
-    `crates/bbb-renderer/src/render.rs` each match overlapping raw IDs.
-  - Production callers: `crates/bbb-renderer/src/render.rs` selects camera, outline,
-    transparency and blur execution from those independent matches.
-  - Direction: pack CPU projection → one renderer-private typed ID owner → graph runtime
-    and frame consumers; consumers must not rediscover resource names.
-  - Lifetime: one renderer resource generation; all six graphs admit atomically and a
-    failed prepare keeps the previous graph generation.
-  - Ordering/fallback/rollback: preserve selected-pack priority, exact camera/outline/
-    transparency/blur ordering, built-in fallback and previous-generation rollback.
-  - Public API: keep graph lookup private and expose only the narrow typed decisions
-    already required by renderer consumers.
-  - Delete: `REQUIRED_GRAPH_IDS`, `contains_camera_graph` raw-string matching and the
-    duplicated camera/render ID match arms.
-  - Evidence: `crates/bbb-renderer/src/post_effect_graph/tests.rs` plus renderer graph,
-    admission and offscreen pass-order tests and a reverse source guard.
-  - Risk/benefit/rank: drift high, behavior risk high, three owners, deletion medium,
-    API narrowing medium and focused verification high; rank 1/5.
-  - Goal route: `architecture-convergence`; `resources-reload-listeners`,
-    `rendering-game-step-surface`, `rendering-level-step-surface`.
-  - Reopen condition: reopen only if Vanilla adds a separately owned graph family or a
-    second production raw-ID resolver reappears.
 - **`arch-control-mailbox-single-path` is `active`.**
   - Semantic mechanism: external control request submission into simulation ownership.
   - Canonical input: ordered bounded `ControlWriteRequest`, `InputControlRequest`,
@@ -104,7 +78,7 @@ Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `render
     `crates/bbb-native/src/runtime/control_requests.rs` focused FIFO/budget/shutdown tests
     plus a zero-old-symbol reverse guard.
   - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion high, API
-    narrowing high and focused verification high; rank 2/5.
+    narrowing high and focused verification high; rank 1/4.
   - Goal route: `architecture-convergence`; `lifecycle-client-runtime`.
   - Reopen condition: reopen only if a non-native production runtime requires a distinct
     mailbox with an explicit constructor and identical bounded semantics.
@@ -129,7 +103,7 @@ Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `render
   - Evidence: `crates/bbb-native/src/runtime/tests.rs` and
     `crates/bbb-renderer/src/hud.rs` residency, atlas, ordering and source-guard tests.
   - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion medium, API
-    narrowing high and pixel/focused verification high; rank 3/5.
+    narrowing high and pixel/focused verification high; rank 2/4.
   - Goal route: `architecture-convergence`; `rendering-hud-step-surface`.
   - Reopen condition: reopen only if Vanilla introduces a HUD item presentation that
     cannot be expressed as an ordered resident layer.
@@ -156,7 +130,7 @@ Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `render
     `crates/bbb-renderer/src/entity_models/gui_preview.rs` focused equipment/layer tests
     plus a reverse source guard.
   - Risk/benefit/rank: drift high, current product risk medium, one crate, deletion high,
-    API narrowing medium and focused verification high; rank 4/5.
+    API narrowing medium and focused verification high; rank 3/4.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if an official asset-free renderer path becomes a
     production surface with an explicit Vanilla owner.
@@ -179,7 +153,7 @@ Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `render
   - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
     pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
   - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
-    narrowing low and focused verification high; rank 5/5.
+    narrowing low and focused verification high; rank 4/4.
   - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
   - Reopen condition: reopen only if a future shader requires a decision not representable
     by cull state and `front_facing` in the shared source.

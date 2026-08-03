@@ -1,11 +1,11 @@
 use wgpu::util::DeviceExt;
 
-use crate::pipeline_builder::RenderPipelineBuilder;
+use crate::{pipeline_builder::RenderPipelineBuilder, post_effect_graph::VanillaPostEffect};
 
 mod graph;
 
 use graph::{
-    CameraPostEffect, PostUniform, CREEPER_BITS_UNIFORM, CREEPER_COLOR_UNIFORM,
+    camera_post_effect_draw_calls, PostUniform, CREEPER_BITS_UNIFORM, CREEPER_COLOR_UNIFORM,
     IDENTITY_BLIT_UNIFORM, INVERT_UNIFORM, SPIDER_BLIT_UNIFORM, SPIDER_PASS_UNIFORMS,
 };
 
@@ -339,15 +339,14 @@ impl CameraPostEffectGpu {
 
     pub(super) fn render(
         &self,
-        id: Option<&str>,
-        active: bool,
+        effect: Option<VanillaPostEffect>,
         frame_texture: &wgpu::Texture,
         frame_view: &wgpu::TextureView,
         encoder: &mut wgpu::CommandEncoder,
         blur_horizontal_pipeline: &wgpu::RenderPipeline,
         blur_vertical_pipeline: &wgpu::RenderPipeline,
     ) -> u64 {
-        let Some(effect) = active.then(|| CameraPostEffect::from_id(id)).flatten() else {
+        let Some(effect) = effect else {
             return 0;
         };
         encoder.copy_texture_to_texture(
@@ -360,16 +359,17 @@ impl CameraPostEffectGpu {
             },
         );
         match effect {
-            CameraPostEffect::Creeper => self.render_creeper(frame_view, encoder),
-            CameraPostEffect::Spider => self.render_spider(
+            VanillaPostEffect::Creeper => self.render_creeper(frame_view, encoder),
+            VanillaPostEffect::Spider => self.render_spider(
                 frame_view,
                 encoder,
                 blur_horizontal_pipeline,
                 blur_vertical_pipeline,
             ),
-            CameraPostEffect::Invert => self.render_invert(frame_view, encoder),
+            VanillaPostEffect::Invert => self.render_invert(frame_view, encoder),
+            _ => unreachable!("camera post-effect resolver only returns camera effects"),
         }
-        effect.draw_calls()
+        camera_post_effect_draw_calls(effect)
     }
 
     fn render_creeper(&self, frame_view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {

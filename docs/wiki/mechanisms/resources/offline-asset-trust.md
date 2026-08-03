@@ -146,6 +146,12 @@ vertex→fragment stage module 编译只经过 renderer-private
 全 crate reverse source guard 要求旧 pair helper 为零，并把底层 direct call 精确限制为该
 函数体内的 vertex、fragment 两处，防止 family 恢复独立 resolver。stage 或后续 pipeline
 失败仍在 `CorePipelineGeneration::prepare` 中止，成功后才进入既有单一 swap/rollback 映射。
+六个 Vanilla built-in post chain 的 resource identity 由 renderer-private
+`VanillaPostEffect` 唯一声明；resource-generation admission、camera entity 三分支、
+entity-outline、transparency 与 GUI blur 只传递该 typed value。graph runtime 仍执行 selected
+pack 的 immutable CPU projection，camera fallback 只消费已经解析的 camera variant；任何一项
+compile 失败都在既有 transaction 内保留上一 generation。reverse guard 禁止恢复 required-ID
+数组、camera 专用 ID enum、raw graph dispatch 或 `contains_camera_graph` 第二 resolver。
 renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：全部 77 个有一对一 Vanilla
 static pipeline/core shader 的 owner 已在统一 core generation，10 个无一对一 static owner。
 后者只有 8 个已由 `PostEffectGraphRuntime` 拥有 selected path 的 default/内部 copy，以及

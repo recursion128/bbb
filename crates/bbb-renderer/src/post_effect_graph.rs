@@ -20,6 +20,45 @@ use std140::{pack_globals, pack_sampler_info, pack_uniforms};
 
 const DEPTH_SAMPLE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum VanillaPostEffect {
+    Blur,
+    Creeper,
+    Spider,
+    Invert,
+    EntityOutline,
+    Transparency,
+}
+
+impl VanillaPostEffect {
+    pub(crate) const REQUIRED: [Self; 6] = [
+        Self::Blur,
+        Self::Creeper,
+        Self::Spider,
+        Self::Invert,
+        Self::EntityOutline,
+        Self::Transparency,
+    ];
+
+    const CAMERA: [Self; 3] = [Self::Creeper, Self::Spider, Self::Invert];
+
+    pub(crate) const fn id(self) -> &'static str {
+        match self {
+            Self::Blur => "minecraft:blur",
+            Self::Creeper => "minecraft:creeper",
+            Self::Spider => "minecraft:spider",
+            Self::Invert => "minecraft:invert",
+            Self::EntityOutline => "minecraft:entity_outline",
+            Self::Transparency => "minecraft:transparency",
+        }
+    }
+
+    pub(crate) fn camera_from_id(id: Option<&str>) -> Option<Self> {
+        let id = id?;
+        Self::CAMERA.into_iter().find(|effect| effect.id() == id)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PostEffectGlobals {
     pub(crate) camera_block_pos: [i32; 3],

@@ -1,3 +1,5 @@
+use crate::post_effect_graph::VanillaPostEffect;
+
 const CREEPER_DRAW_CALLS: u64 = 2;
 const SPIDER_DRAW_CALLS: u64 = 10;
 const INVERT_DRAW_CALLS: u64 = 2;
@@ -65,29 +67,12 @@ pub(super) const SPIDER_PASS_UNIFORMS: [PostUniform; 5] = [
     ),
 ];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum CameraPostEffect {
-    Creeper,
-    Spider,
-    Invert,
-}
-
-impl CameraPostEffect {
-    pub(super) fn from_id(id: Option<&str>) -> Option<Self> {
-        match id {
-            Some("minecraft:creeper") => Some(Self::Creeper),
-            Some("minecraft:spider") => Some(Self::Spider),
-            Some("minecraft:invert") => Some(Self::Invert),
-            _ => None,
-        }
-    }
-
-    pub(super) fn draw_calls(self) -> u64 {
-        match self {
-            Self::Creeper => CREEPER_DRAW_CALLS,
-            Self::Spider => SPIDER_DRAW_CALLS,
-            Self::Invert => INVERT_DRAW_CALLS,
-        }
+pub(super) fn camera_post_effect_draw_calls(effect: VanillaPostEffect) -> u64 {
+    match effect {
+        VanillaPostEffect::Creeper => CREEPER_DRAW_CALLS,
+        VanillaPostEffect::Spider => SPIDER_DRAW_CALLS,
+        VanillaPostEffect::Invert => INVERT_DRAW_CALLS,
+        _ => unreachable!("camera post-effect resolver only returns camera effects"),
     }
 }
 
@@ -96,24 +81,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn camera_post_effect_ids_and_graph_draw_counts_are_exact() {
-        assert_eq!(
-            CameraPostEffect::from_id(Some("minecraft:creeper")),
-            Some(CameraPostEffect::Creeper)
-        );
-        assert_eq!(
-            CameraPostEffect::from_id(Some("minecraft:spider")),
-            Some(CameraPostEffect::Spider)
-        );
-        assert_eq!(
-            CameraPostEffect::from_id(Some("minecraft:invert")),
-            Some(CameraPostEffect::Invert)
-        );
-        assert_eq!(CameraPostEffect::from_id(Some("minecraft:unknown")), None);
-        assert_eq!(CameraPostEffect::from_id(None), None);
-        assert_eq!(CameraPostEffect::Creeper.draw_calls(), 2);
-        assert_eq!(CameraPostEffect::Spider.draw_calls(), 10);
-        assert_eq!(CameraPostEffect::Invert.draw_calls(), 2);
+    fn camera_post_effect_graph_draw_counts_are_exact() {
+        assert_eq!(camera_post_effect_draw_calls(VanillaPostEffect::Creeper), 2);
+        assert_eq!(camera_post_effect_draw_calls(VanillaPostEffect::Spider), 10);
+        assert_eq!(camera_post_effect_draw_calls(VanillaPostEffect::Invert), 2);
     }
 
     #[test]

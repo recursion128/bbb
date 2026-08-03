@@ -9,17 +9,8 @@ use sha2::{Digest, Sha256};
 
 use super::{
     depth::PostEffectDepthCopies, PostEffectExecutionContext, PostEffectExternalTarget,
-    PostEffectGlobals, PostEffectGraphGeneration,
+    PostEffectGlobals, PostEffectGraphGeneration, VanillaPostEffect,
 };
-
-const REQUIRED_GRAPH_IDS: [&str; 6] = [
-    "minecraft:blur",
-    "minecraft:creeper",
-    "minecraft:spider",
-    "minecraft:invert",
-    "minecraft:entity_outline",
-    "minecraft:transparency",
-];
 
 pub(crate) struct PostEffectGraphRuntime {
     generation: PostEffectGraphGeneration,
@@ -54,9 +45,12 @@ impl PostEffectGraphRuntime {
     ) -> Result<Self> {
         let generation =
             PostEffectGraphGeneration::new(device, queue, format, width, height, resources)?;
-        for graph_id in REQUIRED_GRAPH_IDS {
-            if !generation.contains_graph(graph_id) {
-                bail!("selected post-effect catalog is missing required graph {graph_id}");
+        for effect in VanillaPostEffect::REQUIRED {
+            if !generation.contains_graph(effect.id()) {
+                bail!(
+                    "selected post-effect catalog is missing required graph {}",
+                    effect.id()
+                );
             }
         }
         let depth_copies = PostEffectDepthCopies::new(device, width, height)?;
@@ -70,13 +64,6 @@ impl PostEffectGraphRuntime {
 
     pub(crate) fn generation(&self) -> u64 {
         self.generation.generation()
-    }
-
-    pub(crate) fn contains_camera_graph(&self, graph_id: &str) -> bool {
-        matches!(
-            graph_id,
-            "minecraft:creeper" | "minecraft:spider" | "minecraft:invert"
-        ) && self.generation.contains_graph(graph_id)
     }
 
     pub(crate) fn uses_vanilla_transparency_direct_path(&self) -> bool {
@@ -96,7 +83,7 @@ impl PostEffectGraphRuntime {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
-        graph_id: &str,
+        effect: VanillaPostEffect,
         target_id: &str,
         color: &wgpu::TextureView,
         size: [u32; 2],
@@ -106,7 +93,7 @@ impl PostEffectGraphRuntime {
             device,
             queue,
             encoder,
-            graph_id,
+            effect.id(),
             &PostEffectExecutionContext {
                 targets: BTreeMap::from([(
                     target_id.to_string(),
@@ -197,15 +184,19 @@ impl PostEffectGraphRuntime {
             ]),
             globals,
         };
-        let graph_passes =
-            self.generation
-                .execute(device, queue, encoder, "minecraft:transparency", &context)?;
+        let graph_passes = self.generation.execute(
+            device,
+            queue,
+            encoder,
+            VanillaPostEffect::Transparency.id(),
+            &context,
+        )?;
         Ok((graph_passes, depth_copy_passes))
     }
 }
 
 fn resources_have_vanilla_26_1_transparency(resources: &PostEffectResourceProjection) -> bool {
-    let Some(graph) = resources.graph("minecraft:transparency") else {
+    let Some(graph) = resources.graph(VanillaPostEffect::Transparency.id()) else {
         return false;
     };
     let Some(final_target) = graph.internal_targets.get("minecraft:final") else {

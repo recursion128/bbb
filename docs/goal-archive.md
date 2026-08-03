@@ -68,6 +68,8 @@
 - **2026-08-03（architecture convergence census）**：机械审计 10 个 production crate、
   1,097 个 Rust 文件、23 条正常依赖边、2,927 个 Vanilla owner 与公开/受限 API 声明面，
   登记 5 个单语义 ready 候选并建立 ID/rank/route/owner/evidence stale 门禁。
+- **2026-08-03（post-effect identity convergence）**：六个 built-in graph 的 admission、
+  camera/outline/transparency/blur dispatch 收敛为一个 renderer-private typed owner。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
