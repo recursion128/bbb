@@ -4,10 +4,11 @@ use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 
 #[test]
-fn services_profile_keys_event_enables_world_validation() {
+fn services_public_keys_event_enables_world_validation() {
     let (tx, mut rx) = mpsc::channel(1);
-    tx.try_send(NetEvent::ServicesProfileKeys {
-        public_keys: vec![vec![1, 2, 3]],
+    tx.try_send(NetEvent::ServicesPublicKeys {
+        profile_property_keys: vec![vec![4, 5, 6]],
+        player_certificate_keys: vec![vec![1, 2, 3]],
     })
     .unwrap();
 
@@ -19,6 +20,7 @@ fn services_profile_keys_event_enables_world_validation() {
         1
     );
     assert!(world.profile_key_validation_available());
+    assert_eq!(world.services_profile_property_keys(), &[vec![4, 5, 6]]);
 }
 
 #[test]

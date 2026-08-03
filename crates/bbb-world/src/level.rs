@@ -684,14 +684,23 @@ impl WorldStore {
         self.server_enforces_secure_chat
     }
 
-    /// Replaces the process-level Services profile-key validation set. The net
-    /// owner has already checked that every entry is an RSA-4096 X.509 key.
-    pub fn replace_services_profile_keys(&mut self, public_keys: Vec<Vec<u8>>) {
-        self.services_profile_keys = public_keys;
+    /// Replaces both process-level Services validation families. The net owner
+    /// has already checked that every entry is a bounded RSA-4096 X.509 key.
+    pub fn replace_services_public_keys(
+        &mut self,
+        profile_property_keys: Vec<Vec<u8>>,
+        player_certificate_keys: Vec<Vec<u8>>,
+    ) {
+        self.services_profile_property_keys = profile_property_keys;
+        self.services_player_certificate_keys = player_certificate_keys;
+    }
+
+    pub fn services_profile_property_keys(&self) -> &[Vec<u8>] {
+        &self.services_profile_property_keys
     }
 
     pub fn profile_key_validation_available(&self) -> bool {
-        !self.services_profile_keys.is_empty()
+        !self.services_player_certificate_keys.is_empty()
     }
 
     pub fn effectively_enforces_secure_chat(&self) -> bool {
@@ -1490,7 +1499,7 @@ mod tests {
     #[test]
     fn insecure_chat_warning_guard_survives_transfer_level_reset() {
         let mut store = WorldStore::new();
-        store.replace_services_profile_keys(vec![vec![1]]);
+        store.replace_services_public_keys(Vec::new(), vec![vec![1]]);
         store.apply_login(&login_packet(0, "minecraft:overworld"));
         assert!(store.effectively_enforces_secure_chat());
         assert!(!store.seen_insecure_chat_warning());

@@ -238,7 +238,7 @@ pub(crate) fn hud_social_interactions_screen(
             HudSocialInteractionsPlayer {
                 profile_id: *player.profile.uuid.as_bytes(),
                 name: player.profile.name.clone(),
-                skin: spectator_player_skin(&player.profile, item_runtime),
+                skin: spectator_player_skin(world, &player.profile, item_runtime),
                 removed: player.removed,
                 hidden: player.hidden,
                 blocked: player.blocked,
@@ -2500,7 +2500,7 @@ fn hud_player_list_entries_from_world(
                 profile_id: entry.profile.uuid.as_u128(),
                 name_runs,
                 skin: if resolve_skins {
-                    spectator_player_skin(&entry.profile, item_runtime)
+                    spectator_player_skin(world, &entry.profile, item_runtime)
                 } else {
                     bbb_renderer::EntityPlayerSkin::ProfiledDefault(
                         bbb_item_model::default_player_skin_for_profile_id(
@@ -2611,14 +2611,14 @@ pub(crate) fn hud_hotbar_mode_from_world(
                 ),
                 SpectatorMenuItemView::Player(player) => (
                     HudSpectatorIcon::Player {
-                        skin: spectator_player_skin(&player.profile, item_runtime),
+                        skin: spectator_player_skin(world, &player.profile, item_runtime),
                     },
                     item.enabled(),
                     vec![HudStyledTextRun::plain(&player.profile.name)],
                 ),
                 SpectatorMenuItemView::Team(team) => (
                     HudSpectatorIcon::Team {
-                        skin: spectator_player_skin(&team.icon_player.profile, item_runtime),
+                        skin: spectator_player_skin(world, &team.icon_player.profile, item_runtime),
                         color_rgb: team.color_rgb,
                     },
                     item.enabled(),
@@ -2666,6 +2666,7 @@ fn spectator_localized_runs(
 }
 
 fn spectator_player_skin(
+    world: &WorldStore,
     profile: &bbb_world::PlayerInfoProfileState,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> bbb_renderer::EntityPlayerSkin {
@@ -2676,8 +2677,10 @@ fn spectator_player_skin(
             )
         },
         |item_runtime| {
-            item_runtime.player_skin_for_profile(
+            item_runtime.player_skin_for_player_info(
                 &crate::entity_scene::player_info_resolvable_profile(profile),
+                world.local_player_profile_id() == Some(profile.uuid),
+                world.services_profile_property_keys(),
             )
         },
     )

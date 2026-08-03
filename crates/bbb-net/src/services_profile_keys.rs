@@ -11,11 +11,20 @@ const SERVICES_PUBLIC_KEYS_URL: &str = "https://api.minecraftservices.com/public
 #[cfg(not(test))]
 const SERVICES_PUBLIC_KEYS_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_SERVICES_KEY_RESPONSE_BYTES: u64 = 1024 * 1024;
+const MAX_SERVICES_KEYS_PER_FAMILY: usize = 16;
+const MAX_SERVICES_KEY_BYTES: usize = 1024;
 const SERVICES_RSA_KEY_BITS: usize = 4096;
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct ServicesPublicKeys {
+    pub(crate) profile_property_keys: Vec<Vec<u8>>,
+    pub(crate) player_certificate_keys: Vec<Vec<u8>>,
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ServicesKeySetResponse {
+    profile_property_keys: Option<Vec<ServicesKeyData>>,
     player_certificate_keys: Option<Vec<ServicesKeyData>>,
 }
 
@@ -26,15 +35,18 @@ struct ServicesKeyData {
 }
 
 #[cfg(not(test))]
-pub(crate) async fn fetch_services_profile_keys(timeout: Duration) -> Result<Vec<Vec<u8>>> {
-    fetch_services_profile_keys_at(
+pub(crate) async fn fetch_services_public_keys(timeout: Duration) -> Result<ServicesPublicKeys> {
+    fetch_services_public_keys_at(
         timeout.min(SERVICES_PUBLIC_KEYS_TIMEOUT),
         SERVICES_PUBLIC_KEYS_URL,
     )
     .await
 }
 
-async fn fetch_services_profile_keys_at(timeout: Duration, endpoint: &str) -> Result<Vec<Vec<u8>>> {
+async fn fetch_services_public_keys_at(
+    timeout: Duration,
+    endpoint: &str,
+) -> Result<ServicesPublicKeys> {
     let client = reqwest::Client::builder()
         .timeout(timeout)
         .build()
@@ -67,24 +79,43 @@ async fn fetch_services_profile_keys_at(timeout: Duration, endpoint: &str) -> Re
         );
         body.extend_from_slice(&chunk);
     }
-    decode_services_profile_keys(&body)
+    decode_services_public_keys(&body)
 }
 
-fn decode_services_profile_keys(body: &[u8]) -> Result<Vec<Vec<u8>>> {
+fn decode_services_public_keys(body: &[u8]) -> Result<ServicesPublicKeys> {
     let response: ServicesKeySetResponse =
         serde_json::from_slice(body).context("decode Services public-key response")?;
-    let keys = response.player_certificate_keys.unwrap_or_default();
+    Ok(ServicesPublicKeys {
+        profile_property_keys: decode_services_key_family(
+            response.profile_property_keys.unwrap_or_default(),
+            "profile-property",
+        )?,
+        player_certificate_keys: decode_services_key_family(
+            response.player_certificate_keys.unwrap_or_default(),
+            "player-certificate",
+        )?,
+    })
+}
 
+fn decode_services_key_family(keys: Vec<ServicesKeyData>, label: &str) -> Result<Vec<Vec<u8>>> {
+    ensure!(
+        keys.len() <= MAX_SERVICES_KEYS_PER_FAMILY,
+        "Services {label} key count exceeds {MAX_SERVICES_KEYS_PER_FAMILY}"
+    );
     keys.into_iter()
         .map(|key| {
             let der = STANDARD
                 .decode(key.public_key)
-                .context("decode Services profile public key from base64")?;
+                .with_context(|| format!("decode Services {label} public key from base64"))?;
+            ensure!(
+                der.len() <= MAX_SERVICES_KEY_BYTES,
+                "Services {label} public key exceeds {MAX_SERVICES_KEY_BYTES} bytes"
+            );
             let public_key = RsaPublicKey::from_public_key_der(&der)
-                .context("decode Services profile public key from X.509 DER")?;
+                .with_context(|| format!("decode Services {label} public key from X.509 DER"))?;
             ensure!(
                 public_key.n().bits() == SERVICES_RSA_KEY_BITS,
-                "Services profile public key is not RSA-{SERVICES_RSA_KEY_BITS}"
+                "Services {label} public key is not RSA-{SERVICES_RSA_KEY_BITS}"
             );
             Ok(der)
         })
@@ -118,8 +149,11 @@ mod tests {
             "playerCertificateKeys": [{"publicKey": STANDARD.encode(&der)}],
         });
         assert_eq!(
-            decode_services_profile_keys(body.to_string().as_bytes()).unwrap(),
-            vec![der]
+            decode_services_public_keys(body.to_string().as_bytes()).unwrap(),
+            ServicesPublicKeys {
+                profile_property_keys: Vec::new(),
+                player_certificate_keys: vec![der],
+            }
         );
 
         let short_key = RsaPublicKey::new(
@@ -132,10 +166,37 @@ mod tests {
         let body = serde_json::json!({
             "playerCertificateKeys": [{"publicKey": STANDARD.encode(short_key.as_bytes())}],
         });
-        assert!(decode_services_profile_keys(body.to_string().as_bytes())
+        assert!(decode_services_public_keys(body.to_string().as_bytes())
             .unwrap_err()
             .to_string()
             .contains("not RSA-4096"));
+    }
+
+    #[test]
+    fn decodes_both_key_families_and_enforces_family_budget() {
+        let der = rsa_4096_public_key_der();
+        let encoded = STANDARD.encode(&der);
+        let body = serde_json::json!({
+            "profilePropertyKeys": [{"publicKey": encoded}],
+            "playerCertificateKeys": [{"publicKey": STANDARD.encode(&der)}],
+        });
+        assert_eq!(
+            decode_services_public_keys(body.to_string().as_bytes()).unwrap(),
+            ServicesPublicKeys {
+                profile_property_keys: vec![der.clone()],
+                player_certificate_keys: vec![der],
+            }
+        );
+
+        let body = serde_json::json!({
+            "profilePropertyKeys": (0..=MAX_SERVICES_KEYS_PER_FAMILY)
+                .map(|_| serde_json::json!({"publicKey": encoded}))
+                .collect::<Vec<_>>(),
+        });
+        assert!(decode_services_public_keys(body.to_string().as_bytes())
+            .unwrap_err()
+            .to_string()
+            .contains("key count exceeds"));
     }
 
     #[tokio::test]
@@ -167,10 +228,13 @@ mod tests {
 
         let endpoint = format!("http://{address}/publickeys");
         assert_eq!(
-            fetch_services_profile_keys_at(Duration::from_secs(2), &endpoint)
+            fetch_services_public_keys_at(Duration::from_secs(2), &endpoint)
                 .await
                 .unwrap(),
-            vec![der]
+            ServicesPublicKeys {
+                profile_property_keys: Vec::new(),
+                player_certificate_keys: vec![der],
+            }
         );
         server.await.unwrap();
     }

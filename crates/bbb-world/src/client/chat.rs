@@ -2801,7 +2801,7 @@ mod tests {
         let mut store = WorldStore::new();
         let sender = Uuid::from_u128(47);
         add_player_without_session(&mut store, sender);
-        store.services_profile_keys = vec![vec![1]];
+        store.services_player_certificate_keys = vec![vec![1]];
         store.server_enforces_secure_chat = Some(true);
         let mut packet = player_chat_with_signature(0, signature(19));
         packet.sender = sender;

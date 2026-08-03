@@ -13,11 +13,87 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use bbb_protocol::packets::GameProfilePropertySummary;
 use bbb_render_types::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicPlayerSkinImage,
     DynamicPlayerTextureImage, MAX_DYNAMIC_PLAYER_SKIN_PNG_BYTES,
     MAX_DYNAMIC_PLAYER_TEXTURE_PNG_BYTES,
 };
+use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
+use sha1::{Digest, Sha1};
+
+const MAX_PROFILE_TEXTURE_SIGNATURE_BYTES: usize = 1024;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProfileTextureSignatureState {
+    Signed,
+    Unsigned,
+    Invalid,
+}
+
+pub(crate) fn profile_texture_signature_state(
+    properties: &[GameProfilePropertySummary],
+    profile_property_keys: &[Vec<u8>],
+) -> ProfileTextureSignatureState {
+    let Some(property) = properties
+        .iter()
+        .find(|property| property.name == "textures")
+    else {
+        return ProfileTextureSignatureState::Unsigned;
+    };
+    let Some(encoded_signature) = property.signature.as_deref() else {
+        return ProfileTextureSignatureState::Unsigned;
+    };
+    let Ok(signature) = STANDARD.decode(encoded_signature) else {
+        return ProfileTextureSignatureState::Invalid;
+    };
+    if signature.len() > MAX_PROFILE_TEXTURE_SIGNATURE_BYTES {
+        return ProfileTextureSignatureState::Invalid;
+    }
+    let digest = Sha1::digest(property.value.as_bytes());
+    if profile_property_keys.iter().any(|der| {
+        RsaPublicKey::from_public_key_der(der).is_ok_and(|key| {
+            key.verify(Pkcs1v15Sign::new::<Sha1>(), &digest, &signature)
+                .is_ok()
+        })
+    }) {
+        ProfileTextureSignatureState::Signed
+    } else {
+        ProfileTextureSignatureState::Invalid
+    }
+}
+
+/// Authlib `TextureUrlChecker` plus `MinecraftProfileTexture.getHash()`.
+/// The checker accepts only HTTP(S) on the exact texture CDN host; the hash
+/// is the final path basename with its final extension removed.
+pub(crate) fn vanilla_profile_texture_hash(url: &str) -> Option<String> {
+    let parsed = reqwest::Url::parse(url).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str()? != "textures.minecraft.net"
+    {
+        return None;
+    }
+    let filename = parsed.path().rsplit('/').next().unwrap_or_default();
+    let basename = filename
+        .rfind('.')
+        .map_or(filename, |extension| &filename[..extension]);
+    Some(basename.to_string())
+}
+
+/// Guava `Hashing.sha1().hashUnencodedChars`: UTF-16 code units in the
+/// primitive sink's little-endian order.
+pub(crate) fn vanilla_profile_texture_cache_hash(texture_hash: &str) -> String {
+    let mut digest = Sha1::new();
+    for code_unit in texture_hash.encode_utf16() {
+        digest.update(code_unit.to_le_bytes());
+    }
+    digest
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
 
 pub(crate) trait SkinPngFetcher {
     fn fetch_skin_png(&mut self, url: &str, max_bytes: usize) -> Result<Vec<u8>>;
@@ -27,15 +103,6 @@ pub(crate) trait SkinPngFetcher {
 pub enum DynamicPlayerTextureKind {
     Cape,
     Elytra,
-}
-
-impl DynamicPlayerTextureKind {
-    fn cache_directory(self) -> &'static str {
-        match self {
-            Self::Cape => "capes",
-            Self::Elytra => "elytra",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -95,11 +162,11 @@ impl DynamicPlayerSkinRuntime {
         fetcher: &mut impl SkinPngFetcher,
     ) -> Result<&DynamicPlayerSkinImage> {
         if !self.skins.contains_key(url) {
-            let (bytes, fetched) = self.cached_or_fetched_bytes(handle, url, fetcher)?;
+            let (bytes, fetched) = self.cached_or_fetched_bytes(url, fetcher)?;
             let skin = decode_dynamic_player_skin_png(handle, &bytes)
                 .with_context(|| format!("process player skin texture from {url}"))?;
             if fetched {
-                let path = self.player_skin_path(handle);
+                let path = self.player_skin_path(url)?;
                 if let Err(err) = write_player_skin_cache(&path, &bytes) {
                     tracing::warn!(
                         ?err,
@@ -136,11 +203,10 @@ impl DynamicPlayerSkinRuntime {
 
     fn cached_or_fetched_bytes(
         &self,
-        handle: u64,
         url: &str,
         fetcher: &mut impl SkinPngFetcher,
     ) -> Result<(Vec<u8>, bool)> {
-        let path = self.player_skin_path(handle);
+        let path = self.player_skin_path(url)?;
         if path.is_file() {
             return read_bounded_png_file(
                 &path,
@@ -161,8 +227,8 @@ impl DynamicPlayerSkinRuntime {
         Ok((bytes, true))
     }
 
-    fn player_skin_path(&self, handle: u64) -> PathBuf {
-        player_skin_cache_path(&self.cache_dir, handle)
+    fn player_skin_path(&self, url: &str) -> Result<PathBuf> {
+        player_skin_cache_path(&self.cache_dir, url)
     }
 }
 
@@ -189,11 +255,11 @@ impl DynamicPlayerTextureRuntime {
     ) -> Result<&DynamicPlayerTextureImage> {
         let key = (kind, url.to_string());
         if !self.textures.contains_key(&key) {
-            let (bytes, fetched) = self.cached_or_fetched_bytes(kind, handle, url, fetcher)?;
+            let (bytes, fetched) = self.cached_or_fetched_bytes(kind, url, fetcher)?;
             let texture = decode_dynamic_player_texture_png(handle, &bytes)
                 .with_context(|| format!("process player {kind:?} texture from {url}"))?;
             if fetched {
-                let path = self.player_texture_path(kind, handle);
+                let path = self.player_texture_path(url)?;
                 if let Err(err) = write_player_skin_cache(&path, &bytes) {
                     tracing::warn!(
                         ?err,
@@ -233,11 +299,10 @@ impl DynamicPlayerTextureRuntime {
     fn cached_or_fetched_bytes(
         &self,
         kind: DynamicPlayerTextureKind,
-        handle: u64,
         url: &str,
         fetcher: &mut impl SkinPngFetcher,
     ) -> Result<(Vec<u8>, bool)> {
-        let path = self.player_texture_path(kind, handle);
+        let path = self.player_texture_path(url)?;
         if path.is_file() {
             return read_bounded_png_file(
                 &path,
@@ -258,8 +323,8 @@ impl DynamicPlayerTextureRuntime {
         Ok((bytes, true))
     }
 
-    fn player_texture_path(&self, kind: DynamicPlayerTextureKind, handle: u64) -> PathBuf {
-        player_texture_cache_path(&self.cache_dir, kind, handle)
+    fn player_texture_path(&self, url: &str) -> Result<PathBuf> {
+        player_texture_cache_path(&self.cache_dir, url)
     }
 }
 
@@ -883,22 +948,20 @@ pub fn default_player_skin_cache_dir() -> PathBuf {
     std::env::temp_dir().join("bbb-native-player-skins")
 }
 
-pub(crate) fn player_skin_cache_path(cache_dir: &Path, handle: u64) -> PathBuf {
-    cache_dir
-        .join("skins")
-        .join(format!("{:02x}", handle & 0xff))
-        .join(format!("{handle:016x}.png"))
+pub(crate) fn player_skin_cache_path(cache_dir: &Path, url: &str) -> Result<PathBuf> {
+    vanilla_profile_texture_cache_path(cache_dir, url)
 }
 
-pub(crate) fn player_texture_cache_path(
-    cache_dir: &Path,
-    kind: DynamicPlayerTextureKind,
-    handle: u64,
-) -> PathBuf {
-    cache_dir
-        .join(kind.cache_directory())
-        .join(format!("{:02x}", handle & 0xff))
-        .join(format!("{handle:016x}.png"))
+pub(crate) fn player_texture_cache_path(cache_dir: &Path, url: &str) -> Result<PathBuf> {
+    vanilla_profile_texture_cache_path(cache_dir, url)
+}
+
+fn vanilla_profile_texture_cache_path(cache_dir: &Path, url: &str) -> Result<PathBuf> {
+    let texture_hash = vanilla_profile_texture_hash(url)
+        .with_context(|| format!("reject non-Vanilla profile texture URL {url}"))?;
+    let cache_hash = vanilla_profile_texture_cache_hash(&texture_hash);
+    let prefix = cache_hash.get(..2).unwrap_or("xx");
+    Ok(cache_dir.join(prefix).join(cache_hash))
 }
 
 fn read_bounded_png_file(path: &Path, max_bytes: usize, label: &str) -> Result<Vec<u8>> {
@@ -957,6 +1020,8 @@ fn write_player_skin_cache(path: &Path, bytes: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{rngs::StdRng, SeedableRng};
+    use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey};
     use std::{
         io::{Cursor, Read, Write},
         net::TcpListener,
@@ -969,6 +1034,82 @@ mod tests {
     };
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
+
+    #[test]
+    fn profile_texture_property_trust_matches_services_signature_states() {
+        let mut random = StdRng::seed_from_u64(0x5a17_cafe);
+        let private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
+        let public_key = private_key.to_public_key();
+        let public_der = public_key.to_public_key_der().unwrap();
+        let value = "packed-profile-textures";
+        let signature = private_key
+            .sign(Pkcs1v15Sign::new::<Sha1>(), &Sha1::digest(value.as_bytes()))
+            .unwrap();
+        let signed = GameProfilePropertySummary {
+            name: "textures".to_string(),
+            value: value.to_string(),
+            signature: Some(STANDARD.encode(signature)),
+        };
+
+        assert_eq!(
+            profile_texture_signature_state(
+                std::slice::from_ref(&signed),
+                &[public_der.as_bytes().to_vec()],
+            ),
+            ProfileTextureSignatureState::Signed
+        );
+        assert_eq!(
+            profile_texture_signature_state(std::slice::from_ref(&signed), &[]),
+            ProfileTextureSignatureState::Invalid
+        );
+
+        let mut unsigned = signed.clone();
+        unsigned.signature = None;
+        assert_eq!(
+            profile_texture_signature_state(&[unsigned], &[]),
+            ProfileTextureSignatureState::Unsigned
+        );
+        let mut invalid = signed;
+        invalid.signature = Some("not base64".to_string());
+        assert_eq!(
+            profile_texture_signature_state(&[invalid], &[public_der.as_bytes().to_vec()]),
+            ProfileTextureSignatureState::Invalid
+        );
+    }
+
+    #[test]
+    fn profile_texture_url_and_cache_identity_match_authlib_and_guava() {
+        assert_eq!(
+            vanilla_profile_texture_hash(
+                "https://textures.minecraft.net/texture/skinhash?ignored=yes"
+            ),
+            Some("skinhash".to_string())
+        );
+        assert_eq!(
+            vanilla_profile_texture_hash("http://textures.minecraft.net/path/abc.png"),
+            Some("abc".to_string())
+        );
+        assert_eq!(
+            vanilla_profile_texture_hash("ftp://textures.minecraft.net/texture/skin"),
+            None
+        );
+        assert_eq!(
+            vanilla_profile_texture_hash("https://textures.minecraft.net.example/texture/skin"),
+            None
+        );
+        assert_eq!(
+            vanilla_profile_texture_hash("https://example.com/texture/skin"),
+            None
+        );
+        assert_eq!(
+            vanilla_profile_texture_cache_hash("skinhash"),
+            "18aa6cdcc5d1ab4d4952af5973d144d5e69d0881"
+        );
+        assert_eq!(
+            vanilla_profile_texture_cache_hash("abc"),
+            "9f04f41a848514162050e3d68c1a7abb441dc2b5"
+        );
+    }
 
     #[test]
     fn dynamic_skin_runtime_fetches_processes_writes_and_reuses_memory_cache() {
@@ -999,7 +1140,11 @@ mod tests {
         assert_eq!(first.rgba.len(), 64 * 64 * 4);
         assert_eq!(fetcher.calls, 1);
         assert_eq!(runtime.cached_skin_count(), 1);
-        assert!(player_skin_cache_path(&root, 0xabc).is_file());
+        assert!(
+            player_skin_cache_path(&root, "https://textures.minecraft.net/texture/skin")
+                .unwrap()
+                .is_file()
+        );
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -1008,18 +1153,15 @@ mod tests {
     fn dynamic_skin_runtime_reads_disk_cache_before_fetching() {
         let root = unique_temp_dir("dynamic-skin-runtime-disk");
         let handle = 0x1234;
-        let path = player_skin_cache_path(&root, handle);
+        let url = "https://textures.minecraft.net/texture/cached-skin";
+        let path = player_skin_cache_path(&root, url).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, rgba_png(64, 32, |x, y| [x as u8, y as u8, 11, 255])).unwrap();
 
         let mut runtime = DynamicPlayerSkinRuntime::new(&root);
         let mut fetcher = StaticSkinFetcher::new(Vec::new());
         let skin = runtime
-            .get_or_fetch_player_skin(
-                handle,
-                "https://textures.minecraft.net/texture/cached-skin",
-                &mut fetcher,
-            )
+            .get_or_fetch_player_skin(handle, url, &mut fetcher)
             .unwrap();
 
         assert_eq!(skin.handle, handle);
@@ -1046,7 +1188,11 @@ mod tests {
         assert!(err.to_string().contains("process player skin texture"));
         assert_eq!(fetcher.calls, 1);
         assert_eq!(runtime.cached_skin_count(), 0);
-        assert!(!player_skin_cache_path(&root, 7).exists());
+        assert!(
+            !player_skin_cache_path(&root, "https://textures.minecraft.net/texture/bad")
+                .unwrap()
+                .exists()
+        );
 
         fs::remove_dir_all(root).unwrap();
     }
@@ -1074,46 +1220,40 @@ mod tests {
         assert_eq!(first.rgba.len(), 64 * 32 * 4);
         assert_eq!(fetcher.calls, 1);
         assert_eq!(runtime.cached_texture_count(), 1);
-        assert!(player_texture_cache_path(&root, DynamicPlayerTextureKind::Cape, 0xcafe).is_file());
+        assert!(player_texture_cache_path(&root, url).unwrap().is_file());
 
         fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn dynamic_texture_runtime_keeps_cape_and_elytra_cache_paths_separate() {
+    fn dynamic_texture_runtime_shares_vanilla_disk_identity_across_kinds() {
         let root = unique_temp_dir("dynamic-texture-runtime-kinds");
         let handle = 0x1234;
-        let cape_path = player_texture_cache_path(&root, DynamicPlayerTextureKind::Cape, handle);
-        let elytra_path =
-            player_texture_cache_path(&root, DynamicPlayerTextureKind::Elytra, handle);
+        let url = "https://textures.minecraft.net/texture/shared";
+        let cape_path = player_texture_cache_path(&root, url).unwrap();
+        let elytra_path = player_texture_cache_path(&root, url).unwrap();
+        assert_eq!(cape_path, elytra_path);
         fs::create_dir_all(cape_path.parent().unwrap()).unwrap();
-        fs::create_dir_all(elytra_path.parent().unwrap()).unwrap();
         fs::write(&cape_path, rgba_png(64, 32, |_, _| [1, 2, 3, 4])).unwrap();
-        fs::write(&elytra_path, rgba_png(32, 32, |_, _| [5, 6, 7, 8])).unwrap();
 
         let mut runtime = DynamicPlayerTextureRuntime::new(&root);
         let mut fetcher = StaticSkinFetcher::new(Vec::new());
         let cape = runtime
-            .get_or_fetch_player_texture(
-                DynamicPlayerTextureKind::Cape,
-                handle,
-                "https://textures.minecraft.net/texture/shared",
-                &mut fetcher,
-            )
+            .get_or_fetch_player_texture(DynamicPlayerTextureKind::Cape, handle, url, &mut fetcher)
             .unwrap()
             .clone();
         let elytra = runtime
             .get_or_fetch_player_texture(
                 DynamicPlayerTextureKind::Elytra,
                 handle,
-                "https://textures.minecraft.net/texture/shared",
+                url,
                 &mut fetcher,
             )
             .unwrap()
             .clone();
 
         assert_eq!(cape.size, [64, 32]);
-        assert_eq!(elytra.size, [32, 32]);
+        assert_eq!(elytra.size, [64, 32]);
         assert_eq!(fetcher.calls, 0);
 
         fs::remove_dir_all(root).unwrap();
@@ -1522,7 +1662,8 @@ mod tests {
     fn oversized_cached_skin_is_rejected_before_body_allocation_or_fetch() {
         let root = unique_temp_dir("dynamic-skin-runtime-oversized-cache");
         let handle = 0xdead;
-        let path = player_skin_cache_path(&root, handle);
+        let url = "https://textures.minecraft.net/texture/oversized-cache";
+        let path = player_skin_cache_path(&root, url).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let file = fs::OpenOptions::new()
             .create_new(true)
@@ -1537,11 +1678,7 @@ mod tests {
         let err = format!(
             "{:#}",
             runtime
-                .get_or_fetch_player_skin(
-                    handle,
-                    "https://textures.minecraft.net/texture/oversized-cache",
-                    &mut fetcher,
-                )
+                .get_or_fetch_player_skin(handle, url, &mut fetcher,)
                 .unwrap_err()
         );
 
@@ -1568,7 +1705,12 @@ mod tests {
 
         assert!(err.contains("exceeding the 1048576 byte limit"), "{err}");
         assert_eq!(fetcher.calls, 1);
-        assert!(!player_skin_cache_path(&root, handle).exists());
+        assert!(!player_skin_cache_path(
+            &root,
+            "https://textures.minecraft.net/texture/oversized-fetch"
+        )
+        .unwrap()
+        .exists());
         fs::remove_dir_all(root).unwrap();
     }
 

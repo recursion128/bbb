@@ -60,12 +60,12 @@ pub async fn run_event_stream(
         options.timeout,
     );
     #[cfg(not(test))]
-    let services_profile_keys =
-        match crate::services_profile_keys::fetch_services_profile_keys(options.timeout).await {
+    let services_public_keys =
+        match crate::services_profile_keys::fetch_services_public_keys(options.timeout).await {
             Ok(keys) => keys,
             Err(error) => {
-                tracing::warn!(%error, "Services profile public keys are unavailable");
-                Vec::new()
+                tracing::warn!(%error, "Services public keys are unavailable");
+                Default::default()
             }
         };
     let conn = timeout(
@@ -99,8 +99,9 @@ pub async fn run_event_stream(
     #[cfg(not(test))]
     emit(
         &stream.events,
-        NetEvent::ServicesProfileKeys {
-            public_keys: services_profile_keys,
+        NetEvent::ServicesPublicKeys {
+            profile_property_keys: services_public_keys.profile_property_keys,
+            player_certificate_keys: services_public_keys.player_certificate_keys,
         },
     )
     .await?;
@@ -406,7 +407,7 @@ mod tests {
         let prepare = production
             .find("let mut chat_sessions = ChatSessionRuntime::new")
             .unwrap();
-        let services = production.find("fetch_services_profile_keys").unwrap();
+        let services = production.find("fetch_services_public_keys").unwrap();
         let connect = production.find("RawConnection::connect").unwrap();
         assert!(prepare < services);
         assert!(prepare < connect);

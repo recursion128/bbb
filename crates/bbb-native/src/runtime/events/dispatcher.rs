@@ -298,8 +298,11 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     }
                 }
             },
-            NetEvent::ServicesProfileKeys { public_keys } => {
-                world.replace_services_profile_keys(public_keys);
+            NetEvent::ServicesPublicKeys {
+                profile_property_keys,
+                player_certificate_keys,
+            } => {
+                world.replace_services_public_keys(profile_property_keys, player_certificate_keys);
             }
             NetEvent::PlaySessionSecurity { encrypted } => {
                 *play_session_encrypted = encrypted;

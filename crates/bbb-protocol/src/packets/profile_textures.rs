@@ -30,8 +30,8 @@ pub fn decode_profile_textures_from_properties<'a>(
 ) -> Option<ProfileTexturesSummary> {
     properties
         .into_iter()
-        .filter(|(name, _)| *name == "textures")
-        .find_map(|(_, value)| decode_profile_textures_property(value))
+        .find(|(name, _)| *name == "textures")
+        .and_then(|(_, value)| decode_profile_textures_property(value))
 }
 
 fn decode_profile_textures_property(value: &str) -> Option<ProfileTexturesSummary> {
@@ -237,14 +237,7 @@ mod tests {
                 ("textures", "not base64"),
                 ("textures", WIDE_TEXTURES_PROPERTY),
             ]),
-            Some(ProfileTexturesSummary {
-                skin: Some(ProfileSkinTextureSummary {
-                    url: "https://textures.minecraft.net/texture/wideskin".to_string(),
-                    model: PlayerModelTypeSummary::Wide,
-                }),
-                cape: None,
-                elytra: None,
-            })
+            None
         );
         assert_eq!(
             decode_profile_textures_from_properties([("textures", "not base64")]),

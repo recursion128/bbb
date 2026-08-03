@@ -6,6 +6,11 @@ use bbb_render_types::{
     EntityPlayerSkin, EntityPlayerSkinModel,
 };
 
+use crate::skin_runtime::{
+    profile_texture_signature_state, vanilla_profile_texture_cache_hash,
+    vanilla_profile_texture_hash, ProfileTextureSignatureState,
+};
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ProfileSkinCache {
     entries: HashMap<String, ProfileSkinCacheEntry>,
@@ -22,9 +27,17 @@ impl ProfileSkinCache {
     pub(crate) fn player_skin_for_profile(
         &mut self,
         profile: &ResolvableProfileSummary,
+        require_secure: bool,
+        profile_property_keys: &[Vec<u8>],
     ) -> EntityPlayerSkin {
         let fallback = default_player_skin_for_profile(profile);
         if profile.skin_patch.body.is_some() {
+            return EntityPlayerSkin::ProfiledDefault(fallback);
+        }
+        if require_secure
+            && profile_texture_signature_state(&profile.properties, profile_property_keys)
+                != ProfileTextureSignatureState::Signed
+        {
             return EntityPlayerSkin::ProfiledDefault(fallback);
         }
 
@@ -35,6 +48,9 @@ impl ProfileSkinCache {
         else {
             return EntityPlayerSkin::ProfiledDefault(fallback);
         };
+        if vanilla_profile_texture_hash(&skin.url).is_none() {
+            return EntityPlayerSkin::ProfiledDefault(fallback);
+        }
 
         let model = profile
             .skin_patch
@@ -117,6 +133,12 @@ pub(crate) fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityP
 }
 
 pub(crate) fn profile_texture_handle(url: &str) -> u64 {
+    if let Some(texture_hash) = vanilla_profile_texture_hash(url) {
+        let cache_hash = vanilla_profile_texture_cache_hash(&texture_hash);
+        if let Ok(handle) = u64::from_str_radix(&cache_hash[..16], 16) {
+            return handle;
+        }
+    }
     let mut hash = 0xcbf29ce484222325u64;
     for byte in url.bytes() {
         hash ^= u64::from(byte);
@@ -149,8 +171,8 @@ mod tests {
         let profile = remote_profile(skin_url, PlayerModelTypeSummary::Slim);
         let mut cache = ProfileSkinCache::default();
 
-        let first = cache.player_skin_for_profile(&profile);
-        let second = cache.player_skin_for_profile(&profile);
+        let first = cache.player_skin_for_profile(&profile, false, &[]);
+        let second = cache.player_skin_for_profile(&profile, false, &[]);
 
         let expected = EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
             handle: profile_texture_handle(skin_url),
@@ -181,7 +203,11 @@ mod tests {
         cache.mark_failed(failed_url);
 
         assert_eq!(
-            cache.player_skin_for_profile(&remote_profile(ready_url, PlayerModelTypeSummary::Wide)),
+            cache.player_skin_for_profile(
+                &remote_profile(ready_url, PlayerModelTypeSummary::Wide),
+                false,
+                &[],
+            ),
             EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
                 handle: 9001,
                 fallback: EntityDefaultPlayerSkin::SlimAlex,
@@ -190,8 +216,11 @@ mod tests {
             })
         );
         assert_eq!(
-            cache
-                .player_skin_for_profile(&remote_profile(failed_url, PlayerModelTypeSummary::Slim)),
+            cache.player_skin_for_profile(
+                &remote_profile(failed_url, PlayerModelTypeSummary::Slim),
+                false,
+                &[],
+            ),
             EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
                 handle: profile_texture_handle(failed_url),
                 fallback: EntityDefaultPlayerSkin::SlimAlex,
@@ -211,7 +240,7 @@ mod tests {
             texture_path: "minecraft:textures/entity/player/wide/steve.png".to_string(),
         });
         assert_eq!(
-            cache.player_skin_for_profile(&patched),
+            cache.player_skin_for_profile(&patched, false, &[]),
             EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve)
         );
         assert_eq!(cache.len(), 0);
@@ -219,7 +248,7 @@ mod tests {
         let mut model_patched = remote_profile(skin_url, PlayerModelTypeSummary::Slim);
         model_patched.skin_patch.model = Some(PlayerModelTypeSummary::Wide);
         assert_eq!(
-            cache.player_skin_for_profile(&model_patched),
+            cache.player_skin_for_profile(&model_patched, false, &[]),
             EntityPlayerSkin::Dynamic(EntityDynamicPlayerSkin {
                 handle: profile_texture_handle(skin_url),
                 fallback: EntityDefaultPlayerSkin::SlimAlex,
@@ -227,6 +256,24 @@ mod tests {
                 status: EntityDynamicPlayerSkinStatus::Loading,
             })
         );
+    }
+
+    #[test]
+    fn profile_skin_cache_requires_signed_property_only_for_remote_players() {
+        let profile = remote_profile(
+            "https://textures.minecraft.net/texture/profile-skin",
+            PlayerModelTypeSummary::Slim,
+        );
+        let fallback = EntityPlayerSkin::ProfiledDefault(default_player_skin_for_profile(&profile));
+        let mut cache = ProfileSkinCache::default();
+
+        assert_eq!(cache.player_skin_for_profile(&profile, true, &[]), fallback);
+        assert_eq!(cache.len(), 0);
+        assert!(matches!(
+            cache.player_skin_for_profile(&profile, false, &[]),
+            EntityPlayerSkin::Dynamic(_)
+        ));
+        assert_eq!(cache.len(), 1);
     }
 
     fn remote_profile(url: &str, model: PlayerModelTypeSummary) -> ResolvableProfileSummary {

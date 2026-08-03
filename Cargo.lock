@@ -307,6 +307,7 @@ name = "bbb-item-model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "bbb-pack",
  "bbb-protocol",
  "bbb-render-types",
@@ -315,9 +316,12 @@ dependencies = [
  "chrono-tz",
  "glam 0.29.3",
  "image",
+ "rand 0.8.7",
  "reqwest",
+ "rsa",
  "serde",
  "serde_json",
+ "sha1",
  "tracing",
  "uuid",
  "zip",

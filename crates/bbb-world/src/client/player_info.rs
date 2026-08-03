@@ -120,7 +120,7 @@ impl WorldStore {
                 .then(|| {
                     entry.chat_session.as_ref().and_then(|session| {
                         validated_remote_chat_session(
-                            &self.services_profile_keys,
+                            &self.services_player_certificate_keys,
                             entry.profile_id,
                             session,
                         )
@@ -315,7 +315,7 @@ mod tests {
         entry.show_hat = true;
         entry.list_order = 7;
         let (services_key, chat_session) = signed_player_info_chat_session(id);
-        store.replace_services_profile_keys(vec![services_key]);
+        store.replace_services_public_keys(Vec::new(), vec![services_key]);
         entry.chat_session = Some(chat_session);
 
         let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
@@ -444,7 +444,7 @@ mod tests {
         let id = Uuid::from_u128(0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
         let mut with_chat = listed_player_info_entry(id, "Margaret", false);
         let (services_key, chat_session) = signed_player_info_chat_session(id);
-        store.replace_services_profile_keys(vec![services_key]);
+        store.replace_services_public_keys(Vec::new(), vec![services_key]);
         with_chat.chat_session = Some(chat_session);
         store.apply_player_info_update(ProtocolPlayerInfoUpdate {
             actions: vec![
@@ -497,7 +497,7 @@ mod tests {
             .is_none());
 
         let mut invalid_signature = WorldStore::new();
-        invalid_signature.replace_services_profile_keys(vec![services_key]);
+        invalid_signature.replace_services_public_keys(Vec::new(), vec![services_key]);
         let mut entry = listed_player_info_entry(id, "Margaret", false);
         let mut chat_session = chat_session;
         chat_session.key_signature[0] ^= 0xff;

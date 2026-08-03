@@ -29,10 +29,11 @@ pub enum NetEvent {
         encrypted: bool,
     },
     /// RSA-4096 public keys acquired from the Minecraft Services key set.
-    /// World state uses them to validate player profile keys before retaining
-    /// remote chat sessions.
-    ServicesProfileKeys {
-        public_keys: Vec<Vec<u8>>,
+    /// Property keys validate profile textures; certificate keys validate
+    /// player profile keys before retaining remote chat sessions.
+    ServicesPublicKeys {
+        profile_property_keys: Vec<Vec<u8>>,
+        player_certificate_keys: Vec<Vec<u8>>,
     },
     /// The server signalled play-to-configuration re-entry; the canonical
     /// world answers with [`crate::NetCommand::AcknowledgeConfiguration`]

@@ -233,16 +233,20 @@ pub(super) fn custom_head_player_skull(
         .unwrap_or_else(|| profile.clone());
     let player_skin = player_skin_for_profile(
         &profile,
+        false,
+        &[],
         profile_texture_resources,
         local_dynamic_skins,
         profile_skins,
     );
-    queue_dynamic_profile_texture_downloads(&profile, player_skin, dynamic_textures);
+    queue_dynamic_profile_texture_downloads(&profile, player_skin, true, dynamic_textures);
     Some(EntityCustomHeadSkull::Player(player_skin))
 }
 
 pub(super) fn player_skin_for_profile(
     profile: &ResolvableProfileSummary,
+    require_secure: bool,
+    profile_property_keys: &[Vec<u8>],
     profile_texture_resources: &PackResourceStack,
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
     profile_skins: &RefCell<ProfileSkinCache>,
@@ -260,14 +264,22 @@ pub(super) fn player_skin_for_profile(
             }
         }
     }
-    profile_skins.borrow_mut().player_skin_for_profile(profile)
+    profile_skins.borrow_mut().player_skin_for_profile(
+        profile,
+        require_secure,
+        profile_property_keys,
+    )
 }
 
 pub(super) fn queue_dynamic_profile_texture_downloads(
     profile: &ResolvableProfileSummary,
     player_skin: EntityPlayerSkin,
+    allow_remote_textures: bool,
     dynamic_textures: &RefCell<Option<Box<AsyncDynamicTextureRuntime>>>,
 ) {
+    if !allow_remote_textures {
+        return;
+    }
     let mut dynamic_textures = dynamic_textures.borrow_mut();
     let Some(dynamic_textures) = dynamic_textures.as_mut() else {
         return;
@@ -279,6 +291,7 @@ pub(super) fn queue_dynamic_profile_texture_downloads(
                 .as_ref()
                 .and_then(|textures| textures.skin.as_ref())
                 .map(|skin| skin.url.as_str())
+                .filter(|url| crate::skin_runtime::vanilla_profile_texture_hash(url).is_some())
             {
                 dynamic_textures.queue_skin(skin.handle, url);
             }
@@ -289,7 +302,11 @@ pub(super) fn queue_dynamic_profile_texture_downloads(
         return;
     };
     if profile.skin_patch.cape.is_none() {
-        if let Some(cape) = textures.cape.as_ref() {
+        if let Some(cape) = textures
+            .cape
+            .as_ref()
+            .filter(|cape| crate::skin_runtime::vanilla_profile_texture_hash(&cape.url).is_some())
+        {
             dynamic_textures.queue_profile(
                 DynamicPlayerTextureKind::Cape,
                 profile_texture_handle(&cape.url),
@@ -298,7 +315,9 @@ pub(super) fn queue_dynamic_profile_texture_downloads(
         }
     }
     if profile.skin_patch.elytra.is_none() {
-        if let Some(elytra) = textures.elytra.as_ref() {
+        if let Some(elytra) = textures.elytra.as_ref().filter(|elytra| {
+            crate::skin_runtime::vanilla_profile_texture_hash(&elytra.url).is_some()
+        }) {
             dynamic_textures.queue_profile(
                 DynamicPlayerTextureKind::Elytra,
                 profile_texture_handle(&elytra.url),
@@ -330,6 +349,7 @@ pub(super) fn dynamic_player_texture_for_profile(
         EntityDynamicPlayerTextureKind::Cape => textures.cape.as_ref()?.url.as_str(),
         EntityDynamicPlayerTextureKind::Elytra => textures.elytra.as_ref()?.url.as_str(),
     };
+    crate::skin_runtime::vanilla_profile_texture_hash(url)?;
     Some(EntityDynamicPlayerTexture {
         handle: profile_texture_handle(url),
         kind,
@@ -453,11 +473,48 @@ impl NativeItemRuntime {
         let profile = self.resolved_or_pending_profile(profile);
         let player_skin = player_skin_for_profile(
             &profile,
+            false,
+            &[],
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
             &self.profile_skins,
         );
-        queue_dynamic_profile_texture_downloads(&profile, player_skin, &self.dynamic_textures);
+        queue_dynamic_profile_texture_downloads(
+            &profile,
+            player_skin,
+            true,
+            &self.dynamic_textures,
+        );
+        player_skin
+    }
+
+    pub fn player_skin_for_player_info(
+        &self,
+        profile: &ResolvableProfileSummary,
+        is_local_player: bool,
+        profile_property_keys: &[Vec<u8>],
+    ) -> EntityPlayerSkin {
+        let profile = self.resolved_or_pending_profile(profile);
+        let require_secure = !is_local_player;
+        let allow_remote_textures = !require_secure
+            || crate::skin_runtime::profile_texture_signature_state(
+                &profile.properties,
+                profile_property_keys,
+            ) == crate::skin_runtime::ProfileTextureSignatureState::Signed;
+        let player_skin = player_skin_for_profile(
+            &profile,
+            require_secure,
+            profile_property_keys,
+            &self.profile_texture_resources,
+            &self.local_dynamic_skins,
+            &self.profile_skins,
+        );
+        queue_dynamic_profile_texture_downloads(
+            &profile,
+            player_skin,
+            allow_remote_textures,
+            &self.dynamic_textures,
+        );
         player_skin
     }
 
@@ -469,11 +526,57 @@ impl NativeItemRuntime {
         let profile = self.resolved_or_pending_profile(profile);
         let player_skin = player_skin_for_profile(
             &profile,
+            false,
+            &[],
             &self.profile_texture_resources,
             &self.local_dynamic_skins,
             &self.profile_skins,
         );
-        queue_dynamic_profile_texture_downloads(&profile, player_skin, &self.dynamic_textures);
+        queue_dynamic_profile_texture_downloads(
+            &profile,
+            player_skin,
+            true,
+            &self.dynamic_textures,
+        );
+        dynamic_player_texture_for_profile(
+            &profile,
+            kind,
+            &self.profile_texture_resources,
+            &self.local_dynamic_textures,
+        )
+    }
+
+    pub fn player_profile_texture_for_player_info(
+        &self,
+        profile: &ResolvableProfileSummary,
+        kind: EntityDynamicPlayerTextureKind,
+        is_local_player: bool,
+        profile_property_keys: &[Vec<u8>],
+    ) -> Option<EntityDynamicPlayerTexture> {
+        let profile = self.resolved_or_pending_profile(profile);
+        let require_secure = !is_local_player;
+        let allow_remote_textures = !require_secure
+            || crate::skin_runtime::profile_texture_signature_state(
+                &profile.properties,
+                profile_property_keys,
+            ) == crate::skin_runtime::ProfileTextureSignatureState::Signed;
+        if !allow_remote_textures {
+            return None;
+        }
+        let player_skin = player_skin_for_profile(
+            &profile,
+            require_secure,
+            profile_property_keys,
+            &self.profile_texture_resources,
+            &self.local_dynamic_skins,
+            &self.profile_skins,
+        );
+        queue_dynamic_profile_texture_downloads(
+            &profile,
+            player_skin,
+            true,
+            &self.dynamic_textures,
+        );
         dynamic_player_texture_for_profile(
             &profile,
             kind,

@@ -681,7 +681,11 @@ pub(super) fn apply_player_profile_skin(
     let Some(info) = world.player_info_entry(source.uuid) else {
         return;
     };
-    *skin = item_runtime.player_skin_for_profile(&player_info_profile_resolvable(&info.profile));
+    *skin = item_runtime.player_skin_for_player_info(
+        &player_info_profile_resolvable(&info.profile),
+        world.local_player_profile_id() == Some(source.uuid),
+        world.services_profile_property_keys(),
+    );
 }
 
 pub(super) fn player_profile_texture(
@@ -695,8 +699,12 @@ pub(super) fn player_profile_texture(
     }
     let item_runtime = item_runtime?;
     let info = world.player_info_entry(source.uuid)?;
-    item_runtime
-        .player_profile_texture_for_profile(&player_info_profile_resolvable(&info.profile), kind)
+    item_runtime.player_profile_texture_for_player_info(
+        &player_info_profile_resolvable(&info.profile),
+        kind,
+        world.local_player_profile_id() == Some(source.uuid),
+        world.services_profile_property_keys(),
+    )
 }
 
 pub(super) fn chest_equipment_layers(

@@ -9846,8 +9846,8 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-net/src/services_profile_keys.rs#fetch_services_profile_keys",
-            "crates/bbb-native/src/runtime/events/dispatcher.rs#ServicesProfileKeys",
+            "crates/bbb-net/src/services_profile_keys.rs#fetch_services_public_keys",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#ServicesPublicKeys",
             "crates/bbb-world/src/level.rs#apply_login",
             "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
             "crates/bbb-world/src/client/chat.rs#reset_chat_session_state",
@@ -9872,7 +9872,7 @@
             "crates/bbb-world/src/client/chat.rs#login_resets_chat_session_trackers_and_preserves_display_state",
             "crates/bbb-world/src/client/player_info.rs#player_info_rejects_unvalidated_profile_keys",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#services_profile_keys_event_enables_world_validation",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#services_public_keys_event_enables_world_validation",
             "crates/bbb-native/src/runtime/tests.rs#insecure_chat_warning_projects_multiline_toast_before_low_disk_queue",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world",
@@ -11101,7 +11101,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-net/src/services_profile_keys.rs#fetch_services_profile_keys",
+            "crates/bbb-net/src/services_profile_keys.rs#fetch_services_public_keys",
             "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
             "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat",
             "crates/bbb-native/src/entity_scene/variants.rs#player_info_profile_resolvable",
@@ -11121,7 +11121,7 @@
             "crates/bbb-world/src/client/player_info.rs#player_info_adds_player_with_profile_and_fields",
             "crates/bbb-world/src/client/player_info.rs#player_info_chat_session_present_flag_can_set_and_clear",
             "crates/bbb-world/src/client/player_info.rs#player_info_rejects_unvalidated_profile_keys",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#services_profile_keys_event_enables_world_validation",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#services_public_keys_event_enables_world_validation",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters",
             "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_use_player_info_profile_skin_for_players"
           ],
