@@ -111,12 +111,26 @@ struct ReloadTransaction {
     previous: Vec<PackKey>,
     desired: Vec<PackKey>,
     report_successful_loads: bool,
+    is_recovery: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ReloadStack {
+    previous: Vec<PackKey>,
+    desired: Vec<PackKey>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ServerResourcePackReload {
     pub(crate) generation: u64,
     pub(crate) server_packs: Vec<SelectedClientPack>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ResourcePackReloadFinish {
+    Accepted,
+    RecoverySucceeded,
+    RecoveryFailed,
 }
 
 /// Owns server-pack downloads and archive materialization for one connection session.
@@ -139,6 +153,8 @@ pub(crate) struct ServerResourcePackRuntime {
     next_reload_generation: u64,
     reload: Option<ReloadTransaction>,
     force_reload_requested: bool,
+    recovery_reload_requested: bool,
+    blocked_failed_stack: Option<ReloadStack>,
     next_download_batch: u64,
     download_batches: Vec<DownloadBatch>,
     required_declines_disconnected: HashSet<PackKey>,
@@ -184,6 +200,8 @@ impl ServerResourcePackRuntime {
             next_reload_generation: 1,
             reload: None,
             force_reload_requested: false,
+            recovery_reload_requested: false,
+            blocked_failed_stack: None,
             next_download_batch: 1,
             download_batches: Vec::new(),
             required_declines_disconnected: HashSet::new(),
@@ -231,10 +249,19 @@ impl ServerResourcePackRuntime {
             .map(|pack| pack.key)
             .collect::<Vec<_>>();
         let stack_changed = previous != desired;
-        if !stack_changed && !self.force_reload_requested {
+        let forced = self.force_reload_requested;
+        let is_recovery = self.recovery_reload_requested;
+        if !stack_changed && !forced {
             return None;
         }
-        self.force_reload_requested = false;
+        let stack = ReloadStack {
+            previous: previous.clone(),
+            desired: desired.clone(),
+        };
+        if !forced && self.blocked_failed_stack.as_ref() == Some(&stack) {
+            return None;
+        }
+        self.blocked_failed_stack = None;
         let server_packs = desired
             .iter()
             .map(|key| {
@@ -264,6 +291,8 @@ impl ServerResourcePackRuntime {
                 return None;
             }
         };
+        self.force_reload_requested = false;
+        self.recovery_reload_requested = false;
         let generation = self.next_reload_generation;
         self.next_reload_generation = self.next_reload_generation.saturating_add(1);
         for pack in &mut self.packs {
@@ -280,6 +309,7 @@ impl ServerResourcePackRuntime {
             previous,
             desired,
             report_successful_loads: stack_changed,
+            is_recovery,
         });
         Some(ServerResourcePackReload {
             generation,
@@ -291,15 +321,25 @@ impl ServerResourcePackRuntime {
         self.force_reload_requested = true;
     }
 
-    pub(crate) fn finish_reload(&mut self, generation: u64, result: Result<(), String>) -> bool {
+    pub(crate) fn finish_reload(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+    ) -> Option<ResourcePackReloadFinish> {
         let Some(reload) = self.reload.take() else {
-            return false;
+            return None;
         };
         if reload.generation != generation {
             self.reload = Some(reload);
-            return false;
+            return None;
         }
+        let finish = match (reload.is_recovery, result.is_ok()) {
+            (true, true) => ResourcePackReloadFinish::RecoverySucceeded,
+            (true, false) => ResourcePackReloadFinish::RecoveryFailed,
+            (false, _) => ResourcePackReloadFinish::Accepted,
+        };
         if result.is_ok() {
+            self.blocked_failed_stack = None;
             for pack in &mut self.packs {
                 let should_be_active = reload.desired.contains(&pack.key);
                 pack.active = should_be_active;
@@ -350,9 +390,24 @@ impl ServerResourcePackRuntime {
                     };
                 }
             }
+            if reload.is_recovery {
+                self.blocked_failed_stack = Some(ReloadStack {
+                    previous: reload.previous.clone(),
+                    desired: reload.desired.clone(),
+                });
+            } else {
+                // Vanilla rolls a failed normal reload into exactly one
+                // recovery reload for the post-failure fallback stack. BBB's
+                // renderer transaction already preserved the prior accepted
+                // generation atomically, but the recovery pass is still the
+                // bounded validation barrier. A second failure is terminal
+                // until an explicit reload or a different stack arrives.
+                self.force_reload_requested = true;
+                self.recovery_reload_requested = true;
+            }
         }
         self.cleanup_removed_packs();
-        true
+        Some(finish)
     }
 
     fn reconcile_world(&mut self, world: &WorldStore, connected: bool) {
@@ -1064,7 +1119,10 @@ mod tests {
             .responses
             .iter()
             .all(|response| { response.action != ResourcePackResponseAction::SuccessfullyLoaded }));
-        assert!(runtime.finish_reload(reload.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(reload.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         assert!(runtime.packs[0].active);
         assert_eq!(
             runtime
@@ -1095,7 +1153,7 @@ mod tests {
         runtime.resolve_download_batches();
 
         let reload = runtime.take_reload().unwrap();
-        assert!(!runtime.finish_reload(reload.generation + 1, Ok(())));
+        assert_eq!(runtime.finish_reload(reload.generation + 1, Ok(())), None);
         assert!(!runtime.packs[0].active);
         assert!(runtime.take_reload().is_none());
         assert!(runtime
@@ -1103,7 +1161,10 @@ mod tests {
             .iter()
             .all(|response| { response.action != ResourcePackResponseAction::SuccessfullyLoaded }));
 
-        assert!(runtime.finish_reload(reload.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(reload.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         assert!(runtime.packs[0].active);
     }
 
@@ -1142,7 +1203,10 @@ mod tests {
         let applying = &world.resource_pack(id).unwrap().runtime;
         assert_eq!(applying.phase, ResourcePackRuntimePhase::Applying);
         assert_eq!(applying.generation, Some(load.generation));
-        assert!(runtime.finish_reload(load.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(load.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.publish_runtime_diagnostics(&mut world);
         runtime.flush_responses(&mut world, &Some(commands));
         assert_eq!(
@@ -1161,7 +1225,10 @@ mod tests {
         runtime.reconcile_world(&world, true);
         let unload = runtime.take_reload().unwrap();
         assert!(unload.server_packs.is_empty());
-        assert!(runtime.finish_reload(unload.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(unload.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.cleanup_removed_packs();
         assert!(!root.exists());
         assert!(runtime.packs.is_empty());
@@ -1183,7 +1250,10 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let load = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(load.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(load.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.responses.clear();
 
         world.apply_transfer(bbb_protocol::packets::Transfer {
@@ -1200,7 +1270,10 @@ mod tests {
         runtime.reconcile_world(&world, false);
         let unload = runtime.take_reload().unwrap();
         assert!(unload.server_packs.is_empty());
-        assert!(runtime.finish_reload(unload.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(unload.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         assert!(!root.exists());
         assert!(runtime.packs.is_empty());
     }
@@ -1220,7 +1293,10 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let load = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(load.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(load.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.responses.clear();
 
         world.apply_resource_pack_pop(ResourcePackPop { id: Some(id) });
@@ -1230,7 +1306,63 @@ mod tests {
         let unload = runtime.take_reload().unwrap();
         assert!(unload.server_packs.is_empty());
 
-        assert!(runtime.finish_reload(unload.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(unload.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
+        assert!(!root.exists());
+        assert!(runtime.packs.is_empty());
+    }
+
+    #[test]
+    fn recovery_reload_runs_once_and_second_failure_does_not_hot_loop() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("bounded-recovery");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "active");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            materialization: ready_materialization(root.clone()),
+        });
+        runtime.resolve_download_batches();
+        let load = runtime.take_reload().unwrap();
+        assert_eq!(
+            runtime.finish_reload(load.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
+        runtime.responses.clear();
+
+        world.apply_resource_pack_pop(ResourcePackPop { id: Some(id) });
+        runtime.reconcile_world(&world, true);
+        let unload = runtime.take_reload().unwrap();
+        assert!(unload.server_packs.is_empty());
+        assert!(!runtime.reload.as_ref().unwrap().is_recovery);
+        assert_eq!(
+            runtime.finish_reload(unload.generation, Err("first failure".to_string())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
+        assert!(root.exists());
+
+        let recovery = runtime.take_reload().expect("one recovery reload");
+        assert!(recovery.server_packs.is_empty());
+        assert!(runtime.reload.as_ref().unwrap().is_recovery);
+        assert_eq!(
+            runtime.finish_reload(recovery.generation, Err("recovery failure".to_string())),
+            Some(ResourcePackReloadFinish::RecoveryFailed)
+        );
+        assert!(root.exists());
+        assert!(runtime.take_reload().is_none());
+
+        runtime.request_reload();
+        let explicit_retry = runtime.take_reload().expect("explicit retry");
+        assert!(!runtime.reload.as_ref().unwrap().is_recovery);
+        assert_eq!(
+            runtime.finish_reload(explicit_retry.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         assert!(!root.exists());
         assert!(runtime.packs.is_empty());
     }
@@ -1250,7 +1382,10 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let load_old = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(load_old.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(load_old.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.responses.clear();
 
         let new_id = Uuid::from_u128(2);
@@ -1269,7 +1404,10 @@ mod tests {
             vec![old_root.clone(), new_root.clone()]
         );
 
-        assert!(runtime.finish_reload(reload.generation, Err("reload failed".to_string())));
+        assert_eq!(
+            runtime.finish_reload(reload.generation, Err("reload failed".to_string())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.publish_runtime_diagnostics(&mut world);
         assert!(old_root.exists());
         assert!(!new_root.exists());
@@ -1317,6 +1455,13 @@ mod tests {
         runtime.cleanup_removed_packs();
         assert_eq!(runtime.packs.len(), 1);
         assert_eq!(runtime.packs[0].key, old_key);
+        let recovery = runtime.take_reload().expect("fallback recovery reload");
+        assert_eq!(selected_roots(&recovery), vec![old_root]);
+        assert!(runtime.reload.as_ref().unwrap().is_recovery);
+        assert_eq!(
+            runtime.finish_reload(recovery.generation, Ok(())),
+            Some(ResourcePackReloadFinish::RecoverySucceeded)
+        );
         assert!(runtime.take_reload().is_none());
     }
 
@@ -1335,14 +1480,20 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let initial = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(initial.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(initial.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         runtime.responses.clear();
         assert!(runtime.take_reload().is_none());
 
         runtime.request_reload();
         let forced = runtime.take_reload().unwrap();
         assert_eq!(selected_roots(&forced), vec![root]);
-        assert!(runtime.finish_reload(forced.generation, Ok(())));
+        assert_eq!(
+            runtime.finish_reload(forced.generation, Ok(())),
+            Some(ResourcePackReloadFinish::Accepted)
+        );
         assert!(runtime.responses.is_empty());
         assert!(runtime.take_reload().is_none());
     }

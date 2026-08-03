@@ -491,6 +491,98 @@ mod tests {
     }
 
     #[test]
+    fn render_owner_commits_each_terminal_reload_before_consuming_the_next_batch() {
+        let main = include_str!("main.rs");
+        let drain = main
+            .split_once("// A reload is the terminal effect of its simulation batch.")
+            .expect("terminal reload drain owner")
+            .1
+            .split_once("let latest_publication = shared_publication.load_full();")
+            .expect("terminal reload drain boundary")
+            .0;
+        let nested_drain = drain
+            .find("let resource_reload = loop {")
+            .expect("batch-at-a-time reload barrier");
+        let consume = drain
+            .find("simulation_step.consume_render_effects(")
+            .expect("render effect consumer");
+        let terminal_break = drain
+            .find("Ok(Some(reload)) => break Some(reload)")
+            .expect("terminal effect stops the inner drain");
+        let apply = drain
+            .find("let ack = apply_server_resource_pack_reload_effect(")
+            .expect("resource reload transaction");
+        let acknowledgement = drain
+            .find("SimulationCommand::ResourceReloadAck(Box::new(ack))")
+            .expect("reload acknowledgement handoff");
+
+        assert!(nested_drain < consume);
+        assert!(consume < terminal_break);
+        assert!(terminal_break < apply);
+        assert!(apply < acknowledgement);
+        assert_eq!(
+            main.matches("apply_server_resource_pack_reload_effect(")
+                .count(),
+            1
+        );
+        assert!(!drain.contains("resource_reloads.push("));
+        assert!(!drain.contains("for resource_reload in"));
+    }
+
+    #[test]
+    fn failed_resource_pack_recovery_terminates_the_session_once() {
+        let input_commands = include_str!("simulation/input_commands.rs");
+        let acknowledgement = input_commands
+            .split_once("SimulationCommand::ResourceReloadAck(ack) => {")
+            .expect("resource reload acknowledgement owner")
+            .1
+            .split_once("SimulationCommand::TerrainReadiness")
+            .expect("resource reload acknowledgement boundary")
+            .0;
+        let abort = acknowledgement
+            .split_once("ResourceReloadAckEffect::AbortRecovery { error } => {")
+            .expect("recovery abort owner")
+            .1;
+        let disconnect = abort
+            .find("request_net_disconnect(")
+            .expect("one idempotent transport close request");
+        let end_session = abort
+            .find("context.world.end_connection_session();")
+            .expect("terminal connection generation reset");
+        let toast = abort
+            .find("context.world.apply_resource_pack_load_failure();")
+            .expect("pack load failure toast fact");
+        let screen = abort
+            .find("context.input.open_disconnected_screen(")
+            .expect("bounded terminal screen");
+        let audio = abort
+            .find("audio_events.stop_all_sounds();")
+            .expect("terminal audio stop");
+        let cursor = abort
+            .find("self.request_terminal_screen_cursor(context.platform);")
+            .expect("terminal cursor release");
+
+        assert!(disconnect < end_session);
+        assert!(end_session < toast);
+        assert!(toast < screen);
+        assert!(screen < audio);
+        assert!(audio < cursor);
+        assert_eq!(
+            acknowledgement.matches("request_net_disconnect(").count(),
+            1
+        );
+        assert_eq!(
+            input_commands
+                .split("#[cfg(test)]")
+                .next()
+                .unwrap()
+                .matches(".finish_reload(")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
     fn all_external_commands_enter_one_mailbox_and_apply_without_a_second_queue() {
         let source = include_str!("main.rs");
         let start = source

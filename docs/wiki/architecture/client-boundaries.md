@@ -189,8 +189,8 @@ tick anchor、interval 与 residual。terminal close 固定由 event loop 依次
 
 机械 owner inventory 不再把 `Minecraft.java` 的 187 个方法当成一个 lifecycle 判断：共享
 Tree-sitter frontend 将 9 个 run/tick/terminal owner、12 个 session replacement owner、3 个 task
-handoff owner 和 10 个 resource recovery owner分别路由，其余决策进入既有 input/render/security/
-diagnostics 或 source-backed 范围外机制。仅“单条 return 且表达式为 field、parameter 或 constant”
+handoff owner、9 个 resource recovery owner和 1 个 options-only dynamic mipmap owner分别路由，
+其余决策进入既有 input/render/security/diagnostics 或 source-backed 范围外机制。仅“单条 return 且表达式为 field、parameter 或 constant”
 的 64 个 owner 可标记 `support-non-decision`；出现调用、分支、分配、写入或新方法时 checked output
 立即失败，不能借 accessor 分类隐藏新机制。
 
@@ -239,6 +239,30 @@ insecure-chat warning guard，以及 `ConnectScreen` 单独传递的 `ServerData
 accepted Code of Conduct hash 也跨 transfer 保留；`last_transfer` 仅是单调 packet diagnostic，
 连接链终止时由 `end_connection_session` 清除。server-pack async result 仍以 push sequence/reload
 generation 判 stale；transfer 不触发无变化 reload，普通 terminal disconnect 则原子提交空 stack。
+
+### Task handoff、resource recovery 与 fatal join
+
+Vanilla `Minecraft.getRunningThread/wrapRunnable/shouldRun` 在外部 client path 的语义是所有 client
+task 回到唯一 game thread、identity wrapping、存活期间始终可执行。BBB 的对应 owner 是命名
+`bbb-simulation` thread 与唯一 `SimulationMailbox`：window/control/render feedback/services/lifecycle
+producer 共享单调 sequence 和输入 barrier，network relay 只推进同一 wake generation；owner 退出时
+close guard 同时唤醒被 backpressure 阻塞的 producer，之后所有 completion 都以 `Closed` 拒绝，
+不存在第二 task queue 或 unchecked enqueue。
+
+resource reload 是 batch-terminal effect。event loop 每遇到一个 reload 就先完成同 generation 的
+CPU prepare、renderer/audio transaction 与 acknowledgement handoff，再读取下一 simulation batch；
+后续 disconnect/session replacement 因而不能越过旧 reload。失败保留上一完整 generation，并只做
+一次 recovery reload；recovery 完成后由 world-owned 单调 UI fact 投影 Vanilla
+`PACK_LOAD_FAILURE` system toast。二次失败冻结相同 stack、防止无界热循环，并在 simulation owner
+内依次关闭 transport、替换 connection generation、停止 audio、发布 bounded disconnected screen 和
+释放 cursor；不会留下仍可交互的半失败 session。download/materialization 使用
+UUID+push-sequence，reload completion 使用 generation，任一旧结果都只做清理或拒绝，不能改写
+current barrier。
+
+simulation panic、network task panic 与 network join timeout 都转成 typed `RuntimeFailure`。event loop
+先 join simulation、再以共享 deadline join/reap network tasks，最后发布 terminal snapshot；第一
+failure 是 canonical report owner，后续 shutdown failure 只进入有界 suppressed 列表，report 原子
+save-once 后以非零状态退出。
 
 ## External network backend terminal close
 

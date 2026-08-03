@@ -1067,63 +1067,69 @@ fn run_client(args: startup::Args) -> Result<()> {
         if let Some(runtime) = lifecycle_soak.as_mut() {
             runtime.apply_due(Instant::now(), &window, &mut renderer);
         }
-        let mut resource_reloads = Vec::new();
         loop {
-            let simulation_step = match simulation_thread.try_recv() {
-                Ok(step) => step,
-                Err(std::sync::mpsc::TryRecvError::Empty) => break,
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
-            };
-            let render_effect_result = {
-                let mut render_effect_sink = NativeRenderEffectSink {
-                    renderer: &mut renderer,
-                    window: &window,
-                    cursor_captured: &mut cursor_captured,
-                    mailbox: &simulation_mailbox,
-                    clipboard: &mut debug_clipboard,
-                    terrain_upload: &mut terrain_upload,
-                    debug_profiler: &mut debug_profiler,
-                    debug_options_screen_narration: &mut debug_options_screen_narration,
-                    stats_screen_narration: &mut stats_screen_narration,
-                    recipe_book_narration: &mut recipe_book_narration,
-                    social_interactions_narration: &mut social_interactions_narration,
-                    player_reporting_narration: &mut player_reporting_narration,
-                    death_screen_narration: &mut death_screen_narration,
-                    disconnected_screen_narration: &mut disconnected_screen_narration,
-                    chat_screen_narration: &mut chat_screen_narration,
-                    game_event_screen_narration: &mut game_event_screen_narration,
-                    narrator: narrator_runtime
-                        .as_mut()
-                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                    control_screenshots: &mut pending_control_screenshots,
-                    exit_requested: &mut platform_exit_requested,
+            // A reload is the terminal effect of its simulation batch. Apply
+            // that CPU/GPU/audio transaction and queue its acknowledgement
+            // before consuming the next batch, so a later disconnect or
+            // replacement generation can never overtake the barrier.
+            let resource_reload = loop {
+                let simulation_step = match simulation_thread.try_recv() {
+                    Ok(step) => step,
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break None,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break None,
                 };
-                simulation_step.consume_render_effects(
-                    &mut render_effect_consumer,
-                    audio_runtime
-                        .as_mut()
-                        .map(|runtime| runtime as &mut dyn AudioEventSink),
-                    &mut render_effect_sink,
-                )
-            };
-            match render_effect_result {
-                Ok(Some(reload)) => resource_reloads.push(reload),
-                Ok(None) => {}
-                Err(error) => {
-                    record_runtime_failure(
-                        &event_failures,
-                        RuntimeFailure::new(
-                            "render-effect apply",
-                            "Fatal simulation render-effect sequence gap",
-                            error,
-                        ),
-                    );
-                    target.exit();
-                    return;
+                let render_effect_result = {
+                    let mut render_effect_sink = NativeRenderEffectSink {
+                        renderer: &mut renderer,
+                        window: &window,
+                        cursor_captured: &mut cursor_captured,
+                        mailbox: &simulation_mailbox,
+                        clipboard: &mut debug_clipboard,
+                        terrain_upload: &mut terrain_upload,
+                        debug_profiler: &mut debug_profiler,
+                        debug_options_screen_narration: &mut debug_options_screen_narration,
+                        stats_screen_narration: &mut stats_screen_narration,
+                        recipe_book_narration: &mut recipe_book_narration,
+                        social_interactions_narration: &mut social_interactions_narration,
+                        player_reporting_narration: &mut player_reporting_narration,
+                        death_screen_narration: &mut death_screen_narration,
+                        disconnected_screen_narration: &mut disconnected_screen_narration,
+                        chat_screen_narration: &mut chat_screen_narration,
+                        game_event_screen_narration: &mut game_event_screen_narration,
+                        narrator: narrator_runtime
+                            .as_mut()
+                            .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                        control_screenshots: &mut pending_control_screenshots,
+                        exit_requested: &mut platform_exit_requested,
+                    };
+                    simulation_step.consume_render_effects(
+                        &mut render_effect_consumer,
+                        audio_runtime
+                            .as_mut()
+                            .map(|runtime| runtime as &mut dyn AudioEventSink),
+                        &mut render_effect_sink,
+                    )
+                };
+                match render_effect_result {
+                    Ok(Some(reload)) => break Some(reload),
+                    Ok(None) => {}
+                    Err(error) => {
+                        record_runtime_failure(
+                            &event_failures,
+                            RuntimeFailure::new(
+                                "render-effect apply",
+                                "Fatal simulation render-effect sequence gap",
+                                error,
+                            ),
+                        );
+                        target.exit();
+                        return;
+                    }
                 }
-            }
-        }
-        for resource_reload in resource_reloads {
+            };
+            let Some(resource_reload) = resource_reload else {
+                break;
+            };
             let ack = apply_server_resource_pack_reload_effect(
                 resource_reload,
                 &base_pack_roots,

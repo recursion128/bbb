@@ -31,6 +31,8 @@ pub struct ClientUiState {
     pub current_creative_inventory: Option<crate::CreativeInventoryScreenState>,
     #[serde(default)]
     pub low_disk_space_warning_count: usize,
+    #[serde(default)]
+    pub resource_pack_load_failure_count: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_command_block_editor: Option<crate::CommandBlockEditorState>,
     #[serde(default)]
@@ -625,6 +627,17 @@ impl WorldStore {
     pub fn apply_low_disk_space_warning(&mut self) {
         self.counters.low_disk_space_warnings += 1;
         self.client_ui.low_disk_space_warning_count += 1;
+    }
+
+    /// Publishes one completed Vanilla `PACK_LOAD_FAILURE` system-toast update.
+    ///
+    /// Resource reload owns when recovery has completed; the renderer only
+    /// projects this monotonic, session-scoped UI fact.
+    pub fn apply_resource_pack_load_failure(&mut self) {
+        self.client_ui.resource_pack_load_failure_count = self
+            .client_ui
+            .resource_pack_load_failure_count
+            .saturating_add(1);
     }
 
     pub fn apply_clear_dialog(&mut self) {
@@ -1731,6 +1744,10 @@ impl WorldStore {
         self.client_ui.low_disk_space_warning_count
     }
 
+    pub fn resource_pack_load_failure_count(&self) -> usize {
+        self.client_ui.resource_pack_load_failure_count
+    }
+
     pub fn last_mount_screen(&self) -> Option<&MountScreenState> {
         self.client_ui.last_mount_screen.as_ref()
     }
@@ -1945,6 +1962,7 @@ mod tests {
         let mut store = WorldStore::new();
 
         store.apply_low_disk_space_warning();
+        store.apply_resource_pack_load_failure();
         store.apply_show_dialog(ProtocolShowDialog {
             dialog: DialogHolder::Direct {
                 dialog: NbtSummaryValue::Compound(vec![
@@ -1961,6 +1979,7 @@ mod tests {
         });
 
         assert_eq!(store.low_disk_space_warning_count(), 1);
+        assert_eq!(store.resource_pack_load_failure_count(), 1);
         let direct = store.current_dialog().unwrap();
         assert_eq!(direct.holder_kind, "direct");
         assert_eq!(direct.registry_id, None);

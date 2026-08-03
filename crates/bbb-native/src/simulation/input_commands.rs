@@ -35,8 +35,11 @@ use crate::{
     code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
         death_screen::DeathScreenPlatformRequest,
-        disconnected_screen::DisconnectedScreenPlatformRequest,
-        flush_local_interaction_sound_actions, game_event_screen::GameEventScreenPlatformRequest,
+        disconnected_screen::{
+            DisconnectedScreenDetails, DisconnectedScreenPlatformRequest, DisconnectedScreenTitle,
+        },
+        flush_local_interaction_sound_actions,
+        game_event_screen::GameEventScreenPlatformRequest,
         handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
         handle_advancements_screen_mouse_wheel, handle_focus_change, handle_inventory_cursor_moved,
         handle_inventory_mouse_input_with_item_runtime, handle_inventory_mouse_wheel,
@@ -45,12 +48,13 @@ use crate::{
         handle_mouse_wheel, handle_text_input_with_item_runtime, inventory_screen_layout,
         queue_chat_command, queue_debug_recreate_server_query_request, queue_lectern_button_click,
         recipe_book_type_for_background, recipe_book_type_settings, release_active_input,
-        reporting::PlayerReportingPlatformRequest, social::SocialInteractionsPlatformRequest,
+        reporting::PlayerReportingPlatformRequest,
+        social::SocialInteractionsPlatformRequest,
         CommandSuggestionTextMeasurer, DebugClipboard, DebugFeatureCountRequest,
         DebugFrustumRequest, DebugOptionsSearchTextMeasurer, DebugProfilingToggleRequest,
         PauseScreenLinkRequest, TerrainReloadRequestSink,
     },
-    resource_pack_runtime::ServerResourcePackRuntime,
+    resource_pack_runtime::{ResourcePackReloadFinish, ServerResourcePackRuntime},
     runtime::{
         apply_code_of_conduct_request, apply_control_input_request_with_effects,
         apply_control_net_request, handle_dialog_cursor_moved_with_measurer,
@@ -384,7 +388,34 @@ impl SimulationInputRuntime {
                 }
             }
             SimulationCommand::ResourceReloadAck(ack) => {
-                apply_resource_reload_ack(*ack, context);
+                match apply_resource_reload_ack(*ack, context) {
+                    ResourceReloadAckEffect::None => {}
+                    ResourceReloadAckEffect::ShowLoadFailureToast => {
+                        context.world.apply_resource_pack_load_failure();
+                    }
+                    ResourceReloadAckEffect::AbortRecovery { error } => {
+                        request_net_disconnect(
+                            context.net_commands,
+                            &mut self.net_disconnect_requested,
+                        );
+                        context.world.end_connection_session();
+                        context.world.apply_resource_pack_load_failure();
+                        context.input.open_disconnected_screen(
+                            DisconnectedScreenTitle::ConnectionLost,
+                            DisconnectedScreenDetails {
+                                reason: bbb_net::DisconnectReason::from_plain(format!(
+                                    "Resource reload failed: {error}"
+                                )),
+                                report_directory: None,
+                                bug_report_link: None,
+                            },
+                        );
+                        if let Some(audio_events) = context.audio_events.as_deref_mut() {
+                            audio_events.stop_all_sounds();
+                        }
+                        self.request_terminal_screen_cursor(context.platform);
+                    }
+                }
             }
             SimulationCommand::TerrainReadiness {
                 level_generation,
@@ -2328,21 +2359,32 @@ pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ResourceReloadAckEffect {
+    None,
+    ShowLoadFailureToast,
+    AbortRecovery { error: String },
+}
+
 fn apply_resource_reload_ack(
     ack: crate::resource_reload::ResourceReloadAck,
     context: &mut SimulationInputContext<'_, '_, '_>,
-) {
+) -> ResourceReloadAckEffect {
     let status = ack.result.as_ref().map(|_| ()).map_err(ToString::to_string);
-    if !context
+    let Some(finish) = context
         .server_resource_packs
         .finish_reload(ack.generation, status)
-    {
+    else {
         tracing::warn!(
             generation = ack.generation,
             "ignored stale server resource pack reload acknowledgement"
         );
-        return;
-    }
+        return ResourceReloadAckEffect::None;
+    };
+    let recovery_error = match (&finish, &ack.result) {
+        (ResourcePackReloadFinish::RecoveryFailed, Err(error)) => Some(error.clone()),
+        _ => None,
+    };
     context.net_counters.client_resources = std::sync::Arc::new(ack.diagnostics);
     match ack.result {
         Ok(commit) => {
@@ -2374,6 +2416,15 @@ fn apply_resource_reload_ack(
     context
         .server_resource_packs
         .publish_runtime_diagnostics(context.world);
+    match finish {
+        ResourcePackReloadFinish::Accepted => ResourceReloadAckEffect::None,
+        ResourcePackReloadFinish::RecoverySucceeded => {
+            ResourceReloadAckEffect::ShowLoadFailureToast
+        }
+        ResourcePackReloadFinish::RecoveryFailed => ResourceReloadAckEffect::AbortRecovery {
+            error: recovery_error.expect("failed recovery acknowledgement carries an error"),
+        },
+    }
 }
 
 fn world_wants_cursor(world: &WorldStore) -> bool {

@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "63d8a349882f7e1d36ae966750f46c52126271a11e7eae17967242b7eddf37e6"
+      "sha256": "b7b7c2390378bd7cb61919b384d1089ff358d6d3a2613c69d64616790067bf21"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -28,7 +28,12 @@
     },
     "diagnostics-crash-runtime": {
       "bbb_evidence": [
-        "crates/bbb-native/src/frame_diagnostics.rs"
+        "crates/bbb-native/src/crash_report.rs#first_failure_wins_and_suppressed_failures_are_bounded",
+        "crates/bbb-native/src/crash_report.rs#save_is_atomic_no_clobber_and_once_per_report",
+        "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
+        "crates/bbb-native/src/simulation/thread.rs#worker_panic_is_reported_as_a_join_failure",
+        "crates/bbb-native/src/network_runtime.rs#task_panic_is_returned_after_the_other_task_joins",
+        "crates/bbb-native/src/network_runtime.rs#shared_deadline_aborts_and_reaps_a_blocked_relay"
       ],
       "owner_count": 38
     },
@@ -89,7 +94,10 @@
     "lifecycle-client-task-handoff": {
       "bbb_evidence": [
         "crates/bbb-native/src/simulation/thread.rs#run_scheduled",
-        "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input"
+        "crates/bbb-native/src/simulation/thread.rs#producer_wake_without_work_emits_no_output_and_preserves_deadline",
+        "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
+        "crates/bbb-native/src/simulation/commands.rs#close_unblocks_a_saturated_producer_and_rejects_control",
+        "crates/bbb-native/src/simulation/commands.rs#production_producers_cannot_restore_ignored_mailbox_results"
       ],
       "owner_count": 3
     },
@@ -237,9 +245,23 @@
     "resources-reload-recovery": {
       "bbb_evidence": [
         "crates/bbb-native/src/resource_reload.rs#apply_native_resource_reload",
-        "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier",
+        "crates/bbb-native/src/simulation.rs#render_owner_commits_each_terminal_reload_before_consuming_the_next_batch",
+        "crates/bbb-native/src/resource_pack_runtime.rs#failed_reload_keeps_previous_active_stack_and_fails_only_new_pack",
+        "crates/bbb-native/src/resource_pack_runtime.rs#recovery_reload_runs_once_and_second_failure_does_not_hot_loop",
+        "crates/bbb-native/src/resource_pack_runtime.rs#stale_reload_ack_does_not_commit_or_discard_the_current_barrier",
+        "crates/bbb-native/src/resource_pack_runtime.rs#replaced_uuid_drops_old_result_without_mutating_new_request",
+        "crates/bbb-native/src/runtime/tests.rs#completed_resource_pack_recovery_projects_pack_load_failure_system_toast",
+        "crates/bbb-native/src/simulation.rs#failed_resource_pack_recovery_terminates_the_session_once"
       ],
-      "owner_count": 10
+      "owner_count": 9
+    },
+    "resources-runtime-mipmap-update": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/terrain_runtime/textures.rs#VANILLA_DEFAULT_MIPMAP_LEVELS",
+        "docs/unsupported-features.md"
+      ],
+      "owner_count": 1
     },
     "resources-server-pack-lifecycle": {
       "bbb_evidence": [
@@ -10463,7 +10485,7 @@
       "category": "resources",
       "domain": "resources",
       "kind": "method",
-      "mechanism_id": "resources-reload-recovery",
+      "mechanism_id": "resources-runtime-mipmap-update",
       "owner_id": "method:net.minecraft.client.Minecraft#updateMaxMipLevel(final int mipmapLevels)",
       "role": "decision",
       "scope": "external-client",

@@ -12890,6 +12890,29 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
 }
 
 #[test]
+fn completed_resource_pack_recovery_projects_pack_load_failure_system_toast() {
+    let start = std::time::Instant::now();
+    let mut world = WorldStore::new();
+    let mut state = HudRenderRuntime::default();
+
+    world.apply_resource_pack_load_failure();
+    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Resource reload failed".to_string(),
+            message: String::new(),
+            multiline: false,
+            visible_portion: 0.0,
+        })
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.in".to_string())
+    );
+}
+
+#[test]
 fn advancement_toast_runtime_admits_five_fifo_slots_and_matches_vanilla_timing() {
     let mut world = WorldStore::new();
     enqueue_runtime_advancement_toasts(&mut world, 6, AdvancementFrameType::Challenge);

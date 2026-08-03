@@ -662,6 +662,7 @@ pub(crate) struct ClientAnimationTickState {
 #[derive(Debug, Default)]
 pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
+    resource_pack_load_failure_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     periodic_notification_toast: SystemToastAnimationState,
     periodic_notifications: PeriodicNotificationRuntime,
@@ -7179,6 +7180,20 @@ fn hud_system_toast(
                 "Messages sent on this server may be modified and might not reflect the original message",
             ),
             true,
+        )
+    } else if let Some(frame) = state
+        .resource_pack_load_failure_toast
+        .update(world.resource_pack_load_failure_count(), now)
+    {
+        (
+            frame,
+            localized_gui_text(
+                item_runtime,
+                "resourcePack.load_fail",
+                "Resource reload failed",
+            ),
+            String::new(),
+            false,
         )
     } else if let Some(frame) = state
         .low_disk_space_toast

@@ -600,7 +600,9 @@ Matrix route: `interaction-server-authority-exclusions`
 
 ## HUD and configuration
 
-Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-ui`, `scope-singleplayer-integrated`, `debug-integrated-server-mirrors`
+Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-ui`,
+`resources-runtime-mipmap-update`, `scope-singleplayer-integrated`,
+`debug-integrated-server-mirrors`
 
 - **Shift-local F3+I server-private entity save residuals.** Not needed on an
   external client: ordinary F3+I queries the authoritative server tag, while
@@ -643,6 +645,12 @@ Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-u
 - **In-game options UI and vanilla options-file persistence.** Configuration
   stays at command-line startup (for example `--advanced-item-tooltips`); bbb
   does not add an in-game configuration UI or call vanilla `Options.save()`.
+  This also owns `Minecraft.updateMaxMipLevel`: its only Vanilla 26.1 caller is
+  `VideoSettingsScreen`, while BBB's terrain generation already uses the
+  Vanilla default mip level 4. Reopen the runtime update mechanism when a CLI
+  or supported in-game surface can change mipmap levels after startup; that
+  slice must rebuild the complete resource/GPU generation atomically rather
+  than mutate the atlas behind its owner.
 - **Vanilla OpenGL GPU warnlist reload listener.**
   `GpuWarnlistManager.Preparations.apply` returns warnings only when
   `GpuDevice.getBackendName()` is exactly `OpenGL`; its behavioral consumer is

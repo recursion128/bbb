@@ -92,6 +92,17 @@ vanilla。单个缺失、size 不符或 SHA-1 不符 object 在其 consumer 打�
 Vanilla missing/invalid 语义处理，不会触发第二 resolver。新 generation 加载失败时，运行时
 保留上一代及其 diagnostics；成功后预算、catalog、atlas 与 audio owner 一起换代。
 
+每个 server-pack reload 是其 simulation effect batch 的 terminal barrier：render owner 在读取
+下一 batch 前完成 CPU prepare、GPU/audio transaction，并把 generation acknowledgement 送回唯一
+simulation mailbox，因此后续 disconnect/Transfer effect 不能越过旧 barrier。正常 reload 失败时
+renderer、audio、simulation 与 active roots 都保留上一完整 generation，只把新 pack 标为
+`FAILED_RELOAD`；随后恰好执行一次 recovery reload。recovery 成功后 world UI fact 驱动共享
+`PACK_LOAD_FAILURE` system toast；recovery 再失败则冻结相同 previous/desired stack、防止每 tick
+热重试，并通过一次 idempotent transport close、connection-generation reset、audio stop 和 bounded
+disconnected screen 终止当前外部 session。pack task 的 UUID+push-sequence 与 reload generation
+分别拒绝旧 download/materialization 和旧 acknowledgement，所有失败 diagnostics 与 retained bytes
+仍经同一个 bounded mailbox 发布。
+
 ### Reload listener 逐 owner 投影
 
 下表顺序直接对应 `Minecraft` 的注册顺序。18 个 current-surface owner 已完成同 generation
