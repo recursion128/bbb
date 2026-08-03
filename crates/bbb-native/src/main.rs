@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use bbb_control::{AudioCounters, ControlState, NetCounters};
 use bbb_world::{ChatPresentationConfig, ChatVisibilityState, WorldStore};
-use std::time::Instant;
+use std::{cell::RefCell, rc::Rc, time::Instant};
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
@@ -25,6 +25,7 @@ mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod component_text;
 mod conduit_scene;
+mod crash_report;
 mod crosshair;
 mod debug_entries;
 mod debug_profiler;
@@ -83,6 +84,10 @@ use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
 use camera_pose::CameraEyeHeightTickState;
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
+use crash_report::{
+    default_crash_report_dir, exit_after_failure, CrashReportRuntime, RuntimeFailure,
+    RuntimeFailureAccumulator,
+};
 use debug_entries::{DebugScreenEntryId, DebugScreenEntryList};
 use debug_profiler::{
     DebugProfiler, DebugProfilerEvent, DebugProfilerFrameMetrics, DebugProfilerSectionSample,
@@ -423,9 +428,20 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
     }
 }
 
-fn main() -> Result<()> {
+fn main() {
     init_tracing();
     let args = parse_args();
+    let crash_report_dir = args
+        .crash_report_dir
+        .clone()
+        .unwrap_or_else(default_crash_report_dir);
+    let mut crash_reports = CrashReportRuntime::new(crash_report_dir);
+    if let Err(failures) = crash_reports.guard(|| run_client(args)) {
+        exit_after_failure(crash_reports.finish_failure(failures));
+    }
+}
+
+fn run_client(args: startup::Args) -> Result<()> {
     if run_build_info_if_requested(&args)? {
         return Ok(());
     }
@@ -979,12 +995,14 @@ fn main() -> Result<()> {
     })?;
     let mut render_publication = shared_publication.load_full();
     let mut event_cursor_position = None;
+    let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
+    let event_failures = Rc::clone(&fatal_failures);
 
-    event_loop.run(move |event, target| {
+    let event_loop_result = event_loop.run(move |event, target| {
         if matches!(&event, Event::LoopExiting) {
             set_cursor_capture(&window, &mut cursor_captured, false);
             if let Err(error) = simulation_thread.shutdown_and_join() {
-                tracing::error!(%error, "failed to join simulation thread during shutdown");
+                record_runtime_failure(&event_failures, error);
             }
             snapshot.rcu(|current| {
                 let mut next = (**current).clone();
@@ -1039,7 +1057,14 @@ fn main() -> Result<()> {
                 Ok(Some(reload)) => resource_reloads.push(reload),
                 Ok(None) => {}
                 Err(error) => {
-                    tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                    record_runtime_failure(
+                        &event_failures,
+                        RuntimeFailure::new(
+                            "render-effect apply",
+                            "Fatal simulation render-effect sequence gap",
+                            error,
+                        ),
+                    );
                     target.exit();
                     return;
                 }
@@ -1076,7 +1101,7 @@ fn main() -> Result<()> {
         }
         if let Some(result) = simulation_thread.poll_finished() {
             if let Err(error) = result {
-                tracing::error!(%error, "simulation thread failed");
+                record_runtime_failure(&event_failures, error);
             }
             target.exit();
             return;
@@ -1115,7 +1140,14 @@ fn main() -> Result<()> {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::Resized(size) => {
                     if let Err(error) = renderer.resize(size) {
-                        tracing::error!(%error, "failed to resize renderer resources");
+                        record_runtime_failure(
+                            &event_failures,
+                            RuntimeFailure::new(
+                                "renderer resize",
+                                "Failed to resize renderer resources",
+                                error,
+                            ),
+                        );
                         target.exit();
                         return;
                     }
@@ -1354,7 +1386,14 @@ fn main() -> Result<()> {
 
                     let profiler_render_started_at = Instant::now();
                     if let Err(err) = renderer.render(render_path) {
-                        tracing::error!(?err, "render failed");
+                        record_runtime_failure(
+                            &event_failures,
+                            RuntimeFailure::new(
+                                "renderer frame",
+                                "Renderer frame failed",
+                                format_args!("{err:#}"),
+                            ),
+                        );
                         target.exit();
                         return;
                     }
@@ -1644,9 +1683,26 @@ fn main() -> Result<()> {
             }
             _ => {}
         }
-    })?;
+    });
+    if let Err(error) = event_loop_result {
+        record_runtime_failure(
+            &fatal_failures,
+            RuntimeFailure::new("platform event loop", "Platform event loop failed", error),
+        );
+    }
+    if let Some(failures) = fatal_failures.borrow_mut().take() {
+        return Err(anyhow::Error::new(failures));
+    }
 
     Ok(())
+}
+
+fn record_runtime_failure(
+    failures: &Rc<RefCell<RuntimeFailureAccumulator>>,
+    failure: RuntimeFailure,
+) {
+    tracing::error!(%failure, "fatal runtime failure");
+    failures.borrow_mut().record(failure);
 }
 
 fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {

@@ -24,6 +24,7 @@ tarpaulin-report.html
 *.profdata
 
 # Logs and crash dumps
+/crash-reports/
 *.log
 *.pid
 *.dmp

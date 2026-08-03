@@ -72,6 +72,8 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) exit_after_screenshot: bool,
     #[arg(long, value_name = "PATH")]
+    pub(crate) crash_report_dir: Option<PathBuf>,
+    #[arg(long, value_name = "PATH")]
     pub(crate) code_of_conduct_store: Option<PathBuf>,
     #[arg(
         long,
@@ -1167,6 +1169,20 @@ mod tests {
         assert_eq!(
             args.player_skin_cache_dir,
             Some(PathBuf::from("/tmp/bbb-skins"))
+        );
+    }
+
+    #[test]
+    fn args_accept_explicit_crash_report_directory() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(defaults.crash_report_dir, None);
+
+        let configured =
+            Args::try_parse_from(["bbb-native", "--crash-report-dir", "/tmp/bbb-crash-reports"])
+                .unwrap();
+        assert_eq!(
+            configured.crash_report_dir,
+            Some(PathBuf::from("/tmp/bbb-crash-reports"))
         );
     }
 

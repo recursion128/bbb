@@ -13,11 +13,12 @@ use std::{
 };
 
 use super::{commands::SimulationMailbox, SimulationCore, SimulationStepResult};
+use crate::crash_report::RuntimeFailure;
 
 pub(crate) struct SimulationThread {
     outputs: Receiver<SimulationStepResult>,
     output_backlog: Arc<OutputBacklog>,
-    join: Option<JoinHandle<Result<(), String>>>,
+    join: Option<JoinHandle<Result<(), RuntimeFailure>>>,
     mailbox: SimulationMailbox,
 }
 
@@ -75,9 +76,10 @@ impl SimulationThread {
                 }));
                 match result {
                     Ok(result) => result,
-                    Err(payload) => Err(format!(
-                        "simulation thread panicked: {}",
-                        panic_payload(payload.as_ref())
+                    Err(payload) => Err(RuntimeFailure::new(
+                        "simulation thread",
+                        "Simulation thread panicked",
+                        panic_payload(payload.as_ref()),
                     )),
                 }
             })?;
@@ -98,7 +100,7 @@ impl SimulationThread {
     }
 
     /// Joins an already-finished worker without ever blocking the event loop.
-    pub(crate) fn poll_finished(&mut self) -> Option<Result<(), String>> {
+    pub(crate) fn poll_finished(&mut self) -> Option<Result<(), RuntimeFailure>> {
         let join = self.join.as_ref()?;
         if !join.is_finished() {
             return None;
@@ -108,7 +110,7 @@ impl SimulationThread {
 
     /// Requests the ordered simulation shutdown and joins before backend state
     /// is dropped by the event-loop owner.
-    pub(crate) fn shutdown_and_join(&mut self) -> Result<(), String> {
+    pub(crate) fn shutdown_and_join(&mut self) -> Result<(), RuntimeFailure> {
         let Some(join) = self.join.take() else {
             return Ok(());
         };
@@ -146,7 +148,7 @@ fn run_scheduled<T>(
     output_backlog: Arc<OutputBacklog>,
     render_wake: impl Fn(),
     mut step: impl FnMut(Instant, bool) -> ScheduledStep<T>,
-) -> Result<(), String> {
+) -> Result<(), RuntimeFailure> {
     let mut deadline = Instant::now();
     loop {
         // Capture before stepping so work published while this step is running
@@ -162,7 +164,11 @@ fn run_scheduled<T>(
             output_backlog.record_enqueue();
             if outputs.send(output).is_err() {
                 output_backlog.record_dequeue();
-                return Err("simulation output receiver closed".to_string());
+                return Err(RuntimeFailure::new(
+                    "simulation publication",
+                    "Simulation output receiver closed",
+                    "the render owner dropped its simulation output receiver",
+                ));
             }
             output_backlog.request_render_wake(&render_wake);
         }
@@ -243,11 +249,12 @@ impl OutputBacklog {
     }
 }
 
-fn join_result(join: JoinHandle<Result<(), String>>) -> Result<(), String> {
+fn join_result(join: JoinHandle<Result<(), RuntimeFailure>>) -> Result<(), RuntimeFailure> {
     join.join().unwrap_or_else(|payload| {
-        Err(format!(
-            "simulation join observed panic: {}",
-            panic_payload(payload.as_ref())
+        Err(RuntimeFailure::new(
+            "simulation join",
+            "Simulation join observed panic",
+            panic_payload(payload.as_ref()),
         ))
     })
 }
@@ -424,11 +431,17 @@ mod tests {
                     },
                 )
             }))
-            .map_err(|payload| panic_payload(payload.as_ref()).to_string())
+            .map_err(|payload| {
+                RuntimeFailure::new(
+                    "simulation thread",
+                    "Simulation thread panicked",
+                    panic_payload(payload.as_ref()),
+                )
+            })
             .and_then(|result| result)
         });
 
         let error = join_result(join).unwrap_err();
-        assert!(error.contains("fake simulation failure"));
+        assert!(error.to_string().contains("fake simulation failure"));
     }
 }
