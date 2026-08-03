@@ -78,10 +78,10 @@ METHOD_SURFACES = (
     MethodSurface("platform", "platform", "platform-window-lifecycle", "com/mojang/blaze3d/platform/Window.java"),
     MethodSurface("accessibility", "accessibility", "ui-accessibility-surface", "net/minecraft/client/GameNarrator.java"),
     MethodSurface("accessibility", "accessibility", "ui-accessibility-surface", "com/mojang/blaze3d/platform/ClipboardManager.java"),
-    MethodSurface("ui", "ui", "ui-multiplayer-screen-surface", "net/minecraft/client/gui/screens/ChatScreen.java"),
-    MethodSurface("ui", "ui", "ui-multiplayer-screen-surface", "net/minecraft/client/gui/screens/DeathScreen.java"),
-    MethodSurface("ui", "ui", "ui-multiplayer-screen-surface", "net/minecraft/client/gui/screens/DisconnectedScreen.java"),
-    MethodSurface("ui", "ui", "ui-multiplayer-screen-surface", "net/minecraft/client/gui/screens/PauseScreen.java"),
+    MethodSurface("ui", "ui", "ui-chat-screen-surface", "net/minecraft/client/gui/screens/ChatScreen.java"),
+    MethodSurface("ui", "ui", "ui-death-screen-surface", "net/minecraft/client/gui/screens/DeathScreen.java"),
+    MethodSurface("ui", "ui", "ui-disconnected-screen-surface", "net/minecraft/client/gui/screens/DisconnectedScreen.java"),
+    MethodSurface("ui", "ui", "ui-pause-screen-surface", "net/minecraft/client/gui/screens/PauseScreen.java"),
     MethodSurface("persistence", "persistence", "persistence-client-files", "net/minecraft/client/Options.java"),
     MethodSurface("persistence", "persistence", "persistence-client-files", "net/minecraft/client/multiplayer/ServerList.java"),
     MethodSurface("identity", "identity", "identity-skin-presentation", "net/minecraft/client/resources/SkinManager.java"),
@@ -162,7 +162,22 @@ MECHANISM_EVIDENCE = {
     "input-key-mapping": ("crates/bbb-native/src/input.rs",),
     "platform-window-lifecycle": ("crates/bbb-native/src/platform.rs",),
     "protocol-serverbound-call-sites": ("crates/bbb-net/src/event_stream.rs", "docs/packet-coverage-26.1.json"),
-    "ui-multiplayer-screen-surface": ("crates/bbb-native/src/runtime.rs",),
+    "ui-chat-screen-surface": (
+        "crates/bbb-native/src/input.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+    ),
+    "ui-death-screen-surface": (
+        "crates/bbb-native/src/input/death_screen.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+    ),
+    "ui-disconnected-screen-surface": (
+        "crates/bbb-native/src/network_runtime.rs",
+        "crates/bbb-native/src/runtime.rs",
+    ),
+    "ui-pause-screen-surface": (
+        "crates/bbb-native/src/input/pause_screen.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+    ),
     "ui-accessibility-surface": ("crates/bbb-native/src/narrator_runtime.rs",),
     "persistence-client-files": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": (

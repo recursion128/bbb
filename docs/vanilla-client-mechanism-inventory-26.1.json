@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "9ac28aac43916cad73f11c371d4c29861ab8f2c9921d74725624fea9d4cbf745"
+      "sha256": "920d00d21e8a2407c5c0756060375887a6aa31bc2dc81a714449dd910dc7c365"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -267,6 +267,27 @@
       ],
       "owner_count": 19
     },
+    "ui-chat-screen-surface": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs"
+      ],
+      "owner_count": 25
+    },
+    "ui-death-screen-surface": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/death_screen.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs"
+      ],
+      "owner_count": 16
+    },
+    "ui-disconnected-screen-surface": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/network_runtime.rs",
+        "crates/bbb-native/src/runtime.rs"
+      ],
+      "owner_count": 8
+    },
     "ui-font-manager": {
       "bbb_evidence": [
         "crates/bbb-item-model/src/font.rs"
@@ -279,11 +300,12 @@
       ],
       "owner_count": 25
     },
-    "ui-multiplayer-screen-surface": {
+    "ui-pause-screen-surface": {
       "bbb_evidence": [
-        "crates/bbb-native/src/runtime.rs"
+        "crates/bbb-native/src/input/pause_screen.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs"
       ],
-      "owner_count": 66
+      "owner_count": 17
     },
     "world-client-level-decisions": {
       "bbb_evidence": [
@@ -13680,7 +13702,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#ChatScreen(final String initial,final boolean isDraft)",
       "scope": "external-client",
       "source": {
@@ -13693,7 +13715,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#ChatScreen(final String initial,final boolean isDraft,final boolean closeOnSubmit)",
       "scope": "external-client",
       "source": {
@@ -13706,7 +13728,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#extractBackground(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -13719,7 +13741,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#extractRenderState(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -13732,7 +13754,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#formatChat(final String text,final int offset)",
       "scope": "external-client",
       "source": {
@@ -13745,7 +13767,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#handleChatInput(String msg,final boolean addToRecent)",
       "scope": "external-client",
       "source": {
@@ -13758,7 +13780,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#handleComponentClicked(final Style clicked,final boolean allowInsertions)",
       "scope": "external-client",
       "source": {
@@ -13771,7 +13793,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#init()",
       "scope": "external-client",
       "source": {
@@ -13784,7 +13806,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#insertText(final String text,final boolean replace)",
       "scope": "external-client",
       "source": {
@@ -13797,7 +13819,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#insertionClickMode()",
       "scope": "external-client",
       "source": {
@@ -13810,7 +13832,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#isAllowedInPortal()",
       "scope": "external-client",
       "source": {
@@ -13823,7 +13845,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#isPauseScreen()",
       "scope": "external-client",
       "source": {
@@ -13836,7 +13858,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#keyPressed(final KeyEvent event)",
       "scope": "external-client",
       "source": {
@@ -13849,7 +13871,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#mouseClicked(final MouseButtonEvent event,final boolean doubleClick)",
       "scope": "external-client",
       "source": {
@@ -13862,7 +13884,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#mouseScrolled(final double x,final double y,final double scrollX,double scrollY)",
       "scope": "external-client",
       "source": {
@@ -13875,7 +13897,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#moveInHistory(final int dir)",
       "scope": "external-client",
       "source": {
@@ -13888,7 +13910,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#normalizeChatMessage(final String message)",
       "scope": "external-client",
       "source": {
@@ -13901,7 +13923,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#onClose()",
       "scope": "external-client",
       "source": {
@@ -13914,7 +13936,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#onEdited(final String value)",
       "scope": "external-client",
       "source": {
@@ -13927,7 +13949,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#removed()",
       "scope": "external-client",
       "source": {
@@ -13940,7 +13962,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#resize(final int width,final int height)",
       "scope": "external-client",
       "source": {
@@ -13953,7 +13975,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#setInitialFocus()",
       "scope": "external-client",
       "source": {
@@ -13966,7 +13988,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#shouldDiscardDraft()",
       "scope": "external-client",
       "source": {
@@ -13979,7 +14001,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen#updateNarrationState(final NarrationElementOutput output)",
       "scope": "external-client",
       "source": {
@@ -13992,7 +14014,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-chat-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.ChatScreen.ChatConstructor#create(String initial,boolean isDraft)",
       "scope": "external-client",
       "source": {
@@ -14005,7 +14027,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#DeathScreen(final @Nullable Component causeOfDeath,final boolean hardcore,final LocalPlayer player)",
       "scope": "external-client",
       "source": {
@@ -14018,7 +14040,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#exitToTitleScreen()",
       "scope": "external-client",
       "source": {
@@ -14031,7 +14053,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#extractBackground(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -14044,7 +14066,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#extractDeathBackground(final GuiGraphicsExtractor graphics,final int width,final int height)",
       "scope": "external-client",
       "source": {
@@ -14057,7 +14079,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#extractRenderState(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -14070,7 +14092,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#handleExitToTitleScreen()",
       "scope": "external-client",
       "source": {
@@ -14083,7 +14105,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#init()",
       "scope": "external-client",
       "source": {
@@ -14096,7 +14118,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#isAllowedInPortal()",
       "scope": "external-client",
       "source": {
@@ -14109,7 +14131,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#isPauseScreen()",
       "scope": "external-client",
       "source": {
@@ -14122,7 +14144,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#mouseClicked(final MouseButtonEvent event,final boolean doubleClick)",
       "scope": "external-client",
       "source": {
@@ -14135,7 +14157,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#setButtonsActive(final boolean isActive)",
       "scope": "external-client",
       "source": {
@@ -14148,7 +14170,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#shouldCloseOnEsc()",
       "scope": "external-client",
       "source": {
@@ -14161,7 +14183,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#tick()",
       "scope": "external-client",
       "source": {
@@ -14174,7 +14196,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen#visitText(final ActiveTextCollector output)",
       "scope": "external-client",
       "source": {
@@ -14187,7 +14209,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen#TitleConfirmScreen(final BooleanConsumer callback,final Component title,final Component message,final Component yesButton,final Component noButton)",
       "scope": "external-client",
       "source": {
@@ -14200,7 +14222,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-death-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen#extractBackground(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -14213,7 +14235,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#DisconnectedScreen(final Screen parent,final Component title,final Component reason)",
       "scope": "external-client",
       "source": {
@@ -14226,7 +14248,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#DisconnectedScreen(final Screen parent,final Component title,final Component reason,final Component buttonText)",
       "scope": "external-client",
       "source": {
@@ -14239,7 +14261,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#DisconnectedScreen(final Screen parent,final Component title,final DisconnectionDetails details)",
       "scope": "external-client",
       "source": {
@@ -14252,7 +14274,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#DisconnectedScreen(final Screen parent,final Component title,final DisconnectionDetails details,final Component buttonText)",
       "scope": "external-client",
       "source": {
@@ -14265,7 +14287,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#getNarrationMessage()",
       "scope": "external-client",
       "source": {
@@ -14278,7 +14300,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#init()",
       "scope": "external-client",
       "source": {
@@ -14291,7 +14313,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#repositionElements()",
       "scope": "external-client",
       "source": {
@@ -14304,7 +14326,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-disconnected-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.DisconnectedScreen#shouldCloseOnEsc()",
       "scope": "external-client",
       "source": {
@@ -14317,7 +14339,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#PauseScreen(final boolean showPauseMenu)",
       "scope": "external-client",
       "source": {
@@ -14330,7 +14352,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#addFeedbackButtons(final Screen screen,final GridLayout.RowHelper helper)",
       "scope": "external-client",
       "source": {
@@ -14343,7 +14365,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#addFeedbackSubscreenAndCustomDialogButtons(final Minecraft minecraft,final Holder <Dialog> dialog,final GridLayout.RowHelper helper)",
       "scope": "external-client",
       "source": {
@@ -14356,7 +14378,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#createPauseMenu()",
       "scope": "external-client",
       "source": {
@@ -14369,7 +14391,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#extractBackground(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -14382,7 +14404,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#extractRenderState(final GuiGraphicsExtractor graphics,final int mouseX,final int mouseY,final float a)",
       "scope": "external-client",
       "source": {
@@ -14395,7 +14417,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#getCustomAdditions()",
       "scope": "external-client",
       "source": {
@@ -14408,7 +14430,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#init()",
       "scope": "external-client",
       "source": {
@@ -14421,7 +14443,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#openLinkButton(final Screen screen,final Component message,final URI link)",
       "scope": "external-client",
       "source": {
@@ -14434,7 +14456,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#openScreenButton(final Component message,final Supplier <Screen> newScreen)",
       "scope": "external-client",
       "source": {
@@ -14447,7 +14469,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#rendersNowPlayingToast()",
       "scope": "external-client",
       "source": {
@@ -14460,7 +14482,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#showsPauseMenu()",
       "scope": "external-client",
       "source": {
@@ -14473,7 +14495,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen#tick()",
       "scope": "external-client",
       "source": {
@@ -14486,7 +14508,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "constructor",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen.FeedbackSubScreen#FeedbackSubScreen(final Screen parent)",
       "scope": "external-client",
       "source": {
@@ -14499,7 +14521,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen.FeedbackSubScreen#init()",
       "scope": "external-client",
       "source": {
@@ -14512,7 +14534,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen.FeedbackSubScreen#onClose()",
       "scope": "external-client",
       "source": {
@@ -14525,7 +14547,7 @@
       "category": "ui",
       "domain": "ui",
       "kind": "method",
-      "mechanism_id": "ui-multiplayer-screen-surface",
+      "mechanism_id": "ui-pause-screen-surface",
       "owner_id": "method:net.minecraft.client.gui.screens.PauseScreen.FeedbackSubScreen#repositionElements()",
       "scope": "external-client",
       "source": {

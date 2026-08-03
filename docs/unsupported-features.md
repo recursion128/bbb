@@ -99,19 +99,29 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   exact no-surface classifications. Split only by semantic owner and preserve
   the single frame-extract/submission path.
 
-## Multiplayer menu and screen surface closure
+## Multiplayer screen surface closure
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
-Matrix routes: `ui-menu-screen-registration`, `ui-multiplayer-screen-surface`
+Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
+`ui-disconnected-screen-surface`, `ui-pause-screen-surface`
 
-- **The remaining external-session screen lifecycle is `active`.** Chat, death,
-  disconnect and pause each have separate state/input/render/fallback decisions;
-  first split the generated broad route into stable Chat/Death/Disconnected/Pause
-  mechanisms with exact 25/16/8/17 owner counts, then require precise
-  reachable-surface evidence rather than inferring completion from the menu
-  registration catalog. The inventory-only split changes no production behavior;
-  its full-gated safe stop precedes the first screen implementation slice.
+- **The 25-owner `ChatScreen` decision surface is `active`.** Audit edit,
+  history/draft, suggestions/restrictions, component clicks, send, narration,
+  render and close/interrupt lifecycle against the existing native input and
+  render projection; close only with decision-level focused evidence.
+- **The 16-owner `DeathScreen` decision surface is `active`.** Audit delay,
+  respawn, hardcore/quit, clickable cause, link confirmation, narration and
+  render lifecycle against the existing death-screen owner; close only with
+  decision-level and pixel evidence.
+- **The 8-owner `DisconnectedScreen` surface is `active`.** Remote disconnect
+  currently terminates the process instead of presenting the Vanilla title,
+  bounded reason/details, back action, narration and non-Esc screen lifecycle.
+  Implement that vertical path without adding title/singleplayer UI.
+- **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
+  multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
+  render and close lifecycle against the existing pause-screen owner; classify
+  singleplayer-only branches precisely rather than implementing them.
 
 ## Native input, accessibility and window lifecycle closure
 

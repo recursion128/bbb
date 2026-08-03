@@ -82,6 +82,8 @@
   count/retained-byte 分区、背压与 terminal close，control 拒绝及 generation diagnostics 可观测。
 - **2026-08-03（MenuScreens registration closure）**：25 项 menu-type→screen-kind 映射改由
   Tree-sitter catalog 唯一生成，并逐项贯通 world、layout/input、render 与 close lifecycle。
+- **2026-08-03（reachable screen inventory split）**：将混合的 66-owner 屏幕面
+  拆为 Chat 25、Death 16、Disconnected 8 与 Pause 17 四条独立机制 route。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

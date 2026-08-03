@@ -50,7 +50,10 @@
 | `rendering-fluid-mesh` | rendering | `FluidRenderer` | terrain fluid mesh | neighbor/overlay/tint/light | `equivalent` | [fluid 机制页](../mechanisms/rendering/fluid-rendering.md) | fluid ROI/renderer 变化时重开 |
 | `rendering-camera-fluid-fog` | rendering | `Camera.getFluidInCamera`、fog environment | native camera/fog | None/Water/Lava + effects | `equivalent` | `crates/bbb-native/src/camera_pose.rs` | camera/fog owner 变化时重开 |
 | `ui-menu-screen-registration` | ui/menu | 25 `MenuScreens.register` mappings | native screen/menu presentation | menu type→screen、state/action lifecycle | `equivalent` | `crates/bbb-native/src/input/inventory/menu_screens_26_1.rs`、`crates/bbb-native/src/runtime/tests.rs`、`crates/bbb-world/src/client/inventory/tests.rs` | `MenuScreens`/`MenuType` 注册或 native screen lifecycle 变化时重开 |
-| `ui-multiplayer-screen-surface` | ui | chat/death/disconnect/pause and reachable screens | native/render-types/renderer/input | screen state/render/input/lifecycle | `partial` | `crates/bbb-native/src/runtime.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `ui-chat-screen-surface` | ui | `ChatScreen` 25 owners | native input/render extract/renderer | edit、history、suggestion、send、render、lifecycle | `partial` | `crates/bbb-native/src/input.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `ui-death-screen-surface` | ui | `DeathScreen` 16 owners | native death input/render extract/renderer | delay、respawn、quit/link confirmation、render | `partial` | `crates/bbb-native/src/input/death_screen.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `ui-disconnected-screen-surface` | ui | `DisconnectedScreen` 8 owners | native network/runtime | reason/details、buttons、narration、non-Esc lifecycle | `missing` | `crates/bbb-native/src/network_runtime.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `ui-pause-screen-surface` | ui | `PauseScreen` 17 owners | native pause input/render extract/renderer | menu/dialog/link/disconnect、render、lifecycle | `partial` | `crates/bbb-native/src/input/pause_screen.rs`、generated inventory | [ledger](../../unsupported-features.md) |
 | `ui-bidirectional-shaping` | ui/text | language/font shaping pipeline | native text layout | bidi runs、shaped glyph order | `equivalent` | `crates/bbb-native/src/component_text.rs` | shaping owner 变化时重开 |
 | `ui-accessibility-surface` | accessibility | `GameNarrator`、clipboard/IME boundary | native narrator/platform/input | narrator、clipboard、IME/accessibility lifecycle | `partial` | `crates/bbb-native/src/narrator_runtime.rs`、generated inventory | [ledger](../../unsupported-features.md) |
 | `ui-local-time-icu` | ui/text | ICU `SimpleDateFormat` | local-time item property | locale/calendar/timezone data | `deferred-external` | [ledger](../../unsupported-features.md) | [ledger](../../unsupported-features.md) |
@@ -88,7 +91,7 @@
 
 ## 审计摘要
 
-生成 inventory 将 2,927 个 owner 映射到 44 个 source-derived mechanism；矩阵另保留
+生成 inventory 将 2,927 个 owner 映射到 48 个 source-derived mechanism；矩阵另保留
 资源、渲染、性能和范围排除的长期机制行。`equivalent` 只用于已有 generated coverage、
 决策级 focused evidence 或真实 acceptance 的行；本次无法证明整条 consumer path 的旧 broad
 行已拆分并降为 `partial`/`unverified`，其实现工作只由账本排程。

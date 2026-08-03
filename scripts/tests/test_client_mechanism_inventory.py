@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -73,6 +74,42 @@ public class Owner {
             inventory.MECHANISM_EVIDENCE[skins.mechanism_id],
             ("crates/bbb-item-model/src/skin_runtime.rs",),
         )
+
+    def test_multiplayer_screen_surfaces_are_homogeneous_and_exact(self) -> None:
+        expected_by_source = {
+            "net/minecraft/client/gui/screens/ChatScreen.java": (
+                "ui-chat-screen-surface",
+                25,
+            ),
+            "net/minecraft/client/gui/screens/DeathScreen.java": (
+                "ui-death-screen-surface",
+                16,
+            ),
+            "net/minecraft/client/gui/screens/DisconnectedScreen.java": (
+                "ui-disconnected-screen-surface",
+                8,
+            ),
+            "net/minecraft/client/gui/screens/PauseScreen.java": (
+                "ui-pause-screen-surface",
+                17,
+            ),
+        }
+        surfaces = {
+            surface.source_path: surface
+            for surface in inventory.METHOD_SURFACES
+            if surface.source_path in expected_by_source
+        }
+        self.assertEqual(set(surfaces), set(expected_by_source))
+        self.assertNotIn("ui-multiplayer-screen-surface", inventory.MECHANISM_EVIDENCE)
+
+        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        for source_path, (mechanism_id, owner_count) in expected_by_source.items():
+            self.assertEqual(surfaces[source_path].mechanism_id, mechanism_id)
+            self.assertEqual(value["mechanisms"][mechanism_id]["owner_count"], owner_count)
+            self.assertIn(mechanism_id, inventory.MECHANISM_EVIDENCE)
+
+        self.assertNotIn("ui-multiplayer-screen-surface", value["mechanisms"])
 
     def test_registration_surface_ignores_comments_and_string_literals(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
