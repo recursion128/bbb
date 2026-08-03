@@ -281,6 +281,37 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
+### 当前 active 工程合同：selected GLSL stage compilation 收敛
+
+单一目标：在不改变 shader source、define、pipeline state 或资源行为的前提下，把
+17 个 selected pipeline family 中 15 份 vertex/fragment module pair 编译实现收敛为
+`bbb-renderer::core_shaders::compile_selected_shader_stages` 一个 crate-private owner。
+
+- Vanilla owner：`ShaderManager.apply` 按 `RenderPipelines.getStaticPipelines()` 预编译；
+  `GlDevice.compileProgram` 固定 vertex→fragment→link，任一 invalid stage 使 required
+  pipeline generation 失败。BBB 保持同一 stage 顺序与整代失败语义。
+- owner/API/direction：各 family 继续拥有 adapter、define 与独立 pipeline descriptor，
+  只把 `(device, label, &vertex_source, &fragment_source) -> Result<(module,module)>`
+  投影给 `core_shaders`；该 helper 继续调用 renderer 内唯一 GLSL parser/validator，
+  不暴露到 crate 外，不引入 pack/native/world 依赖。
+- lifecycle：只在 `CorePipelineGeneration::prepare` 编译；全部成功后仍由既有单一
+  `swap_with_renderer` commit。任一 stage/pipeline 或后续 owner 失败仍走既有 rollback，
+  保留上一 generation；不新增 cache、shadow generation 或 compatibility path。
+- 删除目标：8 个 core specialized 与 terrain/particle/sky/lightmap/item/cloud 的 14 份
+  direct pair、旧 `compile_selected_shader_pair` 及其 3 个调用点；最终 pair compiler
+  owner 15→1，30 个 direct stage call 只在新 helper 中保留 2 个。
+- 非目标：不统一 render-pipeline state/layout/blend/depth/cull，不改 GLSL adapter、
+  selected/default precedence、pack filter、label 之外的诊断、GPU handle lifetime 或画面。
+- 阶段：A 只读审计并修正 17-family inventory；B 建唯一 helper、迁移全部 production
+  caller、删除旧路径；C 增加全 crate reverse source guard 与错误/rollback/pixel focused
+  tests；D 更新 canonical Wiki/ledger/matrix，完整 diff review、提交并 full gate。
+- focused tests：`bbb-renderer` 的 `core_shaders::tests`、`resource_reload::tests`、新唯一
+  compiler source guard，以及完整 `bbb-renderer` tests；既有 selected shader pixel、
+  filter、malformed-generation rollback acceptance 不得回退。
+- checkpoint/停止：GPU prepare 架构变更提交后立即 full gate，最终 HEAD 再 full gate；
+  仅可在干净、已 gated、合同仍 active 且旧路径未部分发布的 commit 安全停止。只有
+  BBB 无法消除且已复现的外部 adapter/device 条件可作 blocker。
+
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
 同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
