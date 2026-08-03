@@ -49,6 +49,15 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   close, recovery, backend shutdown, task handoff, and stale-session branch.
   Split them into homogeneous lifecycle decisions and require deterministic
   failure/recovery acceptance in addition to the happy live path.
+- **The simulation command mailbox needs a hard retained budget.**
+  `bbb-native::simulation::commands::SimulationMailbox` only begins tail
+  coalescing after a soft threshold; discrete control/window commands still append
+  without a count/byte ceiling. Add explicit producer-class limits and retained-byte
+  diagnostics without silently dropping key/button release, shutdown or ordered
+  interaction commands; prove exact-limit/overflow, wake/barrier order, stale-session
+  rejection and lifecycle soak. Goal route: `p4-delivery`; Vanilla owners are
+  `Minecraft.runTick` event/task draining and `KeyboardHandler`/`MouseHandler` input.
+
 ## Architecture drift candidates
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
@@ -67,21 +76,22 @@ Matrix routes: `lifecycle-client-runtime`, `rendering-entity-layer-registration`
   - Direction: control transport → one required sink handle → native simulation mailbox;
     control must not retain a second command state owner.
   - Lifetime: one client process and simulation mailbox; construction freezes the sink,
-    submission is FIFO/bounded, and shutdown rejects later commands.
-  - Ordering/fallback/rollback: preserve request order, queue budgets, submit counters and
-    explicit rejection; remove the before/after-install compatibility fallback.
+    submission uses one global sequence, and shutdown remains an ordered command.
+  - Ordering/fallback/rollback: preserve producer FIFO, barrier drain, soft-threshold tail
+    coalescing, pending-depth counters and lossless discrete commands; remove only the
+    before/after-install compatibility fallback. Hard retained budgets remain a separate gap.
   - Public API: narrow `SharedControlRequests` to a constructed sink handle and remove
     public `ControlRequests`, `lock`, default construction and sink installation.
   - Delete: compatibility queues, transition branch, compatibility exports and test
     callers that directly inspect mutable request storage.
   - Evidence: `crates/bbb-control/src/types/snapshot.rs` and
-    `crates/bbb-native/src/runtime/control_requests.rs` focused FIFO/budget/shutdown tests
+    `crates/bbb-native/src/runtime/control_requests.rs` focused FIFO/barrier/shutdown tests
     plus a zero-old-symbol reverse guard.
   - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion high, API
     narrowing high and focused verification high; rank 1/4.
   - Goal route: `architecture-convergence`; `lifecycle-client-runtime`.
   - Reopen condition: reopen only if a non-native production runtime requires a distinct
-    mailbox with an explicit constructor and identical bounded semantics.
+    mailbox with an explicit constructor and identical ordered semantics.
 - **`arch-hud-item-resident-projection` is `active`.**
   - Semantic mechanism: resolved HUD item-model CPU projection and renderer submission.
   - Canonical input: one resolved Vanilla item stack display state with ordered layers,

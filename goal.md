@@ -422,26 +422,26 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。唯一 active 工程合同是 `arch-post-effect-id-owner`：不改变画面或
-pack 行为，把六个 Vanilla 26.1 built-in post-chain identity 的 admission 和 dispatch
-收敛到一个 renderer-private typed owner。
+状态：`active`。唯一 active 工程合同是 `arch-control-mailbox-single-path`：不改变
+control command 行为，删除兼容 mutex queue 与 sink 后装边界，使 simulation mailbox 成为
+唯一 production 写入 owner。
 
-- 权威 owner 是 `GameRenderer.checkEntityPostEffect/processBlurEffect/render`、
-  `LevelRenderer.getTransparencyChain/renderLevel` 与 `ShaderManager.getPostChain`；输入是
-  selected resource generation 的 graph IDs，priority/filter/fallback 保持现状。
-- dependency 固定为 pack CPU projection → typed post-effect ID → graph runtime/frame
-  consumer；camera/outline/transparency/blur 不再自行匹配 resource 字符串。公开边界不扩大。
-- prepare 编译完整 catalog，六个 required graph 全部存在才可 commit；resize/reload
-  失败继续保留上一 generation。执行顺序保持 outline → camera effect → GUI blur，且
-  world transparency 仍在 clouds/weather 后按原 graph 路径合成。
-- 删除 `REQUIRED_GRAPH_IDS`、`contains_camera_graph`、camera fallback enum 的 ID resolver
-  及 render raw-ID 调用；不改 graph codec、shader、target、renderer pass 或 pack 语义。
-- 阶段：typed owner/单次解析→迁移全部 production caller→删除旧 resolver→reverse
-  guard/Wiki/ledger 收口。focused tests 覆盖六 ID、camera 三分支、selected generation
-  admission、失败 rollback、outline/transparency/blur pass order 与旧调用点为零。
-- 每阶段过 renderer focused tests、docs lint、fmt、diff check 和 workspace check；最终
-  正常提交并 full gate。安全停止点仅是可构建且旧路径已全删的干净 checkpoint；只有
-  可复现的外部 GPU/backend 无法执行既有 offscreen acceptance 才算 blocker。
+- canonical input 是一个 `ControlWriteRequest`；公开集成固定为
+  `SharedControlRequests::new(Arc<dyn ControlRequestSink>)` 与
+  `ControlState::new(version, requests)`，control → native 单向依赖，sink 构造后不可替换。
+- native `SimulationMailbox` 继续在同一 mutex 内分配全局 sequence；保持 producer FIFO、
+  barrier drain、软阈值 tail coalescing、pending-depth 返回和离散命令不静默丢失。
+  当前缺少硬 retained budget 是独立 parity gap，本纯架构 slice 不改变它。
+- simulation apply 直接把单个 code-of-conduct/net/input request 交给现有 handler，不再构造
+  临时 `SharedControlRequests` shadow queue。shutdown 与 screenshot 保持同一 ordered command。
+- 删除 public `ControlRequests`、`Default/lock/install_sink`、compatibility state/export 和全部
+  production 旧调用；测试改用 test-local recording sink/queue，不向公共 API 泄漏测试结构。
+- 阶段：冻结 constructor→迁移 control/native tests→直连 simulation handler→删除旧路径→
+  reverse guard/Wiki/ledger 收口。focused tests 覆盖五类 submit、全局 FIFO/barrier/coalescing、
+  handler 决策等价、shutdown、pending depth 与旧符号/production caller 为零。
+- 受影响 control/native focused tests、docs lint、fmt、diff check、workspace check 后正常提交；
+  最终 full gate 并刷新 live playable。安全停止点仅为旧 production 路径已删、测试可构建的
+  干净 checkpoint；只有现有 Wayland/server runner 可复现失败且代码无法消除才算 blocker。
 
 ### P1：可玩 Session 端到端门禁
 
