@@ -104,7 +104,7 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
-`ui-disconnected-screen-surface`, `ui-pause-screen-surface`
+`ui-pause-screen-surface`
 
 - **The 25-owner `ChatScreen` decision surface is `active`.** Audit edit,
   history/draft, suggestions/restrictions, component clicks, send, narration,
@@ -114,15 +114,6 @@ Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
   respawn, hardcore/quit, clickable cause, link confirmation, narration and
   render lifecycle against the existing death-screen owner; close only with
   decision-level and pixel evidence.
-- **The 8-owner `DisconnectedScreen` surface is `active`.** Remote disconnect
-  currently terminates the process instead of presenting the Vanilla title,
-  bounded reason/details, back action, narration and non-Esc screen lifecycle.
-  The active contract is `goal.md` “远端断线状态页 vertical path”: `bbb-net`
-  owns the typed terminal outcome, `ClientInputState` owns the generation-tagged
-  screen and renderer/control receive immutable projections. Close only after
-  remote-once/local-zero FIFO, atomic session teardown, styled/bounded details,
-  stale-hit rejection, narration/pixel evidence and fixture/live kick acceptance;
-  do not add title/singleplayer UI.
 - **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
   multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
   render and close lifecycle against the existing pause-screen owner; classify
@@ -414,12 +405,12 @@ Matrix routes: `resources-indexed-panorama`, `resources-indexed-built-in-packs`,
 
 - **Indexed title panorama assets are `active`.** Vanilla 26.1 `GuiRenderer` owns a
   `CubeMap("textures/gui/title/background/panorama")` and `Panorama` owns the
-  overlay. The now-active `DisconnectedScreen` is a non-in-game `Screen`, so
+  overlay. The reachable `DisconnectedScreen` is a non-in-game `Screen`, so
   `Screen.extractBackground` makes this seven-PNG family a reachable consumer
   before blur and `menu_background.png`; the unified provider already exposes
   the objects, but no renderer consumer exists. Implement it as a separate
-  resource/presentation slice after the disconnected-screen vertical path,
-  preserving lazy generation rollback and without adding a title screen.
+  resource/presentation slice, preserving lazy generation rollback and without
+  adding a title screen.
 - **Title splash reload listener.** Vanilla `SplashManager.prepare` reads
   `minecraft:texts/splashes.txt`, but its only consumer is
   `TitleScreen.init` calling `Minecraft.getSplashManager().getSplash()`.
