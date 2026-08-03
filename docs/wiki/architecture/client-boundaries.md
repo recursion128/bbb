@@ -181,6 +181,13 @@ pack 不再导出 piston profile、source-expression resolver 或 `PackRoots` lo
 但一帧 renderer input 必须引用同一 resource generation。断线先停止新 packet 应用，
 再清理 world/backend；control 只能看到最后一个明确标记状态的 snapshot。
 
+机械 owner inventory 不再把 `Minecraft.java` 的 187 个方法当成一个 lifecycle 判断：共享
+Tree-sitter frontend 将 9 个 run/tick/terminal owner、12 个 session replacement owner、3 个 task
+handoff owner 和 10 个 resource recovery owner分别路由，其余决策进入既有 input/render/security/
+diagnostics 或 source-backed 范围外机制。仅“单条 return 且表达式为 field、parameter 或 constant”
+的 64 个 owner 可标记 `support-non-decision`；出现调用、分支、分配、写入或新方法时 checked output
+立即失败，不能借 accessor 分类隐藏新机制。
+
 ### 远端断线状态页边界
 
 `bbb-net::DisconnectReason` 是远端 packet/transport terminal outcome 的唯一 bounded

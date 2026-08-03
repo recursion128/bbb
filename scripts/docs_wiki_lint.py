@@ -452,6 +452,7 @@ class WikiLint:
         owner_mechanisms: Counter[str] = Counter()
         owner_categories: Counter[str] = Counter()
         owner_domains: Counter[str] = Counter()
+        owner_roles: Counter[str] = Counter()
         declared_sources: set[str] = set()
         for item in source_files:
             if not isinstance(item, dict):
@@ -482,6 +483,7 @@ class WikiLint:
             category = item.get("category")
             domain = item.get("domain")
             scope = item.get("scope")
+            role = item.get("role")
             vanilla_owner = item.get("vanilla_owner")
             if not isinstance(owner_id, str) or not owner_id:
                 self.fail(f"client mechanism inventory owner lacks a stable id: {item!r}")
@@ -497,6 +499,30 @@ class WikiLint:
                 owner_domains[domain] += 1
             if scope not in {"external-client", "out-of-scope"}:
                 self.fail(f"invalid scope for Vanilla owner {owner_id}: {scope!r}")
+            if role is not None and role not in {
+                "decision",
+                "out-of-scope",
+                "support-non-decision",
+            }:
+                self.fail(f"invalid role for Vanilla owner {owner_id}: {role!r}")
+            elif isinstance(role, str):
+                owner_roles[role] += 1
+            if role == "decision" and scope != "external-client":
+                self.fail(f"decision owner {owner_id} is not external-client scoped")
+            if role == "out-of-scope" and scope != "out-of-scope":
+                self.fail(f"out-of-scope owner {owner_id} has an external scope")
+            if role == "support-non-decision" and (
+                scope != "out-of-scope"
+                or mechanism_id != "scope-support-accessors"
+            ):
+                self.fail(f"support owner {owner_id} has a decision mechanism or scope")
+            if (
+                isinstance(source, dict)
+                and source.get("path") == "net/minecraft/client/Minecraft.java"
+                and item.get("kind") in {"method", "constructor"}
+                and role is None
+            ):
+                self.fail(f"Minecraft method owner lacks a decision/support role: {owner_id}")
             if not isinstance(vanilla_owner, str) or not vanilla_owner:
                 self.fail(f"Vanilla owner {owner_id} lacks a source-derived owner label")
             if (
@@ -528,20 +554,35 @@ class WikiLint:
                 self.fail(f"inventory mechanism {mechanism_id} lacks BBB evidence")
                 continue
             for evidence_path in evidence:
+                evidence_file = ""
+                evidence_symbol = ""
+                if isinstance(evidence_path, str):
+                    evidence_file, separator, evidence_symbol = evidence_path.partition("#")
                 if (
                     not isinstance(evidence_path, str)
-                    or Path(evidence_path).is_absolute()
-                    or ".." in Path(evidence_path).parts
-                    or not (self.repo / evidence_path.split("#", 1)[0]).exists()
+                    or Path(evidence_file).is_absolute()
+                    or ".." in Path(evidence_file).parts
+                    or not (self.repo / evidence_file).exists()
                 ):
                     self.fail(
                         f"stale BBB evidence path for inventory mechanism "
+                        f"{mechanism_id}: {evidence_path!r}"
+                    )
+                    continue
+                if separator and (
+                    not evidence_symbol
+                    or evidence_symbol
+                    not in (self.repo / evidence_file).read_text(encoding="utf-8")
+                ):
+                    self.fail(
+                        f"stale BBB evidence symbol for inventory mechanism "
                         f"{mechanism_id}: {evidence_path!r}"
                     )
 
         expected_summary = {
             "by_category": dict(sorted(owner_categories.items())),
             "by_domain": dict(sorted(owner_domains.items())),
+            "by_role": dict(sorted(owner_roles.items())),
             "mapped_owner_count": len(owner_ids),
             "owner_count": len(owner_ids),
             "unmapped_owner_count": 0,

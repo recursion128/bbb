@@ -187,6 +187,7 @@ Matrix routes: `fixture-not-needed`
                     "summary": {
                         "by_category": {"fixture": 1},
                         "by_domain": {"fixture": 1},
+                        "by_role": {},
                         "mapped_owner_count": 1,
                         "owner_count": 1,
                         "unmapped_owner_count": 0,
@@ -604,6 +605,18 @@ Matrix route: `fixture-valid`
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("duplicate Vanilla owner ids", result.stdout)
 
+    def test_invalid_inventory_owner_role_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["owners"][0]["role"] = "looks-covered"
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("invalid role for Vanilla owner", result.stdout)
+
     def test_stale_inventory_generator_input_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
@@ -637,6 +650,20 @@ Matrix route: `fixture-valid`
 
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("stale BBB evidence path", result.stdout)
+
+    def test_stale_bbb_evidence_symbol_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["mechanisms"]["fixture-valid"]["bbb_evidence"] = [
+                "docs/wiki/glossary.md#missing_fixture_symbol"
+            ]
+            path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("stale BBB evidence symbol", result.stdout)
 
     def test_ledger_route_to_unknown_matrix_id_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

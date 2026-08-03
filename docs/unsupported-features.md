@@ -41,16 +41,15 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: `bbb-native` + `bbb-control`
 
-Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
+Matrix routes: `lifecycle-client-runtime`, `lifecycle-session-replacement`,
+`lifecycle-client-task-handoff`, `resources-reload-recovery`,
+`diagnostics-crash-runtime`
 
-- **`lifecycle-external-session-runtime-26-1` is `active`.** The live gate
-  proves the happy login-to-disconnect path, but the 187 source-derived
-  `Minecraft` owners are not yet backed by decision-level evidence for every
-  close, recovery, backend shutdown, task handoff, and stale-session branch.
-  Split all owners into homogeneous lifecycle decisions, existing mechanism
-  routes, accessor-only non-decisions or source-backed out-of-scope rows; then
-  require deterministic failure/recovery and stale-generation acceptance in
-  addition to the happy live path. Goal route:
+- **`lifecycle-external-session-runtime-26-1` is `active`.** The happy live gate
+  does not close the remaining 9 run/tick/terminal, 12 session-replacement,
+  3 task-handoff and 10 resource-recovery decisions. Each group still needs
+  exact BBB symbol/test evidence plus deterministic disconnect, join failure,
+  recovery rollback and stale-generation acceptance. Goal route:
   `lifecycle-external-session-runtime-26-1` under `p4-delivery`.
 
 ## Architecture drift candidates
@@ -114,12 +113,16 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
 Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
-`ui-pause-screen-surface`
+`ui-pause-screen-surface`, `ui-screen-lifecycle`
 
 - **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
   multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
   render and close lifecycle against the existing pause-screen owner; classify
   singleplayer-only branches precisely rather than implementing them.
+- **Generic multiplayer screen replacement is `active`.** The three
+  `Minecraft.setScreen/setOverlay/canInterruptScreen` owners require one
+  generation-aware replace/remove/init path, overlay priority and teardown
+  interruption evidence across the existing external-session screens.
 
 ## Native input, accessibility and window lifecycle closure
 
@@ -389,6 +392,16 @@ Matrix routes: `scope-telemetry-upload`, `protocol-framing-no-world-state`
   consumed by `PacketBundlePacker` / `BundlerInfo` as connection framing before
   listener dispatch; it has no payload, listener handler, or canonical world
   mutation.
+
+## Source inventory support owners
+
+Matrix route: `scope-support-accessors`
+
+- **Direct `Minecraft` accessors are not independent mechanisms.** The shared
+  Tree-sitter inventory classifies only single-return field, parameter or
+  constant bodies as `support-non-decision`; every branch, allocation, call or
+  mutation must have an explicit mechanism route. Reopen when the CST body of
+  any of the 64 classified owners gains a decision or side effect.
 
 ## Target-version item-model surface
 

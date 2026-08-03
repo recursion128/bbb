@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -75,11 +76,75 @@ public class Owner {
             ("crates/bbb-item-model/src/skin_runtime.rs",),
         )
 
+    def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
+        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] == "net/minecraft/client/Minecraft.java"
+            and owner["kind"] in {"method", "constructor"}
+        ]
+        by_mechanism = Counter(owner["mechanism_id"] for owner in methods)
+
+        self.assertEqual(len(methods), 187)
+        self.assertEqual(by_mechanism["lifecycle-client-runtime"], 9)
+        self.assertEqual(by_mechanism["lifecycle-session-replacement"], 12)
+        self.assertEqual(by_mechanism["lifecycle-client-task-handoff"], 3)
+        self.assertEqual(by_mechanism["scope-support-accessors"], 64)
+        self.assertTrue(all(owner.get("role") for owner in methods))
+        self.assertTrue(
+            all(
+                owner["role"] == "support-non-decision"
+                for owner in methods
+                if owner["mechanism_id"] == "scope-support-accessors"
+            )
+        )
+
+    def test_direct_field_return_is_a_support_accessor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/Minecraft.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client; class Minecraft { int getValue() { return this.value; } }",
+            )
+            source = inventory.InventoryBuilder(root).source(relative)
+            method = source.methods[0]
+
+        self.assertTrue(
+            inventory.InventoryBuilder.is_direct_support_accessor(source, method)
+        )
+
+    def test_unclassified_minecraft_decision_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/Minecraft.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client; class Minecraft { int decide() { return ready ? 1 : 0; } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks a decision/support route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "lifecycle",
+                        "lifecycle",
+                        "lifecycle-client-runtime",
+                        relative,
+                    )
+                )
+
     def test_multiplayer_screen_surfaces_are_homogeneous_and_exact(self) -> None:
         expected_by_source = {
             "net/minecraft/client/gui/screens/ChatScreen.java": (
                 "ui-chat-screen-surface",
-                25,
+                26,
             ),
             "net/minecraft/client/gui/screens/DeathScreen.java": (
                 "ui-death-screen-surface",
@@ -91,7 +156,7 @@ public class Owner {
             ),
             "net/minecraft/client/gui/screens/PauseScreen.java": (
                 "ui-pause-screen-surface",
-                17,
+                18,
             ),
         }
         surfaces = {

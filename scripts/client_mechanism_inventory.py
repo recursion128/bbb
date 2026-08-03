@@ -49,6 +49,291 @@ class MethodSurface:
     scope: str = "external-client"
 
 
+@dataclass(frozen=True)
+class MethodRoute:
+    category: str
+    domain: str
+    mechanism_id: str
+    scope: str = "external-client"
+    role: str = "decision"
+
+
+def _method_routes(
+    *groups: tuple[MethodRoute, tuple[str, ...]],
+) -> dict[str, MethodRoute]:
+    routes: dict[str, MethodRoute] = {}
+    for route, method_names in groups:
+        for method_name in method_names:
+            if method_name in routes:
+                raise ValueError(f"duplicate Minecraft method route: {method_name}")
+            routes[method_name] = route
+    return routes
+
+
+MINECRAFT_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("startup", "startup", "startup-client-bootstrap"),
+        (
+            "Minecraft",
+            "onGameLoadFinished",
+            "getLauncherBrand",
+        ),
+    ),
+    (
+        MethodRoute("startup", "identity", "startup-session-identity"),
+        (
+            "createUserApiService",
+            "getGameProfile",
+        ),
+    ),
+    (
+        MethodRoute("lifecycle", "lifecycle", "lifecycle-client-runtime"),
+        (
+            "run",
+            "runTick",
+            "tick",
+            "isLevelRunningNormally",
+            "isMultiplayerServer",
+            "destroy",
+            "close",
+            "stop",
+            "getTickTargetMillis",
+        ),
+    ),
+    (
+        MethodRoute("lifecycle", "lifecycle", "lifecycle-session-replacement"),
+        (
+            "setLevel",
+            "disconnectFromWorld",
+            "disconnectWithProgressScreen",
+            "disconnect",
+            "clearClientLevel",
+            "setScreenAndShow",
+            "updateLevelInEngines",
+            "getConnection",
+            "getCurrentServer",
+        ),
+    ),
+    (
+        MethodRoute("lifecycle", "lifecycle", "lifecycle-client-task-handoff"),
+        (
+            "getRunningThread",
+            "wrapRunnable",
+            "shouldRun",
+        ),
+    ),
+    (
+        MethodRoute("resources", "resources", "resources-reload-recovery"),
+        (
+            "onResourceLoadFinished",
+            "rollbackResourcePacks",
+            "clearResourcePacksOnError",
+            "abortResourcePackRecovery",
+            "addResourcePackLoadFailToast",
+            "triggerResourcePackRecovery",
+            "reloadResourcePacks",
+            "delayTextureReload",
+            "updateMaxMipLevel",
+        ),
+    ),
+    (
+        MethodRoute("resources", "resources", "resources-server-pack-lifecycle"),
+        ("clearDownloadedResourcePacks",),
+    ),
+    (
+        MethodRoute("text", "text", "ui-font-manager"),
+        (
+            "updateFontOptions",
+            "isEnforceUnicode",
+        ),
+    ),
+    (
+        MethodRoute("audio", "audio", "audio-sound-manager-engine"),
+        (
+            "getSituationalMusic",
+            "getMusicVolume",
+        ),
+    ),
+    (
+        MethodRoute("input", "input", "input-keyboard-routing"),
+        (
+            "hasShiftDown",
+            "hasControlDown",
+            "hasAltDown",
+            "handleKeybinds",
+            "setLastInputType",
+        ),
+    ),
+    (
+        MethodRoute("interaction", "interaction", "interaction-game-mode-decisions"),
+        (
+            "continueAttack",
+            "startAttack",
+            "startUseItem",
+            "canSwitchGameMode",
+            "pickBlockOrEntity",
+            "pick",
+        ),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-lifecycle"),
+        (
+            "updateTitle",
+            "createTitle",
+            "onFullscreenError",
+            "pauseIfInactive",
+            "resizeGui",
+            "cursorEntered",
+            "isWindowActive",
+        ),
+    ),
+    (
+        MethodRoute("ui", "ui", "ui-chat-screen-surface"),
+        ("openChatScreen",),
+    ),
+    (
+        MethodRoute("ui", "ui", "ui-screen-lifecycle"),
+        (
+            "setScreen",
+            "setOverlay",
+            "canInterruptScreen",
+        ),
+    ),
+    (
+        MethodRoute("ui", "ui", "ui-pause-screen-surface"),
+        ("pauseGame",),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-game-step-surface"),
+        (
+            "renderFrame",
+            "renderNames",
+            "useShaderTransparency",
+            "getCameraEntity",
+            "setCameraEntity",
+            "shouldEntityAppearGlowing",
+            "getEntityModels",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "ui", "rendering-hud-step-surface"),
+        (
+            "showOnlyReducedInfo",
+            "getDebugOverlay",
+        ),
+    ),
+    (
+        MethodRoute("input", "input", "ui-accessibility-surface"),
+        ("onTextInputFocusChange",),
+    ),
+    (
+        MethodRoute("identity", "identity", "identity-profile-key-lifecycle"),
+        ("prepareForMultiplayer",),
+    ),
+    (
+        MethodRoute("security", "security", "security-secure-chat-reporting"),
+        (
+            "userProperties",
+            "allowsMultiplayer",
+            "multiplayerBan",
+            "isNameBanned",
+            "isBlocked",
+            "isLocalOrUnknownPlayer",
+            "computeChatAbilities",
+            "isLocalPlayer",
+            "isTextFilteringEnabled",
+        ),
+    ),
+    (
+        MethodRoute("diagnostics", "diagnostics", "diagnostics-crash-runtime"),
+        (
+            "checkModStatus",
+            "delayCrash",
+            "emergencySaveAndCrash",
+            "saveReport",
+            "crash",
+            "saveReportAndShutdownSoundManager",
+            "selfTest",
+            "sendLowDiskSpaceWarning",
+            "emergencySave",
+            "debugClientMetricsStart",
+            "debugClientMetricsStop",
+            "debugClientMetricsCancel",
+            "archiveProfilingReport",
+            "constructProfiler",
+            "finishProfilers",
+            "fillReport",
+            "fillUptime",
+            "fillSystemReport",
+            "formatSeconds",
+            "updateReportEnvironment",
+            "collectPerTickGizmos",
+        ),
+    ),
+    (
+        MethodRoute("out-of-scope", "ui", "scope-title-screen", "out-of-scope", "out-of-scope"),
+        (
+            "buildInitialScreens",
+            "addInitialScreens",
+            "countryEqualsISO3",
+            "getQuickActionsDialog",
+        ),
+    ),
+    (
+        MethodRoute(
+            "out-of-scope",
+            "singleplayer",
+            "scope-singleplayer-integrated",
+            "out-of-scope",
+            "out-of-scope",
+        ),
+        (
+            "createWorldOpenFlows",
+            "doWorldLoad",
+            "disconnectWithSavingScreen",
+            "hasSingleplayerServer",
+            "isSingleplayer",
+        ),
+    ),
+    (
+        MethodRoute("out-of-scope", "realms", "scope-realms", "out-of-scope", "out-of-scope"),
+        ("allowsRealms",),
+    ),
+    (
+        MethodRoute(
+            "out-of-scope",
+            "telemetry",
+            "scope-telemetry-upload",
+            "out-of-scope",
+            "out-of-scope",
+        ),
+        (
+            "telemetryOptInExtra",
+            "extraTelemetryAvailable",
+            "allowsTelemetry",
+        ),
+    ),
+    (
+        MethodRoute(
+            "out-of-scope",
+            "rendering",
+            "rendering-nondeterministic-golden-exclusions",
+            "out-of-scope",
+            "out-of-scope",
+        ),
+        ("grabPanoramixScreenshot",),
+    ),
+)
+
+MINECRAFT_SUPPORT_ROUTE = MethodRoute(
+    "support-accessor",
+    "support",
+    "scope-support-accessors",
+    "out-of-scope",
+    "support-non-decision",
+)
+
+
 METHOD_SURFACES = (
     MethodSurface("startup", "startup", "startup-client-bootstrap", "net/minecraft/client/main/Main.java"),
     MethodSurface("startup", "startup", "startup-session-identity", "net/minecraft/client/User.java"),
@@ -131,9 +416,25 @@ SERVERBOUND_SCAN_PATHS = (
 MECHANISM_EVIDENCE = {
     "startup-client-bootstrap": ("crates/bbb-native/src/startup.rs",),
     "startup-session-identity": ("crates/bbb-net/src/types/connection.rs", "docs/wiki/architecture/offline-runtime.md"),
-    "lifecycle-client-runtime": ("crates/bbb-native/src/runtime.rs", "scripts/playable_gate.py"),
+    "lifecycle-client-runtime": (
+        "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
+        "crates/bbb-native/src/simulation/thread.rs#shutdown_and_join",
+        "scripts/playable_gate.py",
+    ),
+    "lifecycle-session-replacement": (
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#remote_disconnect_outcome_observes_reason_in_fifo_order",
+        "crates/bbb-native/src/network_runtime.rs#terminal_close_does_not_fabricate_remote_disconnect",
+    ),
+    "lifecycle-client-task-handoff": (
+        "crates/bbb-native/src/simulation/thread.rs#run_scheduled",
+        "crates/bbb-native/src/simulation/commands.rs#lifecycle_partition_reserves_shutdown_behind_saturated_input",
+    ),
     "resources-default-pack-stack": ("crates/bbb-pack/src/resources.rs", "docs/wiki/mechanisms/resources/offline-asset-trust.md"),
     "resources-reload-listeners": ("crates/bbb-native/src/resource_reload.rs",),
+    "resources-reload-recovery": (
+        "crates/bbb-native/src/resource_reload.rs#apply_native_resource_reload",
+        "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier",
+    ),
     "resources-server-pack-lifecycle": ("crates/bbb-pack/src/server_pack.rs",),
     "protocol-packet-tables": ("docs/packet-coverage-26.1.json",),
     "protocol-listener-contracts": ("docs/packet-coverage-26.1.json",),
@@ -178,6 +479,10 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/input/pause_screen.rs",
         "crates/bbb-native/src/runtime/render_extract.rs",
     ),
+    "ui-screen-lifecycle": (
+        "crates/bbb-native/src/input.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs",
+    ),
     "ui-accessibility-surface": ("crates/bbb-native/src/narrator_runtime.rs",),
     "persistence-client-files": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": (
@@ -193,6 +498,10 @@ MECHANISM_EVIDENCE = {
     "scope-realms": ("docs/unsupported-features.md",),
     "scope-options-ui": ("docs/unsupported-features.md",),
     "scope-telemetry-upload": ("docs/unsupported-features.md",),
+    "scope-support-accessors": (
+        "scripts/client_mechanism_inventory.py#is_direct_support_accessor",
+    ),
+    "rendering-nondeterministic-golden-exclusions": ("docs/unsupported-features.md",),
 }
 
 
@@ -227,19 +536,21 @@ class InventoryBuilder:
         line: int,
         kind: str,
         scope: str = "external-client",
+        role: str | None = None,
     ) -> None:
-        self.owners.append(
-            {
-                "category": category,
-                "domain": domain,
-                "kind": kind,
-                "mechanism_id": mechanism_id,
-                "owner_id": owner_id,
-                "scope": scope,
-                "source": {"line": line, "path": path},
-                "vanilla_owner": vanilla_owner,
-            }
-        )
+        owner = {
+            "category": category,
+            "domain": domain,
+            "kind": kind,
+            "mechanism_id": mechanism_id,
+            "owner_id": owner_id,
+            "scope": scope,
+            "source": {"line": line, "path": path},
+            "vanilla_owner": vanilla_owner,
+        }
+        if role is not None:
+            owner["role"] = role
+        self.owners.append(owner)
 
     @staticmethod
     def method_signature(method: JavaMethod) -> str:
@@ -251,18 +562,59 @@ class InventoryBuilder:
         if not source.types:
             raise ClientMechanismInventoryError(f"{spec.source_path}: no declared Java type")
         for method in sorted(source.methods, key=lambda item: item.span.start_byte):
+            route = self.method_route(source, spec, method)
             signature = self.method_signature(method)
             self.add_owner(
                 owner_id=f"method:{signature}",
-                category=spec.category,
-                domain=spec.domain,
-                mechanism_id=spec.mechanism_id,
+                category=route.category,
+                domain=route.domain,
+                mechanism_id=route.mechanism_id,
                 vanilla_owner=signature,
                 path=spec.source_path,
                 line=method.span.start_point[0] + 1,
                 kind="constructor" if method.is_constructor else "method",
-                scope=spec.scope,
+                scope=route.scope,
+                role=route.role,
             )
+
+    @staticmethod
+    def method_route(
+        source: JavaSource,
+        spec: MethodSurface,
+        method: JavaMethod,
+    ) -> MethodRoute:
+        if spec.source_path != "net/minecraft/client/Minecraft.java":
+            return MethodRoute(
+                spec.category,
+                spec.domain,
+                spec.mechanism_id,
+                spec.scope,
+                "out-of-scope" if spec.scope == "out-of-scope" else "decision",
+            )
+        if method.name in MINECRAFT_METHOD_ROUTES:
+            return MINECRAFT_METHOD_ROUTES[method.name]
+        if InventoryBuilder.is_direct_support_accessor(source, method):
+            return MINECRAFT_SUPPORT_ROUTE
+        signature = InventoryBuilder.method_signature(method)
+        raise ClientMechanismInventoryError(
+            f"Minecraft method lacks a decision/support route: {signature}"
+        )
+
+    @staticmethod
+    def is_direct_support_accessor(source: JavaSource, method: JavaMethod) -> bool:
+        body = method.node.child_by_field_name("body")
+        if body is None or len(body.named_children) != 1:
+            return False
+        statement = body.named_children[0]
+        if statement.type != "return_statement" or len(statement.named_children) != 1:
+            return False
+        expression = statement.named_children[0]
+        if expression.type not in {"field_access", "identifier", "true"}:
+            return False
+        # A direct field/parameter/constant return has no independent decision,
+        # mutation, allocation, or downstream call. Source hashes and this CST
+        # predicate make any later body change fail the checked inventory.
+        return bool(source.text(expression).strip())
 
     def add_listener_contracts(self) -> None:
         for path in LISTENER_PATHS:
@@ -496,6 +848,11 @@ class InventoryBuilder:
         by_category = Counter(str(item["category"]) for item in self.owners)
         by_domain = Counter(str(item["domain"]) for item in self.owners)
         by_mechanism = Counter(str(item["mechanism_id"]) for item in self.owners)
+        by_role = Counter(
+            str(item["role"])
+            for item in self.owners
+            if isinstance(item.get("role"), str)
+        )
         return {
             "generated_by": "scripts/generate-client-mechanism-inventory.py",
             "generator_inputs": [
@@ -516,6 +873,7 @@ class InventoryBuilder:
             "schema_version": 1,
             "selection_contract": {
                 "java_frontend": "scripts/vanilla_java_source.py",
+                "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
                 "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
                 "serverbound_scan_paths": list(SERVERBOUND_SCAN_PATHS),
             },
@@ -526,6 +884,7 @@ class InventoryBuilder:
             "summary": {
                 "by_category": dict(sorted(by_category.items())),
                 "by_domain": dict(sorted(by_domain.items())),
+                "by_role": dict(sorted(by_role.items())),
                 "mapped_owner_count": len(self.owners),
                 "owner_count": len(self.owners),
                 "unmapped_owner_count": 0,
