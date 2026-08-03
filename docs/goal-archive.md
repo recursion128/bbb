@@ -1,9 +1,7 @@
 # Goal 完成里程碑索引
 
-本文件只负责把完成的工程 milestone 路由到 Git history，不保存 slice 合同、取证正文、
-状态快照或逐功能完成清单。当前机制、排程和缺口分别以
-[`docs/wiki/`](wiki/README.md)、[`goal.md`](../goal.md) 和
-[`docs/unsupported-features.md`](unsupported-features.md)为准。
+本文件只把工程 milestone 路由到 Git history，不保存合同、取证正文或完成清单。当前机制、
+排程和缺口以 [`docs/wiki/`](wiki/README.md)、[`goal.md`](../goal.md) 和 [`docs/unsupported-features.md`](unsupported-features.md)为准。
 
 ## 追溯方法
 
@@ -95,6 +93,8 @@
 - **2026-08-03（equipment/falling-dust/piston convergence）**：equipment 影子收敛为 generation-local asset id；FallingDust 与 piston 固定事实改由 29,873-state generated protocol owner 唯一查询。
 - **2026-08-03（external session lifecycle closure）**：187 个 `Minecraft` owner 完成拆分，run/task、
   replacement、reload recovery、panic/join 与终态 diagnostics 经 full/live/三轮 soak 收口。
+- **2026-08-03（LevelRenderer owner partition）**：77 个 method owner 拆为七条同质机制，
+  Tree-sitter total route、fail-closed fixture 与 matrix/ledger 双向映射闭合。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

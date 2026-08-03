@@ -526,27 +526,3 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
 维护触发只来自上述 gate/stamp 回退、已声明行/构建配置/runtime owner 变化，或
 账本 deferred 重启条件满足；不能由宽泛 soak、性能、平台愿景重新生成 ready
 工作。active=0 时走工作流第 4 步的机械终止判据。
-
-## 当前 active 工程合同：LevelRenderer owner 同质分区
-
-目标：只重构 Vanilla 26.1 coverage evidence，把当前 77-owner 的 broad
-`rendering-level-step-surface` 拆成 backend rebuild、section lifecycle、frame graph、
-scene projection、effect lifetime、diagnostics/gizmos 和 light query 七个互斥机制；
-每个 owner 恰好映射一次、矩阵与 ledger 双向 route 完整，production 行为不变。
-
-边界与依据：唯一输入是本地 `LevelRenderer.java` 的 Tree-sitter method declarations；
-生成器显式 route 只拥有语义分类，签名、行号、顺序与 source hash 继续由共享 frontend
-派生。不得修改 renderer/native/world production、引入 Java 正则解析器、手写 owner
-签名副本、第二份 inventory 或顺手关闭任何新机制状态。
-
-串行阶段：A 冻结七组 owner 名称、数量、ordering/lifecycle 和 BBB evidence owner；
-B 扩展 total/fail-closed route、fixture 和 exact-output stale check，并重新生成唯一 JSON；
-C 用七行替换 broad matrix row、更新 ledger route 与审计摘要；D 完整 diff review、提交并
-运行 checkpoint full gate。focused tests 为 client-inventory fixtures、docs-lint fixtures、
-generator `--check`、`scripts/docs-lint.sh`、fmt、diff-check 和非测试 workspace check。
-
-完成条件：七组计数为 9/29/14/15/4/3/3，总计 77，unmapped/duplicate/stale route 为 0；
-旧 broad mechanism 不再出现在 generated inventory 或矩阵，所有新 open row 只路由本
-ledger。此 evidence-only slice 不刷新 playable。安全停止点仅为合同或实现提交已干净且
-full-gated；source shape 不能由现有 frontend 无歧义表达时，保留 ledger active 并记录精确
-CST blocker，不以手写扫描器绕过。

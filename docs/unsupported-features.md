@@ -86,12 +86,11 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   owner, including pass order, translucent/post/lightmap/weather consumers and
   exact no-surface classifications. Split only by semantic owner and preserve
   the single frame-extract/submission path.
-  The active evidence slice freezes the 77 `LevelRenderer` methods as seven
-  total, mutually exclusive routes: backend rebuild 9, section lifecycle 29,
-  frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. It changes no production behavior;
-  each resulting open mechanism remains owned by this ledger section until a
-  later single-semantics implementation slice supplies consumer evidence.
+  The generated inventory routes the 77 `LevelRenderer` methods into seven
+  total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
+  29, frame graph 14, scene projection 15, effect lifetime 4,
+  diagnostics/gizmos 3 and light query 3. Each open mechanism remains here
+  until its own single-semantics slice supplies consumer evidence.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
