@@ -54,6 +54,11 @@ pub async fn run_event_stream(
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
 ) -> Result<()> {
+    let mut chat_sessions = ChatSessionRuntime::new(
+        options.profile_id,
+        options.session_credentials.clone(),
+        options.timeout,
+    );
     #[cfg(not(test))]
     let services_profile_keys =
         match crate::services_profile_keys::fetch_services_profile_keys(options.timeout).await {
@@ -82,11 +87,6 @@ pub async fn run_event_stream(
         accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
         client_information: options.client_information.clone(),
     };
-    let mut chat_sessions = ChatSessionRuntime::new(
-        options.profile_id,
-        options.session_credentials.clone(),
-        options.timeout,
-    );
 
     emit(&stream.events, NetEvent::Connected).await?;
     emit(
@@ -130,7 +130,7 @@ pub async fn run_event_stream(
             ConnectionDrive::AcknowledgeConfiguration {
                 pending_chat_acknowledgement,
             } => {
-                chat_sessions.reset();
+                chat_sessions.reset_play_session();
                 if let Some(command) = pending_chat_acknowledgement {
                     send_chat_acknowledgement(&mut stream.conn, command).await?;
                 }
@@ -187,7 +187,7 @@ pub async fn run_event_stream(
                                 chat_sessions.begin_play_session(stream.conn.encryption_enabled())
                             }
                             packets::PlayClientbound::StartConfiguration => {
-                                chat_sessions.reset();
+                                chat_sessions.reset_play_session();
                             }
                             _ => {}
                         }
@@ -215,7 +215,7 @@ pub async fn run_event_stream(
         };
 
         if let Some(transfer) = transfer {
-            chat_sessions.reset();
+            chat_sessions.reset_play_session();
             let transfer = stream
                 .drain_transfer_closing_packets(packet_state, transfer)
                 .await?;
@@ -389,12 +389,27 @@ mod tests {
     #[test]
     fn chat_session_runtime_is_wired_to_listener_and_transport_boundaries() {
         let source = include_str!("event_stream.rs");
-        assert!(source.contains("options.session_credentials.clone()"));
-        assert!(source.contains("PlayClientbound::Login(_) => chat_sessions"));
-        assert!(source.contains("begin_play_session(stream.conn.encryption_enabled())"));
-        assert!(source.contains("PlayClientbound::StartConfiguration =>"));
-        assert!(source.matches("chat_sessions.reset();").count() >= 3);
-        assert!(source.contains("read_packet_or_drive_connection_with_chat_session"));
+        let production = source.split("#[cfg(test)]\nmod tests").next().unwrap();
+        assert!(production.contains("options.session_credentials.clone()"));
+        assert!(production.contains("packets::PlayClientbound::Login(_) =>"));
+        assert!(production.contains("begin_play_session(stream.conn.encryption_enabled())"));
+        assert!(production.contains("PlayClientbound::StartConfiguration =>"));
+        assert!(
+            production
+                .matches("chat_sessions.reset_play_session();")
+                .count()
+                >= 3
+        );
+        assert!(!production.contains("chat_sessions.reset();"));
+        assert!(production.contains("read_packet_or_drive_connection_with_chat_session"));
+
+        let prepare = production
+            .find("let mut chat_sessions = ChatSessionRuntime::new")
+            .unwrap();
+        let services = production.find("fetch_services_profile_keys").unwrap();
+        let connect = production.find("RawConnection::connect").unwrap();
+        assert!(prepare < services);
+        assert!(prepare < connect);
     }
 
     fn entity_air_supply_data(air_supply: i32) -> packets::EntityDataValue {

@@ -37,7 +37,7 @@ const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
 /// A Services-issued profile key pair. Private material deliberately has no
 /// accessor, serde implementation, or derived `Debug`.
 #[derive(Clone)]
-pub struct ProfileKeyPair {
+pub(crate) struct ProfileKeyPair {
     private_key: RsaPrivateKey,
     public_key: RsaPublicKey,
     public_key_der: Vec<u8>,
@@ -63,23 +63,15 @@ impl fmt::Debug for ProfileKeyPair {
 }
 
 impl ProfileKeyPair {
-    pub fn expires_at_epoch_millis(&self) -> i64 {
-        self.expires_at_epoch_millis
-    }
-
-    pub fn refreshed_after_epoch_millis(&self) -> i64 {
+    fn refreshed_after_epoch_millis(&self) -> i64 {
         self.refreshed_after_epoch_millis
     }
 
-    pub fn due_refresh_at(&self, now_epoch_millis: i64) -> bool {
+    fn due_refresh_at(&self, now_epoch_millis: i64) -> bool {
         self.refreshed_after_epoch_millis < now_epoch_millis
     }
 
-    pub fn has_expired_at(&self, now_epoch_millis: i64) -> bool {
-        self.expires_at_epoch_millis < now_epoch_millis
-    }
-
-    pub fn same_key_material(&self, other: &Self) -> bool {
+    fn same_key_material(&self, other: &Self) -> bool {
         self.public_key == other.public_key
             && self.public_key_der == other.public_key_der
             && self.key_signature == other.key_signature
@@ -99,7 +91,7 @@ impl ProfileKeyPair {
 }
 
 /// One local chat session and its single advancing signed-message chain.
-pub struct LocalChatSession {
+pub(crate) struct LocalChatSession {
     profile_id: Uuid,
     session_id: Uuid,
     key_pair: ProfileKeyPair,
@@ -122,11 +114,11 @@ impl fmt::Debug for LocalChatSession {
 }
 
 impl LocalChatSession {
-    pub fn create(profile_id: Uuid, key_pair: ProfileKeyPair) -> Self {
+    fn create(profile_id: Uuid, key_pair: ProfileKeyPair) -> Self {
         Self::with_session_id(profile_id, random_session_id(), key_pair)
     }
 
-    pub fn with_session_id(profile_id: Uuid, session_id: Uuid, key_pair: ProfileKeyPair) -> Self {
+    fn with_session_id(profile_id: Uuid, session_id: Uuid, key_pair: ProfileKeyPair) -> Self {
         Self {
             profile_id,
             session_id,
@@ -135,23 +127,25 @@ impl LocalChatSession {
         }
     }
 
-    pub fn profile_id(&self) -> Uuid {
+    #[cfg(test)]
+    fn profile_id(&self) -> Uuid {
         self.profile_id
     }
 
-    pub fn session_id(&self) -> Uuid {
+    #[cfg(test)]
+    fn session_id(&self) -> Uuid {
         self.session_id
     }
 
-    pub fn key_pair(&self) -> &ProfileKeyPair {
+    fn key_pair(&self) -> &ProfileKeyPair {
         &self.key_pair
     }
 
-    pub fn session_update(&self) -> ChatSessionUpdate {
+    pub(crate) fn session_update(&self) -> ChatSessionUpdate {
         self.key_pair.chat_session_update(self.session_id)
     }
 
-    pub fn sign(&mut self, body: SignedChatBody<'_>) -> Result<MessageSignature> {
+    fn sign(&mut self, body: SignedChatBody<'_>) -> Result<MessageSignature> {
         let index = self
             .next_link_index
             .ok_or_else(|| anyhow!("signed chat chain is exhausted"))?;
@@ -168,7 +162,8 @@ impl LocalChatSession {
         Ok(MessageSignature { bytes: signature })
     }
 
-    pub fn verify(
+    #[cfg(test)]
+    fn verify(
         &self,
         index: i32,
         body: SignedChatBody<'_>,
@@ -197,7 +192,7 @@ fn random_session_id() -> Uuid {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct SignedChatBody<'a> {
+struct SignedChatBody<'a> {
     content: &'a str,
     timestamp_millis: i64,
     salt: i64,
@@ -205,7 +200,7 @@ pub struct SignedChatBody<'a> {
 }
 
 impl<'a> SignedChatBody<'a> {
-    pub fn new(
+    fn new(
         content: &'a str,
         timestamp_millis: i64,
         salt: i64,
@@ -219,7 +214,7 @@ impl<'a> SignedChatBody<'a> {
         }
     }
 
-    pub fn signature_payload(
+    fn signature_payload(
         self,
         profile_id: Uuid,
         session_id: Uuid,
@@ -354,18 +349,6 @@ struct ProfileKeyPairResponse {
 struct ProfileKeyMaterialResponse {
     private_key: String,
     public_key: String,
-}
-
-pub async fn fetch_profile_key_pair(
-    access_token: &str,
-    timeout: Duration,
-) -> Result<ProfileKeyPair> {
-    fetch_profile_key_pair_at(
-        access_token,
-        timeout.min(PROFILE_CERTIFICATES_TIMEOUT),
-        PROFILE_CERTIFICATES_URL,
-    )
-    .await
 }
 
 async fn fetch_profile_key_pair_at(
@@ -521,6 +504,40 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn profile_key_resolver_is_private_and_not_disk_backed() {
+        let source = include_str!("chat_session.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        let runtime = include_str!("chat_session/runtime.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        let exports = include_str!("exports.rs");
+        assert_eq!(
+            source
+                .matches("async fn fetch_profile_key_pair_at(")
+                .count(),
+            1
+        );
+        assert!(!source.contains("pub async fn fetch_profile_key_pair"));
+        assert!(!source.contains("profilekeys"));
+        assert!(!source.contains("write_profile"));
+        assert_eq!(runtime.matches("struct ProfileKeyManager {").count(), 1);
+        assert_eq!(
+            runtime
+                .matches("fetch_profile_key_pair_at(&access_token")
+                .count(),
+            1
+        );
+        assert!(!runtime.contains("profilekeys"));
+        assert!(!exports.contains("fetch_profile_key_pair"));
+        assert!(!exports.contains("LocalChatSession"));
+        assert!(!exports.contains("ProfileKeyPair"));
+        assert!(!exports.contains("SignedChatBody"));
+    }
 
     fn fixture_private_key() -> RsaPrivateKey {
         static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();

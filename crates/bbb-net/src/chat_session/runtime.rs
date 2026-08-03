@@ -19,12 +19,18 @@ pub(crate) enum ChatSessionAction {
 
 pub(crate) struct ChatSessionRuntime {
     profile_id: Uuid,
+    profile_keys: ProfileKeyManager,
+    play_encrypted: bool,
+    active_session: Option<LocalChatSession>,
+}
+
+struct ProfileKeyManager {
     credentials: Option<SessionCredentials>,
     request_timeout: Duration,
     endpoint: String,
     minimum_refresh_interval: Duration,
     pending_fetch: Option<JoinHandle<anyhow::Result<ProfileKeyPair>>>,
-    active_session: Option<LocalChatSession>,
+    accepted_key: Option<ProfileKeyPair>,
     next_refresh_allowed: Option<Instant>,
     refresh_deadline: Option<Instant>,
 }
@@ -34,6 +40,17 @@ impl fmt::Debug for ChatSessionRuntime {
         formatter
             .debug_struct("ChatSessionRuntime")
             .field("profile_id", &self.profile_id)
+            .field("profile_keys", &self.profile_keys)
+            .field("play_encrypted", &self.play_encrypted)
+            .field("session_active", &self.active_session.is_some())
+            .finish()
+    }
+}
+
+impl fmt::Debug for ProfileKeyManager {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProfileKeyManager")
             .field(
                 "credentials",
                 &self.credentials.as_ref().map(|_| "<redacted>"),
@@ -42,7 +59,7 @@ impl fmt::Debug for ChatSessionRuntime {
             .field("endpoint", &self.endpoint)
             .field("minimum_refresh_interval", &self.minimum_refresh_interval)
             .field("fetch_pending", &self.pending_fetch.is_some())
-            .field("session_active", &self.active_session.is_some())
+            .field("accepted_key", &self.accepted_key.is_some())
             .field("next_refresh_allowed", &self.next_refresh_allowed)
             .field("refresh_deadline", &self.refresh_deadline)
             .finish()
@@ -87,33 +104,32 @@ impl ChatSessionRuntime {
         endpoint: String,
         minimum_refresh_interval: Duration,
     ) -> Self {
-        Self {
-            profile_id,
+        let profile_keys = ProfileKeyManager::new(
             credentials,
             request_timeout,
             endpoint,
             minimum_refresh_interval,
-            pending_fetch: None,
+        );
+        Self {
+            profile_id,
+            profile_keys,
+            play_encrypted: false,
             active_session: None,
-            next_refresh_allowed: None,
-            refresh_deadline: None,
         }
     }
 
     pub(crate) fn begin_play_session(&mut self, encrypted: bool) {
-        self.reset();
-        if encrypted && self.credentials.is_some() {
-            self.start_fetch();
+        self.reset_play_session();
+        self.play_encrypted = encrypted;
+        if encrypted {
+            self.profile_keys.prepare();
         }
     }
 
-    pub(crate) fn reset(&mut self) {
-        if let Some(fetch) = self.pending_fetch.take() {
-            fetch.abort();
-        }
+    pub(crate) fn reset_play_session(&mut self) {
+        self.play_encrypted = false;
         self.active_session = None;
-        self.next_refresh_allowed = None;
-        self.refresh_deadline = None;
+        self.profile_keys.refresh_deadline = None;
     }
 
     pub(crate) fn active_session_mut(&mut self) -> Option<&mut LocalChatSession> {
@@ -122,54 +138,103 @@ impl ChatSessionRuntime {
 
     pub(crate) fn install(&mut self, session: LocalChatSession) {
         self.active_session = Some(session);
-        self.schedule_refresh_check();
+        self.profile_keys
+            .schedule_refresh_check(self.active_session.as_ref());
     }
 
     pub(crate) async fn next_action(&mut self) -> ChatSessionAction {
         loop {
-            if let Some(fetch) = self.pending_fetch.as_mut() {
-                let result = fetch.await;
-                self.pending_fetch = None;
-                match result {
-                    Ok(Ok(key_pair)) => {
-                        if self
-                            .active_session
-                            .as_ref()
-                            .is_some_and(|session| session.key_pair().same_key_material(&key_pair))
-                        {
-                            self.schedule_refresh_check();
-                            continue;
-                        }
-                        return ChatSessionAction::Install(LocalChatSession::create(
-                            self.profile_id,
-                            key_pair,
-                        ));
-                    }
-                    Ok(Err(error)) => {
-                        tracing::warn!(%error, "profile-key preparation failed");
-                        self.schedule_refresh_check();
-                        continue;
-                    }
-                    Err(error) => {
-                        tracing::warn!(%error, "profile-key preparation task failed");
-                        self.schedule_refresh_check();
-                        continue;
-                    }
+            if self.play_encrypted
+                && self.active_session.is_none()
+                && self.profile_keys.pending_fetch.is_none()
+            {
+                if let Some(key_pair) = self.profile_keys.accepted_key.clone() {
+                    return ChatSessionAction::Install(LocalChatSession::create(
+                        self.profile_id,
+                        key_pair,
+                    ));
                 }
             }
 
-            if let Some(deadline) = self.refresh_deadline {
+            if let Some(fetch) = self.profile_keys.pending_fetch.as_mut() {
+                let result = fetch.await;
+                self.profile_keys.pending_fetch = None;
+                match result {
+                    Ok(Ok(key_pair)) => {
+                        self.profile_keys.accepted_key = Some(key_pair.clone());
+                        if self.play_encrypted
+                            && !self.active_session.as_ref().is_some_and(|session| {
+                                session.key_pair().same_key_material(&key_pair)
+                            })
+                        {
+                            return ChatSessionAction::Install(LocalChatSession::create(
+                                self.profile_id,
+                                key_pair,
+                            ));
+                        }
+                    }
+                    Ok(Err(error)) => {
+                        tracing::warn!(%error, "profile-key preparation failed");
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "profile-key preparation task failed");
+                    }
+                }
+                self.profile_keys
+                    .schedule_refresh_check(self.active_session.as_ref());
+                continue;
+            }
+
+            if let Some(deadline) = self.profile_keys.refresh_deadline {
                 tokio::time::sleep_until(deadline).await;
-                self.refresh_deadline = None;
-                if self.refresh_is_due() {
-                    self.start_fetch();
+                self.profile_keys.refresh_deadline = None;
+                if self
+                    .profile_keys
+                    .refresh_is_due(self.active_session.as_ref())
+                {
+                    self.profile_keys.prepare();
                 } else {
-                    self.schedule_refresh_check();
+                    self.profile_keys
+                        .schedule_refresh_check(self.active_session.as_ref());
                 }
                 continue;
             }
 
             pending::<()>().await;
+        }
+    }
+}
+
+impl ProfileKeyManager {
+    fn new(
+        credentials: Option<SessionCredentials>,
+        request_timeout: Duration,
+        endpoint: String,
+        minimum_refresh_interval: Duration,
+    ) -> Self {
+        let mut manager = Self {
+            credentials,
+            request_timeout,
+            endpoint,
+            minimum_refresh_interval,
+            pending_fetch: None,
+            accepted_key: None,
+            next_refresh_allowed: None,
+            refresh_deadline: None,
+        };
+        manager.prepare();
+        manager
+    }
+
+    fn prepare(&mut self) {
+        self.next_refresh_allowed = Some(Instant::now() + self.minimum_refresh_interval);
+        self.refresh_deadline = None;
+        let needs_fetch = self
+            .accepted_key
+            .as_ref()
+            .is_none_or(|key_pair| key_pair.due_refresh_at(epoch_millis_now()));
+        if self.pending_fetch.is_none() && needs_fetch {
+            self.start_fetch();
         }
     }
 
@@ -180,44 +245,38 @@ impl ChatSessionRuntime {
         let access_token = credentials.access_token.clone();
         let timeout = self.request_timeout.min(PROFILE_CERTIFICATES_TIMEOUT);
         let endpoint = self.endpoint.clone();
-        self.next_refresh_allowed = Some(Instant::now() + self.minimum_refresh_interval);
-        self.refresh_deadline = None;
         self.pending_fetch = Some(tokio::spawn(async move {
             fetch_profile_key_pair_at(&access_token, timeout, &endpoint).await
         }));
     }
 
-    fn refresh_is_due(&self) -> bool {
+    fn refresh_is_due(&self, active_session: Option<&LocalChatSession>) -> bool {
         let allowed = self
             .next_refresh_allowed
             .is_none_or(|deadline| Instant::now() >= deadline);
-        let key_due = self
-            .active_session
-            .as_ref()
+        let key_due = active_session
             .is_none_or(|session| session.key_pair().due_refresh_at(epoch_millis_now()));
         allowed && key_due
     }
 
-    fn schedule_refresh_check(&mut self) {
+    fn schedule_refresh_check(&mut self, active_session: Option<&LocalChatSession>) {
+        let Some(active_session) = active_session else {
+            self.refresh_deadline = None;
+            return;
+        };
         let now = Instant::now();
         let allowed = self.next_refresh_allowed.unwrap_or(now);
-        let due = self
-            .active_session
-            .as_ref()
-            .map(|session| {
-                let remaining_millis = session
-                    .key_pair()
-                    .refreshed_after_epoch_millis()
-                    .saturating_sub(epoch_millis_now())
-                    .saturating_add(1);
-                now + Duration::from_millis(remaining_millis.max(0) as u64)
-            })
-            .unwrap_or(allowed);
+        let remaining_millis = active_session
+            .key_pair()
+            .refreshed_after_epoch_millis()
+            .saturating_sub(epoch_millis_now())
+            .saturating_add(1);
+        let due = now + Duration::from_millis(remaining_millis.max(0) as u64);
         self.refresh_deadline = Some(allowed.max(due));
     }
 }
 
-impl Drop for ChatSessionRuntime {
+impl Drop for ProfileKeyManager {
     fn drop(&mut self) {
         if let Some(fetch) = self.pending_fetch.take() {
             fetch.abort();
@@ -282,6 +341,14 @@ mod tests {
     }
 
     fn fixture_response(index: usize) -> Vec<u8> {
+        fixture_response_with_refreshed_after(index, "2020-01-01T00:00:00Z")
+    }
+
+    fn fresh_fixture_response(index: usize) -> Vec<u8> {
+        fixture_response_with_refreshed_after(index, "2030-01-01T00:00:00Z")
+    }
+
+    fn fixture_response_with_refreshed_after(index: usize, refreshed_after: &str) -> Vec<u8> {
         let private_key = fixture_private_key(index);
         let private_der = private_key.to_pkcs8_der().unwrap();
         let public_der = RsaPublicKey::from(&private_key)
@@ -294,7 +361,7 @@ mod tests {
             },
             "publicKeySignatureV2": STANDARD.encode(vec![index as u8 + 1; 512]),
             "expiresAt": "2030-01-02T03:04:05.006Z",
-            "refreshedAfter": "2020-01-01T00:00:00Z",
+            "refreshedAfter": refreshed_after,
         }))
         .unwrap()
     }
@@ -355,10 +422,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn preparation_requires_both_credentials_and_encrypted_play() {
+    async fn preparation_starts_before_play_and_offline_mode_never_fetches() {
         let profile_id = Uuid::from_u128(31);
         let (endpoint, mut requests, server) =
-            profile_server(vec![(200, fixture_response(0))]).await;
+            profile_server(vec![(200, fresh_fixture_response(0))]).await;
         let mut runtime = ChatSessionRuntime::with_endpoint_and_refresh_interval(
             profile_id,
             Some(credentials(profile_id, "runtime-access-token")),
@@ -367,12 +434,12 @@ mod tests {
             Duration::from_secs(60),
         );
 
+        assert_eq!(requests.recv().await, Some(0));
         runtime.begin_play_session(false);
-        assert!(timeout(Duration::from_millis(20), requests.recv())
+        assert!(timeout(Duration::from_millis(20), runtime.next_action())
             .await
             .is_err());
         runtime.begin_play_session(true);
-        assert_eq!(requests.recv().await, Some(0));
         let ChatSessionAction::Install(session) = runtime.next_action().await;
         assert_eq!(session.profile_id(), profile_id);
 
@@ -491,7 +558,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reset_drops_active_chain() {
+    async fn reset_drops_only_the_play_local_chain() {
         let profile_id = Uuid::from_u128(34);
         let (endpoint, mut requests, server) =
             profile_server(vec![(200, fixture_response(0))]).await;
@@ -508,7 +575,7 @@ mod tests {
         runtime.install(session);
         assert!(runtime.active_session_mut().is_some());
 
-        runtime.reset();
+        runtime.reset_play_session();
         assert!(runtime.active_session_mut().is_none());
         assert!(timeout(Duration::from_millis(20), runtime.next_action())
             .await
@@ -517,10 +584,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reset_aborts_pending_fetch() {
+    async fn reset_preserves_pending_prepare_for_the_next_play_session() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let endpoint = format!("http://{address}/player/certificates");
+        let response = fresh_fixture_response(0);
         let (request_tx, request_rx) = oneshot::channel();
         let (release_tx, release_rx) = oneshot::channel();
         let server = tokio::spawn(async move {
@@ -529,17 +597,16 @@ mod tests {
             let _ = socket.read(&mut request).await.unwrap();
             request_tx.send(()).unwrap();
             let _ = release_rx.await;
-            let body = fixture_response(0);
             let _ = socket
                 .write_all(
                     format!(
                         "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
-                        body.len()
+                        response.len()
                     )
                     .as_bytes(),
                 )
                 .await;
-            let _ = socket.write_all(&body).await;
+            let _ = socket.write_all(&response).await;
         });
         let profile_id = Uuid::from_u128(35);
         let mut runtime = ChatSessionRuntime::with_endpoint_and_refresh_interval(
@@ -550,14 +617,62 @@ mod tests {
             Duration::from_secs(1),
         );
 
-        runtime.begin_play_session(true);
         request_rx.await.unwrap();
-        runtime.reset();
+        runtime.reset_play_session();
         release_tx.send(()).unwrap();
         server.await.unwrap();
         assert!(timeout(Duration::from_millis(20), runtime.next_action())
             .await
             .is_err());
+        assert!(runtime.profile_keys.accepted_key.is_some());
+
+        runtime.begin_play_session(true);
+        let ChatSessionAction::Install(session) =
+            timeout(Duration::from_millis(20), runtime.next_action())
+                .await
+                .unwrap();
+        assert_eq!(session.profile_id(), profile_id);
+    }
+
+    #[tokio::test]
+    async fn fresh_accepted_key_is_reused_but_the_play_chain_is_recreated() {
+        let profile_id = Uuid::from_u128(39);
+        let (endpoint, mut requests, server) = profile_server(vec![
+            (200, fresh_fixture_response(0)),
+            (200, fresh_fixture_response(1)),
+        ])
+        .await;
+        let mut runtime = ChatSessionRuntime::with_endpoint_and_refresh_interval(
+            profile_id,
+            Some(credentials(profile_id, "runtime-access-token")),
+            Duration::from_secs(1),
+            endpoint,
+            Duration::from_millis(20),
+        );
+
+        assert_eq!(requests.recv().await, Some(0));
+        runtime.begin_play_session(true);
+        let ChatSessionAction::Install(first) = runtime.next_action().await;
+        let first_session_id = first.session_id();
+        runtime.install(first);
+
+        runtime.reset_play_session();
+        runtime.begin_play_session(true);
+        let ChatSessionAction::Install(second) =
+            timeout(Duration::from_millis(20), runtime.next_action())
+                .await
+                .unwrap();
+        assert_ne!(second.session_id(), first_session_id);
+        assert!(runtime
+            .profile_keys
+            .accepted_key
+            .as_ref()
+            .unwrap()
+            .same_key_material(second.key_pair()));
+        assert!(timeout(Duration::from_millis(20), requests.recv())
+            .await
+            .is_err());
+        server.abort();
     }
 
     #[tokio::test]
@@ -696,7 +811,7 @@ mod tests {
             drive,
             ConnectionDrive::Packet(0x2a, payload) if payload == b"packet while fetching"
         ));
-        runtime.reset();
+        runtime.reset_play_session();
         profile_server.abort();
     }
 }

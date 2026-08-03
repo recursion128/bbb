@@ -1,6 +1,3 @@
-pub use crate::chat_session::{
-    fetch_profile_key_pair, LocalChatSession, ProfileKeyPair, SignedChatBody,
-};
 pub use crate::event_stream::run_event_stream;
 pub use crate::probe::run_probe;
 pub use crate::resource_pack::{
