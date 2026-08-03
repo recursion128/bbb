@@ -508,11 +508,11 @@ mod tests {
     #[test]
     fn profile_key_resolver_is_private_and_not_disk_backed() {
         let source = include_str!("chat_session.rs")
-            .split("#[cfg(test)]")
+            .split("#[cfg(test)]\nmod tests")
             .next()
             .unwrap();
         let runtime = include_str!("chat_session/runtime.rs")
-            .split("#[cfg(test)]")
+            .split("#[cfg(test)]\nmod tests")
             .next()
             .unwrap();
         let exports = include_str!("exports.rs");
