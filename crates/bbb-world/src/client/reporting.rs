@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{client::ui::PlayerReportingPreviousScreenState, WorldStore};
 
 mod evidence;
 
@@ -303,9 +303,19 @@ impl WorldStore {
         if let Some(screen) = self.player_reporting_screen() {
             return screen;
         }
-        let previous_social = self.client_ui.current_social_interactions_screen.take();
+        let previous_screen = self
+            .client_ui
+            .current_social_interactions_screen
+            .take()
+            .map(|screen| PlayerReportingPreviousScreenState::SocialInteractions { screen })
+            .or_else(|| {
+                self.client_ui
+                    .current_death_screen
+                    .take()
+                    .map(|screen| PlayerReportingPreviousScreenState::Death { screen })
+            });
         self.client_ui.replace_screen();
-        self.client_ui.player_reporting_previous_social_screen = previous_social;
+        self.client_ui.player_reporting_previous_screen = previous_screen;
         self.client_ui.player_reporting_screen_generation = self
             .client_ui
             .player_reporting_screen_generation
@@ -346,10 +356,15 @@ impl WorldStore {
             return false;
         }
         self.client_ui.current_player_reporting_screen = None;
-        self.client_ui.current_social_interactions_screen = self
-            .client_ui
-            .player_reporting_previous_social_screen
-            .take();
+        match self.client_ui.player_reporting_previous_screen.take() {
+            Some(PlayerReportingPreviousScreenState::SocialInteractions { screen }) => {
+                self.client_ui.current_social_interactions_screen = Some(screen);
+            }
+            Some(PlayerReportingPreviousScreenState::Death { screen }) => {
+                self.client_ui.current_death_screen = Some(screen);
+            }
+            None => {}
+        }
         true
     }
 
@@ -362,7 +377,7 @@ impl WorldStore {
         }
         self.client_ui.current_player_reporting_screen = None;
         self.client_ui.current_social_interactions_screen = None;
-        self.client_ui.player_reporting_previous_social_screen = None;
+        self.client_ui.player_reporting_previous_screen = None;
         true
     }
 
@@ -378,7 +393,7 @@ impl WorldStore {
         self.player_reporting.environment = environment;
         self.client_ui.current_player_reporting_screen = None;
         self.client_ui.current_social_interactions_screen = None;
-        self.client_ui.player_reporting_previous_social_screen = None;
+        self.client_ui.player_reporting_previous_screen = None;
         self.advance_player_reporting_generation();
         discarded_draft
     }
@@ -1159,7 +1174,29 @@ mod tests {
     }
 
     #[test]
-    fn player_reporting_environment_change_invalidates_screen_and_suspended_social_state() {
+    fn player_reporting_restores_death_screen_only_on_matching_close() {
+        let mut store = WorldStore::new();
+        let death = crate::ClientDeathScreenState {
+            generation: 7,
+            cause_of_death: bbb_protocol::RichTextComponent::plain("You died"),
+            score: 9,
+            hardcore: false,
+        };
+        store.client_ui.current_death_screen = Some(death.clone());
+        let reporting = store.open_player_reporting_screen();
+        assert!(store.death_screen().is_none());
+        assert!(!store.close_player_reporting_screen(reporting.generation + 1));
+        assert!(store.death_screen().is_none());
+        assert!(store.close_player_reporting_screen(reporting.generation));
+        assert_eq!(store.death_screen(), Some(&death));
+
+        let reporting = store.open_player_reporting_screen();
+        assert!(store.finish_player_reporting_screen(reporting.generation));
+        assert!(store.death_screen().is_none());
+    }
+
+    #[test]
+    fn player_reporting_environment_change_invalidates_screen_and_previous_screen_state() {
         let mut store = WorldStore::new();
         store.set_player_report_environment(Some(environment("first.example:25565")));
         store.open_social_interactions_screen();

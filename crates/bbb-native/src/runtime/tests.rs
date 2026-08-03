@@ -565,7 +565,7 @@ fn hud_spyglass_scope_matches_vanilla_frame_interpolation_and_visibility() {
 }
 
 #[test]
-fn hud_death_screen_projection_and_narration_track_main_and_quit_focus() {
+fn hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus() {
     let mut world = WorldStore::new();
     world.apply_login(&PlayLogin {
         player_id: 7,
@@ -648,6 +648,7 @@ fn hud_death_screen_projection_and_narration_track_main_and_quit_focus() {
         Some(0xFF_FF_55)
     );
     assert!(!screen.buttons_active);
+    assert!(!screen.has_draft_report);
 
     assert_eq!(
         death_screen_narration_frame(&input, &world, None)
@@ -656,9 +657,46 @@ fn hud_death_screen_projection_and_narration_track_main_and_quit_focus() {
         "You Died!. Respawn button. Screen element 1 out of 2. Press Tab to navigate to the next element. Press Enter to activate"
     );
 
+    let report_id = uuid::Uuid::from_u128(11);
+    world.set_player_report_environment(Some(bbb_world::PlayerReportEnvironment::third_party(
+        "26.1",
+        "en-US",
+        "example.org:25565",
+    )));
+    world
+        .start_username_report_draft(report_id, 0, uuid::Uuid::from_u128(12), "ReportedPlayer")
+        .unwrap();
+    let bbb_renderer::HudDeathScreen::Main(screen) =
+        hud_death_screen(&input, &world, None).expect("death HUD with draft")
+    else {
+        panic!("main death screen with draft");
+    };
+    assert!(screen.has_draft_report);
+
     input.advance_death_screen_ticks(20);
     input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Tab, true);
     input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Enter, true);
+    let bbb_renderer::HudDeathScreen::DraftConfirmation(screen) =
+        hud_death_screen(&input, &world, None).expect("draft HUD")
+    else {
+        panic!("draft confirmation");
+    };
+    assert_eq!(
+        screen.title,
+        "You have a draft chat report that will be lost if you quit"
+    );
+    assert_eq!(
+        screen.message,
+        "Would you like to continue editing it or discard it?"
+    );
+    assert_eq!(
+        death_screen_narration_frame(&input, &world, None)
+            .expect("draft confirmation narration")
+            .all_text_for_test(),
+        "You have a draft chat report that will be lost if you quit. Would you like to continue editing it or discard it?. Edit Draft button. Screen element 1 out of 2. Press Tab to navigate to the next element. Press Enter to activate"
+    );
+    input.handle_death_screen_key(&mut counters, &mut world, &None, KeyCode::Escape, true);
+    assert!(world.player_reporting().draft.is_none());
     let bbb_renderer::HudDeathScreen::QuitConfirmation(screen) =
         hud_death_screen(&input, &world, None).expect("quit HUD")
     else {

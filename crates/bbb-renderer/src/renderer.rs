@@ -716,6 +716,7 @@ pub struct Renderer {
     /// `hud_font_glyphs` is uploaded so per-frame draws never rescan the table.
     pub(super) hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool,
     pub(super) hud_chat_modified_icon: Option<HudSpriteGpu>,
+    pub(super) hud_draft_report_icon: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(super) hud_inworld_menu_background: Option<HudSpriteGpu>,
     pub(super) hud_inventory_background: Option<HudSpriteGpu>,
@@ -2456,6 +2457,7 @@ impl Renderer {
             hud_font_book: HudFontGlyphBook::default(),
             hud_obfuscated_glyph_pool: HudObfuscatedGlyphPool::default(),
             hud_chat_modified_icon: None,
+            hud_draft_report_icon: None,
             hud_hotbar_item_icons: std::array::from_fn(|_| None),
             hud_inworld_menu_background: None,
             hud_inventory_background: None,

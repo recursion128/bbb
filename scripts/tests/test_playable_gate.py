@@ -828,6 +828,17 @@ class PlayableGateLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(playable_gate.GateFailure, "did not complete"):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
+    def test_death_respawn_requires_delayed_native_screen_input(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["lifecycle"]["death_respawn"]["input_path"] = "net.perform_respawn"
+        with self.assertRaisesRegex(playable_gate.GateFailure, "bypassed native DeathScreen"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+        source = inspect.getsource(playable_gate.drive_session_lifecycle)
+        self.assertIn('_tap_key(address, "enter")', source)
+        self.assertIn("_death_screen_status", source)
+        self.assertNotIn('"net.perform_respawn"', source)
+
     def test_stale_dimension_chunk_fails(self):
         evidence = copy.deepcopy(self.fixture)
         evidence["lifecycle"]["dimension_round_trip"][

@@ -56,8 +56,9 @@ pub use self::creative_inventory::{
     HUD_CREATIVE_TRASH_Y,
 };
 pub use self::death_screen::{
-    HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
-    HudDeathScreen, HudDeathScreenButton, HudDeathScreenHitTarget, HudDeathScreenHitTargetKind,
+    HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+    HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDeathScreenHitTarget,
+    HudDeathScreenHitTargetKind,
 };
 pub use self::disconnected_screen::{
     HudDisconnectedScreen, HudDisconnectedScreenButton, HudDisconnectedScreenHitTarget,
@@ -3637,6 +3638,16 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_chat_modified_icon = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_draft_report_icon(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_draft_report_icon = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -8493,10 +8504,24 @@ impl Renderer {
         }
 
         if let Some(screen) = &self.hud_death_screen {
+            if matches!(
+                screen,
+                HudDeathScreen::DraftConfirmation(_) | HudDeathScreen::LinkConfirmation(_)
+            ) && self.hud_screen_blur
+                && self.menu_background_blurriness >= 1.0
+            {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
             death_screen::push_hud_death_screen(
                 &mut vertices,
                 &mut post_gui_item_commands,
                 &self.hud_white_pixel,
+                self.hud_inworld_menu_background.as_ref(),
+                self.hud_draft_report_icon.as_ref(),
                 HudDebugOptionsButtonSprites {
                     normal: self.hud_widget_button.as_ref(),
                     disabled: self.hud_widget_button_disabled.as_ref(),

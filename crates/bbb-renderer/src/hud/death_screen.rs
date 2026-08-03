@@ -9,10 +9,11 @@ use winit::dpi::PhysicalSize;
 use super::{
     absolute_hud_rect, hud_component_runs_width, hud_font_runs_width, hud_quad_vertices,
     hud_wrap_chat_runs_with_interactions, push_hud_component_screen_text_draw,
-    push_hud_debug_options_button, push_hud_screen_text_draw, HudComponentScreenTextDraw,
-    HudComponentTextRun, HudDebugOptionsButtonSprites, HudDrawCommand, HudFontGlyphBook,
-    HudFontGlyphMap, HudObfuscatedGlyphPool, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun,
-    HudTextStyle, HudUvRect, HudVertex, HUD_TINT_WHITE,
+    push_hud_debug_options_button, push_hud_draw, push_hud_draw_with_uv_and_tint,
+    push_hud_screen_text_draw, HudComponentScreenTextDraw, HudComponentTextRun,
+    HudDebugOptionsButtonSprites, HudDrawCommand, HudFontGlyphBook, HudFontGlyphMap,
+    HudObfuscatedGlyphPool, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun, HudTextStyle,
+    HudUvRect, HudVertex, HUD_TINT_WHITE,
 };
 
 const MAIN_BUTTON_WIDTH: i32 = 200;
@@ -24,6 +25,7 @@ const CAUSE_Y: f32 = 85.0;
 const SCORE_Y: f32 = 100.0;
 const FONT_LINE_HEIGHT: i32 = 9;
 const TITLE_SCALE: f32 = 2.0;
+const MENU_BACKGROUND_TILE_SIZE: f32 = 32.0;
 const QUIT_BUTTON_WIDTH: i32 = 150;
 const LINK_BUTTON_WIDTH: i32 = 100;
 const CONFIRM_BUTTON_GAP: i32 = 4;
@@ -39,6 +41,8 @@ const DISABLED_TEXT_TINT: [f32; 4] = [0.63, 0.63, 0.63, 1.0];
 pub enum HudDeathScreenButton {
     Respawn,
     TitleScreen,
+    DraftEdit,
+    DraftDiscard,
     QuitTitleScreen,
     QuitRespawn,
     LinkOpen,
@@ -69,7 +73,19 @@ pub struct HudDeathMainScreen {
     pub score_runs: Vec<HudComponentTextRun>,
     pub respawn_label: String,
     pub title_screen_label: String,
+    pub has_draft_report: bool,
     pub buttons_active: bool,
+    pub focused: HudDeathScreenButton,
+    pub hovered: Option<HudDeathScreenButton>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudDeathDraftConfirmationScreen {
+    pub generation: u64,
+    pub title: String,
+    pub message: String,
+    pub edit_label: String,
+    pub discard_label: String,
     pub focused: HudDeathScreenButton,
     pub hovered: Option<HudDeathScreenButton>,
 }
@@ -100,6 +116,7 @@ pub struct HudDeathLinkConfirmationScreen {
 #[derive(Debug, Clone, PartialEq)]
 pub enum HudDeathScreen {
     Main(HudDeathMainScreen),
+    DraftConfirmation(HudDeathDraftConfirmationScreen),
     QuitConfirmation(HudDeathQuitConfirmationScreen),
     LinkConfirmation(HudDeathLinkConfirmationScreen),
 }
@@ -108,6 +125,7 @@ impl HudDeathScreen {
     pub fn generation(&self) -> u64 {
         match self {
             Self::Main(screen) => screen.generation,
+            Self::DraftConfirmation(screen) => screen.generation,
             Self::QuitConfirmation(screen) => screen.generation,
             Self::LinkConfirmation(screen) => screen.generation,
         }
@@ -166,6 +184,25 @@ pub(super) fn sanitize_hud_death_screen(screen: HudDeathScreen) -> Option<HudDea
                 )
             });
             HudDeathScreen::Main(screen)
+        }
+        HudDeathScreen::DraftConfirmation(mut screen) => {
+            sanitize_string(&mut screen.title);
+            sanitize_string(&mut screen.message);
+            sanitize_string(&mut screen.edit_label);
+            sanitize_string(&mut screen.discard_label);
+            if !matches!(
+                screen.focused,
+                HudDeathScreenButton::DraftEdit | HudDeathScreenButton::DraftDiscard
+            ) {
+                screen.focused = HudDeathScreenButton::DraftEdit;
+            }
+            screen.hovered = screen.hovered.filter(|button| {
+                matches!(
+                    button,
+                    HudDeathScreenButton::DraftEdit | HudDeathScreenButton::DraftDiscard
+                )
+            });
+            HudDeathScreen::DraftConfirmation(screen)
         }
         HudDeathScreen::QuitConfirmation(mut screen) => {
             sanitize_string(&mut screen.title);
@@ -255,6 +292,17 @@ pub(super) fn hud_death_screen_hit_target_at(
                 HudDeathScreenHitTargetKind::Button(button)
             }
         }
+        HudDeathScreen::DraftConfirmation(screen) => {
+            let layout = draft_confirmation_layout(screen, glyphs, surface_size);
+            let button = [
+                HudDeathScreenButton::DraftEdit,
+                HudDeathScreenButton::DraftDiscard,
+            ]
+            .into_iter()
+            .zip(layout.buttons)
+            .find_map(|(button, rect)| rect.contains(position).then_some(button))?;
+            HudDeathScreenHitTargetKind::Button(button)
+        }
         HudDeathScreen::QuitConfirmation(screen) => {
             if !screen.buttons_active {
                 return None;
@@ -316,6 +364,8 @@ pub(super) fn push_hud_death_screen<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
+    inworld_menu_background: Option<&'a HudSpriteGpu>,
+    draft_report_icon: Option<&'a HudSpriteGpu>,
     button_sprites: HudDebugOptionsButtonSprites<'a>,
     font_atlas: Option<&'a HudSpriteGpu>,
     fonts: &HudFontGlyphBook,
@@ -324,7 +374,20 @@ pub(super) fn push_hud_death_screen<'a>(
     surface_size: PhysicalSize<u32>,
     screen: &HudDeathScreen,
 ) {
-    push_death_background(vertices, commands, white_pixel, surface_size);
+    match screen {
+        HudDeathScreen::Main(_) | HudDeathScreen::QuitConfirmation(_) => {
+            push_death_background(vertices, commands, white_pixel, surface_size);
+        }
+        HudDeathScreen::DraftConfirmation(_) | HudDeathScreen::LinkConfirmation(_) => {
+            push_menu_background(
+                vertices,
+                commands,
+                white_pixel,
+                inworld_menu_background,
+                surface_size,
+            );
+        }
+    }
     let Some(font_atlas) = font_atlas else {
         return;
     };
@@ -337,6 +400,19 @@ pub(super) fn push_hud_death_screen<'a>(
             button_sprites,
             font_atlas,
             fonts,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            screen,
+            draft_report_icon,
+        ),
+        HudDeathScreen::DraftConfirmation(screen) => push_draft_confirmation(
+            vertices,
+            commands,
+            white_pixel,
+            button_sprites,
+            font_atlas,
             glyphs,
             obfuscated_pool,
             frame_index,
@@ -367,6 +443,59 @@ pub(super) fn push_hud_death_screen<'a>(
             surface_size,
             screen,
         ),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_draft_confirmation<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    font_atlas: &'a HudSpriteGpu,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudDeathDraftConfirmationScreen,
+) {
+    let layout = draft_confirmation_layout(screen, glyphs, surface_size);
+    push_confirmation_text(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &layout,
+    );
+    for (index, (button, label)) in [
+        (HudDeathScreenButton::DraftEdit, screen.edit_label.as_str()),
+        (
+            HudDeathScreenButton::DraftDiscard,
+            screen.discard_label.as_str(),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        push_button(
+            vertices,
+            commands,
+            white_pixel,
+            button_sprites,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            layout.buttons[index],
+            label,
+            true,
+            screen.hovered == Some(button) || screen.focused == button,
+        );
     }
 }
 
@@ -402,6 +531,50 @@ fn push_death_background<'a>(
     });
 }
 
+fn push_menu_background<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudSpriteGpu>,
+    surface_size: PhysicalSize<u32>,
+) {
+    let Some(background) = background else {
+        push_hud_draw(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            absolute_hud_rect(
+                0.0,
+                0.0,
+                surface_size.width.max(1),
+                surface_size.height.max(1),
+            ),
+        );
+        return;
+    };
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        background,
+        surface_size,
+        absolute_hud_rect(
+            0.0,
+            0.0,
+            surface_size.width.max(1),
+            surface_size.height.max(1),
+        ),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [
+                surface_size.width as f32 / MENU_BACKGROUND_TILE_SIZE,
+                surface_size.height as f32 / MENU_BACKGROUND_TILE_SIZE,
+            ],
+        },
+        HUD_TINT_WHITE,
+    );
+}
+
 #[allow(clippy::too_many_arguments)]
 fn push_main<'a>(
     vertices: &mut Vec<HudVertex>,
@@ -415,6 +588,7 @@ fn push_main<'a>(
     frame_index: u64,
     surface_size: PhysicalSize<u32>,
     screen: &HudDeathMainScreen,
+    draft_report_icon: Option<&'a HudSpriteGpu>,
 ) {
     let title_runs = [HudStyledTextRun::plain(&screen.title)];
     push_centered_runs(
@@ -481,6 +655,20 @@ fn push_main<'a>(
             label,
             screen.buttons_active,
             screen.hovered == Some(button) || screen.focused == button,
+        );
+    }
+    if let (true, Some(icon)) = (screen.has_draft_report, draft_report_icon) {
+        push_hud_draw(
+            vertices,
+            commands,
+            icon,
+            surface_size,
+            absolute_hud_rect(
+                title.x.saturating_add(title.width).saturating_sub(17) as f32,
+                title.y.saturating_add(3) as f32,
+                15,
+                15,
+            ),
         );
     }
 }
@@ -809,6 +997,21 @@ fn quit_confirmation_layout(
     )
 }
 
+fn draft_confirmation_layout(
+    screen: &HudDeathDraftConfirmationScreen,
+    glyphs: &HudFontGlyphMap,
+    surface_size: PhysicalSize<u32>,
+) -> ConfirmationLayout {
+    confirmation_layout(
+        &screen.title,
+        &screen.message,
+        QUIT_BUTTON_WIDTH,
+        2,
+        glyphs,
+        surface_size,
+    )
+}
+
 fn link_confirmation_layout(
     screen: &HudDeathLinkConfirmationScreen,
     glyphs: &HudFontGlyphMap,
@@ -929,6 +1132,7 @@ mod tests {
             score_runs: vec![HudComponentTextRun::plain("Score: 9")],
             respawn_label: "Respawn".to_string(),
             title_screen_label: "Title Screen".to_string(),
+            has_draft_report: false,
             buttons_active,
             focused: HudDeathScreenButton::Respawn,
             hovered: None,
@@ -1020,6 +1224,20 @@ mod tests {
         assert_eq!(quit_layout.buttons.len(), 2);
         assert!(quit_layout.buttons.iter().all(|rect| rect.width == 150));
         assert_eq!(quit_layout.buttons[1].x - quit_layout.buttons[0].x, 154);
+
+        let draft = HudDeathDraftConfirmationScreen {
+            generation: 2,
+            title: "Edit draft?".to_string(),
+            message: "A saved report exists.".to_string(),
+            edit_label: "Edit".to_string(),
+            discard_label: "Discard".to_string(),
+            focused: HudDeathScreenButton::DraftEdit,
+            hovered: None,
+        };
+        let draft_layout = draft_confirmation_layout(&draft, &glyphs, size);
+        assert_eq!(draft_layout.buttons.len(), 2);
+        assert!(draft_layout.buttons.iter().all(|rect| rect.width == 150));
+        assert_eq!(draft_layout.buttons[1].x - draft_layout.buttons[0].x, 154);
 
         let link = HudDeathLinkConfirmationScreen {
             generation: 2,

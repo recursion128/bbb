@@ -35,6 +35,14 @@ pub(crate) struct DeathScreenQuitConfirmationInputState {
     pub(crate) hovered: Option<HudDeathScreenButton>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DeathScreenDraftConfirmationInputState {
+    pub(crate) generation: u64,
+    pub(crate) parent: DeathScreenMainInputState,
+    pub(crate) focus: HudDeathScreenButton,
+    pub(crate) hovered: Option<HudDeathScreenButton>,
+}
+
 impl DeathScreenQuitConfirmationInputState {
     pub(crate) fn buttons_active(self) -> bool {
         self.elapsed_ticks >= DEATH_SCREEN_BUTTON_DELAY_TICKS
@@ -52,6 +60,7 @@ pub(crate) struct DeathScreenLinkConfirmationInputState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DeathScreenRuntime {
     Main(DeathScreenMainInputState),
+    DraftConfirmation(DeathScreenDraftConfirmationInputState),
     QuitConfirmation(DeathScreenQuitConfirmationInputState),
     LinkConfirmation(DeathScreenLinkConfirmationInputState),
 }
@@ -60,6 +69,7 @@ impl DeathScreenRuntime {
     pub(crate) fn generation(self) -> u64 {
         match self {
             Self::Main(state) => state.generation,
+            Self::DraftConfirmation(state) => state.generation,
             Self::QuitConfirmation(state) => state.generation,
             Self::LinkConfirmation(state) => state.generation,
         }
@@ -105,6 +115,51 @@ impl DeathScreenInputState {
 impl ClientInputState {
     pub(crate) fn death_screen_runtime(&self) -> Option<DeathScreenRuntime> {
         self.death_screen.active
+    }
+
+    pub(crate) fn death_screen_status(
+        &self,
+        world: &WorldStore,
+    ) -> Option<bbb_control::DeathScreenStatus> {
+        let runtime = self.death_screen.active?;
+        let canonical = world
+            .death_screen()
+            .filter(|screen| screen.generation == runtime.generation())?;
+        let (screen, focused, elapsed_ticks, buttons_active) = match runtime {
+            DeathScreenRuntime::Main(state) => (
+                bbb_control::DeathScreenControlKind::Main,
+                death_screen_control_focus(state.focus),
+                state.elapsed_ticks,
+                state.buttons_active(),
+            ),
+            DeathScreenRuntime::DraftConfirmation(state) => (
+                bbb_control::DeathScreenControlKind::DraftConfirmation,
+                death_screen_control_focus(state.focus),
+                state.parent.elapsed_ticks,
+                true,
+            ),
+            DeathScreenRuntime::QuitConfirmation(state) => (
+                bbb_control::DeathScreenControlKind::QuitConfirmation,
+                death_screen_control_focus(state.focus),
+                state.elapsed_ticks,
+                state.buttons_active(),
+            ),
+            DeathScreenRuntime::LinkConfirmation(state) => (
+                bbb_control::DeathScreenControlKind::LinkConfirmation,
+                death_screen_control_focus(state.focus),
+                state.parent.elapsed_ticks,
+                true,
+            ),
+        };
+        Some(bbb_control::DeathScreenStatus {
+            generation: runtime.generation(),
+            screen,
+            focused,
+            elapsed_ticks,
+            buttons_active,
+            hardcore: canonical.hardcore,
+            has_draft_report: world.player_reporting().draft.is_some(),
+        })
     }
 
     pub(crate) fn sync_death_screen(
@@ -166,7 +221,9 @@ impl ClientInputState {
                 state.elapsed_ticks = state.elapsed_ticks.saturating_add(client_ticks);
                 true
             }
-            Some(DeathScreenRuntime::LinkConfirmation(_)) => true,
+            Some(
+                DeathScreenRuntime::DraftConfirmation(_) | DeathScreenRuntime::LinkConfirmation(_),
+            ) => true,
             None => false,
         }
     }
@@ -204,6 +261,23 @@ impl ClientInputState {
                     activate = Some(state.focus);
                 }
                 KeyCode::Escape => {}
+                _ => {}
+            },
+            DeathScreenRuntime::DraftConfirmation(state) => match code {
+                KeyCode::Tab
+                | KeyCode::ArrowLeft
+                | KeyCode::ArrowRight
+                | KeyCode::ArrowUp
+                | KeyCode::ArrowDown => {
+                    state.focus = match state.focus {
+                        HudDeathScreenButton::DraftEdit => HudDeathScreenButton::DraftDiscard,
+                        _ => HudDeathScreenButton::DraftEdit,
+                    };
+                }
+                KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => {
+                    activate = Some(state.focus);
+                }
+                KeyCode::Escape => activate = Some(HudDeathScreenButton::DraftDiscard),
                 _ => {}
             },
             DeathScreenRuntime::QuitConfirmation(state) => match code {
@@ -266,6 +340,14 @@ impl ClientInputState {
                     matches!(
                         button,
                         HudDeathScreenButton::Respawn | HudDeathScreenButton::TitleScreen
+                    )
+                });
+            }
+            DeathScreenRuntime::DraftConfirmation(state) => {
+                state.hovered = hovered.filter(|button| {
+                    matches!(
+                        button,
+                        HudDeathScreenButton::DraftEdit | HudDeathScreenButton::DraftDiscard
                     )
                 });
             }
@@ -359,23 +441,34 @@ impl ClientInputState {
             (DeathScreenRuntime::Main(state), HudDeathScreenButton::TitleScreen)
                 if state.buttons_active() =>
             {
-                if world.death_screen().is_some_and(|screen| screen.hardcore) {
-                    complete_death_screen_disconnect(
-                        &mut self.death_screen,
-                        world,
-                        net_commands,
-                        generation,
-                    );
-                } else {
-                    self.death_screen.active = Some(DeathScreenRuntime::QuitConfirmation(
-                        DeathScreenQuitConfirmationInputState {
+                if world.player_reporting().draft.is_some() {
+                    self.death_screen.active = Some(DeathScreenRuntime::DraftConfirmation(
+                        DeathScreenDraftConfirmationInputState {
                             generation,
-                            elapsed_ticks: 0,
-                            focus: HudDeathScreenButton::QuitTitleScreen,
+                            parent: state,
+                            focus: HudDeathScreenButton::DraftEdit,
                             hovered: None,
                         },
                     ));
+                } else {
+                    continue_death_screen_exit(&mut self.death_screen, world, net_commands, state);
                 }
+            }
+            (DeathScreenRuntime::DraftConfirmation(state), HudDeathScreenButton::DraftEdit) => {
+                if self.open_player_reporting_draft_from_death(world, state.parent) {
+                    self.death_screen.active = None;
+                }
+            }
+            (DeathScreenRuntime::DraftConfirmation(state), HudDeathScreenButton::DraftDiscard) => {
+                if let Some(draft) = world.copy_player_report_draft() {
+                    world.discard_player_report_draft(draft.common().report_id);
+                }
+                continue_death_screen_exit(
+                    &mut self.death_screen,
+                    world,
+                    net_commands,
+                    state.parent,
+                );
             }
             (
                 DeathScreenRuntime::QuitConfirmation(state),
@@ -468,6 +561,32 @@ impl ClientInputState {
             ));
         }
     }
+
+    pub(super) fn restore_death_screen_after_reporting(
+        &mut self,
+        world: &WorldStore,
+        parent: DeathScreenMainInputState,
+    ) {
+        self.death_screen.active = (world.death_screen().map(|screen| screen.generation)
+            == Some(parent.generation))
+        .then_some(DeathScreenRuntime::Main(parent));
+    }
+}
+
+fn death_screen_control_focus(focus: HudDeathScreenButton) -> bbb_control::DeathScreenControlFocus {
+    match focus {
+        HudDeathScreenButton::Respawn => bbb_control::DeathScreenControlFocus::Respawn,
+        HudDeathScreenButton::TitleScreen => bbb_control::DeathScreenControlFocus::TitleScreen,
+        HudDeathScreenButton::DraftEdit => bbb_control::DeathScreenControlFocus::DraftEdit,
+        HudDeathScreenButton::DraftDiscard => bbb_control::DeathScreenControlFocus::DraftDiscard,
+        HudDeathScreenButton::QuitTitleScreen => {
+            bbb_control::DeathScreenControlFocus::QuitTitleScreen
+        }
+        HudDeathScreenButton::QuitRespawn => bbb_control::DeathScreenControlFocus::QuitRespawn,
+        HudDeathScreenButton::LinkOpen => bbb_control::DeathScreenControlFocus::LinkOpen,
+        HudDeathScreenButton::LinkCopy => bbb_control::DeathScreenControlFocus::LinkCopy,
+        HudDeathScreenButton::LinkCancel => bbb_control::DeathScreenControlFocus::LinkCancel,
+    }
 }
 
 fn next_link_button(button: HudDeathScreenButton) -> HudDeathScreenButton {
@@ -513,14 +632,38 @@ fn complete_death_screen_disconnect(
     state.active = None;
 }
 
+fn continue_death_screen_exit(
+    state: &mut DeathScreenInputState,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    parent: DeathScreenMainInputState,
+) {
+    if world.death_screen().is_some_and(|screen| screen.hardcore) {
+        complete_death_screen_disconnect(state, world, net_commands, parent.generation);
+    } else {
+        state.active = Some(DeathScreenRuntime::QuitConfirmation(
+            DeathScreenQuitConfirmationInputState {
+                generation: parent.generation,
+                elapsed_ticks: 0,
+                focus: HudDeathScreenButton::QuitTitleScreen,
+                hovered: None,
+            },
+        ));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
         packets::{CommonPlayerSpawnInfo, PlayLogin, PlayerCombatKill as ProtocolPlayerCombatKill},
         NbtSummaryEntry, NbtSummaryValue, RichTextComponent,
     };
+    use bbb_renderer::{HudPlayerReportingFocus, HudPlayerReportingHitTarget};
+    use bbb_world::{PlayerReportEnvironment, PlayerReportType};
+    use uuid::Uuid;
 
     use super::*;
+    use crate::input::reporting::PlayerReportingRuntimeScreen;
 
     fn death_world(hardcore: bool, cause: RichTextComponent) -> WorldStore {
         let mut world = WorldStore::new();
@@ -559,6 +702,20 @@ mod tests {
         HudDeathScreenHitTarget { generation, kind }
     }
 
+    fn add_username_draft(world: &mut WorldStore, comments: &str) -> Uuid {
+        let report_id = Uuid::from_u128(11);
+        world.set_player_report_environment(Some(PlayerReportEnvironment::third_party(
+            "26.1",
+            "en-US",
+            "example.org:25565",
+        )));
+        world
+            .start_username_report_draft(report_id, 0, Uuid::from_u128(12), "ReportedPlayer")
+            .unwrap();
+        assert!(world.set_player_report_comments(report_id, comments.to_string()));
+        report_id
+    }
+
     #[test]
     fn death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once() {
         let mut world = death_world(false, RichTextComponent::plain("You died"));
@@ -568,6 +725,18 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(4);
         let commands = Some(tx);
         assert!(input.sync_death_screen(&mut world, &mut counters, &commands));
+        assert_eq!(
+            input.death_screen_status(&world),
+            Some(bbb_control::DeathScreenStatus {
+                generation,
+                screen: bbb_control::DeathScreenControlKind::Main,
+                focused: bbb_control::DeathScreenControlFocus::Respawn,
+                elapsed_ticks: 0,
+                buttons_active: false,
+                hardcore: false,
+                has_draft_report: false,
+            })
+        );
 
         assert!(input.handle_death_screen_key(
             &mut counters,
@@ -594,6 +763,9 @@ mod tests {
         assert!(rx.try_recv().is_err());
 
         input.advance_death_screen_ticks(1);
+        assert!(input
+            .death_screen_status(&world)
+            .is_some_and(|status| status.elapsed_ticks == 20 && status.buttons_active));
         input.handle_death_screen_mouse_input(
             &mut counters,
             &mut world,
@@ -610,6 +782,7 @@ mod tests {
         assert_eq!(counters.perform_respawn_commands_queued, 1);
         assert_eq!(world.death_screen(), None);
         assert_eq!(input.death_screen_runtime(), None);
+        assert_eq!(input.death_screen_status(&world), None);
     }
 
     #[test]
@@ -655,6 +828,128 @@ mod tests {
         assert_eq!(rx.try_recv(), Ok(NetCommand::Disconnect));
         assert!(rx.try_recv().is_err());
         assert_eq!(world.death_screen(), None);
+    }
+
+    #[test]
+    fn draft_discard_escape_continues_normal_and_hardcore_exit_paths() {
+        for hardcore in [false, true] {
+            let mut world = death_world(hardcore, RichTextComponent::plain("You died"));
+            add_username_draft(&mut world, "saved draft");
+            let mut input = ClientInputState::new(true);
+            let mut counters = NetCounters::default();
+            let (tx, mut rx) = mpsc::channel(4);
+            let commands = Some(tx);
+            input.sync_death_screen(&mut world, &mut counters, &commands);
+            input.advance_death_screen_ticks(20);
+            input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Tab, true);
+            input.handle_death_screen_key(
+                &mut counters,
+                &mut world,
+                &commands,
+                KeyCode::Enter,
+                true,
+            );
+            assert!(matches!(
+                input.death_screen_runtime(),
+                Some(DeathScreenRuntime::DraftConfirmation(_))
+            ));
+
+            input.handle_death_screen_key(
+                &mut counters,
+                &mut world,
+                &commands,
+                KeyCode::Escape,
+                true,
+            );
+            assert!(world.player_reporting().draft.is_none());
+            if hardcore {
+                assert_eq!(rx.try_recv(), Ok(NetCommand::Disconnect));
+                assert!(world.death_screen().is_none());
+            } else {
+                assert!(matches!(
+                    input.death_screen_runtime(),
+                    Some(DeathScreenRuntime::QuitConfirmation(state))
+                        if !state.buttons_active()
+                ));
+                input.advance_death_screen_ticks(20);
+                input.handle_death_screen_key(
+                    &mut counters,
+                    &mut world,
+                    &commands,
+                    KeyCode::Escape,
+                    true,
+                );
+                assert_eq!(rx.try_recv(), Ok(NetCommand::PerformRespawn));
+            }
+            assert!(rx.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn draft_edit_restores_same_death_screen_after_saving_draft() {
+        let mut world = death_world(false, RichTextComponent::plain("You died"));
+        let report_id = add_username_draft(&mut world, "saved draft");
+        let generation = world.death_screen().unwrap().generation;
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        input.sync_death_screen(&mut world, &mut counters, &commands);
+        input.advance_death_screen_ticks(20);
+        input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Tab, true);
+        input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Enter, true);
+        input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Enter, true);
+        assert!(world.death_screen().is_none());
+        assert!(matches!(
+            input
+                .player_reporting_runtime()
+                .map(|runtime| runtime.screen()),
+            Some(PlayerReportingRuntimeScreen::Editor(
+                PlayerReportType::Username
+            ))
+        ));
+
+        input.handle_player_reporting_key(&mut world, KeyCode::Escape, true);
+        assert!(matches!(
+            input
+                .player_reporting_runtime()
+                .map(|runtime| runtime.screen()),
+            Some(PlayerReportingRuntimeScreen::DiscardWarning(
+                PlayerReportType::Username
+            ))
+        ));
+        let reporting_generation = input.player_reporting_runtime().unwrap().generation();
+        input.handle_player_reporting_mouse_input(
+            &mut world,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(HudPlayerReportingHitTarget {
+                generation: reporting_generation,
+                focus: HudPlayerReportingFocus::WarningSaveDraft,
+            }),
+        );
+        assert_eq!(
+            world
+                .player_reporting()
+                .draft
+                .as_ref()
+                .map(|draft| draft.common().report_id),
+            Some(report_id)
+        );
+        assert_eq!(
+            world.death_screen().map(|screen| screen.generation),
+            Some(generation)
+        );
+        assert!(matches!(
+            input.death_screen_runtime(),
+            Some(DeathScreenRuntime::Main(state))
+                if state.generation == generation && state.elapsed_ticks == 20
+        ));
+
+        input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Tab, true);
+        input.handle_death_screen_key(&mut counters, &mut world, &commands, KeyCode::Enter, true);
+        assert_eq!(rx.try_recv(), Ok(NetCommand::PerformRespawn));
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -749,5 +1044,22 @@ mod tests {
         assert!(input.sync_death_screen(&mut world, &mut counters, &None));
         assert_eq!(input.death_screen_runtime(), None);
         assert!(world.dialog_link_confirmation().is_none());
+    }
+
+    #[test]
+    fn death_reporting_return_path_cannot_restore_social_only_shadow_state() {
+        let native_reporting = include_str!("reporting.rs");
+        let world_reporting = include_str!("../../../bbb-world/src/client/reporting.rs");
+        let world_ui = include_str!("../../../bbb-world/src/client/ui.rs");
+        for source in [native_reporting, world_reporting, world_ui] {
+            assert!(!source.contains("suspended_social"));
+            assert!(!source.contains("player_reporting_previous_social_screen"));
+        }
+        assert!(native_reporting.contains("enum PlayerReportingPreviousInputState"));
+        assert!(world_ui.contains("enum PlayerReportingPreviousScreenState"));
+        for variant in ["SocialInteractions", "Death"] {
+            assert!(native_reporting.contains(variant));
+            assert!(world_ui.contains(variant));
+        }
     }
 }

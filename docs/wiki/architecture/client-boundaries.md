@@ -134,6 +134,21 @@ hit-test、click transaction 与 render owner；`LecternScreen` 投影到专用 
 state，不存在 native shadow screen cache。未知 id 的 native 查询返回无 surface；重复、遗漏、顺序
 变化及生成输出陈旧均在 extractor fixture、catalog exact-output check 和 reverse source guard 失败。
 
+## DeathScreen 与 report-editor 返回 owner
+
+Vanilla `DeathScreen`、`ReportingContext.draftReportHandled` 与 `ConfirmScreen` 对应一条单向
+数据流：combat packet 只由 world `ClientDeathScreenState` 捕获 generation、cause、score 与
+hardcore；report draft 只由 world reporting state 保存；native death input 唯一决定第 20 tick
+激活、focus、normal/hardcore、draft Edit/Discard、URL 与 respawn/disconnect action。report editor
+只保存一个 `SocialInteractions | Death` previous-screen 投影；matching close 恢复同 generation，
+finish、environment replacement 或 stale generation 丢弃它，不存在 social-only shadow cache。
+
+renderer/control 只消费不可变窄投影。主屏与 delayed title confirmation 使用 death gradient；
+通用 draft/link `ConfirmScreen` 使用 in-world menu background/blur；`icon/draft_report` 随现有 HUD
+resource transaction 原子 prepare/commit，失败保留上一 generation。offscreen test 锁定 icon、
+background、button 与 confirmation 像素；playable lifecycle 必须观察 disabled→第 20 tick active，
+再经 `input.key:enter` 进入唯一 native action，reverse guard 禁止恢复 `net.perform_respawn` 绕路。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

@@ -201,6 +201,12 @@ pub(crate) fn try_load_hud_textures(
         chat_modified.height,
         &chat_modified.rgba,
     )?;
+    let draft_report = hud_sprite(&sprites, "icon/draft_report")?;
+    renderer.upload_hud_draft_report_icon(
+        draft_report.width,
+        draft_report.height,
+        &draft_report.rgba,
+    )?;
     for kind in HudPlayerListPingSprite::ALL {
         let ping = hud_sprite(&sprites, kind.sprite_path())?;
         renderer.upload_hud_player_list_ping_sprite(kind, ping.width, ping.height, &ping.rgba)?;
@@ -2046,6 +2052,17 @@ mod tests {
         let chat_modified = hud_sprite(&sprites, "icon/chat_modified").unwrap();
         assert_eq!(chat_modified.id, "minecraft:icon/chat_modified");
         assert_eq!((chat_modified.width, chat_modified.height), (9, 9));
+        let draft_report = SpriteImage::new(
+            "minecraft:icon/draft_report",
+            15,
+            15,
+            vec![255; 15 * 15 * 4],
+        )
+        .unwrap();
+        sprites.insert(draft_report.id.clone(), draft_report);
+        let draft_report = hud_sprite(&sprites, "icon/draft_report").unwrap();
+        assert_eq!(draft_report.id, "minecraft:icon/draft_report");
+        assert_eq!((draft_report.width, draft_report.height), (15, 15));
 
         for kind in HudPlayerListPingSprite::ALL {
             let id = format!("minecraft:{}", kind.sprite_path());

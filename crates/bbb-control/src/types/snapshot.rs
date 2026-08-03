@@ -18,6 +18,8 @@ pub struct AppStatus {
     pub disconnected_screen: Option<DisconnectedScreenStatus>,
     #[serde(default)]
     pub chat_screen: Option<ChatScreenStatus>,
+    #[serde(default)]
+    pub death_screen: Option<DeathScreenStatus>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,6 +64,42 @@ pub enum ChatScreenControlKind {
 pub enum ChatMethodControl {
     Message,
     Command,
+}
+
+/// Bounded immutable view of the native-owned DeathScreen decision state.
+/// Cause text and report-draft contents stay in their canonical world owners.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeathScreenStatus {
+    pub generation: u64,
+    pub screen: DeathScreenControlKind,
+    pub focused: DeathScreenControlFocus,
+    pub elapsed_ticks: u32,
+    pub buttons_active: bool,
+    pub hardcore: bool,
+    pub has_draft_report: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeathScreenControlKind {
+    Main,
+    DraftConfirmation,
+    QuitConfirmation,
+    LinkConfirmation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeathScreenControlFocus {
+    Respawn,
+    TitleScreen,
+    DraftEdit,
+    DraftDiscard,
+    QuitTitleScreen,
+    QuitRespawn,
+    LinkOpen,
+    LinkCopy,
+    LinkCancel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -637,6 +675,7 @@ impl ControlState {
                     running: true,
                     disconnected_screen: None,
                     chat_screen: None,
+                    death_screen: None,
                 },
                 ..ControlSnapshot::default()
             })),

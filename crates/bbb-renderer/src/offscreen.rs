@@ -133,10 +133,10 @@ mod tests {
     use crate::{
         ClearColor, EntityDefaultPlayerSkin, EntityModelTextureImage, EntityModelTextureRef,
         EntityPlayerSkin, HudAsciiGlyph, HudCodeOfConductRect, HudCodeOfConductScreen,
-        HudComponentTextRun, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
-        HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
-        HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap, HudGameEventButton,
-        HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
+        HudComponentTextRun, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,
+        HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton,
+        HudDemoPopupScreen, HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap,
+        HudGameEventButton, HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
         HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
         HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
         HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
@@ -1217,6 +1217,12 @@ mod tests {
         renderer
             .upload_hud_widget_button_highlighted(1, 1, &[255, 255, 0, 255])
             .expect("highlighted button");
+        renderer
+            .upload_hud_draft_report_icon(1, 1, &[255, 0, 255, 255])
+            .expect("draft report icon");
+        renderer
+            .upload_hud_inworld_menu_background(1, 1, &[16, 32, 64, 255])
+            .expect("in-world menu background");
         renderer.set_hud_screen_blur(false);
         renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
             generation: 1,
@@ -1233,6 +1239,7 @@ mod tests {
             }],
             respawn_label: String::new(),
             title_screen_label: String::new(),
+            has_draft_report: true,
             buttons_active: false,
             focused: HudDeathScreenButton::TitleScreen,
             hovered: None,
@@ -1253,6 +1260,7 @@ mod tests {
         let cause = pixels.pixel(WIDTH / 2, 88);
         let score = pixels.pixel(WIDTH / 2, 103);
         let disabled_button = pixels.pixel(WIDTH / 2 - 95, HEIGHT / 4 + 76);
+        let draft_icon = pixels.pixel(WIDTH / 2 + 85, HEIGHT / 4 + 100);
 
         assert!(
             bottom[0] > top[0],
@@ -1279,6 +1287,10 @@ mod tests {
                 && disabled_button[1].abs_diff(disabled_button[2]) < 8,
             "the delayed main button must use the disabled sprite, got {disabled_button:?}"
         );
+        assert!(
+            draft_icon[0] > 220 && draft_icon[1] < 32 && draft_icon[2] > 220,
+            "the 15x15 draft icon must render at the title button's right edge, got {draft_icon:?}"
+        );
 
         renderer.set_hud_death_screen(Some(HudDeathScreen::Main(HudDeathMainScreen {
             generation: 1,
@@ -1288,6 +1300,7 @@ mod tests {
             score_runs: Vec::new(),
             respawn_label: String::new(),
             title_screen_label: String::new(),
+            has_draft_report: false,
             buttons_active: true,
             focused: HudDeathScreenButton::TitleScreen,
             hovered: None,
@@ -1309,6 +1322,7 @@ mod tests {
             score_runs: Vec::new(),
             respawn_label: String::new(),
             title_screen_label: String::new(),
+            has_draft_report: false,
             buttons_active: true,
             focused: HudDeathScreenButton::TitleScreen,
             hovered: Some(HudDeathScreenButton::Respawn),
@@ -1322,6 +1336,31 @@ mod tests {
             "hovered button must use the highlighted sprite, got {hovered:?}"
         );
 
+        renderer.set_hud_screen_blur(true);
+        renderer.set_hud_death_screen(Some(HudDeathScreen::DraftConfirmation(
+            HudDeathDraftConfirmationScreen {
+                generation: 1,
+                title: "T".to_string(),
+                message: "C".to_string(),
+                edit_label: String::new(),
+                discard_label: String::new(),
+                focused: HudDeathScreenButton::DraftDiscard,
+                hovered: None,
+            },
+        )));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_some(),
+            "generic ConfirmScreen must retain Screen.extractBlurredBackground"
+        );
+        let draft = renderer
+            .render_offscreen_frame()
+            .expect("draft confirmation")
+            .pixel(12, 139);
+        assert!(
+            draft[1] > 220 && draft[0] < 32,
+            "draft confirmation must render its 150-wide first button over the menu background, got {draft:?}"
+        );
+
         renderer.set_hud_death_screen(Some(HudDeathScreen::QuitConfirmation(
             HudDeathQuitConfirmationScreen {
                 generation: 1,
@@ -1333,6 +1372,10 @@ mod tests {
                 hovered: None,
             },
         )));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_none(),
+            "DeathScreen.TitleConfirmScreen keeps the death gradient without generic blur"
+        );
         let quit = renderer
             .render_offscreen_frame()
             .expect("quit confirmation")
@@ -1354,6 +1397,10 @@ mod tests {
                 hovered: None,
             },
         )));
+        assert!(
+            renderer.collect_hud_draws().screen_blur.is_some(),
+            "ConfirmLinkScreen must retain generic menu blur"
+        );
         let link = renderer
             .render_offscreen_frame()
             .expect("link confirmation")

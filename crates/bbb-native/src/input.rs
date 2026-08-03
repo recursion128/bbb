@@ -786,6 +786,13 @@ impl RenderInputPublication {
         status.save_chat_drafts = self.save_chat_drafts;
         Some(status)
     }
+
+    pub(crate) fn death_screen_status(
+        &self,
+        world: &WorldStore,
+    ) -> Option<bbb_control::DeathScreenStatus> {
+        self.state.death_screen_status(world)
+    }
 }
 
 impl std::ops::Deref for RenderInputPublication {

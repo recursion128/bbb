@@ -1424,6 +1424,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_font_book);
         $take_owner!(hud_obfuscated_glyph_pool);
         $take_owner!(hud_chat_modified_icon);
+        $take_owner!(hud_draft_report_icon);
         $take_owner!(hud_panorama);
         $take_owner!(hud_inworld_menu_background);
         $take_owner!(hud_menu_background);

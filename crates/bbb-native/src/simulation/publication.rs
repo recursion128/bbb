@@ -259,6 +259,7 @@ fn publish_control_views(
         app.chat_screen = publication
             .input
             .chat_screen_status(publication.world.chat_presentation_config().visibility);
+        app.death_screen = publication.input.death_screen_status(&publication.world);
         ControlSnapshot {
             generation: publication.generation,
             app,

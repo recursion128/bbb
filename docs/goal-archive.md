@@ -92,6 +92,8 @@
   Configuration/Play 经既有 effect FIFO 一次 stop-all，并以三轮 live lifecycle 验收。
 - **2026-08-03（ChatScreen decision surface）**：25-owner edit、recent/draft/history、permission、
   component interaction、narration 与 T/Slash control/live lifecycle 收敛到单一 native owner。
+- **2026-08-03（DeathScreen decision surface）**：16-owner delay、draft/report return、
+  normal/hardcore、URL、resource/pixel 与 native-input live respawn 收敛为单一路径。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

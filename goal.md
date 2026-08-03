@@ -428,36 +428,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 裁决。关闭 milestone 后照常运行适用的 playable-gate，暴露的真实缺口先入账本，
 不得借机扩大当前 slice。
 
-### 当前 active 工程合同：DeathScreen 决策面收口
-
-目标是关闭账本中 16-owner `DeathScreen` 决策面：`bbb-world::ClientDeathScreenState`
-唯一拥有 packet 捕获的 generation/cause/score/hardcore，`bbb-native` death input state
-唯一拥有 delay/focus/confirmation/action，reporting draft 仍由 world reporting state
-唯一拥有，renderer/control 只接收不可变窄投影。依赖方向保持 packet/resource → world
-→ native input → renderer/control，下游不得反读 packet 或另建 death/report shadow state。
-
-Vanilla 依据是 `DeathScreen`、`ReportingContext.draftReportHandled`、`ConfirmScreen` 和
-`Screen.clickUrlAction`：第 20 tick 激活按钮；普通退出先进入延迟 20 tick 的 respawn/title
-确认，hardcore 直接断线；draft 先经 Edit/Discard，Edit 以 DeathScreen 为 report editor
-返回屏幕，Discard 后继续原退出分支；cause 只接受 `OPEN_URL` 并沿用 link prompt；主屏
-title button 右侧显示 15×15 draft icon。现有 priority/fallback/budget/mailbox 不得改变。
-
-串行阶段：A 冻结源码与当前调用链审计；B 建立唯一 report-editor previous-screen
-projection 和 draft confirmation，迁移全部 production caller 后删除 social-only shadow；
-C 补齐 draft icon/narration/control projection 与 deterministic pixel/decision tests；D 让
-live playable gate 通过真实 DeathScreen delay + input respawn，禁止再用控制面直接
-`net.perform_respawn` 冒充 UI 验收；E 更新 Wiki/matrix/ledger，完整 diff review、提交并
-在最终 commit 运行 full gate 与 live playable gate。focused tests 覆盖 20-tick 边界、
-normal/hardcore、draft Edit/Discard/Escape、editor close/finish、URL/stale generation、
-world generation rollback、renderer icon/confirmation pixels、control status、playable
-fixture source guard、受影响 crate tests、docs-lint fixtures 与 workspace check。
-
-非目标是修改 report 网络协议、secure-chat policy、DeathScreen 之外的 screen、renderer
-pipeline、字体/音频或资源 priority。安全停止点只允许是通过本阶段 focused checks 的干净
-提交且本合同/ledger 仍 active，或 BBB 无法自行消除并已复现的外部 blocker；完成要求旧
-social-only previous-screen cache 和 live direct-respawn 调用为零，决策级、像素与真实
-offline live 验收通过，最终 `HEAD` 同时写入 full-gated 与 live playable stamp。
-
 ### 架构收敛与防漂移
 
 状态：`maintenance`。新发现的真实重复 owner、resolver、projection 或 generation shadow state

@@ -15,11 +15,11 @@ use bbb_renderer::{
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
     HudChatInteraction, HudChatMessage, HudChatRestrictionsScreen, HudCommandBlockEditorScreen,
     HudCommandSuggestions, HudComponentTextRun, HudCrosshairAttackIndicator,
-    HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
-    HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect,
-    HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
-    HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect, HudPauseScreen,
-    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
+    HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
+    HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay,
+    HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen, HudHotbarMode,
+    HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect,
+    HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
     HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
     HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
     HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
@@ -132,7 +132,35 @@ pub(crate) fn hud_death_screen(
                     "deathScreen.titleScreen",
                     "Title Screen",
                 ),
+                has_draft_report: world.player_reporting().draft.is_some(),
                 buttons_active: state.buttons_active(),
+                focused: state.focus,
+                hovered: state.hovered,
+            })
+        }
+        DeathScreenRuntime::DraftConfirmation(state) => {
+            HudDeathScreen::DraftConfirmation(HudDeathDraftConfirmationScreen {
+                generation: state.generation,
+                title: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.quittotitle.title",
+                    "You have a draft chat report that will be lost if you quit",
+                ),
+                message: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.quittotitle.content",
+                    "Would you like to continue editing it or discard it?",
+                ),
+                edit_label: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.edit",
+                    "Edit Draft",
+                ),
+                discard_label: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.discard",
+                    "Discard Draft",
+                ),
                 focused: state.focus,
                 hovered: state.hovered,
             })

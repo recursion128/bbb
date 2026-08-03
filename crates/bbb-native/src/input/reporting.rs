@@ -17,7 +17,10 @@ use winit::{
     keyboard::KeyCode,
 };
 
-use super::{social::SocialInteractionsRuntime, text_edit, ClientInputState};
+use super::{
+    death_screen::DeathScreenMainInputState, social::SocialInteractionsRuntime, text_edit,
+    ClientInputState,
+};
 
 mod support;
 #[cfg(test)]
@@ -54,6 +57,28 @@ impl PlayerReportingTarget {
             skin_url,
         }
     }
+
+    fn from_draft(draft: &PlayerReportDraft) -> Self {
+        let profile_id = draft.common().reported_profile_id;
+        Self {
+            profile_id,
+            name: match draft {
+                PlayerReportDraft::Username { reported_name, .. } => reported_name.clone(),
+                _ => profile_id.to_string(),
+            },
+            chat_enabled: draft.report_type() == PlayerReportType::Chat,
+            skin_url: match draft {
+                PlayerReportDraft::Skin { skin_url, .. } => skin_url.clone(),
+                _ => None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum PlayerReportingPreviousInputState {
+    SocialInteractions(SocialInteractionsRuntime),
+    Death(DeathScreenMainInputState),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,7 +108,7 @@ pub(crate) struct PlayerReportingRuntime {
     generation: u64,
     target: PlayerReportingTarget,
     requested_target: PlayerReportingTarget,
-    suspended_social: Option<SocialInteractionsRuntime>,
+    previous_screen: Option<PlayerReportingPreviousInputState>,
     screen: PlayerReportingRuntimeScreen,
     focus: HudPlayerReportingFocus,
     hovered: Option<HudPlayerReportingFocus>,
@@ -181,14 +206,16 @@ impl ClientInputState {
         } else {
             HudPlayerReportingFocus::ReportType(1)
         };
-        let suspended_social = self.take_social_interactions_for_dialog();
+        let previous_screen = self
+            .take_social_interactions_for_dialog()
+            .map(PlayerReportingPreviousInputState::SocialInteractions);
         let canonical = world.open_player_reporting_screen();
         let has_draft = world.player_reporting().draft.is_some();
         self.player_reporting.active = Some(PlayerReportingRuntime {
             generation: canonical.generation,
             target: requested_target.clone(),
             requested_target,
-            suspended_social,
+            previous_screen,
             screen: if has_draft {
                 PlayerReportingRuntimeScreen::DraftChoice
             } else {
@@ -203,6 +230,38 @@ impl ClientInputState {
             scroll_amount: 0.0,
             comments_cursor: 0,
             comments_selection: 0,
+        });
+        true
+    }
+
+    pub(super) fn open_player_reporting_draft_from_death(
+        &mut self,
+        world: &mut WorldStore,
+        parent: DeathScreenMainInputState,
+    ) -> bool {
+        if world.player_reporting().environment.is_none()
+            || world.death_screen().map(|screen| screen.generation) != Some(parent.generation)
+        {
+            return false;
+        }
+        let Some(draft) = world.copy_player_report_draft() else {
+            return false;
+        };
+        let report_type = draft.report_type();
+        let target = PlayerReportingTarget::from_draft(&draft);
+        let comments_len = text_edit::char_len(&draft.common().comments);
+        let canonical = world.open_player_reporting_screen();
+        self.player_reporting.active = Some(PlayerReportingRuntime {
+            generation: canonical.generation,
+            target: target.clone(),
+            requested_target: target,
+            previous_screen: Some(PlayerReportingPreviousInputState::Death(parent)),
+            screen: PlayerReportingRuntimeScreen::Editor(report_type),
+            focus: editor_initial_focus(report_type),
+            hovered: None,
+            scroll_amount: 0.0,
+            comments_cursor: comments_len,
+            comments_selection: comments_len,
         });
         true
     }
@@ -769,30 +828,20 @@ impl ClientInputState {
         let profile_id = draft.common().reported_profile_id;
         if let Some(active) = self.player_reporting.active.as_mut() {
             if let Some(player) = active
-                .suspended_social
+                .previous_screen
                 .as_ref()
-                .and_then(|social| {
-                    social
+                .and_then(|previous| match previous {
+                    PlayerReportingPreviousInputState::SocialInteractions(social) => social
                         .rows()
                         .iter()
-                        .find(|player| player.profile.uuid == profile_id)
+                        .find(|player| player.profile.uuid == profile_id),
+                    PlayerReportingPreviousInputState::Death(_) => None,
                 })
                 .cloned()
             {
                 active.target = PlayerReportingTarget::from_social_player(&player);
             } else {
-                active.target = PlayerReportingTarget {
-                    profile_id,
-                    name: match &draft {
-                        PlayerReportDraft::Username { reported_name, .. } => reported_name.clone(),
-                        _ => profile_id.to_string(),
-                    },
-                    chat_enabled: report_type == PlayerReportType::Chat,
-                    skin_url: match &draft {
-                        PlayerReportDraft::Skin { skin_url, .. } => skin_url.clone(),
-                        _ => None,
-                    },
-                };
+                active.target = PlayerReportingTarget::from_draft(&draft);
             }
             let len = text_edit::char_len(&draft.common().comments);
             active.comments_cursor = len;
@@ -919,8 +968,14 @@ impl ClientInputState {
         ) {
             world.clear_player_report_submission();
         }
-        if let Some(social) = active.suspended_social {
-            self.restore_social_interactions_after_dialog(world, social);
+        match active.previous_screen {
+            Some(PlayerReportingPreviousInputState::SocialInteractions(social)) => {
+                self.restore_social_interactions_after_dialog(world, social);
+            }
+            Some(PlayerReportingPreviousInputState::Death(parent)) => {
+                self.restore_death_screen_after_reporting(world, parent);
+            }
+            None => {}
         }
     }
 

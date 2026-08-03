@@ -329,6 +329,21 @@ def _validate_lifecycle(
         "dimension_after"
     ) != "minecraft:overworld":
         raise GateFailure("same-dimension death respawn left the Overworld")
+    if death.get("screen") != "main" or death.get("focused") != "respawn":
+        raise GateFailure("lifecycle respawn did not use the main DeathScreen respawn action")
+    if death.get("initial_buttons_active") is not False:
+        raise GateFailure("lifecycle did not observe DeathScreen's disabled-button delay")
+    if death.get("active_buttons_active") is not True:
+        raise GateFailure("lifecycle did not observe DeathScreen buttons becoming active")
+    active_elapsed_ticks = death.get("active_elapsed_ticks")
+    if (
+        not isinstance(active_elapsed_ticks, int)
+        or isinstance(active_elapsed_ticks, bool)
+        or active_elapsed_ticks < 20
+    ):
+        raise GateFailure("lifecycle activated DeathScreen before Vanilla's twentieth tick")
+    if death.get("input_path") != "input.key:enter":
+        raise GateFailure("lifecycle respawn bypassed native DeathScreen input")
 
     dimensions = _object(
         lifecycle.get("dimension_round_trip"), "lifecycle.dimension_round_trip"
@@ -1268,6 +1283,17 @@ def _chat_screen_status(address: tuple[str, int]) -> dict[str, Any] | None:
         return None
     chat = app.get("chat_screen")
     return chat if isinstance(chat, dict) else None
+
+
+def _death_screen_status(address: tuple[str, int]) -> dict[str, Any] | None:
+    status = _control_request(address, "app.status")
+    if not isinstance(status, dict):
+        return None
+    app = status.get("app")
+    if not isinstance(app, dict):
+        return None
+    death = app.get("death_screen")
+    return death if isinstance(death, dict) else None
 
 
 def _local_player_pose(address: tuple[str, int]) -> dict[str, Any]:
@@ -3274,6 +3300,18 @@ def drive_session_lifecycle(
 
     progress["stage"] = "death_respawn"
     command_delta = _send_chat_command(address, "kill @s", deadline)
+    death_initial = _await_value(
+        deadline,
+        "main DeathScreen before button activation",
+        lambda: _death_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("screen") == "main"
+        and value.get("focused") == "respawn",
+    )
+    if death_initial.get("buttons_active") is not False:
+        raise GateFailure(
+            "DeathScreen was not observed during its Vanilla 20-tick disabled interval"
+        )
     dead_health = _await_value(
         deadline,
         "server-authoritative local-player death",
@@ -3282,7 +3320,23 @@ def drive_session_lifecycle(
     )
     respawns_before = int(initial_world.get("respawns_received", 0))
     perform_before = _net_counter(address, "perform_respawn_commands_queued")
-    _control_request(address, "net.perform_respawn")
+    death_active = _await_value(
+        deadline,
+        "main DeathScreen button activation",
+        lambda: _death_screen_status(address),
+        lambda value: isinstance(value, dict)
+        and value.get("screen") == "main"
+        and value.get("buttons_active") is True
+        and isinstance(value.get("elapsed_ticks"), int)
+        and value["elapsed_ticks"] >= 20,
+    )
+    _tap_key(address, "enter")
+    _await_value(
+        deadline,
+        "DeathScreen close after native respawn input",
+        lambda: _death_screen_status(address),
+        lambda value: value is None,
+    )
     respawned = _await_play_dimension(
         address, "minecraft:overworld", respawns_before + 1, deadline
     )
@@ -3302,6 +3356,13 @@ def drive_session_lifecycle(
         "health_after": respawn_health,
         "dimension_before": initial_dimension,
         "dimension_after": respawned["dimension"],
+        "screen": death_initial.get("screen"),
+        "focused": death_initial.get("focused"),
+        "initial_elapsed_ticks": death_initial.get("elapsed_ticks"),
+        "initial_buttons_active": death_initial.get("buttons_active"),
+        "active_elapsed_ticks": death_active.get("elapsed_ticks"),
+        "active_buttons_active": death_active.get("buttons_active"),
+        "input_path": "input.key:enter",
     }
 
     progress["stage"] = "dimension_round_trip"

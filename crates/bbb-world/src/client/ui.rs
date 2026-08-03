@@ -118,7 +118,7 @@ pub struct ClientUiState {
     #[serde(default)]
     pub player_reporting_screen_generation: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub player_reporting_previous_social_screen: Option<crate::SocialInteractionsScreenState>,
+    pub player_reporting_previous_screen: Option<PlayerReportingPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_game_rules_screen: Option<crate::GameRulesScreenState>,
     #[serde(default)]
@@ -158,6 +158,17 @@ pub enum DialogPreviousScreenState {
     },
     PlayerReporting {
         screen: crate::PlayerReportingScreenState,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PlayerReportingPreviousScreenState {
+    SocialInteractions {
+        screen: crate::SocialInteractionsScreenState,
+    },
+    Death {
+        screen: crate::ClientDeathScreenState,
     },
 }
 
@@ -466,7 +477,7 @@ impl ClientUiState {
         self.current_stats_screen = false;
         self.current_social_interactions_screen = None;
         self.current_player_reporting_screen = None;
-        self.player_reporting_previous_social_screen = None;
+        self.player_reporting_previous_screen = None;
         self.current_game_rules_screen = None;
         self.current_game_event_screen = None;
         self.current_death_screen = None;

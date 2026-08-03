@@ -3892,6 +3892,13 @@ pub(crate) fn update_renderer_from_publication(
     // remain vanilla in-game UI, while poem `WinScreen` owns its portal background.
     let hud_screen_blur = hud_disconnected_screen.is_some()
         || hud_chat_restrictions_screen.is_some()
+        || matches!(
+            hud_death_screen.as_ref(),
+            Some(
+                bbb_renderer::HudDeathScreen::DraftConfirmation(_)
+                    | bbb_renderer::HudDeathScreen::LinkConfirmation(_)
+            )
+        )
         || hud_screen_blur_for_world(
             world,
             hud_inventory_screen.is_some()
@@ -6491,6 +6498,36 @@ fn death_screen_narration_frame(
                 ),
                 _ => return Some(frame),
             };
+            add_game_event_button_narration(&mut frame, item_runtime, &label, position, 2);
+        }
+        DeathScreenRuntime::DraftConfirmation(state) => {
+            frame.add(
+                NarratedElementKind::Title,
+                0,
+                [
+                    localized_gui_text(
+                        item_runtime,
+                        "gui.abuseReport.draft.quittotitle.title",
+                        "You have a draft chat report that will be lost if you quit",
+                    ),
+                    localized_gui_text(
+                        item_runtime,
+                        "gui.abuseReport.draft.quittotitle.content",
+                        "Would you like to continue editing it or discard it?",
+                    ),
+                ]
+                .join(". "),
+            );
+            let (key, fallback, position) = match state.focus {
+                bbb_renderer::HudDeathScreenButton::DraftEdit => {
+                    ("gui.abuseReport.draft.edit", "Edit Draft", 1)
+                }
+                bbb_renderer::HudDeathScreenButton::DraftDiscard => {
+                    ("gui.abuseReport.draft.discard", "Discard Draft", 2)
+                }
+                _ => return Some(frame),
+            };
+            let label = localized_gui_text(item_runtime, key, fallback);
             add_game_event_button_narration(&mut frame, item_runtime, &label, position, 2);
         }
         DeathScreenRuntime::QuitConfirmation(state) => {

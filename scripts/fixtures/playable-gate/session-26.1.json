@@ -96,13 +96,20 @@
  },
  "lifecycle": {
   "death_respawn": {
+   "active_buttons_active": true,
+   "active_elapsed_ticks": 20,
    "dead_health": 0.0,
    "dimension_after": "minecraft:overworld",
    "dimension_before": "minecraft:overworld",
+   "focused": "respawn",
    "health_after": 20.0,
+   "initial_buttons_active": false,
+   "initial_elapsed_ticks": 1,
+   "input_path": "input.key:enter",
    "kill_commands_delta": 1,
    "perform_respawn_commands_delta": 1,
-   "respawns_delta": 1
+   "respawns_delta": 1,
+   "screen": "main"
   },
   "dimension_round_trip": {
    "dimensions": [
