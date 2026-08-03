@@ -1,4 +1,6 @@
-use bbb_pack::{builtin_block_piston_profiles, BlockPistonProfileCatalog, BlockPistonPushReaction};
+use bbb_protocol::block_state_types::{
+    vanilla_block_state_support_facts, VanillaPistonPushReaction,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{block_name_is_air, BlockPos, WorldStore};
@@ -121,15 +123,12 @@ impl WorldStore {
         piston_direction: PistonDirection,
         extending: bool,
     ) -> Option<PistonStructureResolution> {
-        let profiles = builtin_block_piston_profiles().ok()?;
-        PistonStructureResolver::new(self, profiles, piston_pos, piston_direction, extending)
-            .resolve()
+        PistonStructureResolver::new(self, piston_pos, piston_direction, extending).resolve()
     }
 }
 
 struct PistonStructureResolver<'a> {
     world: &'a WorldStore,
-    profiles: &'a BlockPistonProfileCatalog,
     piston_pos: BlockPos,
     extending: bool,
     start_pos: BlockPos,
@@ -143,7 +142,6 @@ struct PistonStructureResolver<'a> {
 impl<'a> PistonStructureResolver<'a> {
     fn new(
         world: &'a WorldStore,
-        profiles: &'a BlockPistonProfileCatalog,
         piston_pos: BlockPos,
         piston_direction: PistonDirection,
         extending: bool,
@@ -167,7 +165,6 @@ impl<'a> PistonStructureResolver<'a> {
         .then_some(arm_pos);
         Self {
             world,
-            profiles,
             piston_pos,
             extending,
             start_pos,
@@ -187,7 +184,7 @@ impl<'a> PistonStructureResolver<'a> {
             self.piston_direction,
         ) {
             if self.extending
-                && self.push_reaction(self.start_pos) == Some(BlockPistonPushReaction::Destroy)
+                && self.push_reaction(self.start_pos) == Some(VanillaPistonPushReaction::Destroy)
             {
                 self.to_destroy.push(self.start_pos);
             } else {
@@ -290,7 +287,7 @@ impl<'a> PistonStructureResolver<'a> {
             {
                 return false;
             }
-            if self.push_reaction(pos) == Some(BlockPistonPushReaction::Destroy) {
+            if self.push_reaction(pos) == Some(VanillaPistonPushReaction::Destroy) {
                 self.to_destroy.push(pos);
                 return true;
             }
@@ -351,7 +348,13 @@ impl<'a> PistonStructureResolver<'a> {
         if self.is_air(pos) {
             return true;
         }
-        let Some(name) = self.block_name(pos) else {
+        let Some(block) = self.world.probe_block(pos) else {
+            return false;
+        };
+        let Some(name) = block.block_name.as_deref() else {
+            return false;
+        };
+        let Some(facts) = vanilla_block_state_support_facts(block.block_state_id) else {
             return false;
         };
         if matches!(
@@ -369,33 +372,31 @@ impl<'a> PistonStructureResolver<'a> {
             return false;
         }
 
-        let Some(profile) = self.profiles.profile(name) else {
-            return false;
-        };
         if matches!(name, "minecraft:piston" | "minecraft:sticky_piston") {
-            if self
-                .world
-                .probe_block(pos)
-                .and_then(|block| block.block_properties.get("extended").cloned())
-                .as_deref()
-                == Some("true")
+            if block
+                .block_properties
+                .get("extended")
+                .is_some_and(|value| value == "true")
             {
                 return false;
             }
         } else {
-            if profile.unbreakable {
+            if facts.piston_unbreakable() {
                 return false;
             }
-            match profile.push_reaction {
-                BlockPistonPushReaction::Block => return false,
-                BlockPistonPushReaction::Destroy => return allow_destroyable,
-                BlockPistonPushReaction::PushOnly => {
+            match facts.piston_push_reaction() {
+                VanillaPistonPushReaction::Block => return false,
+                VanillaPistonPushReaction::Destroy => return allow_destroyable,
+                VanillaPistonPushReaction::PushOnly => {
                     return direction == connection_direction;
                 }
-                BlockPistonPushReaction::Normal | BlockPistonPushReaction::Ignore => {}
+                VanillaPistonPushReaction::Normal | VanillaPistonPushReaction::Ignore => {}
             }
         }
-        !profile.has_block_entity
+        self.world
+            .registries
+            .block_entity_type_id_for_block_state(block.block_state_id)
+            .is_none()
     }
 
     fn block_name(&self, pos: BlockPos) -> Option<&str> {
@@ -420,10 +421,9 @@ impl<'a> PistonStructureResolver<'a> {
             .is_none_or(|block| block.block_name.as_deref().is_some_and(block_name_is_air))
     }
 
-    fn push_reaction(&self, pos: BlockPos) -> Option<BlockPistonPushReaction> {
-        self.profiles
-            .profile(self.block_name(pos)?)
-            .map(|profile| profile.push_reaction)
+    fn push_reaction(&self, pos: BlockPos) -> Option<VanillaPistonPushReaction> {
+        vanilla_block_state_support_facts(self.world.probe_block(pos)?.block_state_id)
+            .map(|facts| facts.piston_push_reaction())
     }
 
     fn is_sticky(&self, pos: BlockPos) -> bool {
@@ -723,5 +723,47 @@ mod tests {
             destroy.resolve_piston_structure(piston, PistonDirection::East, false),
             None
         );
+    }
+
+    #[test]
+    fn piston_fixed_facts_do_not_restore_the_pack_owned_profile_path() {
+        let world_sources = [
+            include_str!("piston_blocks.rs"),
+            include_str!("piston_blocks/moving.rs"),
+        ];
+        let pack_sources = [
+            include_str!("../../bbb-pack/src/lib.rs"),
+            include_str!("../../bbb-pack/src/exports.rs"),
+            include_str!("../../bbb-pack/src/roots.rs"),
+        ];
+        let world_production = world_sources.map(|source| {
+            source
+                .split("#[cfg(test)]")
+                .next()
+                .expect("production source prefix")
+        });
+        let pack_production = pack_sources.map(|source| {
+            source
+                .split("#[cfg(test)]")
+                .next()
+                .expect("production source prefix")
+        });
+        assert!(world_production[0].contains("vanilla_block_state_support_facts"));
+        for forbidden in [
+            "bbb_pack",
+            "block_piston_profiles",
+            "BlockPistonProfileCatalog",
+            "BlockPistonPushReaction",
+            "builtin_block_piston_profiles",
+            "load_block_piston_profile_catalog",
+        ] {
+            assert!(
+                world_production
+                    .iter()
+                    .chain(pack_production.iter())
+                    .all(|source| !source.contains(forbidden)),
+                "piston production path restored forbidden pack owner {forbidden}"
+            );
+        }
     }
 }

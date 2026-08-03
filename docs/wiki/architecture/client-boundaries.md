@@ -159,6 +159,21 @@ resource transaction 原子 prepare/commit，失败保留上一 generation。off
 background、button 与 confirmation 像素；playable lifecycle 必须观察 disabled→第 20 tick active，
 再经 `input.key:enter` 进入唯一 native action，reverse guard 禁止恢复 `net.perform_respawn` 绕路。
 
+## Piston fixed facts 与 world movement owner
+
+Vanilla `PistonStructureResolver`/`PistonBaseBlock.isPushable` 以 global block-state 为查询坐标。
+BBB 的 reaction 与 `destroySpeed == -1.0F` 只由 `bbb-protocol::block_state_types` 的 checked 26.1
+runtime facts 拥有；block-entity 关系复用同 crate 已有 block-type→block-entity catalog，不复制第二个
+boolean owner。29,873 个 state 的 packed piston facts 只占一个私有 u8/state array，公开面限于既有
+support-facts query、一个五值 reaction enum 和 unbreakable accessor。
+
+`bbb-world::piston_blocks` 是唯一 gameplay consumer：loaded state id 直接查询 protocol facts，保持
+12-block、line/collision/branch、reaction、边界与 sticky 顺序，再由 `moving` 一次应用完整结果。
+unloaded 仍按 air，loaded unknown/fact 缺失仍失败；纯 resolver 失败不改 world，destination apply
+失败保留旧 world。facts 只随 protocol version 变化，没有 resource/session cache 或 reload rollback；
+pack 不再导出 piston profile、source-expression resolver 或 `PackRoots` load API。generator `--check`
+固定 source→output 新鲜度，world reverse guard 禁止旧 pack/name-keyed 路径恢复。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

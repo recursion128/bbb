@@ -26,11 +26,12 @@ use render_facts_26_1::{
 use support_facts_26_1::{
     VANILLA_BLOCK_STATE_CAN_OCCLUDE_BITS, VANILLA_BLOCK_STATE_FALLING_BLOCK_DUST_COLORS,
     VANILLA_BLOCK_STATE_FALLING_DUST_ACCEPTS_BITS, VANILLA_BLOCK_STATE_LIGHT_DAMPENING,
-    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS,
-    VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS, VANILLA_BLOCK_STATE_SOLID_RENDER_BITS,
-    VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES, VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE,
-    VANILLA_BLOCK_STATE_SUFFOCATING_BITS, VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES,
-    VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE, VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS,
+    VANILLA_BLOCK_STATE_LIQUID_BITS, VANILLA_BLOCK_STATE_PISTON_FACTS,
+    VANILLA_BLOCK_STATE_REDSTONE_CONDUCTOR_BITS, VANILLA_BLOCK_STATE_SHADE_BRIGHTNESS,
+    VANILLA_BLOCK_STATE_SOLID_RENDER_BITS, VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_INDICES,
+    VANILLA_BLOCK_STATE_STATIC_MAP_COLOR_PALETTE, VANILLA_BLOCK_STATE_SUFFOCATING_BITS,
+    VANILLA_BLOCK_STATE_SUPPORT_FACT_INDICES, VANILLA_BLOCK_STATE_SUPPORT_FACT_PALETTE,
+    VANILLA_BLOCK_STATE_VIEW_BLOCKING_BITS,
 };
 
 /// The checked-in Vanilla 26.1 global block-state registry report.
@@ -280,6 +281,17 @@ pub struct VanillaBlockStateSupportFacts {
     light_dampening: u8,
     shade_brightness: u8,
     liquid: bool,
+    piston_facts: u8,
+}
+
+/// Vanilla `PushReaction` for one fixed built-in block state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaPistonPushReaction {
+    Normal,
+    Destroy,
+    Block,
+    Ignore,
+    PushOnly,
 }
 
 impl VanillaBlockStateSupportFacts {
@@ -324,6 +336,22 @@ impl VanillaBlockStateSupportFacts {
 
     pub const fn liquid(self) -> bool {
         self.liquid
+    }
+
+    pub fn piston_push_reaction(self) -> VanillaPistonPushReaction {
+        match self.piston_facts & 0x07 {
+            0 => VanillaPistonPushReaction::Normal,
+            1 => VanillaPistonPushReaction::Destroy,
+            2 => VanillaPistonPushReaction::Block,
+            3 => VanillaPistonPushReaction::Ignore,
+            4 => VanillaPistonPushReaction::PushOnly,
+            _ => unreachable!("checked generated piston reaction is outside Vanilla's enum"),
+        }
+    }
+
+    /// Whether Vanilla reports `getDestroySpeed(level, pos) == -1.0F`.
+    pub const fn piston_unbreakable(self) -> bool {
+        self.piston_facts & (1 << 3) != 0
     }
 
     pub const fn face_sturdy(
@@ -381,6 +409,7 @@ pub fn vanilla_block_state_support_facts(id: i32) -> Option<VanillaBlockStateSup
         liquid: VANILLA_BLOCK_STATE_LIQUID_BITS
             .get(id / 64)
             .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
+        piston_facts: *VANILLA_BLOCK_STATE_PISTON_FACTS.get(id)?,
     })
 }
 
@@ -883,6 +912,22 @@ mod tests {
             VANILLA_BLOCK_STATE_LIQUID_BITS.len(),
             (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
         );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_PISTON_FACTS.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert!(VANILLA_BLOCK_STATE_PISTON_FACTS
+            .iter()
+            .all(|facts| facts & !0x0f == 0 && facts & 0x07 <= 4));
+
+        let mut reaction_counts = [0usize; 5];
+        let mut unbreakable_count = 0usize;
+        for facts in VANILLA_BLOCK_STATE_PISTON_FACTS {
+            reaction_counts[usize::from(facts & 0x07)] += 1;
+            unbreakable_count += usize::from(facts & (1 << 3) != 0);
+        }
+        assert_eq!(reaction_counts, [22_869, 6_849, 91, 0, 64]);
+        assert_eq!(unbreakable_count, 116);
 
         let air = vanilla_block_state_support_facts(state_id("minecraft:air")).unwrap();
         assert!(!air.legacy_solid());
@@ -914,6 +959,11 @@ mod tests {
         assert_eq!(stone.light_dampening(), 15);
         assert_eq!(stone.shade_brightness(), 51);
         assert!(!stone.liquid());
+        assert_eq!(
+            stone.piston_push_reaction(),
+            VanillaPistonPushReaction::Normal
+        );
+        assert!(!stone.piston_unbreakable());
         assert!(stone.occlusion_face_full(VanillaBlockSupportDirection::Up));
         assert!(!stone.replaceable());
         assert!(
@@ -954,6 +1004,27 @@ mod tests {
         assert!(!leaves.view_blocking());
         assert_eq!(leaves.light_dampening(), 1);
         assert_eq!(leaves.shade_brightness(), 51);
+        assert_eq!(
+            leaves.piston_push_reaction(),
+            VanillaPistonPushReaction::Destroy
+        );
+        assert_eq!(
+            vanilla_block_state_support_facts(state_id("minecraft:sticky_piston"))
+                .unwrap()
+                .piston_push_reaction(),
+            VanillaPistonPushReaction::Block
+        );
+        assert_eq!(
+            vanilla_block_state_support_facts(state_id("minecraft:white_glazed_terracotta"))
+                .unwrap()
+                .piston_push_reaction(),
+            VanillaPistonPushReaction::PushOnly
+        );
+        assert!(
+            vanilla_block_state_support_facts(state_id("minecraft:bedrock"))
+                .unwrap()
+                .piston_unbreakable()
+        );
         assert!(
             vanilla_block_state_support_facts(state_id("minecraft:soul_sand"))
                 .unwrap()

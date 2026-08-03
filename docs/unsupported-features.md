@@ -56,20 +56,6 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 Matrix route: `world-client-level-decisions`
 
 <!-- architecture-candidates:start -->
-- **`arch-piston-profile-pack-boundary` is `active`.**
-  - Semantic mechanism: fixed block-state piston push-reaction lookup used by client piston movement projection.
-  - Canonical input: Vanilla 26.1 global block-state id and its official push reaction.
-  - Owners: `crates/bbb-pack/src/block_piston_profiles.rs` parses a built-in source catalog while `crates/bbb-world/src/piston_blocks.rs` reads that pack owner directly; `crates/bbb-protocol/src/block_state_types.rs` is the target fixed fact owner.
-  - Production callers: `crates/bbb-world/src/piston_blocks.rs` and `crates/bbb-world/src/piston_blocks/moving.rs` resolve every client piston movement through the pack catalog.
-  - Direction: Vanilla runtime probe to checked generated protocol fact to world gameplay decision; world must not open or retain a pack parser/catalog.
-  - Lifetime: immutable per protocol version; session/resource reload cannot replace fixed block identities and stale generated output fails offline checks.
-  - Ordering/fallback/rollback: preserve the resolver's 12-block order, Destroy/Block/PushOnly/Normal/Ignore decisions, unloaded/unknown-state failure and non-mutating rollback.
-  - Public API: one protocol block-state support-fact enum/query consumed privately by world.
-  - Delete: the pack piston profile module/exports/load API, world pack-catalog import and source-expression runtime parse path.
-  - Evidence: `crates/bbb-world/src/piston_blocks.rs`, `scripts/vanilla-runtime/BlockStateSupportReport.java`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` cover behavior and the exact generated owner.
-  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 1/1.
-  - Goal route: `architecture-convergence`; `world-client-level-decisions`.
-  - Reopen condition: reopen only if piston reaction becomes session/resource-defined or world again reads a pack-owned parser/catalog for fixed gameplay facts.
 <!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
 

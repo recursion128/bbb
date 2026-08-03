@@ -23,7 +23,6 @@ pub(crate) struct BlockSourceDeclaration {
     pub(crate) start_byte: usize,
     pub(crate) end_byte: usize,
     pub(crate) initializer: GeneratedJavaExpression,
-    pub(crate) has_block_entity: bool,
 }
 
 pub(crate) fn load_generated_block_declarations() -> Result<BlockSourceCatalog> {

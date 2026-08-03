@@ -376,10 +376,6 @@ impl PackRoots {
         BlockOcclusionProfileCatalog::load(self)
     }
 
-    pub fn load_block_piston_profile_catalog(&self) -> Result<crate::BlockPistonProfileCatalog> {
-        crate::BlockPistonProfileCatalog::load(self)
-    }
-
     pub fn load_block_sound_profile_catalog(&self) -> Result<BlockSoundProfileCatalog> {
         BlockSoundProfileCatalog::load(self)
     }

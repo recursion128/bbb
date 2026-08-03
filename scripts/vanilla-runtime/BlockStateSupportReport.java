@@ -15,8 +15,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /**
  * Emits the built-in block-state support, collision, occlusion-face,
  * replaceable, can-occlude, solid-render, redstone-conductor, suffocating,
- * view-blocking, light-dampening, shade-brightness, legacy liquid, and
- * falling-dust static facts cached by Vanilla.
+ * view-blocking, light-dampening, shade-brightness, legacy liquid,
+ * falling-dust static, and piston facts cached by Vanilla.
  *
  * <p>Dynamic-shape states are marked explicitly because their support and
  * collision shapes can depend on the live level and position. Consumers must
@@ -151,6 +151,13 @@ public final class BlockStateSupportReport {
                     + fallingBlockDustColor
                     + "\t"
                     + staticMapColor
+                    + "\t"
+                    + state.getPistonPushReaction().name()
+                    + "\t"
+                    + (state.getDestroySpeed(
+                        EmptyBlockGetter.INSTANCE,
+                        BlockPos.ZERO
+                    ) == -1.0F ? 1 : 0)
             );
         }
     }

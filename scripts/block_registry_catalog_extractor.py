@@ -865,8 +865,6 @@ def extract_block_registry_catalog(
                         "end_byte": initializer.span.end_byte,
                         "initializer": expression_fact(blocks_source, initializer),
                         "group_variant": variant,
-                        "has_block_entity": f"{field_prefix}{field.name}"
-                        in block_entity_fields,
                         "block_entity_type": block_entity_fields.get(
                             f"{field_prefix}{field.name}"
                         ),
@@ -890,7 +888,6 @@ def extract_block_registry_catalog(
                 "start_byte": initializer.span.start_byte,
                 "end_byte": initializer.span.end_byte,
                 "initializer": expression_fact(blocks_source, initializer),
-                "has_block_entity": field.name in block_entity_fields,
                 "block_entity_type": block_entity_fields.get(field.name),
             }
         )

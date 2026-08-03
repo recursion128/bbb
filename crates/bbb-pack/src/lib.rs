@@ -4,7 +4,6 @@ mod atlas_sources;
 mod block_destroy_profiles;
 mod block_models;
 mod block_occlusion_profiles;
-mod block_piston_profiles;
 mod block_registry_declarations;
 mod block_sound_profiles;
 mod colors;

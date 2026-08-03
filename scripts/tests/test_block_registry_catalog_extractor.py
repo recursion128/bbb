@@ -116,8 +116,6 @@ class BlockRegistryCatalogExtractorTests(unittest.TestCase):
             ],
         )
         dirt = extracted.declarations[1]["initializer"]
-        self.assertFalse(extracted.declarations[0]["has_block_entity"])
-        self.assertTrue(extracted.declarations[1]["has_block_entity"])
         self.assertIsNone(extracted.declarations[0]["block_entity_type"])
         self.assertEqual(extracted.declarations[1]["block_entity_type"], "DIRT")
         self.assertEqual(dirt["kind"], "method_invocation")
@@ -647,9 +645,6 @@ class WeatheringCopperChainBlock extends ChainBlock {}
         self.assertEqual(len(extracted.declarations), 1168)
         self.assertEqual(
             len({item["resource_id"] for item in extracted.declarations}), 1168
-        )
-        self.assertEqual(
-            sum(item["has_block_entity"] for item in extracted.declarations), 201
         )
         self.assertEqual(
             sum(item["block_entity_type"] is not None for item in extracted.declarations),
