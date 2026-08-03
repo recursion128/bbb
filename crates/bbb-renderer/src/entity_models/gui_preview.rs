@@ -233,7 +233,7 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> HudEntityPreviewPipGeometry {
-    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::legacy_static_fallback();
+    let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
     bake_hud_entity_preview_pip_geometry_with_equipment(
         instance,
         atlas,
@@ -1057,17 +1057,72 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::sync::Arc;
 
     use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
     use super::super::model_layers::{
         armor_stand_entity_texture_refs, banner_entity_texture_refs, pig_entity_texture_refs,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF, ARMOR_IRON_LEGGINGS_TEXTURE_REF,
         DRAGON_FIREBALL_TEXTURE_REF,
     };
     use super::super::{
-        EntityArmorMaterial, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
+        EntityArmorMaterial, EntityEquipmentLayerType, EntityModelTextureImage,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     use super::*;
+    use bbb_render_types::EntityEquipmentAssetId;
+
+    const TEST_PREVIEW_EQUIPMENT_GENERATION: u64 = 81_001;
+
+    fn preview_iron_equipment_catalog() -> ResolvedEntityEquipmentAssetCatalog {
+        let layer = |layer_type, texture| {
+            (
+                layer_type,
+                vec![super::super::equipment::EntityEquipmentAssetLayer {
+                    texture: super::super::equipment::EntityEquipmentAssetLayerTexture::Static(
+                        texture,
+                    ),
+                    dyeable: None,
+                    use_player_texture: false,
+                }],
+            )
+        };
+        super::super::equipment::EntityEquipmentAssetCatalog::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            vec![super::super::equipment::EntityEquipmentAsset {
+                layers: BTreeMap::from([
+                    layer(
+                        EntityEquipmentLayerType::Humanoid,
+                        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+                    ),
+                    layer(
+                        EntityEquipmentLayerType::HumanoidLeggings,
+                        ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+                    ),
+                ]),
+            }],
+        )
+        .resolve(&[])
+        .expect("preview equipment catalog")
+    }
+
+    fn bake_iron_equipment_preview(
+        instance: &EntityModelInstance,
+        atlas: &EntityModelTextureAtlasLayout,
+        dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    ) -> HudEntityPreviewPipGeometry {
+        let equipment_assets = preview_iron_equipment_catalog();
+        bake_hud_entity_preview_pip_geometry_with_equipment(
+            instance,
+            atlas,
+            &[],
+            &equipment_assets,
+            None,
+            dynamic_player_texture_atlas,
+            Mat4::IDENTITY,
+        )
+    }
     use crate::{
         BannerPatternLayer, BannerPatternTexture, DynamicEntityTextureImage, EntityArmorTrim,
         EntityDyeColor, EntityDynamicTexture, HudEntityPreviewRect, PigModelVariant,
@@ -1486,7 +1541,7 @@ mod tests {
         let atlas = build_entity_model_texture_atlas(&images)
             .expect("dragon fireball atlas")
             .0;
-        let equipment_assets = ResolvedEntityEquipmentAssetCatalog::legacy_static_fallback();
+        let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();
         let entity = EntityModelInstance::new(7, EntityModelKind::DragonFireball, [0.0; 3], 0.0);
         let x_rotation = Quat::from_rotation_x(30.0_f32.to_radians());
         let preview = entity_preview_for(entity, Some(x_rotation.to_array()));
@@ -1631,8 +1686,12 @@ mod tests {
         let atlas = build_entity_model_texture_atlas(&images).expect("atlas").0;
         let mut instance = armor_stand_preview_instance();
         instance.render_state.chest_armor = Some(EntityArmorMaterial::Iron);
+        instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            0,
+        ));
         instance.render_state.chest_armor_foil = true;
-        let geometry = bake_hud_entity_preview_pip_geometry(&instance, &atlas, None, None);
+        let geometry = bake_iron_equipment_preview(&instance, &atlas, None);
 
         assert!(geometry
             .textured_draws
@@ -1669,14 +1728,17 @@ mod tests {
         .0;
         let mut instance = armor_stand_preview_instance();
         instance.render_state.chest_armor = Some(EntityArmorMaterial::Iron);
+        instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
+            TEST_PREVIEW_EQUIPMENT_GENERATION,
+            0,
+        ));
         instance.render_state.chest_armor_foil = true;
         instance.render_state.chest_armor_trim = Some(EntityArmorTrim {
             texture: trim_texture,
             decal: false,
         });
 
-        let geometry =
-            bake_hud_entity_preview_pip_geometry(&instance, &atlas, None, Some(&dynamic_atlas));
+        let geometry = bake_iron_equipment_preview(&instance, &atlas, Some(&dynamic_atlas));
         let armor_glint = geometry
             .draw_order
             .iter()

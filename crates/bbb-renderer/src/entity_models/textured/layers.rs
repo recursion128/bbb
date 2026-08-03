@@ -17,13 +17,13 @@ use super::super::{
         zombie_villager_type_texture_ref, ArrowModelTexture, AxolotlModelVariant,
         BannerPatternLayer, BannerPatternTexture, BedModelPart, BoatModelFamily, CamelModelFamily,
         ChestModelHalf, ChestModelTexture, ConduitModelPart, CopperGolemWeathering,
-        DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor,
-        EntityModelTextureRef, EntityPlayerSkin, FoxModelVariant, HoglinModelFamily,
-        HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant,
-        MooshroomVariant, PandaModelVariant, ParrotModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SignModelAttachment, SignModelWood, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        DonkeyModelFamily, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
+        EntityPlayerSkin, FoxModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+        IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant,
+        ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+        SalmonModelSize, SheepWoolColor, SignModelAttachment, SignModelWood, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat,
     },
     model_layers::*,
     CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern, FrogModelVariant,
@@ -2634,27 +2634,6 @@ pub(in crate::entity_models) fn player_cape_layer_pass() -> EntityModelLayerPass
     }
 }
 
-pub(in crate::entity_models) fn wings_layer_pass(
-    texture: EntityModelTextureRef,
-    baby: bool,
-    submit_sequence: u32,
-) -> EntityModelLayerPass {
-    EntityModelLayerPass {
-        kind: EntityModelLayerKind::Wings,
-        render_type: EntityModelLayerRenderType::ArmorCutoutNoCull,
-        model_layer: if baby {
-            MODEL_LAYER_ELYTRA_BABY
-        } else {
-            MODEL_LAYER_ELYTRA
-        },
-        texture,
-        visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        order: 0,
-        submit_sequence,
-    }
-}
-
 pub(in crate::entity_models) fn player_parrot_on_shoulder_layer_pass(
     variant: ParrotModelVariant,
     is_left: bool,
@@ -2717,26 +2696,6 @@ pub(in crate::entity_models) fn custom_head_skull_layer_pass(
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
         submit_sequence: 0,
-    }
-}
-
-pub(in crate::entity_models) fn humanoid_armor_layer_pass(
-    model_layers: HumanoidArmorModelLayerSet,
-    slot: HumanoidArmorSlot,
-    material: EntityArmorMaterial,
-    texture: EntityModelTextureRef,
-    dye: Option<u32>,
-    submit_sequence: u32,
-) -> EntityModelLayerPass {
-    EntityModelLayerPass {
-        kind: EntityModelLayerKind::HumanoidArmor,
-        render_type: EntityModelLayerRenderType::ArmorCutoutNoCull,
-        model_layer: model_layers.model_layer(slot),
-        texture,
-        visibility: EntityModelLayerVisibility::All,
-        tint: armor_layer_tint(material, dye),
-        order: 1,
-        submit_sequence,
     }
 }
 

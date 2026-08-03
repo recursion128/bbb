@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use crate::DynamicPlayerTextureImage;
 use std::collections::BTreeMap;
 
@@ -91,7 +109,7 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
     // Vanilla `HumanoidMobRenderer` adds `WingsLayer` to humanoid mobs. The profile
     // elytra/cape override is only for `AvatarRenderState`, so a zombie with a
     // WINGS asset still uses the equipment texture even when `use_player_texture` is true.
-    let pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 2);
+    let pass = expected_equipment_wings_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 2);
     assert_eq!(pass.kind, EntityModelLayerKind::Wings);
     assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(
@@ -121,6 +139,7 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
             texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
             use_player_texture: true,
         }))
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_player_elytra_texture(Some(profile_elytra))
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
@@ -175,8 +194,10 @@ fn zombie_custom_head_wings_and_armor_follow_vanilla_layer_order() {
             texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
             use_player_texture: true,
         }))
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
-        .with_head_armor(Some(EntityArmorMaterial::Iron));
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
@@ -233,6 +254,7 @@ fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
             texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
             use_player_texture: true,
         }))
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_player_elytra_texture(Some(profile_elytra))
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
@@ -295,8 +317,8 @@ fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
 fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
     // Vanilla `ArmorStand.isBaby()` returns `isSmall()`, and `WingsLayer` selects
     // `ModelLayers.ELYTRA_BABY` when `state.isBaby`.
-    let adult_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 1);
-    let baby_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, true, 1);
+    let adult_pass = expected_equipment_wings_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 1);
+    let baby_pass = expected_equipment_wings_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, true, 1);
     assert_eq!(adult_pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(baby_pass.model_layer, MODEL_LAYER_ELYTRA_BABY);
     assert_eq!(baby_pass.kind, EntityModelLayerKind::Wings);
@@ -321,6 +343,7 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
@@ -335,6 +358,7 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
@@ -382,8 +406,10 @@ fn armor_stand_wings_precede_custom_head_in_vanilla_layer_order() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
-    .with_head_armor(Some(EntityArmorMaterial::Iron));
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
@@ -436,8 +462,10 @@ fn player_custom_head_slot_sits_between_cape_and_wings() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
-    .with_head_armor(Some(EntityArmorMaterial::Iron));
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
@@ -487,6 +515,7 @@ fn marker_hidden_glowing_armor_stand_keeps_wings_layer_without_base_submission()
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_light_coords((7_u32 << 4) | (9_u32 << 20))
     .with_white_overlay_progress(0.8)
@@ -536,6 +565,7 @@ fn hidden_zombie_keeps_wings_layer_without_base_submission() {
     });
     let instance = EntityModelInstance::zombie(88, [1.0, 64.0, -2.0], 25.0, false)
         .with_chest_wings_layer(layer)
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_light_coords((7_u32 << 4) | (9_u32 << 20))
         .with_white_overlay_progress(0.8)
@@ -593,6 +623,7 @@ fn hidden_player_keeps_wings_layer_without_base_submission() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_light_coords((7_u32 << 4) | (9_u32 << 20))
     .with_white_overlay_progress(0.8)
@@ -645,12 +676,14 @@ fn baby_zombie_wings_layer_uses_baby_elytra_model() {
     });
     let adult = EntityModelInstance::zombie(84, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_wings_layer(layer)
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
     let baby = EntityModelInstance::zombie(85, [0.0, 64.0, 0.0], 0.0, true)
         .with_chest_wings_layer(layer)
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)
@@ -713,6 +746,7 @@ fn wings_trim_follows_foil_for_static_and_profile_textures() {
 
     let zombie = EntityModelInstance::zombie(86, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_wings_layer(layer)
+        .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
         .with_chest_equipment_has_wings(true)
         .with_chest_wings_foil(true)
         .with_chest_wings_trim(trim);
@@ -762,6 +796,7 @@ fn wings_trim_follows_foil_for_static_and_profile_textures() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_chest_wings_layer(layer)
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_chest_wings_foil(true)
     .with_chest_wings_trim(trim)
@@ -814,6 +849,7 @@ fn baby_wings_trim_uses_baby_model_and_survives_missing_base_texture() {
     let trimmed = |entity_id, baby| {
         EntityModelInstance::zombie(entity_id, [0.0, 64.0, 0.0], 0.0, baby)
             .with_chest_wings_layer(layer)
+            .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
             .with_chest_equipment_has_wings(true)
             .with_chest_wings_trim(Some(EntityArmorTrim {
                 texture: trim_texture,

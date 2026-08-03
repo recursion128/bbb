@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use super::super::textured::EntityModelRenderSubmission;
 use crate::entity_models::model::ModelCube;
 use crate::DynamicEntityTextureImage;
@@ -218,8 +236,7 @@ fn llama_texture_refs_match_vanilla_renderer() {
         (EntityDyeColor::Red, LLAMA_BODY_RED_TEXTURE_REF),
         (EntityDyeColor::Black, LLAMA_BODY_BLACK_TEXTURE_REF),
     ];
-    for (color, texture) in decor_cases {
-        assert_eq!(llama_body_decor_texture_ref(color), texture);
+    for (_color, texture) in decor_cases {
         assert!(
             entity_model_texture_refs().contains(&texture),
             "{} is included in the global entity atlas",
@@ -432,7 +449,9 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert_eq!(bare_meshes.submissions.len(), 1);
     assert_llama_base_submission_at(&bare_meshes, 0, adult);
     let bare = &bare_meshes.cutout;
-    let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
+    let white_instance = adult
+        .with_llama_body_decor(Some(EntityDyeColor::White))
+        .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     let white = &white_meshes.cutout;
     let decor = &white_meshes.armor_cutout;
@@ -482,7 +501,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     )
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
-    .with_has_red_overlay(true);
+    .with_has_red_overlay(true)
+    .with_llama_body_equipment_asset(Some(test_llama_trader_equipment_asset_id()));
     let trader_meshes = entity_model_textured_meshes(&[adult_trader], &atlas);
     let trader = &trader_meshes.cutout;
     let trader_decor = &trader_meshes.armor_cutout;
@@ -504,7 +524,9 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         1,
     );
 
-    let black_trader_instance = adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black));
+    let black_trader_instance = adult_trader
+        .with_llama_body_decor(Some(EntityDyeColor::Black))
+        .with_llama_body_equipment_asset(Some(test_llama_black_equipment_asset_id()));
     let black_trader_meshes = entity_model_textured_meshes(&[black_trader_instance], &atlas);
     let black_trader = &black_trader_meshes.cutout;
     let black_trader_decor = &black_trader_meshes.armor_cutout;
@@ -567,7 +589,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_llama_body_decor(Some(EntityDyeColor::Black));
+    .with_llama_body_decor(Some(EntityDyeColor::Black))
+    .with_llama_body_equipment_asset(Some(test_llama_trader_baby_equipment_asset_id()));
     let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
     assert_eq!(baby_trader_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&baby_trader_meshes, 0, baby_trader);
@@ -591,7 +614,7 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
 }
 
 #[test]
-fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantics() {
+fn llama_carpet_trim_follows_foil_and_explicit_trader_assets_keep_empty_stack_semantics() {
     let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
         LLAMA_CREAMY_TEXTURE_REF,
         LLAMA_CREAMY_BABY_TEXTURE_REF,
@@ -625,6 +648,7 @@ fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantic
         false,
     )
     .with_llama_body_decor(Some(EntityDyeColor::White))
+    .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()))
     .with_llama_body_decor_foil(true)
     .with_llama_body_decor_trim(Some(trim));
 
@@ -682,32 +706,32 @@ fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantic
         LlamaVariant::Creamy,
         false,
         false,
-    );
-    let trader_fallback = adult_trader
-        .with_llama_body_decor_foil(true)
-        .with_llama_body_decor_trim(Some(trim));
-    let trader_fallback_meshes = entity_model_textured_meshes_with_dynamic_textures(
-        &[trader_fallback],
+    )
+    .with_llama_body_equipment_asset(Some(test_llama_trader_equipment_asset_id()));
+    let trader_equipment = adult_trader;
+    let trader_equipment_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[trader_equipment],
         &atlas,
         None,
         Some(&dynamic_atlas),
     );
-    assert_eq!(trader_fallback_meshes.submissions.len(), 2);
+    assert_eq!(trader_equipment_meshes.submissions.len(), 2);
     assert_eq!(
-        trader_fallback_meshes.submissions[1].texture,
+        trader_equipment_meshes.submissions[1].texture,
         LLAMA_BODY_TRADER_TEXTURE_REF
     );
-    assert!(trader_fallback_meshes
+    assert!(trader_equipment_meshes
         .armor_entity_glint
         .vertices
         .is_empty());
-    assert!(trader_fallback_meshes
+    assert!(trader_equipment_meshes
         .dynamic_player_texture_armor_trim
         .vertices
         .is_empty());
 
     let carpeted_trader = adult_trader
         .with_llama_body_decor(Some(EntityDyeColor::Black))
+        .with_llama_body_equipment_asset(Some(test_llama_black_equipment_asset_id()))
         .with_llama_body_decor_foil(true)
         .with_llama_body_decor_trim(Some(trim));
     let carpeted_trader_meshes = entity_model_textured_meshes_with_dynamic_textures(
@@ -719,7 +743,7 @@ fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantic
     assert_eq!(carpeted_trader_meshes.submissions.len(), 4);
     assert_eq!(
         carpeted_trader_meshes.submissions[1].texture, LLAMA_BODY_BLACK_TEXTURE_REF,
-        "an explicit adult carpet wins over the trader fallback"
+        "an explicit adult carpet uses its projected equipment asset"
     );
     assert_eq!(
         carpeted_trader_meshes.submissions[2].render_type,
@@ -739,9 +763,7 @@ fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantic
         true,
         false,
     )
-    .with_llama_body_decor(Some(EntityDyeColor::Black))
-    .with_llama_body_decor_foil(true)
-    .with_llama_body_decor_trim(Some(trim));
+    .with_llama_body_equipment_asset(Some(test_llama_trader_baby_equipment_asset_id()));
     let baby_trader_meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[baby_trader],
         &atlas,
@@ -781,7 +803,9 @@ fn llama_decor_submission_survives_missing_texture_atlas_entry() {
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_llama_base_submission_at(&bare_meshes, 0, adult);
 
-    let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
+    let white_instance = adult
+        .with_llama_body_decor(Some(EntityDyeColor::White))
+        .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     assert_eq!(white_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&white_meshes, 0, white_instance);
@@ -831,7 +855,8 @@ fn llama_decor_submission_survives_missing_texture_atlas_entry() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_llama_body_decor(Some(EntityDyeColor::Black));
+    .with_llama_body_decor(Some(EntityDyeColor::Black))
+    .with_llama_body_equipment_asset(Some(test_llama_trader_baby_equipment_asset_id()));
     let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
     assert_eq!(baby_trader_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&baby_trader_meshes, 0, baby_trader);

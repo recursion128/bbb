@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use crate::entity_models::model::ModelCube;
 use crate::DynamicEntityTextureImage;
 
@@ -421,7 +439,9 @@ fn pig_saddle_layer_renders_for_adults_only() {
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let saddled_instance = adult.with_pig_saddle(true);
+    let saddled_instance = adult
+        .with_pig_saddle(true)
+        .with_pig_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_pig_only_uses_cutout_buckets(&bare_meshes);
     assert_eq!(bare_meshes.submissions.len(), 1);
@@ -470,6 +490,7 @@ fn pig_saddle_layer_renders_for_adults_only() {
     let baby_instance =
         EntityModelInstance::pig(523, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Temperate, true)
             .with_pig_saddle(true)
+            .with_pig_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
             .with_light_coords((4_u32 << 4) | (11_u32 << 20))
             .with_white_overlay_progress(0.8)
             .with_has_red_overlay(true);
@@ -499,7 +520,9 @@ fn pig_saddle_submission_survives_missing_texture_atlas_entry() {
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let saddled_instance = adult.with_pig_saddle(true);
+    let saddled_instance = adult
+        .with_pig_saddle(true)
+        .with_pig_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
 
     assert_pig_only_uses_cutout_buckets(&bare_meshes);
@@ -568,6 +591,7 @@ fn pig_saddle_foil_and_trim_follow_the_base_equipment_layer() {
             baby,
         )
         .with_pig_saddle(true)
+        .with_pig_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_pig_saddle_foil(true)
         .with_pig_saddle_trim(Some(EntityArmorTrim {
             texture: trim_texture,

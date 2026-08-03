@@ -59,6 +59,54 @@ fn render(
 }
 
 #[test]
+fn production_equipment_rendering_has_no_static_compatibility_resolver() {
+    let production_sources = [
+        ("equipment.rs", include_str!("../equipment.rs")),
+        ("textured.rs", include_str!("../textured.rs")),
+        ("gui_preview.rs", include_str!("../gui_preview.rs")),
+        (
+            "model_layers/armor.rs",
+            include_str!("../model_layers/armor.rs"),
+        ),
+        (
+            "model_layers/textures.rs",
+            include_str!("../model_layers/textures.rs"),
+        ),
+        (
+            "model_layers/textures/equine.rs",
+            include_str!("../model_layers/textures/equine.rs"),
+        ),
+        ("textured/layers.rs", include_str!("../textured/layers.rs")),
+    ];
+    let forbidden = [
+        "legacy_static_fallback",
+        "uses_legacy_static_fallback",
+        "fn armor_slot_texture_for_layer",
+        "fn armor_layer_tint(",
+        "fn horse_body_armor_texture_layers",
+        "fn wolf_body_armor_texture_layers",
+        "fn llama_body_decor_texture_ref",
+        "fn happy_ghast_harness_texture_ref",
+        "fn nautilus_body_armor_texture_ref",
+        "fn humanoid_armor_layer_pass",
+        "fn wings_layer_pass",
+    ];
+    for (path, source) in production_sources {
+        for symbol in forbidden {
+            assert!(
+                !source.contains(symbol),
+                "{path} restored deleted equipment compatibility resolver `{symbol}`"
+            );
+        }
+    }
+    let textured = include_str!("../textured.rs");
+    assert!(
+        textured.contains("let equipment_assets = ResolvedEntityEquipmentAssetCatalog::default();"),
+        "the generic mesh helper must make missing equipment explicit instead of selecting a second resolver"
+    );
+}
+
+#[test]
 fn resolved_empty_catalog_does_not_enable_legacy_static_equipment() {
     let equipment_assets = EntityEquipmentAssetCatalog::new(GENERATION, Vec::new())
         .resolve(&[])
@@ -443,17 +491,32 @@ fn custom_wolf_body_layers_keep_damage_cracks_last() {
 }
 
 #[test]
-fn trader_llama_fallback_survives_a_nonempty_equipment_catalog() {
-    let texture = EntityModelOwnedTextureRef::new("example:equipment/llama.png", [128, 64]);
-    let owned_entries = vec![owned_entry(texture.clone())];
-    let equipment_assets = single_asset_catalog(
-        BTreeMap::from([(
-            EntityEquipmentLayerType::LlamaBody,
-            vec![owned_layer(texture)],
-        )]),
-        &owned_entries,
-    );
-    let trader = |entity_id, baby| {
+fn trader_llama_projected_assets_select_adult_and_baby_catalog_entries() {
+    let layer = |texture| EntityEquipmentAssetLayer {
+        texture: EntityEquipmentAssetLayerTexture::Static(texture),
+        dyeable: None,
+        use_player_texture: false,
+    };
+    let equipment_assets = EntityEquipmentAssetCatalog::new(
+        GENERATION,
+        vec![
+            EntityEquipmentAsset {
+                layers: BTreeMap::from([(
+                    EntityEquipmentLayerType::LlamaBody,
+                    vec![layer(LLAMA_BODY_TRADER_TEXTURE_REF)],
+                )]),
+            },
+            EntityEquipmentAsset {
+                layers: BTreeMap::from([(
+                    EntityEquipmentLayerType::LlamaBody,
+                    vec![layer(LLAMA_BODY_TRADER_BABY_TEXTURE_REF)],
+                )]),
+            },
+        ],
+    )
+    .resolve(&[])
+    .unwrap();
+    let trader = |entity_id, baby, index| {
         EntityModelInstance::llama(
             entity_id,
             [0.0, 64.0, 0.0],
@@ -463,18 +526,19 @@ fn trader_llama_fallback_survives_a_nonempty_equipment_catalog() {
             baby,
             false,
         )
+        .with_llama_body_equipment_asset(Some(EntityEquipmentAssetId::new(GENERATION, index)))
     };
 
     for (instance, expected_texture) in [
-        (trader(750, false), LLAMA_BODY_TRADER_TEXTURE_REF),
-        (trader(751, true), LLAMA_BODY_TRADER_BABY_TEXTURE_REF),
+        (trader(750, false, 0), LLAMA_BODY_TRADER_TEXTURE_REF),
+        (trader(751, true, 1), LLAMA_BODY_TRADER_BABY_TEXTURE_REF),
     ] {
-        let meshes = render(instance, &owned_entries, &equipment_assets, None);
+        let meshes = render(instance, &[], &equipment_assets, None);
         let decor = meshes
             .submissions
             .iter()
             .find(|submission| submission.texture == expected_texture)
-            .expect("trader llama decor fallback");
+            .expect("projected trader llama equipment asset");
         assert_eq!(decor.owned_texture, None);
         assert_eq!((decor.order, decor.submit_sequence), (1, 1));
     }

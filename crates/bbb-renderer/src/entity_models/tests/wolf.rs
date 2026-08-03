@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use crate::entity_models::model::EntityModel;
 use crate::entity_models::model::ModelCube;
 use crate::entity_models::textured::EntityModelRenderSubmission;
@@ -753,6 +771,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         Some(EntityDyeColor::Blue),
     )
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
     .with_wolf_body_armor_foil(true)
@@ -890,7 +909,8 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             false,
             None,
         )
-        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))],
+        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+        .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))],
         &atlas,
     );
     assert_eq!(undyed.submissions.len(), 2);
@@ -916,6 +936,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             Some(EntityDyeColor::Red),
         )
         .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+        .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
         .with_wolf_body_armor_trim(Some(EntityArmorTrim {
             texture: trim_texture,
             decal: false,
@@ -960,6 +981,7 @@ fn invisible_wolf_body_armor_keeps_decal_trim_submission() {
         None,
     )
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_trim(Some(EntityArmorTrim {
         texture: trim_texture,
         decal: true,
@@ -1016,6 +1038,7 @@ fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
         Some(EntityDyeColor::Blue),
     )
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
@@ -1063,6 +1086,7 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
         Some(EntityDyeColor::Blue),
     )
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))
     .with_wolf_body_armor_foil(true)
@@ -1983,57 +2007,7 @@ fn assert_wolf_submissions_match_vanilla(
         false,
     ));
 
-    let mut next_submit_sequence = 1;
-    if !baby {
-        if let Some(material) = instance.render_state.wolf_body_armor {
-            if let Some(layers) = wolf_body_armor_texture_layers(material) {
-                let mut next_order = 1;
-                let mut foil_pending = instance.render_state.wolf_body_armor_foil;
-                for layer in layers.iter() {
-                    let Some(tint) = wolf_expected_armor_layer_tint(
-                        layer.dyeable,
-                        instance.render_state.wolf_body_armor_dye,
-                    ) else {
-                        continue;
-                    };
-                    expected.push((
-                        EntityModelLayerRenderType::ArmorCutoutNoCull,
-                        layer.texture,
-                        tint,
-                        next_order,
-                        next_submit_sequence,
-                        true,
-                    ));
-                    next_order += 1;
-                    next_submit_sequence += 1;
-                    if foil_pending {
-                        expected.push((
-                            EntityModelLayerRenderType::ArmorEntityGlint,
-                            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
-                            tint,
-                            next_order,
-                            next_submit_sequence,
-                            true,
-                        ));
-                        next_order += 1;
-                        next_submit_sequence += 1;
-                        foil_pending = false;
-                    }
-                }
-                if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
-                    expected.push((
-                        EntityModelLayerRenderType::ArmorTranslucent,
-                        wolf_armor_crackiness_texture_ref(crackiness),
-                        [1.0, 1.0, 1.0, 1.0],
-                        0,
-                        next_submit_sequence,
-                        true,
-                    ));
-                    next_submit_sequence += 1;
-                }
-            }
-        }
-    }
+    let next_submit_sequence = 1;
     if let Some(collar_pass) = passes.get(1) {
         expected.push((
             collar_pass.render_type,
@@ -2170,20 +2144,6 @@ fn wolf_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-}
-
-fn wolf_expected_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
-    if !dyeable {
-        return Some([1.0, 1.0, 1.0, 1.0]);
-    }
-    dye.map(|rgb| {
-        [
-            ((rgb >> 16) & 0xFF) as f32 / 255.0,
-            ((rgb >> 8) & 0xFF) as f32 / 255.0,
-            (rgb & 0xFF) as f32 / 255.0,
-            1.0,
-        ]
-    })
 }
 
 fn assert_wolf_folded_meshes_match_submission_buckets(

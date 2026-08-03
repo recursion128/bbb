@@ -1,7 +1,291 @@
 use super::*;
 use crate::camera::{CameraUniform, LevelLighting, LightmapEnvironment};
+use crate::entity_models::equipment::ResolvedEntityEquipmentAssetCatalog;
 use crate::entity_models::gpu::build_entity_model_texture_atlas_with_height_limit;
 use crate::terrain::TerrainUvRect;
+
+const TEST_EQUIPMENT_GENERATION: u64 = 9_001;
+const TEST_IRON_EQUIPMENT_INDEX: u32 = 0;
+const TEST_LEATHER_EQUIPMENT_INDEX: u32 = 1;
+const TEST_NETHERITE_EQUIPMENT_INDEX: u32 = 2;
+const TEST_SADDLE_EQUIPMENT_INDEX: u32 = 3;
+const TEST_WINGS_EQUIPMENT_INDEX: u32 = 4;
+const TEST_WOLF_EQUIPMENT_INDEX: u32 = 5;
+const TEST_HAPPY_GHAST_WHITE_EQUIPMENT_INDEX: u32 = 6;
+const TEST_HAPPY_GHAST_BLACK_EQUIPMENT_INDEX: u32 = 7;
+const TEST_HAPPY_GHAST_BLUE_EQUIPMENT_INDEX: u32 = 8;
+const TEST_LLAMA_WHITE_EQUIPMENT_INDEX: u32 = 9;
+const TEST_LLAMA_BLACK_EQUIPMENT_INDEX: u32 = 10;
+const TEST_LLAMA_TRADER_EQUIPMENT_INDEX: u32 = 11;
+const TEST_LLAMA_TRADER_BABY_EQUIPMENT_INDEX: u32 = 12;
+
+fn test_equipment_asset_id(index: u32) -> EntityEquipmentAssetId {
+    EntityEquipmentAssetId::new(TEST_EQUIPMENT_GENERATION, index)
+}
+
+fn test_iron_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_IRON_EQUIPMENT_INDEX)
+}
+
+fn test_leather_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_LEATHER_EQUIPMENT_INDEX)
+}
+
+fn test_netherite_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_NETHERITE_EQUIPMENT_INDEX)
+}
+
+fn test_saddle_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_SADDLE_EQUIPMENT_INDEX)
+}
+
+fn test_wings_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_WINGS_EQUIPMENT_INDEX)
+}
+
+fn test_wolf_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_WOLF_EQUIPMENT_INDEX)
+}
+
+fn test_happy_ghast_white_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_HAPPY_GHAST_WHITE_EQUIPMENT_INDEX)
+}
+
+fn test_happy_ghast_black_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_HAPPY_GHAST_BLACK_EQUIPMENT_INDEX)
+}
+
+fn test_happy_ghast_blue_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_HAPPY_GHAST_BLUE_EQUIPMENT_INDEX)
+}
+
+fn test_llama_white_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_LLAMA_WHITE_EQUIPMENT_INDEX)
+}
+
+fn test_llama_black_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_LLAMA_BLACK_EQUIPMENT_INDEX)
+}
+
+fn test_llama_trader_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_LLAMA_TRADER_EQUIPMENT_INDEX)
+}
+
+fn test_llama_trader_baby_equipment_asset_id() -> EntityEquipmentAssetId {
+    test_equipment_asset_id(TEST_LLAMA_TRADER_BABY_EQUIPMENT_INDEX)
+}
+
+fn test_static_equipment_layer(
+    texture: EntityModelTextureRef,
+    dyeable: Option<EntityEquipmentDyeable>,
+    use_player_texture: bool,
+) -> EntityEquipmentAssetLayer {
+    EntityEquipmentAssetLayer {
+        texture: EntityEquipmentAssetLayerTexture::Static(texture),
+        dyeable,
+        use_player_texture,
+    }
+}
+
+fn test_static_equipment_asset(
+    layers: impl IntoIterator<Item = (EntityEquipmentLayerType, Vec<EntityEquipmentAssetLayer>)>,
+) -> EntityEquipmentAsset {
+    EntityEquipmentAsset {
+        layers: layers.into_iter().collect(),
+    }
+}
+
+fn test_static_equipment_catalog() -> ResolvedEntityEquipmentAssetCatalog {
+    let plain = |texture| test_static_equipment_layer(texture, None, false);
+    let dyed = |texture, color_when_undyed| {
+        test_static_equipment_layer(
+            texture,
+            Some(EntityEquipmentDyeable { color_when_undyed }),
+            false,
+        )
+    };
+    let humanoid_asset = |humanoid, leggings, baby, horse_body, nautilus_body| {
+        test_static_equipment_asset([
+            (EntityEquipmentLayerType::Humanoid, vec![plain(humanoid)]),
+            (
+                EntityEquipmentLayerType::HumanoidLeggings,
+                vec![plain(leggings)],
+            ),
+            (EntityEquipmentLayerType::HumanoidBaby, vec![plain(baby)]),
+            (EntityEquipmentLayerType::HorseBody, horse_body),
+            (EntityEquipmentLayerType::NautilusBody, nautilus_body),
+        ])
+    };
+    let saddle = test_static_equipment_asset([
+        (
+            EntityEquipmentLayerType::PigSaddle,
+            vec![plain(PIG_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::StriderSaddle,
+            vec![plain(STRIDER_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::CamelSaddle,
+            vec![plain(CAMEL_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::CamelHuskSaddle,
+            vec![plain(CAMEL_HUSK_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::HorseSaddle,
+            vec![plain(HORSE_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::DonkeySaddle,
+            vec![plain(DONKEY_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::MuleSaddle,
+            vec![plain(MULE_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::ZombieHorseSaddle,
+            vec![plain(ZOMBIE_HORSE_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::SkeletonHorseSaddle,
+            vec![plain(SKELETON_HORSE_SADDLE_TEXTURE_REF)],
+        ),
+        (
+            EntityEquipmentLayerType::NautilusSaddle,
+            vec![plain(NAUTILUS_SADDLE_TEXTURE_REF)],
+        ),
+    ]);
+    let assets = vec![
+        humanoid_asset(
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+            ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
+            vec![plain(HORSE_BODY_IRON_TEXTURE_REF)],
+            vec![plain(NAUTILUS_BODY_IRON_TEXTURE_REF)],
+        ),
+        test_static_equipment_asset([
+            (
+                EntityEquipmentLayerType::Humanoid,
+                vec![dyed(ARMOR_LEATHER_HUMANOID_TEXTURE_REF, Some(0x00A0_6540))],
+            ),
+            (
+                EntityEquipmentLayerType::HumanoidLeggings,
+                vec![dyed(ARMOR_LEATHER_LEGGINGS_TEXTURE_REF, Some(0x00A0_6540))],
+            ),
+            (
+                EntityEquipmentLayerType::HumanoidBaby,
+                vec![dyed(
+                    ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
+                    Some(0x00A0_6540),
+                )],
+            ),
+            (
+                EntityEquipmentLayerType::HorseBody,
+                vec![
+                    dyed(HORSE_BODY_LEATHER_TEXTURE_REF, Some(0x00A0_6540)),
+                    plain(HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF),
+                ],
+            ),
+            (
+                EntityEquipmentLayerType::NautilusBody,
+                vec![plain(NAUTILUS_BODY_IRON_TEXTURE_REF)],
+            ),
+        ]),
+        humanoid_asset(
+            ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
+            ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
+            ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF,
+            vec![plain(HORSE_BODY_NETHERITE_TEXTURE_REF)],
+            vec![plain(NAUTILUS_BODY_NETHERITE_TEXTURE_REF)],
+        ),
+        saddle,
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::Wings,
+            vec![test_static_equipment_layer(
+                ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+                None,
+                true,
+            )],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::WolfBody,
+            vec![
+                plain(WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF),
+                dyed(WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF, None),
+            ],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::HappyGhastBody,
+            vec![plain(HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::HappyGhastBody,
+            vec![plain(HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::HappyGhastBody,
+            vec![plain(HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::LlamaBody,
+            vec![plain(LLAMA_BODY_WHITE_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::LlamaBody,
+            vec![plain(LLAMA_BODY_BLACK_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::LlamaBody,
+            vec![plain(LLAMA_BODY_TRADER_TEXTURE_REF)],
+        )]),
+        test_static_equipment_asset([(
+            EntityEquipmentLayerType::LlamaBody,
+            vec![plain(LLAMA_BODY_TRADER_BABY_TEXTURE_REF)],
+        )]),
+    ];
+    EntityEquipmentAssetCatalog::new(TEST_EQUIPMENT_GENERATION, assets)
+        .resolve(&[])
+        .unwrap()
+}
+
+fn entity_model_textured_meshes_with_static_equipment_fixture(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    let equipment_assets = test_static_equipment_catalog();
+    entity_model_textured_meshes_with_equipment_for_camera(
+        instances,
+        atlas,
+        &[],
+        &equipment_assets,
+        None,
+        None,
+        None,
+        None,
+    )
+}
+
+fn entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    let equipment_assets = test_static_equipment_catalog();
+    entity_model_textured_meshes_with_equipment_for_camera(
+        instances,
+        atlas,
+        &[],
+        &equipment_assets,
+        dynamic_player_skin_atlas,
+        dynamic_player_texture_atlas,
+        None,
+        None,
+    )
+}
 
 fn test_block_entity_crumbling(origin: [f32; 3]) -> BlockEntityCrumbling {
     BlockEntityCrumbling {
@@ -11,6 +295,26 @@ fn test_block_entity_crumbling(origin: [f32; 3]) -> BlockEntityCrumbling {
             max: [0.375, 0.5],
         },
     }
+}
+
+fn expected_equipment_wings_pass(
+    texture: EntityModelTextureRef,
+    baby: bool,
+    submit_sequence: u32,
+) -> EntityModelLayerPass {
+    equipment_layer_pass(
+        EntityModelLayerKind::Wings,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        if baby {
+            MODEL_LAYER_ELYTRA_BABY
+        } else {
+            MODEL_LAYER_ELYTRA
+        },
+        texture,
+        [1.0; 4],
+        0,
+        submit_sequence,
+    )
 }
 
 mod allay;
@@ -785,7 +1089,12 @@ fn equipment_layer_pass_records_vanilla_model_layer_metadata() {
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             MODEL_LAYER_HORSE_ARMOR,
             HORSE_BODY_LEATHER_TEXTURE_REF,
-            armor_layer_tint(EntityArmorMaterial::Leather, Some(0x003F_6CDA)),
+            [
+                0x3F as f32 / 255.0,
+                0x6C as f32 / 255.0,
+                0xDA as f32 / 255.0,
+                1.0,
+            ],
             2,
             2,
         ),

@@ -74,6 +74,8 @@
   camera/outline/transparency/blur dispatch 收敛为一个 renderer-private typed owner。
 - **2026-08-03（control mailbox convergence）**：control 五类写请求与 window/services command
   收敛到构造时绑定的单一 simulation mailbox，删除兼容 queue、sink 后装和分类型 shadow drain。
+- **2026-08-03（entity equipment catalog convergence）**：armor、wings 与 simple-equipment layer
+  统一读取 generation-local resolved catalog，删除测试开关驱动的静态 resolver 与兼容分支。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

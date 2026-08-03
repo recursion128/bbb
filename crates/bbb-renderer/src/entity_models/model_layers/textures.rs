@@ -3,9 +3,9 @@ pub(in crate::entity_models) use crate::entity_models::banner_patterns::*;
 use crate::entity_models::cat_variants::VANILLA_CAT_VARIANT_TEXTURE_REFS;
 use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, ChestModelHalf, ChestModelTexture, ConduitModelPart,
-    CopperGolemWeathering, EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor,
-    FoxModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
-    SignModelAttachment, SignModelWood, WolfArmorCrackiness,
+    CopperGolemWeathering, EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant,
+    PandaModelVariant, ParrotModelVariant, RabbitModelVariant, SignModelAttachment, SignModelWood,
+    WolfArmorCrackiness,
 };
 pub(in crate::entity_models) use crate::entity_models::decorated_pot_patterns::*;
 use crate::entity_models::temperature_animal_variants::{
@@ -1191,40 +1191,6 @@ pub(in crate::entity_models) const WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF: Ent
     wolf_body_armor_ref("textures/entity/wolf/wolf_armor_crackiness_medium.png");
 pub(in crate::entity_models) const WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF: EntityModelTextureRef =
     wolf_body_armor_ref("textures/entity/wolf/wolf_armor_crackiness_high.png");
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::entity_models) struct WolfBodyArmorTextureLayer {
-    pub(in crate::entity_models) texture: EntityModelTextureRef,
-    pub(in crate::entity_models) dyeable: bool,
-}
-
-pub(in crate::entity_models) const WOLF_BODY_ARMADILLO_SCUTE_LAYERS: [WolfBodyArmorTextureLayer;
-    2] = [
-    WolfBodyArmorTextureLayer {
-        texture: WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
-        dyeable: false,
-    },
-    WolfBodyArmorTextureLayer {
-        texture: WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
-        dyeable: true,
-    },
-];
-
-pub(in crate::entity_models) fn wolf_body_armor_texture_layers(
-    material: EntityArmorMaterial,
-) -> Option<&'static [WolfBodyArmorTextureLayer]> {
-    match material {
-        EntityArmorMaterial::ArmadilloScute => Some(&WOLF_BODY_ARMADILLO_SCUTE_LAYERS),
-        EntityArmorMaterial::Leather
-        | EntityArmorMaterial::Copper
-        | EntityArmorMaterial::Chainmail
-        | EntityArmorMaterial::Iron
-        | EntityArmorMaterial::Gold
-        | EntityArmorMaterial::Diamond
-        | EntityArmorMaterial::TurtleScute
-        | EntityArmorMaterial::Netherite => None,
-    }
-}
 
 pub(in crate::entity_models) fn wolf_armor_crackiness_texture_ref(
     crackiness: WolfArmorCrackiness,
@@ -2465,29 +2431,6 @@ pub(in crate::entity_models) const LLAMA_BODY_TRADER_BABY_TEXTURE_REF: EntityMod
         size: [64, 64],
     };
 
-pub(in crate::entity_models) fn llama_body_decor_texture_ref(
-    color: EntityDyeColor,
-) -> EntityModelTextureRef {
-    match color {
-        EntityDyeColor::White => LLAMA_BODY_WHITE_TEXTURE_REF,
-        EntityDyeColor::Orange => LLAMA_BODY_ORANGE_TEXTURE_REF,
-        EntityDyeColor::Magenta => LLAMA_BODY_MAGENTA_TEXTURE_REF,
-        EntityDyeColor::LightBlue => LLAMA_BODY_LIGHT_BLUE_TEXTURE_REF,
-        EntityDyeColor::Yellow => LLAMA_BODY_YELLOW_TEXTURE_REF,
-        EntityDyeColor::Lime => LLAMA_BODY_LIME_TEXTURE_REF,
-        EntityDyeColor::Pink => LLAMA_BODY_PINK_TEXTURE_REF,
-        EntityDyeColor::Gray => LLAMA_BODY_GRAY_TEXTURE_REF,
-        EntityDyeColor::LightGray => LLAMA_BODY_LIGHT_GRAY_TEXTURE_REF,
-        EntityDyeColor::Cyan => LLAMA_BODY_CYAN_TEXTURE_REF,
-        EntityDyeColor::Purple => LLAMA_BODY_PURPLE_TEXTURE_REF,
-        EntityDyeColor::Blue => LLAMA_BODY_BLUE_TEXTURE_REF,
-        EntityDyeColor::Brown => LLAMA_BODY_BROWN_TEXTURE_REF,
-        EntityDyeColor::Green => LLAMA_BODY_GREEN_TEXTURE_REF,
-        EntityDyeColor::Red => LLAMA_BODY_RED_TEXTURE_REF,
-        EntityDyeColor::Black => LLAMA_BODY_BLACK_TEXTURE_REF,
-    }
-}
-
 pub(in crate::entity_models) const GOAT_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/goat/goat.png",
@@ -2902,29 +2845,6 @@ happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF, "brown")
 happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF, "green");
 happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_RED_TEXTURE_REF, "red");
 happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF, "black");
-
-pub(in crate::entity_models) const fn happy_ghast_harness_texture_ref(
-    color: EntityDyeColor,
-) -> EntityModelTextureRef {
-    match color {
-        EntityDyeColor::White => HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF,
-        EntityDyeColor::Orange => HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF,
-        EntityDyeColor::Magenta => HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF,
-        EntityDyeColor::LightBlue => HAPPY_GHAST_HARNESS_LIGHT_BLUE_TEXTURE_REF,
-        EntityDyeColor::Yellow => HAPPY_GHAST_HARNESS_YELLOW_TEXTURE_REF,
-        EntityDyeColor::Lime => HAPPY_GHAST_HARNESS_LIME_TEXTURE_REF,
-        EntityDyeColor::Pink => HAPPY_GHAST_HARNESS_PINK_TEXTURE_REF,
-        EntityDyeColor::Gray => HAPPY_GHAST_HARNESS_GRAY_TEXTURE_REF,
-        EntityDyeColor::LightGray => HAPPY_GHAST_HARNESS_LIGHT_GRAY_TEXTURE_REF,
-        EntityDyeColor::Cyan => HAPPY_GHAST_HARNESS_CYAN_TEXTURE_REF,
-        EntityDyeColor::Purple => HAPPY_GHAST_HARNESS_PURPLE_TEXTURE_REF,
-        EntityDyeColor::Blue => HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF,
-        EntityDyeColor::Brown => HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF,
-        EntityDyeColor::Green => HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF,
-        EntityDyeColor::Red => HAPPY_GHAST_HARNESS_RED_TEXTURE_REF,
-        EntityDyeColor::Black => HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF,
-    }
-}
 
 pub(in crate::entity_models) const HAPPY_GHAST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
     HAPPY_GHAST_TEXTURE_REF,
@@ -3962,22 +3882,6 @@ pub(in crate::entity_models) const NAUTILUS_ENTITY_TEXTURE_REFS: [EntityModelTex
     [NAUTILUS_TEXTURE_REF, NAUTILUS_BABY_TEXTURE_REF];
 pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &NAUTILUS_ENTITY_TEXTURE_REFS
-}
-
-pub(in crate::entity_models) fn nautilus_body_armor_texture_ref(
-    material: EntityArmorMaterial,
-) -> Option<EntityModelTextureRef> {
-    Some(match material {
-        EntityArmorMaterial::Copper => NAUTILUS_BODY_COPPER_TEXTURE_REF,
-        EntityArmorMaterial::Iron => NAUTILUS_BODY_IRON_TEXTURE_REF,
-        EntityArmorMaterial::Gold => NAUTILUS_BODY_GOLD_TEXTURE_REF,
-        EntityArmorMaterial::Diamond => NAUTILUS_BODY_DIAMOND_TEXTURE_REF,
-        EntityArmorMaterial::Netherite => NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
-        EntityArmorMaterial::Leather
-        | EntityArmorMaterial::Chainmail
-        | EntityArmorMaterial::TurtleScute
-        | EntityArmorMaterial::ArmadilloScute => return None,
-    })
 }
 
 // Stable aliases keep focused nautilus tests readable; the generated bootstrap catalog owns the

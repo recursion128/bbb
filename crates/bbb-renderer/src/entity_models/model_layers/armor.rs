@@ -1,18 +1,4 @@
-use super::{
-    PartPose, ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF, ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF,
-    ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF, ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF,
-    ARMOR_COPPER_HUMANOID_TEXTURE_REF, ARMOR_COPPER_LEGGINGS_TEXTURE_REF,
-    ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF, ARMOR_DIAMOND_HUMANOID_TEXTURE_REF,
-    ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF, ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF,
-    ARMOR_GOLD_HUMANOID_TEXTURE_REF, ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
-    ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF, ARMOR_IRON_HUMANOID_TEXTURE_REF,
-    ARMOR_IRON_LEGGINGS_TEXTURE_REF, ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
-    ARMOR_LEATHER_HUMANOID_TEXTURE_REF, ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
-    ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF, ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
-    ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF, ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
-    ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF, PART_POSE_ZERO,
-};
-use crate::entity_models::catalog::{EntityArmorMaterial, EntityModelTextureRef};
+use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::model::{ModelCube, ModelPart};
 
 // Vanilla 26.1 humanoid armor layer (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`,
@@ -488,12 +474,6 @@ impl HumanoidArmorSlot {
         }
     }
 
-    /// Whether this slot uses the inner (leggings) model and the `humanoid_leggings` texture; only
-    /// `LEGS` does (vanilla `HumanoidArmorLayer.usesInnerModel`).
-    pub(in crate::entity_models) fn uses_inner_model(self) -> bool {
-        matches!(self, Self::Legs)
-    }
-
     /// Builds this slot's armor overlay tree: a fresh root carrying exactly the slot's parts, each at
     /// its humanoid bind pose with the inflated armor cubes. The OUTER parts (helmet / chestplate /
     /// boots) are grown by `outer` (`1.0` standard, `1.02` piglin); the inner leggings are fixed. The
@@ -926,84 +906,4 @@ impl HumanoidArmorSlot {
         };
         ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
     }
-}
-
-/// The vanilla `DyedItemColor.LEATHER_COLOR` (`0xA06540`), leather's `colorWhenUndyed`.
-const LEATHER_DEFAULT_COLOR: u32 = 0x00A0_6540;
-
-/// The vanilla `EquipmentLayerRenderer.getColorForLayer` per-layer tint: leather is the only dyeable
-/// humanoid material, so it tints by the worn item's `DyedItemColor` when custom-dyed and otherwise by
-/// its default `DyedItemColor.LEATHER_COLOR` (`0xA06540`); every other material is non-dyeable and
-/// renders white (vanilla color `-1`), ignoring any stray dye. `dye` is the projected per-slot
-/// `dyed_color` component (a packed RGB), forced opaque here exactly as `DyedItemColor.getOrDefault`
-/// applies `ARGB.opaque` before `getColorForLayer` reads it.
-pub(in crate::entity_models) fn armor_layer_tint(
-    material: EntityArmorMaterial,
-    dye: Option<u32>,
-) -> [f32; 4] {
-    match material {
-        EntityArmorMaterial::Leather => opaque_rgb_to_tint(dye.unwrap_or(LEATHER_DEFAULT_COLOR)),
-        _ => [1.0, 1.0, 1.0, 1.0],
-    }
-}
-
-/// Unpack a 24-bit RGB color into a fully-opaque `[r, g, b, a]` float tint (vanilla `ARGB.opaque`
-/// forces alpha to `0xFF`, so the incoming high byte is discarded).
-fn opaque_rgb_to_tint(rgb: u32) -> [f32; 4] {
-    [
-        ((rgb >> 16) & 0xFF) as f32 / 255.0,
-        ((rgb >> 8) & 0xFF) as f32 / 255.0,
-        (rgb & 0xFF) as f32 / 255.0,
-        1.0,
-    ]
-}
-
-/// The equipment-asset texture for a given humanoid armor material in a given slot and age layer.
-/// Adult armor uses the `humanoid_leggings` variant for the inner (legs) slot and the `humanoid`
-/// variant otherwise; baby armor always uses `EquipmentClientInfo.LayerType.HUMANOID_BABY`. Materials
-/// without humanoid equipment textures, such as wolf armor's `ArmadilloScute`, return `None`.
-pub(in crate::entity_models) fn armor_slot_texture_for_layer(
-    material: EntityArmorMaterial,
-    slot: HumanoidArmorSlot,
-    baby: bool,
-) -> Option<EntityModelTextureRef> {
-    use EntityArmorMaterial::*;
-    if baby {
-        return Some(match material {
-            Leather => ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
-            Copper => ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF,
-            Chainmail => ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF,
-            Iron => ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
-            Gold => ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF,
-            Diamond => ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF,
-            TurtleScute => ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
-            Netherite => ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF,
-            ArmadilloScute => return None,
-        });
-    }
-    Some(if slot.uses_inner_model() {
-        match material {
-            Leather => ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
-            Copper => ARMOR_COPPER_LEGGINGS_TEXTURE_REF,
-            Chainmail => ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF,
-            Iron => ARMOR_IRON_LEGGINGS_TEXTURE_REF,
-            Gold => ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
-            Diamond => ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
-            Netherite => ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
-            TurtleScute => ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF,
-            ArmadilloScute => return None,
-        }
-    } else {
-        match material {
-            Leather => ARMOR_LEATHER_HUMANOID_TEXTURE_REF,
-            Copper => ARMOR_COPPER_HUMANOID_TEXTURE_REF,
-            Chainmail => ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF,
-            Iron => ARMOR_IRON_HUMANOID_TEXTURE_REF,
-            Gold => ARMOR_GOLD_HUMANOID_TEXTURE_REF,
-            Diamond => ARMOR_DIAMOND_HUMANOID_TEXTURE_REF,
-            TurtleScute => ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF,
-            Netherite => ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
-            ArmadilloScute => return None,
-        }
-    })
 }

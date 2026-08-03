@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use crate::entity_models::gpu::build_dynamic_player_texture_atlas_with_height_limit;
 use crate::entity_models::model::{EntityModel, ModelCube};
 use crate::player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage};
@@ -1988,7 +2006,7 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
 
 #[test]
 fn player_wings_layer_uses_static_equipment_texture_submission() {
-    let pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 4);
+    let pass = expected_equipment_wings_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 4);
     assert_eq!(pass.kind, EntityModelLayerKind::Wings);
     assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(
@@ -2016,6 +2034,7 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true);
 
     let meshes =
@@ -2075,6 +2094,7 @@ fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true);
 
     let meshes =
@@ -2127,7 +2147,7 @@ fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
 
 #[test]
 fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
-    let pass = wings_layer_pass(PLAYER_PROFILE_ELYTRA_TEXTURE_REF, false, 4);
+    let pass = expected_equipment_wings_pass(PLAYER_PROFILE_ELYTRA_TEXTURE_REF, false, 4);
     assert_eq!(pass.kind, EntityModelLayerKind::Wings);
     assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(
@@ -2171,6 +2191,7 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra))
     .with_player_cape_texture(Some(profile_cape));
@@ -2228,7 +2249,7 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
 
 #[test]
 fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
-    let pass = wings_layer_pass(PLAYER_PROFILE_CAPE_TEXTURE_REF, false, 4);
+    let pass = expected_equipment_wings_pass(PLAYER_PROFILE_CAPE_TEXTURE_REF, false, 4);
     assert_eq!(pass.kind, EntityModelLayerKind::Wings);
     assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(
@@ -2268,6 +2289,7 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_player_cape_texture(Some(profile_cape));
 
@@ -2336,20 +2358,24 @@ fn player_wings_layer_waits_for_profile_texture_upload() {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
     }))
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
     .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra));
 
     let meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
 
-    assert!(meshes
+    let wings_submit = meshes
         .submissions
         .iter()
-        .all(|submit| submit.dynamic_player_texture != Some(profile_elytra)));
-    assert!(meshes
-        .submissions
-        .iter()
-        .all(|submit| submit.texture != ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF));
+        .find(|submit| submit.dynamic_player_texture == Some(profile_elytra))
+        .expect("pending profile wings submission metadata");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 5));
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
     assert!(meshes

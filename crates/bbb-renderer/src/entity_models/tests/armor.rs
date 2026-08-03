@@ -3,6 +3,24 @@ use crate::entity_models::colored::GIANT_SCALE;
 use crate::DynamicEntityTextureImage;
 use std::collections::BTreeMap;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 // Build an atlas covering the zombie base texture plus the iron equipment-asset textures and armor
 // glint texture, enough to render an iron-clad zombie.
 fn iron_armor_atlas() -> EntityModelTextureAtlasLayout {
@@ -46,149 +64,6 @@ fn owned_equipment_entry(
 }
 
 #[test]
-fn armor_slot_textures_match_vanilla_layer_types() {
-    // Vanilla `HumanoidArmorLayer.usesInnerModel`: only the LEGS slot reads the `humanoid_leggings`
-    // texture; the head / chest / feet slots read the `humanoid` texture.
-    assert_eq!(
-        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Head, false),
-        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
-    );
-    assert_eq!(
-        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Chest, false),
-        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
-    );
-    assert_eq!(
-        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Feet, false),
-        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
-    );
-    assert_eq!(
-        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Legs, false),
-        Some(ARMOR_IRON_LEGGINGS_TEXTURE_REF)
-    );
-    assert_eq!(
-        armor_slot_texture_for_layer(EntityArmorMaterial::Diamond, HumanoidArmorSlot::Legs, false),
-        Some(ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF)
-    );
-    // Vanilla `HumanoidArmorLayer` switches every non-armor-stand baby slot to
-    // `EquipmentClientInfo.LayerType.HUMANOID_BABY`, so baby leggings do not read the adult
-    // `humanoid_leggings` texture.
-    for slot in [
-        HumanoidArmorSlot::Head,
-        HumanoidArmorSlot::Chest,
-        HumanoidArmorSlot::Legs,
-        HumanoidArmorSlot::Feet,
-    ] {
-        assert_eq!(
-            armor_slot_texture_for_layer(EntityArmorMaterial::Iron, slot, true),
-            Some(ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF)
-        );
-    }
-    assert_eq!(
-        armor_slot_texture_for_layer(
-            EntityArmorMaterial::ArmadilloScute,
-            HumanoidArmorSlot::Chest,
-            false
-        ),
-        None
-    );
-    // Every equipment texture is stitched into the shared atlas.
-    assert!(entity_model_texture_refs().contains(&ARMOR_IRON_HUMANOID_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF));
-    assert!(entity_model_texture_refs().contains(&ENCHANTED_GLINT_ARMOR_TEXTURE_REF));
-}
-
-#[test]
-fn humanoid_armor_layer_pass_records_vanilla_model_layer_metadata() {
-    let chest = humanoid_armor_layer_pass(
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
-        HumanoidArmorSlot::Chest,
-        EntityArmorMaterial::Iron,
-        ARMOR_IRON_HUMANOID_TEXTURE_REF,
-        None,
-        1,
-    );
-    assert_eq!(chest.kind, EntityModelLayerKind::HumanoidArmor);
-    assert_eq!(chest.model_layer, "minecraft:zombie#chestplate");
-    assert_eq!(
-        chest.render_type,
-        EntityModelLayerRenderType::ArmorCutoutNoCull
-    );
-    assert_eq!(chest.render_type.vanilla_name(), "armorCutoutNoCull");
-    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
-    assert_eq!(chest.visibility, EntityModelLayerVisibility::All);
-    assert_eq!(chest.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
-
-    let baby_legs = humanoid_armor_layer_pass(
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
-        HumanoidArmorSlot::Legs,
-        EntityArmorMaterial::Iron,
-        ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
-        None,
-        2,
-    );
-    assert_eq!(baby_legs.model_layer, "minecraft:zombie_baby#leggings");
-    assert_eq!(baby_legs.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
-    assert_eq!((baby_legs.order, baby_legs.submit_sequence), (1, 2));
-
-    let dyed_helmet = humanoid_armor_layer_pass(
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
-        HumanoidArmorSlot::Head,
-        EntityArmorMaterial::Leather,
-        ARMOR_LEATHER_HUMANOID_TEXTURE_REF,
-        Some(0x003F_6CDA),
-        4,
-    );
-    assert_eq!(dyed_helmet.model_layer, "minecraft:player_slim#helmet");
-    assert_eq!(dyed_helmet.texture, ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
-    assert_eq!(
-        dyed_helmet.tint,
-        [
-            0x3F as f32 / 255.0,
-            0x6C as f32 / 255.0,
-            0xDA as f32 / 255.0,
-            1.0
-        ]
-    );
-    assert_eq!((dyed_helmet.order, dyed_helmet.submit_sequence), (1, 4));
-}
-
-#[test]
-fn armor_stand_armor_layer_pass_records_vanilla_model_layers() {
-    // Vanilla `ArmorStandRenderer` registers `HumanoidArmorLayer` with
-    // `ModelLayers.ARMOR_STAND_ARMOR` plus `ARMOR_STAND_SMALL_ARMOR`.
-    let chest = humanoid_armor_layer_pass(
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
-        HumanoidArmorSlot::Chest,
-        EntityArmorMaterial::Iron,
-        ARMOR_IRON_HUMANOID_TEXTURE_REF,
-        None,
-        1,
-    );
-    assert_eq!(chest.kind, EntityModelLayerKind::HumanoidArmor);
-    assert_eq!(chest.model_layer, "minecraft:armor_stand#chestplate");
-    assert_eq!(chest.render_type.vanilla_name(), "armorCutoutNoCull");
-    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
-    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
-
-    let small_legs = humanoid_armor_layer_pass(
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
-        HumanoidArmorSlot::Legs,
-        EntityArmorMaterial::Iron,
-        ARMOR_IRON_LEGGINGS_TEXTURE_REF,
-        None,
-        2,
-    );
-    assert_eq!(
-        small_legs.model_layer,
-        "minecraft:armor_stand_small#leggings"
-    );
-    assert_eq!(small_legs.texture, ARMOR_IRON_LEGGINGS_TEXTURE_REF);
-    assert_eq!((small_legs.order, small_legs.submit_sequence), (1, 2));
-}
-
-#[test]
 fn armor_slot_part_subsets_match_vanilla_retain_exact_parts() {
     // Vanilla `HumanoidModel.ADULT_ARMOR_PARTS_PER_SLOT`.
     assert_eq!(HumanoidArmorSlot::Head.part_names(), &["head"]);
@@ -204,9 +79,6 @@ fn armor_slot_part_subsets_match_vanilla_retain_exact_parts() {
         HumanoidArmorSlot::Feet.part_names(),
         &["right_leg", "left_leg"]
     );
-    assert!(HumanoidArmorSlot::Legs.uses_inner_model());
-    assert!(!HumanoidArmorSlot::Chest.uses_inner_model());
-
     // Vanilla `HumanoidModel.BABY_ARMOR_PARTS_PER_SLOT` keeps the waist static and nests baby feet
     // under empty leg parents, so only the humanoid direct children copy animated pose data.
     assert_eq!(HumanoidArmorSlot::Head.baby_pose_part_names(), &["head"]);
@@ -234,19 +106,6 @@ fn leather_armor_tints_with_default_undyed_color_others_white() {
         0x40 as f32 / 255.0,
         1.0,
     ];
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Leather, None),
-        leather
-    );
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Iron, None),
-        [1.0, 1.0, 1.0, 1.0]
-    );
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Diamond, None),
-        [1.0, 1.0, 1.0, 1.0]
-    );
-
     // The rendered leather chestplate carries the brown tint; iron stays white.
     let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
     refs.push(ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
@@ -262,7 +121,8 @@ fn leather_armor_tints_with_default_undyed_color_others_white() {
     let armored = entity_model_textured_meshes(
         &[
             EntityModelInstance::zombie(76, [0.0, 64.0, 0.0], 0.0, false)
-                .with_chest_armor(Some(EntityArmorMaterial::Leather)),
+                .with_chest_armor(Some(EntityArmorMaterial::Leather))
+                .with_chest_equipment_asset(Some(test_leather_equipment_asset_id())),
         ],
         &atlas,
     );
@@ -284,21 +144,6 @@ fn custom_dyed_leather_tints_by_dye_color_and_non_leather_ignores_it() {
         0xDA as f32 / 255.0,
         1.0,
     ];
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Leather, Some(dye)),
-        dyed
-    );
-    // The incoming alpha byte is discarded (vanilla `ARGB.opaque`): 0xFF000000 | rgb is irrelevant.
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Leather, Some(0xFF00_0000 | dye)),
-        dyed
-    );
-    // Non-dyeable materials always render white regardless of any stray dye (vanilla returns -1).
-    assert_eq!(
-        armor_layer_tint(EntityArmorMaterial::Iron, Some(dye)),
-        [1.0, 1.0, 1.0, 1.0]
-    );
-
     // The rendered dyed leather chestplate carries the custom tint, not the default brown.
     let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
     refs.push(ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
@@ -315,6 +160,7 @@ fn custom_dyed_leather_tints_by_dye_color_and_non_leather_ignores_it() {
         &[
             EntityModelInstance::zombie(77, [0.0, 64.0, 0.0], 0.0, false)
                 .with_chest_armor(Some(EntityArmorMaterial::Leather))
+                .with_chest_equipment_asset(Some(test_leather_equipment_asset_id()))
                 .with_chest_armor_dye(Some(dye)),
         ],
         &atlas,
@@ -361,9 +207,13 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
-        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
     let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
     assert_eq!(
         armored.armor_cutout.vertices.len(),
@@ -465,8 +315,10 @@ fn foiled_humanoid_armor_records_vanilla_armor_entity_glint_submission() {
     let atlas = iron_armor_atlas();
     let armored = EntityModelInstance::zombie(171, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor_foil(true)
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_light_coords((4_u32 << 4) | (12_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
@@ -544,6 +396,7 @@ fn adult_humanoid_armor_trim_uses_runtime_atlas_after_foil() {
     .0;
     let armored = EntityModelInstance::zombie(91_001, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor_foil(true)
         .with_chest_armor_trim(Some(EntityArmorTrim {
             texture: trim_texture,
@@ -601,6 +454,7 @@ fn baby_humanoid_armor_suppresses_trim_layer() {
     .0;
     let armored = EntityModelInstance::zombie(91_002, [0.0, 64.0, 0.0], 0.0, true)
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor_trim(Some(EntityArmorTrim {
             texture: trim_texture,
             decal: false,
@@ -650,6 +504,7 @@ fn small_armor_stand_keeps_decal_armor_trim_on_adult_texture_layer() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor_trim(Some(EntityArmorTrim {
         texture: trim_texture,
         decal: true,
@@ -686,6 +541,7 @@ fn hidden_foiled_humanoid_armor_keeps_glint_without_base_submission() {
     let atlas = iron_armor_atlas();
     let hidden = EntityModelInstance::zombie(172, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor_foil(true)
         .with_invisible(true)
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
@@ -735,9 +591,13 @@ fn hidden_zombie_keeps_humanoid_armor_without_base_submission() {
     let atlas = iron_armor_atlas();
     let hidden = EntityModelInstance::zombie(72, [0.0, 64.0, 0.0], 0.0, false)
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
@@ -774,9 +634,13 @@ fn hidden_player_keeps_humanoid_armor_without_base_submission() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
@@ -797,9 +661,13 @@ fn invisible_glowing_zombie_keeps_humanoid_armor_layer_submissions() {
     let atlas = iron_armor_atlas();
     let hidden_glowing = EntityModelInstance::zombie(73, [0.0, 64.0, 0.0], 0.0, false)
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_light_coords((7_u32 << 4) | (9_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
@@ -846,9 +714,13 @@ fn full_armor_stand_armor_submissions_match_vanilla_layer_order() {
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
-    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[armored_instance], &atlas);
 
@@ -883,9 +755,13 @@ fn invisible_glowing_armor_stand_keeps_armor_layer_submissions() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
@@ -925,9 +801,13 @@ fn marker_invisible_glowing_armor_stand_keeps_armor_without_base_submission() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_light_coords((7_u32 << 4) | (9_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
@@ -965,9 +845,13 @@ fn small_armor_stand_armor_uses_small_model_scale_with_adult_textures() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
-    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
     let small = EntityModelInstance::armor_stand(
         476,
         [0.0, 64.0, 0.0],
@@ -978,9 +862,13 @@ fn small_armor_stand_armor_uses_small_model_scale_with_adult_textures() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
     .with_legs_armor(Some(EntityArmorMaterial::Iron))
-    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+    .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let full_meshes = entity_model_textured_meshes(&[full], &atlas);
     let small_meshes = entity_model_textured_meshes(&[small], &atlas);
@@ -1189,9 +1077,13 @@ fn humanoid_armor_submissions_survive_missing_texture_atlas_entries() {
         .with_has_red_overlay(true);
     let armored_instance = bare_instance
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
-        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let bare = entity_model_textured_meshes(&[bare_instance], &atlas);
     let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
@@ -1255,9 +1147,13 @@ fn armored_giant_uses_vanilla_giant_armor_layer() {
     let base = EntityModelInstance::giant(94, [0.0, 64.0, 0.0], 0.0);
     let armored = base
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
-        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
     let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);
@@ -1328,7 +1224,8 @@ fn single_armor_slot_emits_only_its_pieces() {
     let helmet = entity_model_textured_meshes(
         &[
             EntityModelInstance::zombie(73, [0.0, 64.0, 0.0], 0.0, false)
-                .with_head_armor(Some(EntityArmorMaterial::Iron)),
+                .with_head_armor(Some(EntityArmorMaterial::Iron))
+                .with_head_equipment_asset(Some(test_iron_equipment_asset_id())),
         ],
         &atlas,
     );
@@ -1341,9 +1238,13 @@ fn standard_humanoid_wearers_all_drape_armor() {
     let full_iron = |instance: EntityModelInstance| {
         instance
             .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_legs_armor(Some(EntityArmorMaterial::Iron))
+            .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_feet_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
     };
     // Each standard-`HumanoidModel` armor wearer (zombie family, skeleton family, player) drapes the
     // same 10-cube / 240-vertex armor set; the armor delta is independent of the base body texture.
@@ -1430,7 +1331,9 @@ fn skeleton_family_armor_submissions_match_vanilla_armor_layer() {
     ];
 
     for instance in cases {
-        let armored = instance.with_chest_armor(Some(EntityArmorMaterial::Iron));
+        let armored = instance
+            .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()));
         let meshes = entity_model_textured_meshes(&[armored], &atlas);
         let armor_submissions: Vec<_> = meshes
             .submissions
@@ -1463,9 +1366,13 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
     let full_iron = |instance: EntityModelInstance| {
         instance
             .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_legs_armor(Some(EntityArmorMaterial::Iron))
+            .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_feet_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))
     };
     // Every adult piglin-family wearer (piglin, piglin brute, zombified piglin) drapes the same
     // 10-cube / 240-vertex armor set (vanilla `AbstractPiglinModel.createArmorMeshSet`).
@@ -1583,9 +1490,13 @@ fn baby_zombie_armor_uses_humanoid_baby_layer() {
     let armored = entity_model_textured_meshes(
         &[EntityModelInstance::zombie(75, [0.0, 64.0, 0.0], 0.0, true)
             .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
             .with_legs_armor(Some(EntityArmorMaterial::Iron))
-            .with_feet_armor(Some(EntityArmorMaterial::Iron))],
+            .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+            .with_feet_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()))],
         &atlas,
     );
     assert_eq!(
@@ -1645,9 +1556,13 @@ fn baby_humanoid_armor_submissions_survive_missing_texture_atlas_entry() {
         .with_has_red_overlay(true);
     let armored_instance = bare_instance
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
-        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let bare = entity_model_textured_meshes(&[bare_instance], &atlas);
     let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
@@ -1735,9 +1650,13 @@ fn baby_zombie_villager_armor_uses_zombie_villager_baby_armor_set() {
     ));
     let armored = base
         .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_head_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_legs_armor(Some(EntityArmorMaterial::Iron))
-        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+        .with_legs_equipment_asset(Some(test_iron_equipment_asset_id()))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
     let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);

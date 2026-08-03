@@ -1,5 +1,23 @@
 use super::*;
 
+fn entity_model_textured_meshes(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_fixture(instances, atlas)
+}
+
+fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    skins: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    textures: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    super::entity_model_textured_meshes_with_static_equipment_and_dynamic_textures_fixture(
+        instances, atlas, skins, textures,
+    )
+}
+
 use crate::entity_models::colored::happy_ghast_model_root_transform;
 use crate::entity_models::model::ModelCube;
 use crate::DynamicEntityTextureImage;
@@ -109,14 +127,8 @@ fn happy_ghast_texture_ref_matches_vanilla_renderer() {
         MODEL_LAYER_HAPPY_GHAST_BABY_ROPES,
         "minecraft:happy_ghast_baby_ropes#main"
     );
-    assert_eq!(
-        happy_ghast_harness_texture_ref(EntityDyeColor::White),
-        HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF
-    );
-    assert_eq!(
-        happy_ghast_harness_texture_ref(EntityDyeColor::Black),
-        HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF
-    );
+    assert!(entity_model_texture_refs().contains(&HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF));
 }
 
 #[test]
@@ -191,7 +203,8 @@ fn happy_ghast_body_item_squeezes_the_complete_body_subtree() {
 fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
     let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
     let adult = EntityModelInstance::happy_ghast(61, [0.0, 64.0, 0.0], 0.0)
-        .with_happy_ghast_harness(Some(EntityDyeColor::White));
+        .with_happy_ghast_harness(Some(EntityDyeColor::White))
+        .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_white_equipment_asset_id()));
     let unridden = entity_model_textured_meshes(&[adult], &atlas);
     assert_eq!(unridden.submissions.len(), 2);
     assert_eq!(
@@ -226,7 +239,8 @@ fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
         [0.0, 64.0, 0.0],
         0.0,
     )
-    .with_happy_ghast_harness(Some(EntityDyeColor::Black));
+    .with_happy_ghast_harness(Some(EntityDyeColor::Black))
+    .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_black_equipment_asset_id()));
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 2);
     assert_eq!(
@@ -262,7 +276,9 @@ fn happy_ghast_ropes_require_leash_holder_and_harness_tag_and_use_inflated_model
         HAPPY_GHAST_ROPES_TEXTURE_REF
     );
 
-    let harness = base.with_happy_ghast_harness(Some(EntityDyeColor::White));
+    let harness = base
+        .with_happy_ghast_harness(Some(EntityDyeColor::White))
+        .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_white_equipment_asset_id()));
     let no_holder = entity_model_textured_meshes(&[harness], &atlas);
     assert_eq!(no_holder.submissions.len(), 2);
     let base_cutout_vertex_count = no_holder.cutout.vertices.len();
@@ -312,6 +328,7 @@ fn happy_ghast_ropes_require_leash_holder_and_harness_tag_and_use_inflated_model
         0.0,
     )
     .with_happy_ghast_harness(Some(EntityDyeColor::Black))
+    .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_black_equipment_asset_id()))
     .with_happy_ghast_body_item(true)
     .with_happy_ghast_body_item_is_harness(true)
     .with_happy_ghast_is_leash_holder(true);
@@ -341,6 +358,7 @@ fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
     .0;
     let instance = EntityModelInstance::happy_ghast(63, [0.0, 64.0, 0.0], 0.0)
         .with_happy_ghast_harness(Some(EntityDyeColor::Blue))
+        .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_blue_equipment_asset_id()))
         .with_happy_ghast_body_item(true)
         .with_happy_ghast_body_item_is_harness(true)
         .with_happy_ghast_is_leash_holder(true)

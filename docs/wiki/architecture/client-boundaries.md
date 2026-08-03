@@ -73,6 +73,27 @@ reload prepare 或后续 GPU/audio owner 失败时继续保留上一完整 gener
 resources 的 1506 个 item definition/registry、stone block projection，以及 offscreen hotbar/glint/
 scissor pixels共同验证这条唯一数据流。
 
+## Entity equipment asset catalog owner
+
+Vanilla `EquipmentAssetManager` 先把当前 resource generation 的 `equipment/*.json` 解析为
+`EquipmentClientInfo`，`EquipmentLayerRenderer` 再按 layer type 和声明顺序查询；未知 asset、缺失
+layer type 或空 layer 都不退回静态材质表。BBB 对应的唯一 CPU owner 是 pack/item generation
+投影出的 `EntityEquipmentAssetCatalog`。native 在同一 reload prepare 中把静态 texture identity 与
+owned atlas entry 解析为 renderer-private `ResolvedEntityEquipmentAssetCatalog`，entity frame 只携带
+同 generation 的 `EntityEquipmentAssetId` 以及 dye、foil、trim 和 player-texture 查询事实。
+
+humanoid/armor-stand、wings、wolf、equine、llama、pig、strider、camel、happy-ghast 和 nautilus
+layer 全部查询这一份 resolved catalog；renderer 不按 armor material、dye color 或 saddle flag
+重建另一份 texture resolver。无 asset id、未知 id、stale generation 或缺失 layer 都提交零层；
+dye skip/default、首个可绘制 layer 后的 foil、末层 texture 上的 trim、baby/leggings、profile wings
+override、outline 与 submit order 仍由共享 layer emitter 决定。普通测试 helper 使用显式空 catalog，
+equipment 测试则提供带 generation/id 的 catalog fixture，不能通过测试开关改变 production 分支。
+
+catalog/owned texture/atlas/GPU pipeline 均在现有 renderer resource transaction 中准备。只有完整
+generation 成功后才替换；任一步失败继续保留上一 resolved catalog 和 atlas，旧 generation id 不会
+命中新 generation。反向 source guard 禁止恢复 legacy flag、静态 armor/saddle/wings resolver 或
+asset-free compatibility 分支。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

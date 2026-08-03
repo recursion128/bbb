@@ -1,10 +1,4 @@
-use super::super::super::{EntityArmorMaterial, EntityModelTextureRef};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::entity_models) struct HorseBodyArmorTextureLayer {
-    pub texture: EntityModelTextureRef,
-    pub dyeable: bool,
-}
+use super::super::super::EntityModelTextureRef;
 
 pub(in crate::entity_models) const HORSE_WHITE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
@@ -240,50 +234,3 @@ pub(in crate::entity_models) const HORSE_BODY_DIAMOND_TEXTURE_REF: EntityModelTe
     horse_body_armor_ref("textures/entity/equipment/horse_body/diamond.png");
 pub(in crate::entity_models) const HORSE_BODY_NETHERITE_TEXTURE_REF: EntityModelTextureRef =
     horse_body_armor_ref("textures/entity/equipment/horse_body/netherite.png");
-
-const HORSE_BODY_LEATHER_LAYERS: [HorseBodyArmorTextureLayer; 2] = [
-    HorseBodyArmorTextureLayer {
-        texture: HORSE_BODY_LEATHER_TEXTURE_REF,
-        dyeable: true,
-    },
-    HorseBodyArmorTextureLayer {
-        texture: HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF,
-        dyeable: false,
-    },
-];
-const HORSE_BODY_COPPER_LAYERS: [HorseBodyArmorTextureLayer; 1] = [HorseBodyArmorTextureLayer {
-    texture: HORSE_BODY_COPPER_TEXTURE_REF,
-    dyeable: false,
-}];
-const HORSE_BODY_IRON_LAYERS: [HorseBodyArmorTextureLayer; 1] = [HorseBodyArmorTextureLayer {
-    texture: HORSE_BODY_IRON_TEXTURE_REF,
-    dyeable: false,
-}];
-const HORSE_BODY_GOLD_LAYERS: [HorseBodyArmorTextureLayer; 1] = [HorseBodyArmorTextureLayer {
-    texture: HORSE_BODY_GOLD_TEXTURE_REF,
-    dyeable: false,
-}];
-const HORSE_BODY_DIAMOND_LAYERS: [HorseBodyArmorTextureLayer; 1] = [HorseBodyArmorTextureLayer {
-    texture: HORSE_BODY_DIAMOND_TEXTURE_REF,
-    dyeable: false,
-}];
-const HORSE_BODY_NETHERITE_LAYERS: [HorseBodyArmorTextureLayer; 1] = [HorseBodyArmorTextureLayer {
-    texture: HORSE_BODY_NETHERITE_TEXTURE_REF,
-    dyeable: false,
-}];
-
-pub(in crate::entity_models) fn horse_body_armor_texture_layers(
-    material: EntityArmorMaterial,
-) -> Option<&'static [HorseBodyArmorTextureLayer]> {
-    Some(match material {
-        EntityArmorMaterial::Leather => &HORSE_BODY_LEATHER_LAYERS,
-        EntityArmorMaterial::Copper => &HORSE_BODY_COPPER_LAYERS,
-        EntityArmorMaterial::Iron => &HORSE_BODY_IRON_LAYERS,
-        EntityArmorMaterial::Gold => &HORSE_BODY_GOLD_LAYERS,
-        EntityArmorMaterial::Diamond => &HORSE_BODY_DIAMOND_LAYERS,
-        EntityArmorMaterial::Netherite => &HORSE_BODY_NETHERITE_LAYERS,
-        EntityArmorMaterial::Chainmail
-        | EntityArmorMaterial::TurtleScute
-        | EntityArmorMaterial::ArmadilloScute => return None,
-    })
-}
