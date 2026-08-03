@@ -434,15 +434,28 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 Rust 文件、23 条正常依赖边、3,123 个公开声明、1,594 个 crate-private 声明及 checked
 Vanilla 2,927-owner inventory 完成只读复审；production 实现与产品行为未在 census 中修改。
 
-- rank 1/3：`arch-entity-equipment-shadow-projection`，删除跨 item-model/world/native/renderer
-  漂移的静态材质、颜色、bool 与 wings layer projection，只保留 generation-matched catalog。
-- rank 2/3：`arch-falling-dust-static-color-facts`，把手写资源名/属性颜色表收敛到 checked
-  Vanilla runtime probe 与版本化 block-state facts，保留动态 tint 决策顺序。
-- rank 3/3：`arch-piston-profile-pack-boundary`，把固定 push reaction 从 pack parser 收敛到
-  generated protocol fact，使 world 不再读取 pack catalog。
-- 三项的 canonical input、owner/caller、方向、lifetime、fallback/rollback、删除目标、证据和
-  重开条件只由 `docs/unsupported-features.md` 拥有。每项开工前另冻唯一 active 工程合同，
-  完成提交并 full-gate 后才进入下一项；候选清零且 route/guard/gate 闭合后恢复 `maintenance`。
+三个 ready 候选及其排序、owner/caller、删除目标和 evidence 只由
+`docs/unsupported-features.md` 拥有；逐项提交并 full-gate，清零后恢复 `maintenance`。
+
+当前唯一工程合同是 `parity-zombie-nautilus-body-item-presence-r1`，它是 rank 1 equipment
+shadow 删除的窄 parity 前置，不属于架构重构。Vanilla owner 冻结为
+`ZombieNautilusRenderer.extractRenderState` 复制 `getBodyArmorItem()`，以及
+`ZombieNautilusCoralModel.setupAnim` 仅按 `bodyArmorItem.isEmpty()` 决定 coral visibility。
+
+- 唯一 semantic owner 是 world entity equipment snapshot：从 `EquipmentSlot.BODY` 的非空
+  stack 产生 `nautilus_body_item_present`；native 只做同名 immutable frame projection，renderer
+  只消费该 bool。asset id、材质分类、pack generation 和 texture readiness 均不得参与可见性。
+- 空/缺失 stack 为 false；任意非空 stack 为 true。该 session-scoped state 随 entity/session
+  清理，不新增 cache；resource reload 的 prepare/commit/rollback 边界保持不变。
+- 串行阶段：world 字段与任意非空/空 stack focused test → native passthrough → coral model
+  consumer 与反向 source guard → Wiki/ledger 收口、diff review、提交、full gate。
+- 非目标是 equipment catalog/texture/saddle/trim、smithing preview 和其他 entity 行为；本 slice
+  不删除 material shadow，成功 full-gate 后立即冻结纯架构 candidate 合同再统一删除。
+- focused tests 覆盖 `bbb-world` entity equipment projection、`bbb-native` entity scene、
+  `bbb-renderer` nautilus visibility 与 asset-independent guard；另跑 docs lint、fmt、diff check、
+  workspace check/test。产品行为提交后刷新 fixture/live playable stamp。
+- 安全停止点只有该单语义路径完整提交并 full-gated；blocker 仅接受无法构造或复现官方
+  BODY-stack 决策的外部条件，当前本地源码与 fixture 均已满足，故无已知 blocker。
 
 ### P1：可玩 Session 端到端门禁
 
