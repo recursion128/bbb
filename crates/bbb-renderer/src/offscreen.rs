@@ -142,7 +142,7 @@ mod tests {
         HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
         HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
         HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
-        HudStyledTextRun, HudVignette, HudWinScreen, Renderer,
+        HudStyledTextRun, HudVignette, HudWinScreen, Renderer, StandaloneTextureSampling,
     };
 
     const WIDTH: u32 = 320;
@@ -1407,6 +1407,7 @@ mod tests {
             .expect("menu background");
         renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
             generation: 4,
+            panorama_rotation_degrees: 0.0,
             title: "Connection Lost".to_string(),
             reason_runs: vec![HudComponentTextRun::plain("Reason")],
             report_to_server_label: None,
@@ -1429,5 +1430,98 @@ mod tests {
             back_button[1] > 180 && back_button[0] > 180,
             "focused back button must cover ordinary HUD with highlighted sprite, got {back_button:?}"
         );
+    }
+
+    #[test]
+    fn offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back() {
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let faces_with_front = |front: [u8; 4]| {
+            [
+                vec![0, 255, 0, 255],
+                vec![0, 0, 255, 255],
+                vec![0, 255, 255, 255],
+                vec![255, 255, 0, 255],
+                front.to_vec(),
+                vec![255, 0, 255, 255],
+            ]
+        };
+        let old_faces = faces_with_front([255, 0, 0, 255]);
+        renderer
+            .upload_hud_panorama(
+                1,
+                1,
+                std::array::from_fn(|index| old_faces[index].as_slice()),
+                1,
+                1,
+                &[0, 0, 0, 0],
+                StandaloneTextureSampling::NEAREST_REPEAT,
+            )
+            .expect("old panorama");
+        renderer
+            .upload_hud_menu_background(1, 1, &[0, 0, 0, 0])
+            .expect("transparent menu background");
+        renderer.set_hud_screen_blur(true);
+        renderer.set_menu_background_blurriness(5);
+        renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+            generation: 4,
+            panorama_rotation_degrees: 0.0,
+            title: String::new(),
+            reason_runs: Vec::new(),
+            report_to_server_label: None,
+            open_report_directory_label: None,
+            back_label: String::new(),
+            focused: HudDisconnectedScreenButton::Back,
+            hovered: None,
+        }));
+
+        let draws = renderer.collect_hud_draws();
+        let blur = draws.screen_blur.expect("panorama screen blur marker");
+        assert_eq!(
+            blur.first_base_command, 1,
+            "only the panorama overlay must be emitted before blur"
+        );
+        drop(draws);
+
+        let before = renderer
+            .render_offscreen_frame()
+            .expect("old panorama frame");
+        let center = before.pixel(WIDTH / 2, HEIGHT / 2);
+        assert!(
+            center[0] > 180 && center[1] < 80 && center[2] < 80,
+            "zero rotation must sample the `_0`/+Z front face, got {center:?}"
+        );
+        assert!(renderer.counters.panorama_resource_ready);
+        assert_eq!(renderer.counters.panorama_resident_bytes, 28);
+        assert_eq!(renderer.counters.panorama_draw_calls, 1);
+        assert_eq!(renderer.counters.screen_blur_draw_calls, 6);
+
+        let new_faces = faces_with_front([0, 255, 0, 255]);
+        renderer
+            .transactional_resource_reload(|renderer| -> anyhow::Result<()> {
+                renderer.upload_hud_panorama(
+                    1,
+                    1,
+                    std::array::from_fn(|index| new_faces[index].as_slice()),
+                    1,
+                    1,
+                    &[0, 0, 0, 0],
+                    StandaloneTextureSampling::NEAREST_REPEAT,
+                )?;
+                anyhow::bail!("injected failure after panorama upload")
+            })
+            .expect_err("failed reload must roll back panorama owner");
+
+        let after = renderer
+            .render_offscreen_frame()
+            .expect("rolled-back panorama frame");
+        let center = after.pixel(WIDTH / 2, HEIGHT / 2);
+        assert!(
+            center[0] > 180 && center[1] < 80 && center[2] < 80,
+            "rollback must retain the exact old red panorama owner, got {center:?}"
+        );
+        assert!(renderer.counters.panorama_resource_ready);
+        assert_eq!(renderer.counters.panorama_resident_bytes, 28);
     }
 }

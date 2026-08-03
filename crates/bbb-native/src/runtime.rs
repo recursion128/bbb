@@ -677,6 +677,7 @@ pub(crate) struct HudRenderRuntime {
     win_screen_resource_owner: Option<Arc<crate::win_screen_resources::WinScreenResources>>,
     win_screen_lines: Arc<[HudWinScreenLine]>,
     last_ui_frame_at: Option<Instant>,
+    panorama_spin_degrees: f32,
     chat_cache_key: Option<HudChatCacheKey>,
     hotbar_block_item_models_cache_key: Option<HudHotbarBlockItemModelsCacheKey>,
     scoreboard_sidebar_cache_key: Option<HudScoreboardSidebarCacheKey>,
@@ -877,6 +878,15 @@ impl HudRenderRuntime {
             game_time,
             realtime,
         }
+    }
+
+    fn panorama_rotation_degrees(&mut self, visible: bool, frame_delta: HudFrameDeltaTicks) -> f32 {
+        if visible {
+            self.panorama_spin_degrees = panorama_wrap_degrees(
+                self.panorama_spin_degrees + frame_delta.realtime.max(0.0) * 0.1,
+            );
+        }
+        -self.panorama_spin_degrees
     }
 
     fn player_health_frame(
@@ -3231,6 +3241,10 @@ pub(crate) fn update_renderer_from_publication(
     let entity_partial_tick = publication.partial_tick_at(render_started_at);
     let hud_frame_delta =
         hud_render_runtime.frame_delta_ticks(render_started_at, publication.tick_interval);
+    let panorama_rotation_degrees = hud_render_runtime.panorama_rotation_degrees(
+        input.disconnected_screen_runtime().is_some(),
+        hud_frame_delta,
+    );
     let win_generation = match input.game_event_screen_runtime() {
         Some(GameEventScreenRuntime::Win(screen)) => Some(screen.generation),
         _ => None,
@@ -3526,7 +3540,8 @@ pub(crate) fn update_renderer_from_publication(
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
     let advancement_hover_fade = input.advancement_hover_fade();
-    let hud_disconnected_screen = hud_disconnected_screen(input, item_runtime);
+    let hud_disconnected_screen =
+        hud_disconnected_screen(input, item_runtime, panorama_rotation_degrees);
     let hud_death_screen = hud_disconnected_screen
         .is_none()
         .then(|| hud_death_screen(input, world, item_runtime))
@@ -3840,14 +3855,15 @@ pub(crate) fn update_renderer_from_publication(
     // Dialog, in-world game-rules, and demo popup/confirmation screens inherit
     // `Screen.extractBlurredBackground`; container/book/advancement/stats screens
     // remain vanilla in-game UI, while poem `WinScreen` owns its portal background.
-    let hud_screen_blur = hud_screen_blur_for_world(
-        world,
-        hud_inventory_screen.is_some()
-            || hud_game_rules_screen.is_some()
-            || hud_social_interactions_screen.is_some()
-            || hud_player_reporting_screen.is_some()
-            || hud_game_event_screen.is_some(),
-    );
+    let hud_screen_blur = hud_disconnected_screen.is_some()
+        || hud_screen_blur_for_world(
+            world,
+            hud_inventory_screen.is_some()
+                || hud_game_rules_screen.is_some()
+                || hud_social_interactions_screen.is_some()
+                || hud_player_reporting_screen.is_some()
+                || hud_game_event_screen.is_some(),
+        );
     let hud_duration = hud_started_at.elapsed();
     let item_pre_started_at = Instant::now();
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
@@ -6268,7 +6284,7 @@ fn disconnected_screen_narration_frame(
     input: &ClientInputState,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<ScreenNarrationFrame> {
-    let screen = hud_disconnected_screen(input, item_runtime)?;
+    let screen = hud_disconnected_screen(input, item_runtime, 0.0)?;
     let mut frame = ScreenNarrationFrame::default();
     frame.add(NarratedElementKind::Title, 0, screen.title.clone());
     let reason = screen
@@ -10221,6 +10237,17 @@ fn hud_debug_facing(y_rot: f32) -> (&'static str, &'static str) {
     } else {
         ("north", "Towards negative Z")
     }
+}
+
+fn panorama_wrap_degrees(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 fn hud_debug_wrap_degrees(degrees: f32) -> f32 {
@@ -19289,6 +19316,9 @@ pub(crate) fn control_renderer_counters(
         map_instance_upload_bytes: counters.map_instance_upload_bytes,
         map_surface_instances: counters.map_surface_instances,
         item_extraction_scratch_capacity_growths: counters.item_extraction_scratch_capacity_growths,
+        panorama_resource_ready: counters.panorama_resource_ready,
+        panorama_draw_calls: counters.panorama_draw_calls,
+        panorama_resident_bytes: counters.panorama_resident_bytes,
         hud_draw_calls: counters.hud_draw_calls,
         screen_blur_draw_calls: counters.screen_blur_draw_calls,
         post_effect_draw_calls: counters.post_effect_draw_calls,

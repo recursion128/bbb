@@ -923,6 +923,7 @@ pub struct Renderer {
     pub(super) hud_book_screen: Option<crate::hud::HudBookScreen>,
     pub(super) hud_debug_options_screen: Option<crate::hud::HudDebugOptionsScreen>,
     pub(super) hud_sound_subtitles: crate::hud::HudSoundSubtitles,
+    pub(super) hud_panorama: Option<crate::panorama::PanoramaGpu>,
     pub(super) hud_menu_background: Option<HudSpriteGpu>,
     /// One persistent PIP target per sanitized `hud_inventory_screen` entity preview, indexed by
     /// preview order (vanilla `PictureInPictureRenderer` private color+depth textures).
@@ -2655,6 +2656,7 @@ impl Renderer {
             hud_book_screen: None,
             hud_debug_options_screen: None,
             hud_sound_subtitles: crate::hud::HudSoundSubtitles::default(),
+            hud_panorama: None,
             hud_menu_background: None,
             hud_entity_preview_pip_targets: Vec::new(),
             hud_experience_background: None,

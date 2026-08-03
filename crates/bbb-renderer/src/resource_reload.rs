@@ -1207,6 +1207,7 @@ impl Renderer {
         match apply(self) {
             Ok(value) => {
                 self.resource_reload_checkpoint = None;
+                self.sync_panorama_resource_counters();
                 Ok(value)
             }
             Err(error) => {
@@ -1376,6 +1377,7 @@ impl Renderer {
         for restore in checkpoint.restores.into_iter().rev() {
             restore(self);
         }
+        self.sync_panorama_resource_counters();
         // Cloud dimensions are written to a permanent uniform buffer. Restore
         // its contents after restoring the exact previous CPU texture owner.
         self.restore_cloud_uniform_after_resource_reload();
@@ -1422,6 +1424,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_font_book);
         $take_owner!(hud_obfuscated_glyph_pool);
         $take_owner!(hud_chat_modified_icon);
+        $take_owner!(hud_panorama);
         $take_owner!(hud_inworld_menu_background);
         $take_owner!(hud_menu_background);
         $take_owner!(hud_inventory_background);
@@ -2137,6 +2140,7 @@ mod tests {
             );
         }
         for owner in [
+            "hud_panorama",
             "hud_default_player_faces",
             "hud_dynamic_player_faces",
             "hud_player_list_ping_sprites",

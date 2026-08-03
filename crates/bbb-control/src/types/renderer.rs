@@ -123,6 +123,12 @@ pub struct RendererCounters {
     #[serde(default)]
     pub item_extraction_scratch_capacity_growths: u64,
     #[serde(default)]
+    pub panorama_resource_ready: bool,
+    #[serde(default)]
+    pub panorama_draw_calls: u64,
+    #[serde(default)]
+    pub panorama_resident_bytes: u64,
+    #[serde(default)]
     pub dynamic_texture_cache_entries: usize,
     #[serde(default)]
     pub profile_texture_set_entries: usize,

@@ -6621,7 +6621,17 @@ impl Renderer {
         let surface_size = self.surface_size();
         let sound_subtitle_placement = self.hud_sound_subtitle_placement();
         if let Some(screen) = &self.hud_disconnected_screen {
-            let screen_blur = (self.hud_screen_blur && self.menu_background_blurriness >= 1.0)
+            if let Some(panorama) = &self.hud_panorama {
+                disconnected_screen::push_panorama_overlay(
+                    &mut vertices,
+                    &mut commands,
+                    panorama.overlay(),
+                    surface_size,
+                );
+            }
+            let screen_blur = (self.hud_panorama.is_some()
+                && self.hud_screen_blur
+                && self.menu_background_blurriness >= 1.0)
                 .then_some(HudScreenBlurDraws {
                     radius: self.menu_background_blurriness,
                     first_base_command: commands.len(),

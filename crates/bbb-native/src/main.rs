@@ -97,7 +97,7 @@ use entity_assets::load_entity_model_textures;
 use entity_scene::EntityRenderExtractionScratch;
 use entity_variant_textures::NativeEntityVariantTextureRuntime;
 use frame_diagnostics::{FramePhaseDiagnostics, FramePhaseSample};
-use hud_assets::load_hud_textures;
+use hud_assets::{load_hud_textures, load_panorama};
 use input::{ClientInputState, DebugClipboard};
 use item_texture_animation::{maybe_upload_item_texture_animation, ItemTextureAnimationState};
 use level_load_runtime::LevelLoadRuntime;
@@ -811,6 +811,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         }
     }
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    load_panorama(&mut renderer, pack_roots.as_ref());
     renderer.set_default_text_right_to_left(
         item_runtime
             .as_ref()

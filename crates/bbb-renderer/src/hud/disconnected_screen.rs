@@ -17,6 +17,8 @@ const FONT_LINE_HEIGHT: i32 = 9;
 const LARGE_CELL_PADDING: i32 = 10;
 const BUTTON_CELL_PADDING: i32 = 2;
 const MENU_BACKGROUND_TILE_SIZE: f32 = 32.0;
+const PANORAMA_OVERLAY_LOGICAL_WIDTH: f32 = 16.0;
+const PANORAMA_OVERLAY_LOGICAL_HEIGHT: f32 = 128.0;
 const MAX_SCREEN_TEXT_CHARS: usize = 65_536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +37,7 @@ pub struct HudDisconnectedScreenHitTarget {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudDisconnectedScreen {
     pub generation: u64,
+    pub panorama_rotation_degrees: f32,
     pub title: String,
     pub reason_runs: Vec<HudComponentTextRun>,
     pub report_to_server_label: Option<String>,
@@ -72,6 +75,9 @@ impl ButtonRect {
 pub(super) fn sanitize_hud_disconnected_screen(
     mut screen: HudDisconnectedScreen,
 ) -> Option<HudDisconnectedScreen> {
+    if !screen.panorama_rotation_degrees.is_finite() {
+        screen.panorama_rotation_degrees = 0.0;
+    }
     sanitize_string(&mut screen.title);
     sanitize_component_runs(&mut screen.reason_runs);
     if let Some(label) = screen.report_to_server_label.as_mut() {
@@ -90,6 +96,29 @@ pub(super) fn sanitize_hud_disconnected_screen(
     }
     screen.hovered = screen.hovered.filter(|button| valid.contains(button));
     Some(screen)
+}
+
+pub(super) fn push_panorama_overlay<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    overlay: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+) {
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        overlay,
+        surface_size,
+        absolute_hud_rect(0.0, 0.0, surface_size.width, surface_size.height),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [
+                surface_size.width as f32 / PANORAMA_OVERLAY_LOGICAL_WIDTH,
+                surface_size.height as f32 / PANORAMA_OVERLAY_LOGICAL_HEIGHT,
+            ],
+        },
+        HUD_TINT_WHITE,
+    );
 }
 
 pub(super) fn hud_disconnected_screen_hit_target_at(
@@ -387,6 +416,7 @@ mod tests {
     fn screen() -> HudDisconnectedScreen {
         HudDisconnectedScreen {
             generation: 7,
+            panorama_rotation_degrees: 0.0,
             title: "Connection Lost".to_string(),
             reason_runs: vec![HudComponentTextRun {
                 visual: HudStyledTextRun {

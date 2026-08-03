@@ -114,6 +114,7 @@ struct FrameDrawStats {
     weather_draw_calls: u64,
     item_entity_draw_calls: u64,
     item_model_draw_calls: u64,
+    panorama_draw_calls: u64,
     selection_draw_calls: u64,
     chunk_border_draw_calls: u64,
     entity_scene_draw_calls: u64,
@@ -225,6 +226,7 @@ impl Renderer {
         self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);
         self.vignette_pass(&mut encoder, &mut stats);
         self.win_screen_portal_pass(&mut encoder, &mut stats);
+        self.panorama_pass(&mut encoder, &mut stats);
         self.hud_passes(&mut encoder, &mut stats)?;
         self.win_screen_vignette_pass(&mut encoder, &mut stats);
         let render_duration_before_surface = render_encoding_started_at.elapsed();
@@ -3345,6 +3347,22 @@ impl Renderer {
         Ok(())
     }
 
+    fn panorama_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        let (Some(panorama), Some(screen)) = (&self.hud_panorama, &self.hud_disconnected_screen)
+        else {
+            return;
+        };
+        panorama.draw(
+            &self.queue,
+            encoder,
+            self.presentation_color_view(),
+            self.surface_size(),
+            screen.panorama_rotation_degrees,
+        );
+        stats.panorama_draw_calls += 1;
+        stats.pipeline_switches += 1;
+    }
+
     fn win_screen_vignette_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -3769,6 +3787,7 @@ impl Renderer {
         self.counters.particle_draw_calls = stats.particle_draw_calls;
         self.counters.weather_draw_calls = stats.weather_draw_calls;
         self.counters.item_entity_draw_calls = stats.item_entity_draw_calls;
+        self.counters.panorama_draw_calls = stats.panorama_draw_calls;
         self.counters.selection_draw_calls = stats.selection_draw_calls;
         self.counters.chunk_border_draw_calls = stats.chunk_border_draw_calls;
         self.counters.entity_scene_draw_calls =
@@ -3792,6 +3811,7 @@ impl Renderer {
             + stats.particle_draw_calls
             + stats.weather_draw_calls
             + stats.item_entity_draw_calls
+            + stats.panorama_draw_calls
             + stats.item_model_draw_calls
             + stats.selection_draw_calls
             + stats.chunk_border_draw_calls

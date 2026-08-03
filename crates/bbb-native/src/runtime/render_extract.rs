@@ -179,10 +179,12 @@ pub(crate) fn hud_death_screen(
 pub(crate) fn hud_disconnected_screen(
     input: &ClientInputState,
     item_runtime: Option<&NativeItemRuntime>,
+    panorama_rotation_degrees: f32,
 ) -> Option<HudDisconnectedScreen> {
     let runtime = input.disconnected_screen_runtime()?;
     Some(HudDisconnectedScreen {
         generation: runtime.generation,
+        panorama_rotation_degrees,
         title: localized_gui_text(
             item_runtime,
             runtime.title.translation_key(),

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{bail, Context, Result};
-use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
+use bbb_pack::{PackRoots, PanoramaCatalog, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_TYPES;
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
@@ -48,6 +48,40 @@ pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
     if let Err(err) = try_load_hud_textures(renderer, roots) {
         tracing::warn!(?err, "continuing without vanilla HUD sprites");
     }
+}
+
+pub(crate) fn load_panorama(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
+    let Some(roots) = roots else {
+        tracing::warn!("continuing without panorama because pack roots are unavailable");
+        return;
+    };
+    let result = roots
+        .load_panorama_catalog()
+        .context("prepare startup panorama resources")
+        .and_then(|catalog| upload_panorama(renderer, &catalog));
+    if let Err(error) = result {
+        tracing::warn!(%error, "continuing with menu-background fallback without panorama");
+    }
+}
+
+pub(crate) fn upload_panorama(
+    renderer: &mut bbb_renderer::Renderer,
+    catalog: &PanoramaCatalog,
+) -> Result<()> {
+    let faces = catalog.faces();
+    let face_rgba = std::array::from_fn(|index| faces[index].rgba.as_slice());
+    let overlay = catalog.overlay();
+    renderer
+        .upload_hud_panorama(
+            faces[0].width,
+            faces[0].height,
+            face_rgba,
+            overlay.width,
+            overlay.height,
+            &overlay.rgba,
+            standalone_sampling(overlay),
+        )
+        .context("upload panorama GPU resources")
 }
 
 pub(crate) fn try_load_hud_textures(

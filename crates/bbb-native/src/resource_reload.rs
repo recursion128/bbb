@@ -9,8 +9,8 @@ use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
     BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
-    FurnaceFuelSourceRule, PackRoots, PeriodicNotificationCatalog, PostEffectCatalog,
-    RegistryDependentItemComponentInitializer, SelectedClientPack,
+    FurnaceFuelSourceRule, PackRoots, PanoramaCatalog, PeriodicNotificationCatalog,
+    PostEffectCatalog, RegistryDependentItemComponentInitializer, SelectedClientPack,
     MAX_RESOURCE_DATA_GENERATION_LOGICAL_BYTES, MAX_RESOURCE_DATA_PROCESS_LOGICAL_BYTES,
     MAX_RESOURCE_IMAGE_GENERATION_RGBA_BYTES, MAX_RESOURCE_IMAGE_PROCESS_RGBA_BYTES,
 };
@@ -26,7 +26,7 @@ use crate::{
     audio_runtime::{AudioEventSink, NativeAudioReload, NativeAudioRuntime},
     entity_assets::try_load_entity_model_textures,
     entity_variant_textures::NativeEntityVariantTextureRuntime,
-    hud_assets::try_load_hud_textures,
+    hud_assets::{try_load_hud_textures, upload_panorama},
     particle_runtime::{
         NativeParticleRenderRuntime, NativeParticleResources, NativeParticleRuntime,
     },
@@ -48,6 +48,7 @@ struct PreparedNativeResourceReload {
     particles: NativeParticleResources,
     items: NativeItemRuntime,
     post_effects: PostEffectCatalog,
+    panorama: PanoramaCatalog,
     periodic_notifications: PeriodicNotificationCatalog,
     block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
@@ -265,6 +266,8 @@ fn apply_native_resource_reload(
                 .context("upload terrain resources during resource reload")?;
             try_load_hud_textures(renderer, &prepared.roots)
                 .context("upload HUD resources during resource reload")?;
+            upload_panorama(renderer, &prepared.panorama)
+                .context("upload panorama resources during resource reload")?;
             renderer.set_default_text_right_to_left(prepared.items.language_bidirectional());
             let win_screen_resources = WinScreenResources::load(
                 &prepared.roots,
@@ -489,6 +492,9 @@ fn prepare_native_resource_reload(
     let items = NativeItemRuntime::load_with_locale(&roots, client_locale)
         .context("prepare item, model, texture, and language resources for reload")?;
     let post_effects = prepare_native_shader_resources(&roots)?;
+    let panorama = roots
+        .load_panorama_catalog()
+        .context("prepare panorama resources for reload")?;
     let periodic_notifications = roots
         .load_periodic_notification_catalog()
         .context("prepare periodic notifications for reload")?;
@@ -508,6 +514,7 @@ fn prepare_native_resource_reload(
         particles,
         items,
         post_effects,
+        panorama,
         periodic_notifications,
         block_destroy_profiles,
         block_sound_profiles,
@@ -1248,6 +1255,9 @@ mod tests {
         let hud_commit = source
             .find("try_load_hud_textures(renderer, &prepared.roots)")
             .expect("reload should install generation-matched HUD resources");
+        let panorama_commit = source
+            .find("upload_panorama(renderer, &prepared.panorama)")
+            .expect("reload should install the generation-matched panorama owner");
         let language_direction_commit = source
             .find("set_default_text_right_to_left(prepared.items.language_bidirectional())")
             .expect("reload should install the prepared language direction");
@@ -1275,7 +1285,8 @@ mod tests {
 
         assert!(transaction < atlas_commit);
         assert!(atlas_commit < hud_commit);
-        assert!(hud_commit < language_direction_commit);
+        assert!(hud_commit < panorama_commit);
+        assert!(panorama_commit < language_direction_commit);
         assert!(language_direction_commit < win_screen_commit);
         assert!(atlas_commit < audio_commit);
         assert!(audio_commit < residency_barrier);
@@ -1295,11 +1306,21 @@ mod tests {
         let periodic_prepare = source
             .find(".load_periodic_notification_catalog()")
             .expect("regional notifications should be prepared on the CPU boundary");
+        let panorama_prepare = source
+            .find(".load_panorama_catalog()")
+            .expect("panorama images should be prepared on the CPU boundary");
         let prepared_generation = source
             .find("        post_effects,\n")
             .expect("prepared reload should retain the post-effect catalog");
+        let prepared_panorama = source
+            .find("        panorama,\n")
+            .expect("prepared reload should retain the panorama catalog");
         assert!(shader_prepare < prepared_generation);
+        assert!(panorama_prepare < prepared_panorama);
         assert!(periodic_prepare < prepared_generation);
+        assert_eq!(production.matches("upload_panorama(").count(), 1);
+        assert!(!production.contains("VanillaAssetIndex"));
+        assert!(!production.contains("resource_with_indexed_vanilla_fallback"));
         assert!(!production.contains("ShaderSourceCatalog"));
         let legacy_recovery = ["recover", "reload", "resources"].join("_");
         assert!(!source.contains(&legacy_recovery));

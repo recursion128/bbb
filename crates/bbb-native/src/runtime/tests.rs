@@ -68,7 +68,8 @@ fn disconnected_screen_projection_preserves_style_focus_and_narration() {
         },
     );
 
-    let screen = hud_disconnected_screen(&input, None).unwrap();
+    let screen = hud_disconnected_screen(&input, None, -12.5).unwrap();
+    assert_eq!(screen.panorama_rotation_degrees, -12.5);
     assert_eq!(screen.title, "Connection Lost");
     assert_eq!(screen.back_label, "Back to Server List");
     assert_eq!(screen.reason_runs[0].visual.text, "Styled reason");
@@ -119,6 +120,9 @@ fn renderer_surface_recovery_counters_cross_the_control_projection() {
         terrain_resident_sections: 14_976,
         terrain_pending_jobs: 1,
         terrain_cache_ready: false,
+        panorama_resource_ready: true,
+        panorama_draw_calls: 2,
+        panorama_resident_bytes: 25_165_828,
         ..Default::default()
     };
     let projected = control_renderer_counters(source);
@@ -138,6 +142,9 @@ fn renderer_surface_recovery_counters_cross_the_control_projection() {
     assert_eq!(projected.terrain_resident_sections, 14_976);
     assert_eq!(projected.terrain_pending_jobs, 1);
     assert!(!projected.terrain_cache_ready);
+    assert!(projected.panorama_resource_ready);
+    assert_eq!(projected.panorama_draw_calls, 2);
+    assert_eq!(projected.panorama_resident_bytes, 25_165_828);
 }
 
 #[test]
@@ -333,6 +340,31 @@ fn hud_win_screen_reuses_resource_lines_and_sanitizes_vanilla_realtime_delta() {
             realtime: 1.0,
         }
     );
+}
+
+#[test]
+fn panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap() {
+    let mut runtime = HudRenderRuntime::default();
+    let one_realtime_tick = HudFrameDeltaTicks {
+        game_time: 8.0,
+        realtime: 1.0,
+    };
+    assert_eq!(
+        runtime.panorama_rotation_degrees(false, one_realtime_tick),
+        0.0
+    );
+    assert_eq!(
+        runtime.panorama_rotation_degrees(true, one_realtime_tick),
+        -0.1
+    );
+
+    runtime.panorama_spin_degrees = 179.9;
+    assert_eq!(
+        runtime.panorama_rotation_degrees(true, one_realtime_tick),
+        180.0,
+        "Vanilla Mth.wrapDegrees maps positive 180 to negative 180 before projection"
+    );
+    assert_eq!(runtime.panorama_spin_degrees, -180.0);
 }
 
 #[test]
@@ -2917,7 +2949,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         .find("let hud_hotbar_item_icons = if ordinary_hotbar {")
         .expect("pump should extract hotbar item icons");
     let disconnected_screen_extract = source
-        .find("let hud_disconnected_screen = hud_disconnected_screen(input, item_runtime);")
+        .find("hud_disconnected_screen(input, item_runtime, panorama_rotation_degrees);")
         .expect("pump should extract disconnected screen HUD state");
     let death_screen_extract = source
         .find("let hud_death_screen = hud_disconnected_screen")

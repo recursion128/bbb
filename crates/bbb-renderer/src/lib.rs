@@ -20,6 +20,7 @@ mod lightmap;
 #[cfg(test)]
 mod offscreen;
 mod outline;
+mod panorama;
 mod particles;
 mod pipeline_builder;
 mod player_skin;
