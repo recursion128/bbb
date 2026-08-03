@@ -413,11 +413,34 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-hud: active
 - p3-resources: maintenance
 - p4-delivery: active
+- architecture-convergence: active
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
 裁决。关闭 milestone 后照常运行适用的 playable-gate，暴露的真实缺口先入账本，
 不得借机扩大当前 slice。
+
+### 架构收敛与防漂移
+
+状态：`active`。唯一 active 工程合同是
+`arch-census-external-production`：只读审计外部多人客户端当前 production path，
+不修改 production 实现，只修正机械 evidence、matrix/ledger 分类和路线状态。
+
+- inventory 以 Cargo metadata、现有 2,927-owner Vanilla mechanism JSON、crate 公开 API
+  与 production caller 为输入；按 protocol/net/world/pack/item-model/native/
+  render-types/renderer/audio/control 的 semantic owner 和 generation/session 边界分类。
+- 候选只接受可复现的多 owner/resolver/cache/projection，反向依赖、可漂移
+  手写事实，混合 prepare/apply/commit/rollback，过宽 API，双路 fallback，缺失
+  reverse/stale guard，或无调用旧路径；文件大小、样式偏好和未来设想不入账。
+- 机械 evidence 归现有 inventory/docs lint；census 可收紧候选 table 的 stable ID、
+  路由、owner/path 与 stale-output 检查，不新建第二份 dependency inventory。
+- 串行阶段：冻结合同→盘点 owner/API/caller/lifetime→逐项反证和排序→登记唯一
+  ledger route→docs-lint fixtures/source guards→审查、提交和 full gate。
+- focused 验收覆盖重复 ID、断链 route、失效 owner/path、stale evidence；
+  `scripts/docs-lint.sh`、Python fixtures、fmt、diff check 和非测试 workspace check 必过。
+- census 完成的 checkpoint 是干净提交后 `scripts/cargo-dev.sh gate`。安全停止点只是
+  full-gated census 结果：所有真实候选已有单一 route，且广泛/未可验收条目已拆分或剔除。
+  之后按 hardest-ready-first 一次只关闭一项；候选清零才把本路线改为 `maintenance`。
 
 ### P1：可玩 Session 端到端门禁
 

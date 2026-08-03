@@ -22,6 +22,7 @@ ROADMAP_STATUSES = """\
 - p2-hud: maintenance
 - p3-resources: maintenance
 - p4-delivery: maintenance
+- architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 """
 

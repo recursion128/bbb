@@ -158,7 +158,8 @@ for route in \
   p2-non-entity \
   p2-hud \
   p3-resources \
-  p4-delivery
+  p4-delivery \
+  architecture-convergence
 do
   route_count=$(printf '%s\n' "$roadmap_statuses" |
     grep -Ec "^- $route: (active|maintenance|closed|deferred)$" || true)
@@ -169,7 +170,7 @@ do
 done
 
 invalid_roadmap_statuses=$(printf '%s\n' "$roadmap_statuses" |
-  grep -Ev '^- (p1-playable|p1-generated-facts|p2-non-entity|p2-hud|p3-resources|p4-delivery): (active|maintenance|closed|deferred)$' || true)
+  grep -Ev '^- (p1-playable|p1-generated-facts|p2-non-entity|p2-hud|p3-resources|p4-delivery|architecture-convergence): (active|maintenance|closed|deferred)$' || true)
 if [ -n "$invalid_roadmap_statuses" ]; then
   echo "goal.md lint: malformed or unknown roadmap status entries:" >&2
   echo "$invalid_roadmap_statuses" >&2

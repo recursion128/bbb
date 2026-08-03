@@ -51,9 +51,23 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   failure/recovery acceptance in addition to the happy live path.
 ## Architecture drift candidates
 
-Owner: `bbb-renderer` + `bbb-native`
+Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
 Matrix route: `resources-reload-listeners`
+
+- **`arch-census-external-production` is `active`.** Canonical inputs are Cargo
+  metadata, the checked Vanilla mechanism inventory, production callers and
+  public APIs. Audit every current external-multiplayer crate/semantic owner for
+  duplicate owner/resolver/cache/projection, reversed dependency, shadow
+  generation/session state, derivable handwritten facts, mixed commit/rollback,
+  over-wide API, parallel fallback, missing guard and dead legacy path. Record
+  each proven defect with a stable candidate ID, owner/callers/direction,
+  lifetime/order/fallback/rollback, deletion target, focused evidence, ranked
+  risk/benefit and one goal route; style-only or speculative findings are not
+  candidates. Completion requires candidate-table duplicate/route/path/stale
+  fixtures, no broad multi-semantic candidate, a reviewed clean commit and full
+  gate. This census changes no production behavior; its safe stop is the
+  full-gated classified ledger from which serial architecture slices can start.
 
 | Candidate / canonical input | Current owner and duplication | Direction / lifetime / fallback | API, callers, tests and deletion | Risk / benefit / route |
 | --- | --- | --- | --- | --- |
