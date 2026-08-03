@@ -53,26 +53,137 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix route: `resources-reload-listeners`
+Matrix routes: `lifecycle-client-runtime`, `resources-reload-listeners`, `rendering-entity-layer-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-step-surface`
 
-- **`arch-census-external-production` is `active`.** Canonical inputs are Cargo
-  metadata, the checked Vanilla mechanism inventory, production callers and
-  public APIs. Audit every current external-multiplayer crate/semantic owner for
-  duplicate owner/resolver/cache/projection, reversed dependency, shadow
-  generation/session state, derivable handwritten facts, mixed commit/rollback,
-  over-wide API, parallel fallback, missing guard and dead legacy path. Record
-  each proven defect with a stable candidate ID, owner/callers/direction,
-  lifetime/order/fallback/rollback, deletion target, focused evidence, ranked
-  risk/benefit and one goal route; style-only or speculative findings are not
-  candidates. Completion requires candidate-table duplicate/route/path/stale
-  fixtures, no broad multi-semantic candidate, a reviewed clean commit and full
-  gate. This census changes no production behavior; its safe stop is the
-  full-gated classified ledger from which serial architecture slices can start.
-
-| Candidate / canonical input | Current owner and duplication | Direction / lifetime / fallback | API, callers, tests and deletion | Risk / benefit / route |
-| --- | --- | --- | --- | --- |
-| Reloadable HUD checkpoint inventory / renderer HUD fields | `take_hud_resource_owners!` is one manual table; read-only audit found 243 entries and 243 unique names, so the previously alleged duplicate does not exist | native → renderer only; resource generation; exact-owner rollback and existing missing-texture fallback | many upload callers and exhaustive rollback tests; no mechanical check yet proves uniqueness plus intended-field coverage without creating a second facts table | drift medium, behavior risk high, broad owner count, deletion low, testability medium; reopen as its own `resources-reload-listeners` architecture slice when a derivable field inventory or a real mismatch exists |
-| Native prepared → simulation commit projection / prepared catalogs | the 9-field `PreparedNativeResourceReload` and 8-field `ResourceReloadSimulationCommit` intentionally separate render-thread preparation from simulation apply; particle/item/profile values are immutable projections, not shared mutable owners | pack → native barrier → world/renderer/audio; server-pack generation; stale ack is rejected and failure keeps accepted roots | one reload caller; rollback/stale-generation tests exist, but no mechanical field-pair guard protects future additions | drift medium, behavior risk high, cross-owner 4, narrowing medium, testability high; reopen from `resources-reload-listeners` only after a dedicated field-pair audit identifies a redundant owner or a guard derivation |
+<!-- architecture-candidates:start -->
+- **`arch-post-effect-id-owner` is `active`.**
+  - Semantic mechanism: built-in post-effect identity admission and render dispatch.
+  - Canonical input: the selected resource generation's six Vanilla 26.1 graph IDs.
+  - Owners: `crates/bbb-renderer/src/post_effect_graph/runtime.rs`,
+    `crates/bbb-renderer/src/camera_post_effect/graph.rs` and
+    `crates/bbb-renderer/src/render.rs` each match overlapping raw IDs.
+  - Production callers: `crates/bbb-renderer/src/render.rs` selects camera, outline,
+    transparency and blur execution from those independent matches.
+  - Direction: pack CPU projection → one renderer-private typed ID owner → graph runtime
+    and frame consumers; consumers must not rediscover resource names.
+  - Lifetime: one renderer resource generation; all six graphs admit atomically and a
+    failed prepare keeps the previous graph generation.
+  - Ordering/fallback/rollback: preserve selected-pack priority, exact camera/outline/
+    transparency/blur ordering, built-in fallback and previous-generation rollback.
+  - Public API: keep graph lookup private and expose only the narrow typed decisions
+    already required by renderer consumers.
+  - Delete: `REQUIRED_GRAPH_IDS`, `contains_camera_graph` raw-string matching and the
+    duplicated camera/render ID match arms.
+  - Evidence: `crates/bbb-renderer/src/post_effect_graph/tests.rs` plus renderer graph,
+    admission and offscreen pass-order tests and a reverse source guard.
+  - Risk/benefit/rank: drift high, behavior risk high, three owners, deletion medium,
+    API narrowing medium and focused verification high; rank 1/5.
+  - Goal route: `architecture-convergence`; `resources-reload-listeners`,
+    `rendering-game-step-surface`, `rendering-level-step-surface`.
+  - Reopen condition: reopen only if Vanilla adds a separately owned graph family or a
+    second production raw-ID resolver reappears.
+- **`arch-control-mailbox-single-path` is `active`.**
+  - Semantic mechanism: external control request submission into simulation ownership.
+  - Canonical input: ordered bounded `ControlWriteRequest`, `InputControlRequest`,
+    code-of-conduct and recipe-book commands.
+  - Owners: `crates/bbb-control/src/types/snapshot.rs` owns both a compatibility mutex
+    queue and an installable `ControlRequestSink` for the same requests.
+  - Production callers: `crates/bbb-native/src/main.rs` installs the simulation mailbox;
+    `crates/bbb-native/src/runtime/control_requests.rs` and control handlers submit to it.
+  - Direction: control transport → one required sink handle → native simulation mailbox;
+    control must not retain a second command state owner.
+  - Lifetime: one client process and simulation mailbox; construction freezes the sink,
+    submission is FIFO/bounded, and shutdown rejects later commands.
+  - Ordering/fallback/rollback: preserve request order, queue budgets, submit counters and
+    explicit rejection; remove the before/after-install compatibility fallback.
+  - Public API: narrow `SharedControlRequests` to a constructed sink handle and remove
+    public `ControlRequests`, `lock`, default construction and sink installation.
+  - Delete: compatibility queues, transition branch, compatibility exports and test
+    callers that directly inspect mutable request storage.
+  - Evidence: `crates/bbb-control/src/types/snapshot.rs` and
+    `crates/bbb-native/src/runtime/control_requests.rs` focused FIFO/budget/shutdown tests
+    plus a zero-old-symbol reverse guard.
+  - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion high, API
+    narrowing high and focused verification high; rank 2/5.
+  - Goal route: `architecture-convergence`; `lifecycle-client-runtime`.
+  - Reopen condition: reopen only if a non-native production runtime requires a distinct
+    mailbox with an explicit constructor and identical bounded semantics.
+- **`arch-hud-item-resident-projection` is `active`.**
+  - Semantic mechanism: resolved HUD item-model CPU projection and renderer submission.
+  - Canonical input: one resolved Vanilla item stack display state with ordered layers,
+    transform, lighting, foil and texture identity.
+  - Owners: `crates/bbb-renderer/src/item_models.rs` exposes `resident_layers` beside
+    compatibility `identity`/`quads`, while `crates/bbb-renderer/src/hud.rs` resolves both.
+  - Production callers: `crates/bbb-native/src/runtime.rs` constructs either resident
+    layers or the compatibility quad fields before HUD upload.
+  - Direction: item/resource owner → immutable HUD resident-layer projection → renderer;
+    HUD submission must not select between two independently shaped projections.
+  - Lifetime: one resource generation and frame snapshot; stale generation uploads are
+    rejected and reload failure keeps the prior resident assets.
+  - Ordering/fallback/rollback: preserve first-layer order, render-type/filter fallback,
+    transforms, lighting, foil, atlas identity and generation rollback.
+  - Public API: one `HudBlockItemModel` layer collection; no top-level compatibility
+    identity/quads branch.
+  - Delete: compatibility fields, empty-layer sentinel, alternate HUD submit branch and
+    all constructors of the old shape.
+  - Evidence: `crates/bbb-native/src/runtime/tests.rs` and
+    `crates/bbb-renderer/src/hud.rs` residency, atlas, ordering and source-guard tests.
+  - Risk/benefit/rank: drift high, behavior risk high, two crates, deletion medium, API
+    narrowing high and pixel/focused verification high; rank 3/5.
+  - Goal route: `architecture-convergence`; `rendering-hud-step-surface`.
+  - Reopen condition: reopen only if Vanilla introduces a HUD item presentation that
+    cannot be expressed as an ordered resident layer.
+- **`arch-entity-equipment-test-fallback` is `active`.**
+  - Semantic mechanism: entity equipment asset selection for armor, wings and saddles.
+  - Canonical input: one resolved resource-generation equipment asset catalog plus entity
+    render state.
+  - Owners: `crates/bbb-renderer/src/entity_models/equipment.rs` carries a test-only
+    `legacy_static_fallback` mode that changes many production branches in
+    `crates/bbb-renderer/src/entity_models/textured.rs`.
+  - Production callers: `crates/bbb-renderer/src/entity_models/textured.rs` branches on
+    the legacy flag for armor, saddle, wings, baby and overlay layers.
+  - Direction: resource equipment catalog → resolved immutable catalog → entity layer
+    emission; tests must use that same production resolver.
+  - Lifetime: one renderer resource generation; catalog preparation is immutable and a
+    failed reload keeps the previous resolved catalog.
+  - Ordering/fallback/rollback: preserve actual production first-provider equipment
+    lookup, missing-layer fallback, layer order and prior-generation rollback.
+  - Public API: remove the compatibility boolean, constructor and query from the resolved
+    catalog; tests construct explicit catalog fixtures.
+  - Delete: `legacy_static_fallback`, `legacy_static_fallback()` and every
+    `uses_legacy_static_fallback()` production branch.
+  - Evidence: `crates/bbb-renderer/src/entity_models/textured.rs` and
+    `crates/bbb-renderer/src/entity_models/gui_preview.rs` focused equipment/layer tests
+    plus a reverse source guard.
+  - Risk/benefit/rank: drift high, current product risk medium, one crate, deletion high,
+    API narrowing medium and focused verification high; rank 4/5.
+  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
+  - Reopen condition: reopen only if an official asset-free renderer path becomes a
+    production surface with an explicit Vanilla owner.
+- **`arch-entity-textured-shader-single-source` is `active`.**
+  - Semantic mechanism: entity textured sampling, lighting, overlay and fog shader source.
+  - Canonical input: one entity vertex/texture projection and the pipeline's cull mode.
+  - Owners: `crates/bbb-renderer/src/entity_models/gpu.rs` embeds two nearly identical WGSL
+    sources whose only decision difference is back-face diffuse lighting.
+  - Production callers: `crates/bbb-renderer/src/entity_models/gpu.rs` compiles both sources
+    into cutout/solid pipeline variants and derives z-offset variants separately.
+  - Direction: one renderer-private shader source → pipeline descriptors with cull state →
+    GPU submission; pipeline selection must not duplicate texture resolution.
+  - Lifetime: one backend shader/pipeline generation; preparation is transactional and
+    failed compilation keeps the previous renderer generation.
+  - Ordering/fallback/rollback: preserve alpha cutout, overlay, atlas/standalone sampling,
+    front/back diffuse lighting, cull state and pipeline-generation rollback.
+  - Public API: keep one renderer-private shader source; cull remains descriptor state.
+  - Delete: `ENTITY_MODEL_TEXTURED_CULL_SHADER`, its duplicate texture/light/fog resolver
+    body and derived-source call sites.
+  - Evidence: `crates/bbb-renderer/src/entity_models/gpu.rs` shader compile, semantic diff,
+    pipeline descriptor and offscreen entity pixel tests plus a reverse source guard.
+  - Risk/benefit/rank: drift medium, behavior risk medium, one crate, deletion high, API
+    narrowing low and focused verification high; rank 5/5.
+  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
+  - Reopen condition: reopen only if a future shader requires a decision not representable
+    by cull state and `front_facing` in the shared source.
+<!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer` + `bbb-audio`

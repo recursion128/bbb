@@ -32,6 +32,28 @@ LEDGER_ROUTE_RE = re.compile(
     r"^Matrix routes?:\s*((?:`[a-z0-9]+(?:-[a-z0-9]+)*`(?:,?\s*)?)+)\s*$",
     re.MULTILINE,
 )
+ARCHITECTURE_CANDIDATE_START = "<!-- architecture-candidates:start -->"
+ARCHITECTURE_CANDIDATE_END = "<!-- architecture-candidates:end -->"
+ARCHITECTURE_CANDIDATE_RE = re.compile(
+    r"^- \*\*`(arch-[a-z0-9]+(?:-[a-z0-9]+)*)` is "
+    r"`(active|deferred-external)`\.\*\*$"
+)
+ARCHITECTURE_FIELD_RE = re.compile(r"^  - ([A-Za-z/ ]+):\s*(.*)$")
+ARCHITECTURE_REQUIRED_FIELDS = (
+    "Semantic mechanism",
+    "Canonical input",
+    "Owners",
+    "Production callers",
+    "Direction",
+    "Lifetime",
+    "Ordering/fallback/rollback",
+    "Public API",
+    "Delete",
+    "Evidence",
+    "Risk/benefit/rank",
+    "Goal route",
+    "Reopen condition",
+)
 
 
 class WikiLint:
@@ -197,6 +219,191 @@ class WikiLint:
                 "status": status,
             }
         return rows
+
+    def check_architecture_candidates(
+        self, rows: dict[str, dict[str, str]]
+    ) -> None:
+        ledger = self.repo / "docs" / "unsupported-features.md"
+        goal = self.repo / "goal.md"
+        if not ledger.is_file() or not goal.is_file():
+            return
+
+        text = ledger.read_text(encoding="utf-8")
+        start_count = text.count(ARCHITECTURE_CANDIDATE_START)
+        end_count = text.count(ARCHITECTURE_CANDIDATE_END)
+        if start_count != end_count or start_count > 1:
+            self.fail("architecture candidate markers are missing or duplicated")
+            return
+
+        region = ""
+        if start_count == 1:
+            if text.find(ARCHITECTURE_CANDIDATE_END) < text.find(ARCHITECTURE_CANDIDATE_START):
+                self.fail("architecture candidate markers are reversed")
+                return
+            before, after = text.split(ARCHITECTURE_CANDIDATE_START, 1)
+            region, _tail = after.split(ARCHITECTURE_CANDIDATE_END, 1)
+            heading = "## Architecture drift candidates"
+            headings = re.findall(r"^## .+$", before, re.MULTILINE)
+            if not headings or headings[-1] != heading:
+                self.fail("architecture candidate table is outside its canonical ledger section")
+
+        candidates: list[dict[str, object]] = []
+        current: dict[str, object] | None = None
+        current_field: str | None = None
+        for line in region.splitlines():
+            candidate_match = ARCHITECTURE_CANDIDATE_RE.fullmatch(line)
+            if candidate_match is not None:
+                current = {
+                    "id": candidate_match.group(1),
+                    "status": candidate_match.group(2),
+                    "fields": {},
+                }
+                candidates.append(current)
+                current_field = None
+                continue
+            field_match = ARCHITECTURE_FIELD_RE.fullmatch(line)
+            if field_match is not None and current is not None:
+                field_name = field_match.group(1)
+                fields = current["fields"]
+                assert isinstance(fields, dict)
+                if field_name in fields:
+                    self.fail(
+                        f"duplicate architecture candidate field {field_name!r} "
+                        f"for {current['id']}"
+                    )
+                fields[field_name] = field_match.group(2).strip()
+                current_field = field_name
+                continue
+            if line.startswith("    ") and current is not None and current_field is not None:
+                fields = current["fields"]
+                assert isinstance(fields, dict)
+                fields[current_field] = f"{fields[current_field]} {line.strip()}".strip()
+                continue
+            if line.strip():
+                self.fail(f"malformed architecture candidate line: {line}")
+
+        candidate_ids = [str(candidate["id"]) for candidate in candidates]
+        ledger_candidate_ids = [
+            match.group(1)
+            for line in text.splitlines()
+            if (match := ARCHITECTURE_CANDIDATE_RE.fullmatch(line)) is not None
+        ]
+        if ledger_candidate_ids != candidate_ids:
+            self.fail("architecture candidate entry exists outside the canonical markers")
+        duplicates = sorted(
+            candidate_id
+            for candidate_id, count in Counter(candidate_ids).items()
+            if count != 1
+        )
+        if duplicates:
+            self.fail("duplicate architecture candidate ids: " + ", ".join(duplicates))
+
+        matrix_routes: set[str] = set()
+        ranks: list[int] = []
+        for candidate in candidates:
+            candidate_id = str(candidate["id"])
+            fields = candidate["fields"]
+            assert isinstance(fields, dict)
+            missing = [field for field in ARCHITECTURE_REQUIRED_FIELDS if not fields.get(field)]
+            if missing:
+                self.fail(
+                    f"architecture candidate {candidate_id} lacks required fields: "
+                    + ", ".join(missing)
+                )
+                continue
+
+            for field_name in ("Owners", "Production callers", "Evidence"):
+                value = str(fields[field_name])
+                paths = [
+                    token.split("#", 1)[0]
+                    for token in CODE_RE.findall(value)
+                    if token.startswith(("crates/", "scripts/", "docs/"))
+                ]
+                if not paths:
+                    self.fail(
+                        f"architecture candidate {candidate_id} {field_name} "
+                        "lacks a repo-local path"
+                    )
+                for path in paths:
+                    if Path(path).is_absolute() or ".." in Path(path).parts:
+                        self.fail(
+                            f"architecture candidate {candidate_id} has unsafe "
+                            f"{field_name} path: {path}"
+                        )
+                    elif not (self.repo / path).exists():
+                        self.fail(
+                            f"stale architecture candidate {field_name.lower()} path "
+                            f"for {candidate_id}: {path}"
+                        )
+
+            route_tokens = CODE_RE.findall(str(fields["Goal route"]))
+            if not route_tokens or route_tokens[0] != "architecture-convergence":
+                self.fail(
+                    f"architecture candidate {candidate_id} has invalid goal route"
+                )
+            candidate_matrix_routes = route_tokens[1:]
+            if not candidate_matrix_routes:
+                self.fail(
+                    f"architecture candidate {candidate_id} lacks a matrix mechanism route"
+                )
+            for mechanism_id in candidate_matrix_routes:
+                if mechanism_id not in rows:
+                    self.fail(
+                        f"architecture candidate {candidate_id} references unknown "
+                        f"matrix mechanism {mechanism_id}"
+                    )
+                matrix_routes.add(mechanism_id)
+
+            rank_match = re.search(
+                r"\brank\s+([1-9][0-9]*)/([1-9][0-9]*)\b",
+                str(fields["Risk/benefit/rank"]),
+            )
+            if rank_match is None:
+                self.fail(f"architecture candidate {candidate_id} lacks a bounded rank")
+            else:
+                rank = int(rank_match.group(1))
+                total = int(rank_match.group(2))
+                ranks.append(rank)
+                if total != len(candidates):
+                    self.fail(f"architecture candidate {candidate_id} has a stale rank total")
+
+        if ranks and sorted(ranks) != list(range(1, len(candidates) + 1)):
+            self.fail("architecture candidate ranks are duplicated or incomplete")
+
+        if candidates:
+            section_start = text.find("## Architecture drift candidates")
+            section_end = text.find("\n## ", section_start + 3)
+            section = text[section_start : section_end if section_end >= 0 else len(text)]
+            declared_routes: set[str] = set()
+            for match in LEDGER_ROUTE_RE.finditer(section):
+                declared_routes.update(CODE_RE.findall(match.group(1)))
+            if declared_routes != matrix_routes:
+                self.fail(
+                    "architecture candidate section matrix routes are stale: "
+                    f"declared {sorted(declared_routes)}, expected {sorted(matrix_routes)}"
+                )
+
+        goal_text = goal.read_text(encoding="utf-8")
+        status_match = re.search(
+            r"^- architecture-convergence: "
+            r"(active|maintenance|closed|deferred)$",
+            goal_text,
+            re.MULTILINE,
+        )
+        route_status = status_match.group(1) if status_match is not None else ""
+        active_count = sum(candidate["status"] == "active" for candidate in candidates)
+        expected_status = (
+            "active"
+            if active_count
+            else "deferred"
+            if candidates
+            else "maintenance"
+        )
+        if route_status != expected_status:
+            self.fail(
+                "architecture-convergence roadmap status is stale: "
+                f"expected {expected_status}, found {route_status or 'missing'}"
+            )
 
     @staticmethod
     def strict_json(path: Path) -> object:
@@ -600,6 +807,7 @@ class WikiLint:
         self.check_orphans(wiki)
         self.check_mechanisms(wiki)
         parity_rows = self.check_parity()
+        self.check_architecture_candidates(parity_rows)
         client_inventory_message = self.check_client_mechanism_inventory(parity_rows)
         self.check_inventory(all_markdown)
         self.check_repo_paths(wiki)

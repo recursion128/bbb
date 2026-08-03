@@ -202,6 +202,55 @@ Matrix routes: `fixture-not-needed`
         self.sync_inventory(repo)
         return repo
 
+    def add_architecture_candidate(self, repo: Path) -> None:
+        owner = repo / "crates" / "fixture" / "src" / "owner.rs"
+        caller = repo / "crates" / "fixture" / "src" / "caller.rs"
+        evidence = repo / "scripts" / "fixture-architecture-guard.sh"
+        owner.parent.mkdir(parents=True, exist_ok=True)
+        evidence.parent.mkdir(parents=True, exist_ok=True)
+        owner.write_text("pub fn owner() {}\n", encoding="utf-8")
+        caller.write_text("pub fn caller() {}\n", encoding="utf-8")
+        evidence.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+
+        ledger = repo / "docs" / "unsupported-features.md"
+        candidate = """\
+
+## Architecture drift candidates
+
+Owner: fixture workspace; census evidence owned by `scripts/docs_wiki_lint.py`
+
+Matrix route: `fixture-valid`
+
+<!-- architecture-candidates:start -->
+- **`arch-fixture-single-owner` is `active`.**
+  - Semantic mechanism: one bounded fixture decision.
+  - Canonical input: one immutable fixture value.
+  - Owners: `crates/fixture/src/owner.rs` and one duplicate fixture owner.
+  - Production callers: `crates/fixture/src/caller.rs` submits the value.
+  - Direction: source to owner to immutable consumer projection.
+  - Lifetime: one atomic fixture generation; stale generations are rejected.
+  - Ordering/fallback/rollback: preserve FIFO, default fallback and old generation on failure.
+  - Public API: one narrow fixture projection.
+  - Delete: duplicate fixture resolver and compatibility cache.
+  - Evidence: `scripts/fixture-architecture-guard.sh` plus focused fixture tests.
+  - Risk/benefit/rank: drift high; behavior medium; deletion medium; rank 1/1.
+  - Goal route: `architecture-convergence`; `fixture-valid`.
+  - Reopen condition: reopen only if a second production owner returns.
+<!-- architecture-candidates:end -->
+"""
+        ledger.write_text(
+            ledger.read_text(encoding="utf-8").replace("\n# Not needed\n", candidate + "\n# Not needed\n"),
+            encoding="utf-8",
+        )
+        goal = repo / "goal.md"
+        goal.write_text(
+            goal.read_text(encoding="utf-8").replace(
+                "- architecture-convergence: maintenance",
+                "- architecture-convergence: active",
+            ),
+            encoding="utf-8",
+        )
+
     def run_lint(
         self, repo: Path, vanilla_source_root: Path | None = None
     ) -> subprocess.CompletedProcess[str]:
@@ -225,6 +274,103 @@ Matrix routes: `fixture-not-needed`
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("route/ledger states consistent", result.stdout)
+
+    def test_valid_architecture_candidate_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            result = self.run_lint(repo)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_duplicate_architecture_candidate_id_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            ledger = repo / "docs" / "unsupported-features.md"
+            text = ledger.read_text(encoding="utf-8")
+            block = text.split("<!-- architecture-candidates:start -->", 1)[1].split(
+                "<!-- architecture-candidates:end -->", 1
+            )[0]
+            ledger.write_text(
+                text.replace(
+                    "<!-- architecture-candidates:end -->",
+                    block + "<!-- architecture-candidates:end -->",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("duplicate architecture candidate ids", result.stdout)
+
+    def test_architecture_candidate_broken_goal_route_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            ledger = repo / "docs" / "unsupported-features.md"
+            ledger.write_text(
+                ledger.read_text(encoding="utf-8").replace(
+                    "Goal route: `architecture-convergence`",
+                    "Goal route: `p2-hud`",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("has invalid goal route", result.stdout)
+
+    def test_architecture_candidate_stale_owner_path_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            ledger = repo / "docs" / "unsupported-features.md"
+            ledger.write_text(
+                ledger.read_text(encoding="utf-8").replace(
+                    "crates/fixture/src/owner.rs",
+                    "crates/fixture/src/missing-owner.rs",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("stale architecture candidate owners path", result.stdout)
+
+    def test_architecture_candidate_stale_evidence_path_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            ledger = repo / "docs" / "unsupported-features.md"
+            ledger.write_text(
+                ledger.read_text(encoding="utf-8").replace(
+                    "scripts/fixture-architecture-guard.sh",
+                    "scripts/missing-architecture-guard.sh",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("stale architecture candidate evidence path", result.stdout)
+
+    def test_architecture_candidate_unknown_matrix_route_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.add_architecture_candidate(repo)
+            ledger = repo / "docs" / "unsupported-features.md"
+            ledger.write_text(
+                ledger.read_text(encoding="utf-8").replace(
+                    "Goal route: `architecture-convergence`; `fixture-valid`.",
+                    "Goal route: `architecture-convergence`; `fixture-stale`.",
+                ),
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("references unknown matrix mechanism", result.stdout)
 
     def test_deferred_item_under_not_needed_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
