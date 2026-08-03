@@ -253,7 +253,11 @@ mod tests {
             kind: ResolvableProfileKindSummary::GameProfile,
             uuid: Some(uuid::Uuid::from_u128(0)),
             name: Some("Alex".to_string()),
-            properties: Vec::new(),
+            properties: vec![bbb_protocol::packets::GameProfilePropertySummary {
+                name: "textures".to_string(),
+                value: "packed-block-head-textures".to_string(),
+                signature: None,
+            }],
             profile_textures: Some(ProfileTexturesSummary {
                 skin: Some(ProfileSkinTextureSummary {
                     url: skin_url.to_string(),
@@ -308,6 +312,9 @@ mod tests {
         );
 
         let item_runtime = NativeItemRuntime::empty_for_test();
+        let pending =
+            skull_model_instances_from_world_at_partial_tick(&world, 0.5, Some(&item_runtime));
+        assert_eq!(pending[0].kind, fallback[0].kind);
         item_runtime.mark_profile_skin_resolved(skin_url, 12_345);
         let ready =
             skull_model_instances_from_world_at_partial_tick(&world, 0.5, Some(&item_runtime));
