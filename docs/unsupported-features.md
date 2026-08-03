@@ -133,13 +133,20 @@ Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 
 Matrix routes: `persistence-client-files`, `identity-profile-skins`, `security-secure-chat-reporting`
 
-- **Client persistence, profile presentation and secure-chat/social/reporting
-  decisions are `active`.** Existing server-list, skin and reporting code has
-  focused coverage, but the census has not proven the complete 158 persistence,
-  16 identity and 21 security owners, their atomic recovery, session-generation
-  invalidation, online/offline service boundary and live consumer behavior.
-  Split by one canonical owner, implement missing external-session paths, and
-  keep launcher token acquisition outside the client.
+- **Authenticated profile-key prepare/refresh lifetime is `active`.** Vanilla
+  `Minecraft.prepareForMultiplayer` starts `AccountProfileKeyPairManager`
+  before connection and keeps its pending/accepted key across listener play,
+  reconfiguration and transfer lifetimes. BBB currently starts only at encrypted
+  Play Login and `reset` aborts the manager state. The engineering contract in
+  `goal.md` closes this eight-owner lifecycle without adding a private-key cache
+  or launcher login.
+- **Client persistence, SkinManager presentation and secure-chat/social/reporting
+  decisions remain `active`.** Existing server-list, skin and reporting code has
+  focused coverage, but the census has not proven the 158 persistence owners,
+  the SkinManager owner family, or 21 security owners and their atomic recovery,
+  session-generation invalidation, online/offline service boundary and live
+  consumer behavior. Split each by one canonical owner; launcher token acquisition
+  remains outside the client.
 
 ## Runtime performance parity and stable frame tails
 

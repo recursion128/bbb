@@ -281,6 +281,42 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
+### 当前 active 工程合同：authenticated profile-key prepare 生命周期
+
+单一目标：把 Vanilla `AccountProfileKeyPairManager` 的 pre-connect prepare、串行 refresh
+和跨 play/reconfiguration/transfer 生存期收敛到一个 `bbb-net` owner；本 slice 不修改
+SkinManager、remote chat validation、social/reporting UI 或 launcher token acquisition。
+
+- Vanilla owner/order：`Minecraft.prepareForMultiplayer` 在建连前调用 `prepareKeyPair`；manager
+  将下一次 refresh 下限设为当前时间后一小时，并在同一 future chain 上执行
+  `readOrFetchProfileKeyPair`。encrypted Play Login 再 prepare；tick 只在已有 local chat
+  session 且 `shouldRefreshKeyPair` 为真时刷新。changed key 建新 session/encoder 并先发
+  `ChatSessionUpdate`；unchanged key 保留签名链；失败保留上一 accepted key。
+- release persistence：官方非 IDE 路径删除 `profilekeys/<uuid>.json` 且不写入；BBB 不新增
+  durable private-key cache。access token/private key 不进入 Debug、diagnostics 或 public API。
+- owner/API/direction：`bbb-net::chat_session::runtime` 内唯一 private profile-key manager 拥有
+  credentials、pending fetch、accepted key 与 refresh deadline；play-local owner 只拥有
+  encrypted flag、`LocalChatSession` 和 advancing signature chain。`run_event_stream` 在
+  Services-key/TCP 等待前启动 prepare，并通过 crate-private action 安装窄 session update；
+  native/world/control 不缓存 token、key 或 session encoder。
+- lifecycle/rollback：play Login/reconfiguration/transfer 只清除 local chain；不得 abort 或
+  丢弃 process-connection scoped pending/accepted key。仅当前 encrypted play 可安装完成结果；
+  unencrypted play 不发 session update。refresh failure、task failure、stale play edge 均保留
+  accepted manager key，且不产生部分 encoder/session state。
+- budgets/fallback：复用现有 5 秒上限、128 KiB response、RSA-2048、canonical DER、signature
+  与 timestamp 校验；offline/no-token 永不访问 profile endpoint，fetch 失败保持 unsigned，
+  不阻塞 packet reads。不得增加第二个 certificate HTTP resolver 或磁盘 compatibility path。
+- 阶段：A 拆分 generated inventory 的 profile-key 与 skin mechanism 并冻结 owner 映射；
+  B 重构 manager/play-local lifetime 和 pre-connect wiring；C 补齐 refresh/rollback/transfer/
+  source guards；D 更新 Wiki/matrix/ledger，完整 diff review、提交并 full gate。
+- focused tests：pre-connect one-fetch、encrypted-only install、unencrypted→encrypted transfer 复用、
+  reconfiguration 保留 pending/accepted key、changed/unchanged refresh、failure rollback、一小时
+  throttle、session-update-before-signed-chat、nonblocking fetch、token/private-key redaction、
+  response budgets，以及 production 只有一个 manager/fetch resolver 且无 `profilekeys` 路径。
+- checkpoint/停止：generated inventory 拆分后和跨 manager/play owner 提交后各 full gate；最终
+  HEAD full-gated。安全停止仅限干净 gated commit、goal/ledger 仍 active 且没有双 owner；只有
+  可复现的外部 Services/credential runner 缺失可作 acceptance blocker，内部 timing gap 不可。
+
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
 同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
