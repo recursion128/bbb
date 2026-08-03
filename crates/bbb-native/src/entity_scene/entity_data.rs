@@ -29,29 +29,8 @@ pub(super) fn creeper_powered(
     entity_data_bool(values, accessors.powered_data_id, accessors.powered_default)
 }
 
-/// Vanilla `WitherBoss.isPowered()` = `getHealth() <= getMaxHealth() / 2.0`, gating the
-/// `WitherArmorLayer` energy swirl. The current health is the synced `LivingEntity.DATA_HEALTH_ID`
-/// float (index `9`); the wither's `Attributes.MAX_HEALTH` base is `300` (mirroring the wolf tail's
-/// hardcoded `TAME_MAX_HEALTH` precedent — bbb does not yet track per-entity max-health attribute
-/// overrides). A wither with no synced health defaults to full, so it reads un-powered.
-/// Maps a projected world armor material onto the renderer's `EntityArmorMaterial` for the
-/// `HumanoidArmorLayer` overlay (1:1; the two enums mirror the vanilla `ArmorMaterials` set).
-pub(crate) fn armor_material(
-    material: Option<WorldArmorMaterialKind>,
-) -> Option<EntityArmorMaterial> {
-    material.map(|material| match material {
-        WorldArmorMaterialKind::Leather => EntityArmorMaterial::Leather,
-        WorldArmorMaterialKind::Copper => EntityArmorMaterial::Copper,
-        WorldArmorMaterialKind::Chainmail => EntityArmorMaterial::Chainmail,
-        WorldArmorMaterialKind::Iron => EntityArmorMaterial::Iron,
-        WorldArmorMaterialKind::Gold => EntityArmorMaterial::Gold,
-        WorldArmorMaterialKind::Diamond => EntityArmorMaterial::Diamond,
-        WorldArmorMaterialKind::TurtleScute => EntityArmorMaterial::TurtleScute,
-        WorldArmorMaterialKind::Netherite => EntityArmorMaterial::Netherite,
-        WorldArmorMaterialKind::ArmadilloScute => EntityArmorMaterial::ArmadilloScute,
-    })
-}
-
+/// Converts world/native's identical compact generation-local equipment identity without resolving
+/// the catalog or classifying a layer.
 pub(super) fn equipment_asset(
     asset: Option<WorldEquipmentAssetId>,
 ) -> Option<EntityEquipmentAssetId> {
@@ -91,54 +70,6 @@ pub(super) fn wolf_armor_crackiness(
 /// `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer`.
 pub(super) fn armor_dye(dye: Option<i32>) -> Option<u32> {
     dye.map(|dye| dye as u32)
-}
-
-/// Maps the world-owned vanilla `DyeColor` from `Equippable.llamaSwag(color)` onto the renderer's
-/// shared dye enum for `LlamaDecorLayer` `LLAMA_BODY` equipment textures.
-pub(super) fn llama_body_decor_color(
-    color: Option<WorldLlamaBodyDecorColor>,
-) -> Option<EntityDyeColor> {
-    color.map(|color| match color {
-        WorldLlamaBodyDecorColor::White => EntityDyeColor::White,
-        WorldLlamaBodyDecorColor::Orange => EntityDyeColor::Orange,
-        WorldLlamaBodyDecorColor::Magenta => EntityDyeColor::Magenta,
-        WorldLlamaBodyDecorColor::LightBlue => EntityDyeColor::LightBlue,
-        WorldLlamaBodyDecorColor::Yellow => EntityDyeColor::Yellow,
-        WorldLlamaBodyDecorColor::Lime => EntityDyeColor::Lime,
-        WorldLlamaBodyDecorColor::Pink => EntityDyeColor::Pink,
-        WorldLlamaBodyDecorColor::Gray => EntityDyeColor::Gray,
-        WorldLlamaBodyDecorColor::LightGray => EntityDyeColor::LightGray,
-        WorldLlamaBodyDecorColor::Cyan => EntityDyeColor::Cyan,
-        WorldLlamaBodyDecorColor::Purple => EntityDyeColor::Purple,
-        WorldLlamaBodyDecorColor::Blue => EntityDyeColor::Blue,
-        WorldLlamaBodyDecorColor::Brown => EntityDyeColor::Brown,
-        WorldLlamaBodyDecorColor::Green => EntityDyeColor::Green,
-        WorldLlamaBodyDecorColor::Red => EntityDyeColor::Red,
-        WorldLlamaBodyDecorColor::Black => EntityDyeColor::Black,
-    })
-}
-
-pub(super) fn happy_ghast_harness_color(
-    color: Option<WorldHappyGhastHarnessColor>,
-) -> Option<EntityDyeColor> {
-    color.map(|color| match color {
-        WorldHappyGhastHarnessColor::White => EntityDyeColor::White,
-        WorldHappyGhastHarnessColor::Orange => EntityDyeColor::Orange,
-        WorldHappyGhastHarnessColor::Magenta => EntityDyeColor::Magenta,
-        WorldHappyGhastHarnessColor::LightBlue => EntityDyeColor::LightBlue,
-        WorldHappyGhastHarnessColor::Yellow => EntityDyeColor::Yellow,
-        WorldHappyGhastHarnessColor::Lime => EntityDyeColor::Lime,
-        WorldHappyGhastHarnessColor::Pink => EntityDyeColor::Pink,
-        WorldHappyGhastHarnessColor::Gray => EntityDyeColor::Gray,
-        WorldHappyGhastHarnessColor::LightGray => EntityDyeColor::LightGray,
-        WorldHappyGhastHarnessColor::Cyan => EntityDyeColor::Cyan,
-        WorldHappyGhastHarnessColor::Purple => EntityDyeColor::Purple,
-        WorldHappyGhastHarnessColor::Blue => EntityDyeColor::Blue,
-        WorldHappyGhastHarnessColor::Brown => EntityDyeColor::Brown,
-        WorldHappyGhastHarnessColor::Green => EntityDyeColor::Green,
-        WorldHappyGhastHarnessColor::Red => EntityDyeColor::Red,
-        WorldHappyGhastHarnessColor::Black => EntityDyeColor::Black,
-    })
 }
 
 /// Maps `ShulkerRenderState.attachFace` from world metadata onto the renderer root transform input.
@@ -232,6 +163,10 @@ pub(super) fn ender_dragon_beam(
     })
 }
 
+/// Vanilla `WitherBoss.isPowered()` = `getHealth() <= getMaxHealth() / 2.0`, gating the
+/// `WitherArmorLayer` energy swirl. The current health is the synced `LivingEntity.DATA_HEALTH_ID`
+/// float; the wither's `Attributes.MAX_HEALTH` base is `300`. A wither with no synced health defaults
+/// to full, so it reads un-powered.
 pub(super) fn wither_powered(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],

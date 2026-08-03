@@ -96,32 +96,8 @@ pub struct ItemProfiles {
     /// [`EquipmentAssetId`](crate::entities::EquipmentAssetId).
     #[serde(default)]
     pub(crate) equipment_asset_names: PublicationShared<Vec<String>>,
-    /// Item protocol id → humanoid armor material (`HumanoidArmorLayer` equipment asset), for
-    /// projecting worn armor onto the entity render source.
-    #[serde(default)]
-    pub(crate) default_item_armor_materials:
-        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
-    /// Item protocol id → normalized equipment asset id for assets with a WINGS layer. The world
-    /// combines this pack-derived identity with synchronized trim registries when projecting elytra.
-    #[serde(default)]
-    pub(crate) default_item_wings_equipment_assets: PublicationShared<BTreeMap<i32, String>>,
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: PublicationShared<BTreeMap<i32, MountArmorSlotKind>>,
-    #[serde(default)]
-    pub(crate) default_llama_body_decor_colors:
-        PublicationShared<BTreeMap<i32, crate::entities::LlamaBodyDecorColor>>,
-    #[serde(default)]
-    pub(crate) default_happy_ghast_harness_colors:
-        PublicationShared<BTreeMap<i32, crate::entities::HappyGhastHarnessColor>>,
-    #[serde(default)]
-    pub(crate) default_nautilus_body_armor_materials:
-        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
-    #[serde(default)]
-    pub(crate) default_horse_body_armor_materials:
-        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
-    #[serde(default)]
-    pub(crate) default_wolf_body_armor_materials:
-        PublicationShared<BTreeMap<i32, crate::entities::ArmorMaterialKind>>,
     #[serde(default)]
     pub(crate) default_item_attack_ranges: PublicationShared<BTreeMap<i32, ItemAttackRange>>,
     #[serde(default)]
@@ -675,64 +651,11 @@ impl ItemProfiles {
         self.equipment_asset_names = asset_names.into();
     }
 
-    pub(crate) fn set_item_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.default_item_armor_materials = filter_item_id_keys(armor_materials).into();
-    }
-
-    pub(crate) fn set_default_item_wings_equipment_assets(
-        &mut self,
-        equipment_assets: BTreeMap<i32, String>,
-    ) {
-        self.default_item_wings_equipment_assets = equipment_assets
-            .into_iter()
-            .filter(|(item_id, asset_id)| *item_id >= 0 && !asset_id.is_empty())
-            .collect::<BTreeMap<_, _>>()
-            .into();
-    }
-
     pub(crate) fn set_default_mount_body_armor_kinds(
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     ) {
         self.default_mount_body_armor_kinds = filter_item_id_keys(armor_kinds).into();
-    }
-
-    pub(crate) fn set_default_llama_body_decor_colors(
-        &mut self,
-        decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
-    ) {
-        self.default_llama_body_decor_colors = filter_item_id_keys(decor_colors).into();
-    }
-
-    pub(crate) fn set_default_happy_ghast_harness_colors(
-        &mut self,
-        harness_colors: BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
-    ) {
-        self.default_happy_ghast_harness_colors = filter_item_id_keys(harness_colors).into();
-    }
-
-    pub(crate) fn set_default_nautilus_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.default_nautilus_body_armor_materials = filter_item_id_keys(armor_materials).into();
-    }
-
-    pub(crate) fn set_default_horse_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.default_horse_body_armor_materials = filter_item_id_keys(armor_materials).into();
-    }
-
-    pub(crate) fn set_default_wolf_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.default_wolf_body_armor_materials = filter_item_id_keys(armor_materials).into();
     }
 }
 

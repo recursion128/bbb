@@ -175,22 +175,12 @@ pub struct ItemRegistryCatalog {
     /// `canBeSheared=true`.
     #[serde(default)]
     default_shearable_equipment_items: BTreeSet<String>,
-    /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
-    /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
-    /// for the `HumanoidArmorLayer` texture path. Only `.humanoidArmor(...)` items appear here.
-    #[serde(default)]
-    humanoid_armor_assets: BTreeMap<String, String>,
-    /// Resource id -> equippable equipment-asset name. Humanoid armor contributes the same asset as
-    /// `humanoid_armor_assets`; explicit `Equippable.builder(...).setAsset(EquipmentAssets.X)` items
-    /// such as elytra contribute their declared asset.
+    /// Resource id -> source-derived prototype `Equippable.assetId`. This is the single item-to-asset
+    /// owner for humanoid/wolf/mount armor, saddle, carpets, harnesses, and direct `setAsset` items.
     #[serde(default)]
     equippable_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_mount_body_armor_kinds: BTreeMap<String, ItemMountBodyArmorKind>,
-    /// Resource id -> mount body armor equipment-asset name (`ArmorMaterials.<MAT>` ->
-    /// `EquipmentAssets.<MAT>`, lowercased), for horse/nautilus body equipment layers.
-    #[serde(default)]
-    mount_body_armor_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_piercing_weapon_ids: BTreeSet<String>,
     #[serde(default)]
@@ -552,10 +542,8 @@ impl ItemRegistryCatalog {
         let mut default_swappable_equipment_items = BTreeSet::new();
         let mut default_player_swappable_equipment_items = BTreeSet::new();
         let mut default_shearable_equipment_items = BTreeSet::new();
-        let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
         let mut default_mount_body_armor_kinds = BTreeMap::new();
-        let mut mount_body_armor_assets = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_minimum_attack_charge_bits = BTreeMap::new();
@@ -621,15 +609,9 @@ impl ItemRegistryCatalog {
                     .with_context(source_context)?;
             let shearable_equipment =
                 shearable_equipment_for_declaration(expression).with_context(source_context)?;
-            let humanoid_armor_asset =
-                humanoid_armor_asset_for_declaration(expression).with_context(source_context)?;
-            let wolf_armor_asset =
-                wolf_armor_asset_for_declaration(expression).with_context(source_context)?;
-            let explicit_equippable_asset = explicit_equippable_asset_for_declaration(expression)
-                .with_context(source_context)?;
+            let equippable_asset =
+                equippable_asset_for_declaration(expression).with_context(source_context)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
-            let mount_body_armor_asset =
-                mount_body_armor_asset_for_declaration(expression).with_context(source_context)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range =
                 default_attack_range_for_declaration(expression).with_context(source_context)?;
@@ -706,21 +688,11 @@ impl ItemRegistryCatalog {
                 if shearable_equipment {
                     default_shearable_equipment_items.insert(resource_id.clone());
                 }
-                if let Some(asset) = &humanoid_armor_asset {
-                    humanoid_armor_assets.insert(resource_id.clone(), asset.clone());
-                    equippable_assets.insert(resource_id.clone(), asset.clone());
-                }
-                if let Some(asset) = &wolf_armor_asset {
-                    equippable_assets.insert(resource_id.clone(), asset.clone());
-                }
-                if let Some(asset) = &explicit_equippable_asset {
+                if let Some(asset) = &equippable_asset {
                     equippable_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if let Some(kind) = mount_body_armor_kind {
                     default_mount_body_armor_kinds.insert(resource_id.clone(), kind);
-                }
-                if let Some(asset) = &mount_body_armor_asset {
-                    mount_body_armor_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if default_piercing_weapon {
                     default_piercing_weapon_ids.insert(resource_id.clone());
@@ -863,10 +835,8 @@ impl ItemRegistryCatalog {
             default_swappable_equipment_items,
             default_player_swappable_equipment_items,
             default_shearable_equipment_items,
-            humanoid_armor_assets,
             equippable_assets,
             default_mount_body_armor_kinds,
-            mount_body_armor_assets,
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_minimum_attack_charge_bits,
@@ -1092,15 +1062,6 @@ impl ItemRegistryCatalog {
             .collect()
     }
 
-    /// The humanoid armor equipment-asset name for an armor item (e.g. `iron`, `chainmail`,
-    /// `turtle_scute`), or `None` for a non-humanoid-armor item.
-    pub fn humanoid_armor_asset(&self, resource_id: &str) -> Option<&str> {
-        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
-        self.humanoid_armor_assets
-            .get(&resource_id)
-            .map(String::as_str)
-    }
-
     pub fn equippable_asset(&self, resource_id: &str) -> Option<&str> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.equippable_assets.get(&resource_id).map(String::as_str)
@@ -1111,15 +1072,6 @@ impl ItemRegistryCatalog {
         self.default_mount_body_armor_kinds
             .get(&resource_id)
             .copied()
-    }
-
-    /// The equipment-asset material name for a horse/nautilus body armor item (e.g. `iron`,
-    /// `diamond`, `netherite`), or `None` for llama carpets and non-mount body armor.
-    pub fn mount_body_armor_asset(&self, resource_id: &str) -> Option<&str> {
-        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
-        self.mount_body_armor_assets
-            .get(&resource_id)
-            .map(String::as_str)
     }
 
     pub fn mount_body_armor_kinds_by_protocol_id(&self) -> BTreeMap<i32, ItemMountBodyArmorKind> {
@@ -1737,6 +1689,45 @@ fn explicit_equippable_asset_for_declaration(
     expression: &GeneratedJavaExpression,
 ) -> Result<Option<String>> {
     Ok(call_field_argument(expression, "setAsset", 0, "EquipmentAssets").map(str::to_lowercase))
+}
+
+/// Resolves the prototype `Equippable.assetId` selected by the item declaration. Vanilla's
+/// `Item.Properties` and `Equippable` helpers all end at the same component field; keeping their
+/// source spellings behind this one resolver prevents consumer-specific armor/color tables.
+fn equippable_asset_for_declaration(
+    expression: &GeneratedJavaExpression,
+) -> Result<Option<String>> {
+    if let Some(asset) = humanoid_armor_asset_for_declaration(expression)? {
+        return Ok(Some(asset));
+    }
+    if let Some(asset) = wolf_armor_asset_for_declaration(expression)? {
+        return Ok(Some(asset));
+    }
+    if let Some(asset) = mount_body_armor_asset_for_declaration(expression)? {
+        return Ok(Some(asset));
+    }
+    if let Some(asset) = explicit_equippable_asset_for_declaration(expression)? {
+        return Ok(Some(asset));
+    }
+    if qualified_call(expression, "saddle", "Equippable").is_some() {
+        return Ok(Some("saddle".to_string()));
+    }
+    for (helper, suffix) in [("llamaSwag", "carpet"), ("harness", "harness")] {
+        let Some(call) = qualified_call(expression, helper, "Equippable") else {
+            continue;
+        };
+        let constant_name = call
+            .arguments
+            .first()
+            .and_then(|argument| argument.field_constant("DyeColor"))
+            .ok_or_else(|| anyhow::anyhow!("Equippable.{helper} requires a DyeColor constant"))?;
+        let color = VANILLA_DYE_COLOR_VALUES
+            .iter()
+            .find(|value| value.constant_name == constant_name)
+            .ok_or_else(|| anyhow::anyhow!("unknown DyeColor.{constant_name}"))?;
+        return Ok(Some(format!("{}_{suffix}", color.serialized_name)));
+    }
+    Ok(None)
 }
 
 fn wolf_armor_asset_for_declaration(
@@ -3578,18 +3569,25 @@ mod tests {
             catalog.crafting_remainder("minecraft:honey_bottle"),
             Some("minecraft:glass_bottle")
         );
-        assert_eq!(
-            catalog.humanoid_armor_asset("minecraft:diamond_helmet"),
-            Some("diamond")
-        );
-        assert_eq!(catalog.equippable_asset("minecraft:elytra"), Some("elytra"));
+        for (resource_id, asset_id) in [
+            ("minecraft:diamond_helmet", "diamond"),
+            ("minecraft:elytra", "elytra"),
+            ("minecraft:wolf_armor", "armadillo_scute"),
+            ("minecraft:iron_horse_armor", "iron"),
+            ("minecraft:iron_nautilus_armor", "iron"),
+            ("minecraft:saddle", "saddle"),
+            ("minecraft:white_carpet", "white_carpet"),
+            ("minecraft:white_harness", "white_harness"),
+        ] {
+            assert_eq!(
+                catalog.equippable_asset(resource_id),
+                Some(asset_id),
+                "{resource_id}"
+            );
+        }
         assert_eq!(
             catalog.mount_body_armor_kind("minecraft:diamond_horse_armor"),
             Some(ItemMountBodyArmorKind::Horse)
-        );
-        assert_eq!(
-            catalog.mount_body_armor_asset("minecraft:diamond_horse_armor"),
-            Some("diamond")
         );
         assert_eq!(
             catalog.mount_body_armor_kind("minecraft:iron_nautilus_armor"),

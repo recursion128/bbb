@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, BlockModelDisplayContext,
     BlockModelDisplayTransform, BlockModelDisplayTransforms, ClientItemProperties,
-    EquipmentAssetCatalog, EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
+    EquipmentAssetCatalog, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
     ItemAttackRange as PackItemAttackRange, ItemConsumable as PackItemConsumable, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidTextureImageCatalog,
     ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
@@ -48,22 +48,20 @@ use bbb_render_types::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentAssetId,
-    EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
-    FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture, HudComponentTextRun,
-    HudFontGlyphBook, HudFontGlyphMap, HudStyledTextRun, HudTextStyle,
-    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask, StandaloneTextureSampling,
+    EntityPlayerSkin, EntityPlayerSkinModel, FirstPersonMapBackgroundKind,
+    FirstPersonMapBackgroundTexture, HudComponentTextRun, HudFontGlyphBook, HudFontGlyphMap,
+    HudStyledTextRun, HudTextStyle, ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask,
+    StandaloneTextureSampling,
 };
 // Referenced only by test builds and the `test-support` constructors; gate it so
 // the plain library build stays clean.
 #[cfg(any(test, feature = "test-support"))]
 use bbb_render_types::HudUvRect;
 use bbb_world::{
-    ArmorMaterialKind as WorldArmorMaterialKind, FrozenRegistryAccess,
-    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemAttackRange as WorldItemAttackRange,
+    FrozenRegistryAccess, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemFoodProperties as WorldItemFoodProperties,
-    ItemUseEffects as WorldItemUseEffects, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
-    MountArmorSlotKind as WorldMountArmorSlotKind, WorldItemMiningProfile, WorldItemMiningRule,
-    WorldStore,
+    ItemUseEffects as WorldItemUseEffects, MountArmorSlotKind as WorldMountArmorSlotKind,
+    WorldItemMiningProfile, WorldItemMiningRule, WorldStore,
 };
 
 use crate::{
@@ -112,11 +110,6 @@ const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
 const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
-
-const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
-    path: "textures/entity/equipment/wings/elytra.png",
-    size: [64, 32],
-};
 
 fn load_map_decoration_textures(roots: &PackRoots) -> Result<Vec<ItemFrameMapDecorationTexture>> {
     let textures = roots

@@ -53,24 +53,9 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix routes: `rendering-entity-layer-registration`, `rendering-particle-provider-registration`,
-`world-client-level-decisions`
+Matrix routes: `rendering-particle-provider-registration`, `world-client-level-decisions`
 
 <!-- architecture-candidates:start -->
-- **`arch-entity-equipment-shadow-projection` is `active`.**
-  - Semantic mechanism: generation-matched entity equipment layer selection and immutable frame projection.
-  - Canonical input: resource generation plus equipment asset id/layer type, with per-stack dye, foil, trim and player-texture facts.
-  - Owners: `crates/bbb-pack/src/equipment_assets.rs` and `crates/bbb-renderer/src/entity_models/equipment.rs` are canonical, while `crates/bbb-item-model/src/item_runtime/tables.rs`, `crates/bbb-world/src/entities.rs`, `crates/bbb-world/src/entities/store.rs`, `crates/bbb-native/src/entity_scene/variants.rs` and `crates/bbb-renderer/src/entity_models/instances.rs` retain material/color/boolean/static-layer shadows.
-  - Production callers: `crates/bbb-native/src/resource_reload.rs`, `crates/bbb-native/src/entity_scene/instance.rs`, `crates/bbb-native/src/runtime.rs` and `crates/bbb-renderer/src/entity_models/textured.rs` publish or consume both paths.
-  - Direction: pack immutable catalog to native reload barrier to world asset-id projection to renderer-private resolved catalog and frame consumer.
-  - Lifetime: one resource generation; stale asset ids miss, and failed reload keeps the previous complete renderer generation.
-  - Ordering/fallback/rollback: preserve selected-pack priority/filter, declared layer order, dye/foil/trim/player override and zero-layer fallback for missing, unknown or stale assets; never restore a static material fallback.
-  - Public API: retain only the equipment asset catalog/id and narrow dye/foil/trim/player facts across crates.
-  - Delete: legacy armor/decor material and saddle shadow fields/maps/conversions, the static wings-layer projection, duplicate has-wings/has-humanoid flags and their production callers; keep independent item-presence decisions out of this slice.
-  - Evidence: `crates/bbb-renderer/src/entity_models/tests/equipment_assets.rs`, `crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs` and `crates/bbb-native/src/entity_scene/tests.rs` cover current dual projection and the reverse guard.
-  - Risk/benefit/rank: drift high; behavior high; cross-owner count five; deletion/API narrowing high; generation risk high; testability high; rank 1/3.
-  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
-  - Reopen condition: reopen only if a production consumer again classifies an equipment asset outside the generation-matched catalog or carries a parallel static layer/material identity.
 - **`arch-falling-dust-static-color-facts` is `active`.**
   - Semantic mechanism: Vanilla falling-dust static color selection after the dynamic block-tint branch.
   - Canonical input: fixed Vanilla 26.1 block-state id and the official FallingBlock dust-color/map-color result.
@@ -82,7 +67,7 @@ Matrix routes: `rendering-entity-layer-registration`, `rendering-particle-provid
   - Public API: one bounded block-state-id query returning optional static dust/map colors; no resource-name or property API crosses into native.
   - Delete: handwritten map-color constants, family/name/property match tables and their duplicate tests once generated exact-output fixtures own the facts.
   - Evidence: `crates/bbb-native/src/particle_runtime/tests.rs`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` provide behavior anchors and the reusable runtime-fact generator pattern.
-  - Risk/benefit/rank: drift high; behavior high; cross-owner count two; deletion high; API narrowing medium; generation risk medium; testability high; rank 2/3.
+  - Risk/benefit/rank: drift high; behavior high; cross-owner count two; deletion high; API narrowing medium; generation risk medium; testability high; rank 1/2.
   - Goal route: `architecture-convergence`; `rendering-particle-provider-registration`.
   - Reopen condition: reopen only when the target block-state registry changes or production again derives falling-dust static colors from resource names/properties.
 - **`arch-piston-profile-pack-boundary` is `active`.**
@@ -96,7 +81,7 @@ Matrix routes: `rendering-entity-layer-registration`, `rendering-particle-provid
   - Public API: one protocol block-state support-fact enum/query consumed privately by world.
   - Delete: the pack piston profile module/exports/load API, world pack-catalog import and source-expression runtime parse path.
   - Evidence: `crates/bbb-world/src/piston_blocks.rs`, `scripts/vanilla-runtime/BlockStateSupportReport.java`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` cover behavior and the exact generated owner.
-  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 3/3.
+  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 2/2.
   - Goal route: `architecture-convergence`; `world-client-level-decisions`.
   - Reopen condition: reopen only if piston reaction becomes session/resource-defined or world again reads a pack-owned parser/catalog for fixed gameplay facts.
 <!-- architecture-candidates:end -->

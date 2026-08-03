@@ -707,30 +707,6 @@ pub(super) fn player_profile_texture(
     )
 }
 
-pub(super) fn chest_equipment_layers(
-    source: &EntityModelSourceState,
-    world: &WorldStore,
-    item_runtime: Option<&NativeItemRuntime>,
-) -> (Option<EntityEquipmentLayerTexture>, bool, bool) {
-    let Some(item_runtime) = item_runtime else {
-        return (None, false, false);
-    };
-    let Some(stack) = world.equipment_item(source.entity_id, EquipmentSlot::Chest) else {
-        return (None, false, false);
-    };
-    if !item_stack_non_empty(&stack) {
-        return (None, false, false);
-    }
-    let Some(item_id) = stack.item_id else {
-        return (None, false, false);
-    };
-    (
-        item_runtime.item_equipment_wings_layer(item_id),
-        item_runtime.item_equipment_asset_has_wings_layer(item_id),
-        item_runtime.item_equipment_asset_has_humanoid_layer(item_id),
-    )
-}
-
 pub(super) fn player_info_profile_resolvable(
     profile: &bbb_world::PlayerInfoProfileState,
 ) -> ResolvableProfileSummary {

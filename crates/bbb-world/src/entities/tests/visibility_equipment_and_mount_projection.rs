@@ -387,214 +387,6 @@ fn entity_model_sources_project_team_outline_color() {
 }
 
 #[test]
-fn entity_model_sources_project_worn_armor_materials() {
-    use std::collections::BTreeMap;
-    // The registry-derived item id → armor material table (installed by the native layer).
-    let iron_helmet = 800;
-    let iron_chestplate = 801;
-    let diamond_leggings = 802;
-    let gold_boots = 803;
-    let stone_sword = 900;
-
-    let mut store = WorldStore::new();
-    store.set_item_armor_materials(BTreeMap::from([
-        (iron_helmet, ArmorMaterialKind::Iron),
-        (iron_chestplate, ArmorMaterialKind::Iron),
-        (diamond_leggings, ArmorMaterialKind::Diamond),
-        (gold_boots, ArmorMaterialKind::Gold),
-    ]));
-    store.apply_add_entity(protocol_add_entity_with_type(
-        50,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-    ));
-
-    // A bare zombie projects no worn armor.
-    let bare = store.entity_model_sources_at_partial_tick(1.0);
-    assert_eq!(bare[0].head_armor, None);
-    assert_eq!(bare[0].chest_armor, None);
-    assert!(!bare[0].head_armor_foil);
-    assert!(!bare[0].chest_armor_foil);
-
-    fn armor_item(item_id: i32) -> ItemStackSummary {
-        ItemStackSummary {
-            item_id: Some(item_id),
-            count: 1,
-            component_patch: Default::default(),
-        }
-    }
-    fn enchanted_armor_item(
-        item_id: i32,
-        enchantment_glint_override: Option<bool>,
-    ) -> ItemStackSummary {
-        ItemStackSummary {
-            item_id: Some(item_id),
-            count: 1,
-            component_patch: DataComponentPatchSummary {
-                enchantments: vec![ItemEnchantmentSummary {
-                    holder_id: 12,
-                    level: 1,
-                }],
-                enchantment_glint_override,
-                ..Default::default()
-            },
-        }
-    }
-
-    // Equip all four armor slots; a held sword fills MainHand but is not armor.
-    assert!(store.apply_set_equipment(ProtocolSetEquipment {
-        entity_id: 50,
-        slots: vec![
-            EquipmentSlotUpdate {
-                slot: EquipmentSlot::Head,
-                item: armor_item(iron_helmet),
-            },
-            EquipmentSlotUpdate {
-                slot: EquipmentSlot::Chest,
-                item: enchanted_armor_item(iron_chestplate, None),
-            },
-            EquipmentSlotUpdate {
-                slot: EquipmentSlot::Legs,
-                item: enchanted_armor_item(diamond_leggings, Some(false)),
-            },
-            EquipmentSlotUpdate {
-                slot: EquipmentSlot::Feet,
-                item: armor_item(gold_boots),
-            },
-            EquipmentSlotUpdate {
-                slot: EquipmentSlot::MainHand,
-                item: armor_item(stone_sword),
-            },
-        ],
-    }));
-
-    let sources = store.entity_model_sources_at_partial_tick(1.0);
-    assert_eq!(sources[0].head_armor, Some(ArmorMaterialKind::Iron));
-    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
-    assert_eq!(sources[0].legs_armor, Some(ArmorMaterialKind::Diamond));
-    assert_eq!(sources[0].feet_armor, Some(ArmorMaterialKind::Gold));
-    assert!(!sources[0].head_armor_foil);
-    assert!(sources[0].chest_armor_foil);
-    assert!(
-        !sources[0].legs_armor_foil,
-        "enchantment_glint_override=false wins over non-empty enchantments"
-    );
-    assert!(!sources[0].feet_armor_foil);
-
-    // A non-armor item (the held sword, absent from the armor map) leaves its slot bare; clearing the
-    // helmet (empty stack) drops the head armor.
-    assert!(store.apply_set_equipment(ProtocolSetEquipment {
-        entity_id: 50,
-        slots: vec![EquipmentSlotUpdate {
-            slot: EquipmentSlot::Head,
-            item: ItemStackSummary::empty(),
-        }],
-    }));
-    let sources = store.entity_model_sources_at_partial_tick(1.0);
-    assert_eq!(sources[0].head_armor, None);
-    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
-    assert!(!sources[0].head_armor_foil);
-    assert!(sources[0].chest_armor_foil);
-}
-
-#[test]
-fn entity_model_sources_apply_equippable_asset_and_slot_patches_to_worn_armor() {
-    use std::collections::BTreeMap;
-
-    const DEFAULT_IRON_HELMET: i32 = 804;
-    const PATCHED_ITEM: i32 = 805;
-    let mut store = WorldStore::new();
-    store.set_item_armor_materials(BTreeMap::from([(
-        DEFAULT_IRON_HELMET,
-        ArmorMaterialKind::Iron,
-    )]));
-    store.apply_add_entity(protocol_add_entity_with_type(
-        51,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-    ));
-
-    let equip_head = |item: ItemStackSummary| ProtocolSetEquipment {
-        entity_id: 51,
-        slots: vec![EquipmentSlotUpdate {
-            slot: EquipmentSlot::Head,
-            item,
-        }],
-    };
-    let equippable = |slot_id: i32, asset_id: Option<&str>| EquippableSummary {
-        slot_id,
-        equip_sound: SoundEventSummary {
-            registry_id: Some(0),
-            sound_id: None,
-            fixed_range_bits: None,
-        },
-        asset_id: asset_id.map(str::to_string),
-        camera_overlay: None,
-        allowed_entities: None,
-        dispensable: true,
-        swappable: true,
-        damage_on_hurt: true,
-        equip_on_interact: false,
-        can_be_sheared: false,
-        shearing_sound: SoundEventSummary {
-            registry_id: Some(1),
-            sound_id: None,
-            fixed_range_bits: None,
-        },
-    };
-    let source_material = |store: &WorldStore| {
-        store
-            .entity_model_source_at_partial_tick(51, 1.0)
-            .expect("zombie source")
-            .head_armor
-    };
-
-    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
-        item_id: Some(PATCHED_ITEM),
-        count: 1,
-        component_patch: DataComponentPatchSummary {
-            added_type_ids: vec![
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            ],
-            equippable: Some(equippable(4, Some("minecraft:diamond"))),
-            ..Default::default()
-        },
-    })));
-    assert_eq!(source_material(&store), Some(ArmorMaterialKind::Diamond));
-
-    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
-        item_id: Some(DEFAULT_IRON_HELMET),
-        count: 1,
-        component_patch: DataComponentPatchSummary {
-            added_type_ids: vec![
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            ],
-            equippable: Some(equippable(3, Some("minecraft:diamond"))),
-            ..Default::default()
-        },
-    })));
-    assert_eq!(
-        source_material(&store),
-        None,
-        "an equippable component for the chest slot suppresses the item's default head asset"
-    );
-
-    assert!(store.apply_set_equipment(equip_head(ItemStackSummary {
-        item_id: Some(DEFAULT_IRON_HELMET),
-        count: 1,
-        component_patch: DataComponentPatchSummary {
-            removed_type_ids: vec![
-                bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
-            ],
-            ..Default::default()
-        },
-    })));
-    assert_eq!(
-        source_material(&store),
-        None,
-        "removing equippable suppresses the registry-derived default asset"
-    );
-}
-
-#[test]
 fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names() {
     use std::collections::BTreeMap;
 
@@ -648,12 +440,6 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
         (SADDLE_ITEM, crate::ItemEquipmentSlot::Saddle),
         (BODY_ITEM, crate::ItemEquipmentSlot::Body),
     ]));
-    // The compatibility material is deliberately different: compact identity
-    // and trim selection must use the exact equipment asset table.
-    store.set_item_armor_materials(BTreeMap::from([(
-        DEFAULT_HEAD_ITEM,
-        ArmorMaterialKind::Iron,
-    )]));
     store.apply_add_entity(protocol_add_entity_with_type(
         54,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -764,7 +550,6 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
         zombie.chest_wings_equipment_asset,
         Some(EquipmentAssetId::new(7, 1))
     );
-    assert_eq!(zombie.head_armor, None);
     assert_eq!(zombie.head_armor_dye, Some(0x12_34_56));
     assert!(zombie.head_armor_foil);
     assert_eq!(
@@ -833,12 +618,6 @@ fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_nam
         defaulted.head_equipment_asset,
         Some(EquipmentAssetId::new(7, 0))
     );
-    assert_eq!(
-        defaulted.head_armor,
-        Some(ArmorMaterialKind::Iron),
-        "legacy material state remains intact until the renderer consumer migrates"
-    );
-
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 54,
         slots: vec![EquipmentSlotUpdate {
@@ -891,9 +670,20 @@ fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
     let iron_helmet = 804;
     let diamond_leggings = 805;
     let mut store = WorldStore::new();
-    store.set_item_armor_materials(BTreeMap::from([
-        (iron_helmet, ArmorMaterialKind::Iron),
-        (diamond_leggings, ArmorMaterialKind::Diamond),
+    store.set_default_item_equipment_assets(
+        8,
+        vec![
+            "minecraft:iron".to_string(),
+            "minecraft:diamond".to_string(),
+        ],
+        BTreeMap::from([
+            (iron_helmet, EquipmentAssetId::new(8, 0)),
+            (diamond_leggings, EquipmentAssetId::new(8, 1)),
+        ]),
+    );
+    store.set_default_item_equipment_slots(BTreeMap::from([
+        (iron_helmet, crate::ItemEquipmentSlot::Head),
+        (diamond_leggings, crate::ItemEquipmentSlot::Legs),
     ]));
     store.apply_add_entity(protocol_add_entity_with_type(
         52,
@@ -998,10 +788,11 @@ fn entity_model_sources_project_wings_trim_and_foil_from_chest_asset() {
     }
 
     let mut store = WorldStore::new();
-    store.set_default_item_wings_equipment_assets(BTreeMap::from([(
-        ELYTRA_ITEM_ID,
-        "minecraft:elytra".to_string(),
-    )]));
+    store.set_default_item_equipment_assets(
+        9,
+        vec!["minecraft:elytra".to_string()],
+        BTreeMap::from([(ELYTRA_ITEM_ID, EquipmentAssetId::new(9, 0))]),
+    );
     store.apply_add_entity(protocol_add_entity_with_type(
         53,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -1077,7 +868,15 @@ fn entity_model_sources_project_synchronized_custom_armor_trim_payloads() {
 
     let iron_helmet = 806;
     let mut store = WorldStore::new();
-    store.set_item_armor_materials(BTreeMap::from([(iron_helmet, ArmorMaterialKind::Iron)]));
+    store.set_default_item_equipment_assets(
+        10,
+        vec!["minecraft:iron".to_string()],
+        BTreeMap::from([(iron_helmet, EquipmentAssetId::new(10, 0))]),
+    );
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        iron_helmet,
+        crate::ItemEquipmentSlot::Head,
+    )]));
     store.record_registry_entries(
         crate::TRIM_MATERIAL_REGISTRY,
         0,
@@ -1159,10 +958,22 @@ fn entity_model_sources_project_worn_armor_dye_colors() {
     let dye = 0x3F_6CDA;
 
     let mut store = WorldStore::new();
-    store.set_item_armor_materials(BTreeMap::from([
-        (leather_chestplate, ArmorMaterialKind::Leather),
-        (leather_boots, ArmorMaterialKind::Leather),
-        (iron_helmet, ArmorMaterialKind::Iron),
+    store.set_default_item_equipment_assets(
+        11,
+        vec![
+            "minecraft:leather".to_string(),
+            "minecraft:iron".to_string(),
+        ],
+        BTreeMap::from([
+            (leather_chestplate, EquipmentAssetId::new(11, 0)),
+            (leather_boots, EquipmentAssetId::new(11, 0)),
+            (iron_helmet, EquipmentAssetId::new(11, 1)),
+        ]),
+    );
+    store.set_default_item_equipment_slots(BTreeMap::from([
+        (leather_chestplate, crate::ItemEquipmentSlot::Chest),
+        (leather_boots, crate::ItemEquipmentSlot::Feet),
+        (iron_helmet, crate::ItemEquipmentSlot::Head),
     ]));
     store.apply_add_entity(protocol_add_entity_with_type(
         51,
@@ -1200,13 +1011,9 @@ fn entity_model_sources_project_worn_armor_dye_colors() {
     }));
 
     let sources = store.entity_model_sources_at_partial_tick(1.0);
-    // The dyed leather chestplate carries its `dyed_color`; the undyed leather boot and the bare-of-dye
-    // iron helmet carry None (each paired with its resolved material).
-    assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Leather));
+    // Dye remains an independent presentation input carried beside the canonical asset id.
     assert_eq!(sources[0].chest_armor_dye, Some(dye));
-    assert_eq!(sources[0].feet_armor, Some(ArmorMaterialKind::Leather));
     assert_eq!(sources[0].feet_armor_dye, None);
-    assert_eq!(sources[0].head_armor, Some(ArmorMaterialKind::Iron));
     assert_eq!(sources[0].head_armor_dye, None);
     assert_eq!(sources[0].legs_armor_dye, None);
 }
@@ -1233,13 +1040,18 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.pig_saddle,
+            source.pig_saddle_equipment_asset.is_some(),
             source.pig_saddle_trim,
             source.pig_saddle_foil,
         )
     }
 
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        12,
+        vec!["minecraft:saddle".to_string()],
+        BTreeMap::from([(SADDLE_ITEM_ID, EquipmentAssetId::new(12, 0))]),
+    );
     store.set_default_item_equipment_slots(BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
@@ -1391,7 +1203,7 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.equine_saddle,
+            source.equine_saddle_equipment_asset.is_some(),
             source.equine_saddle_ridden,
             source.equine_saddle_trim,
             source.equine_saddle_foil,
@@ -1413,6 +1225,11 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
     }
 
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        13,
+        vec!["minecraft:saddle".to_string()],
+        BTreeMap::from([(SADDLE_ITEM_ID, EquipmentAssetId::new(13, 0))]),
+    );
     store.set_default_item_equipment_slots(BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
@@ -1532,7 +1349,7 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(equine_saddle_state(&store, 62), (false, false, None, false));
+    assert_eq!(equine_saddle_state(&store, 62), (false, true, None, false));
 }
 
 #[test]
@@ -1672,7 +1489,7 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.strider_saddle,
+            source.strider_saddle_equipment_asset.is_some(),
             source.strider_ridden,
             source.strider_saddle_trim,
             source.strider_saddle_foil,
@@ -1680,6 +1497,11 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
     }
 
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        14,
+        vec!["minecraft:saddle".to_string()],
+        BTreeMap::from([(SADDLE_ITEM_ID, EquipmentAssetId::new(14, 0))]),
+    );
     store.set_default_item_equipment_slots(BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
@@ -1784,7 +1606,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.camel_saddle,
+            source.camel_saddle_equipment_asset.is_some(),
             source.camel_saddle_ridden,
             source.camel_saddle_trim,
             source.camel_saddle_foil,
@@ -1792,6 +1614,11 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
     }
 
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        15,
+        vec!["minecraft:saddle".to_string()],
+        BTreeMap::from([(SADDLE_ITEM_ID, EquipmentAssetId::new(15, 0))]),
+    );
     store.set_default_item_equipment_slots(BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
@@ -1817,8 +1644,8 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
     }));
     assert_eq!(
         camel_saddle_state(&store, 68),
-        (false, false, None, false),
-        "the reins gate is only useful when the saddle layer itself renders"
+        (false, true, None, false),
+        "ridden state remains independent of whether the saddle asset resolves"
     );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
@@ -1903,7 +1730,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(camel_saddle_state(&store, 68), (false, false, None, false));
+    assert_eq!(camel_saddle_state(&store, 68), (false, true, None, false));
 }
 
 #[test]
@@ -1931,7 +1758,7 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.nautilus_saddle,
+            source.nautilus_saddle_equipment_asset.is_some(),
             source.nautilus_saddle_trim,
             source.nautilus_saddle_foil,
         )
@@ -1952,6 +1779,11 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
     }
 
     let mut store = WorldStore::new();
+    store.set_default_item_equipment_assets(
+        16,
+        vec!["minecraft:saddle".to_string()],
+        BTreeMap::from([(SADDLE_ITEM_ID, EquipmentAssetId::new(16, 0))]),
+    );
     store.apply_add_entity(protocol_add_entity_with_type(
         71,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID,
@@ -1974,8 +1806,15 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
     }));
     assert_eq!(
         nautilus_saddle(&store, 71),
-        (false, None, false),
-        "without the item registry's saddle-slot map, a raw item id is not enough"
+        (
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/nautilus_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        ),
+        "SimpleEquipmentLayer resolves the saddle stack asset without a slot-classifier shadow"
     );
 
     store.set_default_item_equipment_slots(BTreeMap::from([(
@@ -2062,14 +1901,14 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     fn nautilus_body_armor(
         store: &WorldStore,
         entity_id: i32,
-    ) -> (Option<ArmorMaterialKind>, Option<ArmorTrimSprite>, bool) {
+    ) -> (Option<EquipmentAssetId>, Option<ArmorTrimSprite>, bool) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.nautilus_body_armor,
+            source.nautilus_body_equipment_asset,
             source.nautilus_body_armor_trim,
             source.nautilus_body_armor_foil,
         )
@@ -2130,20 +1969,27 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     assert_eq!(
         nautilus_body_armor(&store, 78),
         (None, None, false),
-        "without the item registry's nautilus armor material map, a raw body item id is not enough"
+        "without the item registry's equipment asset map, a raw body item id is not enough"
     );
 
-    store.set_default_nautilus_body_armor_materials(BTreeMap::from([
-        (IRON_NAUTILUS_ARMOR_ITEM_ID, ArmorMaterialKind::Iron),
-        (
-            NETHERITE_NAUTILUS_ARMOR_ITEM_ID,
-            ArmorMaterialKind::Netherite,
-        ),
-    ]));
+    store.set_default_item_equipment_assets(
+        20,
+        vec![
+            "minecraft:iron".to_string(),
+            "minecraft:netherite".to_string(),
+        ],
+        BTreeMap::from([
+            (IRON_NAUTILUS_ARMOR_ITEM_ID, EquipmentAssetId::new(20, 0)),
+            (
+                NETHERITE_NAUTILUS_ARMOR_ITEM_ID,
+                EquipmentAssetId::new(20, 1),
+            ),
+        ]),
+    );
     assert_eq!(
         nautilus_body_armor(&store, 78),
         (
-            Some(ArmorMaterialKind::Iron),
+            Some(EquipmentAssetId::new(20, 0)),
             Some(ArmorTrimSprite {
                 sprite_id: "minecraft:trims/entity/nautilus_body/sentry_iron_darker".to_string(),
                 decal: false,
@@ -2154,7 +2000,7 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     assert_eq!(
         nautilus_body_armor(&store, 79),
         (
-            Some(ArmorMaterialKind::Netherite),
+            Some(EquipmentAssetId::new(20, 1)),
             Some(ArmorTrimSprite {
                 sprite_id: "minecraft:trims/entity/nautilus_body/sentry_iron".to_string(),
                 decal: false,
@@ -2225,7 +2071,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
         store: &WorldStore,
         entity_id: i32,
     ) -> (
-        Option<ArmorMaterialKind>,
+        Option<EquipmentAssetId>,
         Option<i32>,
         Option<ArmorTrimSprite>,
         bool,
@@ -2236,7 +2082,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.equine_body_armor,
+            source.equine_body_equipment_asset,
             source.equine_body_armor_dye,
             source.equine_body_armor_trim,
             source.equine_body_armor_foil,
@@ -2287,18 +2133,26 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     assert_eq!(
         horse_body_armor(&store, 82),
         (None, None, None, false),
-        "without the item registry's horse armor material map, a raw body item id is not enough"
+        "without the item registry's equipment asset map, a raw body item id is not enough"
     );
 
-    store.set_default_horse_body_armor_materials(BTreeMap::from([
-        (LEATHER_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Leather),
-        (DIAMOND_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Diamond),
-        (NETHERITE_HORSE_ARMOR_ITEM_ID, ArmorMaterialKind::Netherite),
-    ]));
+    store.set_default_item_equipment_assets(
+        21,
+        vec![
+            "minecraft:leather".to_string(),
+            "minecraft:diamond".to_string(),
+            "minecraft:netherite".to_string(),
+        ],
+        BTreeMap::from([
+            (LEATHER_HORSE_ARMOR_ITEM_ID, EquipmentAssetId::new(21, 0)),
+            (DIAMOND_HORSE_ARMOR_ITEM_ID, EquipmentAssetId::new(21, 1)),
+            (NETHERITE_HORSE_ARMOR_ITEM_ID, EquipmentAssetId::new(21, 2)),
+        ]),
+    );
     assert_eq!(
         horse_body_armor(&store, 82),
         (
-            Some(ArmorMaterialKind::Leather),
+            Some(EquipmentAssetId::new(21, 0)),
             Some(LEATHER_DYE),
             Some(ArmorTrimSprite {
                 sprite_id: "minecraft:trims/entity/horse_body/sentry_iron".to_string(),
@@ -2310,7 +2164,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     assert_eq!(
         horse_body_armor(&store, 83),
         (
-            Some(ArmorMaterialKind::Netherite),
+            Some(EquipmentAssetId::new(21, 2)),
             None,
             Some(ArmorTrimSprite {
                 sprite_id: "minecraft:trims/entity/horse_body/sentry_iron".to_string(),
@@ -2381,7 +2235,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
         store: &WorldStore,
         entity_id: i32,
     ) -> (
-        Option<ArmorMaterialKind>,
+        Option<EquipmentAssetId>,
         Option<i32>,
         WolfArmorCrackiness,
         bool,
@@ -2393,7 +2247,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.wolf_body_armor,
+            source.wolf_body_equipment_asset,
             source.wolf_body_armor_dye,
             source.wolf_body_armor_crackiness,
             source.wolf_body_armor_foil,
@@ -2442,18 +2296,19 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
     assert_eq!(
         wolf_body_armor(&store, 87),
         (None, None, WolfArmorCrackiness::None, false, None),
-        "without the item registry's wolf armor material map, a raw body item id is not enough"
+        "without the item registry's equipment asset map, a raw body item id is not enough"
     );
 
-    store.set_default_wolf_body_armor_materials(BTreeMap::from([(
-        WOLF_ARMOR_ITEM_ID,
-        ArmorMaterialKind::ArmadilloScute,
-    )]));
+    store.set_default_item_equipment_assets(
+        22,
+        vec!["minecraft:armadillo_scute".to_string()],
+        BTreeMap::from([(WOLF_ARMOR_ITEM_ID, EquipmentAssetId::new(22, 0))]),
+    );
     store.set_default_item_max_damage(BTreeMap::from([(WOLF_ARMOR_ITEM_ID, 64)]));
     assert_eq!(
         wolf_body_armor(&store, 87),
         (
-            Some(ArmorMaterialKind::ArmadilloScute),
+            Some(EquipmentAssetId::new(22, 0)),
             Some(WOLF_ARMOR_DYE),
             WolfArmorCrackiness::Low,
             true,
@@ -2564,14 +2419,14 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     fn llama_decor(
         store: &WorldStore,
         entity_id: i32,
-    ) -> (Option<LlamaBodyDecorColor>, Option<ArmorTrimSprite>, bool) {
+    ) -> (Option<EquipmentAssetId>, Option<ArmorTrimSprite>, bool) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
         (
-            source.llama_body_decor,
+            source.llama_body_equipment_asset,
             source.llama_body_decor_trim,
             source.llama_body_decor_foil,
         )
@@ -2616,13 +2471,20 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     assert_eq!(
         llama_decor(&store, 74),
         (None, None, false),
-        "without the item registry's llama carpet map, a raw body item id is not enough"
+        "without the item registry's equipment asset map, a raw body item id is not enough"
     );
 
-    store.set_default_llama_body_decor_colors(BTreeMap::from([
-        (WHITE_CARPET_ITEM_ID, LlamaBodyDecorColor::White),
-        (BLACK_CARPET_ITEM_ID, LlamaBodyDecorColor::Black),
-    ]));
+    store.set_default_item_equipment_assets(
+        23,
+        vec![
+            "minecraft:white_carpet".to_string(),
+            "minecraft:black_carpet".to_string(),
+        ],
+        BTreeMap::from([
+            (WHITE_CARPET_ITEM_ID, EquipmentAssetId::new(23, 0)),
+            (BLACK_CARPET_ITEM_ID, EquipmentAssetId::new(23, 1)),
+        ]),
+    );
     let expected_trim = Some(ArmorTrimSprite {
         sprite_id: "minecraft:trims/entity/llama_body/sentry_iron".to_string(),
         decal: false,
@@ -2630,14 +2492,14 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     assert_eq!(
         llama_decor(&store, 74),
         (
-            Some(LlamaBodyDecorColor::White),
+            Some(EquipmentAssetId::new(23, 0)),
             expected_trim.clone(),
             true
         )
     );
     assert_eq!(
         llama_decor(&store, 75),
-        (Some(LlamaBodyDecorColor::Black), expected_trim, true),
+        (Some(EquipmentAssetId::new(23, 1)), expected_trim, true),
         "an explicit carpet wins over the trader-llama empty-stack fallback"
     );
     assert_eq!(
@@ -2697,7 +2559,7 @@ fn entity_model_sources_project_happy_ghast_harness_leash_holder_and_ridden_stat
             .unwrap();
         (
             source.happy_ghast_body_item,
-            source.happy_ghast_harness,
+            source.happy_ghast_body_equipment_asset,
             source.happy_ghast_harness_trim,
             source.happy_ghast_harness_foil,
             source.happy_ghast_body_item_is_harness,
@@ -2746,10 +2608,11 @@ fn entity_model_sources_project_happy_ghast_harness_leash_holder_and_ridden_stat
         (false, None, None, false, false, false, false)
     );
 
-    store.set_default_happy_ghast_harness_colors(BTreeMap::from([(
-        WHITE_HARNESS_ITEM_ID,
-        HappyGhastHarnessColor::White,
-    )]));
+    store.set_default_item_equipment_assets(
+        24,
+        vec!["minecraft:white_harness".to_string()],
+        BTreeMap::from([(WHITE_HARNESS_ITEM_ID, EquipmentAssetId::new(24, 0))]),
+    );
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 88,
         slots: vec![EquipmentSlotUpdate {
@@ -2761,7 +2624,7 @@ fn entity_model_sources_project_happy_ghast_harness_leash_holder_and_ridden_stat
         state(&store, 88),
         (
             true,
-            Some(HappyGhastHarnessColor::White),
+            Some(EquipmentAssetId::new(24, 0)),
             Some(ArmorTrimSprite {
                 sprite_id: "minecraft:trims/entity/happy_ghast_body/sentry_iron".to_string(),
                 decal: false,

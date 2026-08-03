@@ -89,8 +89,6 @@ pub(super) fn entity_model_instance(
         item_runtime,
         EntityDynamicPlayerTextureKind::Elytra,
     );
-    let (chest_wings_layer, chest_equipment_has_wings, chest_equipment_has_humanoid) =
-        chest_equipment_layers(&source, world, item_runtime);
     // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
     // per-entity item lookup for every mob.
     let main_hand_holds_bow =
@@ -680,9 +678,6 @@ pub(super) fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
         .with_player_elytra_texture(player_elytra_texture)
-        .with_chest_wings_layer(chest_wings_layer)
-        .with_chest_equipment_has_wings(chest_equipment_has_wings)
-        .with_chest_equipment_has_humanoid(chest_equipment_has_humanoid)
         .with_chest_wings_equipment_asset(equipment_asset(
             source.chest_wings_equipment_asset,
         ))
@@ -767,10 +762,6 @@ pub(super) fn entity_model_instance(
         .with_chest_equipment_asset(equipment_asset(source.chest_equipment_asset))
         .with_legs_equipment_asset(equipment_asset(source.legs_equipment_asset))
         .with_feet_equipment_asset(equipment_asset(source.feet_equipment_asset))
-        .with_head_armor(armor_material(source.head_armor))
-        .with_chest_armor(armor_material(source.chest_armor))
-        .with_legs_armor(armor_material(source.legs_armor))
-        .with_feet_armor(armor_material(source.feet_armor))
         .with_head_armor_trim(armor_trim(source.head_armor_trim.as_ref(), variant_registries))
         .with_chest_armor_trim(armor_trim(source.chest_armor_trim.as_ref(), variant_registries))
         .with_legs_armor_trim(armor_trim(source.legs_armor_trim.as_ref(), variant_registries))
@@ -782,7 +773,6 @@ pub(super) fn entity_model_instance(
         .with_equine_body_equipment_asset(equipment_asset(
             source.equine_body_equipment_asset,
         ))
-        .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_trim(armor_trim(
             source.equine_body_armor_trim.as_ref(),
             variant_registries,
@@ -791,7 +781,6 @@ pub(super) fn entity_model_instance(
         .with_wolf_body_equipment_asset(equipment_asset(
             source.wolf_body_equipment_asset,
         ))
-        .with_wolf_body_armor(armor_material(source.wolf_body_armor))
         .with_wolf_body_armor_trim(armor_trim(
             source.wolf_body_armor_trim.as_ref(),
             variant_registries,
@@ -802,12 +791,10 @@ pub(super) fn entity_model_instance(
             source.nautilus_body_equipment_asset,
         ))
         .with_nautilus_body_armor_dye(armor_dye(source.nautilus_body_armor_dye))
-        .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
         .with_nautilus_body_armor_trim(armor_trim(
             source.nautilus_body_armor_trim.as_ref(),
             variant_registries,
         ))
-        .with_happy_ghast_harness(happy_ghast_harness_color(source.happy_ghast_harness))
         .with_happy_ghast_harness_trim(armor_trim(
             source.happy_ghast_harness_trim.as_ref(),
             variant_registries,
@@ -822,7 +809,6 @@ pub(super) fn entity_model_instance(
             source.llama_body_equipment_asset,
         ))
         .with_llama_body_decor_dye(armor_dye(source.llama_body_decor_dye))
-        .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_llama_body_decor_trim(armor_trim(
             source.llama_body_decor_trim.as_ref(),
             variant_registries,
@@ -981,9 +967,7 @@ pub(super) fn entity_model_instance(
         with_chest_wings_foil chest_wings_foil,
         with_legs_armor_foil legs_armor_foil,
         with_feet_armor_foil feet_armor_foil,
-        with_pig_saddle pig_saddle,
         with_pig_saddle_foil pig_saddle_foil,
-        with_equine_saddle equine_saddle,
         with_equine_saddle_foil equine_saddle_foil,
         with_equine_saddle_ridden equine_saddle_ridden,
         with_equine_animate_tail equine_animate_tail,
@@ -993,12 +977,9 @@ pub(super) fn entity_model_instance(
         with_equine_body_armor_foil equine_body_armor_foil,
         with_wolf_body_armor_foil wolf_body_armor_foil,
         with_strider_ridden strider_ridden,
-        with_strider_saddle strider_saddle,
         with_strider_saddle_foil strider_saddle_foil,
-        with_camel_saddle camel_saddle,
         with_camel_saddle_foil camel_saddle_foil,
         with_camel_saddle_ridden camel_saddle_ridden,
-        with_nautilus_saddle nautilus_saddle,
         with_nautilus_saddle_foil nautilus_saddle_foil,
         with_nautilus_body_item_present nautilus_body_item_present,
         with_nautilus_body_armor_foil nautilus_body_armor_foil,

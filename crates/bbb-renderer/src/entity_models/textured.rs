@@ -4665,7 +4665,7 @@ fn emit_equipment_asset_layers(
 /// The `HumanoidArmorLayer` worn-armor overlay (vanilla `HumanoidArmorLayer.submit`): for each filled
 /// equipment slot the inflated `HumanoidArmorModel` piece (helmet / chestplate / leggings / boots) is
 /// draped on the host humanoid's posed limbs ([`ModelPart::copy_child_poses_from`] = vanilla
-/// `copyPropertiesTo`) and drawn into the cutout pass with the material's equipment-asset texture. The
+/// `copyPropertiesTo`) and drawn into the cutout pass with the catalog equipment-asset texture. The
 /// pieces render in the vanilla order (chest, legs, feet, head). `transform` is the host entity's root
 /// transform so the armor sits exactly on the body. Enchanted armor records the vanilla
 /// `armorEntityGlint` submission at `order(2)` with the same slot-order `submit_sequence` as that
@@ -6552,6 +6552,7 @@ pub(in crate::entity_models) fn render_player_extra_ears_layer(
 pub(in crate::entity_models) fn render_player_cape_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let EntityModelKind::Player { skin, parts } = instance.kind else {
@@ -6563,7 +6564,10 @@ pub(in crate::entity_models) fn render_player_cape_layer(
     if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
-    if instance.render_state.chest_equipment_has_wings {
+    if equipment_assets.has_layer(
+        instance.render_state.chest_wings_equipment_asset,
+        EntityEquipmentLayerType::Wings,
+    ) {
         return;
     }
     let Some(cape_texture) = instance.render_state.player_cape_texture else {
@@ -6576,7 +6580,7 @@ pub(in crate::entity_models) fn render_player_cape_layer(
     };
 
     let root = player_model_root_transform(instance);
-    let layer_transform = root * player_cape_chest_equipment_transform(&instance);
+    let layer_transform = root * player_cape_chest_equipment_transform(&instance, equipment_assets);
     let mut model = PlayerModel::new(skin.is_slim());
     model.prepare(&instance);
     let Some(body_transform) = model.root().try_descendant_attach_transform(&["body"]) else {
@@ -6604,8 +6608,14 @@ pub(in crate::entity_models) fn render_player_cape_layer(
     });
 }
 
-fn player_cape_chest_equipment_transform(instance: &EntityModelInstance) -> Mat4 {
-    if instance.render_state.chest_equipment_has_humanoid {
+fn player_cape_chest_equipment_transform(
+    instance: &EntityModelInstance,
+    equipment_assets: &ResolvedEntityEquipmentAssetCatalog,
+) -> Mat4 {
+    if equipment_assets.has_layer(
+        instance.render_state.chest_wings_equipment_asset,
+        EntityEquipmentLayerType::Humanoid,
+    ) {
         Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
     } else {
         Mat4::IDENTITY

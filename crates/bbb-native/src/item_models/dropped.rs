@@ -2408,7 +2408,7 @@ fn bake_custom_head_item(
     let Some(item_id) = stack.item_id else {
         return;
     };
-    if item_runtime.item_has_humanoid_armor_asset(item_id) {
+    if instance.render_state.head_equipment_asset.is_some() {
         return;
     }
     if item_runtime

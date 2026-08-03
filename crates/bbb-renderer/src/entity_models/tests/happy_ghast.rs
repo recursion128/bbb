@@ -203,7 +203,6 @@ fn happy_ghast_body_item_squeezes_the_complete_body_subtree() {
 fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
     let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
     let adult = EntityModelInstance::happy_ghast(61, [0.0, 64.0, 0.0], 0.0)
-        .with_happy_ghast_harness(Some(EntityDyeColor::White))
         .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_white_equipment_asset_id()));
     let unridden = entity_model_textured_meshes(&[adult], &atlas);
     assert_eq!(unridden.submissions.len(), 2);
@@ -239,7 +238,6 @@ fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
         [0.0, 64.0, 0.0],
         0.0,
     )
-    .with_happy_ghast_harness(Some(EntityDyeColor::Black))
     .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_black_equipment_asset_id()));
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 2);
@@ -277,7 +275,6 @@ fn happy_ghast_ropes_require_leash_holder_and_harness_tag_and_use_inflated_model
     );
 
     let harness = base
-        .with_happy_ghast_harness(Some(EntityDyeColor::White))
         .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_white_equipment_asset_id()));
     let no_holder = entity_model_textured_meshes(&[harness], &atlas);
     assert_eq!(no_holder.submissions.len(), 2);
@@ -327,7 +324,6 @@ fn happy_ghast_ropes_require_leash_holder_and_harness_tag_and_use_inflated_model
         [0.0, 64.0, 0.0],
         0.0,
     )
-    .with_happy_ghast_harness(Some(EntityDyeColor::Black))
     .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_black_equipment_asset_id()))
     .with_happy_ghast_body_item(true)
     .with_happy_ghast_body_item_is_harness(true)
@@ -357,7 +353,6 @@ fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
     .unwrap()
     .0;
     let instance = EntityModelInstance::happy_ghast(63, [0.0, 64.0, 0.0], 0.0)
-        .with_happy_ghast_harness(Some(EntityDyeColor::Blue))
         .with_happy_ghast_body_equipment_asset(Some(test_happy_ghast_blue_equipment_asset_id()))
         .with_happy_ghast_body_item(true)
         .with_happy_ghast_body_item_is_harness(true)

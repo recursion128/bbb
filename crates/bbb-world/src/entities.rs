@@ -2053,15 +2053,11 @@ entity_model_source_state! {
     /// accumulator and scaled by `0.15π`. `0.0` for a level-headed wolf and every non-wolf.
     #[serde(default)]
     pub wolf_head_roll_angle: f32,
-    /// Vanilla `WolfRenderState.bodyArmorItem`: an adult wolf body equipment item whose equipment asset
-    /// has a `wolf_body` layer. Baby wolves skip it because `WolfArmorLayer` renders only the adult
-    /// `ModelLayers.WOLF_ARMOR` model.
+    /// Vanilla `WolfRenderState.bodyArmorItem`: the effective equipment asset of an adult wolf's
+    /// BODY stack. Baby wolves skip it because `WolfArmorLayer` renders only the adult
+    /// `ModelLayers.WOLF_ARMOR` model; the renderer decides whether the asset has a `WOLF_BODY` layer.
     #[serde(default)]
     pub wolf_body_equipment_asset: Option<EquipmentAssetId>,
-    /// Legacy vanilla-material projection retained until the generic equipment
-    /// catalog consumer owns the wolf armor texture.
-    #[serde(default)]
-    pub wolf_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for the adult wolf's `WOLF_BODY` equipment layer. The
     /// resolved sprite uses `trims/entity/wolf_body`; native binds it from the startup trim atlas.
     #[serde(default)]
@@ -2627,9 +2623,9 @@ entity_model_source_state! {
     /// consumes this before sitting/flying, matching `ParrotModel.getPose`.
     #[serde(default)]
     pub parrot_party: bool,
-    /// Vanilla `HumanoidArmorLayer` worn armor, the equipment-asset material per armor slot, resolved
-    /// from the entity's `SetEquipment` items against the item registry. `None` leaves the slot bare.
-    /// Only humanoid armor-wearers carry these; the renderer drapes the matching inflated armor piece.
+    /// Vanilla `HumanoidArmorLayer` worn armor, one generation-local equipment asset per matching
+    /// armor slot, resolved from the entity's `SetEquipment` stacks. `None` leaves the slot bare. Only
+    /// humanoid armor-wearers carry these; the renderer owns the layer lookup and inflated model.
     #[serde(default)]
     pub head_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
@@ -2638,16 +2634,6 @@ entity_model_source_state! {
     pub legs_equipment_asset: Option<EquipmentAssetId>,
     #[serde(default)]
     pub feet_equipment_asset: Option<EquipmentAssetId>,
-    /// Legacy vanilla-material projections retained while humanoid geometry
-    /// migrates to the generic equipment catalog.
-    #[serde(default)]
-    pub head_armor: Option<ArmorMaterialKind>,
-    #[serde(default)]
-    pub chest_armor: Option<ArmorMaterialKind>,
-    #[serde(default)]
-    pub legs_armor: Option<ArmorMaterialKind>,
-    #[serde(default)]
-    pub feet_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` per worn humanoid armor slot. The world resolves the trim
     /// holders, equipment-asset suffix override, and humanoid/leggings atlas prefix while native
     /// resolves this resource id to the startup pack's generated armor-trim sprite handle.
@@ -2660,9 +2646,7 @@ entity_model_source_state! {
     #[serde(default)]
     pub feet_armor_trim: Option<ArmorTrimSprite>,
     /// Vanilla `DyedItemColor` per worn armor slot: the worn item's `dyed_color` component (a packed
-    /// RGB), projected alongside the slot's material. Only leather is dyeable, so the renderer applies
-    /// this as the leather layer's tint; `None` leaves leather at its default undyed brown and is
-    /// ignored for every other material. Paired one-to-one with `head_armor` .. `feet_armor`.
+    /// RGB). The generation-matched catalog layer decides whether to consume it.
     #[serde(default)]
     pub head_armor_dye: Option<i32>,
     #[serde(default)]
@@ -2690,16 +2674,14 @@ entity_model_source_state! {
     /// Vanilla `ItemStack.hasFoil()` for a chest item whose equipment asset has a WINGS layer.
     #[serde(default)]
     pub chest_wings_foil: bool,
-    /// Vanilla `PigRenderState.saddle`: true when a pig carries a non-empty saddle item in
-    /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
+    /// Effective asset of the pig's `EquipmentSlot.SADDLE` stack. The renderer consumes it only when
+    /// the asset supplies a `PIG_SADDLE` layer.
     #[serde(default)]
     pub pig_saddle_equipment_asset: Option<EquipmentAssetId>,
     /// Packed `DyedItemColor` on the saddle stack, consumed only by dyeable
     /// `PIG_SADDLE` asset layers.
     #[serde(default)]
     pub pig_saddle_dye: Option<i32>,
-    #[serde(default)]
-    pub pig_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult pig's `PIG_SADDLE` equipment layer.
     #[serde(default)]
     pub pig_saddle_trim: Option<ArmorTrimSprite>,
@@ -2715,8 +2697,6 @@ entity_model_source_state! {
     /// family-specific equine saddle asset layers.
     #[serde(default)]
     pub equine_saddle_dye: Option<i32>,
-    #[serde(default)]
-    pub equine_saddle: bool,
     /// Vanilla armor-trim sprite for the family-specific equine saddle equipment layer.
     #[serde(default)]
     pub equine_saddle_trim: Option<ArmorTrimSprite>,
@@ -2743,21 +2723,18 @@ entity_model_source_state! {
     /// amount, adding the subtle open-mouth head bob while the horse is otherwise idle.
     #[serde(default)]
     pub equine_feeding_animation: f32,
-    /// Vanilla `EquineRenderState.bodyArmorItem`: the horse armor material from an adult horse /
-    /// zombie horse body equipment item whose equipment asset has a `horse_body` layer. Baby horses
-    /// skip it because `SimpleEquipmentLayer` supplies no baby armor model; skeleton horses are
-    /// excluded by the vanilla armor-wearer tag.
+    /// Vanilla `EquineRenderState.bodyArmorItem`: the effective equipment asset of an adult horse /
+    /// zombie horse BODY stack. Baby horses skip it because `SimpleEquipmentLayer` supplies no baby
+    /// armor model; skeleton horses are excluded by the vanilla armor-wearer tag. The renderer owns
+    /// the `HORSE_BODY` layer lookup.
     #[serde(default)]
     pub equine_body_equipment_asset: Option<EquipmentAssetId>,
-    #[serde(default)]
-    pub equine_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult horse or zombie horse's `HORSE_BODY`
     /// equipment layer. Native resolves the `trims/entity/horse_body` sprite at the atlas boundary.
     #[serde(default)]
     pub equine_body_armor_trim: Option<ArmorTrimSprite>,
     /// Vanilla `DyedItemColor` for leather horse armor in the body slot: a packed RGB dye carried
-    /// alongside [`Self::equine_body_armor`]. Non-leather horse armor ignores it; undyed leather uses
-    /// the vanilla leather default color in the renderer.
+    /// alongside the generation-local equipment asset.
     #[serde(default)]
     pub equine_body_armor_dye: Option<i32>,
     /// Vanilla `ItemStack.hasFoil()` for the horse body armor item. `EquipmentLayerRenderer`
@@ -2777,8 +2754,6 @@ entity_model_source_state! {
     /// `STRIDER_SADDLE` asset layers.
     #[serde(default)]
     pub strider_saddle_dye: Option<i32>,
-    #[serde(default)]
-    pub strider_saddle: bool,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult strider's `STRIDER_SADDLE` equipment layer.
     #[serde(default)]
     pub strider_saddle_trim: Option<ArmorTrimSprite>,
@@ -2794,8 +2769,6 @@ entity_model_source_state! {
     /// `CAMEL_SADDLE` / `CAMEL_HUSK_SADDLE` asset layers.
     #[serde(default)]
     pub camel_saddle_dye: Option<i32>,
-    #[serde(default)]
-    pub camel_saddle: bool,
     /// Vanilla armor-trim sprite for a camel's family-specific `CAMEL*_SADDLE` equipment layer.
     #[serde(default)]
     pub camel_saddle_trim: Option<ArmorTrimSprite>,
@@ -2815,8 +2788,6 @@ entity_model_source_state! {
     /// `NAUTILUS_SADDLE` asset layers.
     #[serde(default)]
     pub nautilus_saddle_dye: Option<i32>,
-    #[serde(default)]
-    pub nautilus_saddle: bool,
     /// Vanilla armor-trim sprite for the adult `NAUTILUS_SADDLE` equipment layer.
     #[serde(default)]
     pub nautilus_saddle_trim: Option<ArmorTrimSprite>,
@@ -2827,17 +2798,14 @@ entity_model_source_state! {
     /// this independently of asset recognition to squeeze its body subtree to 0.9375.
     #[serde(default)]
     pub happy_ghast_body_item: bool,
-    /// Effective BODY-stack equipment asset, independent of the legacy
-    /// vanilla harness-color classification.
+    /// Effective BODY-stack equipment asset. The renderer owns the `HAPPY_GHAST_BODY` layer lookup;
+    /// this identity is independent of the synchronized harness-tag gameplay fact below.
     #[serde(default)]
     pub happy_ghast_body_equipment_asset: Option<EquipmentAssetId>,
     /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
     /// `HAPPY_GHAST_BODY` asset layers.
     #[serde(default)]
     pub happy_ghast_harness_dye: Option<i32>,
-    /// Recognized vanilla happy-ghast harness color derived from the BODY item's equipment asset.
-    #[serde(default)]
-    pub happy_ghast_harness: Option<HappyGhastHarnessColor>,
     /// Vanilla armor-trim sprite for the harness `HAPPY_GHAST_BODY` layer.
     #[serde(default)]
     pub happy_ghast_harness_trim: Option<ArmorTrimSprite>,
@@ -2885,17 +2853,15 @@ entity_model_source_state! {
     /// distance, interpolated flight history). `None` for every non-dragon.
     #[serde(default)]
     pub ender_dragon_animation: Option<EnderDragonAnimationSource>,
-    /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
-    /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
-    /// built-in trader decor in the renderer when this is `None`.
+    /// Vanilla `LlamaRenderState.bodyItem`: the effective equipment asset from an adult
+    /// llama/trader-llama BODY stack. Baby llamas ignore body items for the decor layer; trader llamas
+    /// still get their built-in decor in the renderer when the stack is empty.
     #[serde(default)]
     pub llama_body_equipment_asset: Option<EquipmentAssetId>,
     /// Packed `DyedItemColor` on the BODY stack, consumed only by dyeable
     /// `LLAMA_BODY` asset layers.
     #[serde(default)]
     pub llama_body_decor_dye: Option<i32>,
-    #[serde(default)]
-    pub llama_body_decor: Option<LlamaBodyDecorColor>,
     /// Vanilla `ArmorTrim.layerAssetId` for an adult carpet item's `LLAMA_BODY` equipment layer.
     /// Trader-llama built-in decor uses `ItemStack.EMPTY` and therefore has no trim.
     #[serde(default)]
@@ -2904,9 +2870,10 @@ entity_model_source_state! {
     /// decor and baby decor use no item foil.
     #[serde(default)]
     pub llama_body_decor_foil: bool,
-    /// Vanilla `NautilusRenderState.bodyArmorItem`: an adult living nautilus / zombie nautilus body
-    /// equipment item whose equipment asset has a `nautilus_body` layer. Baby living nautilus skip it
-    /// because `SimpleEquipmentLayer` supplies no baby armor model.
+    /// Vanilla `NautilusRenderState.bodyArmorItem`: the effective equipment asset of an adult living
+    /// nautilus / zombie nautilus BODY stack. Baby living nautilus skip it because
+    /// `SimpleEquipmentLayer` supplies no baby armor model; the renderer owns the `NAUTILUS_BODY`
+    /// layer lookup.
     #[serde(default)]
     pub nautilus_body_equipment_asset: Option<EquipmentAssetId>,
     /// Vanilla `NautilusRenderState.bodyArmorItem.isEmpty()`, projected independently of equipment
@@ -2918,8 +2885,6 @@ entity_model_source_state! {
     /// `NAUTILUS_BODY` asset layers.
     #[serde(default)]
     pub nautilus_body_armor_dye: Option<i32>,
-    #[serde(default)]
-    pub nautilus_body_armor: Option<ArmorMaterialKind>,
     /// Vanilla `ArmorTrim.layerAssetId` for the `NAUTILUS_BODY` equipment layer. Native resolves
     /// the `trims/entity/nautilus_body` sprite through the shared runtime trim atlas.
     #[serde(default)]
@@ -3026,97 +2991,6 @@ impl EntityAttachmentFace {
     }
 }
 
-/// Vanilla `DyeColor` carried by `Equippable.llamaSwag(color)` carpet body items. The renderer maps
-/// this to `textures/entity/equipment/llama_body/<color>.png`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum LlamaBodyDecorColor {
-    White,
-    Orange,
-    Magenta,
-    LightBlue,
-    Yellow,
-    Lime,
-    Pink,
-    Gray,
-    LightGray,
-    Cyan,
-    Purple,
-    Blue,
-    Brown,
-    Green,
-    Red,
-    Black,
-}
-
-/// Vanilla `DyeColor` encoded by the sixteen `EquipmentAssets.HARNESSES` body-equipment assets.
-/// The renderer uses the color to select
-/// `textures/entity/equipment/happy_ghast_body/<color>_harness.png`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum HappyGhastHarnessColor {
-    White,
-    Orange,
-    Magenta,
-    LightBlue,
-    Yellow,
-    Lime,
-    Pink,
-    Gray,
-    LightGray,
-    Cyan,
-    Purple,
-    Blue,
-    Brown,
-    Green,
-    Red,
-    Black,
-}
-
-impl HappyGhastHarnessColor {
-    pub(crate) const fn equipment_asset_id(self) -> &'static str {
-        match self {
-            Self::White => "minecraft:white_harness",
-            Self::Orange => "minecraft:orange_harness",
-            Self::Magenta => "minecraft:magenta_harness",
-            Self::LightBlue => "minecraft:light_blue_harness",
-            Self::Yellow => "minecraft:yellow_harness",
-            Self::Lime => "minecraft:lime_harness",
-            Self::Pink => "minecraft:pink_harness",
-            Self::Gray => "minecraft:gray_harness",
-            Self::LightGray => "minecraft:light_gray_harness",
-            Self::Cyan => "minecraft:cyan_harness",
-            Self::Purple => "minecraft:purple_harness",
-            Self::Blue => "minecraft:blue_harness",
-            Self::Brown => "minecraft:brown_harness",
-            Self::Green => "minecraft:green_harness",
-            Self::Red => "minecraft:red_harness",
-            Self::Black => "minecraft:black_harness",
-        }
-    }
-}
-
-impl LlamaBodyDecorColor {
-    pub(crate) const fn equipment_asset_id(self) -> &'static str {
-        match self {
-            Self::White => "minecraft:white_carpet",
-            Self::Orange => "minecraft:orange_carpet",
-            Self::Magenta => "minecraft:magenta_carpet",
-            Self::LightBlue => "minecraft:light_blue_carpet",
-            Self::Yellow => "minecraft:yellow_carpet",
-            Self::Lime => "minecraft:lime_carpet",
-            Self::Pink => "minecraft:pink_carpet",
-            Self::Gray => "minecraft:gray_carpet",
-            Self::LightGray => "minecraft:light_gray_carpet",
-            Self::Cyan => "minecraft:cyan_carpet",
-            Self::Purple => "minecraft:purple_carpet",
-            Self::Blue => "minecraft:blue_carpet",
-            Self::Brown => "minecraft:brown_carpet",
-            Self::Green => "minecraft:green_carpet",
-            Self::Red => "minecraft:red_carpet",
-            Self::Black => "minecraft:black_carpet",
-        }
-    }
-}
-
 /// Compact identity for one selected resource generation's `equipment/*.json`
 /// asset. The native resource owner replaces the complete name/id table on
 /// reload, so the index is never reused without also changing `generation`.
@@ -3129,56 +3003,6 @@ pub struct EquipmentAssetId {
 impl EquipmentAssetId {
     pub const fn new(generation: u64, index: u32) -> Self {
         Self { generation, index }
-    }
-}
-
-/// A humanoid armor equipment-asset material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`),
-/// resolved from a worn armor item's registry id. Mirrors the renderer's `EntityArmorMaterial`; the
-/// native projection maps between the two.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ArmorMaterialKind {
-    Leather,
-    Copper,
-    Chainmail,
-    Iron,
-    Gold,
-    Diamond,
-    TurtleScute,
-    Netherite,
-    ArmadilloScute,
-}
-
-impl ArmorMaterialKind {
-    /// Parses the vanilla equipment-asset name (`bbb_pack` `ItemRegistryCatalog::humanoid_armor_asset`,
-    /// the lowercased `ArmorMaterials.<MAT>` name) into a material kind.
-    pub fn from_equipment_asset(asset: &str) -> Option<Self> {
-        Some(match asset {
-            "leather" => Self::Leather,
-            "copper" => Self::Copper,
-            "chainmail" => Self::Chainmail,
-            "iron" => Self::Iron,
-            "gold" => Self::Gold,
-            "diamond" => Self::Diamond,
-            "turtle_scute" => Self::TurtleScute,
-            "netherite" => Self::Netherite,
-            "armadillo_scute" => Self::ArmadilloScute,
-            _ => return None,
-        })
-    }
-
-    /// The vanilla equipment-asset registry key consumed by armor-trim material overrides.
-    pub const fn equipment_asset_id(self) -> &'static str {
-        match self {
-            Self::Leather => "minecraft:leather",
-            Self::Copper => "minecraft:copper",
-            Self::Chainmail => "minecraft:chainmail",
-            Self::Iron => "minecraft:iron",
-            Self::Gold => "minecraft:gold",
-            Self::Diamond => "minecraft:diamond",
-            Self::TurtleScute => "minecraft:turtle_scute",
-            Self::Netherite => "minecraft:netherite",
-            Self::ArmadilloScute => "minecraft:armadillo_scute",
-        }
     }
 }
 
@@ -4385,14 +4209,7 @@ impl WorldStore {
             &self.items.default_item_equipment_assets,
             self.items.equipment_asset_generation,
             &self.items.equipment_asset_names,
-            &self.items.default_item_armor_materials,
-            &self.items.default_item_wings_equipment_assets,
             &self.items.default_item_equipment_slots,
-            &self.items.default_llama_body_decor_colors,
-            &self.items.default_happy_ghast_harness_colors,
-            &self.items.default_nautilus_body_armor_materials,
-            &self.items.default_horse_body_armor_materials,
-            &self.items.default_wolf_body_armor_materials,
         )?;
         source.light = vanilla_entity_renderer_block_light(
             source.entity_type_id,

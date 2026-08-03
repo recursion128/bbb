@@ -1004,7 +1004,12 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
             self.dynamic_player_skin_atlas,
         );
-        render_player_cape_layer(self.meshes, *instance, self.dynamic_player_texture_atlas);
+        render_player_cape_layer(
+            self.meshes,
+            *instance,
+            self.equipment_assets,
+            self.dynamic_player_texture_atlas,
+        );
     }
 
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {

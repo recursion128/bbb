@@ -4001,67 +4001,11 @@ impl WorldStore {
             .set_default_item_equipment_assets(generation, asset_names, item_assets)
     }
 
-    /// Installs the item id → humanoid armor material table (from the item registry), used to project
-    /// worn armor onto entity render sources for the `HumanoidArmorLayer` overlay.
-    pub fn set_item_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.items.set_item_armor_materials(armor_materials)
-    }
-
-    pub fn set_default_item_wings_equipment_assets(
-        &mut self,
-        equipment_assets: BTreeMap<i32, String>,
-    ) {
-        self.items
-            .set_default_item_wings_equipment_assets(equipment_assets)
-    }
-
     pub fn set_default_mount_body_armor_kinds(
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     ) {
         self.items.set_default_mount_body_armor_kinds(armor_kinds)
-    }
-
-    pub fn set_default_llama_body_decor_colors(
-        &mut self,
-        decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
-    ) {
-        self.items.set_default_llama_body_decor_colors(decor_colors)
-    }
-
-    pub fn set_default_happy_ghast_harness_colors(
-        &mut self,
-        harness_colors: BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
-    ) {
-        self.items
-            .set_default_happy_ghast_harness_colors(harness_colors)
-    }
-
-    pub fn set_default_nautilus_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.items
-            .set_default_nautilus_body_armor_materials(armor_materials)
-    }
-
-    pub fn set_default_horse_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.items
-            .set_default_horse_body_armor_materials(armor_materials)
-    }
-
-    pub fn set_default_wolf_body_armor_materials(
-        &mut self,
-        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
-    ) {
-        self.items
-            .set_default_wolf_body_armor_materials(armor_materials)
     }
 
     pub fn build_container_click_slot(

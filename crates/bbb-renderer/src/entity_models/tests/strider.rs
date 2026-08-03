@@ -422,9 +422,8 @@ fn strider_saddle_layer_renders_for_adults_only() {
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let saddled_instance = adult
-        .with_strider_saddle(true)
-        .with_strider_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let saddled_instance =
+        adult.with_strider_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
@@ -486,7 +485,6 @@ fn strider_saddle_layer_renders_for_adults_only() {
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_strider_saddle(true)
         .with_strider_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 1);
@@ -523,7 +521,6 @@ fn strider_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_strider_saddle(true)
         .with_strider_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
@@ -588,7 +585,6 @@ fn strider_saddle_foil_and_trim_follow_the_base_equipment_layer() {
     .0;
     let trimmed_saddle = |entity_id, baby| {
         EntityModelInstance::strider(entity_id, [0.0, 64.0, 0.0], 0.0, baby, false)
-            .with_strider_saddle(true)
             .with_strider_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
             .with_strider_saddle_foil(true)
             .with_strider_saddle_trim(Some(EntityArmorTrim {

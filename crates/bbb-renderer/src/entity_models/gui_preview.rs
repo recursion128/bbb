@@ -1067,8 +1067,7 @@ mod tests {
         DRAGON_FIREBALL_TEXTURE_REF,
     };
     use super::super::{
-        EntityArmorMaterial, EntityEquipmentLayerType, EntityModelTextureImage,
-        DEFAULT_ARMOR_STAND_MODEL_POSE,
+        EntityEquipmentLayerType, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     use super::*;
     use bbb_render_types::EntityEquipmentAssetId;
@@ -1685,7 +1684,6 @@ mod tests {
                 .collect();
         let atlas = build_entity_model_texture_atlas(&images).expect("atlas").0;
         let mut instance = armor_stand_preview_instance();
-        instance.render_state.chest_armor = Some(EntityArmorMaterial::Iron);
         instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
             TEST_PREVIEW_EQUIPMENT_GENERATION,
             0,
@@ -1727,7 +1725,6 @@ mod tests {
         .expect("dynamic trim atlas")
         .0;
         let mut instance = armor_stand_preview_instance();
-        instance.render_state.chest_armor = Some(EntityArmorMaterial::Iron);
         instance.render_state.chest_equipment_asset = Some(EntityEquipmentAssetId::new(
             TEST_PREVIEW_EQUIPMENT_GENERATION,
             0,

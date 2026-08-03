@@ -28,21 +28,20 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CameraFrustum, CameraPose, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
     CowModelVariant, DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonAnimationRenderState,
-    EnderDragonBeamRenderState, EnderDragonFlightSample, EntityArmorMaterial, EntityArmorTrim,
-    EntityAttachmentFace, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor,
-    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityDynamicTexture,
-    EntityEquipmentAssetId, EntityEquipmentLayerTexture, EntityLeashRopesRenderState,
-    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, GuardianEyeTrackingRenderState, HoglinModelFamily, HorseColorVariant,
-    HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LeashRopeRenderState, LlamaModelFamily,
-    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-    SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint,
-    SelectionTextLabel, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose,
-    SpearKineticWeapon, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfArmorCrackiness,
-    WolfModelVariant, ZombieNautilusModelVariant, ZombieVariantModelFamily,
-    ENTITY_DEFAULT_OUTLINE_COLOR,
+    EnderDragonBeamRenderState, EnderDragonFlightSample, EntityArmorTrim, EntityAttachmentFace,
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
+    EntityDynamicPlayerTextureKind, EntityDynamicTexture, EntityEquipmentAssetId,
+    EntityLeashRopesRenderState, EntityModelInstance, EntityModelKind, EntityPlayerSkin,
+    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, GuardianEyeTrackingRenderState,
+    HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness,
+    LeashRopeRenderState, LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant,
+    ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionColoredBox, SelectionLine,
+    SelectionOutline, SelectionPoint, SelectionTextLabel, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, SpearKineticWeapon, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
+    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieNautilusModelVariant,
+    ZombieVariantModelFamily, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -102,8 +101,7 @@ use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_renderer_culling_kind, vanilla_entity_type_illager_arm_pose_uses_celebrating,
-    vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
-    ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation,
+    vanilla_entity_type_is_living, ArmorTrimSprite as WorldArmorTrimSprite, CatVariantPresentation,
     DisplayEntityRenderSourceState, EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonAnimationSource as WorldEnderDragonAnimationSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
@@ -114,8 +112,7 @@ use bbb_world::{
     FarmAnimalVariantPresentation, FishingHookRenderSourceState, FrogVariantPresentation,
     GuardianBeamSource as WorldGuardianBeamSource,
     GuardianEyeTrackingSource as WorldGuardianEyeTrackingSource,
-    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
-    LeashRopeSource as WorldLeashRopeSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    ItemFrameFacing as WorldItemFrameFacing, LeashRopeSource as WorldLeashRopeSource,
     VanillaArmorStandMetadataAccessors, VanillaEntityRendererCullingKind,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
@@ -1311,7 +1308,6 @@ mod kind;
 mod painting;
 mod variants;
 
-pub(crate) use entity_data::armor_material;
 use entity_data::*;
 #[cfg(test)]
 pub(crate) use hands::PIGLIN_LOVED_ITEM_TAG;

@@ -77,6 +77,61 @@ fn production_equipment_rendering_has_no_static_compatibility_resolver() {
             include_str!("../model_layers/textures/equine.rs"),
         ),
         ("textured/layers.rs", include_str!("../textured/layers.rs")),
+        ("catalog.rs", include_str!("../catalog.rs")),
+        ("instances.rs", include_str!("../instances.rs")),
+        ("renderer exports.rs", include_str!("../../exports.rs")),
+        (
+            "render-types entity_textures.rs",
+            include_str!("../../../../bbb-render-types/src/entity_textures.rs"),
+        ),
+        (
+            "item-model item_runtime.rs",
+            include_str!("../../../../bbb-item-model/src/item_runtime.rs"),
+        ),
+        (
+            "item-model item_runtime/tables.rs",
+            include_str!("../../../../bbb-item-model/src/item_runtime/tables.rs"),
+        ),
+        (
+            "pack item_registry.rs",
+            include_str!("../../../../bbb-pack/src/item_registry.rs"),
+        ),
+        (
+            "world item_profiles.rs",
+            include_str!("../../../../bbb-world/src/item_profiles.rs"),
+        ),
+        (
+            "world entities.rs",
+            include_str!("../../../../bbb-world/src/entities.rs"),
+        ),
+        (
+            "world entities/state.rs",
+            include_str!("../../../../bbb-world/src/entities/state.rs"),
+        ),
+        (
+            "world entities/store.rs",
+            include_str!("../../../../bbb-world/src/entities/store.rs"),
+        ),
+        (
+            "world client/inventory.rs",
+            include_str!("../../../../bbb-world/src/client/inventory.rs"),
+        ),
+        (
+            "native resource_reload.rs",
+            include_str!("../../../../bbb-native/src/resource_reload.rs"),
+        ),
+        (
+            "native entity_scene.rs",
+            include_str!("../../../../bbb-native/src/entity_scene.rs"),
+        ),
+        (
+            "native entity_scene/instance.rs",
+            include_str!("../../../../bbb-native/src/entity_scene/instance.rs"),
+        ),
+        (
+            "native entity_scene/variants.rs",
+            include_str!("../../../../bbb-native/src/entity_scene/variants.rs"),
+        ),
     ];
     let forbidden = [
         "legacy_static_fallback",
@@ -90,6 +145,31 @@ fn production_equipment_rendering_has_no_static_compatibility_resolver() {
         "fn nautilus_body_armor_texture_ref",
         "fn humanoid_armor_layer_pass",
         "fn wings_layer_pass",
+        "ArmorMaterialKind",
+        "EntityArmorMaterial",
+        "EntityEquipmentLayerTexture",
+        "LlamaBodyDecorColor",
+        "HappyGhastHarnessColor",
+        "default_item_armor_materials",
+        "default_item_wings_equipment_assets",
+        "humanoid_armor_assets",
+        "mount_body_armor_assets",
+        "pub fn humanoid_armor_asset(",
+        "pub fn mount_body_armor_asset(",
+        "default_llama_body_decor_colors",
+        "default_happy_ghast_harness_colors",
+        "default_nautilus_body_armor_materials",
+        "default_horse_body_armor_materials",
+        "default_wolf_body_armor_materials",
+        "item_has_humanoid_armor_asset",
+        "item_equipment_asset_has_wings_layer",
+        "item_equipment_asset_has_humanoid_layer",
+        "item_equipment_wings_layer",
+        "item_wings_equipment_assets_by_protocol_id",
+        "equipment_asset_names.is_empty()",
+        "chest_equipment_has_wings",
+        "chest_equipment_has_humanoid",
+        "chest_wings_layer",
     ];
     for (path, source) in production_sources {
         for symbol in forbidden {
@@ -118,8 +198,7 @@ fn resolved_empty_catalog_does_not_enable_legacy_static_equipment() {
             0.0,
             PigModelVariant::Temperate,
             false,
-        )
-        .with_pig_saddle(true),
+        ),
         &[],
         &equipment_assets,
         None,

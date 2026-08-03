@@ -16,9 +16,8 @@ use bbb_pack::{
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
 use bbb_world::{
-    ArmorMaterialKind, CartographyAdditionalItemKind, EquipmentAssetId as WorldEquipmentAssetId,
-    FurnaceFuelRule, HappyGhastHarnessColor, ItemAttackRange, ItemEquipmentSlot,
-    ItemFoodProperties, ItemUseEffects, LlamaBodyDecorColor, MountArmorSlotKind,
+    CartographyAdditionalItemKind, EquipmentAssetId as WorldEquipmentAssetId, FurnaceFuelRule,
+    ItemAttackRange, ItemEquipmentSlot, ItemFoodProperties, ItemUseEffects, MountArmorSlotKind,
     WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile, WorldStore,
 };
 
@@ -633,14 +632,7 @@ pub(crate) struct ItemRuntimeWorldDefaults {
     equipment_asset_generation: u64,
     equipment_asset_names: Vec<String>,
     equipment_assets: BTreeMap<i32, WorldEquipmentAssetId>,
-    armor_materials: BTreeMap<i32, ArmorMaterialKind>,
-    wings_equipment_assets: BTreeMap<i32, String>,
     mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
-    llama_body_decor_colors: BTreeMap<i32, LlamaBodyDecorColor>,
-    happy_ghast_harness_colors: BTreeMap<i32, HappyGhastHarnessColor>,
-    nautilus_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
-    horse_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
-    wolf_body_armor_materials: BTreeMap<i32, ArmorMaterialKind>,
     attack_ranges: BTreeMap<i32, ItemAttackRange>,
     minimum_attack_charges: BTreeMap<i32, f32>,
     swing_animations: BTreeMap<i32, bbb_protocol::packets::SwingAnimationSummary>,
@@ -723,14 +715,7 @@ impl ItemRuntimeWorldDefaults {
                     )
                 })
                 .collect(),
-            armor_materials: items.item_armor_materials_by_protocol_id(),
-            wings_equipment_assets: items.item_wings_equipment_assets_by_protocol_id(),
             mount_body_armor_kinds: items.mount_body_armor_kinds_by_protocol_id(),
-            llama_body_decor_colors: items.llama_body_decor_colors_by_protocol_id(),
-            happy_ghast_harness_colors: items.happy_ghast_harness_colors_by_protocol_id(),
-            nautilus_body_armor_materials: items.nautilus_body_armor_materials_by_protocol_id(),
-            horse_body_armor_materials: items.horse_body_armor_materials_by_protocol_id(),
-            wolf_body_armor_materials: items.wolf_body_armor_materials_by_protocol_id(),
             attack_ranges: items.item_attack_ranges_by_protocol_id(),
             minimum_attack_charges: items.item_minimum_attack_charges_by_protocol_id(),
             swing_animations: items.item_swing_animations_by_protocol_id(),
@@ -782,14 +767,7 @@ impl ItemRuntimeWorldDefaults {
             self.equipment_asset_names,
             self.equipment_assets,
         );
-        world.set_item_armor_materials(self.armor_materials);
-        world.set_default_item_wings_equipment_assets(self.wings_equipment_assets);
         world.set_default_mount_body_armor_kinds(self.mount_body_armor_kinds);
-        world.set_default_llama_body_decor_colors(self.llama_body_decor_colors);
-        world.set_default_happy_ghast_harness_colors(self.happy_ghast_harness_colors);
-        world.set_default_nautilus_body_armor_materials(self.nautilus_body_armor_materials);
-        world.set_default_horse_body_armor_materials(self.horse_body_armor_materials);
-        world.set_default_wolf_body_armor_materials(self.wolf_body_armor_materials);
         world.set_default_item_attack_ranges(self.attack_ranges);
         world.set_default_item_minimum_attack_charges(self.minimum_attack_charges);
         world.set_default_item_swing_animations(self.swing_animations);

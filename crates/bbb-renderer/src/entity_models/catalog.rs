@@ -29,9 +29,8 @@ pub(in crate::entity_models) use selection::{
 pub use bbb_render_types::{
     EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityDynamicTexture, EntityEquipmentAssetId, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
-    VanillaDyeColor as SheepWoolColor,
+    EntityDynamicTexture, EntityEquipmentAssetId, EntityModelTextureRef, EntityPlayerSkin,
+    EntityPlayerSkinModel, VanillaDyeColor as SheepWoolColor,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -986,22 +985,6 @@ pub enum HorseMarkings {
 pub enum CamelModelFamily {
     Camel,
     CamelHusk,
-}
-
-/// A humanoid armor material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`), selecting the
-/// `HumanoidArmorLayer` equipment-asset textures. Projected per slot onto the entity render state from
-/// the worn item's armor material; `TurtleScute` only ever fills the head slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EntityArmorMaterial {
-    Leather,
-    Copper,
-    Chainmail,
-    Iron,
-    Gold,
-    Diamond,
-    TurtleScute,
-    Netherite,
-    ArmadilloScute,
 }
 
 /// Vanilla `Crackiness.Level` for wolf armor (`Crackiness.WOLF_ARMOR.byDamage`): selected by the

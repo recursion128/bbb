@@ -262,14 +262,7 @@ fn entity_model_sources_project_ender_dragon_death_time() {
                 &store.items.default_item_equipment_assets,
                 store.items.equipment_asset_generation,
                 &store.items.equipment_asset_names,
-                &store.items.default_item_armor_materials,
-                &store.items.default_item_wings_equipment_assets,
                 &store.items.default_item_equipment_slots,
-                &store.items.default_llama_body_decor_colors,
-                &store.items.default_happy_ghast_harness_colors,
-                &store.items.default_nautilus_body_armor_materials,
-                &store.items.default_horse_body_armor_materials,
-                &store.items.default_wolf_body_armor_materials,
             )
             .unwrap()
     };

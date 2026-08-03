@@ -2071,9 +2071,8 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     assert_equine_submissions_match_vanilla(&bare_meshes, base);
     let bare = &bare_meshes.cutout;
     assert_textured_vertices_match_submission(&bare.vertices, bare_meshes.submissions[0]);
-    let saddled_instance = base
-        .with_equine_saddle(true)
-        .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let saddled_instance =
+        base.with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_equine_submissions_match_vanilla(&saddled_meshes, saddled_instance);
     let saddled = &saddled_meshes.cutout;
@@ -2117,7 +2116,6 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     assert!(saddle_max[0] > bare_max[0]);
 
     let ridden_instance = base
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_equine_saddle_ridden(true);
     let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
@@ -2138,7 +2136,6 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
         .with_light_coords((7_u32 << 4) | (9_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_equine_saddle_ridden(true);
     let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
@@ -2159,7 +2156,6 @@ fn horse_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
@@ -2228,16 +2224,12 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     let bare = &bare_meshes.cutout;
     assert_textured_vertices_match_submission(&bare.vertices, bare_meshes.submissions[0]);
     let iron_meshes = entity_model_textured_meshes(
-        &[horse
-            .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
-            .with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()))],
+        &[horse.with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()))],
         &atlas,
     );
     assert_equine_submissions_match_vanilla(
         &iron_meshes,
-        horse
-            .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
-            .with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id())),
+        horse.with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id())),
     );
     let iron = &iron_meshes.cutout;
     let iron_armor = &iron_meshes.armor_cutout;
@@ -2283,9 +2275,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert!(first_armor_vertex[1] <= iron_uv.max[1]);
 
     let armored_saddled = horse
-        .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
         .with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()))
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let armored_saddled_meshes = entity_model_textured_meshes(&[armored_saddled], &atlas);
     assert_equine_submissions_match_vanilla(&armored_saddled_meshes, armored_saddled);
@@ -2340,7 +2330,6 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     ];
     let leather_meshes = entity_model_textured_meshes(
         &[horse
-            .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
             .with_equine_body_equipment_asset(Some(test_leather_equipment_asset_id()))
             .with_equine_body_armor_dye(Some(dye))],
         &atlas,
@@ -2348,7 +2337,6 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert_equine_submissions_match_vanilla(
         &leather_meshes,
         horse
-            .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
             .with_equine_body_equipment_asset(Some(test_leather_equipment_asset_id()))
             .with_equine_body_armor_dye(Some(dye)),
     );
@@ -2416,9 +2404,8 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     let baby_bare_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_equine_submissions_match_vanilla(&baby_bare_meshes, baby);
     let baby_bare = &baby_bare_meshes.cutout;
-    let baby_armored_instance = baby
-        .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
-        .with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()));
+    let baby_armored_instance =
+        baby.with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()));
     let baby_armored_meshes = entity_model_textured_meshes(&[baby_armored_instance], &atlas);
     assert_equine_submissions_match_vanilla(&baby_armored_meshes, baby_armored_instance);
     let baby_armored = &baby_armored_meshes.cutout;
@@ -2445,9 +2432,8 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         &zombie_bare.vertices,
         zombie_bare_meshes.submissions[0],
     );
-    let zombie_armored_instance = zombie
-        .with_equine_body_armor(Some(EntityArmorMaterial::Netherite))
-        .with_equine_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
+    let zombie_armored_instance =
+        zombie.with_equine_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
     let zombie_armored_meshes = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_armored_meshes, zombie_armored_instance);
     let zombie_armored = &zombie_armored_meshes.cutout;
@@ -2482,9 +2468,8 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         &skeleton_bare.vertices,
         skeleton_bare_meshes.submissions[0],
     );
-    let skeleton_armored_instance = skeleton
-        .with_equine_body_armor(Some(EntityArmorMaterial::Netherite))
-        .with_equine_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
+    let skeleton_armored_instance =
+        skeleton.with_equine_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
     let skeleton_armored_meshes =
         entity_model_textured_meshes(&[skeleton_armored_instance], &atlas);
     assert_equine_submissions_match_vanilla(&skeleton_armored_meshes, skeleton_armored_instance);
@@ -2497,7 +2482,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert!(skeleton_armored_meshes.armor_cutout.vertices.is_empty());
 
     let invalid_material_instance =
-        horse.with_equine_body_armor(Some(EntityArmorMaterial::Chainmail));
+        horse.with_equine_body_equipment_asset(Some(test_equipment_asset_id(u32::MAX)));
     let invalid_material_meshes =
         entity_model_textured_meshes(&[invalid_material_instance], &atlas);
     assert_equine_submissions_match_vanilla(&invalid_material_meshes, invalid_material_instance);
@@ -2532,7 +2517,6 @@ fn horse_body_armor_trim_follows_foil_and_precedes_saddle() {
     .0;
     let dye = 0x0033_66CC;
     let horse = EntityModelInstance::horse(186, [0.0, 64.0, 0.0], 0.0, false)
-        .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
         .with_equine_body_equipment_asset(Some(test_leather_equipment_asset_id()))
         .with_equine_body_armor_dye(Some(dye))
         .with_equine_body_armor_foil(true)
@@ -2540,7 +2524,6 @@ fn horse_body_armor_trim_follows_foil_and_precedes_saddle() {
             texture: trim_texture,
             decal: false,
         }))
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
@@ -2608,14 +2591,12 @@ fn horse_body_armor_trim_follows_foil_and_precedes_saddle() {
     );
 
     let baby = EntityModelInstance::horse(187, [0.0, 64.0, 0.0], 0.0, true)
-        .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
         .with_equine_body_equipment_asset(Some(test_leather_equipment_asset_id()))
         .with_equine_body_armor_foil(true)
         .with_equine_body_armor_trim(Some(EntityArmorTrim {
             texture: trim_texture,
             decal: false,
         }))
-        .with_equine_saddle(true)
         .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[baby],
@@ -2640,7 +2621,6 @@ fn horse_body_armor_submission_survives_missing_texture_atlas_entry() {
         .with_light_coords((4_u32 << 4) | (12_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
         .with_equine_body_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[horse], &atlas);
@@ -2703,7 +2683,6 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_equine_saddle(true)
     .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
     assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
@@ -2751,7 +2730,6 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_equine_saddle(true)
     .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
     assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
@@ -2786,7 +2764,6 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_equine_saddle(true)
     .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let skeleton_meshes = entity_model_textured_meshes(&[skeleton_instance], &atlas);
     assert_equine_submissions_match_vanilla(&skeleton_meshes, skeleton_instance);
@@ -2801,7 +2778,6 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_equine_saddle(true)
     .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let zombie_meshes = entity_model_textured_meshes(&[zombie_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_meshes, zombie_instance);
@@ -2941,7 +2917,6 @@ fn equine_saddle_foil_and_trim_keep_family_models_and_vanilla_order() {
 
     for (instance, saddle_texture, base_order, base_sequence, vertex_count) in cases {
         let instance = instance
-            .with_equine_saddle(true)
             .with_equine_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
             .with_equine_saddle_foil(true)
             .with_equine_saddle_trim(trim);
@@ -3424,7 +3399,12 @@ fn assert_equine_submissions_match_vanilla(
             } else {
                 push_expected_equine_body_armor_submits(&mut expected, instance, transform, 2, 2)
             };
-            if instance.render_state.equine_saddle && !baby {
+            if instance
+                .render_state
+                .equine_saddle_equipment_asset
+                .is_some()
+                && !baby
+            {
                 push_expected_equine_submit(
                     &mut expected,
                     EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -3455,7 +3435,12 @@ fn assert_equine_submissions_match_vanilla(
                 0,
                 0,
             );
-            if instance.render_state.equine_saddle && !baby {
+            if instance
+                .render_state
+                .equine_saddle_equipment_asset
+                .is_some()
+                && !baby
+            {
                 let texture = match family {
                     DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
                     DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
@@ -3487,7 +3472,12 @@ fn assert_equine_submissions_match_vanilla(
             } else {
                 0
             };
-            if instance.render_state.equine_saddle && !baby {
+            if instance
+                .render_state
+                .equine_saddle_equipment_asset
+                .is_some()
+                && !baby
+            {
                 let texture = match family {
                     UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
                     UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,

@@ -437,9 +437,8 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
             .with_white_overlay_progress(0.8)
             .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let saddled_instance = adult
-        .with_camel_saddle(true)
-        .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let saddled_instance =
+        adult.with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_camel_submissions_match_vanilla(&bare_meshes, adult);
     assert_camel_submissions_match_vanilla(&saddled_meshes, saddled_instance);
@@ -469,7 +468,6 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     assert_eq!(saddled_meshes.armor_cutout.vertices.len(), 480);
 
     let ridden_instance = adult
-        .with_camel_saddle(true)
         .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_camel_saddle_ridden(true);
     let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
@@ -501,7 +499,6 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
             .with_light_coords((5_u32 << 4) | (11_u32 << 20))
             .with_white_overlay_progress(0.8)
             .with_has_red_overlay(true)
-            .with_camel_saddle(true)
             .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
             .with_camel_saddle_ridden(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
@@ -523,7 +520,6 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_camel_saddle(true)
     .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let husk_meshes = entity_model_textured_meshes(&[husk], &atlas);
     assert_camel_submissions_match_vanilla(&husk_meshes, husk);
@@ -573,7 +569,6 @@ fn camel_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
             .with_light_coords((5_u32 << 4) | (11_u32 << 20))
             .with_white_overlay_progress(0.8)
             .with_has_red_overlay(true)
-            .with_camel_saddle(true)
             .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
@@ -640,7 +635,6 @@ fn camel_saddle_foil_and_trim_use_family_specific_equipment_layers() {
     .0;
     let trimmed_saddle = |entity_id, family, baby| {
         EntityModelInstance::camel(entity_id, [0.0, 64.0, 0.0], 0.0, family, baby)
-            .with_camel_saddle(true)
             .with_camel_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
             .with_camel_saddle_foil(true)
             .with_camel_saddle_trim(Some(EntityArmorTrim {
@@ -1147,7 +1141,7 @@ fn assert_camel_submissions_match_vanilla(
             pass.submit_sequence,
         )
     }));
-    if instance.render_state.camel_saddle {
+    if instance.render_state.camel_saddle_equipment_asset.is_some() {
         match (family, baby) {
             (CamelModelFamily::Camel, false) => expected.push((
                 EntityModelLayerRenderType::ArmorCutoutNoCull,

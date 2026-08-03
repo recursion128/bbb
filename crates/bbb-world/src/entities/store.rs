@@ -105,30 +105,28 @@ use super::{
     calculate_view_vector, is_vanilla_abstract_nautilus_type, is_vanilla_boat_type,
     is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type, is_vanilla_minecart_type,
     is_vanilla_vehicle_entity_type, vanilla_entity_event_kind, vanilla_entity_type_is_squid,
-    AbstractArrowRuntimeState, ArmorMaterialKind, BlazeAmbientParticleState,
-    DisplayEntityRenderSourceState, EnderAmbientParticleState, EntityAbstractArrowRuntime,
-    EntityAttachmentFace, EntityAttributes, EntityBlockEffectBaseTickReset,
-    EntityBlockEffectMovement, EntityBlockEffectMovementIter, EntityBlockEffectQuery,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState, EntityCameraViewBobState,
-    EntityClientAnimationState, EntityClientAnimations, EntityClientMovementEffectState,
-    EntityClientMovementParticleState, EntityClientMovementSimpleParticleKind,
-    EntityClientMovementSimpleParticleState, EntityDamage, EntityDamageEventState, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityInterpolationCollisionInput, EntityLeash,
-    EntityLivingBrain, EntityLivingLifecycle, EntityMetadata, EntityMinecartCommandBlock,
-    EntityMinecartFurnace, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityPlayerSleep, EntityProjectileLifecycle, EntityRuntimeReferenceState,
-    EntityState, EntitySupportingBlock, EntityTransform, EntityTransformState,
-    EntityTransientEvents, EntityVec3, EquipmentAssetId, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FishingHookRenderSourceState, FoxEatParticleState, GuardianAmbientParticleState,
-    GuardianAttackParticleState, HappyGhastHarnessColor, ItemEntityStackState,
+    AbstractArrowRuntimeState, BlazeAmbientParticleState, DisplayEntityRenderSourceState,
+    EnderAmbientParticleState, EntityAbstractArrowRuntime, EntityAttachmentFace, EntityAttributes,
+    EntityBlockEffectBaseTickReset, EntityBlockEffectMovement, EntityBlockEffectMovementIter,
+    EntityBlockEffectQuery, EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityCameraViewBobState, EntityClientAnimationState, EntityClientAnimations,
+    EntityClientMovementEffectState, EntityClientMovementParticleState,
+    EntityClientMovementSimpleParticleKind, EntityClientMovementSimpleParticleState, EntityDamage,
+    EntityDamageEventState, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityInterpolationCollisionInput, EntityLeash, EntityLivingBrain, EntityLivingLifecycle,
+    EntityMetadata, EntityMinecartCommandBlock, EntityMinecartFurnace, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityPlayerSleep,
+    EntityProjectileLifecycle, EntityRuntimeReferenceState, EntityState, EntitySupportingBlock,
+    EntityTransform, EntityTransformState, EntityTransientEvents, EntityVec3, EquipmentAssetId,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FishingHookRenderSourceState, FoxEatParticleState,
+    GuardianAmbientParticleState, GuardianAttackParticleState, ItemEntityStackState,
     ItemFrameRenderState, LightningBoltRenderSourceState, LivingDeathWakeTransition,
-    LlamaBodyDecorColor, LocalPlayerAttackSwingState, MinecartDisplayBlockState,
-    OminousItemSpawnerItemState, OminousItemSpawnerParticleState, PowderSnowFlakeParticleState,
-    RavagerRoarParticleState, RavagerStunParticleState, SlimeLandingParticleState,
-    VanillaEntityBlockEffectTickPolicy, WolfArmorCrackiness,
-    VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID, VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH,
-    VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, PowderSnowFlakeParticleState, RavagerRoarParticleState,
+    RavagerStunParticleState, SlimeLandingParticleState, VanillaEntityBlockEffectTickPolicy,
+    WolfArmorCrackiness, VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID,
+    VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH, VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_LAST_OUTPUT_DATA_ID, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
@@ -457,27 +455,6 @@ fn effective_equipment_asset(
         }
     }
     default_item_assets.get(&item_id).copied()
-}
-
-fn patched_equippable_asset_for_slot<'a>(
-    item: &'a ItemStackSummary,
-    slot: ProtocolEquipmentSlot,
-) -> Option<Option<&'a str>> {
-    // Vanilla `HumanoidArmorLayer.shouldRender` requires both a matching `Equippable.slot` and an
-    // asset. The outer option distinguishes an untouched prototype component from a patch that
-    // explicitly replaces or removes it; the inner option is the resulting asset.
-    if let Some(equippable) = item.component_patch.equippable.as_ref() {
-        let slot_id = vanilla_equipment_slot_by_ordinal(slot.ordinal())?.id;
-        return Some(
-            (equippable.slot_id == slot_id)
-                .then(|| equippable.asset_id.as_deref())
-                .flatten(),
-        );
-    }
-    item.component_patch
-        .removed_type_ids
-        .contains(&VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID)
-        .then_some(None)
 }
 
 fn upsert_metadata_value(metadata: &mut EntityMetadata, value: ProtocolEntityDataValue) {
@@ -4064,14 +4041,7 @@ impl EntityStore {
         default_item_equipment_assets: &BTreeMap<i32, EquipmentAssetId>,
         equipment_asset_generation: u64,
         equipment_asset_names: &[String],
-        armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
-        wings_equipment_assets: &BTreeMap<i32, String>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
-        llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
-        happy_ghast_harness_colors: &BTreeMap<i32, HappyGhastHarnessColor>,
-        nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
-        horse_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
-        wolf_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         // Resolve the entity's storage location once and fetch every component this projection reads
@@ -4079,8 +4049,8 @@ impl EntityStore {
         // missing; optional ones stay `Option<&_>` so a bare entity resolves them to `None`.
         //
         // Vanilla `HumanoidArmorLayer` worn armor: resolve the item worn in each armor slot to its
-        // equipment-asset material. The `EntityEquipment` component holds the synced `SetEquipment`
-        // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
+        // generation-local equipment asset id. The `EntityEquipment` component holds the synced
+        // `SetEquipment` items; a bare entity or an item without an effective asset resolves to None.
         let mut query = self
             .ecs
             .query_one::<(
@@ -4130,34 +4100,17 @@ impl EntityStore {
                 armor_equipment_asset(slot)?,
             )
         };
-        let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
-            let item = armor_item(slot)?;
-            if let Some(patched_asset) = patched_equippable_asset_for_slot(item, slot) {
-                return patched_asset
-                    .and_then(|asset| asset.strip_prefix("minecraft:"))
-                    .and_then(ArmorMaterialKind::from_equipment_asset);
-            }
-            let item_id = item.item_id?;
-            armor_materials.get(&item_id).copied()
-        };
-        // Vanilla `DyedItemColor.getOrDefault`: the per-slot worn item's `dyed_color` component (a
-        // packed RGB), carried alongside the material. Only leather consumes it client-side; a slot
-        // with no equipment / no dye component resolves to None.
+        // The per-slot worn item's packed-RGB `dyed_color` component is carried beside the asset id;
+        // only catalog layers declared dyeable consume it. A slot without a dye resolves to None.
         let armor_dye = |slot: ProtocolEquipmentSlot| -> Option<i32> {
             armor_item(slot)?.component_patch.dyed_color
         };
         let armor_foil = |slot: ProtocolEquipmentSlot| -> bool {
-            (armor_equipment_asset(slot).is_some()
-                || (equipment_asset_names.is_empty() && armor_material(slot).is_some()))
+            armor_equipment_asset(slot).is_some()
                 && armor_item(slot).is_some_and(ItemStackSummary::has_foil)
         };
         let armor_trim = |slot: ProtocolEquipmentSlot| {
-            let asset_name = armor_equipment_asset_name(slot).or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| armor_material(slot).map(ArmorMaterialKind::equipment_asset_id))
-                    .flatten()
-            })?;
+            let asset_name = armor_equipment_asset_name(slot)?;
             armor_trim_sprite(
                 registries,
                 armor_item(slot)?,
@@ -4171,20 +4124,9 @@ impl EntityStore {
         };
         let chest_wings_equipment_asset = armor_item(ProtocolEquipmentSlot::Chest)
             .and_then(|item| resolved_equipment_asset(item, None));
-        let legacy_chest_wings_equipment_asset = armor_item(ProtocolEquipmentSlot::Chest)
-            .filter(|item| item.count > 0)
-            .and_then(|item| item.item_id)
-            .and_then(|item_id| wings_equipment_assets.get(&item_id));
-        let chest_wings_asset_name = chest_wings_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| legacy_chest_wings_equipment_asset.map(String::as_str))
-                    .flatten()
-            });
+        let chest_wings_asset_name = chest_wings_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let chest_wings_trim = chest_wings_asset_name.and_then(|equipment_asset| {
             armor_trim_sprite(
                 registries,
@@ -4197,30 +4139,21 @@ impl EntityStore {
             .and_then(|_| armor_item(ProtocolEquipmentSlot::Chest))
             .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
-        // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
-        // from the item equipment-slot map.
-        let saddle_slot_item = || equipment_saddle_item(equipment, equipment_slots);
-        let saddle_slot_contains_saddle_item = || saddle_slot_item().is_some();
+        // then render only through the stack's generation-local equipment asset.
         let saddle_equipment_item =
             || equipment_slot_item(equipment, ProtocolEquipmentSlot::Saddle);
         let saddle_equipment_asset =
             saddle_equipment_item().and_then(|item| resolved_equipment_asset(item, None));
         let consumer_saddle_asset =
             |enabled: bool| enabled.then_some(saddle_equipment_asset).flatten();
-        let saddle_trim = |asset: Option<EquipmentAssetId>, legacy_enabled: bool, layer| {
-            let asset_name = asset
-                .and_then(|asset| {
-                    equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-                })
-                .or_else(|| {
-                    (equipment_asset_names.is_empty() && legacy_enabled)
-                        .then_some("minecraft:saddle")
-                })?;
+        let saddle_trim = |asset: Option<EquipmentAssetId>, layer| {
+            let asset_name = asset.and_then(|asset| {
+                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+            })?;
             armor_trim_sprite(registries, saddle_equipment_item()?, asset_name, layer)
         };
-        let saddle_foil = |asset: Option<EquipmentAssetId>, legacy_enabled: bool| {
-            (asset.is_some() || (equipment_asset_names.is_empty() && legacy_enabled))
-                && saddle_equipment_item().is_some_and(ItemStackSummary::has_foil)
+        let saddle_foil = |asset: Option<EquipmentAssetId>| {
+            asset.is_some() && saddle_equipment_item().is_some_and(ItemStackSummary::has_foil)
         };
         let saddle_dye = |asset: Option<EquipmentAssetId>| {
             asset
@@ -4230,21 +4163,11 @@ impl EntityStore {
         let pig_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID;
         let pig_saddle_equipment_asset = consumer_saddle_asset(pig_saddle_type);
         let pig_saddle_dye = saddle_dye(pig_saddle_equipment_asset);
-        let pig_saddle = pig_saddle_type && saddle_slot_contains_saddle_item();
-        let pig_saddle_trim = saddle_trim(
-            pig_saddle_equipment_asset,
-            pig_saddle,
-            ArmorTrimLayer::PigSaddle,
-        );
-        let pig_saddle_foil = saddle_foil(pig_saddle_equipment_asset, pig_saddle);
-        let equine_saddle = || -> bool {
-            vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id)
-                && saddle_slot_contains_saddle_item()
-        };
-        let equine_saddle = equine_saddle();
-        let equine_saddle_equipment_asset = consumer_saddle_asset(
-            vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id),
-        );
+        let pig_saddle_trim = saddle_trim(pig_saddle_equipment_asset, ArmorTrimLayer::PigSaddle);
+        let pig_saddle_foil = saddle_foil(pig_saddle_equipment_asset);
+        let equine_saddle_type =
+            vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id);
+        let equine_saddle_equipment_asset = consumer_saddle_asset(equine_saddle_type);
         let equine_saddle_dye = saddle_dye(equine_saddle_equipment_asset);
         let equine_saddle_trim_layer = match identity.entity_type_id {
             VANILLA_ENTITY_TYPE_HORSE_ID => Some(ArmorTrimLayer::HorseSaddle),
@@ -4255,9 +4178,9 @@ impl EntityStore {
             _ => None,
         };
         let equine_saddle_trim = equine_saddle_trim_layer
-            .and_then(|layer| saddle_trim(equine_saddle_equipment_asset, equine_saddle, layer));
-        let equine_saddle_foil = saddle_foil(equine_saddle_equipment_asset, equine_saddle);
-        let equine_saddle_ridden = equine_saddle
+            .and_then(|layer| saddle_trim(equine_saddle_equipment_asset, layer));
+        let equine_saddle_foil = saddle_foil(equine_saddle_equipment_asset);
+        let equine_saddle_ridden = equine_saddle_type
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
@@ -4268,43 +4191,34 @@ impl EntityStore {
         let strider_saddle_type = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID;
         let strider_saddle_equipment_asset = consumer_saddle_asset(strider_saddle_type);
         let strider_saddle_dye = saddle_dye(strider_saddle_equipment_asset);
-        let strider_saddle = strider_saddle_type && saddle_slot_contains_saddle_item();
         let strider_saddle_trim = saddle_trim(
             strider_saddle_equipment_asset,
-            strider_saddle,
             ArmorTrimLayer::StriderSaddle,
         );
-        let strider_saddle_foil = saddle_foil(strider_saddle_equipment_asset, strider_saddle);
+        let strider_saddle_foil = saddle_foil(strider_saddle_equipment_asset);
         let camel_saddle_type = vanilla_camel_saddle_type(identity.entity_type_id);
         let camel_saddle_equipment_asset = consumer_saddle_asset(camel_saddle_type);
         let camel_saddle_dye = saddle_dye(camel_saddle_equipment_asset);
-        let camel_saddle = camel_saddle_type && saddle_slot_contains_saddle_item();
         let camel_saddle_trim_layer =
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID {
                 ArmorTrimLayer::CamelHuskSaddle
             } else {
                 ArmorTrimLayer::CamelSaddle
             };
-        let camel_saddle_trim = saddle_trim(
-            camel_saddle_equipment_asset,
-            camel_saddle,
-            camel_saddle_trim_layer,
-        );
-        let camel_saddle_foil = saddle_foil(camel_saddle_equipment_asset, camel_saddle);
-        let camel_saddle_ridden = camel_saddle
+        let camel_saddle_trim = saddle_trim(camel_saddle_equipment_asset, camel_saddle_trim_layer);
+        let camel_saddle_foil = saddle_foil(camel_saddle_equipment_asset);
+        let camel_saddle_ridden = camel_saddle_type
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle_type = is_vanilla_abstract_nautilus_type(identity.entity_type_id);
         let nautilus_saddle_equipment_asset = consumer_saddle_asset(nautilus_saddle_type);
         let nautilus_saddle_dye = saddle_dye(nautilus_saddle_equipment_asset);
-        let nautilus_saddle = nautilus_saddle_type && saddle_slot_contains_saddle_item();
         let nautilus_saddle_trim = saddle_trim(
             nautilus_saddle_equipment_asset,
-            nautilus_saddle,
             ArmorTrimLayer::NautilusSaddle,
         );
-        let nautilus_saddle_foil = saddle_foil(nautilus_saddle_equipment_asset, nautilus_saddle);
+        let nautilus_saddle_foil = saddle_foil(nautilus_saddle_equipment_asset);
         let body_slot_item = || equipment_slot_item(equipment, ProtocolEquipmentSlot::Body);
         let body_equipment_asset =
             body_slot_item().and_then(|item| resolved_equipment_asset(item, None));
@@ -4320,22 +4234,9 @@ impl EntityStore {
             .flatten();
         let happy_ghast_harness_dye =
             happy_ghast_body_equipment_asset.and_then(|_| body_slot_armor_dye());
-        let happy_ghast_harness = if identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
-            body_slot_item_id()
-                .and_then(|item_id| happy_ghast_harness_colors.get(&item_id).copied())
-        } else {
-            None
-        };
-        let happy_ghast_harness_asset_name = happy_ghast_body_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| happy_ghast_harness.map(HappyGhastHarnessColor::equipment_asset_id))
-                    .flatten()
-            });
+        let happy_ghast_harness_asset_name = happy_ghast_body_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let happy_ghast_harness_trim = happy_ghast_harness_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
@@ -4374,28 +4275,14 @@ impl EntityStore {
             && mount
                 .as_ref()
                 .is_some_and(|mount| !mount.passengers.is_empty());
-        let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
-            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
-        {
-            body_slot_item_id().and_then(|item_id| llama_body_decor_colors.get(&item_id).copied())
-        } else {
-            None
-        };
         let llama_body_equipment_asset = (is_vanilla_llama_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
         .then_some(body_equipment_asset)
         .flatten();
         let llama_body_decor_dye = llama_body_equipment_asset.and_then(|_| body_slot_armor_dye());
-        let llama_body_asset_name = llama_body_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| llama_body_decor.map(LlamaBodyDecorColor::equipment_asset_id))
-                    .flatten()
-            });
+        let llama_body_asset_name = llama_body_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let llama_body_decor_trim = llama_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
@@ -4407,14 +4294,6 @@ impl EntityStore {
         let llama_body_decor_foil = llama_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
-        let nautilus_body_armor = if is_vanilla_abstract_nautilus_type(identity.entity_type_id)
-            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
-        {
-            body_slot_item_id()
-                .and_then(|item_id| nautilus_body_armor_materials.get(&item_id).copied())
-        } else {
-            None
-        };
         let nautilus_body_item_present = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && body_slot_item().is_some();
         let nautilus_body_equipment_asset =
@@ -4424,16 +4303,9 @@ impl EntityStore {
             .flatten();
         let nautilus_body_armor_dye =
             nautilus_body_equipment_asset.and_then(|_| body_slot_armor_dye());
-        let nautilus_body_asset_name = nautilus_body_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| nautilus_body_armor.map(ArmorMaterialKind::equipment_asset_id))
-                    .flatten()
-            });
+        let nautilus_body_asset_name = nautilus_body_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let nautilus_body_armor_trim = nautilus_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
@@ -4445,29 +4317,14 @@ impl EntityStore {
         let nautilus_body_armor_foil = nautilus_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
-        let horse_body_armor = if is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
-            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
-        {
-            body_slot_item_id()
-                .and_then(|item_id| horse_body_armor_materials.get(&item_id).copied())
-        } else {
-            None
-        };
         let horse_body_equipment_asset =
             (is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
                 && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
             .then_some(body_equipment_asset)
             .flatten();
-        let horse_body_asset_name = horse_body_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| horse_body_armor.map(ArmorMaterialKind::equipment_asset_id))
-                    .flatten()
-            });
+        let horse_body_asset_name = horse_body_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let horse_body_armor_trim = horse_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
@@ -4480,27 +4337,13 @@ impl EntityStore {
         let horse_body_armor_foil = horse_body_asset_name
             .and_then(|_| body_slot_item())
             .is_some_and(ItemStackSummary::has_foil);
-        let wolf_body_armor = if identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
-            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
-        {
-            body_slot_item_id().and_then(|item_id| wolf_body_armor_materials.get(&item_id).copied())
-        } else {
-            None
-        };
         let wolf_body_equipment_asset = (identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values))
         .then_some(body_equipment_asset)
         .flatten();
-        let wolf_body_asset_name = wolf_body_equipment_asset
-            .and_then(|asset| {
-                equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
-            })
-            .or_else(|| {
-                equipment_asset_names
-                    .is_empty()
-                    .then(|| wolf_body_armor.map(ArmorMaterialKind::equipment_asset_id))
-                    .flatten()
-            });
+        let wolf_body_asset_name = wolf_body_equipment_asset.and_then(|asset| {
+            equipment_asset_name(equipment_asset_generation, equipment_asset_names, asset)
+        });
         let wolf_body_armor_trim = wolf_body_asset_name.and_then(|asset_name| {
             armor_trim_sprite(
                 registries,
@@ -5442,16 +5285,12 @@ impl EntityStore {
                 .animations
                 .parrot_flap_angle(partial_ticks),
             parrot_party: false,
-            // Vanilla `HumanoidArmorLayer`: the worn armor item in each armor slot resolved to its
-            // equipment-asset material against the item registry map (threaded from the WorldStore).
+            // Vanilla `HumanoidArmorLayer`: each worn armor stack resolves once to its current
+            // generation-local equipment asset id; renderer owns the layer-type lookup.
             head_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Head),
             chest_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Chest),
             legs_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Legs),
             feet_equipment_asset: armor_equipment_asset(ProtocolEquipmentSlot::Feet),
-            head_armor: armor_material(ProtocolEquipmentSlot::Head),
-            chest_armor: armor_material(ProtocolEquipmentSlot::Chest),
-            legs_armor: armor_material(ProtocolEquipmentSlot::Legs),
-            feet_armor: armor_material(ProtocolEquipmentSlot::Feet),
             head_armor_trim: armor_trim(ProtocolEquipmentSlot::Head),
             chest_armor_trim: armor_trim(ProtocolEquipmentSlot::Chest),
             legs_armor_trim: armor_trim(ProtocolEquipmentSlot::Legs),
@@ -5468,19 +5307,16 @@ impl EntityStore {
             chest_wings_trim,
             chest_wings_foil,
             wolf_body_equipment_asset,
-            wolf_body_armor,
             wolf_body_armor_trim,
             wolf_body_armor_dye,
             wolf_body_armor_crackiness,
             wolf_body_armor_foil,
             pig_saddle_equipment_asset,
             pig_saddle_dye,
-            pig_saddle,
             pig_saddle_trim,
             pig_saddle_foil,
             equine_saddle_equipment_asset,
             equine_saddle_dye,
-            equine_saddle,
             equine_saddle_trim,
             equine_saddle_foil,
             equine_saddle_ridden,
@@ -5495,31 +5331,26 @@ impl EntityStore {
                 .animations
                 .equine_feeding_animation(partial_ticks),
             equine_body_equipment_asset: horse_body_equipment_asset,
-            equine_body_armor: horse_body_armor,
             equine_body_armor_trim: horse_body_armor_trim,
             equine_body_armor_dye: horse_body_armor_dye,
             equine_body_armor_foil: horse_body_armor_foil,
             strider_ridden,
             strider_saddle_equipment_asset,
             strider_saddle_dye,
-            strider_saddle,
             strider_saddle_trim,
             strider_saddle_foil,
             camel_saddle_equipment_asset,
             camel_saddle_dye,
-            camel_saddle,
             camel_saddle_trim,
             camel_saddle_foil,
             camel_saddle_ridden,
             nautilus_saddle_equipment_asset,
             nautilus_saddle_dye,
-            nautilus_saddle,
             nautilus_saddle_trim,
             nautilus_saddle_foil,
             happy_ghast_body_item,
             happy_ghast_body_equipment_asset,
             happy_ghast_harness_dye,
-            happy_ghast_harness,
             happy_ghast_harness_trim,
             happy_ghast_harness_foil,
             happy_ghast_body_item_is_harness,
@@ -5556,13 +5387,11 @@ impl EntityStore {
                 .ender_dragon_animation_source(partial_ticks),
             llama_body_equipment_asset,
             llama_body_decor_dye,
-            llama_body_decor,
             llama_body_decor_trim,
             llama_body_decor_foil,
             nautilus_body_equipment_asset,
             nautilus_body_item_present,
             nautilus_body_armor_dye,
-            nautilus_body_armor,
             nautilus_body_armor_trim,
             nautilus_body_armor_foil,
             data_values: (*metadata.data_values).clone(),

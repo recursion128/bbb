@@ -124,7 +124,7 @@ use crate::{
     entity_features::{entity_flame_surfaces, entity_shadow_surfaces},
     entity_name_tags::entity_name_tag_surfaces,
     entity_scene::{
-        armor_material, entity_model_instance_from_world_entity_at_partial_tick,
+        entity_model_instance_from_world_entity_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
         visible_display_entity_render_sources_at_partial_tick,
@@ -12647,14 +12647,12 @@ fn apply_smithing_result_equipment(
         return Vec::new();
     };
 
+    let equipment_asset_present = item_runtime.item_equipment_asset_id(item_id).is_some();
     match item_runtime.item_equipment_slot(item_id) {
-        Some(ItemEquipmentSlot::Head) if item_runtime.item_has_humanoid_armor_asset(item_id) => {
-            entity.render_state.head_armor =
-                armor_material(item_runtime.item_armor_material(item_id));
+        Some(ItemEquipmentSlot::Head) if equipment_asset_present => {
             entity.render_state.head_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
-            entity.render_state.head_armor_foil =
-                entity.render_state.head_armor.is_some() && stack.has_foil();
+            entity.render_state.head_armor_foil = stack.has_foil();
         }
         Some(ItemEquipmentSlot::Head) => {
             if smithing_result_is_custom_head_skull(item_runtime, item_id) {
@@ -12670,34 +12668,19 @@ fn apply_smithing_result_equipment(
             }
         }
         Some(ItemEquipmentSlot::Chest) => {
-            entity.render_state.chest_armor =
-                armor_material(item_runtime.item_armor_material(item_id));
             entity.render_state.chest_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
-            entity.render_state.chest_armor_foil =
-                entity.render_state.chest_armor.is_some() && stack.has_foil();
-            entity.render_state.chest_wings_layer =
-                item_runtime.item_equipment_wings_layer(item_id);
-            entity.render_state.chest_equipment_has_wings =
-                item_runtime.item_equipment_asset_has_wings_layer(item_id);
-            entity.render_state.chest_equipment_has_humanoid =
-                item_runtime.item_equipment_asset_has_humanoid_layer(item_id);
+            entity.render_state.chest_armor_foil = equipment_asset_present && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Legs) => {
-            entity.render_state.legs_armor =
-                armor_material(item_runtime.item_armor_material(item_id));
             entity.render_state.legs_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
-            entity.render_state.legs_armor_foil =
-                entity.render_state.legs_armor.is_some() && stack.has_foil();
+            entity.render_state.legs_armor_foil = equipment_asset_present && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Feet) => {
-            entity.render_state.feet_armor =
-                armor_material(item_runtime.item_armor_material(item_id));
             entity.render_state.feet_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
-            entity.render_state.feet_armor_foil =
-                entity.render_state.feet_armor.is_some() && stack.has_foil();
+            entity.render_state.feet_armor_foil = equipment_asset_present && stack.has_foil();
         }
         Some(
             ItemEquipmentSlot::MainHand

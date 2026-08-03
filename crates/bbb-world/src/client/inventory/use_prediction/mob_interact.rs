@@ -16,6 +16,7 @@ use crate::entities::{
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_accessors_for_entity_type, VANILLA_ARMADILLO_STATE_IDLE_ID,
 };
+use bbb_protocol::item_types;
 use bbb_protocol::{
     builtin_enum_component_values::normalize_vanilla_dye_color_id,
     data_component_types::{
@@ -2341,11 +2342,7 @@ impl WorldStore {
             return Some(false);
         }
         let armor_item_id = armor.item_id?;
-        if !self
-            .items
-            .default_wolf_body_armor_materials
-            .contains_key(&armor_item_id)
-        {
+        if armor_item_id != item_types::VANILLA_ITEM_WOLF_ARMOR_ID {
             return Some(false);
         }
         self.registry_holder_ids_for_tag("minecraft:item", REPAIRS_WOLF_ARMOR_TAG)

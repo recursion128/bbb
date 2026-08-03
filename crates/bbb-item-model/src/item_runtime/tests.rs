@@ -4259,7 +4259,7 @@ fn item_display_transform_is_retained_per_item() {
 }
 
 #[test]
-fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
+fn item_equipment_asset_projection_is_id_only_and_generation_local() {
     let root = unique_temp_dir("item-runtime-humanoid-armor-asset");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
@@ -4323,14 +4323,21 @@ fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
     let pumpkin_id = registry.protocol_id("minecraft:carved_pumpkin").unwrap();
     let stone_id = registry.protocol_id("minecraft:stone").unwrap();
 
-    assert!(runtime.item_has_humanoid_armor_asset(helmet_id));
-    assert!(runtime.item_has_humanoid_armor_asset(chestplate_id));
-    assert!(!runtime.item_has_humanoid_armor_asset(pumpkin_id));
-    assert!(!runtime.item_has_humanoid_armor_asset(stone_id));
-    assert!(!runtime.item_has_humanoid_armor_asset(999));
-    assert!(runtime.item_equipment_asset_has_humanoid_layer(chestplate_id));
-    assert!(!runtime.item_equipment_asset_has_wings_layer(chestplate_id));
-    assert!(runtime.item_equipment_asset_has_wings_layer(elytra_id));
+    assert_eq!(
+        runtime.item_equipment_asset_id(helmet_id),
+        Some(EntityEquipmentAssetId::new(0, 0))
+    );
+    assert_eq!(
+        runtime.item_equipment_asset_id(chestplate_id),
+        Some(EntityEquipmentAssetId::new(0, 0))
+    );
+    assert_eq!(
+        runtime.item_equipment_asset_id(elytra_id),
+        Some(EntityEquipmentAssetId::new(0, 1))
+    );
+    assert_eq!(runtime.item_equipment_asset_id(pumpkin_id), None);
+    assert_eq!(runtime.item_equipment_asset_id(stone_id), None);
+    assert_eq!(runtime.item_equipment_asset_id(999), None);
     assert_eq!(
         runtime.equipment_asset_id("minecraft:diamond"),
         Some(EntityEquipmentAssetId::new(0, 0))
@@ -4354,22 +4361,6 @@ fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
             (elytra_id, EntityEquipmentAssetId::new(0, 1)),
         ])
     );
-    assert_eq!(
-        runtime.item_wings_equipment_assets_by_protocol_id(),
-        BTreeMap::from([(elytra_id, "minecraft:elytra".to_string())])
-    );
-    assert_eq!(
-        runtime.item_equipment_wings_layer(elytra_id),
-        Some(EntityEquipmentLayerTexture {
-            texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-            use_player_texture: true,
-        })
-    );
-    assert_eq!(runtime.item_equipment_wings_layer(chestplate_id), None);
-    assert!(!runtime.item_equipment_asset_has_humanoid_layer(elytra_id));
-    assert!(!runtime.item_equipment_asset_has_wings_layer(pumpkin_id));
-    assert!(!runtime.item_equipment_asset_has_humanoid_layer(stone_id));
-
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -5454,178 +5445,7 @@ fn player_profile_resource_body_patch_failure_does_not_use_remote_or_stale_skin(
 }
 
 #[test]
-fn native_item_runtime_projects_llama_body_decor_colors() {
-    let root = unique_temp_dir("item-runtime-llama-decor");
-    let assets = assets_dir(&root);
-    write_item_atlases(&assets);
-    write_item_registry_fixture(&root, &["white_carpet", "black_carpet", "horse_armor"]);
-    write_item_registry_override_with_profiles(
-        &root,
-        &["white_carpet", "black_carpet", "horse_armor"],
-        &[
-            ("white_carpet", "white_carpet"),
-            ("black_carpet", "black_carpet"),
-        ],
-    );
-
-    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
-    let registry = runtime.registry.as_ref().unwrap();
-    let white = registry.protocol_id("minecraft:white_carpet").unwrap();
-    let black = registry.protocol_id("minecraft:black_carpet").unwrap();
-    let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
-    let colors = runtime.llama_body_decor_colors_by_protocol_id();
-
-    assert_eq!(runtime.llama_body_decor_color_count(), 2);
-    assert_eq!(colors.get(&white), Some(&WorldLlamaBodyDecorColor::White));
-    assert_eq!(colors.get(&black), Some(&WorldLlamaBodyDecorColor::Black));
-    assert_eq!(colors.get(&horse_armor), None);
-
-    std::fs::remove_dir_all(root).unwrap();
-}
-
-#[test]
-fn native_item_runtime_projects_nautilus_body_armor_materials() {
-    let root = unique_temp_dir("item-runtime-nautilus-body-armor");
-    let assets = assets_dir(&root);
-    write_item_atlases(&assets);
-    write_item_registry_fixture(
-        &root,
-        &[
-            "iron_nautilus_armor",
-            "golden_nautilus_armor",
-            "netherite_nautilus_armor",
-            "chainmail_nautilus_armor",
-            "horse_armor",
-        ],
-    );
-    write_item_registry_override_with_profiles(
-        &root,
-        &[
-            "iron_nautilus_armor",
-            "golden_nautilus_armor",
-            "netherite_nautilus_armor",
-            "chainmail_nautilus_armor",
-            "horse_armor",
-        ],
-        &[
-            ("iron_nautilus_armor", "iron_nautilus_armor"),
-            ("golden_nautilus_armor", "golden_nautilus_armor"),
-            ("netherite_nautilus_armor", "netherite_nautilus_armor"),
-        ],
-    );
-
-    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
-    let registry = runtime.registry.as_ref().unwrap();
-    let iron = registry
-        .protocol_id("minecraft:iron_nautilus_armor")
-        .unwrap();
-    let gold = registry
-        .protocol_id("minecraft:golden_nautilus_armor")
-        .unwrap();
-    let netherite = registry
-        .protocol_id("minecraft:netherite_nautilus_armor")
-        .unwrap();
-    let chainmail = registry
-        .protocol_id("minecraft:chainmail_nautilus_armor")
-        .unwrap();
-    let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
-    let materials = runtime.nautilus_body_armor_materials_by_protocol_id();
-
-    assert_eq!(runtime.nautilus_body_armor_material_count(), 3);
-    assert_eq!(materials.get(&iron), Some(&WorldArmorMaterialKind::Iron));
-    assert_eq!(materials.get(&gold), Some(&WorldArmorMaterialKind::Gold));
-    assert_eq!(
-        materials.get(&netherite),
-        Some(&WorldArmorMaterialKind::Netherite)
-    );
-    assert_eq!(materials.get(&chainmail), None);
-    assert_eq!(materials.get(&horse_armor), None);
-
-    std::fs::remove_dir_all(root).unwrap();
-}
-
-#[test]
-fn native_item_runtime_projects_horse_body_armor_materials() {
-    let root = unique_temp_dir("item-runtime-horse-body-armor");
-    let assets = assets_dir(&root);
-    write_item_atlases(&assets);
-    write_item_registry_fixture(
-        &root,
-        &[
-            "leather_horse_armor",
-            "copper_horse_armor",
-            "diamond_horse_armor",
-            "netherite_horse_armor",
-            "chainmail_horse_armor",
-            "iron_nautilus_armor",
-        ],
-    );
-    write_item_registry_override_with_profiles(
-        &root,
-        &[
-            "leather_horse_armor",
-            "copper_horse_armor",
-            "diamond_horse_armor",
-            "netherite_horse_armor",
-            "chainmail_horse_armor",
-            "iron_nautilus_armor",
-        ],
-        &[
-            ("leather_horse_armor", "leather_horse_armor"),
-            ("copper_horse_armor", "copper_horse_armor"),
-            ("diamond_horse_armor", "diamond_horse_armor"),
-            ("netherite_horse_armor", "netherite_horse_armor"),
-            ("iron_nautilus_armor", "iron_nautilus_armor"),
-        ],
-    );
-
-    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
-    let registry = runtime.registry.as_ref().unwrap();
-    let leather = registry
-        .protocol_id("minecraft:leather_horse_armor")
-        .unwrap();
-    let copper = registry
-        .protocol_id("minecraft:copper_horse_armor")
-        .unwrap();
-    let diamond = registry
-        .protocol_id("minecraft:diamond_horse_armor")
-        .unwrap();
-    let netherite = registry
-        .protocol_id("minecraft:netherite_horse_armor")
-        .unwrap();
-    let chainmail = registry
-        .protocol_id("minecraft:chainmail_horse_armor")
-        .unwrap();
-    let nautilus = registry
-        .protocol_id("minecraft:iron_nautilus_armor")
-        .unwrap();
-    let materials = runtime.horse_body_armor_materials_by_protocol_id();
-
-    assert_eq!(runtime.horse_body_armor_material_count(), 4);
-    assert_eq!(
-        materials.get(&leather),
-        Some(&WorldArmorMaterialKind::Leather)
-    );
-    assert_eq!(
-        materials.get(&copper),
-        Some(&WorldArmorMaterialKind::Copper)
-    );
-    assert_eq!(
-        materials.get(&diamond),
-        Some(&WorldArmorMaterialKind::Diamond)
-    );
-    assert_eq!(
-        materials.get(&netherite),
-        Some(&WorldArmorMaterialKind::Netherite)
-    );
-    assert_eq!(materials.get(&chainmail), None);
-    assert_eq!(materials.get(&nautilus), None);
-
-    std::fs::remove_dir_all(root).unwrap();
-}
-
-#[test]
-fn native_item_runtime_projects_wolf_body_armor_materials_and_max_damage() {
+fn native_item_runtime_projects_wolf_equipment_asset_and_max_damage() {
     let root = unique_temp_dir("item-runtime-wolf-body-armor");
     let assets = assets_dir(&root);
     write_item_atlases(&assets);
@@ -5661,15 +5481,13 @@ fn native_item_runtime_projects_wolf_body_armor_materials_and_max_damage() {
     let registry = runtime.registry.as_ref().unwrap();
     let wolf_armor = registry.protocol_id("minecraft:wolf_armor").unwrap();
     let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
-    let materials = runtime.wolf_body_armor_materials_by_protocol_id();
     let max_damage = runtime.item_max_damage_by_protocol_id();
 
-    assert_eq!(runtime.wolf_body_armor_material_count(), 1);
     assert_eq!(
-        materials.get(&wolf_armor),
-        Some(&WorldArmorMaterialKind::ArmadilloScute)
+        runtime.item_equipment_asset_id(wolf_armor),
+        runtime.equipment_asset_id("minecraft:armadillo_scute")
     );
-    assert_eq!(materials.get(&horse_armor), None);
+    assert_eq!(runtime.item_equipment_asset_id(horse_armor), None);
     assert_eq!(max_damage.get(&wolf_armor), Some(&64));
     assert_eq!(runtime.item_max_damage_count(), 1);
 
@@ -5739,18 +5557,19 @@ fn native_item_runtime_projects_exact_happy_ghast_harness_assets() {
 
     let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
     let registry = runtime.registry.as_ref().unwrap();
-    let colors = runtime.happy_ghast_harness_colors_by_protocol_id();
-    assert_eq!(colors.len(), 2);
-    assert_eq!(
-        colors.get(&registry.protocol_id("minecraft:white_harness").unwrap()),
-        Some(&WorldHappyGhastHarnessColor::White)
-    );
-    assert_eq!(
-        colors.get(&registry.protocol_id("minecraft:black_harness").unwrap()),
-        Some(&WorldHappyGhastHarnessColor::Black)
-    );
-    assert!(!colors.contains_key(&registry.protocol_id("minecraft:custom_harness").unwrap()));
-    assert!(!colors.contains_key(&registry.protocol_id("minecraft:multi_harness").unwrap()));
+    for name in [
+        "white_harness",
+        "black_harness",
+        "custom_harness",
+        "multi_harness",
+    ] {
+        assert_eq!(
+            runtime.item_equipment_asset_id(
+                registry.protocol_id(&format!("minecraft:{name}")).unwrap()
+            ),
+            runtime.equipment_asset_id(&format!("minecraft:{name}"))
+        );
+    }
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -12454,6 +12273,23 @@ fn loads_local_vanilla_item_runtime_assets() {
     assert!(runtime.resolved_model_count() > runtime.item_definition_count());
     assert!(runtime.atlas_size().0 > 0);
     assert!(runtime.atlas_size().1 > 0);
+    for (item_id, asset_id) in [
+        ("minecraft:iron_chestplate", "minecraft:iron"),
+        ("minecraft:elytra", "minecraft:elytra"),
+        ("minecraft:wolf_armor", "minecraft:armadillo_scute"),
+        ("minecraft:iron_horse_armor", "minecraft:iron"),
+        ("minecraft:iron_nautilus_armor", "minecraft:iron"),
+        ("minecraft:saddle", "minecraft:saddle"),
+        ("minecraft:white_carpet", "minecraft:white_carpet"),
+        ("minecraft:white_harness", "minecraft:white_harness"),
+    ] {
+        let protocol_id = runtime.item_protocol_id(item_id).unwrap();
+        assert_eq!(
+            runtime.item_equipment_asset_id(protocol_id),
+            runtime.equipment_asset_id(asset_id),
+            "{item_id}"
+        );
+    }
     roots.ensure_resource_data_admitted().unwrap();
     let observation = roots.resource_data_memory_observation();
     eprintln!("vanilla item runtime resource data charge: {observation:?}");
@@ -18755,10 +18591,8 @@ fn item_registry_override_value(item_ids: &[&str]) -> serde_json::Value {
         "default_component_type_ids",
         "default_potion_duration_scale_bits",
         "default_equipment_slots",
-        "humanoid_armor_assets",
         "equippable_assets",
         "default_mount_body_armor_kinds",
-        "mount_body_armor_assets",
         "default_attack_ranges",
         "default_swing_animations",
         "default_kinetic_weapons",
@@ -18821,10 +18655,8 @@ fn copy_item_registry_profile(
         "default_component_type_ids",
         "default_potion_duration_scale_bits",
         "default_equipment_slots",
-        "humanoid_armor_assets",
         "equippable_assets",
         "default_mount_body_armor_kinds",
-        "mount_body_armor_assets",
         "default_attack_ranges",
         "default_swing_animations",
         "default_kinetic_weapons",

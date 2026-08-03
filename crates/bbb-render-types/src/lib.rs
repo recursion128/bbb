@@ -33,8 +33,8 @@ pub use dye_colors::{
 pub use entity_textures::{
     EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityDynamicTexture, EntityEquipmentAssetId, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel,
+    EntityDynamicTexture, EntityEquipmentAssetId, EntityModelTextureRef, EntityPlayerSkin,
+    EntityPlayerSkinModel,
 };
 pub use hud_glyphs::{
     HudAsciiGlyph, HudComponentTextRun, HudDigitGlyph, HudEffectKind, HudEffectRect,

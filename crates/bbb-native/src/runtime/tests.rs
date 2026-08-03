@@ -23805,57 +23805,32 @@ fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
     );
     let helmet_preview = smithing_preview_for_result_stack(enchanted_helmet, &runtime);
     let helmet_state = &helmet_preview.entity.render_state;
-    assert_eq!(
-        helmet_state.head_armor,
-        Some(bbb_renderer::EntityArmorMaterial::Diamond)
-    );
+    assert_eq!(helmet_state.head_equipment_asset, None);
     assert_eq!(helmet_state.head_armor_dye, Some(0x12_34_56));
     assert!(helmet_state.head_armor_foil);
     assert_eq!(helmet_state.custom_head_skull, None);
 
     let chest_preview = smithing_preview_for_result_stack(item_stack(CHESTPLATE_ID, 1), &runtime);
     let chest_state = &chest_preview.entity.render_state;
-    assert_eq!(
-        chest_state.chest_armor,
-        Some(bbb_renderer::EntityArmorMaterial::Diamond)
-    );
-    assert!(chest_state.chest_equipment_has_humanoid);
-    assert!(!chest_state.chest_equipment_has_wings);
-    assert_eq!(chest_state.chest_wings_layer, None);
+    assert_eq!(chest_state.chest_equipment_asset, None);
+    assert_eq!(chest_state.chest_wings_equipment_asset, None);
 
     let legs_preview = smithing_preview_for_result_stack(item_stack(LEGGINGS_ID, 1), &runtime);
-    assert_eq!(
-        legs_preview.entity.render_state.legs_armor,
-        Some(bbb_renderer::EntityArmorMaterial::Diamond)
-    );
+    assert_eq!(legs_preview.entity.render_state.legs_equipment_asset, None);
 
     let feet_preview = smithing_preview_for_result_stack(item_stack(BOOTS_ID, 1), &runtime);
-    assert_eq!(
-        feet_preview.entity.render_state.feet_armor,
-        Some(bbb_renderer::EntityArmorMaterial::Diamond)
-    );
+    assert_eq!(feet_preview.entity.render_state.feet_equipment_asset, None);
 
     let elytra_preview = smithing_preview_for_result_stack(item_stack(ELYTRA_ID, 1), &runtime);
     let elytra_state = &elytra_preview.entity.render_state;
-    assert_eq!(elytra_state.chest_armor, None);
+    assert_eq!(elytra_state.chest_equipment_asset, None);
     assert!(!elytra_state.chest_armor_foil);
-    assert!(elytra_state.chest_equipment_has_wings);
-    assert!(!elytra_state.chest_equipment_has_humanoid);
-    assert_eq!(
-        elytra_state.chest_wings_layer,
-        Some(bbb_renderer::EntityEquipmentLayerTexture {
-            texture: bbb_renderer::EntityModelTextureRef {
-                path: "textures/entity/equipment/wings/elytra.png",
-                size: [64, 32],
-            },
-            use_player_texture: true,
-        })
-    );
+    assert_eq!(elytra_state.chest_wings_equipment_asset, None);
 
     let skull_preview =
         smithing_preview_for_result_stack(item_stack(SKELETON_SKULL_ID, 1), &runtime);
     let skull_state = &skull_preview.entity.render_state;
-    assert_eq!(skull_state.head_armor, None);
+    assert_eq!(skull_state.head_equipment_asset, None);
     assert!(!skull_state.head_armor_foil);
     assert_eq!(
         skull_state.custom_head_skull,
@@ -23866,7 +23841,7 @@ fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
     let pumpkin_preview =
         smithing_preview_for_result_stack(item_stack(CARVED_PUMPKIN_ID, 1), &runtime);
     let pumpkin_state = &pumpkin_preview.entity.render_state;
-    assert_eq!(pumpkin_state.head_armor, None);
+    assert_eq!(pumpkin_state.head_equipment_asset, None);
     assert_eq!(pumpkin_state.custom_head_skull, None);
     assert_eq!(
         pumpkin_preview.item_layers,
@@ -23959,12 +23934,6 @@ fn smithing_preview_item_runtime() -> NativeItemRuntime {
             "minecraft:elytra": "chest",
             "minecraft:skeleton_skull": "head",
             "minecraft:carved_pumpkin": "head"
-        },
-        "humanoid_armor_assets": {
-            "minecraft:diamond_helmet": "diamond",
-            "minecraft:diamond_chestplate": "diamond",
-            "minecraft:diamond_leggings": "diamond",
-            "minecraft:diamond_boots": "diamond"
         },
         "equippable_assets": {
             "minecraft:diamond_helmet": "diamond",

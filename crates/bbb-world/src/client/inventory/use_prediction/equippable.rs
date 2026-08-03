@@ -11,7 +11,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     },
     equipment_slots::{vanilla_equipment_slot_by_id, EquipmentSlot},
-    item_types::VanillaItemEquipOnInteract,
+    item_types::{self, VanillaItemEquipOnInteract},
 };
 
 const ENTITY_TYPE_REGISTRY: &str = "minecraft:entity_type";
@@ -76,17 +76,12 @@ impl WorldStore {
             Some(MountArmorSlotKind::Nautilus) => {
                 self.local_entity_type_tag_contains(CAN_WEAR_NAUTILUS_ARMOR_TAG, entity_type_id)
             }
-            None if self
-                .items
-                .default_wolf_body_armor_materials
-                .contains_key(&item_id) =>
-            {
+            None if item_id == item_types::VANILLA_ITEM_WOLF_ARMOR_ID => {
                 Some(entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID)
             }
-            None if self
-                .items
-                .default_happy_ghast_harness_colors
-                .contains_key(&item_id) =>
+            None if vanilla_item_type(item_id).is_some_and(|item| {
+                item.equip_on_interact == Some(VanillaItemEquipOnInteract::Harness)
+            }) =>
             {
                 self.local_entity_type_tag_contains(CAN_EQUIP_HARNESS_TAG, entity_type_id)
             }
@@ -427,7 +422,6 @@ fn target_equippable_pass() -> LocalTargetUsePrediction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::ArmorMaterialKind;
     use bbb_protocol::{
         data_component_types::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -678,14 +672,6 @@ mod tests {
         world.set_default_mount_body_armor_kinds(BTreeMap::from([(
             VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
             MountArmorSlotKind::Horse,
-        )]));
-        world.set_default_horse_body_armor_materials(BTreeMap::from([(
-            VANILLA_ITEM_IRON_HORSE_ARMOR_ID,
-            ArmorMaterialKind::Iron,
-        )]));
-        world.set_default_wolf_body_armor_materials(BTreeMap::from([(
-            VANILLA_ITEM_WOLF_ARMOR_ID,
-            ArmorMaterialKind::ArmadilloScute,
         )]));
         world.apply_update_tags(UpdateTags {
             registries: vec![RegistryTags {

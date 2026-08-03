@@ -770,7 +770,6 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         false,
         Some(EntityDyeColor::Blue),
     )
-    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
@@ -909,7 +908,6 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             false,
             None,
         )
-        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
         .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))],
         &atlas,
     );
@@ -935,7 +933,6 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             false,
             Some(EntityDyeColor::Red),
         )
-        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
         .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
         .with_wolf_body_armor_trim(Some(EntityArmorTrim {
             texture: trim_texture,
@@ -980,7 +977,6 @@ fn invisible_wolf_body_armor_keeps_decal_trim_submission() {
         true,
         None,
     )
-    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_trim(Some(EntityArmorTrim {
         texture: trim_texture,
@@ -1037,7 +1033,6 @@ fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
         false,
         Some(EntityDyeColor::Blue),
     )
-    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
@@ -1085,7 +1080,6 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
         true,
         Some(EntityDyeColor::Blue),
     )
-    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_equipment_asset(Some(test_wolf_equipment_asset_id()))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))

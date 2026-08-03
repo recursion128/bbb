@@ -99,6 +99,11 @@ layer 全部查询这一份 resolved catalog；renderer 不按 armor material、
 dye skip/default、首个可绘制 layer 后的 foil、末层 texture 上的 trim、baby/leggings、profile wings
 override、outline 与 submit order 仍由共享 layer emitter 决定。普通测试 helper 使用显式空 catalog，
 equipment 测试则提供带 generation/id 的 catalog fixture，不能通过测试开关改变 production 分支。
+pack 的 item registry 将 humanoid/wolf/mount armor、saddle、carpet、harness 与直接 `setAsset`
+声明统一投影到唯一 `equippable_assets` 映射；item-model 只把 item 转成 asset id，不查询 layer
+presence。world 只决定有效 slot、实体/幼体 admission 及独立 stack facts；
+`SimpleEquipmentLayer` 的 SADDLE/BODY stack 不借用 armor-slot classifier，native 只转换
+generation/id，cape/wings 与所有静态/owned texture 查询都留在 renderer catalog owner。
 
 装备 stack 自身影响模型的语义不从 catalog readiness 反推。例如 world 从 nautilus BODY slot
 独立投影 `nautilus_body_item_present`，native 只转交该 frame fact；renderer 的

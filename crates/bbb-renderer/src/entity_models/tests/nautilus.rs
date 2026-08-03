@@ -480,9 +480,8 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let saddled_instance = adult
-        .with_nautilus_saddle(true)
-        .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let saddled_instance =
+        adult.with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&bare_meshes, adult);
     assert_nautilus_submissions_match_vanilla(&saddled_meshes, saddled_instance);
@@ -525,9 +524,8 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     assert!(first_saddle_vertex[1] <= saddle_uv.max[1]);
 
     let baby = EntityModelInstance::nautilus(921, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_saddled_instance = baby
-        .with_nautilus_saddle(true)
-        .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let baby_saddled_instance =
+        baby.with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let baby_bare = entity_model_textured_meshes(&[baby], &atlas);
     let baby_saddled = entity_model_textured_meshes(&[baby_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&baby_bare, baby);
@@ -547,9 +545,8 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         [0.0, 64.0, 0.0],
         0.0,
     );
-    let zombie_saddled_instance = zombie
-        .with_nautilus_saddle(true)
-        .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let zombie_saddled_instance =
+        zombie.with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let zombie_bare = entity_model_textured_meshes(&[zombie], &atlas);
     let zombie_saddled = entity_model_textured_meshes(&[zombie_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&zombie_bare, zombie);
@@ -569,9 +566,8 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         [0.0, 64.0, 0.0],
         0.0,
     );
-    let warm_saddled_instance = warm
-        .with_nautilus_saddle(true)
-        .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
+    let warm_saddled_instance =
+        warm.with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let warm_bare = entity_model_textured_meshes(&[warm], &atlas);
     let warm_saddled = entity_model_textured_meshes(&[warm_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&warm_bare, warm);
@@ -601,7 +597,6 @@ fn nautilus_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         .with_light_coords((6_u32 << 4) | (12_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_nautilus_saddle(true)
         .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
@@ -674,9 +669,8 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
-    let armored_instance = adult
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
-        .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
+    let armored_instance =
+        adult.with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
     let armored_meshes = entity_model_textured_meshes(&[armored_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&bare_meshes, adult);
     assert_nautilus_submissions_match_vanilla(&armored_meshes, armored_instance);
@@ -716,9 +710,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert!(first_armor_vertex[1] <= iron_uv.max[1]);
 
     let armored_saddled_instance = adult
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()))
-        .with_nautilus_saddle(true)
         .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()));
     let armored_saddled_meshes = entity_model_textured_meshes(&[armored_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&armored_saddled_meshes, armored_saddled_instance);
@@ -777,7 +769,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     );
 
     let invalid_material_instance =
-        adult.with_nautilus_body_armor(Some(EntityArmorMaterial::Chainmail));
+        adult.with_nautilus_body_equipment_asset(Some(test_equipment_asset_id(u32::MAX)));
     let invalid_material = entity_model_textured_meshes(&[invalid_material_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&invalid_material, invalid_material_instance);
     assert_eq!(
@@ -788,9 +780,8 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert!(invalid_material.armor_cutout.vertices.is_empty());
 
     let baby = EntityModelInstance::nautilus(931, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_armored_instance = baby
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
-        .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
+    let baby_armored_instance =
+        baby.with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
     let baby_bare = entity_model_textured_meshes(&[baby], &atlas);
     let baby_armored = entity_model_textured_meshes(&[baby_armored_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&baby_bare, baby);
@@ -810,9 +801,8 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         [0.0, 64.0, 0.0],
         0.0,
     );
-    let zombie_armored_instance = zombie
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Netherite))
-        .with_nautilus_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
+    let zombie_armored_instance =
+        zombie.with_nautilus_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
     let zombie_bare = entity_model_textured_meshes(&[zombie], &atlas);
     let zombie_armored = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&zombie_bare, zombie);
@@ -833,7 +823,6 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         0.0,
     );
     let warm_armored_instance = warm
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Netherite))
         .with_nautilus_body_item_present(true)
         .with_nautilus_body_equipment_asset(Some(test_netherite_equipment_asset_id()));
     let warm_bare = entity_model_textured_meshes(&[warm], &atlas);
@@ -886,9 +875,8 @@ fn zombie_nautilus_corals_follow_body_item_presence_not_asset_classification() {
         [0.0, 64.0, 0.0],
         0.0,
     );
-    let classified_only = warm
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
-        .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
+    let classified_only =
+        warm.with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
     let nonempty_unclassified = warm.with_nautilus_body_item_present(true);
     let bare = entity_model_textured_meshes(&[warm], &atlas);
     let classified_only = entity_model_textured_meshes(&[classified_only], &atlas);
@@ -941,14 +929,12 @@ fn nautilus_body_and_saddle_trims_keep_layer_and_collector_order() {
     .unwrap()
     .0;
     let adult = EntityModelInstance::nautilus(934, [0.0, 64.0, 0.0], 0.0, false)
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_nautilus_body_armor_foil(true)
         .with_nautilus_body_armor_trim(Some(EntityArmorTrim {
             texture: body_trim_texture,
             decal: false,
         }))
-        .with_nautilus_saddle(true)
         .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_nautilus_saddle_foil(true)
         .with_nautilus_saddle_trim(Some(EntityArmorTrim {
@@ -1030,14 +1016,12 @@ fn nautilus_body_and_saddle_trims_keep_layer_and_collector_order() {
     );
 
     let baby = EntityModelInstance::nautilus(935, [0.0, 64.0, 0.0], 0.0, true)
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()))
         .with_nautilus_body_armor_foil(true)
         .with_nautilus_body_armor_trim(Some(EntityArmorTrim {
             texture: body_trim_texture,
             decal: false,
         }))
-        .with_nautilus_saddle(true)
         .with_nautilus_saddle_equipment_asset(Some(test_saddle_equipment_asset_id()))
         .with_nautilus_saddle_foil(true)
         .with_nautilus_saddle_trim(Some(EntityArmorTrim {
@@ -1076,7 +1060,6 @@ fn nautilus_body_armor_submission_survives_missing_armor_texture_atlas_entry() {
         .with_light_coords((6_u32 << 4) | (12_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true)
-        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes(&[instance], &atlas);

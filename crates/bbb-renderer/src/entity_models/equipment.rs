@@ -93,8 +93,7 @@ impl EntityEquipmentAsset {
     }
 }
 
-/// Renderer-side CPU catalog in the same sorted-id order as
-/// The pack-owned equipment asset catalog.
+/// Renderer-side CPU catalog in the same sorted-id order as the pack-owned equipment asset catalog.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EntityEquipmentAssetCatalog {
     generation: u64,
@@ -226,6 +225,18 @@ impl ResolvedEntityEquipmentAssetCatalog {
             .then_some(id.index)
             .and_then(|index| self.assets.get(index as usize))
     }
+
+    /// Vanilla `EquipmentAssetManager.get(asset).getLayers(type)`: layer
+    /// presence is a generation-local renderer query, not a frame-projected
+    /// boolean that can drift from this catalog.
+    pub(crate) fn has_layer(
+        &self,
+        id: Option<EntityEquipmentAssetId>,
+        layer_type: EntityEquipmentLayerType,
+    ) -> bool {
+        id.and_then(|id| self.asset(id))
+            .is_some_and(|asset| !asset.layers(layer_type).is_empty())
+    }
 }
 
 /// Vanilla `EquipmentLayerRenderer.getColorForLayer`: non-dyeable layers are
@@ -303,6 +314,14 @@ mod tests {
             resolved.asset(EntityEquipmentAssetId::new(6, 0)).is_none(),
             "an old world generation must not address a reloaded atlas catalog"
         );
+        assert!(resolved.has_layer(
+            Some(EntityEquipmentAssetId::new(7, 0)),
+            EntityEquipmentLayerType::Humanoid
+        ));
+        assert!(!resolved.has_layer(
+            Some(EntityEquipmentAssetId::new(6, 0)),
+            EntityEquipmentLayerType::Humanoid
+        ));
         assert_eq!(
             layer.dyeable,
             Some(EntityEquipmentDyeable {

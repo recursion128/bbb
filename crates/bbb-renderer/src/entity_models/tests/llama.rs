@@ -449,9 +449,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert_eq!(bare_meshes.submissions.len(), 1);
     assert_llama_base_submission_at(&bare_meshes, 0, adult);
     let bare = &bare_meshes.cutout;
-    let white_instance = adult
-        .with_llama_body_decor(Some(EntityDyeColor::White))
-        .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
+    let white_instance =
+        adult.with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     let white = &white_meshes.cutout;
     let decor = &white_meshes.armor_cutout;
@@ -524,9 +523,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         1,
     );
 
-    let black_trader_instance = adult_trader
-        .with_llama_body_decor(Some(EntityDyeColor::Black))
-        .with_llama_body_equipment_asset(Some(test_llama_black_equipment_asset_id()));
+    let black_trader_instance =
+        adult_trader.with_llama_body_equipment_asset(Some(test_llama_black_equipment_asset_id()));
     let black_trader_meshes = entity_model_textured_meshes(&[black_trader_instance], &atlas);
     let black_trader = &black_trader_meshes.cutout;
     let black_trader_decor = &black_trader_meshes.armor_cutout;
@@ -567,15 +565,24 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert_eq!(baby_bare_meshes.submissions.len(), 1);
     assert_llama_base_submission_at(&baby_bare_meshes, 0, baby);
     let baby_bare = &baby_bare_meshes.cutout;
-    let baby_with_decor_instance = baby.with_llama_body_decor(Some(EntityDyeColor::White));
+    let baby_with_decor_instance =
+        baby.with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
     let baby_with_decor_meshes = entity_model_textured_meshes(&[baby_with_decor_instance], &atlas);
     let baby_with_decor = &baby_with_decor_meshes.cutout;
     assert_eq!(
         baby_with_decor.vertices, baby_bare.vertices,
-        "baby llamas ignore carpet body equipment"
+        "equipment projection must not alter the base baby llama mesh"
     );
-    assert_eq!(baby_with_decor_meshes.submissions.len(), 1);
+    assert_eq!(baby_with_decor_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&baby_with_decor_meshes, 0, baby_with_decor_instance);
+    assert_llama_submission(
+        baby_with_decor_meshes.submissions[1],
+        baby_with_decor_instance,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        1,
+        1,
+    );
 
     let baby_trader = EntityModelInstance::llama(
         609,
@@ -589,7 +596,6 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_llama_body_decor(Some(EntityDyeColor::Black))
     .with_llama_body_equipment_asset(Some(test_llama_trader_baby_equipment_asset_id()));
     let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
     assert_eq!(baby_trader_meshes.submissions.len(), 2);
@@ -647,7 +653,6 @@ fn llama_carpet_trim_follows_foil_and_explicit_trader_assets_keep_empty_stack_se
         false,
         false,
     )
-    .with_llama_body_decor(Some(EntityDyeColor::White))
     .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()))
     .with_llama_body_decor_foil(true)
     .with_llama_body_decor_trim(Some(trim));
@@ -730,7 +735,6 @@ fn llama_carpet_trim_follows_foil_and_explicit_trader_assets_keep_empty_stack_se
         .is_empty());
 
     let carpeted_trader = adult_trader
-        .with_llama_body_decor(Some(EntityDyeColor::Black))
         .with_llama_body_equipment_asset(Some(test_llama_black_equipment_asset_id()))
         .with_llama_body_decor_foil(true)
         .with_llama_body_decor_trim(Some(trim));
@@ -803,9 +807,8 @@ fn llama_decor_submission_survives_missing_texture_atlas_entry() {
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_llama_base_submission_at(&bare_meshes, 0, adult);
 
-    let white_instance = adult
-        .with_llama_body_decor(Some(EntityDyeColor::White))
-        .with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
+    let white_instance =
+        adult.with_llama_body_equipment_asset(Some(test_llama_white_equipment_asset_id()));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     assert_eq!(white_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&white_meshes, 0, white_instance);
@@ -855,7 +858,6 @@ fn llama_decor_submission_survives_missing_texture_atlas_entry() {
     .with_light_coords((5_u32 << 4) | (11_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_llama_body_decor(Some(EntityDyeColor::Black))
     .with_llama_body_equipment_asset(Some(test_llama_trader_baby_equipment_asset_id()));
     let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
     assert_eq!(baby_trader_meshes.submissions.len(), 2);

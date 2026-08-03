@@ -1919,8 +1919,7 @@ fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
     .with_player_cape_texture(Some(cape_texture))
-    .with_chest_equipment_has_wings(true)
-    .with_chest_equipment_has_humanoid(true);
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[instance],
@@ -1929,11 +1928,15 @@ fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
         Some(&dynamic_atlas),
     );
 
-    assert!(meshes
-        .submissions
-        .iter()
-        .all(|submit| submit.dynamic_player_texture != Some(cape_texture)));
-    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes.submissions.iter().all(|submit| {
+        submit.dynamic_player_texture != Some(cape_texture)
+            || submit.render_type != EntityModelLayerRenderType::EntitySolid
+    }));
+    assert!(meshes.submissions.iter().any(|submit| {
+        submit.dynamic_player_texture == Some(cape_texture)
+            && submit.render_type == EntityModelLayerRenderType::ArmorCutoutNoCull
+    }));
+    assert!(meshes.dynamic_player_texture_solid.vertices.is_empty());
 }
 
 #[test]
@@ -1963,7 +1966,7 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
     .with_player_cape_texture(Some(cape_texture))
-    .with_chest_equipment_has_humanoid(true);
+    .with_chest_wings_equipment_asset(Some(test_iron_equipment_asset_id()));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[instance],
@@ -2030,12 +2033,7 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
     .with_light_coords((7_u32 << 4) | (9_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
-        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-        use_player_texture: true,
-    }))
-    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
-    .with_chest_equipment_has_wings(true);
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()));
 
     let meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
@@ -2090,12 +2088,7 @@ fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
     .with_light_coords((7_u32 << 4) | (9_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
-        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-        use_player_texture: true,
-    }))
-    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
-    .with_chest_equipment_has_wings(true);
+    .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()));
 
     let meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
@@ -2187,12 +2180,7 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
     .with_light_coords((4_u32 << 4) | (12_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
-        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-        use_player_texture: true,
-    }))
     .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
-    .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra))
     .with_player_cape_texture(Some(profile_cape));
 
@@ -2285,12 +2273,7 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true)
-    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
-        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-        use_player_texture: true,
-    }))
     .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
-    .with_chest_equipment_has_wings(true)
     .with_player_cape_texture(Some(profile_cape));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
@@ -2354,12 +2337,7 @@ fn player_wings_layer_waits_for_profile_texture_upload() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
-    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
-        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
-        use_player_texture: true,
-    }))
     .with_chest_wings_equipment_asset(Some(test_wings_equipment_asset_id()))
-    .with_chest_equipment_has_wings(true)
     .with_player_elytra_texture(Some(profile_elytra));
 
     let meshes =
