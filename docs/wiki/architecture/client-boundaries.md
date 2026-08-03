@@ -43,6 +43,27 @@ level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐�
 但一帧 renderer input 必须引用同一 resource generation。断线先停止新 packet 应用，
 再清理 world/backend；control 只能看到最后一个明确标记状态的 snapshot。
 
+## External network backend terminal close
+
+`bbb-native::network_runtime::NetworkRuntime` 是 external connection future 和 event-relay
+task 的唯一 lifecycle owner。startup 只构造 `ConnectionOptions`；simulation 取得有界 net
+event receiver 与 command sender，既看不到 task handle，也不拥有 terminal close state。relay
+保持 connection event 顺序，并在每次成功交付后唤醒 simulation；simulation receiver 关闭时立即
+停止，不把旧 session event 留给下一进程。
+
+gameplay `NetCommand::Disconnect` 仍由 simulation 按正常 session 语义发送。terminal close 另有
+独立 one-shot signal，所以 command queue 已满、已关闭或 simulation fatal 都不能阻止 connection
+future 被取消并通过 drop 关闭 socket。连接自然结束、服务器断开或 terminal signal 最多产生一个
+最终 `Disconnected` event；重复 shutdown 幂等。
+
+`LoopExiting` 的固定顺序是：释放 cursor capture、请求并 join simulation、signal 并 join network
+task pair、发布最终 `running=false/connected=false` snapshot，随后 event-loop closure 才释放
+renderer/audio/window 和 Tokio runtime。两个 network task 共用 5 秒总 deadline；task panic/join
+failure 进入既有 `RuntimeFailure`/crash-report owner，超时会 abort 并 reap 剩余 task 后同样报告。
+无连接、正常远端结束和成功 close 不产 fatal report。`JoinSet` drop 只负责 event-loop 建立前发生
+startup failure 时的 abort safety net，不能替代 production `shutdown_and_join`；focused source guard
+锁定唯一调用点及 simulation→network→snapshot 顺序。
+
 ## Fatal failure 与 crash report
 
 `bbb-native::crash_report` 是 fatal diagnostics 的唯一 owner。startup `Result`、main panic、
