@@ -492,6 +492,131 @@ def _owner_evidence(
     return evidence
 
 
+LEVEL_RENDERER_FRAME_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#render",),
+            (
+                "crates/bbb-renderer/src/render.rs#render_steps_are_defined_in_frame_execution_order",
+                "crates/bbb-renderer/src/render.rs#render_calls_exactly_one_step_per_frame_steps_entry",
+            ),
+        ),
+        ("renderLevel",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#main_world_pass",
+                "crates/bbb-renderer/src/render.rs#copy_main_depth_to_feature_targets",
+                "crates/bbb-renderer/src/render.rs#item_entity_target_pass",
+                "crates/bbb-renderer/src/render.rs#translucent_target_pass",
+                "crates/bbb-renderer/src/render.rs#particle_target_pass",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths",
+            ),
+        ),
+        ("addMainPass",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#main_world_pass",),
+            ("crates/bbb-renderer/src/render.rs#sky_disc_draws_before_sunrise_and_celestial_layers",),
+        ),
+        ("addSkyPass",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#clouds_pass",),
+            (
+                "crates/bbb-renderer/src/render.rs#cloud_target_feeds_transparency_combine_after_world_passes",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_regular_and_improved_routes_preserve_clear_color_identity",
+            ),
+        ),
+        ("addCloudsPass", "getCloudsTarget"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#weather_target_pass",),
+            (
+                "crates/bbb-renderer/src/render.rs#weather_target_uses_independently_cleared_depth_before_combine",
+                "crates/bbb-renderer/src/render.rs#world_border_draws_into_weather_target_after_rain_snow_and_before_combine",
+            ),
+        ),
+        ("addWeatherPass", "getWeatherTarget"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#debug_always_on_top_text_pass",),
+            ("crates/bbb-renderer/src/render.rs#always_on_top_debug_text_runs_after_composition_with_cleared_depth",),
+        ),
+        ("addLateDebugPass",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#LevelFrameRoute::for_options",
+                "crates/bbb-renderer/src/render.rs#transparency_combine_pass",
+                "crates/bbb-renderer/src/render.rs#presentation_color_target",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#level_frame_route_matches_vanilla_option_and_panoramic_suppression",
+                "crates/bbb-renderer/src/post_effect_graph/tests.rs#selected_generation_drives_live_transparency_graph",
+            ),
+        ),
+        ("getTransparencyChain",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#item_entity_target_pass",),
+            (
+                "crates/bbb-renderer/src/render.rs#item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws",
+                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+            ),
+        ),
+        ("getItemEntityTarget",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#particle_target_pass",),
+            (
+                "crates/bbb-renderer/src/render.rs#particle_target_copies_main_depth_and_clears_before_combine",
+                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+            ),
+        ),
+        ("getParticlesTarget",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#translucent_target_pass",),
+            (
+                "crates/bbb-renderer/src/render.rs#translucent_target_copies_main_depth_and_clears_color_before_draws",
+                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+            ),
+        ),
+        ("getTranslucentTarget",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#set_cloud_frame",),
+            ("crates/bbb-renderer/src/render.rs#cloud_presentation_binds_cloud_offset_uniform",),
+        ),
+        ("getCloudRenderer",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/render.rs#finish_frame",),
+            (
+                "crates/bbb-renderer/src/render.rs#surface_image_is_acquired_at_vanilla_screen_blit_boundary",
+                "crates/bbb-renderer/src/render.rs#cloud_presentation_binds_cloud_offset_uniform",
+            ),
+        ),
+        ("endFrame",),
+    ),
+)
+
+
 LEVEL_RENDERER_SECTION_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -785,6 +910,7 @@ LEVEL_RENDERER_SCENE_OWNER_EVIDENCE = _owner_evidence(
 
 LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
+    "rendering-level-frame-graph": LEVEL_RENDERER_FRAME_OWNER_EVIDENCE,
     "rendering-level-scene-projection": LEVEL_RENDERER_SCENE_OWNER_EVIDENCE,
     "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
 }

@@ -433,30 +433,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
-### Active 工程合同：LevelRenderer frame graph
-
-目标：关闭 `rendering-level-frame-graph` 的 renderLevel/main/sky/cloud/weather/late-debug、五个 target
-accessor、transparency-chain、cloud renderer/endFrame 共 14 owner。Vanilla 依据为 `LevelRenderer`
-456–548、601–785、1144–1146、1182–1211、1454–1486；实证缺口是 BBB 无
-`OptionsRenderState.improvedTransparency` 输入且始终走独立 targets/combine，而 Vanilla 默认 fancy 为 false。
-
-唯一 flow：CLI immutable option → native frame projection → renderer-private `LevelFrameRoute`；false 时
-translucent/item/particle/cloud/weather 全部 load main color/depth、无 depth-copy/combine，true 时五个 internal
-target、前三个 main-depth copy、cloud/weather 独立 depth、selected transparency graph→main；panoramic 强制 false。
-outline chain 独立且先于 cloud，late debug 在 combine 后清 main depth；presentation 只读 route 的最终 color。
-
-阶段：A 冻结 14 owner/order/target/depth/fallback；B 接入 CLI/native typed route 和 regular/improved 双路径；
-C 复验 sky/main/features/outline/cloud/weather/combine/late-debug/endFrame，生成 14/14 fail-closed evidence；
-D Wiki/matrix/ledger、regular/improved offscreen pixels、live/full gate 收口。非目标：改变具体 scene/model、
-weather/cloud mesh、camera post/HUD、graphics preset UI，或增加第二个 post/resource resolver。
-
-Focused tests：CLI default false/true；panoramic suppression；两种 route 的 color/depth/load/copy/combine；
-clear→sky→main→outline→cloud→weather→combine→late-debug；selected graph override/filter 与失败保留旧 generation；
-cloud uniform 每帧唯一提交；14 evidence cells 对缺 symbol/test fail closed；旧 unconditional target path 为零；
-AMD/RADV offscreen regular/improved pixel identity与各自 draw counters。合同提交先 full gate；实现后 checkpoint
-及最终 full gate、fixture/live playable。安全停止点仅限干净 full-gated checkpoint；blocker 仅限可复现
-GPU/window 外部失败且 CPU/source/offscreen evidence 已通过。
-
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

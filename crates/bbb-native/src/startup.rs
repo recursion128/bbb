@@ -257,6 +257,8 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_view_bobbing: bool,
+    #[arg(long = "improved-transparency")]
+    pub(crate) improved_transparency: bool,
     #[arg(
         long = "menu-background-blurriness",
         default_value_t = VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
@@ -1533,6 +1535,15 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--client-view-bobbing=false"]).unwrap();
         assert!(!args.client_view_bobbing);
+    }
+
+    #[test]
+    fn args_use_vanilla_fancy_transparency_default_and_accept_explicit_improved_route() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!defaults.improved_transparency);
+
+        let configured = Args::try_parse_from(["bbb-native", "--improved-transparency"]).unwrap();
+        assert!(configured.improved_transparency);
     }
 
     #[test]

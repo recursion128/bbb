@@ -918,6 +918,7 @@ mod tests {
             x_rot: 0.0,
             eye_height: 0.0,
         }));
+        renderer.set_level_frame_route(crate::LevelFrameRoute::ImprovedTransparency);
         renderer.set_debug_lines(vec![DebugLine::new(
             [-0.5, 0.0, 2.0],
             [0.5, 0.0, 2.0],

@@ -58,8 +58,7 @@
 - **2026-08-03（lifecycle terminal budget ownership）**：版本化 manifest 统一拥有三个
   独立终态 deadline，并以服务器 receipt、零工作 gauge 与 clean exit 完成三轮 live soak。
 - **2026-08-03（selected shader compilation convergence）**：17 个 pipeline family 的 stage 编译收敛为一个 renderer-private owner，并以 reverse guard 防回流。
-- **2026-08-03（Vanilla root window icons）**：统一 indexed/default vanilla root catalog
-  按平台完成 bounded startup apply、默认 icon fallback 与 Wayland 零读取闭环。
+- **2026-08-03（Vanilla root window icons）**：统一 root catalog 按平台完成 bounded startup apply、默认 fallback 与 Wayland 零读取闭环。
 - **2026-08-03（authenticated profile-key lifecycle）**：pre-connect key prepare、跨 phase
   manager 生存期与 play-local 签名链收敛为一个 net owner；真实 Services 验收按授权凭据重开。
 - **2026-08-03（trusted profile texture-set lifecycle）**：Services property trust、
@@ -96,5 +95,6 @@
 - **2026-08-03（LevelRenderer partition/section/backend lifecycle）**：77 个 owner 拆为七条同质机制；
   29-owner section 与 9-owner backend/resize 以单一 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
 - **2026-08-03（LevelRenderer scene projection）**：15-owner scene 经单一 immutable frame projection、resource-generation material phase 与 fail-closed offscreen evidence 收口。
+- **2026-08-03（LevelRenderer frame graph）**：14-owner regular/improved target、depth、combine 与 presentation 路径收口。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

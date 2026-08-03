@@ -169,6 +169,31 @@ pub(super) enum RenderSurface {
     Offscreen(std::sync::Arc<wgpu::Texture>),
 }
 
+/// Immutable projection of Vanilla's per-frame transparency routing decision.
+///
+/// `LevelRenderer` owns the actual target selection; native startup only
+/// projects the option and panoramic-camera inputs into this narrow value.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum LevelFrameRoute {
+    #[default]
+    Regular,
+    ImprovedTransparency,
+}
+
+impl LevelFrameRoute {
+    pub fn for_options(improved_transparency: bool, panoramic: bool) -> Self {
+        if improved_transparency && !panoramic {
+            Self::ImprovedTransparency
+        } else {
+            Self::Regular
+        }
+    }
+
+    pub(super) fn uses_improved_transparency(self) -> bool {
+        self == Self::ImprovedTransparency
+    }
+}
+
 #[cfg(feature = "lifecycle-soak")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LifecycleSoakSurfaceError {
@@ -355,6 +380,7 @@ pub struct Renderer {
     pub(super) config: wgpu::SurfaceConfiguration,
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
+    pub(super) level_frame_route: LevelFrameRoute,
     pub(super) counters: RendererCounters,
     #[cfg(feature = "lifecycle-soak")]
     pub(super) lifecycle_soak_surface_faults: std::collections::VecDeque<wgpu::SurfaceError>,
@@ -2087,6 +2113,7 @@ impl Renderer {
             config,
             size,
             clear: ClearColor::default(),
+            level_frame_route: LevelFrameRoute::default(),
             counters: RendererCounters {
                 width: size.width,
                 height: size.height,
@@ -2948,6 +2975,10 @@ impl Renderer {
         if let Some(timing) = self.gpu_timing.as_mut() {
             timing.set_enabled(enabled);
         }
+    }
+
+    pub fn set_level_frame_route(&mut self, route: LevelFrameRoute) {
+        self.level_frame_route = route;
     }
 
     pub fn gpu_utilization(&self) -> Option<f64> {
@@ -4364,8 +4395,9 @@ mod tests {
     use super::{
         choose_format, choose_present_mode, translucency_point_of_view,
         translucent_section_draw_order, translucent_section_draw_order_from_visible,
-        translucent_section_is_nearby, Renderer, RendererResizePrepareStage, TerrainChunkMeshOwner,
-        TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTranslucentSortState,
+        translucent_section_is_nearby, LevelFrameRoute, Renderer, RendererResizePrepareStage,
+        TerrainChunkMeshOwner, TerrainSectionMeshOwner, TerrainSectionRenderState,
+        TerrainTranslucentSortState,
     };
     use crate::camera::{CameraPose, LightmapEnvironment, TerrainBounds};
     use crate::terrain::{
@@ -4387,6 +4419,23 @@ mod tests {
             renderer.entity_outline_target._texture.size(),
             renderer.cloud_target._texture.size(),
         ]
+    }
+
+    #[test]
+    fn level_frame_route_matches_vanilla_option_and_panoramic_suppression() {
+        assert_eq!(LevelFrameRoute::default(), LevelFrameRoute::Regular);
+        assert_eq!(
+            LevelFrameRoute::for_options(false, false),
+            LevelFrameRoute::Regular
+        );
+        assert_eq!(
+            LevelFrameRoute::for_options(true, false),
+            LevelFrameRoute::ImprovedTransparency
+        );
+        assert_eq!(
+            LevelFrameRoute::for_options(true, true),
+            LevelFrameRoute::Regular
+        );
     }
 
     #[test]

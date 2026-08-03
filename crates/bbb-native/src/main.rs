@@ -1298,6 +1298,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             view_bobbing: args.client_view_bobbing,
                             entity_shadows: args.entity_shadows,
                             high_contrast_block_outline: args.high_contrast_block_outline,
+                            improved_transparency: args.improved_transparency,
                             hud_debug_profiler_chart: debug_profiler.chart(),
                         },
                     );

@@ -190,6 +190,26 @@ public class Owner {
                 for owner in scene_owners
             )
         )
+        frame_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-level-frame-graph"
+        ]
+        self.assertEqual(len(frame_owners), 14)
+        self.assertEqual(
+            value["mechanisms"]["rendering-level-frame-graph"][
+                "owner_evidence_count"
+            ],
+            14,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in frame_owners
+            )
+        )
 
     def test_unclassified_level_renderer_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -276,6 +296,31 @@ public class Owner {
             builder = inventory.InventoryBuilder(root)
             with mock.patch.dict(
                 inventory.LEVEL_RENDERER_SCENE_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "rendering",
+                        "rendering-level-frame-graph",
+                        relative,
+                    )
+                )
+
+    def test_frame_owner_without_implementation_test_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { void addCloudsPass() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.LEVEL_RENDERER_FRAME_OWNER_EVIDENCE, {}, clear=True
             ), self.assertRaisesRegex(
                 inventory.ClientMechanismInventoryError,
                 "lacks BBB implementation/test evidence",

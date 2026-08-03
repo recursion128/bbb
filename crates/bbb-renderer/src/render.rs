@@ -1005,6 +1005,9 @@ impl Renderer {
     }
 
     fn copy_main_depth_to_feature_targets(&self, encoder: &mut wgpu::CommandEncoder) {
+        if !self.level_frame_route.uses_improved_transparency() {
+            return;
+        }
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -1369,7 +1372,15 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let item_entity_view = &self.item_entity_target.view;
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (item_entity_view, item_entity_depth_view) = if improved {
+            (
+                &self.item_entity_target.view,
+                &self.item_entity_target.depth.view,
+            )
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         let item_entity_vertices = self.collect_item_entity_vertices();
         let has_item_entity_vertices = self.item_entity_atlas.is_some()
             && self.frame_item_entity_vertices.upload(
@@ -1403,12 +1414,16 @@ impl Renderer {
                     view: item_entity_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: if improved {
+                            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.item_entity_target.depth.view,
+                    view: item_entity_depth_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -1781,10 +1796,19 @@ impl Renderer {
         else {
             return;
         };
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (color_view, depth_view) = if improved {
+            (
+                &self.item_entity_target.view,
+                &self.item_entity_target.depth.view,
+            )
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(BLOCK_SELECTION_BEFORE_TRANSLUCENT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.item_entity_target.view,
+                view: color_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
@@ -1792,7 +1816,7 @@ impl Renderer {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.item_entity_target.depth.view,
+                view: depth_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
@@ -1821,7 +1845,15 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let translucent_view = &self.translucent_target.view;
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (translucent_view, translucent_depth_view) = if improved {
+            (
+                &self.translucent_target.view,
+                &self.translucent_target.depth.view,
+            )
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
@@ -1829,12 +1861,16 @@ impl Renderer {
                     view: translucent_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: if improved {
+                            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.translucent_target.depth.view,
+                    view: translucent_depth_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -1910,7 +1946,15 @@ impl Renderer {
             &self.queue,
             bytemuck::cast_slice(&debug_line_batches.translucent),
         );
-        let item_entity_view = &self.item_entity_target.view;
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (item_entity_view, item_entity_depth_view) = if improved {
+            (
+                &self.item_entity_target.view,
+                &self.item_entity_target.depth.view,
+            )
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         let block_selection_after_translucent = self
             .block_selection
             .as_ref()
@@ -1933,7 +1977,7 @@ impl Renderer {
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.item_entity_target.depth.view,
+                    view: item_entity_depth_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -2031,10 +2075,15 @@ impl Renderer {
         stats: &mut FrameDrawStats,
         particle_vertex_batches: ParticleVertexBatches,
     ) {
-        let particle_view = &self.particle_target.view;
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (particle_view, particle_depth_view) = if improved {
+            (&self.particle_target.view, &self.particle_target.depth.view)
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         // Opaque particles already drew into main color+depth in `opaque_particle_main_pass`;
-        // only the translucent half renders into the dedicated particles target here, matching
-        // vanilla `ParticleFeatureRenderer.renderTranslucent`.
+        // only the translucent half renders into the route-selected particles/main target here,
+        // matching vanilla `ParticleFeatureRenderer.renderTranslucent`.
         let has_translucent_particles = self.frame_translucent_particle_vertices.upload(
             &self.device,
             &self.queue,
@@ -2125,12 +2174,16 @@ impl Renderer {
                     view: particle_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: if improved {
+                            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.particle_target.depth.view,
+                    view: particle_depth_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -2513,21 +2566,35 @@ impl Renderer {
     fn clouds_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
         if let Some(clouds) = &self.clouds {
             if self.fog_environment.cloud_end > 0.0 {
+                let improved = self.level_frame_route.uses_improved_transparency();
+                let (color_view, depth_view) = if improved {
+                    (&self.cloud_target.view, &self.cloud_target.depth.view)
+                } else {
+                    (&self.main_target.view, &self.depth.view)
+                };
                 {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some(CLOUDS_PASS_LABEL),
                         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: &self.cloud_target.view,
+                            view: color_view,
                             resolve_target: None,
                             ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                load: if improved {
+                                    wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                                } else {
+                                    wgpu::LoadOp::Load
+                                },
                                 store: wgpu::StoreOp::Store,
                             },
                         })],
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.cloud_target.depth.view,
+                            view: depth_view,
                             depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
+                                load: if improved {
+                                    wgpu::LoadOp::Clear(1.0)
+                                } else {
+                                    wgpu::LoadOp::Load
+                                },
                                 store: wgpu::StoreOp::Store,
                             }),
                             stencil_ops: None,
@@ -2560,7 +2627,12 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) {
-        let weather_view = &self.weather_target.view;
+        let improved = self.level_frame_route.uses_improved_transparency();
+        let (weather_view, weather_depth_view) = if improved {
+            (&self.weather_target.view, &self.weather_target.depth.view)
+        } else {
+            (&self.main_target.view, &self.depth.view)
+        };
         let weather_mesh = build_weather_mesh(&self.weather_render_state);
         let has_weather_buffers = weather_mesh
             .as_ref()
@@ -2610,19 +2682,27 @@ impl Renderer {
                     view: weather_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: if improved {
+                            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.weather_target.depth.view,
+                    view: weather_depth_view,
                     depth_ops: Some(wgpu::Operations {
                         // Vanilla's frame-graph `RenderTargetDescriptor.prepare` clears every
-                        // internal target to depth 1.0. `LevelRenderer.addMainPass` copies main
-                        // depth only to translucent, item-entity, and particles; weather keeps
-                        // its independently cleared depth and is ordered against main by the
-                        // transparency post pass.
-                        load: wgpu::LoadOp::Clear(1.0),
+                        // internal target to depth 1.0. In the improved route,
+                        // `LevelRenderer.addMainPass` copies main depth only to translucent,
+                        // item-entity, and particles; weather keeps independent depth. The regular
+                        // route instead renders weather directly against loaded main depth.
+                        load: if improved {
+                            wgpu::LoadOp::Clear(1.0)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
                         store: wgpu::StoreOp::Store,
                     }),
                     stencil_ops: None,
@@ -2694,6 +2774,9 @@ impl Renderer {
         encoder: &mut wgpu::CommandEncoder,
         stats: &mut FrameDrawStats,
     ) -> Result<()> {
+        if !self.level_frame_route.uses_improved_transparency() {
+            return Ok(());
+        }
         if let Some(post_effect_graphs) = &self.post_effect_graphs {
             if post_effect_graphs.uses_vanilla_transparency_direct_path() {
                 self.vanilla_transparency_direct_pass(encoder);
@@ -2841,11 +2924,7 @@ impl Renderer {
             .frame_debug_always_on_top_text_indices
             .buffer()
             .expect("always-on-top debug text indices uploaded");
-        let color_view = if self.post_effect_graphs.is_some() {
-            &self.main_target.view
-        } else {
-            &self.transparency_final_target.view
-        };
+        let color_view = self.presentation_color_view();
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(DEBUG_ALWAYS_ON_TOP_TEXT_PASS_LABEL),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3718,7 +3797,8 @@ impl Renderer {
     }
 
     fn presentation_color_target(&self) -> (&wgpu::Texture, &wgpu::TextureView) {
-        if self.post_effect_graphs.is_some() {
+        if !self.level_frame_route.uses_improved_transparency() || self.post_effect_graphs.is_some()
+        {
             (&self.main_target.texture, &self.main_target.view)
         } else {
             (
@@ -3760,10 +3840,9 @@ impl Renderer {
         let surface_view = frame
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
-        let selected_bind_group = self
-            .post_effect_graphs
-            .as_ref()
-            .map(|_| self.create_post_effect_blit_bind_group(&self.main_target.view));
+        let selected_bind_group = (!self.level_frame_route.uses_improved_transparency()
+            || self.post_effect_graphs.is_some())
+        .then(|| self.create_post_effect_blit_bind_group(&self.main_target.view));
         let bind_group = selected_bind_group
             .as_ref()
             .unwrap_or(&self.transparency_final_target.bind_group);
@@ -5854,11 +5933,9 @@ mod tests {
         let pass_body = &source[pass_start..pass_end];
         assert!(pass_body.contains("camera_pose,\n            true,"));
         assert!(
-            pass_body.contains("if self.post_effect_graphs.is_some()")
-                && pass_body.contains("&self.main_target.view")
-                && pass_body.contains("&self.transparency_final_target.view")
+            pass_body.contains("let color_view = self.presentation_color_view();")
                 && pass_body.contains("view: color_view"),
-            "late debug text must target the selected graph main owner or the embedded final fallback"
+            "late debug text must use the frame-route presentation owner"
         );
         assert!(pass_body.contains("view: &self.depth.view"));
         assert!(pass_body.contains("load: wgpu::LoadOp::Clear(1.0)"));
@@ -5866,6 +5943,78 @@ mod tests {
             pass_body.contains("frame_debug_always_on_top_text_vertices")
                 && pass_body.contains("frame_debug_always_on_top_text_indices")
         );
+    }
+
+    #[test]
+    fn level_frame_route_is_the_only_feature_target_and_combine_decision_owner() {
+        let source = include_str!("render.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("render production/test boundary")
+            .0;
+        for (name, next) in [
+            (
+                "copy_main_depth_to_feature_targets",
+                "entity_translucent_feature_pass",
+            ),
+            ("item_entity_target_pass", "block_destroy_overlay_pass"),
+            (
+                "block_selection_before_translucent_pass",
+                "translucent_target_pass",
+            ),
+            ("translucent_target_pass", "item_entity_line_target_pass"),
+            ("item_entity_line_target_pass", "particle_target_pass"),
+            ("particle_target_pass", "entity_outline_post_chain"),
+            ("clouds_pass", "weather_target_pass"),
+            ("weather_target_pass", "transparency_combine_pass"),
+            (
+                "transparency_combine_pass",
+                "vanilla_transparency_direct_pass",
+            ),
+        ] {
+            let start = production
+                .find(&format!("fn {name}("))
+                .unwrap_or_else(|| panic!("{name} owner is present"));
+            let end = production[start..]
+                .find(&format!("fn {next}("))
+                .map(|offset| start + offset)
+                .unwrap_or(production.len());
+            assert!(
+                production[start..end].contains("level_frame_route"),
+                "{name} must query the single LevelFrameRoute owner"
+            );
+        }
+
+        let copy = production
+            .find("fn copy_main_depth_to_feature_targets(")
+            .expect("depth-copy owner");
+        let copy_body = &production[copy..production
+            .find("fn entity_translucent_feature_pass(")
+            .expect("next owner")];
+        assert!(
+            copy_body.find("return;").expect("regular early return")
+                < copy_body
+                    .find("encoder.copy_texture_to_texture")
+                    .expect("improved depth copies")
+        );
+
+        let combine = production
+            .find("fn transparency_combine_pass(")
+            .expect("combine owner");
+        let combine_body = &production[combine
+            ..production
+                .find("fn vanilla_transparency_direct_pass(")
+                .expect("direct fallback owner")];
+        assert!(
+            combine_body
+                .find("return Ok(());")
+                .expect("regular no-combine return")
+                < combine_body
+                    .find("execute_transparency(")
+                    .expect("improved selected graph")
+        );
+        assert!(production.contains("fn presentation_color_target("));
+        assert!(!production.contains("unconditional_improved_transparency"));
     }
 
     fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {
@@ -6736,6 +6885,9 @@ mod tests {
     #[test]
     fn cloud_target_feeds_transparency_combine_after_world_passes() {
         let source = include_str!("render.rs");
+        let clouds_fn = source
+            .find("fn clouds_pass(")
+            .expect("cloud pass function is defined");
         let sky = source
             .find("pass.set_pipeline(&self.sky_pipeline)")
             .expect("sky pipeline is drawn");
@@ -6807,29 +6959,39 @@ mod tests {
             "vanilla frame graph runs cloud pass after the main pass/particles and before weather and transparency combine"
         );
         assert!(
-            source[clouds..weather_target].contains("view: &self.cloud_target.view"),
-            "cloud mesh writes the renderer-owned clouds color target"
+            source[clouds_fn..weather_target].contains("&self.cloud_target.view")
+                && source[clouds_fn..weather_target].contains("&self.main_target.view")
+                && source[clouds_fn..weather_target].contains("view: color_view"),
+            "cloud mesh routes to the improved clouds target or regular main target"
         );
         assert!(
-            source[clouds..weather_target].contains("view: &self.cloud_target.depth.view"),
-            "cloud mesh writes the renderer-owned clouds depth target"
+            source[clouds_fn..weather_target].contains("&self.cloud_target.depth.view")
+                && source[clouds_fn..weather_target].contains("&self.depth.view")
+                && source[clouds_fn..weather_target].contains("view: depth_view"),
+            "cloud mesh routes to improved independent depth or regular main depth"
         );
         assert!(
             source[translucent..combine].contains("view: translucent_view"),
             "translucent terrain writes the renderer-owned translucent color target"
         );
         assert!(
-            source[translucent..combine].contains("view: &self.translucent_target.depth.view"),
-            "translucent terrain writes the renderer-owned translucent depth target"
+            source[..translucent]
+                .rfind("fn translucent_target_pass(")
+                .is_some_and(
+                    |start| source[start..combine].contains("&self.translucent_target.depth.view")
+                ),
+            "translucent terrain can select the renderer-owned translucent depth target"
         );
         assert!(
             source[item_entity_target..block_destroy].contains("view: item_entity_view"),
             "item-entity geometry writes the renderer-owned item_entity color target"
         );
         assert!(
-            source[item_entity_target..block_destroy]
-                .contains("view: &self.item_entity_target.depth.view"),
-            "item-entity geometry writes the renderer-owned item_entity depth target"
+            source[..item_entity_target]
+                .rfind("fn item_entity_target_pass(")
+                .is_some_and(|start| source[start..block_destroy]
+                    .contains("&self.item_entity_target.depth.view")),
+            "item-entity geometry can select the renderer-owned item_entity depth target"
         );
         assert!(
             source[item_entity_line_target..particle_target].contains("view: item_entity_view"),
@@ -6840,16 +7002,24 @@ mod tests {
             "particle geometry writes the renderer-owned particles color target"
         );
         assert!(
-            source[particle_target..combine].contains("view: &self.particle_target.depth.view"),
-            "particle geometry writes the renderer-owned particles depth target"
+            source[..particle_target]
+                .rfind("fn particle_target_pass(")
+                .is_some_and(
+                    |start| source[start..combine].contains("&self.particle_target.depth.view")
+                ),
+            "particle geometry can select the renderer-owned particles depth target"
         );
         assert!(
             source[weather_target..combine].contains("view: weather_view"),
             "weather pass clears the renderer-owned weather color target"
         );
         assert!(
-            source[weather_target..combine].contains("view: &self.weather_target.depth.view"),
-            "weather pass owns the renderer-owned weather depth target"
+            source[..weather_target]
+                .rfind("fn weather_target_pass(")
+                .is_some_and(
+                    |start| source[start..combine].contains("&self.weather_target.depth.view")
+                ),
+            "weather pass can select the renderer-owned weather depth target"
         );
         assert!(
             source[combine..hud].contains(
@@ -6885,8 +7055,11 @@ mod tests {
             "translucent target depth is copied from the renderer-owned main depth texture"
         );
         assert!(
-            source[target..terrain_pipeline].contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
-            "translucent target color is cleared every frame so missing translucent meshes do not reuse stale color"
+            source[target..terrain_pipeline].contains("load: if improved")
+                && source[target..terrain_pipeline]
+                    .contains("wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)")
+                && source[target..terrain_pipeline].contains("wgpu::LoadOp::Load"),
+            "improved translucent clears its target while regular translucency loads main"
         );
     }
 
@@ -7227,22 +7400,25 @@ mod tests {
             "item_entity target depth is copied from the renderer-owned main depth texture"
         );
         assert!(
-            source[target..item_pipeline]
-                .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
-            "item_entity target color is cleared every frame so missing item draws do not reuse stale color"
+            source[target..item_pipeline].contains("load: if improved")
+                && source[target..item_pipeline]
+                    .contains("wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)")
+                && source[target..item_pipeline].contains("wgpu::LoadOp::Load"),
+            "improved item features clear their target while regular features load main"
         );
         assert!(
             source[target..block_destroy].contains("view: item_entity_view")
-                && source[target..block_destroy]
-                    .contains("view: &self.item_entity_target.depth.view"),
-            "item geometry renders into the item_entity color/depth target before block features"
+                && source[..target]
+                    .rfind("fn item_entity_target_pass(")
+                    .is_some_and(|start| source[start..block_destroy]
+                        .contains("&self.item_entity_target.depth.view")),
+            "item geometry routes through the selected item/main color-depth pair before block features"
         );
         assert!(
             source[line_target..particle].contains("load: wgpu::LoadOp::Load")
                 && source[line_target..particle].contains("view: item_entity_view")
-                && source[line_target..particle]
-                    .contains("view: &self.item_entity_target.depth.view"),
-            "line geometry appends to the existing item_entity color/depth target before particles"
+                && source[line_fn..particle].contains("&self.item_entity_target.depth.view"),
+            "line geometry appends to the selected item/main color-depth pair before particles"
         );
         assert!(
             !source[line_fn..particle].contains("create_buffer_init"),
@@ -8077,14 +8253,20 @@ mod tests {
             "particle target depth is copied from the renderer-owned main depth texture"
         );
         assert!(
-            source[target..translucent_particle_pipeline]
-                .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
-            "particle target color is cleared every frame so missing particle draws do not reuse stale color"
+            source[target..translucent_particle_pipeline].contains("load: if improved")
+                && source[target..translucent_particle_pipeline]
+                    .contains("wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)")
+                && source[target..translucent_particle_pipeline].contains("wgpu::LoadOp::Load"),
+            "improved particles clear their target while regular particles load main"
         );
         assert!(
             source[target..combine].contains("view: particle_view")
-                && source[target..combine].contains("view: &self.particle_target.depth.view"),
-            "particle geometry renders into the particles color/depth target"
+                && source[..target]
+                    .rfind("fn particle_target_pass(")
+                    .is_some_and(
+                        |start| source[start..combine].contains("&self.particle_target.depth.view")
+                    ),
+            "particle geometry routes through the selected particles/main color-depth pair"
         );
     }
 
@@ -8134,18 +8316,23 @@ mod tests {
             "vanilla does not copy main depth into the weather target"
         );
         assert!(
-            source[target..combine]
-                .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
-            "weather target color is cleared every frame so a future sparse weather draw cannot reuse stale color"
+            source[target..combine].contains("load: if improved")
+                && source[target..combine]
+                    .contains("wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)")
+                && source[target..combine].contains("wgpu::LoadOp::Load"),
+            "improved weather clears its target while regular weather loads main"
         );
         assert!(
-            source[target..combine].contains("load: wgpu::LoadOp::Clear(1.0)"),
-            "vanilla RenderTargetDescriptor.prepare independently clears weather depth to 1.0"
+            source[target..combine].contains("wgpu::LoadOp::Clear(1.0)")
+                && source[target..combine].contains("wgpu::LoadOp::Load"),
+            "improved weather clears independent depth while regular weather loads main depth"
         );
         assert!(
             source[target..combine].contains("view: weather_view")
-                && source[target..combine].contains("view: &self.weather_target.depth.view"),
-            "weather pass owns the weather color/depth target"
+                && source[weather_fn..target].contains("&self.weather_target.depth.view")
+                && source[weather_fn..target].contains("&self.depth.view")
+                && source[target..combine].contains("view: weather_depth_view"),
+            "weather pass routes through the selected weather/main color-depth pair"
         );
         assert!(
             source[target..combine]
@@ -8263,9 +8450,11 @@ mod tests {
         let present = &source[blit_owner..finish_owner];
         assert!(present.contains("view: &surface_view"));
         assert!(
-            present.contains(
-                ".map(|_| self.create_post_effect_blit_bind_group(&self.main_target.view))"
-            ) && present.contains(".unwrap_or(&self.transparency_final_target.bind_group)")
+            present.contains("!self.level_frame_route.uses_improved_transparency()")
+                && present.contains("|| self.post_effect_graphs.is_some()")
+                && present
+                    .contains("self.create_post_effect_blit_bind_group(&self.main_target.view)")
+                && present.contains(".unwrap_or(&self.transparency_final_target.bind_group)")
                 && present.contains("pass.set_bind_group(0, bind_group, &[])"),
             "the only swapchain pass samples the selected internal main owner"
         );

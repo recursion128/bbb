@@ -66,14 +66,14 @@ use bbb_renderer::{
     HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
     HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
     HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
-    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting,
+    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -3213,8 +3213,10 @@ pub(crate) fn update_renderer_from_publication(
         view_bobbing,
         entity_shadows,
         high_contrast_block_outline,
+        improved_transparency,
         hud_debug_profiler_chart,
     } = context;
+    renderer.set_level_frame_route(LevelFrameRoute::for_options(improved_transparency, false));
     let state = publication
         .frame
         .as_ref()

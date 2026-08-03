@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "48c2af8fb93575d2c4abab62eb3ba902afb082bfaa45b275ee569dae5aa72984"
+      "sha256": "18b97a9dd65ff6f0a5c67d14a3402b3b9f2e04168b965e86d6c591b47d713544"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -231,7 +231,8 @@
       "bbb_evidence": [
         "crates/bbb-renderer/src/render.rs#FRAME_STEPS"
       ],
-      "owner_count": 14
+      "owner_count": 14,
+      "owner_evidence_count": 14
     },
     "rendering-level-light-query": {
       "bbb_evidence": [
@@ -24914,6 +24915,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#LevelRenderer(final Minecraft minecraft,final EntityRenderDispatcher entityRenderDispatcher,final BlockEntityRenderDispatcher blockEntityRenderDispatcher,final RenderBuffers renderBuffers,final GameRenderState gameRenderState,final FeatureRenderDispatcher featureRenderDispatcher)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#clouds_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#cloud_target_feeds_transparency_combine_after_world_passes",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_regular_and_improved_routes_preserve_clear_color_identity"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -24928,6 +24938,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addCloudsPass(final FrameGraphBuilder frame,final CloudStatus cloudStatus,final Vec3 cameraPosition,final long gameTime,final float partialTicks,final int cloudColor,final float cloudHeight,final int cloudRange)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#debug_always_on_top_text_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#always_on_top_debug_text_runs_after_composition_with_cleared_depth"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -24942,6 +24960,19 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addLateDebugPass(final FrameGraphBuilder frame,final CameraRenderState camera,final GpuBufferSlice fog,final Matrix4fc modelViewMatrix)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#main_world_pass",
+          "crates/bbb-renderer/src/render.rs#copy_main_depth_to_feature_targets",
+          "crates/bbb-renderer/src/render.rs#item_entity_target_pass",
+          "crates/bbb-renderer/src/render.rs#translucent_target_pass",
+          "crates/bbb-renderer/src/render.rs#particle_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_block_selection_renders_both_material_phase_paths"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -24978,6 +25009,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addRecentlyCompiledSection(final SectionRenderDispatcher.RenderSection section)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#main_world_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#sky_disc_draws_before_sunrise_and_celestial_layers"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -24992,6 +25031,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addSkyPass(final FrameGraphBuilder frame,final CameraRenderState cameraState,final GpuBufferSlice skyFog)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#weather_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#weather_target_uses_independently_cleared_depth_before_combine",
+          "crates/bbb-renderer/src/render.rs#world_border_draws_into_weather_target_after_rain_snow_and_before_combine"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25259,6 +25307,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#doEntityOutline()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#finish_frame"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#surface_image_is_acquired_at_vanilla_screen_blit_boundary",
+          "crates/bbb-renderer/src/render.rs#cloud_presentation_binds_cloud_offset_uniform"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25450,6 +25507,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#finalizeGizmoCollection()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#set_cloud_frame"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#cloud_presentation_binds_cloud_offset_uniform"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25464,6 +25529,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getCloudRenderer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#clouds_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#cloud_target_feeds_transparency_combine_after_world_passes",
+          "crates/bbb-renderer/src/offscreen.rs#offscreen_regular_and_improved_routes_preserve_clear_color_identity"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25492,6 +25566,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getEntityStatistics()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#item_entity_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws",
+          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25556,6 +25639,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getLightCoords(final LevelRenderer.BrightnessGetter brightnessGetter,final BlockAndLightGetter level,final BlockState state,final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#particle_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#particle_target_copies_main_depth_and_clears_before_combine",
+          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25658,6 +25750,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getTotalSections()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#translucent_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#translucent_target_copies_main_depth_and_clears_color_before_draws",
+          "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25672,6 +25773,17 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getTranslucentTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#LevelFrameRoute::for_options",
+          "crates/bbb-renderer/src/render.rs#transparency_combine_pass",
+          "crates/bbb-renderer/src/render.rs#presentation_color_target"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/renderer.rs#level_frame_route_matches_vanilla_option_and_panoramic_suppression",
+          "crates/bbb-renderer/src/post_effect_graph/tests.rs#selected_generation_drives_live_transparency_graph"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -25708,6 +25820,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getVisibleSections()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#weather_target_pass"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#weather_target_uses_independently_cleared_depth_before_combine",
+          "crates/bbb-renderer/src/render.rs#world_border_draws_into_weather_target_after_rain_snow_and_before_combine"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -26000,6 +26121,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#renderHitOutline(final PoseStack poseStack,final VertexConsumer builder,final double camX,final double camY,final double camZ,final BlockOutlineRenderState state,final int color,final float width)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/render.rs#render"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#render_steps_are_defined_in_frame_execution_order",
+          "crates/bbb-renderer/src/render.rs#render_calls_exactly_one_step_per_frame_steps_entry"
+        ]
+      },
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
@@ -40681,6 +40811,7 @@
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
       "rendering-level-backend-lifecycle",
+      "rendering-level-frame-graph",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle"
     ],

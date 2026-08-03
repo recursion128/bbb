@@ -86,6 +86,25 @@ renderer 只保留 GPU residency 和 pass placement；三者之间没有 pack/wo
 resolver。resource reload 在 renderer transaction 内准备 terrain catalog，全部 fallible owner 成功后才
 一次发布新 terrain generation；失败继续使用上一完整 generation。
 
+### Level frame graph 与 transparency route
+
+Vanilla `LevelRenderer.renderLevel`、五个 pass builder、五个 nullable target accessor、
+`getTransparencyChain`、cloud renderer 和 `endFrame` 的 14 个 frame owner 由一个决策值控制：
+
+`--improved-transparency` + panoramic-camera flag → native immutable
+`LevelFrameRoute` projection → renderer-private target/depth/combine/presentation routing。
+
+默认 FANCY 对应 regular route；panoramic camera 即使收到 improved 选项也强制 regular。regular
+将 translucent/item/particle/cloud/weather 依次 load 到 main color/depth，不复制 main depth，也不
+执行 transparency combine。improved 为五族选择独立 color/depth，main depth 只复制到
+translucent、item 与 particles；cloud/weather 独立 clear depth，selected transparency graph 最终写回
+main。graph generation 不可用时只有 renderer 内建 combine fallback，且 presentation 始终查询同一
+route owner。
+
+两条 route 都保持 clear→sky/main→entity outline post→cloud→weather→optional combine→late debug；
+late debug 清 main depth，outline chain 不受 improved 选项控制。resource/post generation 仍由既有
+prepare/apply transaction 原子发布，失败保留上一完整 generation；frame route 不缓存或改写 pack。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -120,6 +139,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | section compile/cull/fade lifecycle | `LevelRenderer`、`RenderSection`、`SectionOcclusionGraph` | native ordered section projection → renderer uniform | `equivalent` | generated 29-owner evidence、fade/threshold/generation/pixel/selected-shader tests |
 | backend/reload/resize lifecycle | `LevelRenderer` constructor/close/reload/setLevel/allChanged/resize/resetSampler/needsUpdate | world revision → native generation transaction → renderer-private GPU backend | `equivalent` | generated 9-owner evidence、atomic resize/rollback、RAII、resource/level generation tests |
 | level scene extract/submit | `LevelRenderer` 15 scene owners | world → native immutable frame projection → renderer pass/target | `equivalent` | generated 15-owner evidence、selection phase/style、32-block crack、offscreen pixel tests |
+| level frame graph | `LevelRenderer` 14 frame owners | CLI/native `LevelFrameRoute` → renderer targets/passes | `equivalent` | generated 14-owner evidence、regular/improved pixels/counters、selected graph rollback |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -137,6 +157,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
   backend generation，zero-size 不进入 prepare。释放由 renderer RAII owner 完成，不另设 close 路径。
 - block selection phase 必须来自当前 generation 的完整 block-state model material candidate set；不得
   恢复 native/renderer 的按名称、单候选或独立 pack resolver，也不得在两个 phase 同时提交。
+- `LevelFrameRoute` 是 feature target、depth copy、combine 与 presentation 的唯一决策 owner；不得恢复
+  以 post catalog 是否存在代替 option/panoramic 判断的无条件 improved 路径。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
 - FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
   optional static map fallback。
@@ -167,13 +189,19 @@ offscreen test 在真实 GPU 后端分别执行 solid/translucent phase，并验
 logical selection draw。生成 inventory 为 15 个 Vanilla method 分别保存 implementation/test symbol，
 fixture 对缺 cell、失效 symbol、旧 block-selection setter 和双 submission path fail closed。
 
+frame graph 由 CLI default/explicit、panoramic suppression、唯一 native projection、regular/improved
+target/depth/load/copy/combine source guard、selected graph generation rollback 与 AMD/RADV whole-frame
+readback 覆盖；regular/improved 都保留 clear color 与 cyan block-selection pixels，只有 improved 增加
+combine draw。generated inventory 为 14 个 owner 保存非空 implementation/test cell，fixture 对缺 cell
+和 stale output fail closed。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend/scene lifecycle 均已通过；新 block state、
+当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene lifecycle 均已通过；新 block state、
 pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 

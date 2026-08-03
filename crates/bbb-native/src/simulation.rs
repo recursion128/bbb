@@ -121,6 +121,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) view_bobbing: bool,
     pub(crate) entity_shadows: bool,
     pub(crate) high_contrast_block_outline: bool,
+    pub(crate) improved_transparency: bool,
     pub(crate) hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
 }
 

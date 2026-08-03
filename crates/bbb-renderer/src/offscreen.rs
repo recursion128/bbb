@@ -144,7 +144,7 @@ mod tests {
         HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
         HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
         HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
-        HudStyledTextRun, HudVignette, HudWinScreen, Renderer, SelectionBox,
+        HudStyledTextRun, HudVignette, HudWinScreen, LevelFrameRoute, Renderer, SelectionBox,
         StandaloneTextureSampling,
     };
 
@@ -203,8 +203,8 @@ mod tests {
         );
 
         // The frame went through finish_frame's counter fold: one frame, a HUD
-        // draw for the crosshair, and at least the always-on lightmap +
-        // transparency combine + blit draws alongside it.
+        // draw for the crosshair, and at least the always-on lightmap + final
+        // blit draws alongside it. The default regular route has no combine.
         assert_eq!(renderer.counters.frame_index, 1);
         assert!(
             renderer.counters.hud_draw_calls >= 1,
@@ -212,11 +212,39 @@ mod tests {
             renderer.counters.hud_draw_calls
         );
         assert!(
-            renderer.counters.draw_calls >= 4,
-            "lightmap/combine/blit/HUD draws are tallied, got {}",
+            renderer.counters.draw_calls >= 3,
+            "lightmap/blit/HUD draws are tallied, got {}",
             renderer.counters.draw_calls
         );
         assert_eq!(renderer.counters.screenshots_written, 0);
+    }
+
+    #[test]
+    fn offscreen_regular_and_improved_routes_preserve_clear_color_identity() {
+        let Some(mut renderer) = Renderer::new_offscreen(24, 20) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.125,
+            g: 0.5,
+            b: 0.875,
+            a: 1.0,
+        });
+
+        renderer.set_level_frame_route(LevelFrameRoute::Regular);
+        let regular = renderer.render_offscreen_frame().expect("regular frame");
+        let regular_draw_calls = renderer.counters.draw_calls;
+        renderer.set_level_frame_route(LevelFrameRoute::ImprovedTransparency);
+        // Keep the always-on first-frame lightmap contribution equal so the
+        // draw-count delta isolates the improved transparency combine.
+        renderer.lightmap_dirty = true;
+        let improved = renderer.render_offscreen_frame().expect("improved frame");
+        let improved_draw_calls = renderer.counters.draw_calls;
+
+        assert_channels_within_one(regular.pixel(2, 2), [32, 128, 223, 255]);
+        assert_channels_within_one(improved.pixel(2, 2), [32, 128, 223, 255]);
+        assert_eq!(regular.rgba, improved.rgba);
+        assert_eq!(improved_draw_calls, regular_draw_calls + 1);
     }
 
     /// Vanilla 26.1 creates its main target and ordinary resource textures as
@@ -316,18 +344,6 @@ mod tests {
             high_contrast: true,
         };
 
-        renderer.set_block_selection(Some(state(BlockSelectionPhase::BeforeTranslucent)));
-        let before = renderer
-            .render_offscreen_frame()
-            .expect("solid-phase selection frame");
-        assert_eq!(renderer.counters.selection_draw_calls, 1);
-
-        renderer.set_block_selection(Some(state(BlockSelectionPhase::AfterTranslucent)));
-        let after = renderer
-            .render_offscreen_frame()
-            .expect("translucent-phase selection frame");
-        assert_eq!(renderer.counters.selection_draw_calls, 1);
-
         let cyan_pixels = |pixels: &ScreenshotPixels| {
             pixels
                 .rgba
@@ -335,14 +351,32 @@ mod tests {
                 .filter(|pixel| pixel[0] < 130 && pixel[1] > 200 && pixel[2] > 180)
                 .count()
         };
-        assert!(
-            cyan_pixels(&before) > 0,
-            "before-translucent lane must draw cyan outline pixels"
-        );
-        assert!(
-            cyan_pixels(&after) > 0,
-            "after-translucent lane must draw cyan outline pixels"
-        );
+        for route in [
+            LevelFrameRoute::Regular,
+            LevelFrameRoute::ImprovedTransparency,
+        ] {
+            renderer.set_level_frame_route(route);
+            renderer.set_block_selection(Some(state(BlockSelectionPhase::BeforeTranslucent)));
+            let before = renderer
+                .render_offscreen_frame()
+                .expect("solid-phase selection frame");
+            assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+            renderer.set_block_selection(Some(state(BlockSelectionPhase::AfterTranslucent)));
+            let after = renderer
+                .render_offscreen_frame()
+                .expect("translucent-phase selection frame");
+            assert_eq!(renderer.counters.selection_draw_calls, 1);
+
+            assert!(
+                cyan_pixels(&before) > 0,
+                "{route:?} before-translucent lane must draw cyan outline pixels"
+            );
+            assert!(
+                cyan_pixels(&after) > 0,
+                "{route:?} after-translucent lane must draw cyan outline pixels"
+            );
+        }
     }
 
     fn assert_channels_within_one(actual: [u8; 4], expected: [u8; 4]) {

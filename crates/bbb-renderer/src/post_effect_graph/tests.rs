@@ -16,7 +16,7 @@ use crate::item_models::{
 };
 use crate::{
     cow_entity_texture_refs, ClearColor, EntityModelInstance, EntityModelTextureImage,
-    HudInventoryScreen, Renderer,
+    HudInventoryScreen, LevelFrameRoute, Renderer,
 };
 
 const TEST_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -584,6 +584,7 @@ fn selected_generation_drives_live_transparency_graph() {
     renderer
         .reload_post_effect_graphs(&catalog.renderer_projection())
         .unwrap();
+    renderer.set_level_frame_route(LevelFrameRoute::ImprovedTransparency);
     renderer.set_clear_color(ClearColor {
         r: 0.0,
         g: 0.0,

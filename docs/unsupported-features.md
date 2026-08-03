@@ -79,28 +79,18 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
 Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-frame-graph`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
 
-- **The registered block-entity and frame/HUD step surfaces are `active`.**
+- **The registered block-entity and remaining frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
   one mechanically reachable evidence cell for every 27 block-entity
-  registration, 70 GUI owner, 46 game-renderer owner and 77 level-renderer
-  owner, including pass order, translucent/post/lightmap/weather consumers and
-  exact no-surface classifications. Split only by semantic owner and preserve
-  the single frame-extract/submission path.
+  registration, 70 GUI owner, 46 game-renderer owner and the three open
+  LevelRenderer mechanisms. Split only by semantic owner and preserve the
+  single frame-extract/submission path.
   The generated inventory routes the 77 `LevelRenderer` methods into seven
   total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
   29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. Each of the four remaining open
+  diagnostics/gizmos 3 and light query 3. Each of the three remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
-- **`rendering-level-frame-graph` is the current active engineering slice.**
-  BBB has one ordered `FRAME_STEPS` orchestrator, but it always allocates and
-  combines improved-transparency targets; Vanilla `getTransparencyChain`
-  instead follows `OptionsRenderState.improvedTransparency` (and panoramic
-  suppression), routing translucent/item/particle/cloud/weather output back to
-  main when false. Add the CLI-owned option, preserve both exact target/depth
-  paths, close all 14 generated owner cells, and prove regular/improved pixels
-  plus atomic resource-generation fallback. Contract and safe stops are in
-  `goal.md#active-工程合同levelrenderer-frame-graph`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment

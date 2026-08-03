@@ -8,6 +8,39 @@ use std::{
 };
 
 #[test]
+fn startup_transparency_option_has_one_native_to_renderer_projection() {
+    let startup = include_str!("../startup.rs");
+    let main = include_str!("../main.rs");
+    let simulation = include_str!("../simulation.rs");
+    let runtime = include_str!("../runtime.rs");
+
+    assert_eq!(
+        startup
+            .matches("pub(crate) improved_transparency: bool")
+            .count(),
+        1
+    );
+    assert_eq!(
+        main.matches("improved_transparency: args.improved_transparency")
+            .count(),
+        1
+    );
+    assert_eq!(
+        simulation
+            .matches("pub(crate) improved_transparency: bool")
+            .count(),
+        1
+    );
+    assert_eq!(
+        runtime
+            .matches("renderer.set_level_frame_route(LevelFrameRoute::for_options(")
+            .count(),
+        1
+    );
+    assert!(!runtime.contains("post_effect_graphs.is_some()"));
+}
+
+#[test]
 fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback() {
     let source = include_str!("../runtime.rs");
     let advance = source
