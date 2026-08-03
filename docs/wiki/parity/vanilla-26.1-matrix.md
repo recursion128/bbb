@@ -48,7 +48,13 @@
 | `rendering-particle-provider-registration` | rendering | 117 `ParticleResources.register` calls | pack/native/renderer particle pipeline | type→provider/sprite/runtime effect | `equivalent` | `crates/bbb-protocol/src/block_state_types.rs`、`crates/bbb-native/src/particle_runtime.rs`、generated-fact stale check、[ledger matrix](../../unsupported-features.md) | provider registration 或固定 state facts 变化时重开 |
 | `rendering-hud-step-surface` | ui/rendering | `Gui.extract*`、tick/title/HUD decisions | native render extract/render-types/renderer | HUD layer state/order/visibility | `partial` | `crates/bbb-native/src/runtime/render_extract.rs`、generated inventory | [ledger](../../unsupported-features.md) |
 | `rendering-game-step-surface` | rendering | `GameRenderer.extract/render/update` | native extract/renderer frame | camera/gui/world/post step order | `partial` | `crates/bbb-renderer/src/lib.rs`、generated inventory | [ledger](../../unsupported-features.md) |
-| `rendering-level-step-surface` | rendering | `LevelRenderer` extract/submit/pass methods | terrain/entity/effect renderer | terrain→entity→particle→weather/translucent order | `partial` | `crates/bbb-renderer/src/lib.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-backend-lifecycle` | rendering/lifecycle | `LevelRenderer` backend/reload/level/reset 9 owner | native resource transaction + renderer backend | resource、target、level、resize rebuild lifetime | `partial` | `crates/bbb-renderer/src/resource_reload.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-section-lifecycle` | rendering/terrain | `LevelRenderer` section/cull/compile/dirty 29 owner | native terrain runtime + renderer terrain owner | view section、frustum、compile、dirty、translucent resort | `partial` | `crates/bbb-native/src/terrain_runtime.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-frame-graph` | rendering/frame | `LevelRenderer` frame/pass/target 14 owner | renderer `FRAME_STEPS` | main/sky/cloud/weather/transparency/debug pass order | `partial` | `crates/bbb-renderer/src/render.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-scene-projection` | rendering/scene | `LevelRenderer` extract/submit/outline 15 owner | native immutable frame extract→renderer | entity、block entity、breaking、outline extraction/submission | `partial` | `crates/bbb-native/src/runtime/render_extract.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-effect-lifecycle` | rendering/effects | `LevelRenderer.tick/destroyBlockProgress` 4 owner | world progress→native tick→renderer overlay | weather tick、breaking progress/expiry | `partial` | `crates/bbb-native/src/runtime.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-diagnostics-gizmos` | rendering/diagnostics | `LevelRenderer` statistics/gizmo 3 owner | native debug extract→renderer debug passes | client gizmo collection/finalization and section/entity diagnostics | `partial` | `crates/bbb-native/src/terrain_runtime/occlusion/debug.rs`、generated inventory | [ledger](../../unsupported-features.md) |
+| `rendering-level-light-query` | rendering/light | `LevelRenderer.getLightCoords/BrightnessGetter` 3 owner | world light store→native immutable samples | emissive/block/sky packed-light query | `partial` | `crates/bbb-world/src/chunks/light.rs`、generated inventory | [ledger](../../unsupported-features.md) |
 | `rendering-block-model-pipeline` | rendering | `ModelBlockRenderer`、`BlockModelLighter` | terrain projection/mesh | occlusion/light facts | `equivalent` | [方块机制页](../mechanisms/rendering/block-rendering.md) | ROI/state table 变化时重开 |
 | `rendering-chunk-layer-routing` | rendering | `SectionCompiler` | terrain renderer | material layer/sort state | `equivalent` | `crates/bbb-renderer/src/terrain.rs` | render-layer bootstrap 变化时重开 |
 | `rendering-fluid-mesh` | rendering | `FluidRenderer` | terrain fluid mesh | neighbor/overlay/tint/light | `equivalent` | [fluid 机制页](../mechanisms/rendering/fluid-rendering.md) | fluid ROI/renderer 变化时重开 |
@@ -97,7 +103,7 @@
 
 ## 审计摘要
 
-生成 inventory 将 2,927 个 owner 映射到 48 个 source-derived mechanism；矩阵另保留
+生成 inventory 将 2,927 个 owner 映射到 61 个 source-derived mechanism；矩阵另保留
 资源、渲染、性能和范围排除的长期机制行。`equivalent` 只用于已有 generated coverage、
 决策级 focused evidence 或真实 acceptance 的行；本次无法证明整条 consumer path 的旧 broad
 行已拆分并降为 `partial`/`unverified`，其实现工作只由账本排程。

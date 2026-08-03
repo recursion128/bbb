@@ -65,7 +65,7 @@ def _method_routes(
     for route, method_names in groups:
         for method_name in method_names:
             if method_name in routes:
-                raise ValueError(f"duplicate Minecraft method route: {method_name}")
+                raise ValueError(f"duplicate method route: {method_name}")
             routes[method_name] = route
     return routes
 
@@ -337,6 +337,143 @@ MINECRAFT_SUPPORT_ROUTE = MethodRoute(
 )
 
 
+LEVEL_RENDERER_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute(
+            "render-lifecycle",
+            "rendering",
+            "rendering-level-backend-lifecycle",
+        ),
+        (
+            "LevelRenderer",
+            "close",
+            "onResourceManagerReload",
+            "initOutline",
+            "setLevel",
+            "allChanged",
+            "resize",
+            "resetSampler",
+            "needsUpdate",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-section",
+            "rendering",
+            "rendering-level-section-lifecycle",
+        ),
+        (
+            "clearVisibleSections",
+            "cullTerrain",
+            "offsetFrustum",
+            "applyFrustum",
+            "addRecentlyCompiledSection",
+            "update",
+            "scheduleTranslucentSectionResort",
+            "scheduleResort",
+            "compileSections",
+            "blockChanged",
+            "setBlockDirty",
+            "setBlocksDirty",
+            "setSectionDirtyWithNeighbors",
+            "setSectionRangeDirty",
+            "setSectionDirty",
+            "onSectionBecomingNonEmpty",
+            "hasRenderedAllSections",
+            "onChunkReadyToRender",
+            "isSectionCompiledAndVisible",
+            "prepareChunkRenders",
+            "getSectionRenderDispatcher",
+            "getTotalSections",
+            "getLastViewDistance",
+            "countRenderedSections",
+            "getVisibleSections",
+            "getSectionOcclusionGraph",
+            "getSectionStatistics",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-level-frame-graph"),
+        (
+            "getTransparencyChain",
+            "renderLevel",
+            "addMainPass",
+            "addCloudsPass",
+            "addWeatherPass",
+            "addLateDebugPass",
+            "addSkyPass",
+            "endFrame",
+            "getTranslucentTarget",
+            "getItemEntityTarget",
+            "getParticlesTarget",
+            "getWeatherTarget",
+            "getCloudsTarget",
+            "getCloudRenderer",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-scene",
+            "rendering",
+            "rendering-level-scene-projection",
+        ),
+        (
+            "doEntityOutline",
+            "shouldShowEntityOutlines",
+            "extractLevel",
+            "extractVisibleEntities",
+            "submitEntities",
+            "extractVisibleBlockEntities",
+            "submitBlockEntities",
+            "extractBlockDestroyAnimation",
+            "submitBlockDestroyAnimation",
+            "extractBlockOutline",
+            "renderBlockOutline",
+            "checkPoseStack",
+            "extractEntity",
+            "renderHitOutline",
+            "entityOutlineTarget",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-effect",
+            "rendering",
+            "rendering-level-effect-lifecycle",
+        ),
+        (
+            "tick",
+            "removeBlockBreakingProgress",
+            "removeProgress",
+            "destroyBlockProgress",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-diagnostics",
+            "rendering",
+            "rendering-level-diagnostics-gizmos",
+        ),
+        (
+            "getEntityStatistics",
+            "collectPerFrameGizmos",
+            "finalizeGizmoCollection",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-light",
+            "rendering",
+            "rendering-level-light-query",
+        ),
+        (
+            "getLightCoords",
+            "packedBrightness",
+        ),
+    ),
+)
+
+
 METHOD_SURFACES = (
     MethodSurface("startup", "startup", "startup-client-bootstrap", "net/minecraft/client/main/Main.java"),
     MethodSurface("startup", "startup", "startup-session-identity", "net/minecraft/client/User.java"),
@@ -355,7 +492,7 @@ METHOD_SURFACES = (
     MethodSurface("interaction", "interaction", "interaction-game-mode-decisions", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
     MethodSurface("render-step", "ui", "rendering-hud-step-surface", "net/minecraft/client/gui/Gui.java"),
     MethodSurface("render-step", "rendering", "rendering-game-step-surface", "net/minecraft/client/renderer/GameRenderer.java"),
-    MethodSurface("render-step", "rendering", "rendering-level-step-surface", "net/minecraft/client/renderer/LevelRenderer.java"),
+    MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
     MethodSurface("resource-consumer", "text", "ui-font-manager", "net/minecraft/client/gui/font/FontManager.java"),
     MethodSurface("resource-consumer", "audio", "audio-sound-manager-engine", "net/minecraft/client/sounds/SoundManager.java"),
@@ -478,7 +615,33 @@ MECHANISM_EVIDENCE = {
     "ui-menu-screen-registration": ("crates/bbb-native/src/input/inventory.rs",),
     "rendering-hud-step-surface": ("crates/bbb-native/src/runtime/render_extract.rs",),
     "rendering-game-step-surface": ("crates/bbb-renderer/src/lib.rs",),
-    "rendering-level-step-surface": ("crates/bbb-renderer/src/lib.rs",),
+    "rendering-level-backend-lifecycle": (
+        "crates/bbb-renderer/src/resource_reload.rs",
+        "crates/bbb-native/src/resource_reload.rs",
+    ),
+    "rendering-level-section-lifecycle": (
+        "crates/bbb-native/src/terrain_runtime.rs",
+        "crates/bbb-renderer/src/terrain.rs",
+    ),
+    "rendering-level-frame-graph": (
+        "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
+    ),
+    "rendering-level-scene-projection": (
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/render.rs",
+    ),
+    "rendering-level-effect-lifecycle": (
+        "crates/bbb-native/src/runtime.rs#block_destroy_stages_from_world",
+        "crates/bbb-renderer/src/block_destroy.rs",
+    ),
+    "rendering-level-diagnostics-gizmos": (
+        "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
+        "crates/bbb-renderer/src/debug_filled_boxes.rs",
+    ),
+    "rendering-level-light-query": (
+        "crates/bbb-world/src/chunks/light.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
+    ),
     "resources-language-manager": ("crates/bbb-pack/src/language.rs",),
     "ui-font-manager": ("crates/bbb-item-model/src/font.rs",),
     "audio-sound-manager-engine": ("crates/bbb-pack/src/sounds.rs", "crates/bbb-audio/src/runtime.rs"),
@@ -614,6 +777,14 @@ class InventoryBuilder:
         spec: MethodSurface,
         method: JavaMethod,
     ) -> MethodRoute:
+        if spec.source_path == "net/minecraft/client/renderer/LevelRenderer.java":
+            route = LEVEL_RENDERER_METHOD_ROUTES.get(method.name)
+            if route is None:
+                signature = InventoryBuilder.method_signature(method)
+                raise ClientMechanismInventoryError(
+                    f"LevelRenderer method lacks a homogeneous route: {signature}"
+                )
+            return route
         if spec.source_path != "net/minecraft/client/Minecraft.java":
             return MethodRoute(
                 spec.category,
@@ -904,6 +1075,7 @@ class InventoryBuilder:
             "schema_version": 1,
             "selection_contract": {
                 "java_frontend": "scripts/vanilla_java_source.py",
+                "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
                 "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
                 "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
                 "serverbound_scan_paths": list(SERVERBOUND_SCAN_PATHS),

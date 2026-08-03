@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "b7b7c2390378bd7cb61919b384d1089ff358d6d3a2613c69d64616790067bf21"
+      "sha256": "7a7218f7a255de6f4f961f5e815233f8300e13d918825468e70ca2d7ba5081ea"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -205,11 +205,53 @@
       ],
       "owner_count": 72
     },
-    "rendering-level-step-surface": {
+    "rendering-level-backend-lifecycle": {
       "bbb_evidence": [
-        "crates/bbb-renderer/src/lib.rs"
+        "crates/bbb-renderer/src/resource_reload.rs",
+        "crates/bbb-native/src/resource_reload.rs"
       ],
-      "owner_count": 77
+      "owner_count": 9
+    },
+    "rendering-level-diagnostics-gizmos": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/terrain_runtime/occlusion/debug.rs",
+        "crates/bbb-renderer/src/debug_filled_boxes.rs"
+      ],
+      "owner_count": 3
+    },
+    "rendering-level-effect-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/runtime.rs#block_destroy_stages_from_world",
+        "crates/bbb-renderer/src/block_destroy.rs"
+      ],
+      "owner_count": 4
+    },
+    "rendering-level-frame-graph": {
+      "bbb_evidence": [
+        "crates/bbb-renderer/src/render.rs#FRAME_STEPS"
+      ],
+      "owner_count": 14
+    },
+    "rendering-level-light-query": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/chunks/light.rs",
+        "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world"
+      ],
+      "owner_count": 3
+    },
+    "rendering-level-scene-projection": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-renderer/src/render.rs"
+      ],
+      "owner_count": 15
+    },
+    "rendering-level-section-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/terrain_runtime.rs",
+        "crates/bbb-renderer/src/terrain.rs"
+      ],
+      "owner_count": 29
     },
     "rendering-nondeterministic-golden-exclusions": {
       "bbb_evidence": [
@@ -24846,10 +24888,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.GameRenderer#update(final DeltaTracker deltaTracker,final boolean advanceGameTime)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "constructor",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#LevelRenderer(final Minecraft minecraft,final EntityRenderDispatcher entityRenderDispatcher,final BlockEntityRenderDispatcher blockEntityRenderDispatcher,final RenderBuffers renderBuffers,final GameRenderState gameRenderState,final FeatureRenderDispatcher featureRenderDispatcher)",
       "role": "decision",
       "scope": "external-client",
@@ -24863,7 +24905,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addCloudsPass(final FrameGraphBuilder frame,final CloudStatus cloudStatus,final Vec3 cameraPosition,final long gameTime,final float partialTicks,final int cloudColor,final float cloudHeight,final int cloudRange)",
       "role": "decision",
       "scope": "external-client",
@@ -24877,7 +24919,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addLateDebugPass(final FrameGraphBuilder frame,final CameraRenderState camera,final GpuBufferSlice fog,final Matrix4fc modelViewMatrix)",
       "role": "decision",
       "scope": "external-client",
@@ -24891,7 +24933,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addMainPass(final FrameGraphBuilder frame,final Frustum frustum,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final boolean renderOutline,final LevelRenderState levelRenderState,final DeltaTracker deltaTracker,final ProfilerFiller profiler,final ChunkSectionsToRender chunkSectionsToRender)",
       "role": "decision",
       "scope": "external-client",
@@ -24902,10 +24944,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addMainPass(final FrameGraphBuilder frame,final Frustum frustum,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final boolean renderOutline,final LevelRenderState levelRenderState,final DeltaTracker deltaTracker,final ProfilerFiller profiler,final ChunkSectionsToRender chunkSectionsToRender)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addRecentlyCompiledSection(final SectionRenderDispatcher.RenderSection section)",
       "role": "decision",
       "scope": "external-client",
@@ -24919,7 +24961,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addSkyPass(final FrameGraphBuilder frame,final CameraRenderState cameraState,final GpuBufferSlice skyFog)",
       "role": "decision",
       "scope": "external-client",
@@ -24933,7 +24975,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#addWeatherPass(final FrameGraphBuilder frame,final GpuBufferSlice fog)",
       "role": "decision",
       "scope": "external-client",
@@ -24944,10 +24986,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#addWeatherPass(final FrameGraphBuilder frame,final GpuBufferSlice fog)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#allChanged()",
       "role": "decision",
       "scope": "external-client",
@@ -24958,10 +25000,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#allChanged()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#applyFrustum(final Frustum frustum)",
       "role": "decision",
       "scope": "external-client",
@@ -24972,10 +25014,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#applyFrustum(final Frustum frustum)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#blockChanged(final BlockGetter level,final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)",
       "role": "decision",
       "scope": "external-client",
@@ -24986,10 +25028,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#blockChanged(final BlockGetter level,final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#checkPoseStack(final PoseStack poseStack)",
       "role": "decision",
       "scope": "external-client",
@@ -25000,10 +25042,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#checkPoseStack(final PoseStack poseStack)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#clearVisibleSections()",
       "role": "decision",
       "scope": "external-client",
@@ -25014,10 +25056,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#clearVisibleSections()"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#close()",
       "role": "decision",
       "scope": "external-client",
@@ -25028,10 +25070,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#close()"
     },
     {
-      "category": "render-step",
+      "category": "render-diagnostics",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-diagnostics-gizmos",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#collectPerFrameGizmos()",
       "role": "decision",
       "scope": "external-client",
@@ -25042,10 +25084,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#collectPerFrameGizmos()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#compileSections(final Camera camera)",
       "role": "decision",
       "scope": "external-client",
@@ -25056,10 +25098,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#compileSections(final Camera camera)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#countRenderedSections()",
       "role": "decision",
       "scope": "external-client",
@@ -25070,10 +25112,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#countRenderedSections()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#cullTerrain(final Camera camera,final Frustum frustum,final boolean spectator)",
       "role": "decision",
       "scope": "external-client",
@@ -25084,10 +25126,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#cullTerrain(final Camera camera,final Frustum frustum,final boolean spectator)"
     },
     {
-      "category": "render-step",
+      "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-effect-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#destroyBlockProgress(final int id,final BlockPos pos,final int progress)",
       "role": "decision",
       "scope": "external-client",
@@ -25098,10 +25140,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#destroyBlockProgress(final int id,final BlockPos pos,final int progress)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#doEntityOutline()",
       "role": "decision",
       "scope": "external-client",
@@ -25115,7 +25157,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#endFrame()",
       "role": "decision",
       "scope": "external-client",
@@ -25126,10 +25168,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#endFrame()"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#entityOutlineTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25140,10 +25182,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#entityOutlineTarget()"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractBlockDestroyAnimation(final Camera camera,final LevelRenderState levelRenderState)",
       "role": "decision",
       "scope": "external-client",
@@ -25154,10 +25196,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractBlockDestroyAnimation(final Camera camera,final LevelRenderState levelRenderState)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractBlockOutline(final Camera camera,final LevelRenderState levelRenderState)",
       "role": "decision",
       "scope": "external-client",
@@ -25168,10 +25210,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractBlockOutline(final Camera camera,final LevelRenderState levelRenderState)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractEntity(final Entity entity,final float partialTickTime)",
       "role": "decision",
       "scope": "external-client",
@@ -25182,10 +25224,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractEntity(final Entity entity,final float partialTickTime)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractLevel(final DeltaTracker deltaTracker,final Camera camera,final float deltaPartialTick)",
       "role": "decision",
       "scope": "external-client",
@@ -25196,10 +25238,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractLevel(final DeltaTracker deltaTracker,final Camera camera,final float deltaPartialTick)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractVisibleBlockEntities(final Camera camera,final float deltaPartialTick,final LevelRenderState levelRenderState)",
       "role": "decision",
       "scope": "external-client",
@@ -25210,10 +25252,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractVisibleBlockEntities(final Camera camera,final float deltaPartialTick,final LevelRenderState levelRenderState)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#extractVisibleEntities(final Camera camera,final Frustum frustum,final DeltaTracker deltaTracker,final LevelRenderState output)",
       "role": "decision",
       "scope": "external-client",
@@ -25224,10 +25266,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#extractVisibleEntities(final Camera camera,final Frustum frustum,final DeltaTracker deltaTracker,final LevelRenderState output)"
     },
     {
-      "category": "render-step",
+      "category": "render-diagnostics",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-diagnostics-gizmos",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#finalizeGizmoCollection()",
       "role": "decision",
       "scope": "external-client",
@@ -25241,7 +25283,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getCloudRenderer()",
       "role": "decision",
       "scope": "external-client",
@@ -25255,7 +25297,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getCloudsTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25266,10 +25308,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getCloudsTarget()"
     },
     {
-      "category": "render-step",
+      "category": "render-diagnostics",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-diagnostics-gizmos",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getEntityStatistics()",
       "role": "decision",
       "scope": "external-client",
@@ -25283,7 +25325,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getItemEntityTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25294,10 +25336,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getItemEntityTarget()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getLastViewDistance()",
       "role": "decision",
       "scope": "external-client",
@@ -25308,10 +25350,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getLastViewDistance()"
     },
     {
-      "category": "render-step",
+      "category": "render-light",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-light-query",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getLightCoords(final BlockAndLightGetter level,final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -25322,10 +25364,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getLightCoords(final BlockAndLightGetter level,final BlockPos pos)"
     },
     {
-      "category": "render-step",
+      "category": "render-light",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-light-query",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getLightCoords(final LevelRenderer.BrightnessGetter brightnessGetter,final BlockAndLightGetter level,final BlockState state,final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -25339,7 +25381,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getParticlesTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25350,10 +25392,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getParticlesTarget()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getSectionOcclusionGraph()",
       "role": "decision",
       "scope": "external-client",
@@ -25364,10 +25406,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionOcclusionGraph()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getSectionRenderDispatcher()",
       "role": "decision",
       "scope": "external-client",
@@ -25378,10 +25420,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionRenderDispatcher()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getSectionStatistics()",
       "role": "decision",
       "scope": "external-client",
@@ -25392,10 +25434,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getSectionStatistics()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getTotalSections()",
       "role": "decision",
       "scope": "external-client",
@@ -25409,7 +25451,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getTranslucentTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25423,7 +25465,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getTransparencyChain()",
       "role": "decision",
       "scope": "external-client",
@@ -25434,10 +25476,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getTransparencyChain()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getVisibleSections()",
       "role": "decision",
       "scope": "external-client",
@@ -25451,7 +25493,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#getWeatherTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -25462,10 +25504,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getWeatherTarget()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#hasRenderedAllSections()",
       "role": "decision",
       "scope": "external-client",
@@ -25476,10 +25518,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#hasRenderedAllSections()"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#initOutline()",
       "role": "decision",
       "scope": "external-client",
@@ -25490,10 +25532,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#initOutline()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#isSectionCompiledAndVisible(final BlockPos blockPos)",
       "role": "decision",
       "scope": "external-client",
@@ -25504,10 +25546,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#isSectionCompiledAndVisible(final BlockPos blockPos)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#needsUpdate()",
       "role": "decision",
       "scope": "external-client",
@@ -25518,10 +25560,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#needsUpdate()"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#offsetFrustum(final Frustum frustum)",
       "role": "decision",
       "scope": "external-client",
@@ -25532,10 +25574,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#offsetFrustum(final Frustum frustum)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#onChunkReadyToRender(final ChunkPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -25546,10 +25588,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onChunkReadyToRender(final ChunkPos pos)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#onResourceManagerReload(final ResourceManager resourceManager)",
       "role": "decision",
       "scope": "external-client",
@@ -25560,10 +25602,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onResourceManagerReload(final ResourceManager resourceManager)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#onSectionBecomingNonEmpty(final long sectionNode)",
       "role": "decision",
       "scope": "external-client",
@@ -25574,10 +25616,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#onSectionBecomingNonEmpty(final long sectionNode)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#prepareChunkRenders(final Matrix4fc modelViewMatrix)",
       "role": "decision",
       "scope": "external-client",
@@ -25588,10 +25630,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#prepareChunkRenders(final Matrix4fc modelViewMatrix)"
     },
     {
-      "category": "render-step",
+      "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-effect-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#removeBlockBreakingProgress()",
       "role": "decision",
       "scope": "external-client",
@@ -25602,10 +25644,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#removeBlockBreakingProgress()"
     },
     {
-      "category": "render-step",
+      "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-effect-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#removeProgress(final BlockDestructionProgress block)",
       "role": "decision",
       "scope": "external-client",
@@ -25616,10 +25658,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#removeProgress(final BlockDestructionProgress block)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#renderBlockOutline(final MultiBufferSource.BufferSource bufferSource,final PoseStack poseStack,final boolean onlyTranslucentBlocks,final LevelRenderState levelRenderState)",
       "role": "decision",
       "scope": "external-client",
@@ -25630,10 +25672,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#renderBlockOutline(final MultiBufferSource.BufferSource bufferSource,final PoseStack poseStack,final boolean onlyTranslucentBlocks,final LevelRenderState levelRenderState)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#renderHitOutline(final PoseStack poseStack,final VertexConsumer builder,final double camX,final double camY,final double camZ,final BlockOutlineRenderState state,final int color,final float width)",
       "role": "decision",
       "scope": "external-client",
@@ -25647,7 +25689,7 @@
       "category": "render-step",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-frame-graph",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#renderLevel(final GraphicsResourceAllocator resourceAllocator,final DeltaTracker deltaTracker,final boolean renderOutline,final CameraRenderState cameraState,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final Vector4f fogColor,final boolean shouldRenderSky,final ChunkSectionsToRender chunkSectionsToRender)",
       "role": "decision",
       "scope": "external-client",
@@ -25658,10 +25700,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#renderLevel(final GraphicsResourceAllocator resourceAllocator,final DeltaTracker deltaTracker,final boolean renderOutline,final CameraRenderState cameraState,final Matrix4fc modelViewMatrix,final GpuBufferSlice terrainFog,final Vector4f fogColor,final boolean shouldRenderSky,final ChunkSectionsToRender chunkSectionsToRender)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#resetSampler()",
       "role": "decision",
       "scope": "external-client",
@@ -25672,10 +25714,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#resetSampler()"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#resize(final int width,final int height)",
       "role": "decision",
       "scope": "external-client",
@@ -25686,10 +25728,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#resize(final int width,final int height)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#scheduleResort(final SectionRenderDispatcher.RenderSection section,final TranslucencyPointOfView pointOfView,final Vec3 cameraPos,final boolean blockPosChanged,final boolean isNearby)",
       "role": "decision",
       "scope": "external-client",
@@ -25700,10 +25742,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#scheduleResort(final SectionRenderDispatcher.RenderSection section,final TranslucencyPointOfView pointOfView,final Vec3 cameraPos,final boolean blockPosChanged,final boolean isNearby)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#scheduleTranslucentSectionResort(final Vec3 cameraPos)",
       "role": "decision",
       "scope": "external-client",
@@ -25714,10 +25756,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#scheduleTranslucentSectionResort(final Vec3 cameraPos)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)",
       "role": "decision",
       "scope": "external-client",
@@ -25728,10 +25770,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final boolean playerChanged)",
       "role": "decision",
       "scope": "external-client",
@@ -25742,10 +25784,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlockDirty(final BlockPos pos,final boolean playerChanged)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setBlocksDirty(final int x0,final int y0,final int z0,final int x1,final int y1,final int z1)",
       "role": "decision",
       "scope": "external-client",
@@ -25756,10 +25798,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setBlocksDirty(final int x0,final int y0,final int z0,final int x1,final int y1,final int z1)"
     },
     {
-      "category": "render-step",
+      "category": "render-lifecycle",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-backend-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setLevel(final @Nullable ClientLevel level)",
       "role": "decision",
       "scope": "external-client",
@@ -25770,10 +25812,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setLevel(final @Nullable ClientLevel level)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ)",
       "role": "decision",
       "scope": "external-client",
@@ -25784,10 +25826,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ,final boolean playerChanged)",
       "role": "decision",
       "scope": "external-client",
@@ -25798,10 +25840,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirty(final int sectionX,final int sectionY,final int sectionZ,final boolean playerChanged)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setSectionDirtyWithNeighbors(final int sectionX,final int sectionY,final int sectionZ)",
       "role": "decision",
       "scope": "external-client",
@@ -25812,10 +25854,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionDirtyWithNeighbors(final int sectionX,final int sectionY,final int sectionZ)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)",
       "role": "decision",
       "scope": "external-client",
@@ -25826,10 +25868,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#shouldShowEntityOutlines()",
       "role": "decision",
       "scope": "external-client",
@@ -25840,10 +25882,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#shouldShowEntityOutlines()"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#submitBlockDestroyAnimation(final PoseStack poseStack,final SubmitNodeCollector submitNodeCollector,final LevelRenderState levelRenderState)",
       "role": "decision",
       "scope": "external-client",
@@ -25854,10 +25896,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitBlockDestroyAnimation(final PoseStack poseStack,final SubmitNodeCollector submitNodeCollector,final LevelRenderState levelRenderState)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#submitBlockEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeStorage submitNodeStorage)",
       "role": "decision",
       "scope": "external-client",
@@ -25868,10 +25910,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitBlockEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeStorage submitNodeStorage)"
     },
     {
-      "category": "render-step",
+      "category": "render-scene",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-scene-projection",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#submitEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeCollector output)",
       "role": "decision",
       "scope": "external-client",
@@ -25882,10 +25924,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeCollector output)"
     },
     {
-      "category": "render-step",
+      "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-effect-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#tick(final Camera camera)",
       "role": "decision",
       "scope": "external-client",
@@ -25896,10 +25938,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#tick(final Camera camera)"
     },
     {
-      "category": "render-step",
+      "category": "render-section",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-section-lifecycle",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer#update(final Camera camera)",
       "role": "decision",
       "scope": "external-client",
@@ -25910,10 +25952,10 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#update(final Camera camera)"
     },
     {
-      "category": "render-step",
+      "category": "render-light",
       "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "rendering-level-step-surface",
+      "mechanism_id": "rendering-level-light-query",
       "owner_id": "method:net.minecraft.client.renderer.LevelRenderer.BrightnessGetter#packedBrightness(BlockAndLightGetter level,BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -40181,6 +40223,7 @@
   "schema_version": 1,
   "selection_contract": {
     "java_frontend": "scripts/vanilla_java_source.py",
+    "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
     "serverbound_scan_paths": [
@@ -41649,7 +41692,13 @@
       "platform": 67,
       "protocol-handler": 269,
       "reload-listener": 20,
-      "render-step": 202,
+      "render-diagnostics": 3,
+      "render-effect": 4,
+      "render-lifecycle": 9,
+      "render-light": 3,
+      "render-scene": 15,
+      "render-section": 29,
+      "render-step": 139,
       "resource-consumer": 105,
       "resources": 82,
       "security": 30,

@@ -101,6 +101,58 @@ public class Owner {
             )
         )
 
+    def test_level_renderer_method_partition_is_total_and_homogeneous(self) -> None:
+        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"]
+            == "net/minecraft/client/renderer/LevelRenderer.java"
+            and owner["kind"] in {"method", "constructor"}
+        ]
+        by_mechanism = Counter(owner["mechanism_id"] for owner in methods)
+
+        self.assertEqual(len(methods), 77)
+        self.assertEqual(
+            by_mechanism,
+            Counter(
+                {
+                    "rendering-level-backend-lifecycle": 9,
+                    "rendering-level-section-lifecycle": 29,
+                    "rendering-level-frame-graph": 14,
+                    "rendering-level-scene-projection": 15,
+                    "rendering-level-effect-lifecycle": 4,
+                    "rendering-level-diagnostics-gizmos": 3,
+                    "rendering-level-light-query": 3,
+                }
+            ),
+        )
+        self.assertNotIn("rendering-level-step-surface", value["mechanisms"])
+
+    def test_unclassified_level_renderer_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { void newDecision() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks a homogeneous route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "rendering",
+                        "rendering-level-frame-graph",
+                        relative,
+                    )
+                )
+
     def test_direct_field_return_is_a_support_accessor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -77,7 +77,7 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-step-surface`
+Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-backend-lifecycle`, `rendering-level-section-lifecycle`, `rendering-level-frame-graph`, `rendering-level-scene-projection`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
 
 - **The registered block-entity and frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
