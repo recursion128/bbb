@@ -48,6 +48,7 @@ EXPECTED_FAULT_RECEIPTS = {
     "surface_reconfigurations": 2,
     "surface_frames_skipped": 3,
 }
+EXPECTED_INDEX_30_PANORAMA_RESIDENT_BYTES = 25_165_828
 
 
 def _object(value: Any, path: str) -> dict[str, Any]:
@@ -227,6 +228,30 @@ def validate_iteration(
             raise SoakFailure(
                 f"iteration {iteration}: kick disconnect screen diagnostics are invalid"
             )
+        panorama = _object(
+            termination.get("kick_renderer_counters"),
+            f"iteration {iteration}.kick_renderer_counters",
+        )
+        if panorama.get("panorama_resource_ready") is not True:
+            raise SoakFailure(
+                f"iteration {iteration}: indexed panorama GPU owner is not ready"
+            )
+        panorama_draw_calls = panorama.get("panorama_draw_calls")
+        if (
+            not isinstance(panorama_draw_calls, int)
+            or isinstance(panorama_draw_calls, bool)
+            or panorama_draw_calls < 1
+        ):
+            raise SoakFailure(
+                f"iteration {iteration}: disconnected screen did not draw the panorama"
+            )
+        if panorama.get("panorama_resident_bytes") != (
+            EXPECTED_INDEX_30_PANORAMA_RESIDENT_BYTES
+        ):
+            raise SoakFailure(
+                f"iteration {iteration}: panorama retained bytes do not match "
+                "the six 1024x1024 index-30 faces plus 1x1 overlay"
+            )
         _object(
             termination.get("kick_process_metrics"),
             f"iteration {iteration}.kick_process_metrics",
@@ -304,6 +329,15 @@ def validate_iteration(
     return {
         "iteration": iteration,
         "termination_mode": expected_mode,
+        "kick_panorama": (
+            {
+                "resource_ready": panorama["panorama_resource_ready"],
+                "draw_calls": panorama_draw_calls,
+                "resident_bytes": panorama["panorama_resident_bytes"],
+            }
+            if expected_mode == "kick"
+            else None
+        ),
         "fault_receipts": fault_receipts,
         "terminal_gauges": gauges,
         "process_metrics": metrics,

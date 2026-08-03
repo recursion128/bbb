@@ -143,6 +143,15 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
             }
             if mode == "kick"
             else None,
+            "kick_renderer_counters": {
+                "panorama_resource_ready": True,
+                "panorama_draw_calls": 1,
+                "panorama_resident_bytes": (
+                    lifecycle_soak.EXPECTED_INDEX_30_PANORAMA_RESIDENT_BYTES
+                ),
+            }
+            if mode == "kick"
+            else None,
             "kick_process_metrics": {
                 "rss_bytes": 100_000_000,
                 "file_descriptors": 30,
@@ -208,6 +217,25 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(lifecycle_soak.SoakFailure, "survived shutdown"):
             lifecycle_soak.validate_iteration(
                 self.manifest, 1, self.evidence(), termination
+            )
+
+    def test_kick_requires_indexed_panorama_draw_and_exact_residency(self):
+        termination = self.termination("kick")
+        termination["kick_renderer_counters"]["panorama_draw_calls"] = 0
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "did not draw the panorama"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 2, self.evidence(), termination
+            )
+
+        termination["kick_renderer_counters"]["panorama_draw_calls"] = 1
+        termination["kick_renderer_counters"]["panorama_resident_bytes"] -= 4
+        with self.assertRaisesRegex(
+            lifecycle_soak.SoakFailure, "retained bytes do not match"
+        ):
+            lifecycle_soak.validate_iteration(
+                self.manifest, 2, self.evidence(), termination
             )
 
     def test_kick_iteration_requires_disconnect_receipt(self):

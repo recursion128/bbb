@@ -1097,6 +1097,30 @@ def _process_metrics(pid: int) -> dict[str, int]:
     }
 
 
+def _await_kick_panorama(
+    deadline: float, address: tuple[str, int]
+) -> dict[str, Any]:
+    last_counters: dict[str, Any] | None = None
+    while time.monotonic() < deadline:
+        counters = _object(
+            _control_request(address, "renderer.counters"),
+            "renderer.counters",
+        )
+        last_counters = counters
+        if (
+            counters.get("panorama_resource_ready") is True
+            and isinstance(counters.get("panorama_draw_calls"), int)
+            and not isinstance(counters.get("panorama_draw_calls"), bool)
+            and counters["panorama_draw_calls"] >= 1
+        ):
+            return counters
+        time.sleep(0.1)
+    raise GateFailure(
+        "timed out waiting for disconnected-screen panorama draw receipt: "
+        f"{last_counters!r}"
+    )
+
+
 def terminate_live(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
@@ -1108,6 +1132,7 @@ def terminate_live(args: argparse.Namespace) -> None:
         "kick_disconnected": False,
         "kick_disconnect_receipt": None,
         "kick_disconnected_screen": None,
+        "kick_renderer_counters": None,
         "kick_process_metrics": None,
         "quiescent_snapshot": None,
         "terminal_gauges": None,
@@ -1153,6 +1178,10 @@ def terminate_live(args: argparse.Namespace) -> None:
             result["kick_disconnected_screen"] = _object(
                 app.get("disconnected_screen"),
                 "app.status.app.disconnected_screen",
+            )
+            result["kick_renderer_counters"] = _await_kick_panorama(
+                disconnect_deadline,
+                address,
             )
             result["kick_process_metrics"] = _process_metrics(args.client_pid)
             result["app_quit_response"] = _control_request(address, "app.quit")

@@ -1166,6 +1166,7 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     "kick",
                     "disconnected",
                     "app.status",
+                    "panorama",
                     "metrics",
                     "app.quit",
                 ],
@@ -1213,6 +1214,14 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     self.assertEqual(_deadline, 1.75)
                     return "net-counters"
 
+                def panorama(_deadline, _address):
+                    order.append("panorama")
+                    return {
+                        "panorama_resource_ready": True,
+                        "panorama_draw_calls": 1,
+                        "panorama_resident_bytes": 25_165_828,
+                    }
+
                 args = argparse.Namespace(
                     control="127.0.0.1:1",
                     mode=mode,
@@ -1238,6 +1247,9 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     ),
                     mock.patch.object(
                         playable_gate, "_await_kick_disconnect", side_effect=disconnected
+                    ),
+                    mock.patch.object(
+                        playable_gate, "_await_kick_panorama", side_effect=panorama
                     ),
                     mock.patch.object(
                         playable_gate.time,
