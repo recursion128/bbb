@@ -108,7 +108,7 @@ Matrix routes: `ui-menu-screen-registration`, `ui-multiplayer-screen-surface`
 - **The remaining external-session screen lifecycle is `active`.** Chat, death,
   disconnect and pause each have separate state/input/render/fallback decisions;
   first split the generated broad route into stable Chat/Death/Disconnected/Pause
-  mechanisms with exact 25/18/8/15 owner counts, then require precise
+  mechanisms with exact 25/16/8/17 owner counts, then require precise
   reachable-surface evidence rather than inferring completion from the menu
   registration catalog. The inventory-only split changes no production behavior;
   its full-gated safe stop precedes the first screen implementation slice.

@@ -467,7 +467,7 @@ active 工程。每项按注册面、frame order、state/input lifecycle 和真�
   `ui-multiplayer-screen-surface` 拆为 `ui-chat-screen-surface`、
   `ui-death-screen-surface`、`ui-disconnected-screen-surface` 与
   `ui-pause-screen-surface`；canonical input 为本地 26.1 的四个 Screen 类。
-- 冻结证据：Tree-sitter method surface 必须稳定得到 25/18/8/15
+- 冻结证据：Tree-sitter method surface 必须稳定得到 25/16/8/17
   个 owner，旧 mechanism owner 数为零，inventory 总 owner 数不变；四条
   matrix/ledger route 各自可独立判定和验收。
 - 阶段：A 重读源码并冻结计数；B 修改唯一 inventory manifest/evidence
