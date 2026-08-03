@@ -433,6 +433,28 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。新发现的真实重复 owner、resolver、projection 或 generation shadow state
 必须先在唯一 ledger 登记有界候选并把本路线恢复为 `active`；不得用持续代码质量口号制造无界任务。
 
+当前唯一工程合同是 `arch-census-external-production-r2`。census 本身不是缺口，故在首个真实
+候选登记前不改变本路线状态；它只审计外部多人 production path 并修正机械 evidence、matrix/
+ledger 分类，不修改 production 实现或产品行为。
+
+- inventory 输入冻结为 Cargo workspace metadata、`crates/*/src` production Rust 文件、当前公开/
+  crate-private API 与 production caller、既有依赖边，以及 checked Vanilla 26.1 mechanism inventory；
+  按 protocol/net/world/pack/item-model/render-types/renderer/audio/control/native semantic owner 分类。
+- 候选只接受可复现的重复 owner/resolver/cache/projection、反向依赖、generation/session shadow state、
+  可派生手写事实、混合 prepare/apply/commit/rollback、过宽 API、双路 fallback、缺 reverse/stale guard
+  或无生产 caller 的旧路径；文件大小、样式偏好、少量样板与未来设想不入账。
+- 每个缺口必须以唯一 `arch-*` ID 登记 canonical input、owner/caller、方向、lifetime、ordering/
+  fallback/rollback、API、删除目标、focused evidence、风险收益排序、matrix/goal route 与重开条件；
+  broad 多语义条目必须拆分。机械 owner 继续是 `scripts/docs_wiki_lint.py` 和现有 inventory/frontend，
+  不创建第二份 dependency inventory、Markdown backlog 或手写 Java parser。
+- 串行阶段：冻结合同 → 盘点 crate/owner/API/caller/lifetime → 逐项反证、分类和排序 → 登记唯一
+  ledger route → 补齐 duplicate/断链/失效 owner/evidence/stale fixture → diff review、提交和 full gate。
+- focused 验收是 architecture candidate docs-lint fixtures、`scripts/docs-lint.sh`、fmt、diff check 与
+  非测试 workspace check；census checkpoint 是干净提交后的 `scripts/cargo-dev.sh gate`。
+- 安全停止点只有 full-gated census：所有真实候选均为单语义且有唯一 route，非候选均有可复核
+  反证。之后才按 hardest-ready-first 串行实现；只有 BBB 无法自行消除、已复现并带机械重启条件的
+  外部问题可阻塞，候选清零后本路线回到 `maintenance`。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

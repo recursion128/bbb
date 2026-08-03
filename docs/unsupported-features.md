@@ -55,6 +55,20 @@ Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_
 
 Matrix route: `rendering-entity-layer-registration`
 
+Current census contract: `arch-census-external-production-r2` audits the external-
+multiplayer production path without changing production code. Its canonical inputs
+are Cargo workspace metadata, production Rust owners/APIs/callers and dependency
+edges, plus the checked Vanilla 26.1 mechanism inventory. A finding qualifies only
+when a concrete duplicate owner/resolver/cache/projection, reversed dependency,
+generation/session shadow state, derivable handwritten fact, mixed commit/rollback,
+over-wide API, parallel fallback, missing reverse/stale guard or dead production API
+can be reproduced. Style, file size, small boilerplate and speculative future work do
+not qualify. Evidence remains owned by `scripts/docs_wiki_lint.py` and the existing
+inventory/frontend; the safe stop is a full-gated, ranked, single-semantic candidate
+set whose IDs, paths, matrix/goal routes and evidence are mechanically valid. The
+architecture route remains `maintenance` while the candidate region is empty and
+becomes `active` only when this census records a real ready candidate.
+
 <!-- architecture-candidates:start -->
 <!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
