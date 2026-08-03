@@ -418,11 +418,11 @@ BBB 唯一 owner 是 simulation `ClientInputState`，renderer/control 只收窄 
 - Phase A 已核对 `ChatScreen` 全方法、`ChatAbilities`、`RestrictionsScreen` 与 `ChatComponent`；
   缺口是 send 未受权限约束、无 recent/draft/history/exit owner、screen replacement 丢 draft、
   无 shift-insertion、restricted prompt/info、screen narration 与 UI-driven live evidence。
-- Phase B 在 `ClientInputState` 建唯一 process-lifetime MESSAGE/COMMAND、recent≤100且相邻去重、
+- Phase B 已在 `ClientInputState` 建唯一 process-lifetime MESSAGE/COMMAND、recent≤100且相邻去重、
   latest draft、history buffer/position、is-draft、INTENTIONAL/INTERRUPTED/DONE state；权限只从
   `ChatPresentationConfig.visibility` 投影。保持 256 UTF-16 上限与既有 budgets；成功 normalized
   send 才入 recent，suggestion 先于 history，resize/focus loss 保留 screen state。
-- Phase C 固定 Full=message+command、System=command、Hidden=none；normal click 执行 event，
+- Phase C 固定 Full=message+command、System=非 message-argument command、Hidden=none；normal click 执行 event，
   Shift click 仅插 inherited insertion。renderer 只接收 bounded draft/restriction/interaction，
   绘制无全屏背景 edit/focused chat/restricted info，并以 generation/revision 拒绝 stale target。
 - Phase D 复用 screen narration runtime；有界 control text/key 重放真实 key/IME handler并发布

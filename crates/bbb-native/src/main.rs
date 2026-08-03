@@ -740,6 +740,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
+    input.set_save_chat_drafts(args.client_save_chat_drafts);
     input.set_client_text_filtering_enabled(args.client_text_filtering);
     input.set_hotbar_preset_store_path(hotbar_presets::default_hotbar_preset_store_path());
     let startup_debug_profile = args.debug_profile.into();

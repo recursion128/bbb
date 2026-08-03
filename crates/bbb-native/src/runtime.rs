@@ -5544,6 +5544,7 @@ fn release_input_if_screen_opened(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     if !input_screen_was_open && input_screen_is_open(input, world) {
+        input.interrupt_chat_screen();
         release_active_input(input, world, counters, net_commands);
     }
 }

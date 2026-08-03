@@ -190,6 +190,7 @@ impl ClientInputState {
         self.debug_pause_screen = None;
         self.debug_game_mode_switcher = None;
         self.pause_screen_disconnect_requested = false;
+        self.interrupt_chat_screen();
         self.chat_entry = None;
         if let Some(editor) = self.sign_editor.take() {
             let signature = editor.signature.clone();

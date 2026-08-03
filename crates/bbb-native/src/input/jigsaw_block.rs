@@ -241,6 +241,7 @@ impl ClientInputState {
         }
 
         release_active_input(self, world, counters, net_commands);
+        self.interrupt_chat_screen();
         self.chat_entry = None;
         self.chat_scroll_lines = 0;
         self.structure_block_editor = None;

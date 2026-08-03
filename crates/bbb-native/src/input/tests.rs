@@ -18325,13 +18325,266 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
 }
 
 #[test]
+fn chat_normalization_matches_java_trim_normalize_space_and_utf16_truncation() {
+    assert_eq!(
+        normalize_chat_message(" \t hello\n\r world  "),
+        "hello world"
+    );
+    assert_eq!(normalize_chat_message("a\u{a0}\u{a0}b"), "a  b");
+    assert_eq!(
+        normalize_chat_message("\u{2007}a\u{202f}"),
+        "\u{2007}a\u{202f}"
+    );
+    let oversized = format!("{}😀z", "a".repeat(254));
+    assert_eq!(
+        normalize_chat_message(&oversized),
+        format!("{}😀", "a".repeat(254))
+    );
+}
+
+#[test]
+fn chat_visibility_permissions_gate_messages_commands_and_message_arguments() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_commands(local_literal_command_tree(&["time"]));
+
+    let mut config = world.chat_presentation_config().clone();
+    config.visibility = bbb_world::ChatVisibilityState::System;
+    world.set_chat_presentation_config(config.clone());
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "blocked");
+    submit_chat_entry(&mut input, &mut counters, &mut world, &commands);
+    assert!(input.chat_entry_is_active());
+    assert_eq!(counters.chat_message_commands_queued, 0);
+
+    input.close_chat_screen(ChatScreenExitReason::Intentional);
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Command,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "time set day",
+    );
+    submit_chat_entry(&mut input, &mut counters, &mut world, &commands);
+    assert_eq!(counters.chat_command_commands_queued, 1);
+    assert!(matches!(rx.try_recv(), Ok(NetCommand::ChatCommand(_))));
+
+    world.apply_commands(signable_message_command_tree());
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Command,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "say hello",
+    );
+    submit_chat_entry(&mut input, &mut counters, &mut world, &commands);
+    assert!(
+        input.chat_entry_is_active(),
+        "message argument remains blocked"
+    );
+    assert_eq!(counters.chat_command_commands_queued, 1);
+
+    input.close_chat_screen(ChatScreenExitReason::Intentional);
+    config.visibility = bbb_world::ChatVisibilityState::Hidden;
+    world.set_chat_presentation_config(config);
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Command,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "time set day",
+    );
+    submit_chat_entry(&mut input, &mut counters, &mut world, &commands);
+    assert!(input.chat_entry_is_active());
+    assert_eq!(counters.chat_command_commands_queued, 1);
+}
+
+#[test]
+fn recent_chat_is_bounded_deduplicated_and_history_restores_the_edit_buffer() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    for index in 0..=RECENT_CHAT_LIMIT {
+        add_recent_chat(&mut input, format!("message {index}"));
+    }
+    add_recent_chat(&mut input, "message 100".to_string());
+    assert_eq!(input.recent_chat.len(), RECENT_CHAT_LIMIT);
+    assert_eq!(
+        input.recent_chat.front().map(String::as_str),
+        Some("message 1")
+    );
+    assert_eq!(
+        input.recent_chat.back().map(String::as_str),
+        Some("message 100")
+    );
+
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "working");
+    move_in_chat_history(&mut input, -1);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("message 100")
+    );
+    move_in_chat_history(&mut input, 1);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("working")
+    );
+}
+
+#[test]
+fn chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "draft text",
+    );
+    release_active_input(&mut input, &mut world, &mut counters, &commands);
+    assert!(
+        input.chat_entry_is_active(),
+        "focus release preserves ChatScreen"
+    );
+    assert!(input.interrupt_chat_screen());
+    assert_eq!(
+        input
+            .latest_chat_draft
+            .as_ref()
+            .map(|draft| draft.text.as_str()),
+        Some("draft text")
+    );
+
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Command,
+        false,
+    );
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("/")
+    );
+    input.close_chat_screen(ChatScreenExitReason::Intentional);
+    assert!(input.latest_chat_draft.is_none());
+
+    input.set_save_chat_drafts(true);
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "saved intentionally",
+    );
+    input.close_chat_screen(ChatScreenExitReason::Intentional);
+    assert_eq!(
+        input
+            .latest_chat_draft
+            .as_ref()
+            .map(|draft| draft.text.as_str()),
+        Some("saved intentionally")
+    );
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_chat_entry_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::Backspace,
+        true,
+    );
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("")
+    );
+}
+
+#[test]
 fn dialog_stack_suspends_and_restores_the_native_chat_screen() {
     let commands = None;
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
 
-    open_chat_entry(&mut input, &mut world, &mut counters, &commands, false);
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
     handle_text_input(
         &mut input,
         &mut counters,
@@ -18370,7 +18623,14 @@ fn native_chat_screen_is_not_restored_after_another_screen_replaces_dialog() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
 
-    open_chat_entry(&mut input, &mut world, &mut counters, &commands, false);
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
     handle_text_input(
         &mut input,
         &mut counters,
@@ -19179,8 +19439,8 @@ fn command_entry_escape_cancels_without_queuing_command() {
 }
 
 #[test]
-fn slash_only_enter_requests_suggestions_but_does_not_submit_command() {
-    let (tx, mut rx) = mpsc::channel(1);
+fn slash_only_enter_requests_suggestions_and_submits_empty_command() {
+    let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
@@ -19199,13 +19459,17 @@ fn slash_only_enter_requests_suggestions_but_does_not_submit_command() {
 
     assert!(!input.chat_entry_is_active());
     assert_eq!(counters.command_suggestion_commands_queued, 1);
-    assert_eq!(counters.chat_command_commands_queued, 0);
+    assert_eq!(counters.chat_command_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
             id: 0,
             command: "/".to_string(),
         })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned(""))
     );
     assert!(rx.try_recv().is_err());
 }

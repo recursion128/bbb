@@ -122,6 +122,12 @@ pub(crate) struct Args {
     #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
     pub(crate) client_chat_visibility: ClientChatVisibilityArg,
     #[arg(
+        long = "client-save-chat-drafts",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_save_chat_drafts: bool,
+    #[arg(
         long = "client-only-show-secure-chat",
         default_value_t = false,
         action = ArgAction::Set
@@ -1375,6 +1381,7 @@ mod tests {
         assert!(!defaults.client_only_show_secure_chat);
         assert!(defaults.client_hide_matched_names);
         assert_eq!(defaults.client_chat_delay_seconds, 0.0);
+        assert!(!defaults.client_save_chat_drafts);
 
         let configured = Args::try_parse_from([
             "bbb-native",
@@ -1384,11 +1391,14 @@ mod tests {
             "false",
             "--client-chat-delay-seconds",
             "6.0",
+            "--client-save-chat-drafts",
+            "true",
         ])
         .unwrap();
         assert!(configured.client_only_show_secure_chat);
         assert!(!configured.client_hide_matched_names);
         assert_eq!(configured.client_chat_delay_seconds, 6.0);
+        assert!(configured.client_save_chat_drafts);
         assert!(
             Args::try_parse_from(["bbb-native", "--client-chat-delay-seconds", "6.1",]).is_err()
         );

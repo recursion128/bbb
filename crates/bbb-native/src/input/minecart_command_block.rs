@@ -89,7 +89,7 @@ impl ClientInputState {
             .as_mut()
             .and_then(|entry| match &mut entry.owner {
                 ChatEntryOwner::MinecartCommandBlock(editor) => Some(editor),
-                ChatEntryOwner::Chat | ChatEntryOwner::CommandBlock(_) => None,
+                ChatEntryOwner::Chat(_) | ChatEntryOwner::CommandBlock(_) => None,
             })
         {
             if editor.open_count == open_count && editor.entity_id == authoritative.entity_id {
@@ -106,6 +106,7 @@ impl ClientInputState {
         }
 
         release_active_input(self, world, counters, net_commands);
+        self.interrupt_chat_screen();
         self.structure_block_editor = None;
         self.jigsaw_block_editor = None;
         self.test_block_editor = None;
@@ -206,7 +207,7 @@ impl ClientInputState {
             .as_mut()
             .and_then(|entry| match &mut entry.owner {
                 ChatEntryOwner::MinecartCommandBlock(editor) => Some(editor),
-                ChatEntryOwner::Chat | ChatEntryOwner::CommandBlock(_) => None,
+                ChatEntryOwner::Chat(_) | ChatEntryOwner::CommandBlock(_) => None,
             })
         else {
             return true;

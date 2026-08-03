@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeMap, BTreeSet, HashSet, VecDeque},
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -321,6 +321,7 @@ const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
 const DEBUG_CRASH_TIME: Duration = Duration::from_secs(10);
 const DEBUG_CRASH_REPORT_INTERVAL: Duration = Duration::from_secs(1);
 const CHAT_ENTRY_MAX_LENGTH: usize = 256;
+const RECENT_CHAT_LIMIT: usize = 100;
 pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
 pub(crate) const DEBUG_PROFILING_RESULTS_RELATIVE_DIR: &str = "debug/profiling";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
@@ -726,6 +727,10 @@ pub(crate) struct ClientInputState {
     merchant_focused_trade_row: Option<i32>,
     chat_entry: Option<ChatEntryState>,
     chat_scroll_lines: usize,
+    recent_chat: VecDeque<String>,
+    latest_chat_draft: Option<ChatDraftState>,
+    save_chat_drafts: bool,
+    next_chat_screen_revision: u64,
     structure_block_editor: Option<structure_block::StructureBlockEditorInputState>,
     jigsaw_block_editor: Option<jigsaw_block::JigsawBlockEditorInputState>,
     test_block_editor: Option<test_block::TestBlockEditorInputState>,
@@ -808,12 +813,65 @@ struct ChatEntryState {
     owner: ChatEntryOwner,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ChatEntryOwner {
-    #[default]
-    Chat,
+    Chat(ChatScreenEntryState),
     CommandBlock(CommandBlockEditorInputState),
     MinecartCommandBlock(MinecartCommandBlockEditorInputState),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ChatScreenExitReason {
+    Intentional,
+    Interrupted,
+    Done,
+}
+
+impl Default for ChatEntryOwner {
+    fn default() -> Self {
+        Self::Chat(ChatScreenEntryState {
+            method: ChatMethod::Message,
+            is_draft: false,
+            history_buffer: String::new(),
+            history_pos: 0,
+            revision: 0,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum ChatMethod {
+    #[default]
+    Message,
+    Command,
+}
+
+impl ChatMethod {
+    fn prefix(self) -> &'static str {
+        match self {
+            Self::Message => "",
+            Self::Command => "/",
+        }
+    }
+
+    fn restores(self, draft: &ChatDraftState) -> bool {
+        self == Self::Message || draft.method == Self::Command
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatDraftState {
+    text: String,
+    method: ChatMethod,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatScreenEntryState {
+    method: ChatMethod,
+    is_draft: bool,
+    history_buffer: String,
+    history_pos: usize,
+    revision: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1202,6 +1260,47 @@ impl ClientInputState {
         }
     }
 
+    pub(crate) fn set_save_chat_drafts(&mut self, enabled: bool) {
+        self.save_chat_drafts = enabled;
+    }
+
+    fn close_chat_screen(&mut self, reason: ChatScreenExitReason) -> bool {
+        let Some(entry) = self
+            .chat_entry
+            .take_if(|entry| matches!(entry.owner, ChatEntryOwner::Chat(_)))
+        else {
+            return false;
+        };
+        self.finalize_chat_entry(entry, reason);
+        true
+    }
+
+    fn finalize_chat_entry(&mut self, entry: ChatEntryState, reason: ChatScreenExitReason) {
+        let ChatEntryOwner::Chat(screen) = entry.owner else {
+            return;
+        };
+        self.chat_scroll_lines = 0;
+        let discard = (reason != ChatScreenExitReason::Interrupted
+            && (reason != ChatScreenExitReason::Intentional || !self.save_chat_drafts))
+            || is_java_blank(&entry.text);
+        if discard {
+            self.latest_chat_draft = None;
+        } else if !screen.is_draft {
+            self.latest_chat_draft = Some(ChatDraftState {
+                method: if entry.text.starts_with('/') {
+                    ChatMethod::Command
+                } else {
+                    ChatMethod::Message
+                },
+                text: entry.text,
+            });
+        }
+    }
+
+    pub(crate) fn interrupt_chat_screen(&mut self) -> bool {
+        self.close_chat_screen(ChatScreenExitReason::Interrupted)
+    }
+
     fn queue_local_block_attack_effect(&mut self, effect: LocalBlockAttackEffect) {
         self.pending_local_player_action_particles
             .push(LocalPlayerActionParticleState::BlockAttack(effect));
@@ -1507,13 +1606,6 @@ impl ClientInputState {
         self.advancement_mouse_left_down = false;
         self.advancement_is_scrolling = false;
         self.reset_debug_crash_hold();
-        if self
-            .chat_entry
-            .as_ref()
-            .is_none_or(|entry| !entry.commands_only())
-        {
-            self.chat_entry = None;
-        }
         #[cfg(test)]
         {
             self.local_player_movement_tick_accumulator_seconds = 0.0;
@@ -1779,7 +1871,7 @@ impl ClientInputState {
                 ChatEntryOwner::CommandBlock(editor) => {
                     Some((editor.open_count, editor.authoritative_revision))
                 }
-                ChatEntryOwner::Chat | ChatEntryOwner::MinecartCommandBlock(_) => None,
+                ChatEntryOwner::Chat(_) | ChatEntryOwner::MinecartCommandBlock(_) => None,
             });
         if current_signature == Some((open_count, authoritative.authoritative_revision)) {
             return;
@@ -1788,6 +1880,7 @@ impl ClientInputState {
         if current_signature.is_none_or(|(current_open_count, _)| current_open_count != open_count)
         {
             release_active_input(self, world, counters, net_commands);
+            self.interrupt_chat_screen();
         }
         let cursor = text_edit::char_len(&authoritative.data.command);
         self.chat_entry = Some(ChatEntryState {
@@ -1989,7 +2082,7 @@ impl ClientInputState {
             .as_mut()
             .and_then(|entry| match &mut entry.owner {
                 ChatEntryOwner::CommandBlock(editor) => Some(editor),
-                ChatEntryOwner::Chat | ChatEntryOwner::MinecartCommandBlock(_) => None,
+                ChatEntryOwner::Chat(_) | ChatEntryOwner::MinecartCommandBlock(_) => None,
             })
         else {
             return true;
@@ -2239,7 +2332,7 @@ impl ClientInputState {
     pub(crate) fn chat_entry_is_active(&self) -> bool {
         self.chat_entry
             .as_ref()
-            .is_some_and(|entry| matches!(entry.owner, ChatEntryOwner::Chat))
+            .is_some_and(|entry| matches!(entry.owner, ChatEntryOwner::Chat(_)))
     }
 
     /// Moves native-owned screen state below the world-owned Dialog stack and
@@ -2276,8 +2369,19 @@ impl ClientInputState {
                 let screen_replaced = self.native_screen_replaced_dialog(world);
                 let previous = self.dialog_native_previous_screen.take();
                 if screen_replaced {
-                    if let Some(NativeDialogPreviousScreenState::Sign(editor)) = previous {
-                        self.dismissed_sign_editor = Some(editor.signature);
+                    match previous {
+                        Some(NativeDialogPreviousScreenState::Chat(entry)) => {
+                            self.finalize_chat_entry(entry, ChatScreenExitReason::Interrupted);
+                        }
+                        Some(NativeDialogPreviousScreenState::Sign(editor)) => {
+                            self.dismissed_sign_editor = Some(editor.signature);
+                        }
+                        Some(
+                            NativeDialogPreviousScreenState::DebugOptions(_)
+                            | NativeDialogPreviousScreenState::DebugPause { .. }
+                            | NativeDialogPreviousScreenState::Social(_),
+                        )
+                        | None => {}
                     }
                 } else {
                     match previous {
@@ -11097,6 +11201,7 @@ fn open_advancements_screen(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     if world.open_advancements_screen() {
+        input.interrupt_chat_screen();
         release_active_input(input, world, counters, net_commands);
         if let Some(tab) = world.ensure_advancements_screen_selected_tab() {
             queue_seen_advancements_command(
@@ -11115,6 +11220,7 @@ fn open_stats_screen(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     if world.open_stats_screen() {
+        input.interrupt_chat_screen();
         release_active_input(input, world, counters, net_commands);
         input.stats_screen_cursor_position = None;
         input.stats_screen_scroll_amount = 0.0;
@@ -11141,6 +11247,7 @@ fn open_social_interactions_screen(
     return_to_pause: bool,
 ) {
     if input.open_social_interactions_screen(world, return_to_pause) {
+        input.interrupt_chat_screen();
         release_active_input(input, world, counters, net_commands);
     }
 }
@@ -11783,6 +11890,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
                     );
                 } else {
                     world.tutorial_on_open_inventory();
+                    input.interrupt_chat_screen();
                     world.open_local_inventory();
                 }
                 return;
@@ -11796,7 +11904,14 @@ pub(crate) fn handle_key_input_with_item_runtime(
                 return;
             }
             KeyCode::KeyT => {
-                open_chat_entry(input, world, counters, net_commands, true);
+                open_chat_entry(
+                    input,
+                    world,
+                    counters,
+                    net_commands,
+                    ChatMethod::Message,
+                    true,
+                );
                 return;
             }
             _ => {}
@@ -11998,22 +12113,47 @@ pub(crate) fn handle_text_input_with_item_runtime(
         return;
     }
 
+    let opened_from_command_text = input.chat_entry.is_none() && text.starts_with('/');
     if input.chat_entry.is_none() {
         if !text.starts_with('/') {
             return;
         }
-        open_chat_entry(input, world, counters, net_commands, false);
+        open_chat_entry(
+            input,
+            world,
+            counters,
+            net_commands,
+            ChatMethod::Command,
+            true,
+        );
     }
 
+    let text = if opened_from_command_text {
+        text.strip_prefix('/').unwrap_or(text)
+    } else {
+        text
+    };
+
+    let suppress_opening_text = input.chat_entry.as_mut().is_some_and(|entry| {
+        if !entry.suppress_open_key_commit {
+            return false;
+        }
+        entry.suppress_open_key_commit = false;
+        match &entry.owner {
+            ChatEntryOwner::Chat(screen) => match screen.method {
+                ChatMethod::Message => matches!(text, "t" | "T"),
+                ChatMethod::Command => text.is_empty() || text == "/",
+            },
+            ChatEntryOwner::CommandBlock(_) | ChatEntryOwner::MinecartCommandBlock(_) => false,
+        }
+    });
+    if suppress_opening_text {
+        maybe_queue_command_suggestion_request(input, counters, world, net_commands);
+        return;
+    }
     let Some(entry) = &mut input.chat_entry else {
         return;
     };
-    if entry.suppress_open_key_commit {
-        entry.suppress_open_key_commit = false;
-        if matches!(text, "t" | "T") {
-            return;
-        }
-    }
     let before = entry.text.clone();
     insert_chat_entry_text(entry, text);
     update_chat_entry_after_text_change(input, counters, world, net_commands, before.as_str());
@@ -12024,20 +12164,36 @@ fn open_chat_entry(
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    method: ChatMethod,
     suppress_open_key_commit: bool,
 ) {
     release_active_input(input, world, counters, net_commands);
+    input.next_chat_screen_revision = input.next_chat_screen_revision.saturating_add(1);
+    let revision = input.next_chat_screen_revision;
+    let (text, is_draft) = input
+        .latest_chat_draft
+        .as_ref()
+        .filter(|draft| method.restores(draft))
+        .map(|draft| (draft.text.clone(), true))
+        .unwrap_or_else(|| (method.prefix().to_string(), false));
+    let cursor = text_edit::char_len(&text);
     input.chat_entry = Some(ChatEntryState {
-        text: String::new(),
-        cursor: 0,
-        selection: 0,
+        text,
+        cursor,
+        selection: cursor,
         last_suggestion_request_text: None,
         suggestion_list: None,
         hidden_suggestion_id: None,
         suggestion_narration: None,
         mouse_position: None,
         suppress_open_key_commit,
-        owner: ChatEntryOwner::Chat,
+        owner: ChatEntryOwner::Chat(ChatScreenEntryState {
+            method,
+            is_draft,
+            history_buffer: String::new(),
+            history_pos: input.recent_chat.len(),
+            revision,
+        }),
     });
     input.chat_scroll_lines = 0;
 }
@@ -12075,8 +12231,12 @@ fn handle_chat_entry_key(
                     matches!(close_owner, Some(ChatEntryOwner::CommandBlock(_)));
                 let closes_minecart_command_block =
                     matches!(close_owner, Some(ChatEntryOwner::MinecartCommandBlock(_)));
-                input.chat_entry = None;
-                input.chat_scroll_lines = 0;
+                if matches!(close_owner, Some(ChatEntryOwner::Chat(_))) {
+                    input.close_chat_screen(ChatScreenExitReason::Intentional);
+                } else {
+                    input.chat_entry = None;
+                    input.chat_scroll_lines = 0;
+                }
                 if closes_command_block {
                     world.close_command_block_editor();
                 }
@@ -12133,23 +12293,33 @@ fn handle_chat_entry_key(
             }
         }
         KeyCode::ArrowUp => {
+            let mut used_suggestions = false;
             if let Some(entry) = input.chat_entry.as_mut() {
                 if entry.suggestion_list.is_some() {
                     cycle_chat_suggestion(entry, -1);
                     if let Some(list) = entry.suggestion_list.as_mut() {
                         list.tab_cycles = false;
                     }
+                    used_suggestions = true;
                 }
+            }
+            if !used_suggestions {
+                move_in_chat_history(input, -1);
             }
         }
         KeyCode::ArrowDown => {
+            let mut used_suggestions = false;
             if let Some(entry) = input.chat_entry.as_mut() {
                 if entry.suggestion_list.is_some() {
                     cycle_chat_suggestion(entry, 1);
                     if let Some(list) = entry.suggestion_list.as_mut() {
                         list.tab_cycles = false;
                     }
+                    used_suggestions = true;
                 }
+            }
+            if !used_suggestions {
+                move_in_chat_history(input, 1);
             }
         }
         KeyCode::ArrowLeft => {
@@ -12187,8 +12357,15 @@ fn handle_chat_entry_key(
         KeyCode::Backspace => {
             let control_down = input.control_down();
             if let Some(entry) = &mut input.chat_entry {
-                if entry.text.is_empty() && !entry.commands_only() {
-                    input.chat_entry = None;
+                if matches!(&entry.owner, ChatEntryOwner::Chat(screen) if screen.is_draft) {
+                    entry.text.clear();
+                    entry.cursor = 0;
+                    entry.selection = 0;
+                    if let ChatEntryOwner::Chat(screen) = &mut entry.owner {
+                        screen.is_draft = false;
+                    }
+                    entry.suggestion_list = None;
+                    entry.suggestion_narration = None;
                     return;
                 }
                 let before = entry.text.clone();
@@ -12232,6 +12409,53 @@ fn handle_chat_entry_key(
         }
         _ => {}
     }
+}
+
+fn move_in_chat_history(input: &mut ClientInputState, direction: i32) {
+    let recent_len = input.recent_chat.len();
+    let Some((history_pos, current_text)) = input.chat_entry.as_ref().and_then(|entry| {
+        let ChatEntryOwner::Chat(screen) = &entry.owner else {
+            return None;
+        };
+        Some((screen.history_pos, entry.text.clone()))
+    }) else {
+        return;
+    };
+    let next = (i64::try_from(history_pos).unwrap_or(i64::MAX) + i64::from(direction))
+        .clamp(0, i64::try_from(recent_len).unwrap_or(i64::MAX)) as usize;
+    if next == history_pos {
+        return;
+    }
+    let replacement = if next == recent_len {
+        input
+            .chat_entry
+            .as_ref()
+            .and_then(|entry| match &entry.owner {
+                ChatEntryOwner::Chat(screen) => Some(screen.history_buffer.clone()),
+                ChatEntryOwner::CommandBlock(_) | ChatEntryOwner::MinecartCommandBlock(_) => None,
+            })
+            .unwrap_or_default()
+    } else {
+        input.recent_chat.get(next).cloned().unwrap_or_default()
+    };
+    let Some(entry) = input.chat_entry.as_mut() else {
+        return;
+    };
+    let ChatEntryOwner::Chat(screen) = &mut entry.owner else {
+        return;
+    };
+    if history_pos == recent_len {
+        screen.history_buffer = current_text;
+    }
+    screen.history_pos = next;
+    screen.is_draft = false;
+    entry.text = replacement;
+    entry.cursor = text_edit::char_len(&entry.text);
+    entry.selection = entry.cursor;
+    entry.last_suggestion_request_text = None;
+    entry.suggestion_list = None;
+    entry.hidden_suggestion_id = None;
+    entry.suggestion_narration = None;
 }
 
 fn apply_latest_chat_suggestion(input: &mut ClientInputState, world: &WorldStore) {
@@ -12754,12 +12978,11 @@ fn update_chat_entry_after_text_change(
     let Some(entry) = &mut input.chat_entry else {
         return;
     };
-    if entry.text.is_empty() && !entry.commands_only() {
-        input.chat_entry = None;
-        return;
-    }
     if entry.text == before {
         return;
+    }
+    if let ChatEntryOwner::Chat(screen) = &mut entry.owner {
+        screen.is_draft = false;
     }
     entry.suggestion_list = None;
     entry.hidden_suggestion_id = None;
@@ -12837,9 +13060,36 @@ fn submit_chat_entry(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
-    let Some(entry) = input.chat_entry.take() else {
+    let Some(entry) = input.chat_entry.as_ref() else {
         return;
     };
+    if matches!(entry.owner, ChatEntryOwner::Chat(_)) {
+        let normalized = normalize_chat_message(&entry.text);
+        let allowed = if let Some(command) = normalized.strip_prefix('/') {
+            chat_commands_allowed(world)
+                && (chat_messages_allowed(world)
+                    || !world.command_requires_signed_arguments(command))
+        } else {
+            normalized.is_empty() || chat_messages_allowed(world)
+        };
+        if !allowed {
+            return;
+        }
+        if !normalized.is_empty() {
+            add_recent_chat(input, normalized.clone());
+            if let Some(command) = normalized.strip_prefix('/') {
+                queue_chat_command(counters, world, net_commands, command.to_string());
+            } else {
+                queue_chat_message_command(counters, world, net_commands, normalized);
+            }
+        }
+        input.close_chat_screen(ChatScreenExitReason::Done);
+        return;
+    }
+    let entry = input
+        .chat_entry
+        .take()
+        .expect("entry remained present after ChatScreen branch");
     if let ChatEntryOwner::CommandBlock(editor) = &entry.owner {
         if !editor.controls_enabled {
             input.chat_entry = Some(entry);
@@ -12885,31 +13135,79 @@ fn submit_chat_entry(
         world.close_minecart_command_block_editor();
         return;
     }
-    let Some(command) = normalize_command_entry(&entry.text) else {
-        let Some(message) = normalize_chat_entry(&entry.text) else {
-            return;
-        };
-        queue_chat_message_command(counters, world, net_commands, message);
+    unreachable!("all non-chat command entry owners return above");
+}
+
+fn add_recent_chat(input: &mut ClientInputState, message: String) {
+    if input.recent_chat.back() == Some(&message) {
         return;
-    };
-    queue_chat_command(counters, world, net_commands, command);
+    }
+    if input.recent_chat.len() >= RECENT_CHAT_LIMIT {
+        input.recent_chat.pop_front();
+    }
+    input.recent_chat.push_back(message);
 }
 
-fn normalize_command_entry(text: &str) -> Option<String> {
-    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    let command = normalized.strip_prefix('/')?;
-    if command.is_empty() {
-        return None;
-    }
-    Some(command.to_string())
+fn chat_messages_allowed(world: &WorldStore) -> bool {
+    world.chat_presentation_config().visibility == bbb_world::ChatVisibilityState::Full
 }
 
-fn normalize_chat_entry(text: &str) -> Option<String> {
-    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    if normalized.is_empty() || normalized.starts_with('/') {
-        return None;
+fn chat_commands_allowed(world: &WorldStore) -> bool {
+    world.chat_presentation_config().visibility != bbb_world::ChatVisibilityState::Hidden
+}
+
+fn normalize_chat_message(message: &str) -> String {
+    let trimmed = message.trim_matches(|ch| ch <= '\u{20}');
+    let mut normalized = String::with_capacity(trimmed.len());
+    let mut in_whitespace = false;
+    for ch in trimmed.chars() {
+        if is_java_character_whitespace(ch) {
+            if !in_whitespace {
+                normalized.push(' ');
+                in_whitespace = true;
+            }
+        } else {
+            normalized.push(if ch == '\u{a0}' { ' ' } else { ch });
+            in_whitespace = false;
+        }
     }
-    Some(normalized)
+    while normalized.ends_with(' ') && in_whitespace {
+        normalized.pop();
+    }
+    truncate_utf16(&normalized, CHAT_ENTRY_MAX_LENGTH)
+}
+
+fn is_java_character_whitespace(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{0009}'..='\u{000d}'
+            | '\u{001c}'..='\u{0020}'
+            | '\u{1680}'
+            | '\u{2000}'..='\u{2006}'
+            | '\u{2008}'..='\u{200a}'
+            | '\u{2028}'
+            | '\u{2029}'
+            | '\u{205f}'
+            | '\u{3000}'
+    )
+}
+
+fn is_java_blank(value: &str) -> bool {
+    value.is_empty() || value.chars().all(is_java_character_whitespace)
+}
+
+fn truncate_utf16(value: &str, max_units: usize) -> String {
+    let mut units = 0usize;
+    let mut end = 0usize;
+    for (index, ch) in value.char_indices() {
+        let next = units.saturating_add(ch.len_utf16());
+        if next > max_units {
+            break;
+        }
+        units = next;
+        end = index + ch.len_utf8();
+    }
+    value[..end].to_string()
 }
 
 fn maybe_queue_command_suggestion_request(

@@ -208,6 +208,15 @@ impl SimulationInputRuntime {
         if self.code_of_conduct_overlay.is_visible(context.world)
             || simulation_wants_cursor(context.input, context.world)
         {
+            if context.world.dialog_screen_is_open() {
+                context.input.sync_dialog_native_previous_screen(
+                    context.world,
+                    context.net_counters,
+                    context.net_commands,
+                );
+            } else {
+                context.input.interrupt_chat_screen();
+            }
             self.request_cursor_capture(false, context.platform);
             release_active_input(
                 context.input,

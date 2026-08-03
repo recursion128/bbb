@@ -220,6 +220,7 @@ impl ClientInputState {
             .is_none_or(|editor| editor.open_count != open_count);
         if is_new_open {
             release_active_input(self, world, counters, net_commands);
+            self.interrupt_chat_screen();
             self.chat_entry = None;
             self.chat_scroll_lines = 0;
             self.jigsaw_block_editor = None;
