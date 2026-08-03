@@ -91,6 +91,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   diagnostics/gizmos 3 and light query 3. Each of the two remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
+- **`rendering-level-diagnostics-gizmos` is the current active engineering
+  slice.** BBB already has one frame-local debug extraction and the standard /
+  always-on-top renderer passes, but its entity statistics currently report
+  total/total before current-frame visibility extraction and all three Vanilla
+  owners lack fail-closed consumer evidence. Publish the exact current-frame
+  visible/total/simulation-distance line through the existing single frame
+  projection and prove collection/finalization ordering without adding a
+  second collector. Contract and safe stops are in
+  `goal.md#active-工程合同levelrenderer-diagnosticsgizmos`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
