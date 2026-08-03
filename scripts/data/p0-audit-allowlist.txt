@@ -134,6 +134,10 @@
 ^crates/bbb-item-model/src/item_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-item-model/src/(font|profile_resolver)[.]rs$	fallback
 ^crates/bbb-item-model/src/font/.*[.]rs$	fallback
+# SkinManager's sole texture-set owner uses the exact UUID-derived default skin
+# while a signed all-of set is pending, invalid or failed. This is the frozen
+# Vanilla profile presentation fallback, not a missing renderer/resource owner.
+^crates/bbb-item-model/src/skin_runtime[.]rs$	fallback
 # Native terrain/entity/item/particle/HUD/debug fallback behavior.
 ^crates/bbb-native/src/terrain_runtime/.*[.]rs$	fallback
 ^crates/bbb-native/src/entity_scene(/.*)?[.]rs$	fallback
