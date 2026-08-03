@@ -422,11 +422,45 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。当前 checkpoint 是 `arch-hud-item-resident-projection` 的实现、调用者迁移、
-旧路径删除、reverse guard、真实 default resource 与 GPU offscreen 验收已经收口，候选已从唯一
-ledger 删除；本提交必须先通过 final full gate 与适用 live playable，之后才按更新后的 rank
-冻结下一份具体工程合同。安全停止点是该提交保持干净且 `.git/bbb/last-gated` 指向它；full gate
-失败必须 fix-forward，不得提前实施下一候选。
+状态：`active`。唯一 active 工程合同是 `arch-entity-equipment-test-fallback`：不改变 selected
+equipment asset、entity layer 像素或 GPU generation 生命周期，删除 renderer 中由测试开关控制的
+第二套静态 armor/wings/saddle resolver，使测试与 production 共同使用一份 resolved catalog。
+
+- Vanilla owner 是 `EquipmentAssetManager.apply/get`、`EquipmentClientInfo.getLayers`、
+  `EquipmentLayerRenderer.renderLayers/getColorForLayer`、`HumanoidArmorLayer`、`WingsLayer`、
+  `SimpleEquipmentLayer`、`WolfArmorLayer` 与 `LlamaDecorLayer`。未知 asset 返回 empty client info，
+  missing layer type 提交零层；armor 按 chest→legs→feet→head，layer 声明序、首个可绘制 layer foil、
+  trim、baby/leggings、player wings override、simple-equipment baby model gate 与 trader-llama 显式
+  asset id 均按本地 26.1 源码保持，不存在 asset-free static texture fallback。
+- 唯一 semantic owner 固定为 resource generation 的 `EntityEquipmentAssetCatalog` 经 owned/static
+  texture resolve 后得到 `ResolvedEntityEquipmentAssetCatalog { generation, assets }`；entity frame
+  只携带 generation-local `EntityEquipmentAssetId` 与 dye/foil/trim/player-texture query。dependency
+  只允许 pack/item projection → native reload prepare → renderer resolved immutable catalog → entity
+  layer emission，renderer 不反向读 pack，测试不启用另一套 resolver。
+- missing/stale generation、missing asset、missing layer type 和无 asset id 都提交零 equipment layer；
+  selected/startup/server priority、filter、texture ownership、dye skip/default、foil/trim order、outline、
+  baby gate、crack overlay、layer `order`/`submit_sequence` 保持。trader llama fallback 继续由 render state
+  携带官方 `TRADER_LLAMA(_BABY)` asset id，经同一 catalog 解析。
+- catalog prepare 与 owned atlas resolve 均在现有 renderer resource transaction 内完成；完整新
+  generation 成功后才替换，任一 texture/catalog/GPU owner 失败保留上一 catalog/atlas/mesh generation；
+  stale `EntityEquipmentAssetId` 不跨 generation 命中，不新增 shadow cache 或兼容双写。
+- 删除 `legacy_static_fallback` 字段、constructor、query、`textured.rs`/`gui_preview.rs` 全部条件分支，
+  以及迁移后无生产/测试调用者的 static fallback texture resolver；普通 test helper 使用显式 empty
+  resolved catalog，equipment test 必须构造 `EntityEquipmentAssetCatalog`、resolve owned entries并在
+  instance 上携带 matching asset id。公共 API 不扩宽，test fixture 不进入 production surface。
+- 非目标是 pack equipment codec、item equippable/world projection、model mesh、entity layer 注册、
+  renderer shader/pipeline、armor trim atlas、screen/HUD layout或任何新 equipment feature；若发现当前
+  production resource path 自身行为不等价，登记独立 parity gap，不混入本架构 slice。
+- 阶段：固定 empty/missing 生产语义→迁移 humanoid/armor-stand/wings 与各 simple equipment test→
+  删除 flag/legacy branches与死 resolver→reverse guard/Wiki/ledger 收口。focused tests 覆盖 catalog
+  generation/stale/missing、18 layer type、armor slot/baby/leggings、dye/foil/trim/order、wings profile
+  override、wolf/equine/llama/pig/strider/camel/happy-ghast/nautilus、GUI preview、owned texture、selected
+  fixture 与 reload rollback，并证明旧 symbol/branch production 为零。
+- 执行 renderer/native equipment focused tests、现有真实 default resource item/equipment catalog
+  acceptance、GPU offscreen entity/preview、docs-lint fixtures、fmt、diff check、workspace check与完整
+  diff review后正常提交；该高风险 checkpoint 必须 full gate。产品行为预期不变，fixture playable
+  刷新；只有现有代码无法消除且可复现的本地 GPU/Wayland runner故障才是 blocker。安全停止点仅为
+  全部 caller 已迁移、旧 flag/branch 已删除、测试用显式 catalog且工作树可构建的提交。
 
 ### P1：可玩 Session 端到端门禁
 
