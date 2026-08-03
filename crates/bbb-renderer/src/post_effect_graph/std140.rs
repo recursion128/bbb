@@ -101,8 +101,12 @@ impl Std140Writer {
     }
 
     fn finish(mut self) -> Vec<u8> {
+        // A std140 uniform block has a structure alignment rounded up to a
+        // vec4 even when its final member is a scalar/vec2. WGPU validates the
+        // bound range against that padded shader-side size.
+        self.align(16);
         if self.bytes.is_empty() {
-            self.bytes.resize(4, 0);
+            self.bytes.resize(16, 0);
         }
         self.bytes
     }
@@ -154,6 +158,29 @@ mod tests {
                 16.0,
             ]
         );
+    }
+
+    #[test]
+    fn uniform_blocks_pad_scalar_vec2_and_empty_tails_to_vec4_alignment() {
+        let scalar_tail = pack_uniforms(&[
+            PostEffectUniform {
+                name: "A".to_string(),
+                value: PostEffectUniformValue::Float(1.0),
+            },
+            PostEffectUniform {
+                name: "B".to_string(),
+                value: PostEffectUniformValue::Float(2.0),
+            },
+            PostEffectUniform {
+                name: "C".to_string(),
+                value: PostEffectUniformValue::Float(3.0),
+            },
+        ]);
+        assert_eq!(scalar_tail.len(), 16);
+        assert_eq!(f32_at(&scalar_tail, 8), 3.0);
+
+        assert_eq!(pack_sampler_info([320, 240], &[]).len(), 16);
+        assert_eq!(pack_uniforms(&[]).len(), 16);
     }
 
     fn f32_at(bytes: &[u8], offset: usize) -> f32 {
