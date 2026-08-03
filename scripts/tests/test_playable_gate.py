@@ -1121,6 +1121,7 @@ class PlayableGateTerminationTests(unittest.TestCase):
 
                 def disconnected(_deadline, _description, _getter, _predicate):
                     order.append("disconnected")
+                    self.assertEqual(_deadline, 1.75)
                     return {"connected": False}
 
                 args = argparse.Namespace(
@@ -1147,6 +1148,13 @@ class PlayableGateTerminationTests(unittest.TestCase):
                     ),
                     mock.patch.object(
                         playable_gate, "_await_value", side_effect=disconnected
+                    ),
+                    mock.patch.object(
+                        playable_gate.time,
+                        "monotonic",
+                        side_effect=[0.0, 0.5, 0.75]
+                        if mode == "kick"
+                        else [0.0, 0.5],
                     ),
                 ):
                     playable_gate.terminate_live(args)

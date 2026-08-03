@@ -37,20 +37,20 @@ class LifecycleSoakManifestTests(unittest.TestCase):
         ):
             lifecycle_soak.validate_manifest(manifest)
 
-    def test_terminal_quiescence_budget_must_be_positive_and_bounded(self):
+    def test_terminal_phase_budget_must_be_positive_and_fit_three_phases(self):
         manifest = copy.deepcopy(self.manifest)
-        manifest["terminal_quiescence_timeout_seconds"] = 0
+        manifest["terminal_phase_timeout_seconds"] = 0
         with self.assertRaisesRegex(
             lifecycle_soak.SoakFailure,
-            "terminal_quiescence_timeout_seconds must be a positive integer",
+            "terminal_phase_timeout_seconds must be a positive integer",
         ):
             lifecycle_soak.validate_manifest(manifest)
 
-        manifest["terminal_quiescence_timeout_seconds"] = (
-            manifest["per_iteration_timeout_seconds"] + 1
+        manifest["terminal_phase_timeout_seconds"] = (
+            manifest["per_iteration_timeout_seconds"] // 3 + 1
         )
         with self.assertRaisesRegex(
-            lifecycle_soak.SoakFailure, "must not exceed the per-iteration budget"
+            lifecycle_soak.SoakFailure, "must cover three terminal-phase budgets"
         ):
             lifecycle_soak.validate_manifest(manifest)
 
@@ -233,9 +233,7 @@ class LifecycleSoakScriptContractTests(unittest.TestCase):
     def test_runner_projects_the_manifest_terminal_budget_without_a_shadow_literal(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
-        self.assertIn(
-            'manifest["terminal_quiescence_timeout_seconds"]', source
-        )
+        self.assertIn('manifest["terminal_phase_timeout_seconds"]', source)
         self.assertNotIn('"BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": "60"', source)
 
     def test_wrapper_builds_feature_binary_and_records_only_passing_report(self):

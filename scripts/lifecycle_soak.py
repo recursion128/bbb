@@ -94,14 +94,14 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
         manifest.get("per_iteration_timeout_seconds"),
         "manifest.per_iteration_timeout_seconds",
     )
-    terminal_quiescence = _positive_int(
-        manifest.get("terminal_quiescence_timeout_seconds"),
-        "manifest.terminal_quiescence_timeout_seconds",
+    terminal_phase = _positive_int(
+        manifest.get("terminal_phase_timeout_seconds"),
+        "manifest.terminal_phase_timeout_seconds",
     )
-    if terminal_quiescence > per_iteration:
+    if terminal_phase * 3 > per_iteration:
         raise SoakFailure(
-            "manifest.terminal_quiescence_timeout_seconds must not exceed "
-            "the per-iteration budget"
+            "manifest.per_iteration_timeout_seconds must cover three "
+            "terminal-phase budgets"
         )
     total = _positive_int(
         manifest.get("total_timeout_seconds"), "manifest.total_timeout_seconds"
@@ -358,9 +358,7 @@ def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, An
         "seed": manifest["seed"],
         "iteration_budget": manifest["iterations"],
         "per_iteration_timeout_seconds": manifest["per_iteration_timeout_seconds"],
-        "terminal_quiescence_timeout_seconds": manifest[
-            "terminal_quiescence_timeout_seconds"
-        ],
+        "terminal_phase_timeout_seconds": manifest["terminal_phase_timeout_seconds"],
         "total_timeout_seconds": manifest["total_timeout_seconds"],
         "iterations": [],
         "process_trends": None,
@@ -386,7 +384,7 @@ def run_soak(args: argparse.Namespace, manifest: dict[str, Any]) -> dict[str, An
                         manifest["per_iteration_timeout_seconds"]
                     ),
                     "BBB_PLAYABLE_TERMINATION_TIMEOUT_SECONDS": str(
-                        manifest["terminal_quiescence_timeout_seconds"]
+                        manifest["terminal_phase_timeout_seconds"]
                     ),
                     "BBB_PLAYABLE_TERMINATION_MODE": mode,
                     "BBB_LIFECYCLE_SOAK_MANIFEST": str(args.manifest.resolve()),

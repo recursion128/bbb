@@ -1135,8 +1135,9 @@ def terminate_live(args: argparse.Namespace) -> None:
                 args.transfer_server_command,
                 "kick bbb-playablegate bbb lifecycle soak kick",
             )
+            disconnect_deadline = time.monotonic() + args.timeout
             disconnected = _await_value(
-                deadline,
+                disconnect_deadline,
                 "official-server kick disconnect",
                 lambda: _control_request(address, "net.counters"),
                 lambda value: isinstance(value, dict)
