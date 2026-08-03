@@ -408,6 +408,33 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
+### 当前工程合同：远端断线状态页 vertical path
+
+目标：复刻 `ClientHandshakePacketListenerImpl.onDisconnect`、
+`ClientCommonPacketListenerImpl.onDisconnect/createDisconnectScreen`、`DisconnectedScreen`
+八个 owner 的外部多人路径；本合同是高风险 net/native/renderer 生命周期工程。
+
+- 唯一输入为 `bbb-net` 的 typed terminal outcome：本地主动关闭不得伪造远端断线，远端
+  packet/transport failure 必须在所有先行事件之后只投递一次，保留 Login 与
+  Configuration/Play 标题分支及 bounded styled reason/details。
+- `ClientInputState` 唯一拥有 generation-tagged screen、focus/hover/input/narration；
+  simulation 原子清除旧 world/session 后发布 immutable renderer/control projection。
+  renderer 只拥有 layout、GPU lifetime 与 generation-tagged hit target。
+- 保持 Vanilla 居中 title/multiline reason、200px details/back buttons、非 Esc close、
+  narration、priority 与 cursor release。CLI-direct 产品没有 parent/title surface，back
+  明确退出；HTTP(S) bug link 与本地 report-directory action 走既有 platform barrier。
+- 本 slice 接入统一 pack 中的 `menu_background.png`；title panorama 已成为可达缺口，
+  单独登记 route，禁止在本合同夹带 panorama/title renderer、重连或 server-list UI。
+- 阶段：A typed terminal/style budget；B atomic teardown 与 input/platform owner；C
+  renderer/layout/hit/background；D diagnostics、docs 与 fixture/live kick acceptance。
+- focused evidence 覆盖 JSON/NBT style、远端一次/本地零次、FIFO、budget、成功清理、
+  stale generation、Esc/back/details、narration、layout/pixel、旧 exit 路径 source guard；
+  live kick 必须证明进程仍存活且 screen 可诊断，再由 `app.quit` 干净退出。
+- 每阶段运行受影响 crate tests；跨 owner checkpoint、最终提交后运行 full gate，产品行为
+  变化后刷新 fixture/live playable。安全停止点只允许 A 的 full-gated typed-terminal
+  checkpoint（账本保持 active）或完整 full-gated vertical path；blocker 仅限本地 fixture
+  已通过而外部 compositor/server acceptance 可复现失败并有精确重启条件。
+
 ## 客户端差异优先级
 
 路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在
@@ -419,7 +446,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p1-generated-facts: maintenance
 - p2-non-entity: active
 - p2-hud: active
-- p3-resources: maintenance
+- p3-resources: active
 - p4-delivery: active
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->

@@ -117,7 +117,12 @@ Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
 - **The 8-owner `DisconnectedScreen` surface is `active`.** Remote disconnect
   currently terminates the process instead of presenting the Vanilla title,
   bounded reason/details, back action, narration and non-Esc screen lifecycle.
-  Implement that vertical path without adding title/singleplayer UI.
+  The active contract is `goal.md` “远端断线状态页 vertical path”: `bbb-net`
+  owns the typed terminal outcome, `ClientInputState` owns the generation-tagged
+  screen and renderer/control receive immutable projections. Close only after
+  remote-once/local-zero FIFO, atomic session teardown, styled/bounded details,
+  stale-hit rejection, narration/pixel evidence and fixture/live kick acceptance;
+  do not add title/singleplayer UI.
 - **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
   multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
   render and close lifecycle against the existing pause-screen owner; classify
@@ -407,11 +412,14 @@ Matrix route: `items-versioned-property-surface`
 
 Matrix routes: `resources-indexed-panorama`, `resources-indexed-built-in-packs`, `resources-indexed-realms`, `resources-world-list-favicons`, `scope-title-screen`, `scope-realms`
 
-- **Indexed title panorama assets.** Vanilla 26.1 `GuiRenderer` owns a
+- **Indexed title panorama assets are `active`.** Vanilla 26.1 `GuiRenderer` owns a
   `CubeMap("textures/gui/title/background/panorama")` and `Panorama` owns the
-  overlay, but the CLI-direct external client has no title/menu panorama
-  surface. The seven PNGs remain provider-reachable and intentionally lazy.
-  Reopen when a title/menu panorama surface enters the declared product.
+  overlay. The now-active `DisconnectedScreen` is a non-in-game `Screen`, so
+  `Screen.extractBackground` makes this seven-PNG family a reachable consumer
+  before blur and `menu_background.png`; the unified provider already exposes
+  the objects, but no renderer consumer exists. Implement it as a separate
+  resource/presentation slice after the disconnected-screen vertical path,
+  preserving lazy generation rollback and without adding a title screen.
 - **Title splash reload listener.** Vanilla `SplashManager.prepare` reads
   `minecraft:texts/splashes.txt`, but its only consumer is
   `TitleScreen.init` calling `Minecraft.getSplashManager().getSplash()`.
