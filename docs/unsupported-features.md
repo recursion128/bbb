@@ -134,13 +134,14 @@ Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
 `identity-skin-presentation`, `security-secure-chat-reporting`
 
-- **Authenticated profile-key prepare/refresh lifetime is `active`.** Vanilla
-  `Minecraft.prepareForMultiplayer` starts `AccountProfileKeyPairManager`
-  before connection and keeps its pending/accepted key across listener play,
-  reconfiguration and transfer lifetimes. BBB currently starts only at encrypted
-  Play Login and `reset` aborts the manager state. The engineering contract in
-  `goal.md` closes this eight-owner lifecycle without adding a private-key cache
-  or launcher login.
+- **Authenticated profile-key Services acceptance is `deferred`.** This runner has
+  no authorized profile UUID/access token pair, and the repository has no
+  credential-safe online-mode acceptance fixture, so the real
+  `api.minecraftservices.com/player/certificates` response followed by encrypted
+  Login, `ChatSessionUpdate`, signed message, reconfiguration and Transfer remains
+  externally unverified. Reopen when an account owner provisions an ephemeral
+  legal credential pair and controlled Vanilla 26.1 online-mode server runner that
+  redacts process/log material and can assert that complete sequence.
 - **Client persistence, SkinManager presentation and secure-chat/social/reporting
   decisions remain `active`.** Existing server-list, skin and reporting code has
   focused coverage, but the census has not proven the 158 persistence owners,
