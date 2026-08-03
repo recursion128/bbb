@@ -53,23 +53,52 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix route: `rendering-entity-layer-registration`
-
-Current census contract: `arch-census-external-production-r2` audits the external-
-multiplayer production path without changing production code. Its canonical inputs
-are Cargo workspace metadata, production Rust owners/APIs/callers and dependency
-edges, plus the checked Vanilla 26.1 mechanism inventory. A finding qualifies only
-when a concrete duplicate owner/resolver/cache/projection, reversed dependency,
-generation/session shadow state, derivable handwritten fact, mixed commit/rollback,
-over-wide API, parallel fallback, missing reverse/stale guard or dead production API
-can be reproduced. Style, file size, small boilerplate and speculative future work do
-not qualify. Evidence remains owned by `scripts/docs_wiki_lint.py` and the existing
-inventory/frontend; the safe stop is a full-gated, ranked, single-semantic candidate
-set whose IDs, paths, matrix/goal routes and evidence are mechanically valid. The
-architecture route remains `maintenance` while the candidate region is empty and
-becomes `active` only when this census records a real ready candidate.
+Matrix routes: `rendering-entity-layer-registration`, `rendering-particle-provider-registration`,
+`world-client-level-decisions`
 
 <!-- architecture-candidates:start -->
+- **`arch-entity-equipment-shadow-projection` is `active`.**
+  - Semantic mechanism: generation-matched entity equipment layer selection and immutable frame projection.
+  - Canonical input: resource generation plus equipment asset id/layer type, with per-stack dye, foil, trim and player-texture facts.
+  - Owners: `crates/bbb-pack/src/equipment_assets.rs` and `crates/bbb-renderer/src/entity_models/equipment.rs` are canonical, while `crates/bbb-item-model/src/item_runtime/tables.rs`, `crates/bbb-world/src/entities.rs`, `crates/bbb-world/src/entities/store.rs`, `crates/bbb-native/src/entity_scene/variants.rs` and `crates/bbb-renderer/src/entity_models/instances.rs` retain material/color/boolean/static-layer shadows.
+  - Production callers: `crates/bbb-native/src/resource_reload.rs`, `crates/bbb-native/src/entity_scene/instance.rs`, `crates/bbb-native/src/runtime.rs` and `crates/bbb-renderer/src/entity_models/textured.rs` publish or consume both paths.
+  - Direction: pack immutable catalog to native reload barrier to world asset-id projection to renderer-private resolved catalog and frame consumer.
+  - Lifetime: one resource generation; stale asset ids miss, and failed reload keeps the previous complete renderer generation.
+  - Ordering/fallback/rollback: preserve selected-pack priority/filter, declared layer order, dye/foil/trim/player override and zero-layer fallback for missing, unknown or stale assets; never restore a static material fallback.
+  - Public API: retain only the equipment asset catalog/id and narrow dye/foil/trim/player facts across crates.
+  - Delete: legacy armor/decor material and saddle shadow fields/maps/conversions, the static wings-layer projection, duplicate has-wings/has-humanoid flags and their production callers; keep independent item-presence decisions out of this slice.
+  - Evidence: `crates/bbb-renderer/src/entity_models/tests/equipment_assets.rs`, `crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs` and `crates/bbb-native/src/entity_scene/tests.rs` cover current dual projection and the reverse guard.
+  - Risk/benefit/rank: drift high; behavior high; cross-owner count five; deletion/API narrowing high; generation risk high; testability high; rank 1/3.
+  - Goal route: `architecture-convergence`; `rendering-entity-layer-registration`.
+  - Reopen condition: reopen only if a production consumer again classifies an equipment asset outside the generation-matched catalog or carries a parallel static layer/material identity.
+- **`arch-falling-dust-static-color-facts` is `active`.**
+  - Semantic mechanism: Vanilla falling-dust static color selection after the dynamic block-tint branch.
+  - Canonical input: fixed Vanilla 26.1 block-state id and the official FallingBlock dust-color/map-color result.
+  - Owners: `crates/bbb-native/src/particle_runtime/block_map_color.rs` currently reconstructs source facts by resource name and properties; `crates/bbb-protocol/src/block_state_types.rs` is the target versioned block-state fact owner.
+  - Production callers: `crates/bbb-native/src/particle_runtime/environment.rs` and `crates/bbb-native/src/particle_runtime/resolver_core.rs` query the handwritten resolver.
+  - Direction: Vanilla runtime probe to checked generated protocol facts to native particle projection; biome/block tint remains a separate runtime input and renderer consumes only the resolved color.
+  - Lifetime: immutable per target version with exact stale-output failure; no resource or session shadow cache.
+  - Ordering/fallback/rollback: preserve FallingBlock dust override before dynamic BlockColors tint before static map color, invisible-render rejection and invalid-id None fallback.
+  - Public API: one bounded block-state-id query returning optional static dust/map colors; no resource-name or property API crosses into native.
+  - Delete: handwritten map-color constants, family/name/property match tables and their duplicate tests once generated exact-output fixtures own the facts.
+  - Evidence: `crates/bbb-native/src/particle_runtime/tests.rs`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` provide behavior anchors and the reusable runtime-fact generator pattern.
+  - Risk/benefit/rank: drift high; behavior high; cross-owner count two; deletion high; API narrowing medium; generation risk medium; testability high; rank 2/3.
+  - Goal route: `architecture-convergence`; `rendering-particle-provider-registration`.
+  - Reopen condition: reopen only when the target block-state registry changes or production again derives falling-dust static colors from resource names/properties.
+- **`arch-piston-profile-pack-boundary` is `active`.**
+  - Semantic mechanism: fixed block-state piston push-reaction lookup used by client piston movement projection.
+  - Canonical input: Vanilla 26.1 global block-state id and its official push reaction.
+  - Owners: `crates/bbb-pack/src/block_piston_profiles.rs` parses a built-in source catalog while `crates/bbb-world/src/piston_blocks.rs` reads that pack owner directly; `crates/bbb-protocol/src/block_state_types.rs` is the target fixed fact owner.
+  - Production callers: `crates/bbb-world/src/piston_blocks.rs` and `crates/bbb-world/src/piston_blocks/moving.rs` resolve every client piston movement through the pack catalog.
+  - Direction: Vanilla runtime probe to checked generated protocol fact to world gameplay decision; world must not open or retain a pack parser/catalog.
+  - Lifetime: immutable per protocol version; session/resource reload cannot replace fixed block identities and stale generated output fails offline checks.
+  - Ordering/fallback/rollback: preserve the resolver's 12-block order, Destroy/Block/PushOnly/Normal/Ignore decisions, unloaded/unknown-state failure and non-mutating rollback.
+  - Public API: one protocol block-state support-fact enum/query consumed privately by world.
+  - Delete: the pack piston profile module/exports/load API, world pack-catalog import and source-expression runtime parse path.
+  - Evidence: `crates/bbb-world/src/piston_blocks.rs`, `scripts/vanilla-runtime/BlockStateSupportReport.java`, `scripts/generate-block-state-support-facts.py` and `scripts/tests/test_generate_block_state_support_facts.py` cover behavior and the exact generated owner.
+  - Risk/benefit/rank: drift medium; behavior high; cross-owner count three; deletion medium; API narrowing high; generation risk medium; testability high; rank 3/3.
+  - Goal route: `architecture-convergence`; `world-client-level-decisions`.
+  - Reopen condition: reopen only if piston reaction becomes session/resource-defined or world again reads a pack-owned parser/catalog for fixed gameplay facts.
 <!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
 
@@ -112,6 +141,17 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   owner, including pass order, translucent/post/lightmap/weather consumers and
   exact no-surface classifications. Split only by semantic owner and preserve
   the single frame-extract/submission path.
+- **Smithing result equipment preview asset projection is `missing`.**
+  `bbb-native::apply_smithing_result_equipment` still publishes only legacy
+  material fields, while the textured equipment renderer consumes the
+  generation-matched equipment asset id. Reopen as a behavior slice against
+  Vanilla smithing preview ownership; do not preserve the legacy projection in
+  the architecture candidate to mask this missing consumer path.
+- **Zombie-nautilus coral body-item visibility is `partial`.** Vanilla
+  `ZombieNautilusCoralModel.setupAnim` hides corals for every nonempty body armor
+  item, while BBB currently infers presence from recognized armor material.
+  Reopen as an entity-presentation behavior slice with an explicit item-presence
+  projection; do not change this decision inside equipment architecture cleanup.
 
 ## Multiplayer screen surface closure
 

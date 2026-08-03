@@ -67,9 +67,9 @@
   manager 生存期与 play-local 签名链收敛为一个 net owner；真实 Services 验收按授权凭据重开。
 - **2026-08-03（trusted profile texture-set lifecycle）**：Services property trust、
   skin/cape/elytra all-of fallback、bounded process cache 与 CPU→GPU 重交付收敛为一个 owner。
-- **2026-08-03（architecture convergence census）**：机械审计 10 个 production crate、
-  1,097 个 Rust 文件、23 条正常依赖边、2,927 个 Vanilla owner 与公开/受限 API 声明面，
-  登记 5 个单语义 ready 候选并建立 ID/rank/route/owner/evidence stale 门禁。
+- **2026-08-03（architecture convergence census）**：首轮审计并关闭 5 项；r2 复审 10 个
+  production crate、1,097 个 Rust 文件、23 条正常依赖边与 2,927 个 Vanilla owner，登记
+  equipment shadow、falling-dust generated facts 与 piston pack boundary 三项 ready 候选。
 - **2026-08-03（post-effect identity convergence）**：六个 built-in graph 的 admission、
   camera/outline/transparency/blur dispatch 收敛为一个 renderer-private typed owner。
 - **2026-08-03（control mailbox convergence）**：control 五类写请求与 window/services command
