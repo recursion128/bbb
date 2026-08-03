@@ -5,9 +5,7 @@ use std::{
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
-use bbb_net::{
-    ConnectionOptions, MinecraftUserApiClient, NetCommand, NetEvent, ServerResourcePackPolicy,
-};
+use bbb_net::{ConnectionOptions, MinecraftUserApiClient, ServerResourcePackPolicy};
 use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -23,7 +21,7 @@ use bbb_renderer::{
 use bbb_world::{PlayerReportEnvironment, TutorialStep};
 use clap::{ArgAction, Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
-use tokio::{runtime::Runtime, sync::mpsc};
+use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 use crate::camera_fov::{
@@ -38,8 +36,8 @@ use winit::{
 
 use crate::{
     code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile,
-    narrator_runtime::NarratorStatus, remote_debug::RemoteDebugRenderer,
-    simulation::commands::SimulationMailbox,
+    narrator_runtime::NarratorStatus, network_runtime::NetworkRuntime,
+    remote_debug::RemoteDebugRenderer, simulation::commands::SimulationMailbox,
 };
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
@@ -441,11 +439,6 @@ impl From<ClientParticleStatusArg> for ClientParticleStatus {
     }
 }
 
-pub(crate) struct NetworkHandles {
-    pub(crate) events: Option<mpsc::Receiver<NetEvent>>,
-    pub(crate) commands: Option<mpsc::Sender<NetCommand>>,
-}
-
 pub(crate) fn init_tracing() {
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
@@ -558,12 +551,9 @@ pub(crate) fn start_network_if_requested(
     code_of_conduct: &mut CodeOfConductAcceptance,
     known_packs_manager: Option<Arc<KnownPacksManager>>,
     simulation_mailbox: &SimulationMailbox,
-) -> Result<NetworkHandles> {
+) -> Result<NetworkRuntime> {
     if !args.connect_server {
-        return Ok(NetworkHandles {
-            events: None,
-            commands: None,
-        });
+        return Ok(NetworkRuntime::idle());
     }
 
     let mut options = connection_options_from_args(args)?;
@@ -571,35 +561,11 @@ pub(crate) fn start_network_if_requested(
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
     options.known_packs_manager = known_packs_manager;
     code_of_conduct.set_connected_server(&options);
-    // Vanilla's netty-to-game-thread queue is unbounded: the connection
-    // thread never stops reading because the game thread is slow.  Size both
-    // directions so multi-minute render stalls cannot wedge the event stream
-    // in emit() backpressure or drop queued gameplay commands.
-    let (network_tx, mut network_rx) = mpsc::channel(262_144);
-    let (simulation_tx, rx) = mpsc::channel(262_144);
-    let (command_tx, command_rx) = mpsc::channel(8192);
-    let disconnect_tx = network_tx.clone();
-    let network_wake = simulation_mailbox.clone();
-    runtime.spawn(async move {
-        while let Some(event) = network_rx.recv().await {
-            if simulation_tx.send(event).await.is_err() {
-                break;
-            }
-            network_wake.notify_external_work();
-        }
-    });
-    runtime.spawn(async move {
-        let reason = match bbb_net::run_event_stream(options, network_tx, command_rx).await {
-            Ok(()) => None,
-            Err(err) => Some(err.to_string()),
-        };
-        let _ = disconnect_tx.send(NetEvent::Disconnected { reason }).await;
-    });
-
-    Ok(NetworkHandles {
-        events: Some(rx),
-        commands: Some(command_tx),
-    })
+    Ok(NetworkRuntime::start(
+        runtime,
+        options,
+        simulation_mailbox.clone(),
+    ))
 }
 
 fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {

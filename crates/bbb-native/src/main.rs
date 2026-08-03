@@ -57,6 +57,7 @@ mod lifecycle_soak;
 mod map_textures;
 mod music_runtime;
 mod narrator_runtime;
+mod network_runtime;
 mod particle_runtime;
 mod platform;
 mod recipe_book_ui;
@@ -140,7 +141,7 @@ use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
     load_known_packs_manager, load_pack_roots, parse_args, run_build_info_if_requested,
     run_probe_if_requested, run_status_if_requested, services_block_list_client_from_args,
-    spawn_frame_tick, start_control_api, start_network_if_requested, NetworkHandles,
+    spawn_frame_tick, start_control_api, start_network_if_requested,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 use win_screen_resources::WinScreenResources;
@@ -527,16 +528,14 @@ fn run_client(args: startup::Args) -> Result<()> {
             )
         })
         .transpose()?;
-    let NetworkHandles {
-        events: net_events,
-        commands: net_commands,
-    } = start_network_if_requested(
+    let mut network_runtime = start_network_if_requested(
         &runtime,
         &args,
         &mut code_of_conduct_acceptance,
         known_packs_manager,
         &simulation_mailbox,
     )?;
+    let (net_events, net_commands) = network_runtime.take_channels();
     let profile_id = args
         .profile_id
         .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
@@ -1003,6 +1002,16 @@ fn run_client(args: startup::Args) -> Result<()> {
             set_cursor_capture(&window, &mut cursor_captured, false);
             if let Err(error) = simulation_thread.shutdown_and_join() {
                 record_runtime_failure(&event_failures, error);
+            }
+            if let Err(error) = network_runtime.shutdown_and_join(&runtime) {
+                record_runtime_failure(
+                    &event_failures,
+                    RuntimeFailure::new(
+                        "network shutdown",
+                        "Network backend shutdown failed",
+                        error,
+                    ),
+                );
             }
             snapshot.rcu(|current| {
                 let mut next = (**current).clone();
