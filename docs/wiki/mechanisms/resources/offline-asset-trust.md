@@ -140,6 +140,12 @@ core pipeline 的 GPU 准备集由 renderer 内部唯一私有
 生产不能恢复分裂 commit。glint 的 scale、view-offset-Z、
 resident instance/decal UV 与 HUD clip/mask 只在 renderer 的共享 adapter 中形成窄 GPU
 projection；各 family consumer 不再分别解析 selected shader，也不能独立发布 generation。
+17 个 selected pipeline family 仍各自拥有 define/adapter 与 pipeline descriptor，但
+vertex→fragment stage module 编译只经过 renderer-private
+`compile_selected_shader_stages`；它是底层 GLSL module builder 的唯一 production caller。
+全 crate reverse source guard 要求旧 pair helper 为零，并把底层 direct call 精确限制为该
+函数体内的 vertex、fragment 两处，防止 family 恢复独立 resolver。stage 或后续 pipeline
+失败仍在 `CorePipelineGeneration::prepare` 中止，成功后才进入既有单一 swap/rollback 映射。
 renderer 的 87 个长期 pipeline owner 由 source guard 机械分成：全部 77 个有一对一 Vanilla
 static pipeline/core shader 的 owner 已在统一 core generation，10 个无一对一 static owner。
 后者只有 8 个已由 `PostEffectGraphRuntime` 拥有 selected path 的 default/内部 copy，以及
@@ -157,8 +163,8 @@ static family 进入同一 prepare/swap/rollback 映射；它们继续使用既�
 projection 与 blend/depth/cull/write-mask state。
 regional catalog 按 host ISO3 构造 GCD fixed-rate schedule，reload 保留 elapsed、重启选中
 initial delay，并在该 transaction 成功后才替换 HUD schedule；单帧追赶有界且跳过的周期仍
-推进 elapsed。ShaderManager 的 77 个一对一 static owner 已闭合，剩余工作是 Phase D 的真实
-默认资源/selected/filter acceptance 与整个 20-listener generation 的收口验收。
+推进 elapsed。ShaderManager 的 77 个一对一 static owner 与整个 20-listener generation 已由
+真实默认资源、selected/filter、GPU pixel 及失败回滚验收闭合。
 
 ## BBB 实现映射
 

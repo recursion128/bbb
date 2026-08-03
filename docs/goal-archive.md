@@ -57,6 +57,8 @@
   bounded lifecycle owner，并在 simulation 后、backend drop 前完成 signal/join。
 - **2026-08-03（lifecycle terminal budget ownership）**：版本化 manifest 统一拥有三个
   独立终态 deadline，并以服务器 receipt、零工作 gauge 与 clean exit 完成三轮 live soak。
+- **2026-08-03（selected shader compilation convergence）**：17 个 pipeline family 的
+  vertex/fragment stage 编译收敛为一个 renderer-private owner，并以 reverse guard 防回流。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
