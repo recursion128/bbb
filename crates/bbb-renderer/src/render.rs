@@ -3217,6 +3217,22 @@ impl Renderer {
         stats.hud_draw_calls += 1;
     }
 
+    fn panorama_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        let (Some(panorama), Some(screen)) = (&self.hud_panorama, &self.hud_disconnected_screen)
+        else {
+            return;
+        };
+        panorama.draw(
+            &self.queue,
+            encoder,
+            self.presentation_color_view(),
+            self.surface_size(),
+            screen.panorama_rotation_degrees,
+        );
+        stats.panorama_draw_calls += 1;
+        stats.pipeline_switches += 1;
+    }
+
     fn hud_passes(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -3345,22 +3361,6 @@ impl Renderer {
         drop(hud_draws);
         self.frame_hud_vertices = frame_hud_vertices;
         Ok(())
-    }
-
-    fn panorama_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
-        let (Some(panorama), Some(screen)) = (&self.hud_panorama, &self.hud_disconnected_screen)
-        else {
-            return;
-        };
-        panorama.draw(
-            &self.queue,
-            encoder,
-            self.presentation_color_view(),
-            self.surface_size(),
-            screen.panorama_rotation_degrees,
-        );
-        stats.panorama_draw_calls += 1;
-        stats.pipeline_switches += 1;
     }
 
     fn win_screen_vignette_pass(
@@ -5450,6 +5450,7 @@ mod tests {
         "entity_preview_pip_passes",
         "vignette_pass",
         "win_screen_portal_pass",
+        "panorama_pass",
         "hud_passes",
         "win_screen_vignette_pass",
         "transparency_blit_pass",
