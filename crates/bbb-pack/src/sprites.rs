@@ -11,7 +11,7 @@ use crate::{
     image::{
         decode_png_file_rgba_with_budget, read_png_file_dimensions_with_budget, PngDecodeBudget,
     },
-    resources::PackResourceStack,
+    resources::{PackResource, PackResourceStack},
     rgba_len,
 };
 
@@ -269,6 +269,23 @@ impl SpriteImage {
             path,
             Some(&metadata_path),
             &mut budget,
+            Some(resources),
+        )
+    }
+
+    pub(crate) fn from_pack_resource(
+        id: impl Into<String>,
+        resource: &PackResource,
+        resources: &PackResourceStack,
+    ) -> Result<Self> {
+        let id = id.into();
+        resources.validate_resource(resource, &format!("sprite image {id}"))?;
+        resources.validate_resource_metadata(resource, &format!("sprite metadata {id}"))?;
+        Self::from_png_file_with_metadata_path_and_budget(
+            id,
+            &resource.path,
+            resource.metadata_path.as_deref(),
+            &mut resources.single_image_png_decode_budget(),
             Some(resources),
         )
     }

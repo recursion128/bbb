@@ -22,6 +22,7 @@ mod known_packs;
 mod language;
 mod metadata;
 mod mipmap;
+mod panorama;
 mod particle_definitions;
 mod particle_sprites;
 mod periodic_notifications;

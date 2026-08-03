@@ -400,6 +400,7 @@ mod tests {
         for (path, source) in [
             ("atlas_sources.rs", include_str!("atlas_sources.rs")),
             ("colors.rs", include_str!("colors.rs")),
+            ("panorama.rs", include_str!("panorama.rs")),
             ("resource_textures.rs", include_str!("resource_textures.rs")),
             ("sprites.rs", include_str!("sprites.rs")),
         ] {
