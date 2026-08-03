@@ -2845,7 +2845,7 @@ pub(crate) fn advance_simulation(
         &mut audio_events,
         item_runtime.as_ref(),
     );
-    advance_block_destruction_render_ticks(world, running_ticks);
+    world.advance_block_destruction_render_ticks(running_ticks);
     level_profile_duration = level_profile_duration
         .saturating_add(optional_profile_elapsed(level_environment_started_at));
     push_simulation_profile_duration(
@@ -4209,7 +4209,7 @@ pub(crate) fn update_renderer_from_publication(
     );
     let item_mid_duration = item_mid_started_at.elapsed();
     let block_entity_started_at = Instant::now();
-    let block_destroy_stages = block_destroy_stages_from_world(world);
+    let block_destroy_stages = world.block_destruction_render_stages();
     let block_entity_model_start = entity_instances.len();
     let block_entity_visibility = BlockEntityVisibility::new(
         camera_pose,
@@ -5122,30 +5122,6 @@ fn particle_light_block_pos(position: [f64; 3]) -> BlockPos {
     }
 }
 
-fn advance_block_destruction_render_ticks(world: &mut WorldStore, running_ticks: u32) -> usize {
-    world.advance_block_destruction_render_ticks(running_ticks)
-}
-
-fn block_destroy_stages_from_world(world: &WorldStore) -> Vec<(BlockPos, u8)> {
-    let mut stages = Vec::new();
-    for progress in world.block_destructions() {
-        if progress.progress < 10 {
-            merge_block_destroy_stage(&mut stages, progress.pos, progress.progress);
-        }
-    }
-
-    let interaction = &world.local_player().interaction;
-    if let (Some(pos), Some(stage)) = (
-        interaction.destroying_block,
-        interaction.destroying_block_stage,
-    ) {
-        merge_block_destroy_stage(&mut stages, pos, stage);
-    }
-
-    stages.sort_by_key(|(pos, _stage)| (pos.x, pos.y, pos.z));
-    stages
-}
-
 fn block_destroy_overlays_from_stages(
     world: &WorldStore,
     textures: &TerrainTextureState,
@@ -5286,21 +5262,6 @@ fn block_destroy_render_shape(
             z: pos.z,
         },
     )
-}
-
-fn merge_block_destroy_stage(
-    stages: &mut Vec<(bbb_world::BlockPos, u8)>,
-    pos: bbb_world::BlockPos,
-    stage: u8,
-) {
-    if let Some((_pos, existing)) = stages
-        .iter_mut()
-        .find(|(existing_pos, _)| *existing_pos == pos)
-    {
-        *existing = (*existing).max(stage);
-    } else {
-        stages.push((pos, stage));
-    }
 }
 
 #[cfg(test)]

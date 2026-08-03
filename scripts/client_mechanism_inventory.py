@@ -908,8 +908,56 @@ LEVEL_RENDERER_SCENE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LEVEL_RENDERER_EFFECT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/weather_effect_runtime.rs#advance_for_ticks",
+                "crates/bbb-world/src/block_events.rs#advance_block_destruction_render_ticks",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#weather_tick_effects_preserve_level_renderer_order_before_later_effect_drains",
+                "crates/bbb-native/src/runtime/tests.rs#block_destroy_render_ticks_respect_frozen_world_ticking_state",
+            ),
+        ),
+        ("tick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/block_events.rs#advance_block_destruction_render_ticks",),
+            (
+                "crates/bbb-world/src/block_events.rs#block_destruction_progress_expires_after_vanilla_render_tick_window",
+                "crates/bbb-world/src/block_events.rs#block_destruction_batched_tick_advance_expires_at_scan_tick",
+            ),
+        ),
+        ("removeBlockBreakingProgress",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/block_events.rs#apply_block_destruction",),
+            ("crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",),
+        ),
+        ("removeProgress",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/block_events.rs#apply_block_destruction",
+                "crates/bbb-world/src/block_events.rs#block_destruction_render_stages",
+            ),
+            (
+                "crates/bbb-world/src/block_events.rs#block_destruction_render_stages_merge_server_and_local_progress",
+                "crates/bbb-world/src/block_events.rs#block_destruction_budget_rejects_only_new_ids",
+                "crates/bbb-native/src/runtime/tests.rs#block_destroy_stage_projection_has_one_world_owner_and_no_native_resolver",
+            ),
+        ),
+        ("destroyBlockProgress",),
+    ),
+)
+
 LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
+    "rendering-level-effect-lifecycle": LEVEL_RENDERER_EFFECT_OWNER_EVIDENCE,
     "rendering-level-frame-graph": LEVEL_RENDERER_FRAME_OWNER_EVIDENCE,
     "rendering-level-scene-projection": LEVEL_RENDERER_SCENE_OWNER_EVIDENCE,
     "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
@@ -1075,7 +1123,8 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-renderer/src/render.rs",
     ),
     "rendering-level-effect-lifecycle": (
-        "crates/bbb-native/src/runtime.rs#block_destroy_stages_from_world",
+        "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
+        "crates/bbb-world/src/block_events.rs#block_destruction_render_stages",
         "crates/bbb-renderer/src/block_destroy.rs",
     ),
     "rendering-level-diagnostics-gizmos": (

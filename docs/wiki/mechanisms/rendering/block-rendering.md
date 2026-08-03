@@ -105,6 +105,24 @@ route owner。
 late debug 清 main depth，outline chain 不受 improved 选项控制。resource/post generation 仍由既有
 prepare/apply transaction 原子发布，失败保留上一完整 generation；frame route 不缓存或改写 pack。
 
+### Level effect tick 与 block-breaking lifetime
+
+Vanilla `GameRenderer.tick` 只在 level tick 正常运行时调用 `LevelRenderer.tick`；后者先推进
+renderer tick、生成 rain particle/audio effect，再按 20-tick cadence 清理 age 严格大于 400 的
+block-breaking progress。`destroyBlockProgress` 以 breaker id 更新或移除条目，同一位置显示
+`(progress, id)` 排序中的最高 progress。
+
+BBB 的对应单向数据流是 packet/local interaction → `bbb-world` canonical breaking state 与
+`block_destruction_render_stages` 有序值投影 → native overlay extraction → renderer crumbling pass。
+server 与 local stage 只在 world owner 合并；native 不再保存 resolver/cache。`WeatherEffectRuntime`
+唯一拥有跨 level/resource reload 的 weather tick/rain-sound cursor，native 先提交 weather effect，
+再调用 world expiry；pause/frozen tick 不推进，server step 恢复推进。level teardown 清除 breaking
+entries 和 local stage，但与 Vanilla 的长期 `LevelRenderer` 一样不重置 render/weather cursor。
+
+网络新增 breaker id 的 retained 上限为 4096；达到上限后已有 id 仍可更新/移除，新 id 被拒绝并计入
+`block_destructions_ignored`，`block_destructions_tracked` 始终给出当前 retained count。stage projection
+只分配本帧 immutable 值，不保留第二 generation；缺 destroy texture 继续产生零 overlay。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -140,6 +158,7 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | backend/reload/resize lifecycle | `LevelRenderer` constructor/close/reload/setLevel/allChanged/resize/resetSampler/needsUpdate | world revision → native generation transaction → renderer-private GPU backend | `equivalent` | generated 9-owner evidence、atomic resize/rollback、RAII、resource/level generation tests |
 | level scene extract/submit | `LevelRenderer` 15 scene owners | world → native immutable frame projection → renderer pass/target | `equivalent` | generated 15-owner evidence、selection phase/style、32-block crack、offscreen pixel tests |
 | level frame graph | `LevelRenderer` 14 frame owners | CLI/native `LevelFrameRoute` → renderer targets/passes | `equivalent` | generated 14-owner evidence、regular/improved pixels/counters、selected graph rollback |
+| level effect lifetime | `LevelRenderer` 4 effect owners | world breaking state + native weather tick → immutable effect/overlay consumers | `equivalent` | generated 4-owner evidence、20/400/freeze/teardown/budget/source-guard tests |
 | falling-dust static color facts | `FallingDustParticle.Provider` | protocol generated facts → native tint decision | `equivalent` | generator stale check + 29,873-state/family tests |
 
 ## 结构性不变量
@@ -159,6 +178,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
   恢复 native/renderer 的按名称、单候选或独立 pack resolver，也不得在两个 phase 同时提交。
 - `LevelFrameRoute` 是 feature target、depth copy、combine 与 presentation 的唯一决策 owner；不得恢复
   以 post catalog 是否存在代替 option/panoramic 判断的无条件 improved 路径。
+- block-breaking 最高 stage 只能由 world 值投影解析；不得在 native/renderer 恢复 server/local merge、
+  progress cache 或独立 expiry cursor。weather effect 必须先于同 tick expiry 和后续 entity effects。
 - 性能优化必须重跑石材、玻璃、叶子、发光石与 chunk-boundary ROI。
 - FallingDust 不得恢复按 block name/property 匹配 dust/map color；dynamic tint 必须先于
   optional static map fallback。
@@ -195,13 +216,19 @@ readback 覆盖；regular/improved 都保留 clear color 与 cyan block-selectio
 combine draw。generated inventory 为 14 个 owner 保存非空 implementation/test cell，fixture 对缺 cell
 和 stale output fail closed。
 
+effect lifecycle 由 world 的 id/position update、invalid removal、server/local highest-stage、4096 retained
+budget、20/400 expiry、level teardown/cursor 测试，以及 native 的 deterministic weather、freeze/step、
+weather→expiry→later-effect 顺序、crack/block-entity crumbling 与 missing-texture fallback 测试覆盖。
+reverse guard 要求 production 只调用一次 world stage projection，并禁止 native 旧 resolver 恢复；generated
+inventory 为 4 个 owner 保存 implementation/test cell，缺 cell、失效 symbol 或 stale output 均失败。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene lifecycle 均已通过；新 block state、
+当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect lifecycle 均已通过；新 block state、
 pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 

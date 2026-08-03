@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
     BlockEvent as ProtocolBlockEvent, LevelEvent as ProtocolLevelEvent, Vec3d as ProtocolVec3d,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::{
     chest_model_kind_for_block_name, is_bell_block_name, is_decorated_pot_block_name,
@@ -12,6 +13,7 @@ use crate::{
 
 const BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS: u32 = 20;
 const BLOCK_DESTRUCTION_EXPIRY_TICKS: u32 = 400;
+const MAX_BLOCK_DESTRUCTIONS: usize = 4096;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockDestructionProgress {
@@ -79,6 +81,10 @@ impl WorldStore {
             {
                 *existing = progress;
             } else {
+                if self.block_destructions.len() >= MAX_BLOCK_DESTRUCTIONS {
+                    self.counters.block_destructions_ignored += 1;
+                    return false;
+                }
                 self.block_destructions.push(progress);
             }
             self.counters.block_destructions_tracked = self.block_destructions.len();
@@ -224,6 +230,37 @@ impl WorldStore {
         self.block_destructions
             .iter()
             .find(|progress| progress.id == id)
+    }
+
+    /// Produces the one ordered block-breaking projection consumed by render extraction.
+    ///
+    /// Vanilla's `LevelRenderer` stores server and local-player updates in the same
+    /// id/position maps and extracts the greatest `(progress, id)` entry per position.
+    /// BBB keeps gameplay-local progress in `LocalPlayerInteractionState`, so the world
+    /// owner performs that one merge here instead of letting native rendering recreate
+    /// a second resolver.
+    pub fn block_destruction_render_stages(&self) -> Vec<(BlockPos, u8)> {
+        let mut stages: BTreeMap<BlockPos, u8> = BTreeMap::new();
+        for progress in &self.block_destructions {
+            if progress.progress < 10 {
+                stages
+                    .entry(progress.pos)
+                    .and_modify(|stage| *stage = (*stage).max(progress.progress))
+                    .or_insert(progress.progress);
+            }
+        }
+
+        let interaction = &self.local_player.interaction;
+        if let (Some(pos), Some(stage)) = (
+            interaction.destroying_block,
+            interaction.destroying_block_stage,
+        ) {
+            stages
+                .entry(pos)
+                .and_modify(|existing| *existing = (*existing).max(stage))
+                .or_insert(stage);
+        }
+        stages.into_iter().collect()
     }
 
     pub fn block_events(&self) -> &[BlockEventRecord] {
@@ -434,6 +471,83 @@ mod tests {
     }
 
     #[test]
+    fn block_destruction_render_stages_merge_server_and_local_progress() {
+        let mut store = WorldStore::new();
+        let shared = BlockPos { x: 2, y: 3, z: 4 };
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 10,
+            pos: ProtocolBlockPos { x: 2, y: 3, z: 4 },
+            progress: 2,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 11,
+            pos: ProtocolBlockPos { x: 2, y: 3, z: 4 },
+            progress: 7,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 12,
+            pos: ProtocolBlockPos { x: -1, y: 3, z: 4 },
+            progress: 3,
+        }));
+        store.local_player.interaction.destroying_block = Some(shared);
+        store.local_player.interaction.destroying_block_stage = Some(8);
+
+        assert_eq!(
+            store.block_destruction_render_stages(),
+            vec![(BlockPos { x: -1, y: 3, z: 4 }, 3), (shared, 8),]
+        );
+    }
+
+    #[test]
+    fn block_destruction_budget_rejects_only_new_ids() {
+        let mut store = WorldStore::new();
+        for id in 0..MAX_BLOCK_DESTRUCTIONS {
+            assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+                id: i32::try_from(id).unwrap(),
+                pos: ProtocolBlockPos {
+                    x: i32::try_from(id).unwrap(),
+                    y: 0,
+                    z: 0,
+                },
+                progress: 1,
+            }));
+        }
+
+        assert!(!store.apply_block_destruction(ProtocolBlockDestruction {
+            id: i32::try_from(MAX_BLOCK_DESTRUCTIONS).unwrap(),
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            progress: 2,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 0,
+            pos: ProtocolBlockPos { x: 5, y: 6, z: 7 },
+            progress: 9,
+        }));
+        assert_eq!(store.block_destructions().len(), MAX_BLOCK_DESTRUCTIONS);
+        assert_eq!(
+            store
+                .block_destruction(0)
+                .map(|progress| (progress.pos, progress.progress)),
+            Some((BlockPos { x: 5, y: 6, z: 7 }, 9))
+        );
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 0,
+            pos: ProtocolBlockPos { x: 5, y: 6, z: 7 },
+            progress: 10,
+        }));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: i32::try_from(MAX_BLOCK_DESTRUCTIONS).unwrap(),
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 0 },
+            progress: 2,
+        }));
+        assert_eq!(
+            store.counters().block_destructions_tracked,
+            MAX_BLOCK_DESTRUCTIONS
+        );
+        assert_eq!(store.counters().block_destructions_ignored, 1);
+    }
+
+    #[test]
     fn block_destruction_progress_expires_after_vanilla_render_tick_window() {
         let mut store = WorldStore::new();
         assert!(store.apply_block_destruction(ProtocolBlockDestruction {
@@ -500,6 +614,31 @@ mod tests {
         );
         assert_eq!(store.advance_block_destruction_render_ticks(400), 1);
         assert!(store.block_destructions().is_empty());
+    }
+
+    #[test]
+    fn block_destruction_level_teardown_clears_entries_but_preserves_renderer_tick_cursor() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.advance_block_destruction_render_ticks(123), 0);
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 4,
+        }));
+
+        store.clear_client_level();
+        assert!(store.block_destruction_render_stages().is_empty());
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 8,
+            pos: ProtocolBlockPos { x: 4, y: 5, z: 6 },
+            progress: 5,
+        }));
+        assert_eq!(
+            store
+                .block_destruction(8)
+                .map(|progress| progress.updated_render_tick),
+            Some(123)
+        );
     }
 
     #[test]

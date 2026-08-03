@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "18b97a9dd65ff6f0a5c67d14a3402b3b9f2e04168b965e86d6c591b47d713544"
+      "sha256": "bcd0e0de8f83fbc51a785508f7cff80f228fe7be4091e6f89ff17b3961154df3"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -222,10 +222,12 @@
     },
     "rendering-level-effect-lifecycle": {
       "bbb_evidence": [
-        "crates/bbb-native/src/runtime.rs#block_destroy_stages_from_world",
+        "crates/bbb-native/src/weather_effect_runtime.rs#WeatherEffectRuntime",
+        "crates/bbb-world/src/block_events.rs#block_destruction_render_stages",
         "crates/bbb-renderer/src/block_destroy.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "rendering-level-frame-graph": {
       "bbb_evidence": [
@@ -25269,6 +25271,17 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#cullTerrain(final Camera camera,final Frustum frustum,final boolean spectator)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#apply_block_destruction",
+          "crates/bbb-world/src/block_events.rs#block_destruction_render_stages"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#block_destruction_render_stages_merge_server_and_local_progress",
+          "crates/bbb-world/src/block_events.rs#block_destruction_budget_rejects_only_new_ids",
+          "crates/bbb-native/src/runtime/tests.rs#block_destroy_stage_projection_has_one_world_owner_and_no_native_resolver"
+        ]
+      },
       "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
@@ -26041,6 +26054,15 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#prepareChunkRenders(final Matrix4fc modelViewMatrix)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#advance_block_destruction_render_ticks"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#block_destruction_progress_expires_after_vanilla_render_tick_window",
+          "crates/bbb-world/src/block_events.rs#block_destruction_batched_tick_advance_expires_at_scan_tick"
+        ]
+      },
       "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
@@ -26055,6 +26077,14 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#removeBlockBreakingProgress()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#apply_block_destruction"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id"
+        ]
+      },
       "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
@@ -26500,6 +26530,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#submitEntities(final PoseStack poseStack,final LevelRenderState levelRenderState,final SubmitNodeCollector output)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/weather_effect_runtime.rs#advance_for_ticks",
+          "crates/bbb-world/src/block_events.rs#advance_block_destruction_render_ticks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#weather_tick_effects_preserve_level_renderer_order_before_later_effect_drains",
+          "crates/bbb-native/src/runtime/tests.rs#block_destroy_render_ticks_respect_frozen_world_ticking_state"
+        ]
+      },
       "category": "render-effect",
       "domain": "rendering",
       "kind": "method",
@@ -40811,6 +40851,7 @@
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "owner_evidence_mechanisms": [
       "rendering-level-backend-lifecycle",
+      "rendering-level-effect-lifecycle",
       "rendering-level-frame-graph",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle"

@@ -7992,10 +7992,10 @@ fn camera_post_effect_frame_commits_the_same_selection_and_active_state_used_by_
 fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
     let source = include_str!("../runtime.rs");
     let destroy_tick = source
-        .find("advance_block_destruction_render_ticks(world, running_ticks);")
+        .find("world.advance_block_destruction_render_ticks(running_ticks);")
         .expect("pump should advance block-destroy render ticks");
     let block_destroy_stages = source
-        .find("let block_destroy_stages = block_destroy_stages_from_world(world);")
+        .find("let block_destroy_stages = world.block_destruction_render_stages();")
         .expect("pump should select the highest block-destroy stage once");
     let block_entity_crumbling = source
         .find("apply_block_entity_crumbling(")
@@ -8010,6 +8010,20 @@ fn renderer_frame_block_destroy_overlays_extract_after_destroy_tick() {
             && block_entity_crumbling < block_destroy_extract,
         "vanilla `LevelRenderer.extractBlockDestroyAnimation` reads one post-client-tick stage projection for block and block-entity geometry"
     );
+}
+
+#[test]
+fn block_destroy_stage_projection_has_one_world_owner_and_no_native_resolver() {
+    let source = include_str!("../runtime.rs");
+    assert_eq!(
+        source
+            .matches("world.block_destruction_render_stages()")
+            .count(),
+        1
+    );
+    assert!(!source.contains("fn block_destroy_stages_from_world"));
+    assert!(!source.contains("fn merge_block_destroy_stage"));
+    assert!(!source.contains("fn advance_block_destruction_render_ticks"));
 }
 
 #[test]
@@ -8331,7 +8345,7 @@ fn weather_tick_effects_preserve_level_renderer_order_before_later_effect_drains
         .find("weather_effects.advance_for_ticks(")
         .expect("pump should advance weather effects");
     let block_breaking = source
-        .find("advance_block_destruction_render_ticks(world, running_ticks);")
+        .find("world.advance_block_destruction_render_ticks(running_ticks);")
         .expect("pump should clean stale block breaking after weather");
     let environment_audio = source
         .find("environment_audio.advance_for_ticks(")
@@ -25050,7 +25064,7 @@ fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position(
         })
     );
 
-    let stages = block_destroy_stages_from_world(&world);
+    let stages = world.block_destruction_render_stages();
     let overlays = block_destroy_overlays_from_stages(
         &world,
         &textures,
@@ -25118,7 +25132,7 @@ fn block_destroy_overlays_merge_local_stage_with_server_progress_per_position() 
     );
     let textures = destroy_stage_test_textures();
 
-    let stages = block_destroy_stages_from_world(&world);
+    let stages = world.block_destruction_render_stages();
     let overlays = block_destroy_overlays_from_stages(
         &world,
         &textures,
@@ -25155,7 +25169,7 @@ fn block_destroy_overlays_skip_missing_destroy_stage_textures() {
         })
     );
 
-    let stages = block_destroy_stages_from_world(&world);
+    let stages = world.block_destruction_render_stages();
     assert_eq!(stages, vec![(BlockPos { x: 2, y: 3, z: 4 }, 2)]);
     assert!(block_destroy_overlays_from_stages(
         &world,
@@ -25416,7 +25430,7 @@ fn block_destroy_render_ticks_respect_frozen_world_ticking_state() {
 
     let running_ticks = world.consume_running_render_ticks(420);
     assert_eq!(
-        advance_block_destruction_render_ticks(&mut world, running_ticks),
+        world.advance_block_destruction_render_ticks(running_ticks),
         0
     );
     assert_eq!(world.block_destructions().len(), 1);
@@ -25424,7 +25438,7 @@ fn block_destroy_render_ticks_respect_frozen_world_ticking_state() {
     world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 420 });
     let running_ticks = world.consume_running_render_ticks(420);
     assert_eq!(
-        advance_block_destruction_render_ticks(&mut world, running_ticks),
+        world.advance_block_destruction_render_ticks(running_ticks),
         1
     );
     assert!(world.block_destructions().is_empty());

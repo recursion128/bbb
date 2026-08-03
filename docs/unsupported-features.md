@@ -82,23 +82,15 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
 - **The registered block-entity and remaining frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
   one mechanically reachable evidence cell for every 27 block-entity
-  registration, 70 GUI owner, 46 game-renderer owner and the three open
+  registration, 70 GUI owner, 46 game-renderer owner and the two open
   LevelRenderer mechanisms. Split only by semantic owner and preserve the
   single frame-extract/submission path.
   The generated inventory routes the 77 `LevelRenderer` methods into seven
   total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
   29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. Each of the three remaining open
+  diagnostics/gizmos 3 and light query 3. Each of the two remaining open
   mechanisms remains here until its own single-semantics slice supplies
   consumer evidence.
-- **`rendering-level-effect-lifecycle` is the current active engineering
-  slice.** Server and local breaking state already reach the crack renderer,
-  but native still owns a second highest-stage resolver and the four Vanilla
-  owners lack per-owner implementation/test evidence. Move the only ordered
-  stage projection into `bbb-world`, preserve weather-before-expiry tick order,
-  freeze/pause and 20/400 expiry semantics, delete the native resolver, and
-  close all four evidence cells. Contract and safe stops are in
-  `goal.md#active-工程合同levelrenderer-effect-lifecycle`.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment
