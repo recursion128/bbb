@@ -106,10 +106,16 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
 `ui-pause-screen-surface`
 
-- **The 16-owner `DeathScreen` decision surface is `active`.** Audit delay,
-  respawn, hardcore/quit, clickable cause, link confirmation, narration and
-  render lifecycle against the existing death-screen owner; close only with
-  decision-level and pixel evidence.
+- **The 16-owner `DeathScreen` decision surface is `active`.** The existing main,
+  delayed quit, URL-confirmation and pixel paths still bypass
+  `ReportingContext.draftReportHandled`: there is no draft Edit/Discard branch,
+  report editor cannot restore DeathScreen, the title button omits the draft
+  icon, and live acceptance calls `net.perform_respawn` instead of exercising
+  delayed DeathScreen input. Preserve world-owned death/report state and the
+  native input owner, delete the social-only previous-screen shadow, and close
+  only when draft/normal/hardcore decisions, narration/control projection,
+  deterministic pixels and a real offline live UI respawn all pass under the
+  current DeathScreen engineering contract in `goal.md`.
 - **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
   multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
   render and close lifecycle against the existing pause-screen owner; classify
