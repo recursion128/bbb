@@ -81,7 +81,7 @@ use crate::{
     item_component_value_types::MapPostProcessingSummary,
     item_types::{VANILLA_ITEM_BRICK_ID, VANILLA_ITEM_STONE_ID},
     nbt_summary::decode_nbt_summary_from_decoder,
-    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    ComponentStyle, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
@@ -1042,6 +1042,10 @@ fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
         .unwrap(),
         LoginClientbound::Disconnect {
             reason: "bye".to_string(),
+            styled_reason: vec![StyledTextRun {
+                text: "bye".to_string(),
+                style: ComponentStyle::default(),
+            }],
             raw_reason: r#"{"text":"bye"}"#.to_string(),
         }
     );
@@ -1056,6 +1060,19 @@ fn offline_login_clientbound_codecs_and_ack_match_vanilla_fields() {
         .unwrap(),
         LoginClientbound::Disconnect {
             reason: "bye now".to_string(),
+            styled_reason: vec![
+                StyledTextRun {
+                    text: "bye".to_string(),
+                    style: ComponentStyle::default(),
+                },
+                StyledTextRun {
+                    text: " now".to_string(),
+                    style: ComponentStyle {
+                        bold: Some(true),
+                        ..ComponentStyle::default()
+                    },
+                },
+            ],
             raw_reason: r#"{"text":"bye","extra":[{"text":" now","bold":true}]}"#.to_string(),
         }
     );
@@ -1201,6 +1218,10 @@ fn decodes_disconnect_component_in_configuration_and_play() {
             .unwrap(),
         ConfigurationClientbound::Disconnect {
             reason: "Kicked".to_string(),
+            styled_reason: vec![StyledTextRun {
+                text: "Kicked".to_string(),
+                style: ComponentStyle::default(),
+            }],
             raw_reason: payload.clone(),
         }
     );
@@ -1209,6 +1230,10 @@ fn decodes_disconnect_component_in_configuration_and_play() {
         packet,
         PlayClientbound::Disconnect(Disconnect {
             reason: "Kicked".to_string(),
+            styled_reason: vec![StyledTextRun {
+                text: "Kicked".to_string(),
+                style: ComponentStyle::default(),
+            }],
             raw_reason: payload.clone(),
         })
     );
@@ -7512,6 +7537,10 @@ fn decodes_configuration_common_packets() {
         .unwrap(),
         ConfigurationClientbound::Disconnect {
             reason: "Configuration closed".to_string(),
+            styled_reason: vec![StyledTextRun {
+                text: "Configuration closed".to_string(),
+                style: ComponentStyle::default(),
+            }],
             raw_reason: nbt_string_root("Configuration closed"),
         }
     );

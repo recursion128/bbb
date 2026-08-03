@@ -131,6 +131,7 @@ mod tests {
             .handle_login_packet(
                 LoginClientbound::Disconnect {
                     reason: "bye".to_string(),
+                    styled_reason: Vec::new(),
                     raw_reason: r#"{"text":"bye"}"#.to_string(),
                 },
                 None,

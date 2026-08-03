@@ -1,6 +1,6 @@
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary,
+    component::{decode_component_summary, decode_styled_component_summary},
     ids,
     packets::{
         chat, chunks, client_audio, client_common, client_features, client_state, client_ui,
@@ -240,6 +240,7 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_DISCONNECT => Ok(PlayClientbound::Disconnect(Disconnect {
             reason: decode_component_summary(payload)?,
+            styled_reason: decode_styled_component_summary(payload)?,
             raw_reason: payload.to_vec(),
         })),
         ids::play::CLIENTBOUND_DISGUISED_CHAT => {

@@ -244,6 +244,7 @@ mod tests {
         let error = probe
             .handle_configuration_packet(ConfigurationClientbound::Disconnect {
                 reason: "Configuration closed".to_string(),
+                styled_reason: Vec::new(),
                 raw_reason: vec![1, 2, 3],
             })
             .await

@@ -7,9 +7,11 @@ pub use crate::resource_pack::{
 pub use crate::status::status_ping;
 pub use crate::types::{
     AcceptTeleportCommand, AttackEntityCommand, ChunkProbeSummary, ConnectionOptions,
-    ConnectionState, InteractEntityCommand, NetCommand, NetEvent, OutboundChatCommand,
-    OutboundChatCommandSigning, OutboundChatMessage, PlayerMoveCommand, ProbeReport,
-    ServerResourcePackPolicy, StatusPing, UseItemCommand, UseItemOnCommand, VehicleMoveCommand,
+    ConnectionState, DisconnectReason, DisconnectTextRun, EventStreamExit, InteractEntityCommand,
+    NetCommand, NetEvent, OutboundChatCommand, OutboundChatCommandSigning, OutboundChatMessage,
+    PlayerMoveCommand, ProbeReport, ServerResourcePackPolicy, StatusPing, UseItemCommand,
+    UseItemOnCommand, VehicleMoveCommand, MAX_DISCONNECT_REASON_RETAINED_BYTES,
+    MAX_DISCONNECT_REASON_RUNS,
 };
 pub use crate::user_api::{
     AbuseReport, AbuseReportClientInfo, AbuseReportEvidence, AbuseReportMessage,

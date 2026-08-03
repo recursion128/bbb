@@ -8,7 +8,7 @@
 
 use std::{future::Future, time::Duration};
 
-use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
+use bbb_net::{ConnectionOptions, DisconnectReason, EventStreamExit, NetCommand, NetEvent};
 use thiserror::Error;
 use tokio::{
     runtime::Runtime,
@@ -23,6 +23,13 @@ const NETWORK_EVENT_CAPACITY: usize = 262_144;
 const SIMULATION_EVENT_CAPACITY: usize = 262_144;
 const NETWORK_COMMAND_CAPACITY: usize = 8_192;
 const NETWORK_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[derive(Debug)]
+enum NetworkConnectionExit {
+    Local,
+    Remote(DisconnectReason),
+    Failure(DisconnectReason),
+}
 
 pub(crate) struct NetworkRuntime {
     events: Option<mpsc::Receiver<NetEvent>>,
@@ -59,10 +66,15 @@ impl NetworkRuntime {
         let (command_tx, command_rx) = mpsc::channel(NETWORK_COMMAND_CAPACITY);
         let final_event_tx = network_tx.clone();
         let connection = async move {
-            bbb_net::run_event_stream(options, network_tx, command_rx)
-                .await
-                .err()
-                .map(|error| error.to_string())
+            match bbb_net::run_event_stream(options, network_tx, command_rx).await {
+                Ok(EventStreamExit::LocalDisconnect) => NetworkConnectionExit::Local,
+                Ok(EventStreamExit::RemoteDisconnect(reason)) => {
+                    NetworkConnectionExit::Remote(reason)
+                }
+                Err(error) => {
+                    NetworkConnectionExit::Failure(DisconnectReason::from_plain(error.to_string()))
+                }
+            }
         };
         Self::spawn_tasks(
             runtime,
@@ -153,7 +165,7 @@ impl NetworkRuntime {
         connection: F,
     ) -> Self
     where
-        F: Future<Output = Option<String>> + Send + 'static,
+        F: Future<Output = NetworkConnectionExit> + Send + 'static,
     {
         let (terminal_close, terminal_close_rx) = oneshot::channel();
         let mut tasks = JoinSet::new();
@@ -171,12 +183,23 @@ impl NetworkRuntime {
         );
         tasks.spawn_on(
             async move {
-                let reason = tokio::select! {
+                let completion = tokio::select! {
                     biased;
-                    _ = terminal_close_rx => None,
-                    reason = connection => reason,
+                    _ = terminal_close_rx => NetworkConnectionExit::Local,
+                    completion = connection => completion,
                 };
-                let _ = final_event_tx.send(NetEvent::Disconnected { reason }).await;
+                let reason = match completion {
+                    NetworkConnectionExit::Local => None,
+                    NetworkConnectionExit::Remote(reason)
+                    | NetworkConnectionExit::Failure(reason) => Some(reason),
+                };
+                if let Some(reason) = reason {
+                    let _ = final_event_tx
+                        .send(NetEvent::Disconnected {
+                            reason: Some(reason),
+                        })
+                        .await;
+                }
             },
             runtime.handle(),
         );
@@ -202,7 +225,7 @@ mod tests {
         simulation_capacity: usize,
     ) -> NetworkRuntime
     where
-        F: Future<Output = Option<String>> + Send + 'static,
+        F: Future<Output = NetworkConnectionExit> + Send + 'static,
     {
         let (network_tx, network_rx) = mpsc::channel(4);
         let (simulation_tx, simulation_rx) = mpsc::channel(simulation_capacity);
@@ -250,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn terminal_close_relays_one_final_disconnected_event() {
+    fn terminal_close_does_not_fabricate_remote_disconnect() {
         let runtime = Runtime::new().unwrap();
         let mut network = test_runtime_with_connection(&runtime, future::pending(), 4);
         let (events, _commands) = network.take_channels();
@@ -258,8 +281,7 @@ mod tests {
 
         network.shutdown_and_join(&runtime).unwrap();
 
-        let event = events.blocking_recv().expect("final disconnected event");
-        assert!(matches!(event, NetEvent::Disconnected { reason: None }));
+        assert!(events.blocking_recv().is_none());
         assert!(events.try_recv().is_err());
         network.shutdown_and_join(&runtime).unwrap();
     }
@@ -345,12 +367,12 @@ mod tests {
             for reason in ["first", "second", "third"] {
                 ordered_event_tx
                     .send(NetEvent::Disconnected {
-                        reason: Some(reason.to_string()),
+                        reason: Some(DisconnectReason::from_plain(reason)),
                     })
                     .await
                     .unwrap();
             }
-            None
+            NetworkConnectionExit::Remote(DisconnectReason::from_plain("natural end"))
         };
         let mut network = NetworkRuntime::spawn_tasks(
             &runtime,
@@ -367,7 +389,7 @@ mod tests {
 
         let reasons = (0..4)
             .map(|_| match events.blocking_recv().unwrap() {
-                NetEvent::Disconnected { reason } => reason,
+                NetEvent::Disconnected { reason } => reason.map(|reason| reason.summary()),
                 event => panic!("unexpected relayed event: {event:?}"),
             })
             .collect::<Vec<_>>();
@@ -378,7 +400,7 @@ mod tests {
                 Some("first".to_string()),
                 Some("second".to_string()),
                 Some("third".to_string()),
-                None,
+                Some("natural end".to_string()),
             ]
         );
         network.shutdown_and_join(&runtime).unwrap();

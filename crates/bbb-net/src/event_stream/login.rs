@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{ensure, Result};
 use bbb_protocol::packets::{self, LoginClientbound};
 
 use crate::{
-    event_stream::{emit, EventStreamContext},
+    event_stream::{emit, remote_disconnect_error, EventStreamContext},
     login::handle_encryption_request,
     types::{ConnectionState, NetEvent, SessionCredentials},
 };
@@ -22,9 +22,11 @@ impl EventStreamContext {
             self.state
         );
         match packet {
-            LoginClientbound::Disconnect { reason, .. } => {
-                bail!("login disconnected: {reason}")
-            }
+            LoginClientbound::Disconnect {
+                reason,
+                styled_reason,
+                ..
+            } => return Err(remote_disconnect_error("login", reason, styled_reason)),
             LoginClientbound::EncryptionRequest(request) => {
                 handle_encryption_request(
                     &mut self.conn,

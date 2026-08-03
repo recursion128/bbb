@@ -4,7 +4,7 @@ use bbb_protocol::packets::{self, ConfigurationClientbound, Transfer};
 use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
-    event_stream::{emit, EventStreamContext},
+    event_stream::{emit, remote_disconnect_error, EventStreamContext},
     resource_pack::response_action_for_push_with_policy,
     types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
@@ -36,8 +36,16 @@ impl EventStreamContext {
                 self.state = ConnectionState::Play;
                 emit(&self.events, NetEvent::StateChanged { state: self.state }).await?;
             }
-            ConfigurationClientbound::Disconnect { reason, .. } => {
-                bail!("configuration disconnected: {reason}");
+            ConfigurationClientbound::Disconnect {
+                reason,
+                styled_reason,
+                ..
+            } => {
+                return Err(remote_disconnect_error(
+                    "configuration",
+                    reason,
+                    styled_reason,
+                ))
             }
             ConfigurationClientbound::CustomPayload(update) => {
                 emit(&self.events, NetEvent::CustomPayload(update)).await?;

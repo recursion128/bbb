@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::StyledTextRun;
+
 use super::super::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -161,6 +163,7 @@ pub struct StatUpdate {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Disconnect {
     pub reason: String,
+    pub styled_reason: Vec<StyledTextRun>,
     pub raw_reason: Vec<u8>,
 }
 

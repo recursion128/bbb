@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, net::Ipv6Addr};
+use std::{collections::BTreeMap, error::Error, fmt, net::Ipv6Addr};
 
 use anyhow::{anyhow, Context, Result};
 #[cfg(test)]
@@ -28,7 +28,9 @@ use crate::{
     },
     login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
-    types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
+    types::{
+        ConnectionOptions, ConnectionState, DisconnectReason, EventStreamExit, NetCommand, NetEvent,
+    },
 };
 
 mod configuration;
@@ -50,6 +52,24 @@ struct EventStreamContext {
 }
 
 pub async fn run_event_stream(
+    options: ConnectionOptions,
+    events: mpsc::Sender<NetEvent>,
+    commands: mpsc::Receiver<NetCommand>,
+) -> Result<EventStreamExit> {
+    classify_event_stream_result(run_event_stream_inner(options, events, commands).await)
+}
+
+fn classify_event_stream_result(result: Result<()>) -> Result<EventStreamExit> {
+    match result {
+        Ok(()) => Ok(EventStreamExit::LocalDisconnect),
+        Err(error) => match error.downcast::<RemoteDisconnectError>() {
+            Ok(remote) => Ok(EventStreamExit::RemoteDisconnect(remote.reason)),
+            Err(error) => Err(error),
+        },
+    }
+}
+
+async fn run_event_stream_inner(
     options: ConnectionOptions,
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
@@ -224,6 +244,32 @@ pub async fn run_event_stream(
             play_bundle = PlayPacketBundleAssembler::default();
         }
     }
+}
+
+#[derive(Debug)]
+struct RemoteDisconnectError {
+    diagnostic: String,
+    reason: DisconnectReason,
+}
+
+impl fmt::Display for RemoteDisconnectError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.diagnostic)
+    }
+}
+
+impl Error for RemoteDisconnectError {}
+
+fn remote_disconnect_error(
+    phase: &'static str,
+    summary: String,
+    styled: Vec<bbb_protocol::StyledTextRun>,
+) -> anyhow::Error {
+    RemoteDisconnectError {
+        diagnostic: format!("{phase} disconnected: {summary}"),
+        reason: DisconnectReason::from_styled(styled),
+    }
+    .into()
 }
 
 impl EventStreamContext {
@@ -4296,6 +4342,7 @@ mod tests {
         let err = stream
             .handle_play_packet(PlayClientbound::Disconnect(packets::Disconnect {
                 reason: "Kicked".to_string(),
+                styled_reason: Vec::new(),
                 raw_reason: Vec::new(),
             }))
             .await
@@ -4308,6 +4355,36 @@ mod tests {
         assert!(timeout(Duration::from_millis(50), events_rx.recv())
             .await
             .is_err());
+    }
+
+    #[test]
+    fn event_stream_result_classifies_only_typed_remote_disconnects() {
+        let styled = vec![bbb_protocol::StyledTextRun {
+            text: "Kicked".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                bold: Some(true),
+                color: Some(0xAA_00_11),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }];
+        let remote = classify_event_stream_result(Err(remote_disconnect_error(
+            "play",
+            "Kicked".to_string(),
+            styled,
+        )))
+        .unwrap();
+        let EventStreamExit::RemoteDisconnect(reason) = remote else {
+            panic!("typed remote disconnect must not become a local completion");
+        };
+        assert_eq!(reason.summary(), "Kicked");
+        assert!(reason.runs[0].bold);
+        assert_eq!(reason.runs[0].color, Some(0xAA_00_11));
+
+        assert_eq!(
+            classify_event_stream_result(Ok(())).unwrap(),
+            EventStreamExit::LocalDisconnect
+        );
+        assert!(classify_event_stream_result(Err(anyhow!("transport failed"))).is_err());
     }
 
     #[tokio::test]

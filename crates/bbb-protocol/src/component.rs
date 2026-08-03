@@ -646,7 +646,7 @@ pub(crate) fn decode_component_summary(payload: &[u8]) -> Result<String> {
 /// Decodes the lenient-JSON Component representation used by the login
 /// disconnect packet, then delegates its text/style traversal to the same
 /// semantic projection as network-NBT Components.
-pub(crate) fn decode_json_component_summary(raw_json: &str) -> Result<String> {
+fn decode_styled_json_component_summary_inner(raw_json: &str) -> Result<Vec<StyledTextRun>> {
     let value: serde_json::Value = serde_json::from_str(raw_json)
         .map_err(|error| ProtocolError::InvalidData(format!("invalid component json: {error}")))?;
     if !matches!(
@@ -661,7 +661,20 @@ pub(crate) fn decode_json_component_summary(raw_json: &str) -> Result<String> {
     validate_component_nbt(&value, "component json").map_err(ProtocolError::InvalidData)?;
     let mut runs = RunCollector::default();
     append_component_runs(&value, &ComponentStyle::default(), &mut runs);
-    Ok(styled_runs_summary_text(&runs.runs))
+    Ok(runs.runs)
+}
+
+pub(crate) fn decode_json_component_summary(raw_json: &str) -> Result<String> {
+    decode_styled_json_component_summary_inner(raw_json).map(|runs| styled_runs_summary_text(&runs))
+}
+
+/// Decodes the lenient-JSON Component representation used by login disconnect
+/// while retaining the same inherited style projection as network-NBT
+/// Components. Both public styled decoders delegate to the shared Component
+/// validator/traversal, so terminal-screen consumers cannot drift from packet
+/// summary semantics.
+pub fn decode_styled_json_component_summary(raw_json: &str) -> Result<Vec<StyledTextRun>> {
+    decode_styled_json_component_summary_inner(raw_json)
 }
 
 /// Decodes a network chat component into flattened styled runs. The companion

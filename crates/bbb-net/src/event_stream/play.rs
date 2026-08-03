@@ -1,8 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use bbb_protocol::packets::{self, PlayClientbound, Transfer};
 
 use crate::{
-    event_stream::{emit, EventStreamContext},
+    event_stream::{emit, remote_disconnect_error, EventStreamContext},
     resource_pack::response_action_for_push_with_policy,
     types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
@@ -90,7 +90,11 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::StartConfiguration).await?;
             }
             PlayClientbound::Disconnect(disconnect) => {
-                bail!("play disconnected: {}", disconnect.reason)
+                return Err(remote_disconnect_error(
+                    "play",
+                    disconnect.reason,
+                    disconnect.styled_reason,
+                ));
             }
             PlayClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;

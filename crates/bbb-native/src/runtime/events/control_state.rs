@@ -1,5 +1,5 @@
 use bbb_control::NetCounters;
-use bbb_net::NetEvent;
+use bbb_net::{DisconnectReason, NetEvent};
 
 pub(super) fn apply_control_projection_event(event: &NetEvent, counters: &mut NetCounters) {
     match event {
@@ -10,7 +10,7 @@ pub(super) fn apply_control_projection_event(event: &NetEvent, counters: &mut Ne
         }
         NetEvent::Disconnected { reason } => {
             counters.connected = false;
-            counters.last_error = reason.clone();
+            counters.last_error = reason.as_ref().map(DisconnectReason::summary);
         }
         NetEvent::StateChanged { state } => {
             counters.state = Some(format!("{state:?}"));
@@ -91,7 +91,7 @@ mod tests {
 
         apply_control_projection_event(
             &NetEvent::Disconnected {
-                reason: Some("done".to_string()),
+                reason: Some(DisconnectReason::from_plain("done")),
             },
             &mut counters,
         );

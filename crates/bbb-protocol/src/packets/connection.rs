@@ -18,7 +18,8 @@ use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
     component::{
         decode_component_summary, decode_component_summary_from_decoder,
-        decode_json_component_summary,
+        decode_json_component_summary, decode_styled_component_summary,
+        decode_styled_json_component_summary, StyledTextRun,
     },
     ids, PROTOCOL_VERSION,
 };
@@ -87,13 +88,26 @@ impl Default for ClientInformation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoginClientbound {
-    Disconnect { reason: String, raw_reason: String },
+    Disconnect {
+        reason: String,
+        styled_reason: Vec<StyledTextRun>,
+        raw_reason: String,
+    },
     EncryptionRequest(EncryptionRequest),
-    LoginFinished { profile: GameProfile },
-    SetCompression { threshold: i32 },
-    CustomQuery { transaction_id: i32 },
+    LoginFinished {
+        profile: GameProfile,
+    },
+    SetCompression {
+        threshold: i32,
+    },
+    CustomQuery {
+        transaction_id: i32,
+    },
     CookieRequest(CookieRequest),
-    Unknown { packet_id: i32, len: usize },
+    Unknown {
+        packet_id: i32,
+        len: usize,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -112,16 +126,26 @@ pub struct LoginKey {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigurationClientbound {
-    Disconnect { reason: String, raw_reason: Vec<u8> },
+    Disconnect {
+        reason: String,
+        styled_reason: Vec<StyledTextRun>,
+        raw_reason: Vec<u8>,
+    },
     CustomPayload(CustomPayload),
     Finish,
-    KeepAlive { id: i64 },
-    Ping { id: i32 },
+    KeepAlive {
+        id: i64,
+    },
+    Ping {
+        id: i32,
+    },
     ResetChat,
     RegistryData(RegistryData),
     ResourcePackPop(ResourcePackPop),
     ResourcePackPush(ResourcePackPush),
-    SelectKnownPacks { known_packs: Vec<KnownPack> },
+    SelectKnownPacks {
+        known_packs: Vec<KnownPack>,
+    },
     UpdateEnabledFeatures(UpdateEnabledFeatures),
     CookieRequest(CookieRequest),
     StoreCookie(StoreCookie),
@@ -131,8 +155,13 @@ pub enum ConfigurationClientbound {
     ServerLinks(ServerLinks),
     ClearDialog,
     ShowDialog(ShowDialog),
-    CodeOfConduct { text: String },
-    Unknown { packet_id: i32, len: usize },
+    CodeOfConduct {
+        text: String,
+    },
+    Unknown {
+        packet_id: i32,
+        len: usize,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -359,6 +388,7 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
             }
             Ok(LoginClientbound::Disconnect {
                 reason: decode_json_component_summary(&raw_reason)?,
+                styled_reason: decode_styled_json_component_summary(&raw_reason)?,
                 raw_reason,
             })
         }
@@ -580,6 +610,7 @@ pub fn decode_configuration_clientbound(
         }
         ids::configuration::CLIENTBOUND_DISCONNECT => Ok(ConfigurationClientbound::Disconnect {
             reason: decode_component_summary(payload)?,
+            styled_reason: decode_styled_component_summary(payload)?,
             raw_reason: payload.to_vec(),
         }),
         ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION => {

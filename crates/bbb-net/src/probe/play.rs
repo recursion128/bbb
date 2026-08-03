@@ -5152,6 +5152,7 @@ mod tests {
         let err = probe
             .handle_play_packet(PlayClientbound::Disconnect(Disconnect {
                 reason: "Kicked".to_string(),
+                styled_reason: Vec::new(),
                 raw_reason: Vec::new(),
             }))
             .await
