@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
@@ -1131,20 +1131,12 @@ fn create_selected_sky_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     blend: Option<wgpu::BlendState>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-sky-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected sky vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-sky-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected sky fragment for {label}"))?;
+        label,
+        &shaders.vertex,
+        &shaders.fragment,
+    )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-sky-pipeline-layout"),
         bind_group_layouts,

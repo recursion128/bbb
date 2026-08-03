@@ -1,6 +1,6 @@
 use crate::camera::LightmapEnvironment;
 use crate::pipeline_builder::RenderPipelineBuilder;
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub(super) const LIGHTMAP_TEXTURE_SIZE: u32 = 16;
 pub(super) const LIGHTMAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -202,20 +202,12 @@ fn create_selected_lightmap_pipeline(
     bind_group_layout: &wgpu::BindGroupLayout,
     shaders: &crate::core_shaders::AdaptedLightmapShaders,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-lightmap-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .context("compile selected lightmap vertex")?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-lightmap-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .context("compile selected lightmap fragment")?;
+        "bbb-selected-lightmap",
+        &shaders.vertex,
+        &shaders.fragment,
+    )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-lightmap-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],

@@ -844,17 +844,11 @@ fn create_selected_terrain_pipeline(
     let defines = alpha_cutout.map_or_else(Vec::new, |value| vec![("ALPHA_CUTOUT", Some(value))]);
     let vertex_source = crate::core_shaders::shader_with_defines(&shaders.vertex, &defines);
     let fragment_source = crate::core_shaders::shader_with_defines(&shaders.fragment, &defines);
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-terrain-vertex-shader",
-        vertex_source,
-        wgpu::naga::ShaderStage::Vertex,
-    )?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-terrain-fragment-shader",
-        fragment_source,
-        wgpu::naga::ShaderStage::Fragment,
+        label,
+        &vertex_source,
+        &fragment_source,
     )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-terrain-pipeline-layout"),

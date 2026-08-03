@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
 use crate::camera::CameraPose;
@@ -409,20 +409,12 @@ fn create_selected_cloud_pipeline(
     cull_mode: Option<wgpu::Face>,
     shaders: &crate::core_shaders::AdaptedCloudShaders,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-cloud-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected cloud vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-cloud-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected cloud fragment for {label}"))?;
+        label,
+        &shaders.vertex,
+        &shaders.fragment,
+    )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-cloud-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout, cloud_bind_group_layout],

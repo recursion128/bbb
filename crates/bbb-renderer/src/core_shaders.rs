@@ -1925,22 +1925,23 @@ const BEACON_BEAM_ATLAS_FRAGMENT_IO: &str = r#"layout(location = 2) in vec2 bbbU
 layout(location = 3) in vec2 bbbUvRectSize;
 "#;
 
-pub(crate) fn compile_selected_shader_pair(
+pub(crate) fn compile_selected_shader_stages(
     device: &wgpu::Device,
     label: &str,
-    shaders: &AdaptedShaderPair,
+    vertex_source: &str,
+    fragment_source: &str,
 ) -> Result<(wgpu::ShaderModule, wgpu::ShaderModule)> {
     let vertex = crate::post_effect_graph::create_glsl_module(
         device,
         &format!("{label}-vertex"),
-        shaders.vertex.clone(),
+        vertex_source.to_owned(),
         wgpu::naga::ShaderStage::Vertex,
     )
     .with_context(|| format!("compile selected vertex shader for {label}"))?;
     let fragment = crate::post_effect_graph::create_glsl_module(
         device,
         &format!("{label}-fragment"),
-        shaders.fragment.clone(),
+        fragment_source.to_owned(),
         wgpu::naga::ShaderStage::Fragment,
     )
     .with_context(|| format!("compile selected fragment shader for {label}"))?;
@@ -1961,20 +1962,8 @@ pub(crate) fn create_selected_position_color_pipeline(
     depth_write_enabled: bool,
     depth_compare: wgpu::CompareFunction,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-position-color-vertex-shader",
-        vertex_source.to_string(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected position-color vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-position-color-fragment-shader",
-        fragment_source.to_string(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected position-color fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-position-color-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
@@ -2022,20 +2011,8 @@ pub(crate) fn create_selected_position_tex_color_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     blend: Option<wgpu::BlendState>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-position-tex-color-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected position-tex-color vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-position-tex-color-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected position-tex-color fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, &shaders.vertex, &shaders.fragment)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-position-tex-color-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
@@ -2096,20 +2073,10 @@ pub(crate) fn create_selected_entity_pipeline(
     depth_compare: wgpu::CompareFunction,
     cull_mode: Option<wgpu::Face>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-entity-vertex-shader",
-        shader_with_defines(vertex_source, defines),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected entity vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-entity-fragment-shader",
-        shader_with_defines(fragment_source, defines),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected entity fragment for {label}"))?;
+    let vertex_source = shader_with_defines(vertex_source, defines);
+    let fragment_source = shader_with_defines(fragment_source, defines);
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, &vertex_source, &fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-entity-pipeline-layout"),
         bind_group_layouts,
@@ -2162,20 +2129,10 @@ pub(crate) fn create_selected_end_portal_pipeline(
     with_depth: bool,
 ) -> Result<wgpu::RenderPipeline> {
     let defines = &[("PORTAL_LAYERS", Some(portal_layers))];
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-end-portal-vertex-shader",
-        shader_with_defines(vertex_source, defines),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected end-portal vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-end-portal-fragment-shader",
-        shader_with_defines(fragment_source, defines),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected end-portal fragment for {label}"))?;
+    let vertex_source = shader_with_defines(vertex_source, defines);
+    let fragment_source = shader_with_defines(fragment_source, defines);
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, &vertex_source, &fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-end-portal-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
@@ -2227,20 +2184,8 @@ pub(crate) fn create_selected_outline_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     cull_mode: Option<wgpu::Face>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-outline-vertex-shader",
-        vertex_source.to_string(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected outline vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-outline-fragment-shader",
-        fragment_source.to_string(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected outline fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-outline-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
@@ -2290,20 +2235,8 @@ pub(crate) fn create_selected_line_pipeline(
     depth_write_enabled: bool,
     depth_test_enabled: bool,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-line-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected line vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-line-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected line fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, &shaders.vertex, &shaders.fragment)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-line-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
@@ -2357,20 +2290,8 @@ pub(crate) fn create_selected_text_pipeline(
     depth: Option<wgpu::DepthStencilState>,
     cull_mode: Option<wgpu::Face>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-text-vertex-shader",
-        vertex_source.to_string(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected text vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-text-fragment-shader",
-        fragment_source.to_string(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected text fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-text-pipeline-layout"),
         bind_group_layouts,
@@ -2416,20 +2337,8 @@ pub(crate) fn create_selected_glint_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     with_depth: bool,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-glint-vertex-shader",
-        vertex_source.to_string(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected glint vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-glint-fragment-shader",
-        fragment_source.to_string(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected glint fragment for {label}"))?;
+    let (vertex, fragment) =
+        compile_selected_shader_stages(device, label, vertex_source, fragment_source)?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-glint-pipeline-layout"),
         bind_group_layouts,
@@ -3398,6 +3307,66 @@ mod tests {
     };
 
     use super::*;
+
+    fn collect_rust_sources(root: &Path, sources: &mut Vec<PathBuf>) {
+        let mut entries = std::fs::read_dir(root)
+            .unwrap_or_else(|error| panic!("read renderer source directory {root:?}: {error}"))
+            .map(|entry| entry.expect("read renderer source entry").path())
+            .collect::<Vec<_>>();
+        entries.sort();
+        for path in entries {
+            if path.is_dir() {
+                collect_rust_sources(&path, sources);
+            } else if path.extension().and_then(|extension| extension.to_str()) == Some("rs") {
+                sources.push(path);
+            }
+        }
+    }
+
+    #[test]
+    fn selected_shader_stage_compilation_has_one_production_owner() {
+        let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut source_paths = Vec::new();
+        collect_rust_sources(&source_root, &mut source_paths);
+
+        let low_level_call = ["crate::post_effect_graph::", "create_glsl_module("].concat();
+        let obsolete_pair_owner = ["compile_selected_shader", "_pair("].concat();
+        let owner_declaration = ["pub(crate) fn compile_selected_shader", "_stages("].concat();
+        let owner_path = source_root.join("core_shaders.rs");
+        let owner_source = std::fs::read_to_string(&owner_path).expect("read shader owner source");
+        let owner_start = owner_source
+            .find(&owner_declaration)
+            .expect("selected shader stage compiler owner");
+        let owner_end = owner_start
+            + owner_source[owner_start..]
+                .find("\n}\n\n#[allow")
+                .expect("selected shader stage compiler boundary");
+
+        let mut direct_calls = Vec::new();
+        for path in source_paths {
+            let source = std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("read renderer source {path:?}: {error}"));
+            assert!(
+                !source.contains(&obsolete_pair_owner),
+                "obsolete selected pair compiler restored in {path:?}"
+            );
+            for (offset, _) in source.match_indices(&low_level_call) {
+                direct_calls.push((path.clone(), offset));
+            }
+        }
+
+        assert_eq!(
+            direct_calls.len(),
+            2,
+            "selected stage compilation must retain exactly vertex and fragment low-level calls"
+        );
+        assert!(
+            direct_calls.iter().all(|(path, offset)| {
+                path == &owner_path && *offset > owner_start && *offset < owner_end
+            }),
+            "selected shader families bypassed the unique pair compiler: {direct_calls:?}"
+        );
+    }
 
     #[test]
     fn terrain_adapter_rejects_a_missing_required_vertex_input() {

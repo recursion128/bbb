@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, mem};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 
 use crate::{
     gpu::DEPTH_FORMAT,
@@ -252,20 +252,12 @@ pub(crate) fn create_selected_particle_pipeline(
     blend: Option<wgpu::BlendState>,
     cull_mode: Option<wgpu::Face>,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-particle-vertex-shader",
-        shaders.vertex.clone(),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected particle vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-particle-fragment-shader",
-        shaders.fragment.clone(),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected particle fragment for {label}"))?;
+        label,
+        &shaders.vertex,
+        &shaders.fragment,
+    )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-particle-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],

@@ -388,10 +388,11 @@ pub(super) fn create_entity_outline_composite_pipeline(
     shaders: Option<&crate::core_shaders::AdaptedShaderPair>,
 ) -> Result<wgpu::RenderPipeline> {
     if let Some(shaders) = shaders {
-        let (vertex, fragment) = crate::core_shaders::compile_selected_shader_pair(
+        let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
             device,
             "bbb-selected-entity-outline-composite",
-            shaders,
+            &shaders.vertex,
+            &shaders.fragment,
         )?;
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("bbb-selected-entity-outline-composite-layout"),

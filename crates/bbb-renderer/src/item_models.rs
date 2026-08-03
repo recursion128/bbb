@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use bbb_render_types::CoreShaderSourceProjection;
 use glam::{Mat4, Vec3};
 
@@ -1114,20 +1114,14 @@ fn create_selected_item_pipeline(
     vertex_layouts: &[wgpu::VertexBufferLayout<'_>],
     blend: wgpu::BlendState,
 ) -> Result<wgpu::RenderPipeline> {
-    let vertex = crate::post_effect_graph::create_glsl_module(
+    let vertex_source = crate::core_shaders::shader_with_defines(vertex_source, defines);
+    let fragment_source = crate::core_shaders::shader_with_defines(fragment_source, defines);
+    let (vertex, fragment) = crate::core_shaders::compile_selected_shader_stages(
         device,
-        "bbb-selected-item-vertex-shader",
-        crate::core_shaders::shader_with_defines(vertex_source, defines),
-        wgpu::naga::ShaderStage::Vertex,
-    )
-    .with_context(|| format!("compile selected item vertex for {label}"))?;
-    let fragment = crate::post_effect_graph::create_glsl_module(
-        device,
-        "bbb-selected-item-fragment-shader",
-        crate::core_shaders::shader_with_defines(fragment_source, defines),
-        wgpu::naga::ShaderStage::Fragment,
-    )
-    .with_context(|| format!("compile selected item fragment for {label}"))?;
+        label,
+        &vertex_source,
+        &fragment_source,
+    )?;
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-selected-item-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
