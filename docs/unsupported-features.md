@@ -105,12 +105,19 @@ Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
 
 Matrix routes: `ui-menu-screen-registration`, `ui-multiplayer-screen-surface`
 
-- **All externally reachable menu/screen mappings are `active`.** The census
-  found 25 `MenuScreens` registrations plus chat, death, disconnect and pause
-  decision owners; current code existence does not prove every menu's state,
-  layout, input transaction, fallback and lifecycle. Classify official mappings
-  by external-session reachability, implement every reachable gap, and use
-  precise owner/reopen evidence for exclusions rather than a broad “all UI” row.
+- **The 25 `MenuScreens.register` mappings are `active`.** Vanilla
+  `MenuScreens.create/register/selfTest/ScreenConstructor.fromPacket` owns the
+  menu-type → screen mapping, duplicate/missing behavior and open lifecycle.
+  BBB already owns the canonical container state, click rules and screen
+  presentation, but native layout dispatch is a hand-maintained second mapping
+  beside the generated `MenuType` catalog. Generate the exact registration map
+  from the local source with the shared Tree-sitter frontend, make it the only
+  native screen-kind resolver, retain unknown-id fallback, and close only when
+  all 25 state/layout/input/render/lifecycle evidence cells and stale guards pass.
+- **The remaining external-session screen lifecycle is `active`.** Chat, death,
+  disconnect and pause each have separate state/input/render/fallback decisions;
+  split them by homogeneous owner and require precise reachable-surface evidence
+  rather than inferring completion from the menu registration catalog.
 
 ## Native input, accessibility and window lifecycle closure
 
