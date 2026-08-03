@@ -142,6 +142,50 @@ deny-warnings 由根 Cargo.toml 的 `[workspace.lints.rust] warnings = "deny"`
 `cargo check` 一条不可省：只跑 `cargo test` 会漏掉非测试（交付 bin）构建的
 unused/dead-code lint。
 
+## 当前 active 工程：external network backend terminal close
+
+目标是关闭 BBB 当前 external connection/relay task 只 fire-and-forget spawn、退出时仅依赖
+command queue 中尽力发送 `Disconnect`、最终由 Tokio runtime drop 隐式 abort 的 lifecycle 缺口。
+完成时 network backend 有唯一 runtime owner，normal/fatal/window/control terminal exit 都在
+simulation 停止后触发独立 close signal，并在 renderer/audio/window drop 前 bounded join；失败进入既有
+fatal report owner，正常退出仍为零状态且不产 crash report。
+
+- Vanilla 依据：`Minecraft.destroy` 先令 `ClientLevel.disconnect(DEFAULT_QUIT_MESSAGE)` 关闭
+  `Connection`，再走 `disconnectWithProgressScreen`/`ClientPacketListener.close` 清理 session，随后
+  `Minecraft.close` 依次关闭 runtime/backend，`stop` 只结束 run loop；`Connection.disconnect` 等待
+  channel close 完成。BBB 保留自身线程模型，但复刻“先停止 gameplay owner、再确定关闭 connection、
+  后释放其余 backend”的决策顺序。
+- 唯一 owner 与方向：新 `bbb-native::network_runtime` 独占 connection/relay task handles、terminal
+  close signal 与 join budget；`startup` 只构造 `ConnectionOptions`，simulation 只持 net event/command
+  channels，event-loop 只调用窄 `shutdown_and_join`。Tokio task、world、control snapshot 均不复制
+  shutdown state，也不得自行 join/abort network task。
+- 决策合同：simulation 的 gameplay `NetCommand::Disconnect` 语义保持不变；terminal close signal 与
+  command queue 独立，故 command queue full/closed 也不能阻止 socket future 被取消并 drop。连接自然结束、
+  server disconnect 和显式 terminal close 都最多发布一次 final `Disconnected`；relay 有序转交已有事件，
+  simulation receiver 关闭后立即结束。重复 shutdown 幂等。
+- 生命周期/rollback：`LoopExiting` 先释放 cursor、join simulation，再 signal/join network tasks，最后
+  发布 `running=false/connected=false` 并让 event-loop closure drop renderer/audio/window；同一总 deadline
+  约束两个 task。panic/join/timeout 转成一个 bounded `RuntimeFailure`，timeout 后 abort 并 reap task；无连接、
+  正常远端断开和成功 close 不报告 failure。上一 session/task 不得泄漏到下一进程。
+- API/删除：删除 `NetworkHandles` 与两个丢弃返回值的 `runtime.spawn`；production 只有一个
+  `NetworkRuntime` 和一个 `LoopExiting` join 调用点。`Drop` 仅作 early-startup abort safety net，不能替代
+  显式 join；反向 source guard 锁定旧 fire-and-forget 路径不能恢复。
+- 非目标：不改 packet wire、login/configuration/play state machine、keepalive/transfer/cookie、重连 UI、
+  control server lifecycle、resource worker、renderer/audio shutdown 实现或远端 disconnect screen；不借此
+  关闭 broad 187-owner lifecycle 行。
+- 阶段：A 完成 Vanilla/BBB 只读审计并冻结合同；B 建 network runtime、独立 close 与 bounded join；
+  C 接入 event-loop ordered shutdown、删除旧路径并加 source guard；D deterministic saturation/panic/
+  timeout/recovery tests 与真实 quit acceptance；E Wiki/matrix/ledger 收口、diff review、提交、full gate、
+  lifecycle soak 与 live playable。
+- Focused/acceptance：idle/idempotent shutdown、independent terminal signal、command queue saturation、
+  final disconnect 至多一次、relay drain/receiver-close、join panic、总 deadline/abort/reap、simulation-before-
+  network-before-backend 顺序、normal exit no report、reverse source guard；真实 Vanilla offline live quit、
+  三轮 lifecycle soak 的 clean exit/terminal gauge/thread/FD 证据。
+- Checkpoint：基线 `3b5245b45` 已 full-gated/fixture/live；合同独立提交，B–C 并发 lifecycle checkpoint，
+  D–E 收口后最终 HEAD 强制 full gate，并刷新 lifecycle-soak 与 fixture/live stamp。
+- 安全停止点：仅合同已提交且 ledger 保持 active 的干净 A、实现与 focused acceptance 已通过的干净
+  checkpoint，或最终 full-gated/soak/live HEAD；blocker 必须给出复现命令、外部 owner 和重启条件。
+
 ## Slice 工作流（每轮）
 
 有 ready 工作时选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0

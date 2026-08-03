@@ -49,6 +49,13 @@ Matrix routes: `lifecycle-client-runtime`, `diagnostics-crash-runtime`
   close, recovery, backend shutdown, task handoff, and stale-session branch.
   Split them into homogeneous lifecycle decisions and require deterministic
   failure/recovery acceptance in addition to the happy live path.
+- **External network backend terminal close is `active`.** The connection and
+  event-relay tasks are spawned without retained handles, while terminal exit
+  relies on a best-effort command-queue disconnect followed by implicit Tokio
+  runtime drop. The frozen goal slice must give those tasks one lifecycle owner,
+  signal close independently of command saturation, join them within one bound
+  after simulation shutdown, and propagate panic/timeout through the existing
+  fatal report path.
 
 ## Architecture drift candidates
 
