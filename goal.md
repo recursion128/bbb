@@ -500,32 +500,6 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
-当前 active 工程合同：`lifecycle-external-session-runtime-26-1`。
-
-- 完成标准：把 `Minecraft.java` 187 owner 全量拆成同质 lifecycle、既有机制、accessor 非决策或
-  source-backed 范围外行；再闭合 run/tick、session replacement、disconnect/close、backend join、task/
-  recovery/failure/stale-session 分支。逐 owner evidence 与 deterministic recovery 全过后才删 ledger。
-- Vanilla owner：`Minecraft.run/runTick/tick/renderFrame`、`setLevel/disconnect/clearClientLevel/
-  updateLevelInEngines`、`destroy/close/stop`、`wrapRunnable/shouldRun`、pack recovery/crash handoff；多人
-  teardown 先停 packet/task apply，再清 session/backend，最后发布 terminal state。当前推进 Phase C。
-- BBB owner/direction：net 只产 ordered events；`SimulationCore` 独占 session apply；`SimulationThread`/
-  `NetworkRuntime` 独占 join；event loop 按 simulation→network→terminal snapshot 提交，renderer/audio/
-  window 只消费窄 projection；不得新增 shutdown queue、backend-in-world 或 session shadow cache。
-- 坐标/lifetime：connection/resource generation 与 mailbox barrier 是唯一坐标；remote failure 只发布
-  一次 reason，local close 不伪造；replacement 清 transient 并仅保留 Transfer carry；join 有界，panic/
-  timeout 汇入单一 accumulator；旧 completion 拒绝，reload 失败保留上一完整 generation。
-- 阶段：A）共享 Tree-sitter inventory 全量分区，逐 owner evidence 与 duplicate/broken/stale/exact-output
-  guard，不改 production；B）run/tick/replacement/teardown；C）recovery、panic/timeout、task handoff、
-  stale completion 与终态 diagnostics；D）fixture/live/lifecycle acceptance 和 Wiki/matrix/ledger 收口。
-- Focused evidence：inventory generator/fixtures/`--check`，native network/simulation/mailbox/events/reload/
-  crash/control tests，以及 disconnect/reconnect/transfer/rollback/panic/timeout/stale cases；reverse guard
-  固定一个 terminal order、零 detached task/旧 session apply，并校验 evidence path/symbol 可定位。
-- 非目标：改变 renderer/audio/input/resource 自身表现，补 title/singleplayer/Realms/options UI/telemetry、
-  获取 launcher token 或混入其它 census gap；独立 parity 缺口另立 route。
-- Gate/停止点：Phase A 及每个 Phase B/C 状态边界或累计四提交 full gate；最终全门禁。行为变化刷新
-  fixture/live playable 与 lifecycle-soak。只在 full-gated phase checkpoint 或经复现的外部 blocker 停止；
-  内部缺口、规模、测试失败或未分类 owner 均 fix-forward。
-
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、

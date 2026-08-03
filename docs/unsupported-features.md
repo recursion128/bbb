@@ -37,21 +37,6 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 # Todo
 
-## Client runtime lifecycle and diagnostics
-
-Owner: `bbb-native` + `bbb-control`
-
-Matrix routes: `lifecycle-client-runtime`, `lifecycle-session-replacement`,
-`lifecycle-client-task-handoff`, `resources-reload-recovery`,
-`diagnostics-crash-runtime`
-
-- **`lifecycle-external-session-runtime-26-1` is `active`.** The happy live gate
-  must be refreshed for the decision-complete run/tick and session-replacement
-  groups. The remaining 3 task-handoff and 10 resource-recovery decisions still
-  need exact BBB symbol/test evidence plus deterministic join failure, recovery
-  rollback and stale-generation acceptance. Goal route:
-  `lifecycle-external-session-runtime-26-1` under `p4-delivery`.
-
 ## Architecture drift candidates
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`

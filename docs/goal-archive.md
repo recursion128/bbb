@@ -59,17 +59,15 @@
   bounded lifecycle owner，并在 simulation 后、backend drop 前完成 signal/join。
 - **2026-08-03（lifecycle terminal budget ownership）**：版本化 manifest 统一拥有三个
   独立终态 deadline，并以服务器 receipt、零工作 gauge 与 clean exit 完成三轮 live soak。
-- **2026-08-03（selected shader compilation convergence）**：17 个 pipeline family 的
-  vertex/fragment stage 编译收敛为一个 renderer-private owner，并以 reverse guard 防回流。
+- **2026-08-03（selected shader compilation convergence）**：17 个 pipeline family 的 stage 编译收敛为一个 renderer-private owner，并以 reverse guard 防回流。
 - **2026-08-03（Vanilla root window icons）**：统一 indexed/default vanilla root catalog
   按平台完成 bounded startup apply、默认 icon fallback 与 Wayland 零读取闭环。
 - **2026-08-03（authenticated profile-key lifecycle）**：pre-connect key prepare、跨 phase
   manager 生存期与 play-local 签名链收敛为一个 net owner；真实 Services 验收按授权凭据重开。
 - **2026-08-03（trusted profile texture-set lifecycle）**：Services property trust、
   skin/cape/elytra all-of fallback、bounded process cache 与 CPU→GPU 重交付收敛为一个 owner。
-- **2026-08-03（architecture convergence census）**：首轮审计并关闭 5 项；r2 复审 10 个
-  production crate、1,097 个 Rust 文件、23 条正常依赖边与 2,927 个 Vanilla owner，登记
-  equipment shadow、falling-dust generated facts 与 piston pack boundary 三项 ready 候选。
+- **2026-08-03（architecture convergence census）**：首轮审计并关闭 5 项；r2 复审 10 个 production
+  crate、1,097 个 Rust 文件、23 条正常依赖边与 2,927 个 Vanilla owner，登记三项 ready 候选。
 - **2026-08-03（post-effect identity convergence）**：六个 built-in graph 的 admission、
   camera/outline/transparency/blur dispatch 收敛为一个 renderer-private typed owner。
 - **2026-08-03（control mailbox convergence）**：control 五类写请求与 window/services command
@@ -95,6 +93,8 @@
 - **2026-08-03（DeathScreen decision surface）**：16-owner delay、draft/report return、
   normal/hardcore、URL、resource/pixel 与 native-input live respawn 收敛为单一路径。
 - **2026-08-03（equipment/falling-dust/piston convergence）**：equipment 影子收敛为 generation-local asset id；FallingDust 与 piston 固定事实改由 29,873-state generated protocol owner 唯一查询。
+- **2026-08-03（external session lifecycle closure）**：187 个 `Minecraft` owner 完成拆分，run/task、
+  replacement、reload recovery、panic/join 与终态 diagnostics 经 full/live/三轮 soak 收口。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
