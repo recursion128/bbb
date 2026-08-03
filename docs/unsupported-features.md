@@ -142,13 +142,18 @@ Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
   externally unverified. Reopen when an account owner provisions an ephemeral
   legal credential pair and controlled Vanilla 26.1 online-mode server runner that
   redacts process/log material and can assert that complete sequence.
-- **Client persistence, SkinManager presentation and secure-chat/social/reporting
-  decisions remain `active`.** Existing server-list, skin and reporting code has
-  focused coverage, but the census has not proven the 158 persistence owners,
-  the SkinManager owner family, or 21 security owners and their atomic recovery,
-  session-generation invalidation, online/offline service boundary and live
-  consumer behavior. Split each by one canonical owner; launcher token acquisition
-  remains outside the client.
+- **Vanilla `SkinManager` trusted texture-set lifecycle is `active`.** The current
+  URL-only body cache discards the packed-property signature state, publishes
+  skin/cape/elytra independently, and clears retained CPU state at resource/session
+  edges. The frozen engineering contract in `goal.md` closes all eight generated
+  owners with Services `PROFILE_PROPERTY` verification, exact URL/cache identity,
+  all-of fallback and retained-image GPU re-publication before this matrix route can
+  become equivalent.
+- **Client persistence and secure-chat/social/reporting decisions remain `active`.**
+  The census has not proven the 158 persistence owners or 21 security owners and
+  their atomic recovery, online/offline service boundary and live consumer behavior.
+  Split each by one canonical owner; launcher token acquisition remains outside the
+  client.
 
 ## Runtime performance parity and stable frame tails
 
