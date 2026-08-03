@@ -281,6 +281,28 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
+### 当前 active P0 合同：lifecycle terminal quiescence 预算归一
+
+单一目标：保持产品、terrain workload 与终态 gauge 不变，让版本化
+lifecycle manifest 唯一拥有 pack-pop 后完整 resource/terrain generation 达到
+quiescence 的观察预算。当前脚本内另有未验证的 60 秒字面量；完整
+49 chunk / 1176 section equal-load generation 已有 66.75 秒真实复现，但在
+180 秒诊断窗内正常收敛为 queue/pending 0 与 resident=selected。
+
+- owner/boundary：`scripts/fixtures/lifecycle-soak/manifest-26.1.json` 拥有单一
+  terminal-quiescence 预算；`scripts/lifecycle_soak.py` 只校验并投影给
+  `playable-gate.sh`，不再保留独立字面量。该预算必须为正整数且不得
+  超过 per-iteration budget；120 秒为当前冻结值。
+- 非目标：不改 terrain queue/mesh/revision 逻辑，不降低 chunk/section 工作量，
+  不放宽任一终态 gauge，不改 network shutdown 或产品 runtime。
+- 阶段：A 固化 60/180 秒复现与 owner；B 增加 manifest 字段、边界校验和
+  fixture/source guard；C 运行 Python focused tests、docs-lint/fmt/diff/check 并提交；
+  D 在干净 tip 重跑三轮 quit/kick/quit soak，最后 full gate 并刷新 stamp。
+- checkpoint/安全停止：脚本合同变更视为高风险，实现提交后立即 full gate；
+  仅可在干净、已 gated 且本合同/账本仍 active 的 commit 停止。若 120 秒仍
+  连续复现同一内部未收敛，则保留精确 counters/artifacts 并 fix-forward；只有无法
+  由 BBB 消除且经复现的外部环境条件才可作 blocker。
+
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
 同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
