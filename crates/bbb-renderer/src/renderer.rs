@@ -988,6 +988,7 @@ pub struct Renderer {
     pub(super) hud_chat_messages: Vec<HudChatMessage>,
     pub(super) hud_chat_lines: Vec<HudChatLine>,
     pub(super) hud_chat_context: HudChatContext,
+    pub(super) hud_chat_restrictions_screen: Option<crate::hud::HudChatRestrictionsScreen>,
     pub(super) hud_command_suggestions: Option<crate::hud::HudCommandSuggestions>,
     pub(super) hud_debug_overlay: Option<crate::hud::HudDebugOverlay>,
     /// This frame's projected boss bars plus the 182x5 sprite sheets (one
@@ -2715,6 +2716,7 @@ impl Renderer {
             hud_chat_messages: Vec::new(),
             hud_chat_lines: Vec::new(),
             hud_chat_context: HudChatContext::default(),
+            hud_chat_restrictions_screen: None,
             hud_command_suggestions: None,
             hud_debug_overlay: None,
             hud_boss_bars: Vec::new(),

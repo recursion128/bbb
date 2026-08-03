@@ -731,6 +731,7 @@ pub(crate) struct ClientInputState {
     latest_chat_draft: Option<ChatDraftState>,
     save_chat_drafts: bool,
     next_chat_screen_revision: u64,
+    chat_restrictions_screen: Option<ChatRestrictionsScreenState>,
     structure_block_editor: Option<structure_block::StructureBlockEditorInputState>,
     jigsaw_block_editor: Option<jigsaw_block::JigsawBlockEditorInputState>,
     test_block_editor: Option<test_block::TestBlockEditorInputState>,
@@ -875,6 +876,12 @@ struct ChatScreenEntryState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct ChatRestrictionsScreenState {
+    generation: u64,
+    previous: ChatEntryState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct CommandBlockEditorInputState {
     open_count: usize,
     authoritative_revision: usize,
@@ -977,6 +984,7 @@ pub(crate) struct CommandSuggestionHudTooltip {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CommandSuggestionHudState {
     pub(crate) input_text: String,
+    pub(crate) draft: bool,
     pub(crate) cursor: usize,
     pub(crate) selection: usize,
     pub(crate) suffix: Option<String>,
@@ -1226,6 +1234,7 @@ impl ClientInputState {
 
     fn gameplay_input_screen_is_open(&self, world: &WorldStore) -> bool {
         self.disconnected_screen_runtime().is_some()
+            || self.chat_restrictions_screen_is_open()
             || self.command_entry_is_active()
             || self.sign_editor_is_active_or_pending(world)
             || self.debug_options_screen_is_open()
@@ -1298,7 +1307,47 @@ impl ClientInputState {
     }
 
     pub(crate) fn interrupt_chat_screen(&mut self) -> bool {
-        self.close_chat_screen(ChatScreenExitReason::Interrupted)
+        if self.close_chat_screen(ChatScreenExitReason::Interrupted) {
+            return true;
+        }
+        let Some(screen) = self.chat_restrictions_screen.take() else {
+            return false;
+        };
+        self.finalize_chat_entry(screen.previous, ChatScreenExitReason::Interrupted);
+        true
+    }
+
+    pub(crate) fn open_chat_restrictions_screen(&mut self) -> bool {
+        let Some(previous) = self
+            .chat_entry
+            .take_if(|entry| matches!(entry.owner, ChatEntryOwner::Chat(_)))
+        else {
+            return false;
+        };
+        self.next_chat_screen_revision = self.next_chat_screen_revision.saturating_add(1);
+        self.chat_restrictions_screen = Some(ChatRestrictionsScreenState {
+            generation: self.next_chat_screen_revision,
+            previous,
+        });
+        true
+    }
+
+    pub(crate) fn close_chat_restrictions_screen(&mut self) -> bool {
+        let Some(screen) = self.chat_restrictions_screen.take() else {
+            return false;
+        };
+        self.chat_entry = Some(screen.previous);
+        true
+    }
+
+    pub(crate) fn chat_restrictions_screen_is_open(&self) -> bool {
+        self.chat_restrictions_screen.is_some()
+    }
+
+    pub(crate) fn chat_restrictions_screen_generation(&self) -> Option<u64> {
+        self.chat_restrictions_screen
+            .as_ref()
+            .map(|screen| screen.generation)
     }
 
     fn queue_local_block_attack_effect(&mut self, effect: LocalBlockAttackEffect) {
@@ -2333,6 +2382,39 @@ impl ClientInputState {
         self.chat_entry
             .as_ref()
             .is_some_and(|entry| matches!(entry.owner, ChatEntryOwner::Chat(_)))
+    }
+
+    pub(crate) fn chat_screen_revision(&self) -> u64 {
+        if let Some(screen) = self.chat_restrictions_screen.as_ref() {
+            return screen.generation;
+        }
+        self.chat_entry
+            .as_ref()
+            .and_then(|entry| match &entry.owner {
+                ChatEntryOwner::Chat(screen) => Some(screen.revision),
+                ChatEntryOwner::CommandBlock(_) | ChatEntryOwner::MinecartCommandBlock(_) => None,
+            })
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn insert_chat_screen_text(
+        &mut self,
+        text: &str,
+        counters: &mut NetCounters,
+        world: &mut WorldStore,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) -> bool {
+        let Some(entry) = self
+            .chat_entry
+            .as_mut()
+            .filter(|entry| matches!(entry.owner, ChatEntryOwner::Chat(_)))
+        else {
+            return false;
+        };
+        let before = entry.text.clone();
+        insert_chat_entry_text(entry, text);
+        update_chat_entry_after_text_change(self, counters, world, net_commands, &before);
+        true
     }
 
     /// Moves native-owned screen state below the world-owned Dialog stack and
@@ -11649,6 +11731,18 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
+    if input.chat_restrictions_screen_is_open() {
+        if just_pressed
+            && matches!(
+                code,
+                KeyCode::Escape | KeyCode::Enter | KeyCode::NumpadEnter
+            )
+        {
+            input.close_chat_restrictions_screen();
+        }
+        return;
+    }
+
     if input.handle_death_screen_key(counters, world, net_commands, code, just_pressed) {
         return;
     }
@@ -12062,6 +12156,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
     text_measurer: &impl CommandSuggestionTextMeasurer,
 ) {
     if !input.focused {
+        return;
+    }
+
+    if input.chat_restrictions_screen_is_open() {
         return;
     }
 
@@ -12763,6 +12861,7 @@ fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudStat
     let Some(list) = entry.suggestion_list.as_ref() else {
         return CommandSuggestionHudState {
             input_text: entry.text.clone(),
+            draft: matches!(&entry.owner, ChatEntryOwner::Chat(screen) if screen.is_draft),
             cursor: entry.cursor,
             selection: entry.selection,
             suffix: None,
@@ -12841,6 +12940,7 @@ fn chat_suggestion_hud_state(entry: &ChatEntryState) -> CommandSuggestionHudStat
 
     CommandSuggestionHudState {
         input_text: entry.text.clone(),
+        draft: matches!(&entry.owner, ChatEntryOwner::Chat(screen) if screen.is_draft),
         cursor: entry.cursor,
         selection: entry.selection,
         suffix,

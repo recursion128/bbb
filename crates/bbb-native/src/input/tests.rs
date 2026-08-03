@@ -18581,6 +18581,51 @@ fn chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle() {
 }
 
 #[test]
+fn chat_restrictions_screen_preserves_previous_screen_and_interrupts_as_one_lifecycle() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "preserved",
+    );
+    let previous_revision = input.chat_screen_revision();
+    assert!(input.open_chat_restrictions_screen());
+    assert!(!input.chat_entry_is_active());
+    assert!(input.chat_restrictions_screen_is_open());
+    assert_ne!(input.chat_screen_revision(), previous_revision);
+    assert!(input.close_chat_restrictions_screen());
+    assert_eq!(input.chat_screen_revision(), previous_revision);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("preserved")
+    );
+
+    assert!(input.open_chat_restrictions_screen());
+    assert!(input.interrupt_chat_screen());
+    assert!(!input.chat_restrictions_screen_is_open());
+    assert_eq!(
+        input
+            .latest_chat_draft
+            .as_ref()
+            .map(|draft| draft.text.as_str()),
+        Some("preserved")
+    );
+}
+
+#[test]
 fn dialog_stack_suspends_and_restores_the_native_chat_screen() {
     let commands = None;
     let mut input = ClientInputState::new(true);

@@ -234,6 +234,7 @@ fn book_chat_interactions(screen: &HudBookScreen) -> Vec<HudChatInteraction> {
             start_char: interaction.start_char,
             end_char: interaction.end_char,
             target_index: interaction.source_run_index,
+            insertion: false,
             tooltip: interaction.tooltip.clone(),
         })
         .collect()

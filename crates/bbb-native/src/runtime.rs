@@ -41,32 +41,32 @@ use bbb_renderer::{
     EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudChatContext, HudChatMessage, HudChatTag, HudChatTagKind, HudCommandBlockEditorKind,
-    HudCommandBlockEditorScreen, HudCommandSuggestionEntry, HudCommandSuggestionTooltip,
-    HudCommandSuggestions, HudCommandSuggestionsLayout, HudComponentTextRun, HudContextualBar,
-    HudCrosshairAttackIndicator, HudDebugCrosshair, HudDebugFrameTimeChart,
-    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
-    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
-    HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
-    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
-    HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
-    HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
-    HudInventoryMapPreview, HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
-    HudJumpBar, HudMobEffect, HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth,
-    HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer, HudScoreboardSidebar,
-    HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
-    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
-    ItemModelGeometryClass, ItemModelQuad, LevelLighting, LightmapEnvironment,
+    HudChatContext, HudChatMessage, HudChatRestrictionsScreen, HudChatTag, HudChatTagKind,
+    HudCommandBlockEditorKind, HudCommandBlockEditorScreen, HudCommandSuggestionEntry,
+    HudCommandSuggestionTooltip, HudCommandSuggestions, HudCommandSuggestionsLayout,
+    HudComponentTextRun, HudContextualBar, HudCrosshairAttackIndicator, HudDebugCrosshair,
+    HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
+    HudDebugNetworkCharts, HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart,
+    HudDebugTpsChart, HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen,
+    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
+    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect,
+    HudGameEventButton, HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode,
+    HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
+    HudInventoryItemScissor, HudInventoryMapPreview, HudInventoryScreen, HudInventoryScrollingText,
+    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen,
+    HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect, HudPauseScreen, HudPauseScreenTooltip,
+    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer,
+    HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
+    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
+    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
     ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
     ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
@@ -3482,25 +3482,38 @@ pub(crate) fn update_renderer_from_publication(
             &[&queued_chat_messages.to_string()],
         )
     });
+    let hud_cursor_position = publication
+        .input_runtime
+        .cursor_position
+        .and_then(|position| {
+            (position.x.is_finite() && position.y.is_finite())
+                .then(|| (position.x.floor() as i32, position.y.floor() as i32))
+        });
     let hud_chat_context = HudChatContext {
         level_generation: world.client_level_generation(),
         delivery_revision: world.client_chat().delivery_revision,
+        chat_screen_revision: input.chat_screen_revision(),
         resource_generation: item_runtime.map_or(0, NativeItemRuntime::resource_generation),
         resources_loaded: item_runtime.is_some(),
         gui_ticks: world.client_chat().gui_ticks,
         focused: input.chat_entry_is_active(),
         advanced_item_tooltips: input.debug_advanced_item_tooltips(),
         scroll_lines: input.chat_scroll_lines(),
-        cursor_position: publication
-            .input_runtime
-            .cursor_position
-            .and_then(|position| {
-                (position.x.is_finite() && position.y.is_finite())
-                    .then(|| (position.x.floor() as i32, position.y.floor() as i32))
-            }),
+        cursor_position: hud_cursor_position,
         queued_messages: queued_chat_messages,
         queue_text: queued_chat_messages_text,
+        restricted_text: (input.chat_entry_is_active()
+            && world.chat_presentation_config().visibility != bbb_world::ChatVisibilityState::Full)
+            .then(|| {
+                localized_gui_text(
+                    item_runtime,
+                    "chat_screen.restricted",
+                    "Chat is restricted. Click this message for details.",
+                )
+            }),
     };
+    let hud_chat_restrictions_screen =
+        hud_chat_restrictions_screen(input, world, item_runtime, hud_cursor_position);
     // `LerpingBossEvent` owns a 100ms wall-clock presentation curve outside
     // canonical packet state. Anchor newly published targets at the
     // simulation change time, then sample them at this render's wall clock.
@@ -3601,6 +3614,7 @@ pub(crate) fn update_renderer_from_publication(
     })
     .flatten();
     let exclusive_game_screen_present = hud_disconnected_screen.is_some()
+        || hud_chat_restrictions_screen.is_some()
         || hud_death_screen.is_some()
         || hud_game_event_screen.is_some()
         || hud_player_reporting_screen.is_some()
@@ -3870,6 +3884,7 @@ pub(crate) fn update_renderer_from_publication(
     // `Screen.extractBlurredBackground`; container/book/advancement/stats screens
     // remain vanilla in-game UI, while poem `WinScreen` owns its portal background.
     let hud_screen_blur = hud_disconnected_screen.is_some()
+        || hud_chat_restrictions_screen.is_some()
         || hud_screen_blur_for_world(
             world,
             hud_inventory_screen.is_some()
@@ -4672,6 +4687,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_player_list_tick_count: publication.client_tick_index,
             hud_chat_messages,
             hud_chat_context,
+            hud_chat_restrictions_screen,
             hud_command_suggestions,
             hud_debug_overlay,
             hud_boss_bars,
@@ -5551,6 +5567,7 @@ fn release_input_if_screen_opened(
 
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     input.disconnected_screen_runtime().is_some()
+        || input.chat_restrictions_screen_is_open()
         || world.open_container_id().is_some()
         || world.death_screen().is_some()
         || world.game_event_screen().is_some()
@@ -7566,6 +7583,7 @@ fn hud_command_suggestions(
     });
     Some(HudCommandSuggestions {
         input_text: state.input_text,
+        draft: state.draft,
         cursor: state.cursor,
         selection: state.selection,
         cursor_visible: (wall_clock_millis() / 300) % 2 == 0,
@@ -7590,6 +7608,86 @@ fn hud_command_suggestions(
         } else {
             HudCommandSuggestionsLayout::Chat
         },
+    })
+}
+
+fn hud_chat_restrictions_screen(
+    input: &ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    cursor_position: Option<(i32, i32)>,
+) -> Option<HudChatRestrictionsScreen> {
+    let generation = input.chat_restrictions_screen_generation()?;
+    let visibility = world.chat_presentation_config().visibility;
+    let (reason_key, reason_fallback) = match visibility {
+        bbb_world::ChatVisibilityState::System => (
+            "chat_restriction.chat_disabled_by_options",
+            "Player chat is restricted in client settings.",
+        ),
+        bbb_world::ChatVisibilityState::Hidden => (
+            "chat_restriction.chat_and_commands_disabled_by_options",
+            "Chat is restricted in client settings.",
+        ),
+        bbb_world::ChatVisibilityState::Full => return None,
+    };
+    let permission =
+        |id: &str, allowed: bool, allowed_fallback: &str, denied_fallback: &str| HudStyledTextRun {
+            text: localized_gui_text(
+                item_runtime,
+                &format!(
+                    "restrictions_screen.permission.{id}.{}",
+                    if allowed { "allowed" } else { "denied" }
+                ),
+                if allowed {
+                    allowed_fallback
+                } else {
+                    denied_fallback
+                },
+            ),
+            style: Default::default(),
+            color: Some(if allowed { 0x55FF55 } else { 0xFF5555 }),
+        };
+    let can_send_messages = visibility == bbb_world::ChatVisibilityState::Full;
+    let can_send_commands = visibility != bbb_world::ChatVisibilityState::Hidden;
+    Some(HudChatRestrictionsScreen {
+        generation,
+        title: localized_gui_text(item_runtime, "restrictions_screen.title", "Restrictions"),
+        reason: HudStyledTextRun {
+            text: localized_gui_text(item_runtime, reason_key, reason_fallback),
+            style: bbb_renderer::HudTextStyle {
+                bold: true,
+                ..Default::default()
+            },
+            color: Some(0xFF5555),
+        },
+        permissions: vec![
+            permission(
+                "send_messages",
+                can_send_messages,
+                "You can send chat messages",
+                "You can't send chat messages",
+            ),
+            permission(
+                "send_commands",
+                can_send_commands,
+                "You can send commands",
+                "You can't send commands",
+            ),
+            permission(
+                "receive_system_messages",
+                can_send_commands,
+                "You can receive system messages from the server",
+                "You can't receive system messages from the server",
+            ),
+            permission(
+                "receive_player_messages",
+                can_send_messages,
+                "You can receive messages from players",
+                "You can't receive messages from players",
+            ),
+        ],
+        done: localized_gui_text(item_runtime, "gui.done", "Done"),
+        cursor_position,
     })
 }
 

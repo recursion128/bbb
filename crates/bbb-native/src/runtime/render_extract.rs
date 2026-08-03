@@ -13,16 +13,17 @@ use bbb_renderer::{
     EntityShadowSurface, FirstPersonMapBackgroundSurface, FirstPersonMapBackgroundTexture,
     FirstPersonPlayerArm, HudActionBarText, HudAdvancementToast, HudAirSupply, HudBlockItemModel,
     HudBookScreen, HudBossBar, HudBossBarColor, HudBossBarOverlay, HudChatContext,
-    HudChatInteraction, HudChatMessage, HudCommandBlockEditorScreen, HudCommandSuggestions,
-    HudComponentTextRun, HudCrosshairAttackIndicator, HudDeathLinkConfirmationScreen,
-    HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
-    HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen,
-    HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface,
-    HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
-    HudPlayerListScore, HudPlayerReportingControl, HudPlayerReportingControlKind,
-    HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
-    HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar,
-    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudChatInteraction, HudChatMessage, HudChatRestrictionsScreen, HudCommandBlockEditorScreen,
+    HudCommandSuggestions, HudComponentTextRun, HudCrosshairAttackIndicator,
+    HudDeathLinkConfirmationScreen, HudDeathMainScreen, HudDeathQuitConfirmationScreen,
+    HudDeathScreen, HudDebugOptionsScreen, HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect,
+    HudGameEventScreen, HudGameRulesScreen, HudHotbarMode, HudInventoryScreen,
+    HudJigsawBlockEditorScreen, HudMapPreviewSurface, HudMobEffect, HudPauseScreen,
+    HudPlayerHealth, HudPlayerList, HudPlayerListEntry, HudPlayerListScore,
+    HudPlayerReportingControl, HudPlayerReportingControlKind, HudPlayerReportingControlPlacement,
+    HudPlayerReportingFocus, HudPlayerReportingRow, HudPlayerReportingScreen,
+    HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
+    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
     HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
     HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
     HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
@@ -2000,6 +2001,13 @@ struct ProjectedChatRun {
     visual: HudComponentTextRun,
     click_event: Option<bbb_protocol::ComponentClickEvent>,
     hover_event: Option<bbb_protocol::ComponentHoverEvent>,
+    insertion: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct HudChatComponentInteraction {
+    pub(crate) click_event: Option<bbb_protocol::ComponentClickEvent>,
+    pub(crate) insertion: Option<String>,
 }
 
 fn hud_chat_message(
@@ -2014,12 +2022,13 @@ fn hud_chat_message(
     for (target_index, run) in projected.into_iter().enumerate() {
         let start_char = char_offset;
         char_offset = char_offset.saturating_add(run.visual.visual.text.chars().count());
-        if run.click_event.is_some() || run.hover_event.is_some() {
+        if run.click_event.is_some() || run.hover_event.is_some() || run.insertion.is_some() {
             if let Ok(target_index) = u16::try_from(target_index) {
                 interactions.push(HudChatInteraction {
                     start_char,
                     end_char: char_offset,
                     target_index,
+                    insertion: run.insertion.is_some(),
                     tooltip: super::component_hover::hud_component_hover_tooltip(
                         world,
                         item_runtime,
@@ -2106,6 +2115,7 @@ fn hud_chat_message_runs(
             visual: HudComponentTextRun::plain(message.content.clone()),
             click_event: None,
             hover_event: None,
+            insertion: None,
         }]
     } else {
         message
@@ -2129,24 +2139,28 @@ fn projected_chat_run(text: &str, style: &bbb_protocol::ComponentStyle) -> Proje
         visual,
         click_event: style.click_event.clone(),
         hover_event: style.hover_event.clone(),
+        insertion: style.insertion.clone(),
     }
 }
 
-pub(crate) fn hud_chat_component_click_event(
+pub(crate) fn hud_chat_component_interaction(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     display_sequence: u64,
     target_index: u16,
-) -> Option<bbb_protocol::ComponentClickEvent> {
+) -> Option<HudChatComponentInteraction> {
     let message = world
         .client_chat()
         .messages
         .iter()
         .find(|message| message.display_sequence == display_sequence)?;
-    hud_chat_message_runs(message, item_runtime)
-        .get(usize::from(target_index))?
-        .click_event
-        .clone()
+    let run = hud_chat_message_runs(message, item_runtime)
+        .into_iter()
+        .nth(usize::from(target_index))?;
+    Some(HudChatComponentInteraction {
+        click_event: run.click_event,
+        insertion: run.insertion,
+    })
 }
 
 pub(crate) fn chat_narration_text(
@@ -2829,6 +2843,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_player_list_tick_count: u64,
     pub(crate) hud_chat_messages: RendererFrameUpdate<Vec<HudChatMessage>>,
     pub(crate) hud_chat_context: HudChatContext,
+    pub(crate) hud_chat_restrictions_screen: Option<HudChatRestrictionsScreen>,
     pub(crate) hud_command_suggestions: Option<HudCommandSuggestions>,
     pub(crate) hud_debug_overlay: Option<HudDebugOverlay>,
     pub(crate) hud_boss_bars: RendererFrameUpdate<Vec<HudBossBar>>,
@@ -3319,6 +3334,7 @@ pub(crate) fn apply_renderer_frame(
         renderer.set_hud_chat_messages(messages);
     }
     renderer.set_hud_chat_context(frame.hud_chat_context);
+    renderer.set_hud_chat_restrictions_screen(frame.hud_chat_restrictions_screen);
     renderer.set_hud_command_suggestions(frame.hud_command_suggestions);
     match frame.hud_player_list {
         RendererFrameUpdate::Unchanged => {

@@ -1828,6 +1828,9 @@ fn enqueue_simulation_window_event(
                     || renderer
                         .hud_book_hit_target_at((position.x, position.y))
                         .is_some()
+                    || renderer
+                        .hud_chat_hit_target_at((position.x, position.y))
+                        .is_some()
                 {
                     CursorIcon::Pointer
                 } else {

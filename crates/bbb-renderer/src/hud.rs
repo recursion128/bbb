@@ -283,11 +283,13 @@ mod chat_layout_tests {
                 start_char: 53,
                 end_char: 57,
                 target_index: 3,
+                insertion: false,
                 tooltip: None,
             }],
             tag: None,
         };
-        let lines = hud_wrap_chat_messages(&[message], &HudFontGlyphBook::from(glyphs));
+        let fonts = HudFontGlyphBook::from(glyphs);
+        let lines = hud_wrap_chat_messages(&[message], &fonts);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[1].interactions.len(), 1);
         assert_eq!(lines[1].interactions[0].start_x, 0);
@@ -296,18 +298,25 @@ mod chat_layout_tests {
         let context = HudChatContext {
             level_generation: 11,
             delivery_revision: 13,
+            chat_screen_revision: 19,
             resource_generation: 17,
             resources_loaded: true,
             focused: true,
             ..HudChatContext::default()
         };
-        let hit =
-            hud_chat_hit_target_at(&lines, &context, PhysicalSize::new(800, 600), (5.0, 552.0));
+        let hit = hud_chat_hit_target_at(
+            &lines,
+            &context,
+            &fonts,
+            PhysicalSize::new(800, 600),
+            (5.0, 552.0),
+        );
         assert_eq!(
             hit,
             Some(HudChatHitTarget {
                 level_generation: 11,
                 delivery_revision: 13,
+                chat_screen_revision: 19,
                 resource_generation: 17,
                 resources_loaded: true,
                 kind: HudChatHitTargetKind::Message {
@@ -329,12 +338,14 @@ mod chat_layout_tests {
                     start_char: 0,
                     end_char: 1,
                     target_index: 1,
+                    insertion: false,
                     tooltip: None,
                 },
                 HudChatInteraction {
                     start_char: 1,
                     end_char: 2,
                     target_index: 2,
+                    insertion: false,
                     tooltip: None,
                 },
             ],
@@ -388,6 +399,7 @@ mod chat_layout_tests {
                 start_char: 0,
                 end_char: text.chars().count(),
                 target_index: 7,
+                insertion: false,
                 tooltip: None,
             }],
             20,
@@ -432,6 +444,7 @@ mod chat_layout_tests {
                 start_char: 0,
                 end_char: 2,
                 target_index: 9,
+                insertion: false,
                 tooltip: None,
             }],
             19,
@@ -456,6 +469,7 @@ mod chat_layout_tests {
                 start_char: 0,
                 end_char: text.chars().count(),
                 target_index: 3,
+                insertion: false,
                 tooltip: None,
             }],
             20,
@@ -485,6 +499,7 @@ mod chat_layout_tests {
                 start_char: 0,
                 end_char: 1,
                 target_index: 5,
+                insertion: false,
                 tooltip: None,
             }],
             20,
@@ -523,16 +538,68 @@ mod chat_layout_tests {
             queued_messages: 1,
             ..HudChatContext::default()
         };
-        let hit = hud_chat_hit_target_at(&[], &context, PhysicalSize::new(800, 600), (4.0, 561.0));
+        let fonts = HudFontGlyphBook::default();
+        let hit = hud_chat_hit_target_at(
+            &[],
+            &context,
+            &fonts,
+            PhysicalSize::new(800, 600),
+            (4.0, 561.0),
+        );
         assert_eq!(hit.map(|hit| hit.kind), Some(HudChatHitTargetKind::Queue));
         let unfocused = HudChatContext {
             focused: false,
             ..context
         };
-        assert!(
-            hud_chat_hit_target_at(&[], &unfocused, PhysicalSize::new(800, 600), (4.0, 561.0),)
-                .is_none()
-        );
+        assert!(hud_chat_hit_target_at(
+            &[],
+            &unfocused,
+            &fonts,
+            PhysicalSize::new(800, 600),
+            (4.0, 561.0),
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn restricted_chat_prompt_and_done_button_are_revision_bound_targets() {
+        let text = "Chat is restricted";
+        let fonts = HudFontGlyphBook::from(glyphs_for(text));
+        let context = HudChatContext {
+            level_generation: 2,
+            delivery_revision: 5,
+            chat_screen_revision: 7,
+            focused: true,
+            restricted_text: Some(text.to_string()),
+            ..HudChatContext::default()
+        };
+        let prompt = hud_chat_hit_target_at(
+            &[],
+            &context,
+            &fonts,
+            PhysicalSize::new(800, 600),
+            (5.0, 552.0),
+        )
+        .expect("restricted prompt");
+        assert_eq!(prompt.kind, HudChatHitTargetKind::Restrictions);
+        assert_eq!(prompt.chat_screen_revision, 7);
+
+        let screen = sanitize_hud_chat_restrictions_screen(HudChatRestrictionsScreen {
+            generation: 11,
+            title: "Restrictions".to_string(),
+            reason: HudStyledTextRun::plain("Client settings restriction"),
+            permissions: (0..4)
+                .map(|index| HudStyledTextRun::plain(format!("permission {index}")))
+                .collect(),
+            done: "Done".to_string(),
+            cursor_position: None,
+        })
+        .expect("bounded restriction screen");
+        assert_eq!(screen.permissions.len(), 4);
+        assert!(hud_chat_restrictions_done_contains(
+            PhysicalSize::new(800, 600),
+            (400.0, 580.0),
+        ));
     }
 }
 
@@ -628,6 +695,9 @@ pub struct HudChatInteraction {
     pub start_char: usize,
     pub end_char: usize,
     pub target_index: u16,
+    /// The canonical component run carries a `Style.insertion`; the renderer
+    /// only needs targetability and never retains the insertion payload.
+    pub insertion: bool,
     pub tooltip: Option<HudRichTooltip>,
 }
 
@@ -654,6 +724,7 @@ pub enum HudChatTagKind {
 pub struct HudChatContext {
     pub level_generation: u64,
     pub delivery_revision: u64,
+    pub chat_screen_revision: u64,
     pub resource_generation: u64,
     pub resources_loaded: bool,
     pub gui_ticks: u64,
@@ -663,6 +734,20 @@ pub struct HudChatContext {
     pub cursor_position: Option<(i32, i32)>,
     pub queued_messages: usize,
     pub queue_text: Option<String>,
+    pub restricted_text: Option<String>,
+}
+
+/// Vanilla `RestrictionsScreen` projection reached from the focused chat
+/// restriction prompt. The canonical permission decision remains native;
+/// renderer owns only bounded text, layout, and hit testing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudChatRestrictionsScreen {
+    pub generation: u64,
+    pub title: String,
+    pub reason: HudStyledTextRun,
+    pub permissions: Vec<HudStyledTextRun>,
+    pub done: String,
+    pub cursor_position: Option<(i32, i32)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -687,6 +772,7 @@ struct HudChatLineInteraction {
 pub struct HudChatHitTarget {
     pub level_generation: u64,
     pub delivery_revision: u64,
+    pub chat_screen_revision: u64,
     pub resource_generation: u64,
     pub resources_loaded: bool,
     pub kind: HudChatHitTargetKind,
@@ -695,6 +781,8 @@ pub struct HudChatHitTarget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudChatHitTargetKind {
     Queue,
+    Restrictions,
+    RestrictionsDone,
     Message {
         display_sequence: u64,
         target_index: u16,
@@ -707,6 +795,7 @@ pub enum HudChatHitTargetKind {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HudCommandSuggestions {
     pub input_text: String,
+    pub draft: bool,
     pub cursor: usize,
     pub selection: usize,
     pub cursor_visible: bool,
@@ -6124,7 +6213,15 @@ impl Renderer {
             .queue_text
             .map(|text| sanitize_hud_text_preserving_empty(text, 256))
             .filter(|text| !text.is_empty());
+        context.restricted_text = context
+            .restricted_text
+            .map(|text| sanitize_hud_text_preserving_empty(text, 256))
+            .filter(|text| !text.is_empty());
         self.hud_chat_context = context;
+    }
+
+    pub fn set_hud_chat_restrictions_screen(&mut self, screen: Option<HudChatRestrictionsScreen>) {
+        self.hud_chat_restrictions_screen = screen.and_then(sanitize_hud_chat_restrictions_screen);
     }
 
     fn rebuild_chat_lines(&mut self) {
@@ -6136,9 +6233,23 @@ impl Renderer {
     /// simulation must still revalidate the target against canonical chat
     /// state before executing a component action.
     pub fn hud_chat_hit_target_at(&self, position: (f64, f64)) -> Option<HudChatHitTarget> {
+        if let Some(screen) = self.hud_chat_restrictions_screen.as_ref() {
+            if hud_chat_restrictions_done_contains(self.surface_size(), position) {
+                return Some(HudChatHitTarget {
+                    level_generation: self.hud_chat_context.level_generation,
+                    delivery_revision: self.hud_chat_context.delivery_revision,
+                    chat_screen_revision: screen.generation,
+                    resource_generation: self.hud_chat_context.resource_generation,
+                    resources_loaded: self.hud_chat_context.resources_loaded,
+                    kind: HudChatHitTargetKind::RestrictionsDone,
+                });
+            }
+            return None;
+        }
         hud_chat_hit_target_at(
             &self.hud_chat_lines,
             &self.hud_chat_context,
+            &self.hud_font_book,
             self.surface_size(),
             position,
         )
@@ -6572,6 +6683,7 @@ impl Renderer {
 
     fn hud_has_any_screen(&self) -> bool {
         self.hud_chat_context.focused
+            || self.hud_chat_restrictions_screen.is_some()
             || self.hud_inventory_screen.is_some()
             || self.hud_sign_editor_screen.is_some()
             || self.hud_command_block_editor_screen.is_some()
@@ -6593,7 +6705,8 @@ impl Renderer {
     }
 
     fn hud_has_ingame_ui_screen(&self) -> bool {
-        self.hud_inventory_screen.is_some()
+        self.hud_chat_restrictions_screen.is_some()
+            || self.hud_inventory_screen.is_some()
             || self.hud_sign_editor_screen.is_some()
             || self.hud_command_block_editor_screen.is_some()
             || self.hud_structure_block_editor_screen.is_some()
@@ -7402,6 +7515,33 @@ impl Renderer {
             );
         }
 
+        let mut screen_blur = None;
+        if let Some(screen) = &self.hud_chat_restrictions_screen {
+            if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
+            push_hud_chat_restrictions_screen(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                HudDebugOptionsButtonSprites {
+                    normal: self.hud_widget_button.as_ref(),
+                    disabled: self.hud_widget_button_disabled.as_ref(),
+                    highlighted: self.hud_widget_button_highlighted.as_ref(),
+                },
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen,
+            );
+        }
+
         if let Some(screen) = &self.hud_command_block_editor_screen {
             push_hud_command_block_editor_screen(
                 &mut vertices,
@@ -7534,7 +7674,6 @@ impl Renderer {
             );
         }
 
-        let mut screen_blur = None;
         if let Some(screen) = &self.hud_inventory_screen {
             if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
                 screen_blur = Some(HudScreenBlurDraws {
@@ -10798,7 +10937,16 @@ fn push_hud_inventory_text_input_label<'a>(
 ) {
     let layout = hud_inventory_text_input_layout(label, input, glyphs);
     if !layout.displayed_text.is_empty() {
-        let runs = [HudStyledTextRun::plain(layout.displayed_text)];
+        let runs = [label
+            .runs
+            .first()
+            .filter(|_| label.runs.len() == 1)
+            .map(|run| HudStyledTextRun {
+                text: layout.displayed_text.clone(),
+                style: run.style,
+                color: run.color,
+            })
+            .unwrap_or_else(|| HudStyledTextRun::plain(layout.displayed_text))];
         for (shadow_offset, is_shadow) in label
             .shadow
             .then_some((1.0, true))
@@ -15506,6 +15654,7 @@ fn push_hud_command_suggestions<'a>(
         }
     }
 
+    let input_runs = hud_command_input_runs(state);
     let label = HudInventoryTextLabel {
         x: 0,
         y: 0,
@@ -15529,7 +15678,7 @@ fn push_hud_command_suggestions<'a>(
         scrolling: None,
         shadow: true,
         font: None,
-        runs: Vec::new(),
+        runs: input_runs,
     };
     let input = label.input.expect("command input decoration");
     let layout = hud_inventory_text_input_layout(&label, input, glyphs);
@@ -15676,6 +15825,21 @@ fn push_hud_command_suggestions<'a>(
             tooltip,
         );
     }
+}
+
+fn hud_command_input_runs(state: &HudCommandSuggestions) -> Vec<HudStyledTextRun> {
+    state
+        .draft
+        .then(|| HudStyledTextRun {
+            text: state.input_text.clone(),
+            style: HudTextStyle {
+                italic: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xAAAAAA),
+        })
+        .into_iter()
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -16062,6 +16226,154 @@ fn hud_chat_line_alpha(context: &HudChatContext, line: &HudChatLine) -> f32 {
     (t * t) as f32
 }
 
+fn sanitize_hud_chat_restrictions_screen(
+    mut screen: HudChatRestrictionsScreen,
+) -> Option<HudChatRestrictionsScreen> {
+    screen.title = sanitize_hud_text_preserving_empty(screen.title, 256);
+    screen.done = sanitize_hud_text_preserving_empty(screen.done, 128);
+    let reason_text = sanitize_hud_text_preserving_empty(screen.reason.text, 1_024);
+    if reason_text.is_empty() {
+        return None;
+    }
+    screen.reason.text = reason_text;
+    screen.permissions = screen
+        .permissions
+        .into_iter()
+        .take(4)
+        .filter_map(|mut line| {
+            line.text = sanitize_hud_text_preserving_empty(line.text, 512);
+            (!line.text.is_empty()).then_some(line)
+        })
+        .collect();
+    (screen.permissions.len() == 4 && !screen.title.is_empty() && !screen.done.is_empty())
+        .then_some(screen)
+}
+
+fn hud_chat_restrictions_done_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    absolute_hud_rect(
+        (surface_size.width as f32 * 0.5 - 100.0).floor(),
+        i32::try_from(surface_size.height)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(29) as f32,
+        200,
+        20,
+    )
+}
+
+fn hud_chat_restrictions_done_contains(
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+) -> bool {
+    if !position.0.is_finite() || !position.1.is_finite() {
+        return false;
+    }
+    let rect = hud_chat_restrictions_done_rect(surface_size);
+    position.0 >= f64::from(rect.x)
+        && position.1 >= f64::from(rect.y)
+        && position.0 < f64::from(rect.x + rect.width as f32)
+        && position.1 < f64::from(rect.y + rect.height as f32)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_chat_restrictions_screen<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    button_sprites: HudDebugOptionsButtonSprites<'a>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    frame_index: u64,
+    surface_size: PhysicalSize<u32>,
+    screen: &HudChatRestrictionsScreen,
+) {
+    push_hud_pause_background(vertices, commands, white_pixel, surface_size);
+    let Some(font_atlas) = font_atlas else { return };
+    let centered = |runs: &[HudStyledTextRun]| {
+        surface_size.width as f32 * 0.5
+            - hud_font_runs_width(runs, glyphs).unwrap_or_default() as f32 * 0.5
+    };
+    let title = [HudStyledTextRun::plain(&screen.title)];
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &HudScreenTextDraw {
+            runs: &title,
+            origin: (centered(&title), 15.0),
+            scale: 1.0,
+            tint: HUD_TINT_WHITE,
+            backdrop_opacity: 0.0,
+        },
+    );
+    let reason = [screen.reason.clone()];
+    push_hud_screen_text_draw(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        &HudScreenTextDraw {
+            runs: &reason,
+            origin: (centered(&reason), 54.0),
+            scale: 1.0,
+            tint: HUD_TINT_WHITE,
+            backdrop_opacity: 0.0,
+        },
+    );
+    for (index, permission) in screen.permissions.iter().enumerate() {
+        let line = [permission.clone()];
+        push_hud_screen_text_draw(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &HudScreenTextDraw {
+                runs: &line,
+                origin: (centered(&line), 88.0 + index as f32 * 18.0),
+                scale: 1.0,
+                tint: HUD_TINT_WHITE,
+                backdrop_opacity: 0.0,
+            },
+        );
+    }
+    let rect = hud_chat_restrictions_done_rect(surface_size);
+    let hovered = screen.cursor_position.is_some_and(|(x, y)| {
+        hud_chat_restrictions_done_contains(surface_size, (f64::from(x), f64::from(y)))
+    });
+    push_hud_debug_options_button(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        glyphs,
+        obfuscated_pool,
+        frame_index,
+        surface_size,
+        rect.x as i32,
+        rect.y as i32,
+        rect.width as i32,
+        rect.height as i32,
+        &screen.done,
+        true,
+        hovered,
+        HUD_TINT_WHITE,
+        button_sprites,
+    );
+}
+
 #[allow(clippy::too_many_arguments)]
 fn push_hud_chat<'a>(
     vertices: &mut Vec<HudVertex>,
@@ -16117,6 +16429,24 @@ fn push_hud_chat<'a>(
                 0.0,
                 hud_argb_black_alpha(alpha * background_opacity),
             ],
+        );
+    }
+    let restricted_y = chat_bottom.saturating_sub(
+        i32::try_from(visible_lines().count().saturating_add(1))
+            .unwrap_or(i32::MAX)
+            .saturating_mul(MESSAGE_HEIGHT),
+    );
+    if context.restricted_text.is_some() {
+        push_hud_debug_tinted_rect(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            2,
+            restricted_y,
+            HUD_CHAT_MAX_WIDTH.saturating_add(8),
+            MESSAGE_HEIGHT as u32,
+            [0.0, 0.0, 0.0, hud_argb_black_alpha(background_opacity)],
         );
     }
     if context.queued_messages > 0 {
@@ -16197,6 +16527,33 @@ fn push_hud_chat<'a>(
                 );
             }
         }
+    }
+    if let Some(restricted_text) = context.restricted_text.as_deref() {
+        let restricted_runs = [HudStyledTextRun {
+            text: restricted_text.to_string(),
+            style: HudTextStyle {
+                underlined: true,
+                ..HudTextStyle::default()
+            },
+            color: Some(0xFF5555),
+        }];
+        push_hud_screen_text_draw(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &HudScreenTextDraw {
+                runs: &restricted_runs,
+                origin: (4.0, restricted_y as f32),
+                scale: 1.0,
+                tint: HUD_TINT_WHITE,
+                backdrop_opacity: 0.0,
+            },
+        );
     }
     if context.queued_messages > 0 {
         if let Some(queue_text) = context.queue_text.as_deref() {
@@ -19883,6 +20240,7 @@ fn hud_chat_chars_to_component_line(
 fn hud_chat_hit_target_at(
     lines: &[HudChatLine],
     context: &HudChatContext,
+    fonts: &HudFontGlyphBook,
     surface_size: PhysicalSize<u32>,
     position: (f64, f64),
 ) -> Option<HudChatHitTarget> {
@@ -19896,6 +20254,33 @@ fn hud_chat_hit_target_at(
     let chat_bottom = i32::try_from(surface_size.height)
         .unwrap_or(i32::MAX)
         .saturating_sub(BOTTOM_MARGIN);
+    if let Some(restricted_text) = context.restricted_text.as_deref() {
+        let visible_count = lines
+            .iter()
+            .rev()
+            .skip(context.scroll_lines)
+            .take(20)
+            .filter(|line| hud_chat_line_alpha(context, line) > 1.0e-5)
+            .count();
+        let restricted_y = chat_bottom.saturating_sub(
+            i32::try_from(visible_count.saturating_add(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(MESSAGE_HEIGHT),
+        );
+        let text_width = hud_plain_text_width(restricted_text, fonts.glyphs(None));
+        if (4..4 + i32::try_from(text_width).unwrap_or(i32::MAX)).contains(&x)
+            && (restricted_y..restricted_y.saturating_add(MESSAGE_HEIGHT)).contains(&y)
+        {
+            return Some(HudChatHitTarget {
+                level_generation: context.level_generation,
+                delivery_revision: context.delivery_revision,
+                chat_screen_revision: context.chat_screen_revision,
+                resource_generation: context.resource_generation,
+                resources_loaded: context.resources_loaded,
+                kind: HudChatHitTargetKind::Restrictions,
+            });
+        }
+    }
     if context.queued_messages > 0
         && (2..2 + HUD_CHAT_MAX_WIDTH as i32 + 6).contains(&x)
         && (chat_bottom..chat_bottom.saturating_add(MESSAGE_HEIGHT)).contains(&y)
@@ -19903,6 +20288,7 @@ fn hud_chat_hit_target_at(
         return Some(HudChatHitTarget {
             level_generation: context.level_generation,
             delivery_revision: context.delivery_revision,
+            chat_screen_revision: context.chat_screen_revision,
             resource_generation: context.resource_generation,
             resources_loaded: context.resources_loaded,
             kind: HudChatHitTargetKind::Queue,
@@ -19913,6 +20299,7 @@ fn hud_chat_hit_target_at(
     Some(HudChatHitTarget {
         level_generation: context.level_generation,
         delivery_revision: context.delivery_revision,
+        chat_screen_revision: context.chat_screen_revision,
         resource_generation: context.resource_generation,
         resources_loaded: context.resources_loaded,
         kind: HudChatHitTargetKind::Message {
@@ -21362,6 +21749,9 @@ fn sanitize_hud_command_suggestions(mut state: HudCommandSuggestions) -> HudComm
         HudCommandSuggestionsLayout::CommandBlock => (32_500, 7, 84),
     };
     state.input_text = sanitize_hud_text_preserving_empty_utf16(state.input_text, max_length);
+    if state.layout == HudCommandSuggestionsLayout::CommandBlock {
+        state.draft = false;
+    }
     let text_len = state.input_text.chars().count();
     state.cursor = state.cursor.min(text_len);
     state.selection = state.selection.min(text_len);
@@ -24184,6 +24574,29 @@ mod tests {
     }
 
     #[test]
+    fn chat_draft_input_uses_vanilla_gray_italic_style_only_for_chat_layout() {
+        let chat = sanitize_hud_command_suggestions(HudCommandSuggestions {
+            input_text: "draft".to_string(),
+            draft: true,
+            ..HudCommandSuggestions::default()
+        });
+        let runs = hud_command_input_runs(&chat);
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].text, "draft");
+        assert!(runs[0].style.italic);
+        assert_eq!(runs[0].color, Some(0xAAAAAA));
+
+        let command_block = sanitize_hud_command_suggestions(HudCommandSuggestions {
+            input_text: "draft".to_string(),
+            draft: true,
+            layout: HudCommandSuggestionsLayout::CommandBlock,
+            ..HudCommandSuggestions::default()
+        });
+        assert!(!command_block.draft);
+        assert!(hud_command_input_runs(&command_block).is_empty());
+    }
+
+    #[test]
     fn command_block_editor_layout_matches_vanilla_absolute_geometry() {
         let compact = hud_command_block_editor_layout(PhysicalSize::new(320, 240));
         assert_eq!(
@@ -24539,6 +24952,7 @@ mod tests {
             .expect("test font atlas");
         renderer.set_hud_command_suggestions(Some(HudCommandSuggestions {
             input_text: "/se".to_string(),
+            draft: false,
             cursor: 3,
             selection: 3,
             cursor_visible: true,

@@ -214,7 +214,7 @@ impl SimulationInputRuntime {
                     context.net_counters,
                     context.net_commands,
                 );
-            } else {
+            } else if !context.input.chat_restrictions_screen_is_open() {
                 context.input.interrupt_chat_screen();
             }
             self.request_cursor_capture(false, context.platform);
@@ -1343,6 +1343,13 @@ impl SimulationInputRuntime {
                 ));
             return;
         }
+        if context.input.chat_restrictions_screen_is_open() {
+            self.request_cursor_capture(false, context.platform);
+            if matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+                self.apply_chat_hit_target(chat_target, context);
+            }
+            return;
+        }
         if self.code_of_conduct_overlay.is_visible(context.world) {
             let overlay_input = self.code_of_conduct_overlay.handle_mouse_input(
                 context.world,
@@ -1799,7 +1806,12 @@ impl SimulationInputRuntime {
         let Some(target) = target else {
             return false;
         };
-        if !chat_hit_target_is_current(context.world, context.item_runtime.as_ref(), target) {
+        if !chat_hit_target_is_current(
+            context.input,
+            context.world,
+            context.item_runtime.as_ref(),
+            target,
+        ) {
             return false;
         }
         match target.kind {
@@ -1819,11 +1831,22 @@ impl SimulationInputRuntime {
                 }
                 true
             }
+            HudChatHitTargetKind::Restrictions => {
+                if context.world.chat_presentation_config().visibility
+                    == bbb_world::ChatVisibilityState::Full
+                {
+                    return false;
+                }
+                context.input.open_chat_restrictions_screen()
+            }
+            HudChatHitTargetKind::RestrictionsDone => {
+                context.input.close_chat_restrictions_screen()
+            }
             HudChatHitTargetKind::Message {
                 display_sequence,
                 target_index,
             } => {
-                let Some(event) = crate::runtime::hud_chat_component_click_event(
+                let Some(interaction) = crate::runtime::hud_chat_component_interaction(
                     context.world,
                     context.item_runtime.as_ref(),
                     display_sequence,
@@ -1831,8 +1854,9 @@ impl SimulationInputRuntime {
                 ) else {
                     return false;
                 };
-                run_component_click_event(
-                    event,
+                apply_chat_component_interaction(
+                    interaction,
+                    context.input.shift_down(),
                     context.input,
                     context.world,
                     context.net_counters,
@@ -2142,6 +2166,28 @@ impl SimulationInputRuntime {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn apply_chat_component_interaction(
+    interaction: crate::runtime::HudChatComponentInteraction,
+    shift_down: bool,
+    input: &mut crate::input::ClientInputState,
+    world: &mut WorldStore,
+    net_counters: &mut bbb_control::NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    platform: &mut PlatformEffectCollector<'_>,
+) -> bool {
+    if shift_down {
+        let Some(insertion) = interaction.insertion else {
+            return false;
+        };
+        return input.insert_chat_screen_text(&insertion, net_counters, world, net_commands);
+    }
+    let Some(event) = interaction.click_event else {
+        return false;
+    };
+    run_component_click_event(event, input, world, net_counters, net_commands, platform)
+}
+
 fn simulation_command_profile_kind(command: &SimulationCommand) -> SimulationCommandProfileKind {
     match command {
         SimulationCommand::Key { .. }
@@ -2283,6 +2329,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
 
 fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &WorldStore) -> bool {
     input.disconnected_screen_runtime().is_some()
+        || input.chat_restrictions_screen_is_open()
         || world_wants_cursor(world)
         || input.sign_editor_is_active_or_pending(world)
         || input.debug_options_screen_is_open()
@@ -2291,12 +2338,14 @@ fn simulation_wants_cursor(input: &crate::input::ClientInputState, world: &World
 }
 
 fn chat_hit_target_is_current(
+    input: &crate::input::ClientInputState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     target: HudChatHitTarget,
 ) -> bool {
     target.level_generation == world.client_level_generation()
         && target.delivery_revision == world.client_chat().delivery_revision
+        && target.chat_screen_revision == input.chat_screen_revision()
         && target.resource_generation
             == item_runtime.map_or(0, NativeItemRuntime::resource_generation)
         && target.resources_loaded == item_runtime.is_some()
@@ -2727,26 +2776,120 @@ mod tests {
     #[test]
     fn chat_hit_target_revision_rejects_new_delivery() {
         let mut world = WorldStore::new();
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut counters = bbb_control::NetCounters::default();
+        crate::input::handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::KeyT),
+            ElementState::Pressed,
+        );
         let target = HudChatHitTarget {
             level_generation: world.client_level_generation(),
             delivery_revision: world.client_chat().delivery_revision,
+            chat_screen_revision: input.chat_screen_revision(),
             resource_generation: 0,
             resources_loaded: false,
             kind: HudChatHitTargetKind::Queue,
         };
-        assert!(chat_hit_target_is_current(&world, None, target));
+        assert!(chat_hit_target_is_current(&input, &world, None, target));
         let stale_resource_target = HudChatHitTarget {
             resources_loaded: true,
             ..target
         };
         assert!(!chat_hit_target_is_current(
+            &input,
             &world,
             None,
             stale_resource_target
         ));
 
+        crate::input::handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        );
+        crate::input::handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::KeyT),
+            ElementState::Pressed,
+        );
+        assert!(!chat_hit_target_is_current(&input, &world, None, target));
+
         world.push_server_system_chat_message("new delivery");
-        assert!(!chat_hit_target_is_current(&world, None, target));
+        assert!(!chat_hit_target_is_current(&input, &world, None, target));
+    }
+
+    #[test]
+    fn shift_chat_interaction_inserts_and_suppresses_the_click_event() {
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = bbb_control::NetCounters::default();
+        crate::input::handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            PhysicalKey::Code(KeyCode::KeyT),
+            ElementState::Pressed,
+        );
+        let effects = crate::simulation::effects::RenderEffectCollector::new(
+            1,
+            bbb_control::AudioCounters::default(),
+        );
+        let mut platform = effects.platform();
+        let interaction = crate::runtime::HudChatComponentInteraction {
+            click_event: Some(ComponentClickEvent::SuggestCommand {
+                command: "/clicked".to_string(),
+            }),
+            insertion: Some("inserted".to_string()),
+        };
+        assert!(apply_chat_component_interaction(
+            interaction.clone(),
+            true,
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            &mut platform,
+        ));
+        assert_eq!(
+            input
+                .command_suggestion_hud_state(
+                    &world,
+                    &bbb_renderer::HudFontGlyphMap::default(),
+                    PhysicalSize::new(800, 600),
+                )
+                .map(|state| state.input_text),
+            Some("inserted".to_string())
+        );
+        assert!(apply_chat_component_interaction(
+            interaction,
+            false,
+            &mut input,
+            &mut world,
+            &mut counters,
+            &None,
+            &mut platform,
+        ));
+        assert_eq!(
+            input
+                .command_suggestion_hud_state(
+                    &world,
+                    &bbb_renderer::HudFontGlyphMap::default(),
+                    PhysicalSize::new(800, 600),
+                )
+                .map(|state| state.input_text),
+            Some("/clicked".to_string())
+        );
     }
 
     #[test]

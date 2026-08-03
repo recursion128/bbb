@@ -422,7 +422,7 @@ BBB 唯一 owner 是 simulation `ClientInputState`，renderer/control 只收窄 
   latest draft、history buffer/position、is-draft、INTENTIONAL/INTERRUPTED/DONE state；权限只从
   `ChatPresentationConfig.visibility` 投影。保持 256 UTF-16 上限与既有 budgets；成功 normalized
   send 才入 recent，suggestion 先于 history，resize/focus loss 保留 screen state。
-- Phase C 固定 Full=message+command、System=非 message-argument command、Hidden=none；normal click 执行 event，
+- Phase C 已固定 Full=message+command、System=非 message-argument command、Hidden=none；normal click 执行 event，
   Shift click 仅插 inherited insertion。renderer 只接收 bounded draft/restriction/interaction，
   绘制无全屏背景 edit/focused chat/restricted info，并以 generation/revision 拒绝 stale target。
 - Phase D 复用 screen narration runtime；有界 control text/key 重放真实 key/IME handler并发布

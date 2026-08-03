@@ -842,6 +842,10 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
                 value: NbtSummaryValue::String("example:compact".to_string()),
             },
             NbtSummaryEntry {
+                name: "insertion".to_string(),
+                value: NbtSummaryValue::String("insert me".to_string()),
+            },
+            NbtSummaryEntry {
                 name: "click_event".to_string(),
                 value: NbtSummaryValue::Compound(vec![
                     NbtSummaryEntry {
@@ -878,6 +882,7 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
     let messages = hud_chat_messages_from_world(&world, None);
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].interactions.len(), 1);
+    assert!(messages[0].interactions[0].insertion);
     assert_eq!(messages[0].runs[0].font.as_deref(), Some("example:compact"));
     assert_eq!(
         messages[0].interactions[0].tooltip.as_ref().unwrap().lines[0].runs[0]
@@ -886,14 +891,17 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
         "details"
     );
     assert_eq!(
-        hud_chat_component_click_event(
+        hud_chat_component_interaction(
             &world,
             None,
             messages[0].display_sequence,
             messages[0].interactions[0].target_index,
         ),
-        Some(ComponentClickEvent::SuggestCommand {
-            command: "/seed".to_string(),
+        Some(HudChatComponentInteraction {
+            click_event: Some(ComponentClickEvent::SuggestCommand {
+                command: "/seed".to_string(),
+            }),
+            insertion: Some("insert me".to_string()),
         })
     );
     assert!(matches!(
@@ -909,6 +917,38 @@ fn rich_chat_projection_retains_click_hover_and_revalidates_canonical_target() {
             .as_deref(),
         Some("example:compact")
     );
+}
+
+#[test]
+fn restrictions_projection_uses_the_canonical_chat_visibility_permissions() {
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut config = world.chat_presentation_config().clone();
+    config.visibility = bbb_world::ChatVisibilityState::System;
+    world.set_chat_presentation_config(config);
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyT),
+        winit::event::ElementState::Pressed,
+    );
+    assert!(input.open_chat_restrictions_screen());
+    let screen = hud_chat_restrictions_screen(&input, &world, None, Some((10, 20)))
+        .expect("system restriction screen");
+    assert_eq!(screen.title, "Restrictions");
+    assert_eq!(
+        screen.reason.text,
+        "Player chat is restricted in client settings."
+    );
+    assert_eq!(screen.permissions.len(), 4);
+    assert_eq!(screen.permissions[0].color, Some(0xFF5555));
+    assert_eq!(screen.permissions[1].color, Some(0x55FF55));
+    assert_eq!(screen.permissions[2].color, Some(0x55FF55));
+    assert_eq!(screen.permissions[3].color, Some(0xFF5555));
+    assert_eq!(screen.cursor_position, Some((10, 20)));
 }
 
 #[test]
