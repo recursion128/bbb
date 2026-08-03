@@ -281,52 +281,6 @@ metadata；协议/world/runtime 问题断言状态转换、ordering、canonical 
 effect，不以“未崩溃”代替语义验证。狭义 P0 只按本节跨域重开条件进入队列；没有
 进入正式交付合同的开放式视觉 parity 留在对应优先级。
 
-### 当前 active 工程合同：Vanilla root window icon 消费闭环
-
-单一目标：让 native startup 通过统一 indexed/default `vanilla` pack 的 root-resource
-查询装载 Vanilla 26.1 release/snapshot window icons，并按平台一次性应用；失败继续使用
-平台默认图标。不得引入第二套 asset resolver、materialized assets 目录或 title/pack UI。
-
-- Vanilla owner/order：`Minecraft` 创建 `Window` 后、初始化 mouse/keyboard 前调用
-  `Window.setIcon(vanillaPackResources, stable ? IconSet.RELEASE : IconSet.SNAPSHOT)`；
-  `IconSet` 的 standard 路径固定为 16/32/48/128/256 PNG，macOS 路径为对应 ICNS。
-  GLFW Win32/X11 只在五张 PNG 全部 open/decode 后提交；Wayland 不查询资源；macOS
-  通过 `NSApplication.setApplicationIconImage` 提交。任一 I/O/decode 失败由
-  `Minecraft` 记录错误并继续启动。
-- owner/API/direction：`bbb-pack` 唯一拥有 `WindowIconCatalog` 的 vanilla-only root
-  resolve、indexed integrity、bounded PNG/ICNS decode 与 immutable CPU payload；
-  `bbb-native::window_icon` 只拥有 platform target、winit/AppKit projection 与 startup
-  diagnostics。依赖保持 pack→窄 catalog→native window，renderer/world/audio 不读取
-  pack 或复制 icon state；稳定版选择复用 `bbb_protocol::MC_STABLE`。
-- precedence/budget/fallback：root path 保持当前 unified provider 的 indexed/default
-  vanilla 顺序，selected/startup/server packs 不能覆盖或 filter window icons；对象按需
-  size/SHA-1 校验，不枚举或打开无关 indexed objects。standard 五图共享 generation
-  image budget，ICNS 受独立文件上限和 generation retained-byte accounting 约束；非法
-  ICNS header/declared length、缺失、损坏、budget rejection 均返回完整 prepare 失败。
-- lifecycle/apply：startup 先完整 prepare，再执行一次 backend apply；Wayland/未知 backend
-  在 prepare 前 skip，保证零 root read。X11 投影完整 standard family 的最大图，Windows
-  同时投影 32px window 与 256px taskbar 图，macOS 投影原始 ICNS；转换或 apply 失败不保留
-  shadow state，也不影响资源 generation；startup icons 不参加 runtime pack reload。
-- 删除/防漂移：不得保留 source/generated/icon 专用路径 fallback；production 只能从
-  `PackRoots::load_window_icon_catalog` 进入 root provider。source guard 锁定唯一调用点、
-  window-create→icon→IME/input 顺序、Wayland zero-read 与 selected-pack 隔离。
-- 非目标：不增加 title/singleplayer/Realms/pack-selection screen，不改变 window size、
-  fullscreen/DPI/input、renderer surface、resource reload 或 indexed namespace 行为；不提交
-  官方 icon 产物。X11 交互 seat 与 macOS/Windows release runner 仍按账本的独立外部验证
-  重启条件维护，不能用 unit/cfg coverage 冒充真实平台 release acceptance。
-- 阶段：A 只读核对 Vanilla/platform/provider 并冻结合同；B 在 `bbb-pack` 建 bounded
-  vanilla-only catalog 与 focused tests；C 在 `bbb-native` 接入 prepare/apply/diagnostics，
-  增加 reverse guards；D 用本地 index 30 验收 12 个真实 root objects，更新 Wiki/ledger/
-  matrix，完整 diff review、提交、full gate，并刷新适用 Wayland platform/live gate。
-- focused tests：release/snapshot 精确路径和顺序、五图 all-or-nothing、selected/filter 隔离、
-  lazy indexed integrity、PNG/ICNS file/image/data budget、ICNS magic/length、Wayland zero-read、
-  X11/Windows/macOS projection、唯一 startup 调用点与失败继续；真实 acceptance 断言 index 30
-  两组 PNG 尺寸及两份 ICNS 均从 object store 读取，现有 resource/provider tests 不回退。
-- checkpoint/停止：Cargo dependency、`unsafe` AppKit 或跨 owner 提交后立即 full gate；最终
-  HEAD 再 full gate，并在其上运行声明的 Wayland platform acceptance。
-  仅可在干净、已 gated、合同仍 active 且没有部分 backend apply 的 commit 安全停止；只有
-  BBB 无法消除且已复现、带精确 runner/OS 重启条件的外部失败可作 blocker。
-
 ### P0 合同：官方 26.1 同载渲染与性能闭环
 
 同载比较每次重开均是一个高风险工程 slice，单一语义目标是先满足“官方 Vanilla
@@ -457,7 +411,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p1-generated-facts: maintenance
 - p2-non-entity: active
 - p2-hud: active
-- p3-resources: active
+- p3-resources: maintenance
 - p4-delivery: active
 <!-- roadmap-status:end -->
 
@@ -495,11 +449,11 @@ active 工程。每项按注册面、frame order、state/input lifecycle 和真�
 
 ### P3：动态资源 presentation breadth
 
-状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、
+状态：`maintenance`。selected/startup/server pack、indexed default vanilla provider、push/pop、
 原子 immutable resource generation、font/language/sound 与动态 presentation owner 已由 Wiki
-资源机制页、focused tests 和 playable diagnostics 覆盖。当前 ledger 保留 20 个 reload-listener
-consumer 的逐族 prepare/apply/rollback 审计，以及 provider 已可达但 native window consumer
-尚未接入的 root icon gap；panorama、built-in pack ZIP 与 Realms 对应 surface 按账本保留为
+资源机制页、focused tests 和 playable diagnostics 覆盖。20 个 reload-listener consumer
+已完成逐族 prepare/apply/rollback 审计；root window icon 已由 vanilla-only catalog 接入
+native startup。panorama、built-in pack ZIP 与 Realms 对应 surface 按账本保留为
 `not-needed`。
 
 - 固定内置 block/entity identity 继续使用现有资源包模型、纹理和表现，并进入同一
@@ -517,8 +471,8 @@ consumer 的逐族 prepare/apply/rollback 审计，以及 provider 已可达但 
   pending/ready/failed owner 与 exact fallback；不得新增第二套 registry、
   schema、pack stack 或 cache owner。
 
-reload-listener 与 window-icon 两项关闭后恢复 maintenance；以后只有目标 index/pack 语义
-变化、统一 resolver 回退或新 current-surface consumer 出现时重开。
+以后只有目标 index/pack 语义变化、统一 resolver 回退或新 current-surface consumer 出现时
+重开。
 
 ### P4：健壮性、运行时性能与平台交付
 

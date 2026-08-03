@@ -273,32 +273,6 @@ Matrix route: `interaction-server-authority-exclusions`
 
 Audio unit tests must remain independent of an audio device.
 
-## Official 26.1 resource-pack coverage
-
-Owner: `bbb-pack` + `bbb-item-model` + `bbb-native` + `bbb-renderer`
-
-Matrix route: `resources-window-icons`
-
-Loader invariants (not todos): keep the local vanilla coverage tests
-(`loads_all_local_vanilla_atlases`, `loads_local_vanilla_item_model_catalog`,
-`loads_local_vanilla_item_registry`,
-`loads_local_vanilla_equipment_asset_catalog`) green when changing pack loaders;
-add parser support only when an official asset or a focused resource-pack
-fixture fails them; keep precedence/filter tests next to the loaders.
-
-- **Vanilla root window-icon consumption is `active`.** Vanilla 26.1
-  `Minecraft` calls `Window.setIcon(vanillaPackResources, IconSet)` during
-  native window startup, and `IconSet` opens five release/snapshot PNGs or the
-  macOS ICNS through root resources. The shared indexed provider exposes all
-  12 objects, but bbb's existing native window never consumes them. Wire the
-  bounded root-resource decode to the platform window without adding title or
-  pack-selection UI; preserve release/snapshot selection and missing/invalid
-  icon fallback diagnostics. The active engineering contract is frozen in
-  `goal.md`: `bbb-pack` owns a vanilla-only immutable CPU catalog and budgets;
-  `bbb-native` owns the single startup platform apply. Close only after all
-  production callers use that path, local index 30 proves all 12 objects, and
-  the applicable full/platform gates pass.
-
 ## Resource and dynamic texture generalization
 
 Owner: `bbb-pack` + `bbb-native` + `bbb-renderer`

@@ -70,12 +70,12 @@ index 30 的 4749 个 object 全部可由 provider 枚举；“物理存在”�
 | Minecraft locale JSON | 141 | `LanguageManager`, `ClientLanguage` | 是，按 selected locale 读取 | `LanguageCatalog`/`NativeItemRuntime`；CLI locale 需要 | `equivalent` |
 | `sounds.json` + OGG | 4565 | `SoundManager`, `SoundEngine` | 是，definition 读取、OGG lazy open | `SoundCatalog`/native audio；外部 session 需要 | `equivalent` |
 | root `pack.mcmeta` | 1 | `VanillaPackResources`, metadata sections | 是，root resource | pack/language metadata；reload 需要 | `equivalent` |
-| window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | native window 存在，但尚未设置 icon | `partial`；[ledger](../../../unsupported-features.md) |
+| window icons PNG/ICNS | 12 | `Minecraft`→`Window.setIcon`→`IconSet` | 是，root resource | vanilla-only catalog→native startup platform apply | `equivalent` |
 | title panorama | 7 | `GuiRenderer.CubeMap`, `Panorama` | 是，`minecraft` | CLI 直连客户端无 title/panorama screen | `not-needed`；title/menu panorama 进入产品范围时重开 |
 | built-in pack ZIP | 2 | `ClientPackSource`, pack repository/options | 是，`minecraft:resourcepacks/**` | 无 pack-selection/high-contrast/programmer-art id surface | `not-needed`；增加内置 pack id 选择或对应 UI/CLI 时重开 |
 | Realms language/carousel | 16 | `LanguageManager`, `AddRealmPopupScreen` | 是，`realms` | Realms service/screen 明确不在外部多人客户端范围 | `not-needed`；Realms service/screen 进入范围时重开 |
 
-按 object 计数为：`equivalent=4712`、`partial=12`、`not-needed=25`、
+按 object 计数为：`equivalent=4724`、`partial=0`、`not-needed=25`、
 `deferred-external=0`，合计 4749。not-needed 判断只关闭对应 presentation consumer；这些
 字节仍保持 provider 可达，不会因此被 eager 读取。
 
@@ -185,7 +185,7 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 | namespace/root 枚举 | `minecraft`,`realms`, root resources | indexed provider | `equivalent` | list/root/path-safety tests |
 | lazy integrity/budget | indexed object stream open | descriptor + consumer read/open | `equivalent` | missing/size/SHA/lazy/accounting tests |
 | locale/font/sound consumer | shared resource manager | shared `PackResourceStack` | `equivalent` | zh_cn/CJK/OGG real acceptance |
-| window icon consumer | `Window.setIcon` | no native consumer | `partial` | [ledger](../../../unsupported-features.md) |
+| window icon consumer | `Window.setIcon` | `WindowIconCatalog`→`window_icon` startup apply | `equivalent` | root path/order/budget/platform/source-guard tests；index 30 acceptance |
 
 ## 结构性不变量
 
@@ -193,6 +193,8 @@ metadata 和预算；`bbb-pack/src/roots.rs` 负责 discovery/generation。langu
 - external indexed 对 source/jar-equivalent 的 pack 内顺序和外层 pack priority 不得互换。
 - index 枚举不得打开或 hash 全部 object；integrity 必须延迟到实际 read/open。
 - font、language、sound 不得恢复各自的 index-specific fallback/resolver。
+- window icon 不得绕过 `WindowIconCatalog` 恢复 source/generated 专用路径；selected、startup
+  与 server pack 不参与 Vanilla root icon 查询。
 - generation 内消费者不能混用两次 reload 的资源，失败必须保留上一代。
 
 ## 聚焦测试（focused tests）和真实证据
@@ -202,17 +204,23 @@ single/stack、source/index/selected/server priority、filter、`.mcmeta`、lazy
 预算与 generation rollback。真实 index 30 acceptance 在清除旧 assets 环境变量后读取
 `zh_cn` 的“多人游戏”，解析 1902 个 sound event 并 bounded-open
 `random/click_stereo.ogg`，以及生成 8192×4729、114432 glyph 的默认 atlas，验证
-`中`、`日`、`한`、U+20000 metrics/UV。
+`中`、`日`、`한`、U+20000 metrics/UV。window-icon acceptance 从 index 30 按需读取两组
+五张 PNG 与两份 ICNS，核对 exact dimensions、ICNS header/length、对象完整性及预算；
+Wayland startup 在 provider 查询前跳过并发布 `window_icon_object_reads=0` diagnostics。
 
 ## 当前差异
 
-统一 provider、font、language、sound 当前闭合；root icon 字节已可达但 window consumer
-仍是独立 open gap。其余未消费家族没有当前产品 surface，依据和重开条件由上表及唯一
-ledger 保留。
+统一 provider、font、language、sound 与 root window-icon consumer 当前闭合。icon 的
+唯一 CPU owner 是 `bbb-pack::WindowIconCatalog`：standard family 在提交前完整解析五张 PNG，
+macOS family 有界读取并校验 ICNS；`bbb-native::window_icon` 只做 backend 选择和一次 startup
+apply。Wayland/未知 backend 零读取跳过，X11/Windows 使用窄 RGBA projection，macOS 使用
+原始 ICNS；任一 prepare/apply 失败继续使用平台默认图标，不保留 shadow state，也不参与
+runtime resource reload。其余未消费家族没有当前产品 surface，依据和重开条件由上表及
+唯一 ledger 保留。
 
 ## 账本/goal 路由
 
-window icon gap 与 indexed 范围外 family 判断只在
+indexed 范围外 family 判断只在
 [`unsupported-features.md`](../../../unsupported-features.md) 维护。
 
 ## 精确重开条件

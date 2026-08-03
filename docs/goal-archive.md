@@ -59,6 +59,8 @@
   独立终态 deadline，并以服务器 receipt、零工作 gauge 与 clean exit 完成三轮 live soak。
 - **2026-08-03（selected shader compilation convergence）**：17 个 pipeline family 的
   vertex/fragment stage 编译收敛为一个 renderer-private owner，并以 reverse guard 防回流。
+- **2026-08-03（Vanilla root window icons）**：统一 indexed/default vanilla root catalog
+  按平台完成 bounded startup apply、默认 icon fallback 与 Wayland 零读取闭环。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程
 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
