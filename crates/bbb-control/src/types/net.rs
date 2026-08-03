@@ -115,7 +115,7 @@ pub struct NetCounters {
     /// Common-listener remote disconnects that requested Vanilla's unfiltered
     /// SoundManager stop before the terminal resource-pack reload.
     #[serde(default)]
-    pub remote_disconnect_audio_stop_requests: u64,
+    pub simulation_remote_disconnect_audio_stop_requests: u64,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
     #[serde(default)]

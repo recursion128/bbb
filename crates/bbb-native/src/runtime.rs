@@ -2647,8 +2647,8 @@ pub(crate) fn advance_simulation(
             },
         );
         if stop_audio {
-            net_counters.remote_disconnect_audio_stop_requests = net_counters
-                .remote_disconnect_audio_stop_requests
+            net_counters.simulation_remote_disconnect_audio_stop_requests = net_counters
+                .simulation_remote_disconnect_audio_stop_requests
                 .saturating_add(1);
             if let Some(audio_events) = audio_events.as_deref_mut() {
                 audio_events.stop_all_sounds();

@@ -153,7 +153,7 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
             if mode == "kick"
             else None,
             "kick_net_counters": {
-                "remote_disconnect_audio_stop_requests": 1,
+                "simulation_remote_disconnect_audio_stop_requests": 1,
             }
             if mode == "kick"
             else None,
@@ -251,7 +251,7 @@ class LifecycleSoakEvidenceTests(unittest.TestCase):
     def test_kick_requires_one_phase_aware_disconnect_audio_stop(self):
         termination = self.termination("kick")
         termination["kick_net_counters"][
-            "remote_disconnect_audio_stop_requests"
+            "simulation_remote_disconnect_audio_stop_requests"
         ] = 0
         with self.assertRaisesRegex(
             lifecycle_soak.SoakFailure, "exactly one phase-aware audio stop"

@@ -256,7 +256,9 @@ def validate_iteration(
             termination.get("kick_net_counters"),
             f"iteration {iteration}.kick_net_counters",
         )
-        audio_stop_requests = kick_net.get("remote_disconnect_audio_stop_requests")
+        audio_stop_requests = kick_net.get(
+            "simulation_remote_disconnect_audio_stop_requests"
+        )
         if (
             not isinstance(audio_stop_requests, int)
             or isinstance(audio_stop_requests, bool)

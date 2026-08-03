@@ -30,7 +30,7 @@ fn remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallbac
         .find("audio_events.stop_all_sounds();")
         .expect("common-listener disconnect audio stop");
     let stop_receipt = advance
-        .find("net_counters.remote_disconnect_audio_stop_requests")
+        .find("net_counters.simulation_remote_disconnect_audio_stop_requests")
         .expect("phase-aware audio stop receipt");
     let cursor = advance
         .find("input_runtime.request_terminal_screen_cursor(platform_effects);")
