@@ -408,6 +408,36 @@ gate；适用时刷新 live playable stamp；`goal.md` 与 `docs/unsupported-fea
 反映真实状态。外部环境 blocker 必须可复现并精确验证；“画面看起来接近”不是安全
 停止点。
 
+### 当前工程合同：Vanilla 26.1 `ChatScreen` 25-owner decision surface
+
+目标：只关闭 external multiplayer 可达的 `ChatScreen` 编辑、权限、历史/草稿、component
+interaction、render/narration 与 close/interrupt 生命周期。Vanilla owner 是 25 个 generated
+method owner 及其直接输入 `ChatAbilities`、`ChatComponent` recent/draft 和 `Style.insertion`；
+BBB 唯一 owner 是 simulation `ClientInputState`，renderer/control 只收窄 projection。
+
+- Phase A 已核对 `ChatScreen` 全方法、`ChatAbilities`、`RestrictionsScreen` 与 `ChatComponent`；
+  缺口是 send 未受权限约束、无 recent/draft/history/exit owner、screen replacement 丢 draft、
+  无 shift-insertion、restricted prompt/info、screen narration 与 UI-driven live evidence。
+- Phase B 在 `ClientInputState` 建唯一 process-lifetime MESSAGE/COMMAND、recent≤100且相邻去重、
+  latest draft、history buffer/position、is-draft、INTENTIONAL/INTERRUPTED/DONE state；权限只从
+  `ChatPresentationConfig.visibility` 投影。保持 256 UTF-16 上限与既有 budgets；成功 normalized
+  send 才入 recent，suggestion 先于 history，resize/focus loss 保留 screen state。
+- Phase C 固定 Full=message+command、System=command、Hidden=none；normal click 执行 event，
+  Shift click 仅插 inherited insertion。renderer 只接收 bounded draft/restriction/interaction，
+  绘制无全屏背景 edit/focused chat/restricted info，并以 generation/revision 拒绝 stale target。
+- Phase D 复用 screen narration runtime；有界 control text/key 重放真实 key/IME handler并发布
+  immutable ChatScreen status。live 必须经 T或`/`→text→Enter 证明 message/command roundtrip，
+  机器状态证明 history/draft/restriction；gate 不得直接调用 net chat resolver 代替 screen。
+- `--client-save-chat-drafts` 是默认 false 的 startup option。本 slice 不做 in-game ChatOptions、
+  launcher/profile policy input、账号链接、磁盘 CommandHistory、`InBedChatScreen`、secure-chat
+  redesign 或 renderer 重构；settings action 仅在产品边界允许 in-game options 时重开。
+- focused evidence 覆盖 25-owner mapping、UTF-16/filter/normalization、permission、recent/history/
+  draft exit、suggestion/page/wheel、normal/Shift click、restriction/narration、resize/focus/portal/
+  nonpause、bounded control/status、stale target和single-owner reverse guard。checkpoint 为 protocol
+  insertion、native lifecycle、renderer/control/live wiring；跨 owner checkpoint 提交并 full gate。
+- 最终更新 Wiki/matrix并删 ledger 项；per-commit checks、full gate 与 live/lifecycle stamp 必须过。
+  安全停止点仅为 clean full-gated active checkpoint；blocker 仅限外部 runner 可复现失败且有重启条件。
+
 ## 客户端差异优先级
 
 路线状态是机械索引，不是独立任务源；具体 ready/deferred/not-needed 事实只在
