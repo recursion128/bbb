@@ -119,6 +119,21 @@ descriptor/资源 owner。共享 shader 仍随 renderer resource transaction 一
 pipeline 编译失败保留上一完整 generation，不产生独立 shader cache 或 compatibility 路径。反向
 source guard 锁定共享声明唯一，并禁止旧 cull shader owner 恢复。
 
+## Menu screen 注册与生命周期
+
+Vanilla `MenuScreens.register` 的 25 个 menu type→screen class 映射及声明顺序由
+`scripts/menu_screen_catalog_extractor.py` 通过共享 Tree-sitter frontend 提取，并生成
+native-private `menu_screens_26_1` catalog。它是 screen-kind 的唯一 resolver；protocol 的
+`MenuType` catalog 只拥有 registry id，world 的 `InventoryState` 只拥有当前 container、title、
+slot/data 与 open-container revision，renderer 只消费 native 已完成的 HUD projection。
+
+合法 `ClientboundOpenScreenPacket` 先由 protocol 拒绝 catalog 外 id，world 再以单次 replace
+发布 container state，native layout 对 id 只查询一次生成 catalog。25 项各自沿用既有 layout、
+hit-test、click transaction 与 render owner；`LecternScreen` 投影到专用 book surface，其余映射
+投影到 inventory HUD。clientbound/local close、respawn 与 session replacement 清除同一个 world
+state，不存在 native shadow screen cache。未知 id 的 native 查询返回无 surface；重复、遗漏、顺序
+变化及生成输出陈旧均在 extractor fixture、catalog exact-output check 和 reverse source guard 失败。
+
 ## 生命周期
 
 启动创建平台与资源基础，连接依次经过 handshake、configuration、play。configuration

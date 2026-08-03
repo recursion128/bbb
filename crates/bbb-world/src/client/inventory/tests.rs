@@ -10451,6 +10451,37 @@ fn every_generated_menu_type_has_known_container_click_rules() {
 }
 
 #[test]
+fn every_generated_menu_type_uses_the_same_open_replace_close_lifecycle() {
+    let mut store = WorldStore::new();
+    let mut expected_revision = 0;
+
+    for menu_type in VANILLA_MENU_TYPES {
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: menu_type.id + 1,
+            menu_type_id: menu_type.id,
+            title: bbb_protocol::RichTextComponent::plain(menu_type.resource_id),
+        });
+        expected_revision += 1;
+
+        let container = store.inventory().open_container.as_ref().unwrap();
+        assert_eq!(container.container_id, menu_type.id + 1);
+        assert_eq!(container.menu_type_id, Some(menu_type.id));
+        assert_eq!(
+            container.title.as_ref().unwrap().text(),
+            menu_type.resource_id
+        );
+        assert_eq!(store.inventory().open_container_revision, expected_revision);
+
+        assert!(store.apply_container_close(ProtocolContainerClose {
+            container_id: menu_type.id + 1,
+        }));
+        expected_revision += 1;
+        assert!(store.inventory().open_container.is_none());
+        assert_eq!(store.inventory().open_container_revision, expected_revision);
+    }
+}
+
+#[test]
 fn apply_local_container_throw_drops_one_from_inventory_slot() {
     let mut store = WorldStore::new();
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {

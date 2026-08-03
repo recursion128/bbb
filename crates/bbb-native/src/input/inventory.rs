@@ -58,6 +58,7 @@ use bbb_item_model::NativeItemRuntime;
 
 pub(super) mod creative;
 mod layout;
+mod menu_screens_26_1;
 mod recipe_book_lifecycle;
 
 #[cfg(test)]

@@ -112,6 +112,9 @@ non-goals 不因进入维护态而自动转成 TODO。
   backpressure，不能丢 release/interaction/shutdown。worker 退出须原子 close 并唤醒
   waiter；新增 producer 必须分类、递归计入 owned capacity、处理 oversized/closed，且
   不得绕过 `enqueue_or_report`/显式 `Result` 恢复 unchecked enqueue。
+- `MenuScreens` 的 menu-type→screen-kind 事实只来自共享 Tree-sitter 生成的 native-private
+  catalog；protocol 只拥有 registry id，world 只拥有 container/session state，layout 只能做一次
+  catalog 查询。新增注册须通过 exact-output stale check，不得恢复手写 screen resolver。
 - `bbb-world` 可序列化状态路径不得引入 wall-clock（SystemTime/Instant）；
   音效 seed 走 `ClientAudioState.sound_seed_random` 确定性链。
 - 大文件布局：particle_runtime / particles / item_models 为 facade + 域
@@ -457,29 +460,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级为账本中的有界
 active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
 不得借此加入 title、singleplayer、Realms 或 options UI。
-
-#### 当前工程合同：Vanilla 26.1 `MenuScreens` 25 项注册收口
-
-目标是让本地 `MenuScreens.register` 的 25 个 menu-type→screen-class 事实成为 native
-唯一 screen-kind resolver，并证明现有 packet→world container→layout/input→render/close
-路径逐项可达；产品行为、slot/transaction 规则和 renderer 机制保持不变。Vanilla 依据固定为
-`MenuScreens.create/register/selfTest/ScreenConstructor.fromPacket`、静态注册顺序和
-`MenuType` registry 顺序；未知 type 记录缺失并不创建 screen，重复注册失败。
-
-唯一 owner 是共享 Tree-sitter 提取器生成的 `bbb-native` registration catalog；protocol
-只拥有 menu registry id，world 只拥有 container/session state，native 消费不可变 screen-kind
-projection，renderer 不反向读取 packet、world 或 catalog。open 原子替换当前 container，close/
-session replacement 清除旧状态；本 slice 不新增 chat/death/disconnect/pause、title/Realms/
-options screen，不改点击语义、布局坐标、资源或 frame pipeline。
-
-串行阶段为：A 提取器 fixture 与 25 项 stable/unique/missing/duplicate stale evidence；B 生成
-catalog 并迁移全部 native layout production caller、删除手写 id→screen-kind resolver；C 复验
-25 项 open/layout/hit-test/click/render/close lifecycle、unknown-id fallback 与 reverse guard；D
-更新 Wiki/矩阵/ledger，完整 diff review、正常提交并执行高风险 full gate。focused commands
-覆盖 Python extractor tests、`bbb-native` inventory/runtime tests、`bbb-world` inventory/UI tests、
-generated `--check`、docs lint、fmt、diff check 与 workspace check；行为不变仍刷新 fixture gate，
-不强制重跑 live。安全停止点仅允许已提交且 full-gated 的阶段边界；内部解析/迁移失败必须
-fix-forward，只有本地权威源码不可读取且重复复现后才构成外部 blocker。
 
 ### P3：动态资源 presentation breadth
 

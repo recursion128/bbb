@@ -247,6 +247,20 @@ else
   echo "docs lint: client inventory exact-output check skipped (Vanilla tree or repo generator absent)"
 fi
 
+menu_screen_generator="$repo_root/scripts/generate-menu-screen-catalog.py"
+menu_screen_output="$repo_root/crates/bbb-native/src/input/inventory/menu_screens_26_1.rs"
+if [ -d "$vanilla_source_root" ] && [ -f "$menu_screen_generator" ]; then
+  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+    "$menu_screen_generator" \
+    --source-root "$vanilla_source_root" \
+    --output "$menu_screen_output" \
+    --check; then
+    failed=1
+  fi
+else
+  echo "docs lint: menu-screen catalog exact-output check skipped (Vanilla tree or repo generator absent)"
+fi
+
 if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
   failed=1
 fi

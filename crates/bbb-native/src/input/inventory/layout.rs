@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    menu_screens_26_1::{vanilla_menu_screen_kind, VanillaMenuScreenKind},
+    *,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InventoryScreenBackground {
@@ -227,35 +230,34 @@ fn inventory_screen_layout_with_recipe_book_mode(
         });
     }
     let menu_type_id = container.menu_type_id?;
-    if let Some(rows) = generic_container_rows(menu_type_id) {
-        return Some(InventoryScreenLayout {
-            width: GENERIC_CONTAINER_WIDTH,
-            height: GENERIC_CONTAINER_BASE_HEIGHT + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
-            background: InventoryScreenBackground::Generic9xRows { rows },
-            recipe_book: None,
-            slots: generic_container_slot_layouts(rows),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_GENERIC_3X3_ID {
-        return Some(InventoryScreenLayout {
+    let screen_kind = vanilla_menu_screen_kind(menu_type_id)?;
+    Some(match screen_kind {
+        VanillaMenuScreenKind::Container => {
+            let rows = generic_container_rows(menu_type_id)?;
+            InventoryScreenLayout {
+                width: GENERIC_CONTAINER_WIDTH,
+                height: GENERIC_CONTAINER_BASE_HEIGHT
+                    + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
+                background: InventoryScreenBackground::Generic9xRows { rows },
+                recipe_book: None,
+                slots: generic_container_slot_layouts(rows),
+            }
+        }
+        VanillaMenuScreenKind::Dispenser => InventoryScreenLayout {
             width: GENERIC_3X3_SCREEN_WIDTH,
             height: GENERIC_3X3_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Generic3x3,
             recipe_book: None,
             slots: generic_3x3_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_CRAFTER_3X3_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Crafter => InventoryScreenLayout {
             width: CRAFTER_SCREEN_WIDTH,
             height: CRAFTER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Crafter,
             recipe_book: None,
             slots: crafter_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_CRAFTING_ID {
-        return Some(recipe_book_overlay_layout(
+        },
+        VanillaMenuScreenKind::Crafting => recipe_book_overlay_layout(
             world,
             InventoryScreenLayout {
                 width: CRAFTING_SCREEN_WIDTH,
@@ -265,139 +267,117 @@ fn inventory_screen_layout_with_recipe_book_mode(
                 slots: crafting_table_slot_layouts(),
             },
             recipe_book_narrow,
-        ));
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_ENCHANTMENT_ID {
-        return Some(InventoryScreenLayout {
+        ),
+        VanillaMenuScreenKind::Enchantment => InventoryScreenLayout {
             width: ENCHANTMENT_SCREEN_WIDTH,
             height: ENCHANTMENT_SCREEN_HEIGHT,
             background: InventoryScreenBackground::EnchantmentTable,
             recipe_book: None,
             slots: enchantment_table_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_ANVIL_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Anvil => InventoryScreenLayout {
             width: ANVIL_SCREEN_WIDTH,
             height: ANVIL_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Anvil,
             recipe_book: None,
             slots: anvil_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_BEACON_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Beacon => InventoryScreenLayout {
             width: BEACON_SCREEN_WIDTH,
             height: BEACON_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Beacon,
             recipe_book: None,
             slots: beacon_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_BREWING_STAND_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::BrewingStand => InventoryScreenLayout {
             width: BREWING_STAND_SCREEN_WIDTH,
             height: BREWING_STAND_SCREEN_HEIGHT,
             background: InventoryScreenBackground::BrewingStand,
             recipe_book: None,
             slots: brewing_stand_slot_layouts(),
-        });
-    }
-    if let Some(background) = furnace_screen_background(menu_type_id) {
-        return Some(recipe_book_overlay_layout(
+        },
+        VanillaMenuScreenKind::BlastFurnace
+        | VanillaMenuScreenKind::Furnace
+        | VanillaMenuScreenKind::Smoker => recipe_book_overlay_layout(
             world,
             InventoryScreenLayout {
                 width: FURNACE_SCREEN_WIDTH,
                 height: FURNACE_SCREEN_HEIGHT,
-                background,
+                background: match screen_kind {
+                    VanillaMenuScreenKind::BlastFurnace => InventoryScreenBackground::BlastFurnace,
+                    VanillaMenuScreenKind::Furnace => InventoryScreenBackground::Furnace,
+                    VanillaMenuScreenKind::Smoker => InventoryScreenBackground::Smoker,
+                    _ => unreachable!("furnace-family arm excludes other screen kinds"),
+                },
                 recipe_book: None,
                 slots: furnace_slot_layouts(),
             },
             recipe_book_narrow,
-        ));
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_GRINDSTONE_ID {
-        return Some(InventoryScreenLayout {
+        ),
+        VanillaMenuScreenKind::Grindstone => InventoryScreenLayout {
             width: GRINDSTONE_SCREEN_WIDTH,
             height: GRINDSTONE_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Grindstone,
             recipe_book: None,
             slots: grindstone_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_HOPPER_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Hopper => InventoryScreenLayout {
             width: HOPPER_SCREEN_WIDTH,
             height: HOPPER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Hopper,
             recipe_book: None,
             slots: hopper_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_LECTERN_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Lectern => InventoryScreenLayout {
             width: LECTERN_SCREEN_WIDTH,
             height: LECTERN_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Lectern,
             recipe_book: None,
             slots: Vec::new(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_LOOM_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Loom => InventoryScreenLayout {
             width: LOOM_SCREEN_WIDTH,
             height: LOOM_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Loom,
             recipe_book: None,
             slots: loom_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_MERCHANT_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Merchant => InventoryScreenLayout {
             width: MERCHANT_SCREEN_WIDTH,
             height: MERCHANT_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Merchant,
             recipe_book: None,
             slots: merchant_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_SHULKER_BOX_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::ShulkerBox => InventoryScreenLayout {
             width: SHULKER_BOX_SCREEN_WIDTH,
             height: SHULKER_BOX_SCREEN_HEIGHT,
             background: InventoryScreenBackground::ShulkerBox,
             recipe_book: None,
             slots: shulker_box_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_SMITHING_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Smithing => InventoryScreenLayout {
             width: SMITHING_SCREEN_WIDTH,
             height: SMITHING_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Smithing,
             recipe_book: None,
             slots: smithing_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::CartographyTable => InventoryScreenLayout {
             width: CARTOGRAPHY_TABLE_SCREEN_WIDTH,
             height: CARTOGRAPHY_TABLE_SCREEN_HEIGHT,
             background: InventoryScreenBackground::CartographyTable,
             recipe_book: None,
             slots: cartography_table_slot_layouts(),
-        });
-    }
-    if menu_type_id == VANILLA_MENU_TYPE_STONECUTTER_ID {
-        return Some(InventoryScreenLayout {
+        },
+        VanillaMenuScreenKind::Stonecutter => InventoryScreenLayout {
             width: STONECUTTER_SCREEN_WIDTH,
             height: STONECUTTER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Stonecutter,
             recipe_book: None,
             slots: stonecutter_slot_layouts(),
-        });
-    }
-    None
+        },
+    })
 }
 
 pub(crate) fn recipe_book_main_gui_offset(
@@ -560,15 +540,6 @@ fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
     (VANILLA_MENU_TYPE_GENERIC_9X1_ID..=VANILLA_MENU_TYPE_GENERIC_9X6_ID)
         .contains(&menu_type_id)
         .then(|| (menu_type_id - VANILLA_MENU_TYPE_GENERIC_9X1_ID + 1) as u8)
-}
-
-fn furnace_screen_background(menu_type_id: i32) -> Option<InventoryScreenBackground> {
-    match menu_type_id {
-        VANILLA_MENU_TYPE_BLAST_FURNACE_ID => Some(InventoryScreenBackground::BlastFurnace),
-        VANILLA_MENU_TYPE_FURNACE_ID => Some(InventoryScreenBackground::Furnace),
-        VANILLA_MENU_TYPE_SMOKER_ID => Some(InventoryScreenBackground::Smoker),
-        _ => None,
-    }
 }
 
 fn generic_container_slot_layouts(rows: u8) -> Vec<InventorySlotLayout> {
