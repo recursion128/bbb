@@ -73,6 +73,9 @@ pub fn is_beacon_block_name(block_name: &str) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BeaconBeamSourceState {
     pub pos: BlockPos,
+    /// `true` when the `BeaconBeamOwner` is a test-instance block, whose
+    /// `TestInstanceRenderer` widens the beacon's `shouldRender` gate.
+    pub owner_is_test_instance: bool,
     pub beam_start: i32,
     pub height: i32,
     pub color_argb: u32,
@@ -109,18 +112,28 @@ impl WorldStore {
         &self.beacon_blocks
     }
 
-    /// Projects the published beam sections into one submission per section,
-    /// transcribing `BeaconRenderer.submit`.
+    /// Projects every `BeaconBeamOwner`'s published sections into one
+    /// submission per section, transcribing `BeaconRenderer.submit`.
     pub fn beacon_beam_source_states(&self, partial_tick: f32) -> Vec<BeaconBeamSourceState> {
         let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
         let animation_time = game_time.rem_euclid(40) as f32 + partial_tick;
+        let owners = self
+            .beacon_blocks
+            .iter()
+            .map(|beacon| (beacon.pos, beacon.beam_sections.as_slice(), false))
+            .chain(
+                self.test_instance_beam_sections()
+                    .into_iter()
+                    .map(|(pos, section)| (pos, std::slice::from_ref(section), true)),
+            );
         let mut states = Vec::new();
-        for beacon in &self.beacon_blocks {
+        for (pos, sections, owner_is_test_instance) in owners {
             let mut beam_start = 0;
-            let last = beacon.beam_sections.len().saturating_sub(1);
-            for (index, section) in beacon.beam_sections.iter().enumerate() {
+            let last = sections.len().saturating_sub(1);
+            for (index, section) in sections.iter().enumerate() {
                 states.push(BeaconBeamSourceState {
-                    pos: beacon.pos,
+                    pos,
+                    owner_is_test_instance,
                     beam_start,
                     height: if index == last {
                         BEACON_MAX_RENDER_Y

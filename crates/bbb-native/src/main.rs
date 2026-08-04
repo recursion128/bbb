@@ -77,6 +77,7 @@ mod sound_subtitle_runtime;
 mod spawner_scene;
 mod startup;
 mod terrain_runtime;
+mod test_instance_gizmos;
 mod weather_effect_runtime;
 mod win_screen_resources;
 mod window_icon;

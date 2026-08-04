@@ -232,6 +232,7 @@ use crate::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
         TerrainTextureState, TerrainVisibilityContext,
     },
+    test_instance_gizmos::test_instance_error_gizmos,
 };
 use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
@@ -4349,6 +4350,7 @@ pub(crate) fn update_renderer_from_publication(
     entity_instances.extend(beacon_beam_model_instances_from_world_at_partial_tick(
         world,
         camera_pose,
+        block_entity_visibility,
         entity_partial_tick,
     ));
     if dynamic_block_entities.end_portal {
@@ -4615,7 +4617,14 @@ pub(crate) fn update_renderer_from_publication(
     // block-entity pass, which vanilla runs before `DebugRenderer.render`.
     debug_buffers
         .lines
-        .extend(bounding_box_gizmo_lines(world, camera_pose));
+        .extend(bounding_box_gizmo_lines(world, block_entity_visibility));
+    let test_instance_error_gizmos = test_instance_error_gizmos(world);
+    debug_buffers
+        .filled_boxes
+        .extend(test_instance_error_gizmos.filled_boxes);
+    debug_buffers
+        .text_billboards
+        .extend(test_instance_error_gizmos.text_billboards);
     // `DebugRenderer.refreshRendererList` registers `OctreeDebugRenderer`
     // before water/heightmap/collision renderers.
     debug_buffers

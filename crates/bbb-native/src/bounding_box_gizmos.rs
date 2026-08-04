@@ -2,15 +2,17 @@
 //!
 //! The renderer submits only gizmos: one stroked cuboid for the renderable box
 //! and, in `BOX_AND_INVISIBLE_BLOCKS` mode, a small stroked cube per invisible
-//! block colour-coded by what makes it invisible. It is an off-screen renderer
-//! with a 96-block view distance, so the distance check lives here instead of
-//! the section-based block-entity gate.
+//! block colour-coded by what makes it invisible. It is an off-screen renderer,
+//! so `block_entity_visibility` applies its `shouldRender` here rather than
+//! through the section-based gate the entity-model stream uses.
 
-use bbb_renderer::{CameraPose, DebugLine};
+use bbb_renderer::DebugLine;
 use bbb_world::{
     BlockPos, BoundingBoxRenderMode, BoundingBoxRenderableSourceState, InvisibleBlockType,
     RenderableBoxState, WorldStore,
 };
+
+use crate::block_entity_visibility::{BlockEntityVisibility, OffScreenBlockEntityRenderer};
 
 /// `ARGB.colorFromFloat(1.0F, 0.9F, 0.9F, 0.9F)`.
 const BOX_COLOR: [u8; 4] = [230, 230, 230, 255];
@@ -25,42 +27,26 @@ const LIGHT_COLOR: [u8; 4] = [255, 255, 0, 255];
 /// The extra inflation vanilla gives air markers so they read as the loosest
 /// of the four.
 const AIR_MARKER_SCALE: f32 = 0.05;
-/// `BlockEntityWithBoundingBoxRenderer.getViewDistance()`.
-const VIEW_DISTANCE: f64 = 96.0;
 
 pub(crate) fn bounding_box_gizmo_lines(
     world: &WorldStore,
-    camera_pose: Option<CameraPose>,
+    visibility: BlockEntityVisibility,
 ) -> Vec<DebugLine> {
     let mut lines = Vec::new();
     for source in world.bounding_box_renderable_source_states() {
-        if source.mode == BoundingBoxRenderMode::None
-            || !source.renderable_box.is_drawable()
-            || !within_view_distance(source.pos, camera_pose)
-        {
+        if source.mode == BoundingBoxRenderMode::None || !source.renderable_box.is_drawable() {
+            continue;
+        }
+        if !visibility.off_screen_owner_is_visible(
+            OffScreenBlockEntityRenderer::for_bounding_box_owner(source.owner_is_test_instance),
+            source.pos,
+        ) {
             continue;
         }
         append_bounding_box(&mut lines, source.pos, source.renderable_box);
         append_invisible_block_markers(&mut lines, &source);
     }
     lines
-}
-
-/// `BlockEntityRenderer.shouldRender`: the default spherical check against the
-/// renderer's own view distance, measured from the block centre.
-fn within_view_distance(pos: BlockPos, camera_pose: Option<CameraPose>) -> bool {
-    let Some(pose) = camera_pose else {
-        return true;
-    };
-    let distance_sq = [
-        f64::from(pos.x) + 0.5 - f64::from(pose.position[0]),
-        f64::from(pos.y) + 0.5 - f64::from(pose.position[1] + pose.eye_height),
-        f64::from(pos.z) + 0.5 - f64::from(pose.position[2]),
-    ]
-    .into_iter()
-    .map(|delta| delta * delta)
-    .sum::<f64>();
-    distance_sq < VIEW_DISTANCE * VIEW_DISTANCE
 }
 
 /// `Gizmos.cuboid(new AABB(pos, pos.offset(size)).move(state.blockPos),
@@ -150,6 +136,7 @@ mod tests {
     ) -> BoundingBoxRenderableSourceState {
         BoundingBoxRenderableSourceState {
             pos: BlockPos { x: 10, y: 5, z: 20 },
+            owner_is_test_instance: false,
             mode,
             renderable_box: RenderableBoxState {
                 local_pos: BlockPos { x: 0, y: 1, z: 0 },
@@ -218,22 +205,5 @@ mod tests {
             ),
         );
         assert!(lines.is_empty());
-    }
-
-    #[test]
-    fn the_ninety_six_block_view_distance_culls_by_block_center() {
-        let pose = |position: [f32; 3]| {
-            Some(CameraPose {
-                position,
-                y_rot: 0.0,
-                x_rot: 0.0,
-                eye_height: 0.0,
-            })
-        };
-        let pos = BlockPos { x: 0, y: 0, z: 0 };
-        assert!(within_view_distance(pos, pose([0.5, 0.5, 96.0])));
-        assert!(!within_view_distance(pos, pose([0.5, 0.5, 96.5])));
-        // Without a camera the renderer has no distance to test against.
-        assert!(within_view_distance(pos, None));
     }
 }

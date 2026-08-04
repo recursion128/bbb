@@ -1487,6 +1487,7 @@ fn world_with_test_instance_block(pos: BlockPos) -> WorldStore {
             ignore_entities: false,
             status: TestInstanceBlockRunStatus::Cleared,
             error_message: None,
+            error_markers: Vec::new(),
         }),
         note_block_sound: None,
         skull_profile: None,

@@ -15,7 +15,6 @@ use bbb_protocol::{
     packets::{
         StructureBlockMirror, StructureBlockMode, StructureBlockRotation, TestInstanceBlockRotation,
     },
-    NbtSummaryValue,
 };
 
 use crate::{
@@ -79,6 +78,9 @@ pub enum InvisibleBlockType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoundingBoxRenderableSourceState {
     pub pos: BlockPos,
+    /// `true` when the owner is a test-instance block, whose
+    /// `TestInstanceRenderer` widens the bounding-box `shouldRender` gate.
+    pub owner_is_test_instance: bool,
     pub mode: BoundingBoxRenderMode,
     pub renderable_box: RenderableBoxState,
     /// `state.invisibleBlocks`, indexed `z * sizeX * sizeY + y * sizeX + x`.
@@ -96,7 +98,7 @@ impl WorldStore {
         }
         let mut states = Vec::new();
         for (pos, record) in self.loaded_block_entity_records() {
-            let (mode, renderable_box) = match record.type_id {
+            let (mode, renderable_box, owner_is_test_instance) = match record.type_id {
                 VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID => {
                     let Some(data) = record.structure_block.as_ref() else {
                         continue;
@@ -104,6 +106,7 @@ impl WorldStore {
                     (
                         structure_block_render_mode(data),
                         structure_block_renderable_box(data),
+                        false,
                     )
                 }
                 VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID => {
@@ -114,6 +117,7 @@ impl WorldStore {
                         // `TestInstanceBlockEntity.renderMode`.
                         BoundingBoxRenderMode::Box,
                         self.test_instance_renderable_box(data),
+                        true,
                     )
                 }
                 _ => continue,
@@ -125,6 +129,7 @@ impl WorldStore {
             };
             states.push(BoundingBoxRenderableSourceState {
                 pos,
+                owner_is_test_instance,
                 mode,
                 renderable_box,
                 invisible_blocks,
@@ -211,83 +216,6 @@ impl WorldStore {
                 },
             ],
         }
-    }
-
-    /// `TestInstanceBlockEntity.getPadding`: the `GameTestInstance`'s padding,
-    /// or `0` when the test key resolves to nothing on this client.
-    fn test_instance_padding(&self, data: &TestInstanceBlockEntityDataState) -> i32 {
-        self.test_instance_definition_field(data, "padding")
-            .and_then(summary_i32)
-            .unwrap_or(0)
-            .clamp(0, 128)
-    }
-
-    /// `TestInstanceBlockEntity.getRotation`: the definition's rotation composed
-    /// with the block entity's own, defaulting to `Rotation.NONE`.
-    fn test_instance_rotation(
-        &self,
-        data: &TestInstanceBlockEntityDataState,
-    ) -> TestInstanceBlockRotation {
-        let definition = match self.test_instance_definition_field(data, "rotation") {
-            Some(NbtSummaryValue::String(rotation)) => match rotation.as_str() {
-                "clockwise_90" => TestInstanceBlockRotation::Clockwise90,
-                "180" => TestInstanceBlockRotation::Clockwise180,
-                "counterclockwise_90" => TestInstanceBlockRotation::Counterclockwise90,
-                _ => TestInstanceBlockRotation::None,
-            },
-            _ => TestInstanceBlockRotation::None,
-        };
-        rotated_by(definition, data.rotation)
-    }
-
-    /// One field of the block's `minecraft:test_instance` registry element.
-    /// `GameTestInstance.DIRECT_CODEC` dispatches on `type`, so `TestData`'s
-    /// fields sit at the element's top level.
-    fn test_instance_definition_field(
-        &self,
-        data: &TestInstanceBlockEntityDataState,
-        name: &str,
-    ) -> Option<&NbtSummaryValue> {
-        let test = data.test.as_deref()?;
-        let entry = self
-            .frozen_registry_access()
-            .entry_by_resource_id("minecraft:test_instance", test)?;
-        let NbtSummaryValue::Compound(entries) = &entry.element_data?.value else {
-            return None;
-        };
-        entries
-            .iter()
-            .find(|entry| entry.name == name)
-            .map(|entry| &entry.value)
-    }
-}
-
-/// `Rotation.getRotated`: both rotations compose as quarter turns clockwise.
-fn rotated_by(
-    rotation: TestInstanceBlockRotation,
-    by: TestInstanceBlockRotation,
-) -> TestInstanceBlockRotation {
-    const ORDER: [TestInstanceBlockRotation; 4] = [
-        TestInstanceBlockRotation::None,
-        TestInstanceBlockRotation::Clockwise90,
-        TestInstanceBlockRotation::Clockwise180,
-        TestInstanceBlockRotation::Counterclockwise90,
-    ];
-    let quarter = |value: TestInstanceBlockRotation| {
-        ORDER
-            .iter()
-            .position(|candidate| *candidate == value)
-            .unwrap_or(0)
-    };
-    ORDER[(quarter(rotation) + quarter(by)) % ORDER.len()]
-}
-
-fn summary_i32(value: &NbtSummaryValue) -> Option<i32> {
-    match value {
-        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
-        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
-        NbtSummaryValue::Int(value) => Some(*value),
-        _ => None,
     }
 }
 

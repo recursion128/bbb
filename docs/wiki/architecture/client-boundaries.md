@@ -440,10 +440,13 @@ MINIMAL（共享 random 链）。environment spawns、level-particles 包与 fir
 compiled-section gate 再过 camera frustum，per-renderer view distance（default 64/end
 gateway 256）唯一登记于此；`shouldRenderOffScreen` 为真的 renderer 被
 `SectionCompiler.handleBlockEntity` 排除在 section mesh 之外，改由
-`Level.getGloballyRenderedBlockEntities()` 提取而不经任何 section/frustum 门——beacon
-beam 是当前唯一成员，其 `shouldRender` 用 y 归零后的水平距离对
-`renderDistance * 16` 判定（`renders_off_screen` 是该 membership 的唯一登记点）。重开
-判据：新增 off-screen renderer 模型（structure/test 类）或两条路径分界变化。
+`Level.getGloballyRenderedBlockEntities()` 提取而不经任何 section/frustum 门，只剩各自
+的 `shouldRender`——三条规则同址收敛在 `off_screen_owner_is_visible`：`BeaconRenderer`
+用 y 归零后的水平距离对 `renderDistance * 16`、`BlockEntityWithBoundingBoxRenderer`
+用球面 96、`TestInstanceRenderer` 取两者并集（渲染距离 < 6 chunk 时二者才分叉）。
+`renders_off_screen` 是 global membership 的唯一登记点；beam 的 owner 无法从 model
+kind 还原，故 beam 在投影处过门、进流后不再重复判距。重开判据：新增 off-screen
+renderer 或两条提取路径的分界变化。
 
 ### ClientLevel level-events owner
 

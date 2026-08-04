@@ -10,8 +10,10 @@
 //! Renderers whose `shouldRenderOffScreen` is true are excluded from section
 //! meshes by `SectionCompiler.handleBlockEntity` and extracted instead from
 //! `Level.getGloballyRenderedBlockEntities()`, which no section or frustum gate
-//! touches. `BeaconRenderer` is one, and it replaces the spherical default with
-//! a horizontal-only distance against `renderDistance * 16`.
+//! touches. Only their own `shouldRender` applies, and this module owns that
+//! rule for all three: `BeaconRenderer`'s horizontal `renderDistance * 16`,
+//! `BlockEntityWithBoundingBoxRenderer`'s spherical 96, and
+//! `TestInstanceRenderer`'s union of the two.
 
 use bbb_renderer::{
     CameraFrustum, CameraPose, EndPortalModelKind, EntityModelInstance, EntityModelKind,
@@ -24,7 +26,39 @@ use crate::terrain_runtime::TerrainUploadState;
 const DEFAULT_BLOCK_ENTITY_VIEW_DISTANCE: f64 = 64.0;
 /// `TheEndGatewayRenderer.getViewDistance()`.
 const END_GATEWAY_VIEW_DISTANCE: f64 = 256.0;
+/// `BlockEntityWithBoundingBoxRenderer.getViewDistance()`.
+const BOUNDING_BOX_VIEW_DISTANCE: f64 = 96.0;
 const SECTION_SIZE: i32 = 16;
+
+/// Which off-screen renderer owns a submission, i.e. whose `shouldRender`
+/// applies. `TestInstanceRenderer` delegates to both of the others and ORs the
+/// answers, so it is its own case rather than either alone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OffScreenBlockEntityRenderer {
+    Beacon,
+    BoundingBox,
+    TestInstance,
+}
+
+impl OffScreenBlockEntityRenderer {
+    /// The renderer a `BeaconBeamOwner` submission belongs to.
+    pub(crate) fn for_beacon_beam_owner(owner_is_test_instance: bool) -> Self {
+        if owner_is_test_instance {
+            Self::TestInstance
+        } else {
+            Self::Beacon
+        }
+    }
+
+    /// The renderer a `BoundingBoxRenderable` submission belongs to.
+    pub(crate) fn for_bounding_box_owner(owner_is_test_instance: bool) -> Self {
+        if owner_is_test_instance {
+            Self::TestInstance
+        } else {
+            Self::BoundingBox
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 struct BlockEntityCameraVisibility {
@@ -63,6 +97,48 @@ impl BlockEntityVisibility {
         Self {
             camera,
             render_distance_blocks: f64::from(render_distance_chunks) * f64::from(SECTION_SIZE),
+        }
+    }
+
+    /// `shouldRender` for the off-screen renderers whose submissions do not
+    /// ride the entity-model stream. No section or frustum gate applies.
+    pub(crate) fn off_screen_owner_is_visible(
+        self,
+        renderer: OffScreenBlockEntityRenderer,
+        pos: BlockPos,
+    ) -> bool {
+        let Some(camera) = self.camera else {
+            return true;
+        };
+        let center = [
+            f64::from(pos.x) + 0.5,
+            f64::from(pos.y) + 0.5,
+            f64::from(pos.z) + 0.5,
+        ];
+        // `BeaconRenderer.shouldRender`: both positions flattened to y = 0, so
+        // height above or below the camera never culls the beam.
+        let horizontal = || {
+            let dx = center[0] - camera.position[0];
+            let dz = center[2] - camera.position[2];
+            dx * dx + dz * dz < self.render_distance_blocks * self.render_distance_blocks
+        };
+        // The `BlockEntityRenderer.shouldRender` default, at the bounding-box
+        // renderer's own view distance.
+        let spherical = || {
+            let distance_sq = center
+                .into_iter()
+                .zip(camera.position)
+                .map(|(coordinate, camera_coordinate)| {
+                    let delta = coordinate - camera_coordinate;
+                    delta * delta
+                })
+                .sum::<f64>();
+            distance_sq < BOUNDING_BOX_VIEW_DISTANCE * BOUNDING_BOX_VIEW_DISTANCE
+        };
+        match renderer {
+            OffScreenBlockEntityRenderer::Beacon => horizontal(),
+            OffScreenBlockEntityRenderer::BoundingBox => spherical(),
+            OffScreenBlockEntityRenderer::TestInstance => horizontal() || spherical(),
         }
     }
 
@@ -267,15 +343,88 @@ mod tests {
     }
 
     #[test]
-    fn beacon_beams_skip_the_section_and_frustum_gates_and_cull_horizontally() {
+    fn beacon_beams_skip_the_section_and_frustum_gates() {
         let visibility = camera_visibility();
         let beam = |position: [f32; 3]| EntityModelInstance::beacon_beam(-1, position);
-        // Behind the camera and in an uncompiled section, but still submitted.
+        // Behind the camera and in an uncompiled section, but still submitted;
+        // the projection owns the distance check for off-screen renderers.
         assert!(visibility.instance_is_visible(&beam([0.0, 0.0, -20.0]), false));
-        // Vertical distance never culls the beam.
         assert!(visibility.instance_is_visible(&beam([0.0, 4_000.0, 0.0]), false));
-        // `renderDistance * 16` = 128 blocks of horizontal reach.
-        assert!(visibility.instance_is_visible(&beam([0.0, 0.0, 127.0]), false));
-        assert!(!visibility.instance_is_visible(&beam([0.0, 0.0, 128.0]), false));
+    }
+
+    #[test]
+    fn off_screen_renderers_use_their_own_should_render_rules() {
+        let visibility = camera_visibility();
+        let pos = |x: i32, y: i32, z: i32| BlockPos { x, y, z };
+        let visible = |renderer, pos| visibility.off_screen_owner_is_visible(renderer, pos);
+
+        // `renderDistance * 16` = 128 blocks of horizontal reach, and height
+        // never enters the beacon's check.
+        assert!(visible(
+            OffScreenBlockEntityRenderer::Beacon,
+            pos(0, 4_000, 0)
+        ));
+        assert!(visible(
+            OffScreenBlockEntityRenderer::Beacon,
+            pos(0, 0, 126)
+        ));
+        assert!(!visible(
+            OffScreenBlockEntityRenderer::Beacon,
+            pos(0, 0, 128)
+        ));
+
+        // The bounding box uses the spherical default at 96.
+        assert!(visible(
+            OffScreenBlockEntityRenderer::BoundingBox,
+            pos(0, 0, 94)
+        ));
+        assert!(!visible(
+            OffScreenBlockEntityRenderer::BoundingBox,
+            pos(0, 0, 96)
+        ));
+        assert!(!visible(
+            OffScreenBlockEntityRenderer::BoundingBox,
+            pos(0, 4_000, 0)
+        ));
+
+        // `TestInstanceRenderer.shouldRender` ORs both, so it survives wherever
+        // either does.
+        assert!(visible(
+            OffScreenBlockEntityRenderer::TestInstance,
+            pos(0, 4_000, 0)
+        ));
+        assert!(visible(
+            OffScreenBlockEntityRenderer::TestInstance,
+            pos(0, 0, 126)
+        ));
+        assert!(!visible(
+            OffScreenBlockEntityRenderer::TestInstance,
+            pos(0, 0, 128)
+        ));
+    }
+
+    #[test]
+    fn a_short_render_distance_leaves_the_bounding_box_reach_intact() {
+        // Two chunks of render distance is below the bounding box's own 96, so
+        // only the union keeps a distant test instance alive.
+        let visibility = BlockEntityVisibility::new(
+            Some(CameraPose {
+                position: [0.0; 3],
+                y_rot: 0.0,
+                x_rot: 0.0,
+                eye_height: 0.0,
+            }),
+            [1_000, 1_000],
+            70.0,
+            2,
+        );
+        let pos = BlockPos { x: 0, y: 0, z: 50 };
+        assert!(!visibility.off_screen_owner_is_visible(OffScreenBlockEntityRenderer::Beacon, pos));
+        assert!(
+            visibility.off_screen_owner_is_visible(OffScreenBlockEntityRenderer::BoundingBox, pos)
+        );
+        assert!(
+            visibility.off_screen_owner_is_visible(OffScreenBlockEntityRenderer::TestInstance, pos)
+        );
     }
 }

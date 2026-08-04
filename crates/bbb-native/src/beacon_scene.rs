@@ -9,6 +9,8 @@
 use bbb_renderer::{BeaconBeamRenderState, CameraPose, EntityModelInstance};
 use bbb_world::{BeaconBeamSourceState, WorldStore};
 
+use crate::block_entity_visibility::{BlockEntityVisibility, OffScreenBlockEntityRenderer};
+
 /// Block-entity model sentinel id; no vanilla network entity id is negative.
 const BEACON_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 /// `BeaconRenderer.BEAM_SCALE_THRESHOLD`.
@@ -17,6 +19,7 @@ const BEAM_SCALE_THRESHOLD: f32 = 96.0;
 pub(crate) fn beacon_beam_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
+    visibility: BlockEntityVisibility,
     partial_tick: f32,
 ) -> Vec<EntityModelInstance> {
     let sources = world.beacon_beam_source_states(partial_tick);
@@ -26,6 +29,14 @@ pub(crate) fn beacon_beam_model_instances_from_world_at_partial_tick(
     let scoping = world.local_player_is_scoping();
     sources
         .into_iter()
+        .filter(|source| {
+            // `BeaconRenderer` is an off-screen renderer, so its `shouldRender`
+            // replaces the section-based gate the stream applies downstream.
+            visibility.off_screen_owner_is_visible(
+                OffScreenBlockEntityRenderer::for_beacon_beam_owner(source.owner_is_test_instance),
+                source.pos,
+            )
+        })
         .map(|source| beacon_beam_instance(source, camera_pose, scoping))
         .collect()
 }
@@ -79,6 +90,7 @@ mod tests {
     fn source(beam_start: i32, height: i32) -> BeaconBeamSourceState {
         BeaconBeamSourceState {
             pos: BlockPos { x: 4, y: 5, z: 6 },
+            owner_is_test_instance: false,
             beam_start,
             height,
             color_argb: 0xFFF9_FFFE,

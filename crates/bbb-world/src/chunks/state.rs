@@ -127,7 +127,9 @@ pub struct BlockEntityRecord {
 }
 
 impl BlockEntityRecord {
-    pub(crate) fn empty(local_x: u8, y: i16, local_z: u8, type_id: i32) -> Self {
+    /// A block-entity record carrying only its position and type, the shape a
+    /// chunk decode produces before any `BlockEntityData` payload arrives.
+    pub fn empty(local_x: u8, y: i16, local_z: u8, type_id: i32) -> Self {
         Self {
             local_x,
             y,
