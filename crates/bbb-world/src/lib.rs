@@ -6,6 +6,7 @@ mod bell_blocks;
 mod block_entity_client_effects;
 mod block_entity_item_displays;
 mod block_events;
+mod bounding_box_blocks;
 mod chest_lids;
 mod chunks;
 mod client;

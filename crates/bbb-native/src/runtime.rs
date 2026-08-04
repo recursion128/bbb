@@ -103,6 +103,7 @@ use crate::{
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
     block_entity_visibility::{retain_visible_block_entity_instances, BlockEntityVisibility},
+    bounding_box_gizmos::bounding_box_gizmo_lines,
     camera_fov::{camera_fluid_in_camera, CameraFluid, CameraFovTickState},
     camera_pose::{
         camera_eye_position, camera_forward_vector, camera_hurt_effect_from_world,
@@ -4610,6 +4611,11 @@ pub(crate) fn update_renderer_from_publication(
         ),
     );
     let mut debug_buffers = non_entity_render_extraction.begin_debug_frame();
+    // `BlockEntityWithBoundingBoxRenderer` submits its gizmos from the
+    // block-entity pass, which vanilla runs before `DebugRenderer.render`.
+    debug_buffers
+        .lines
+        .extend(bounding_box_gizmo_lines(world, camera_pose));
     // `DebugRenderer.refreshRendererList` registers `OctreeDebugRenderer`
     // before water/heightmap/collision renderers.
     debug_buffers

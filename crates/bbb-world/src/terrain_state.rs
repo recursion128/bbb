@@ -25,6 +25,9 @@ pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,
 };
+pub use crate::bounding_box_blocks::{
+    BoundingBoxRenderMode, BoundingBoxRenderableSourceState, InvisibleBlockType, RenderableBoxState,
+};
 pub use crate::chest_lids::{
     chest_model_kind_for_block_name, ChestLidState, ChestModelFacing, ChestModelHalf,
     ChestModelKind, ChestModelSourceState,

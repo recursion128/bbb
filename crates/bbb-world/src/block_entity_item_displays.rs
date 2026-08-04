@@ -259,7 +259,9 @@ impl WorldStore {
         (stack.item_id.is_some() && stack.count > 0).then_some(stack)
     }
 
-    fn loaded_block_entity_records(&self) -> impl Iterator<Item = (BlockPos, &BlockEntityRecord)> {
+    pub(crate) fn loaded_block_entity_records(
+        &self,
+    ) -> impl Iterator<Item = (BlockPos, &BlockEntityRecord)> {
         self.chunks.iter().flat_map(|chunk| {
             chunk.block_entities.iter().map(move |record| {
                 (

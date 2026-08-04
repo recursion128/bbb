@@ -70,6 +70,17 @@ pub struct DebugLine {
     pub width: f32,
 }
 
+/// `CuboidGizmo`'s `ARGB.multiply` operands for a colored-corner stroke, in
+/// vanilla's `-34953` / `-8913033` / `-8947713` order.
+const CORNER_X_AXIS_TINT: [u8; 4] = [0xFF, 0x77, 0x77, 0xFF];
+const CORNER_Y_AXIS_TINT: [u8; 4] = [0x77, 0xFF, 0x77, 0xFF];
+const CORNER_Z_AXIS_TINT: [u8; 4] = [0x77, 0x77, 0xFF, 0xFF];
+
+/// `ARGB.multiply`: per-channel `lhs * rhs / 255`.
+fn multiply_rgba(lhs: [u8; 4], rhs: [u8; 4]) -> [u8; 4] {
+    std::array::from_fn(|channel| (u32::from(lhs[channel]) * u32::from(rhs[channel]) / 255) as u8)
+}
+
 impl DebugLine {
     pub const DEFAULT_WIDTH: f32 = 2.5;
 
@@ -84,12 +95,56 @@ impl DebugLine {
 
     /// Emits `CuboidGizmo`'s twelve stroke edges in vanilla order.
     pub fn cuboid(min: [f32; 3], max: [f32; 3], color: [u8; 4], width: f32) -> [Self; 12] {
+        Self::cuboid_edges(min, max, color, width, false)
+    }
+
+    /// `CuboidGizmo` with `coloredCornerStroke`: the three edges meeting at the
+    /// min corner are multiplied by the axis tints `0xFFFF7777` / `0xFF77FF77`
+    /// / `0xFF7777FF`, marking +X/+Y/+Z.
+    pub fn cuboid_with_colored_corner(
+        min: [f32; 3],
+        max: [f32; 3],
+        color: [u8; 4],
+        width: f32,
+    ) -> [Self; 12] {
+        Self::cuboid_edges(min, max, color, width, true)
+    }
+
+    fn cuboid_edges(
+        min: [f32; 3],
+        max: [f32; 3],
+        color: [u8; 4],
+        width: f32,
+        colored_corner: bool,
+    ) -> [Self; 12] {
         let [x0, y0, z0] = min;
         let [x1, y1, z1] = max;
+        let corner = |axis_tint: [u8; 4]| {
+            if colored_corner {
+                multiply_rgba(color, axis_tint)
+            } else {
+                color
+            }
+        };
         [
-            Self::new([x0, y0, z0], [x1, y0, z0], color, width),
-            Self::new([x0, y0, z0], [x0, y1, z0], color, width),
-            Self::new([x0, y0, z0], [x0, y0, z1], color, width),
+            Self::new(
+                [x0, y0, z0],
+                [x1, y0, z0],
+                corner(CORNER_X_AXIS_TINT),
+                width,
+            ),
+            Self::new(
+                [x0, y0, z0],
+                [x0, y1, z0],
+                corner(CORNER_Y_AXIS_TINT),
+                width,
+            ),
+            Self::new(
+                [x0, y0, z0],
+                [x0, y0, z1],
+                corner(CORNER_Z_AXIS_TINT),
+                width,
+            ),
             Self::new([x1, y0, z0], [x1, y1, z0], color, width),
             Self::new([x1, y1, z0], [x0, y1, z0], color, width),
             Self::new([x0, y1, z0], [x0, y1, z1], color, width),
