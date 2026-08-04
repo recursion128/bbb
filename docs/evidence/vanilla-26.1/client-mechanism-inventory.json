@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "ca887bcc3a51bf4bf676e345a5a313ff18198565e2517986eb5d91e0f9468497"
+      "sha256": "890fcbcd378b1488ec6d51f49158c4008233c3a136369881667915fc3859e919"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -652,7 +652,8 @@
         "crates/bbb-native/src/input.rs",
         "crates/bbb-native/src/runtime/render_extract.rs"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "world-client-ambient-animation": {
       "bbb_evidence": [
@@ -8403,6 +8404,14 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#buildInitialScreens(final Minecraft.@Nullable GameLoadCookie cookie)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#open_debug_options_screen"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#f3_f4_game_mode_switcher_does_not_open_over_existing_screen"
+        ]
+      },
       "category": "ui",
       "domain": "ui",
       "kind": "method",
@@ -10626,6 +10635,14 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#setLevel(final ClientLevel level)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect"
+        ],
+        "tests": [
+          "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier"
+        ]
+      },
       "category": "ui",
       "domain": "ui",
       "kind": "method",
@@ -10640,6 +10657,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#setOverlay(final @Nullable Overlay overlay)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#runtime_wants_cursor",
+          "crates/bbb-world/src/level.rs#clear_level_bound_state"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+          "crates/bbb-native/src/main.rs#runtime_wants_cursor_for_debug_game_mode_switcher"
+        ]
+      },
       "category": "ui",
       "domain": "ui",
       "kind": "method",
@@ -43467,6 +43494,7 @@
       "interaction-container-actions",
       "interaction-creative-actions",
       "interaction-carried-slot-sync",
+      "ui-screen-lifecycle",
       "interaction-pick-actions",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",

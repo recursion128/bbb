@@ -461,23 +461,6 @@ Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级
 active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
 不得借此加入 title、singleplayer、Realms 或 options UI。
 
-#### Active contract：ui-screen-lifecycle
-
-- 目标与 owner：闭合 `ui-screen-lifecycle` 3 个 owner（setScreen、setOverlay、
-  canInterruptScreen）。
-- 审计事实：bbb 用 per-screen 状态替换 vanilla 单一 screen 指针——鼠标
-  grab/release 由 `runtime_wants_cursor` 统一判定、null→restore-chat 语义由
-  dialog stack 先例覆盖、teardown 期间 `clear_level_bound_state` 全关 screen
-  （对应 setScreen 的 teardown 抛错保护）；setOverlay 唯一用途是 reload
-  LoadingOverlay，bbb 由 reload barrier（renderer owners 单代原子提交）拥有；
-  canInterruptScreen 唯一消费点是 debug-options 快捷键，bbb 由
-  `open_debug_options_screen` 打开门拥有——全部验证型。
-- focused evidence：census 3-owner OwnerEvidence + scripts/tests 断言块。
-- 非目标：不建统一 screen 指针；不动 reload/teardown 语义。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 evidence 完整的干净提交。
-
 ### P3：动态资源 presentation breadth
 
 状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、

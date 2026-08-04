@@ -96,10 +96,6 @@ Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
   multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
   render and close lifecycle against the existing pause-screen owner; classify
   singleplayer-only branches precisely rather than implementing them.
-- **Generic multiplayer screen replacement is `active`.** The three
-  `Minecraft.setScreen/setOverlay/canInterruptScreen` owners require one
-  generation-aware replace/remove/init path, overlay priority and teardown
-  interruption evidence across the existing external-session screens.
 
 ## Native input, accessibility and window lifecycle closure
 

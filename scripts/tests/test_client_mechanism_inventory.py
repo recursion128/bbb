@@ -368,6 +368,11 @@ public class Owner {
             ],
             3,
         )
+        # ui-screen-lifecycle's three owners also live in Minecraft.java.
+        self.assertEqual(
+            value["mechanisms"]["ui-screen-lifecycle"]["owner_evidence_count"],
+            3,
+        )
         game_mode_guards_owners = [
             owner
             for owner in methods

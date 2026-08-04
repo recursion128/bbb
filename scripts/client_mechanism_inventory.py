@@ -3376,6 +3376,44 @@ INTERACTION_PICK_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+UI_SCREEN_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#runtime_wants_cursor",
+                "crates/bbb-world/src/level.rs#clear_level_bound_state",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+                "crates/bbb-native/src/main.rs#runtime_wants_cursor_for_debug_game_mode_switcher",
+            ),
+        ),
+        ("setScreen",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
+            ),
+            (
+                "crates/bbb-native/src/resource_reload.rs#renderer_resource_owners_commit_inside_one_reload_barrier",
+            ),
+        ),
+        ("setOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#open_debug_options_screen",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_f4_game_mode_switcher_does_not_open_over_existing_screen",
+            ),
+        ),
+        ("canInterruptScreen",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3556,6 +3594,7 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-container-actions": INTERACTION_CONTAINER_ACTIONS_OWNER_EVIDENCE,
     "interaction-creative-actions": INTERACTION_CREATIVE_ACTIONS_OWNER_EVIDENCE,
     "interaction-carried-slot-sync": INTERACTION_CARRIED_SLOT_SYNC_OWNER_EVIDENCE,
+    "ui-screen-lifecycle": UI_SCREEN_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-pick-actions": INTERACTION_PICK_ACTIONS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,

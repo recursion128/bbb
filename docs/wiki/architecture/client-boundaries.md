@@ -223,6 +223,17 @@ pick-actions 三 owner 由中键路由的
 唯一拥有（crosshair 命中分派 block/entity、include-data 由修饰键决定）。不得
 另建 held-slot 或 pick 命令入口。
 
+## UI screen-lifecycle owner
+
+`Minecraft.setScreen/setOverlay/canInterruptScreen` 三 owner 由 per-screen 状态
+替换单一 screen 指针：鼠标 grab/release 由 `runtime_wants_cursor` 统一判定、
+null→restore-chat 语义由 dialog stack 先例覆盖、level teardown 由
+`clear_level_bound_state` 全关 screen（对应 setScreen 的 teardown 抛错保护）。
+setOverlay 唯一用途是 resource reload 的 LoadingOverlay，由 reload barrier
+（renderer owners 单代原子提交）拥有；canInterruptScreen 唯一消费点是
+debug-options 快捷键，由 `open_debug_options_screen` 打开门拥有。不得引入
+统一 screen 指针或第二条 overlay/interrupt 判定路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
