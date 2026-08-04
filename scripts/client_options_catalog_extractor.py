@@ -51,6 +51,29 @@ IMPLICIT_SCALAR_DEFAULTS = {
     "float": "0.0F",
 }
 
+#: `OptionInstance` value sets, keyed by the leading source text, mapped to the
+#: JSON shape their `codec()` writes into `options.txt`.
+VALUE_SET_ENCODINGS = {
+    "OptionInstance.BOOLEAN_VALUES": "boolean",
+    "OptionInstance.UnitDouble.INSTANCE.xmap": "double",
+    "OptionInstance.UnitDouble.INSTANCE": "double",
+    "new OptionInstance.IntRange": "integer",
+    "new OptionInstance.ClampingLazyMaxIntRange": "integer",
+    "new OptionInstance.Enum": "enum",
+    "new OptionInstance.SliderableEnum": "enum",
+    "new OptionInstance.LazyEnum": "enum",
+}
+
+#: The seven-argument constructor overrides the value set's codec, so the
+#: explicit argument decides the encoding.
+EXPLICIT_CODEC_ENCODINGS = {
+    "Codec.doubleRange": "double",
+    "Codec.DOUBLE": "double",
+    "Codec.intRange": "integer",
+    "Codec.INT": "integer",
+    "GraphicsPreset.CODEC": "enum-name",
+}
+
 #: Defaults Vanilla computes instead of writing as a literal. Keyed by the exact
 #: source text so any upstream change to the expression fails the generator
 #: rather than silently keeping a stale value. `host:` markers name a value the
@@ -76,6 +99,7 @@ class ClientOption:
     key: str
     field: str
     kind: str
+    encoding: str
     default: str
 
 
@@ -155,7 +179,7 @@ def _constructor_assignments(source: JavaSource) -> dict[str, object]:
     return assignments
 
 
-def _option_instance_default(source: JavaSource, field: JavaField, node) -> str:
+def _option_instance_arguments(source: JavaSource, field: JavaField, node) -> list:
     if node.type == "method_invocation":
         name = source.text(node.child_by_field_name("name"))
         if name != "createBoolean":
@@ -172,7 +196,76 @@ def _option_instance_default(source: JavaSource, field: JavaField, node) -> str:
         arguments = arguments[:-1]
     if len(arguments) < 2:
         _fail(source, node, f"OptionInstance {field.name} has no default argument")
-    return source.text(arguments[-1])
+    return arguments
+
+
+def _option_instance_default(source: JavaSource, field: JavaField, node) -> str:
+    return source.text(_option_instance_arguments(source, field, node)[-1])
+
+
+def _collapse(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _option_instance_encoding(source: JavaSource, field: JavaField, node) -> str:
+    """The on-disk encoding `save` writes for one ``OptionInstance`` line.
+
+    ``FieldAccess.process(String, OptionInstance)`` runs the option's codec
+    through ``JsonOps``, so the encoding is whatever the value set (or the
+    explicit codec argument, in the seven-argument form) produces.
+    """
+
+    if node.type == "method_invocation":
+        return "boolean"
+    arguments = _option_instance_arguments(source, field, node)
+    # (caption, tooltip, label, valueSet, [codec,] default)
+    if len(arguments) == 5:
+        codec_text = None
+    elif len(arguments) == 6:
+        codec_text = _collapse(source.text(arguments[4]))
+    else:
+        _fail(source, node, f"OptionInstance {field.name} has an unexpected arity")
+    value_set = _collapse(source.text(arguments[3]))
+    if codec_text is not None:
+        for prefix, encoding in EXPLICIT_CODEC_ENCODINGS.items():
+            if codec_text.startswith(prefix):
+                return encoding
+        _fail(source, node, f"unmapped explicit codec for {field.name}: {codec_text}")
+    for prefix, encoding in VALUE_SET_ENCODINGS.items():
+        if value_set.startswith(prefix):
+            if encoding != "enum":
+                return encoding
+            return _enum_encoding(source, field, arguments[3])
+    _fail(source, node, f"unmapped value set for {field.name}: {value_set}")
+
+
+def _enum_encoding(source: JavaSource, field: JavaField, value_set_node) -> str:
+    """`OptionInstance.Enum` carries the enum's own codec as its last argument:
+    `LEGACY_CODEC` is `Codec.INT` over the id, `CODEC` is
+    `StringRepresentable.fromEnum`, and `renderClouds` accepts either its name
+    or the pre-1.20 boolean through `Codec.withAlternative`."""
+
+    arguments = value_set_node.child_by_field_name("arguments")
+    if arguments is None or not arguments.named_children:
+        _fail(source, value_set_node, f"enum value set for {field.name} has no codec")
+    codec_text = _collapse(source.text(arguments.named_children[-1]))
+    if codec_text.startswith("Codec.withAlternative("):
+        inner = codec_text.removeprefix("Codec.withAlternative(").split(",")
+        if len(inner) >= 2 and inner[0].endswith(".CODEC") and inner[1].strip() == "Codec.BOOL":
+            return "enum-name-or-boolean"
+        _fail(source, value_set_node, f"unmapped alternative codec: {codec_text}")
+    if codec_text == "Codec.STRING":
+        # `soundDevice` is a LazyEnum over the runtime device names.
+        return "string"
+    if codec_text.endswith(".LEGACY_CODEC"):
+        return "enum-id"
+    if codec_text.endswith(".CODEC"):
+        return "enum-name"
+    _fail(
+        source,
+        value_set_node,
+        f"enum value set for {field.name} has no known codec: {codec_text}",
+    )
 
 
 def _scalar_default(source: JavaSource, field: JavaField, node) -> str:
@@ -243,9 +336,13 @@ def client_option_entries(
                         arguments[1],
                         f"reader/writer target {field_name} has no declared codec kind",
                     )
+                encoding = kind
                 default = _scalar_default(source, field, initializer(field))
             elif field.type_spelling.startswith("OptionInstance"):
                 kind = "codec"
+                encoding = _option_instance_encoding(
+                    source, field, initializer(field)
+                )
                 default = _option_instance_default(source, field, initializer(field))
             else:
                 kind = SCALAR_KINDS.get(field.type_spelling)
@@ -255,6 +352,7 @@ def client_option_entries(
                         arguments[1],
                         f"process target {field_name} has unsupported type {field.type_spelling}",
                     )
+                encoding = kind
                 default = _scalar_default(source, field, initializer(field))
             options.append(
                 ClientOption(
@@ -262,6 +360,7 @@ def client_option_entries(
                     key=key,
                     field=field_name,
                     kind=kind,
+                    encoding=encoding,
                     default=COMPUTED_DEFAULTS.get(default, default),
                 )
             )

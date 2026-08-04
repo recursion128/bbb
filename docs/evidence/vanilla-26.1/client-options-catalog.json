@@ -9,6 +9,7 @@
       "key": "ao",
       "field": "ambientOcclusion",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -16,6 +17,7 @@
       "key": "biomeBlendRadius",
       "field": "biomeBlendRadius",
       "kind": "codec",
+      "encoding": "integer",
       "default": "2"
     },
     {
@@ -23,6 +25,7 @@
       "key": "chunkSectionFadeInTime",
       "field": "chunkSectionFadeInTime",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.75"
     },
     {
@@ -30,6 +33,7 @@
       "key": "cutoutLeaves",
       "field": "cutoutLeaves",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -37,6 +41,7 @@
       "key": "enableVsync",
       "field": "enableVsync",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -44,6 +49,7 @@
       "key": "entityDistanceScaling",
       "field": "entityDistanceScaling",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -51,6 +57,7 @@
       "key": "entityShadows",
       "field": "entityShadows",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -58,6 +65,7 @@
       "key": "forceUnicodeFont",
       "field": "forceUnicodeFont",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -65,6 +73,7 @@
       "key": "japaneseGlyphVariants",
       "field": "japaneseGlyphVariants",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "host:locale-is-japanese"
     },
     {
@@ -72,6 +81,7 @@
       "key": "fov",
       "field": "fov",
       "kind": "codec",
+      "encoding": "double",
       "default": "70"
     },
     {
@@ -79,6 +89,7 @@
       "key": "fovEffectScale",
       "field": "fovEffectScale",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -86,6 +97,7 @@
       "key": "darknessEffectScale",
       "field": "darknessEffectScale",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -93,6 +105,7 @@
       "key": "glintSpeed",
       "field": "glintSpeed",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.5"
     },
     {
@@ -100,6 +113,7 @@
       "key": "glintStrength",
       "field": "glintStrength",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.75"
     },
     {
@@ -107,6 +121,7 @@
       "key": "graphicsPreset",
       "field": "graphicsPreset",
       "kind": "codec",
+      "encoding": "enum-name",
       "default": "GraphicsPreset.FANCY"
     },
     {
@@ -114,6 +129,7 @@
       "key": "prioritizeChunkUpdates",
       "field": "prioritizeChunkUpdates",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "PrioritizeChunkUpdates.NONE"
     },
     {
@@ -121,6 +137,7 @@
       "key": "fullscreen",
       "field": "fullscreen",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -128,6 +145,7 @@
       "key": "exclusiveFullscreen",
       "field": "exclusiveFullscreen",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -135,6 +153,7 @@
       "key": "gamma",
       "field": "gamma",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.5"
     },
     {
@@ -142,6 +161,7 @@
       "key": "guiScale",
       "field": "guiScale",
       "kind": "codec",
+      "encoding": "integer",
       "default": "0"
     },
     {
@@ -149,6 +169,7 @@
       "key": "maxAnisotropyBit",
       "field": "maxAnisotropyBit",
       "kind": "codec",
+      "encoding": "integer",
       "default": "2"
     },
     {
@@ -156,6 +177,7 @@
       "key": "textureFiltering",
       "field": "textureFiltering",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "TextureFilteringMethod.NONE"
     },
     {
@@ -163,6 +185,7 @@
       "key": "maxFps",
       "field": "framerateLimit",
       "kind": "codec",
+      "encoding": "integer",
       "default": "120"
     },
     {
@@ -170,6 +193,7 @@
       "key": "improvedTransparency",
       "field": "improvedTransparency",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -177,6 +201,7 @@
       "key": "inactivityFpsLimit",
       "field": "inactivityFpsLimit",
       "kind": "codec",
+      "encoding": "enum-name",
       "default": "InactivityFpsLimit.AFK"
     },
     {
@@ -184,6 +209,7 @@
       "key": "mipmapLevels",
       "field": "mipmapLevels",
       "kind": "codec",
+      "encoding": "integer",
       "default": "4"
     },
     {
@@ -191,6 +217,7 @@
       "key": "narrator",
       "field": "narrator",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "NarratorStatus.OFF"
     },
     {
@@ -198,6 +225,7 @@
       "key": "particles",
       "field": "particles",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "ParticleStatus.ALL"
     },
     {
@@ -205,6 +233,7 @@
       "key": "reducedDebugInfo",
       "field": "reducedDebugInfo",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -212,6 +241,7 @@
       "key": "renderClouds",
       "field": "cloudStatus",
       "kind": "codec",
+      "encoding": "enum-name-or-boolean",
       "default": "CloudStatus.FANCY"
     },
     {
@@ -219,6 +249,7 @@
       "key": "cloudRange",
       "field": "cloudRange",
       "kind": "codec",
+      "encoding": "integer",
       "default": "128"
     },
     {
@@ -226,6 +257,7 @@
       "key": "renderDistance",
       "field": "renderDistance",
       "kind": "codec",
+      "encoding": "integer",
       "default": "12"
     },
     {
@@ -233,6 +265,7 @@
       "key": "simulationDistance",
       "field": "simulationDistance",
       "kind": "codec",
+      "encoding": "integer",
       "default": "12"
     },
     {
@@ -240,6 +273,7 @@
       "key": "screenEffectScale",
       "field": "screenEffectScale",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -247,6 +281,7 @@
       "key": "soundDevice",
       "field": "soundDevice",
       "kind": "codec",
+      "encoding": "string",
       "default": "\"\""
     },
     {
@@ -254,6 +289,7 @@
       "key": "vignette",
       "field": "vignette",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -261,6 +297,7 @@
       "key": "weatherRadius",
       "field": "weatherRadius",
       "kind": "codec",
+      "encoding": "integer",
       "default": "10"
     },
     {
@@ -268,6 +305,7 @@
       "key": "autoJump",
       "field": "autoJump",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -275,6 +313,7 @@
       "key": "rotateWithMinecart",
       "field": "rotateWithMinecart",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -282,6 +321,7 @@
       "key": "operatorItemsTab",
       "field": "operatorItemsTab",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -289,6 +329,7 @@
       "key": "autoSuggestions",
       "field": "autoSuggestions",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -296,6 +337,7 @@
       "key": "chatColors",
       "field": "chatColors",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -303,6 +345,7 @@
       "key": "chatLinks",
       "field": "chatLinks",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -310,6 +353,7 @@
       "key": "chatLinksPrompt",
       "field": "chatLinksPrompt",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -317,6 +361,7 @@
       "key": "discrete_mouse_scroll",
       "field": "discreteMouseScroll",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -324,6 +369,7 @@
       "key": "invertXMouse",
       "field": "invertXMouse",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -331,6 +377,7 @@
       "key": "invertYMouse",
       "field": "invertYMouse",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -338,6 +385,7 @@
       "key": "realmsNotifications",
       "field": "realmsNotifications",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -345,6 +393,7 @@
       "key": "showSubtitles",
       "field": "showSubtitles",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -352,6 +401,7 @@
       "key": "directionalAudio",
       "field": "directionalAudio",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -359,6 +409,7 @@
       "key": "touchscreen",
       "field": "touchscreen",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -366,6 +417,7 @@
       "key": "bobView",
       "field": "bobView",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -373,6 +425,7 @@
       "key": "toggleCrouch",
       "field": "toggleCrouch",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -380,6 +433,7 @@
       "key": "toggleSprint",
       "field": "toggleSprint",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -387,6 +441,7 @@
       "key": "toggleAttack",
       "field": "toggleAttack",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -394,6 +449,7 @@
       "key": "toggleUse",
       "field": "toggleUse",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -401,6 +457,7 @@
       "key": "sprintWindow",
       "field": "sprintWindow",
       "kind": "codec",
+      "encoding": "integer",
       "default": "7"
     },
     {
@@ -408,6 +465,7 @@
       "key": "darkMojangStudiosBackground",
       "field": "darkMojangStudiosBackground",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -415,6 +473,7 @@
       "key": "hideLightningFlashes",
       "field": "hideLightningFlash",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -422,6 +481,7 @@
       "key": "hideSplashTexts",
       "field": "hideSplashTexts",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -429,6 +489,7 @@
       "key": "mouseSensitivity",
       "field": "sensitivity",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.5"
     },
     {
@@ -436,6 +497,7 @@
       "key": "damageTiltStrength",
       "field": "damageTiltStrength",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -443,6 +505,7 @@
       "key": "highContrast",
       "field": "highContrast",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -450,6 +513,7 @@
       "key": "highContrastBlockOutline",
       "field": "highContrastBlockOutline",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -457,6 +521,7 @@
       "key": "narratorHotkey",
       "field": "narratorHotkey",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -464,6 +529,7 @@
       "key": "resourcePacks",
       "field": "resourcePacks",
       "kind": "string-list",
+      "encoding": "string-list",
       "default": "[]"
     },
     {
@@ -471,6 +537,7 @@
       "key": "incompatibleResourcePacks",
       "field": "incompatibleResourcePacks",
       "kind": "string-list",
+      "encoding": "string-list",
       "default": "[]"
     },
     {
@@ -478,6 +545,7 @@
       "key": "lastServer",
       "field": "lastMpIp",
       "kind": "string",
+      "encoding": "string",
       "default": "\"\""
     },
     {
@@ -485,6 +553,7 @@
       "key": "lang",
       "field": "languageCode",
       "kind": "string",
+      "encoding": "string",
       "default": "\"en_us\""
     },
     {
@@ -492,6 +561,7 @@
       "key": "chatVisibility",
       "field": "chatVisibility",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "ChatVisiblity.FULL"
     },
     {
@@ -499,6 +569,7 @@
       "key": "chatOpacity",
       "field": "chatOpacity",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -506,6 +577,7 @@
       "key": "chatLineSpacing",
       "field": "chatLineSpacing",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.0"
     },
     {
@@ -513,6 +585,7 @@
       "key": "textBackgroundOpacity",
       "field": "textBackgroundOpacity",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.5"
     },
     {
@@ -520,6 +593,7 @@
       "key": "backgroundForChatOnly",
       "field": "backgroundForChatOnly",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -527,6 +601,7 @@
       "key": "hideServerAddress",
       "field": "hideServerAddress",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -534,6 +609,7 @@
       "key": "advancedItemTooltips",
       "field": "advancedItemTooltips",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -541,6 +617,7 @@
       "key": "pauseOnLostFocus",
       "field": "pauseOnLostFocus",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -548,6 +625,7 @@
       "key": "overrideWidth",
       "field": "overrideWidth",
       "kind": "integer",
+      "encoding": "integer",
       "default": "0"
     },
     {
@@ -555,6 +633,7 @@
       "key": "overrideHeight",
       "field": "overrideHeight",
       "kind": "integer",
+      "encoding": "integer",
       "default": "0"
     },
     {
@@ -562,6 +641,7 @@
       "key": "chatHeightFocused",
       "field": "chatHeightFocused",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -569,6 +649,7 @@
       "key": "chatDelay",
       "field": "chatDelay",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.0"
     },
     {
@@ -576,6 +657,7 @@
       "key": "chatHeightUnfocused",
       "field": "chatHeightUnfocused",
       "kind": "codec",
+      "encoding": "double",
       "default": "0.4375"
     },
     {
@@ -583,6 +665,7 @@
       "key": "chatScale",
       "field": "chatScale",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -590,6 +673,7 @@
       "key": "chatWidth",
       "field": "chatWidth",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -597,6 +681,7 @@
       "key": "notificationDisplayTime",
       "field": "notificationDisplayTime",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -604,6 +689,7 @@
       "key": "useNativeTransport",
       "field": "useNativeTransport",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -611,6 +697,7 @@
       "key": "mainHand",
       "field": "mainHand",
       "kind": "codec",
+      "encoding": "enum-name",
       "default": "HumanoidArm.RIGHT"
     },
     {
@@ -618,6 +705,7 @@
       "key": "attackIndicator",
       "field": "attackIndicator",
       "kind": "codec",
+      "encoding": "enum-id",
       "default": "AttackIndicatorStatus.CROSSHAIR"
     },
     {
@@ -625,6 +713,7 @@
       "key": "tutorialStep",
       "field": "tutorialStep",
       "kind": "tutorial-step",
+      "encoding": "tutorial-step",
       "default": "TutorialSteps.MOVEMENT"
     },
     {
@@ -632,6 +721,7 @@
       "key": "mouseWheelSensitivity",
       "field": "mouseWheelSensitivity",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -639,6 +729,7 @@
       "key": "rawMouseInput",
       "field": "rawMouseInput",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -646,6 +737,7 @@
       "key": "allowCursorChanges",
       "field": "allowCursorChanges",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -653,6 +745,7 @@
       "key": "glDebugVerbosity",
       "field": "glDebugVerbosity",
       "kind": "integer",
+      "encoding": "integer",
       "default": "1"
     },
     {
@@ -660,6 +753,7 @@
       "key": "skipMultiplayerWarning",
       "field": "skipMultiplayerWarning",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -667,6 +761,7 @@
       "key": "hideMatchedNames",
       "field": "hideMatchedNames",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -674,6 +769,7 @@
       "key": "joinedFirstServer",
       "field": "joinedFirstServer",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -681,6 +777,7 @@
       "key": "syncChunkWrites",
       "field": "syncWrites",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "host:platform-is-windows"
     },
     {
@@ -688,6 +785,7 @@
       "key": "showAutosaveIndicator",
       "field": "showAutosaveIndicator",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -695,6 +793,7 @@
       "key": "allowServerListing",
       "field": "allowServerListing",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -702,6 +801,7 @@
       "key": "onlyShowSecureChat",
       "field": "onlyShowSecureChat",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -709,6 +809,7 @@
       "key": "saveChatDrafts",
       "field": "saveChatDrafts",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -716,6 +817,7 @@
       "key": "panoramaScrollSpeed",
       "field": "panoramaSpeed",
       "kind": "codec",
+      "encoding": "double",
       "default": "1.0"
     },
     {
@@ -723,6 +825,7 @@
       "key": "telemetryOptInExtra",
       "field": "telemetryOptInExtra",
       "kind": "codec",
+      "encoding": "boolean",
       "default": "false"
     },
     {
@@ -730,6 +833,7 @@
       "key": "onboardAccessibility",
       "field": "onboardAccessibility",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -737,6 +841,7 @@
       "key": "menuBackgroundBlurriness",
       "field": "menuBackgroundBlurriness",
       "kind": "codec",
+      "encoding": "integer",
       "default": "5"
     },
     {
@@ -744,6 +849,7 @@
       "key": "startedCleanly",
       "field": "startedCleanly",
       "kind": "boolean",
+      "encoding": "boolean",
       "default": "true"
     },
     {
@@ -751,6 +857,7 @@
       "key": "musicToast",
       "field": "musicToast",
       "kind": "codec",
+      "encoding": "enum-name",
       "default": "MusicToastDisplayState.NEVER"
     },
     {
@@ -758,6 +865,7 @@
       "key": "musicFrequency",
       "field": "musicFrequency",
       "kind": "codec",
+      "encoding": "enum-name",
       "default": "MusicManager.MusicFrequency.DEFAULT"
     }
   ],

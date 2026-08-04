@@ -42,6 +42,7 @@ def render_catalog(source_root: Path) -> str:
                 "key": option.key,
                 "field": option.field,
                 "kind": option.kind,
+                "encoding": option.encoding,
                 "default": option.default,
             }
             for option in options

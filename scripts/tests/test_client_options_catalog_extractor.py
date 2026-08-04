@@ -4,6 +4,7 @@ import importlib.util
 import json
 import sys
 import unittest
+from collections import Counter
 from pathlib import Path
 
 
@@ -39,7 +40,7 @@ def source(body: bytes):
 FIXTURE = b"""
    private final OptionInstance<Boolean> autoJump = OptionInstance.createBoolean("options.autoJump", false);
    private final OptionInstance<Integer> renderDistance = new OptionInstance<>(
-      "options.renderDistance", noTooltip(), label, new IntRange(2, 32), 12, value -> refresh()
+      "options.renderDistance", noTooltip(), label, new OptionInstance.IntRange(2, 32), 12, value -> refresh()
    );
    public String lastMpIp = "";
    public boolean hideServerAddress;
@@ -72,6 +73,14 @@ class ClientOptionsCatalogExtractorTests(unittest.TestCase):
             "string",
             "boolean",
         ])
+        # `FieldAccess.process(String, OptionInstance)` runs the option's codec
+        # through JsonOps, so the value set decides the on-disk shape.
+        self.assertEqual([option.encoding for option in options], [
+            "integer",
+            "boolean",
+            "string",
+            "boolean",
+        ])
         # The trailing onValueUpdate callback is not the default, an
         # uninitialized primitive falls back to Java's implicit value, and a
         # constructor-assigned OptionInstance still resolves.
@@ -90,7 +99,7 @@ class ClientOptionsCatalogExtractorTests(unittest.TestCase):
    private final OptionInstance<Integer> simulationDistance;
    Options(final Minecraft minecraft, final File directory) {
       this.simulationDistance = new OptionInstance<>(
-         "options.simulationDistance", noTooltip(), label, new IntRange(5, 32), 12, value -> refresh()
+         "options.simulationDistance", noTooltip(), label, new OptionInstance.IntRange(5, 32), 12, value -> refresh()
       );
    }
    private void processDumpedOptions(final OptionAccess access) {
@@ -175,6 +184,34 @@ class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
         )
         self.assertEqual(
             [group["order"] for group in document["dynamic_groups"]], [108, 109, 110]
+        )
+        # Every line has a resolved on-disk shape; an unmapped value set or
+        # codec fails the generator instead of landing here as a placeholder.
+        self.assertEqual(
+            Counter(option["encoding"] for option in options),
+            Counter(
+                {
+                    "boolean": 54,
+                    "double": 22,
+                    "integer": 14,
+                    "enum-id": 6,
+                    "enum-name": 5,
+                    "string": 3,
+                    "string-list": 2,
+                    "enum-name-or-boolean": 1,
+                    "tutorial-step": 1,
+                }
+            ),
+        )
+        # `renderClouds` is the one key that still reads the pre-1.20 boolean
+        # through `Codec.withAlternative`.
+        self.assertEqual(
+            [
+                option["key"]
+                for option in options
+                if option["encoding"] == "enum-name-or-boolean"
+            ],
+            ["renderClouds"],
         )
 
 
