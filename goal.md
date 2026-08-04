@@ -500,33 +500,24 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
-#### Active contract：persistence-client-files
+#### Active contract：persistence-client-files（仅剩 live playable gate）
 
-- 目标与完成标准：闭合 158 owner（`Options` 145、`ServerList` 13），拆成同构
-  sub-route 并逐 owner 挂机械可达 evidence；`options.txt` 成为唯一 typed client
-  options owner；matrix 行翻 `equivalent`，账本删项。
-- 审计事实：仓内无任何 `options.txt` 读写，客户端选项全部由 71 个 clap arg
-  承载，无文件 round-trip；`server_list.rs` 已有 `servers.dat` 读写与 `_old`
-  备份原子替换，但无 list 变更 owner；145 个 `Options` owner 里 94 个是直接
-  字段返回（归 support accessor）、6 个只服务 options UI 的 caption 工厂（判
-  out-of-scope），真正的决策面是 16+22+7。
-- 串行阶段 ①～⑥ 已完成（路由表 fail-closed、派生 key/默认值 catalog、CLI 降为
-  override、effective render distance、`buildPlayerInformation`/`broadcastOptions`/
-  report dump、F3+H/F3+P 的 `Options.save` 触发、`ServerList` 拆 8 file owner +
-  5 屏幕 owner 判 out-of-scope 并已 `equivalent` 关闭）。⑦ 剩余：为
-  `persistence-options-file` 11、`persistence-options-derived` 21、
-  `persistence-options-apply` 7 个 method 名逐条挂 evidence（配方照抄
-  `SERVER_LIST_OWNER_EVIDENCE`），再翻这三行 matrix。已知非等价点须先判：
-  `dataFix` 无 DataFixer owner，`updateFontOptions` 的 `FontOption` 过滤与
-  `loadSelectedResourcePacks`/`updateResourcePacks` 的 pack 选择面 BBB 都没有，
-  三者要么落 ledger 要么降级说明，不能默认写成 equivalent。
-- 非目标：不做 `OptionsScreen` 及其 widget/label，不做 Realms/singleplayer 字段
-  的 UI 消费，不新增第二套配置来源。
-- 每阶段 focused tests：文件 round-trip/损坏恢复 + 派生决策 + consumer 投影断言。
-- checkpoint：① 与 ⑦ 触及 generator 属高风险，各自单独一次完整 gate；②～⑥ 每
-  阶段一次干净提交，累计 4 个提交或跨 crate 里程碑时 gate；④ 改动启动路径后
-  必须实跑一次 live playable gate 并刷新 stamp；最终 HEAD 必须 full-gated。
-- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
+- 已完成：158 owner 全部拆成同构 sub-route 并逐 owner 挂 evidence。
+  `persistence-options-file` 14/14、`persistence-options-derived` 13/13、
+  `persistence-options-apply` 3/3、`persistence-server-list` 8/8 已翻
+  `equivalent`；无 BBB 消费面的 8 个 owner 归 `persistence-options-unconsumed`
+  （`missing`，逐条 vanilla 调用方写进账本），只服务 options 屏/`onValueUpdate`
+  的 13 个归 `scope-options-ui`，5 个多人服务器选择屏 owner 归
+  `scope-multiplayer-server-list`；旧账本项已删。
+- 唯一未完成 checkpoint：④⑤ 改过启动路径（`--game-dir`、options.txt 读写、
+  render distance clamp、F3+H/F3+P 存盘与 `ClientInformation` 补发），契约要求
+  实跑一次 live playable gate 并刷新 stamp。本机跑不了：无 `DISPLAY`/
+  `WAYLAND_DISPLAY` 且未装 Xvfb，`scripts/playable-gate.sh live` 直接 exit 2。
+  有显示环境时：`BBB_PLAYABLE_SERVER_JAR=~/Work/mc-code/downloads/26.1/server-26.1.jar`
+  `BBB_PLAYABLE_ACCEPT_EULA=1`
+  `BBB_PLAYABLE_JAVA=~/Work/mc-code/downloads/java/jdk-25.0.3+9-jre/bin/java`。
+- 安全停止点：该 gate 通过并刷新 `.git/bbb/last-playable-live` 后即可删除本节，
+  并往 `docs/goal-archive.md` 补一行关闭记录。
 
 已有维护证据：
 

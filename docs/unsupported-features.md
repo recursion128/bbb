@@ -115,13 +115,11 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   externally unverified. Reopen when an account owner provisions an ephemeral
   legal credential pair and controlled Vanilla 26.1 online-mode server runner that
   redacts process/log material and can assert that complete sequence.
-- **Client persistence and secure-chat/social/reporting decisions remain `active`.**
-  The 158 persistence owners are now split by canonical owner — 16 `options.txt`
-  codec/IO, 22 derived decisions, 7 apply/broadcast, 13 `servers.dat` — but BBB has
-  no `options.txt` owner at all: client options ride on startup CLI args with no
-  file round-trip, unknown-key retention or parse-failure recovery. The 30 security
+- **Secure-chat/social/reporting decisions remain `active`.** The 30 security
   owners and their online/offline service boundary and live consumer behavior are
-  also unproven. Launcher token acquisition remains outside the client.
+  unproven. Launcher token acquisition remains outside the client. (The 158
+  client-persistence owners this item used to carry are closed; see the
+  `persistence-options-*` and `persistence-server-list` matrix rows.)
 
 ## Runtime performance parity and stable frame tails
 
