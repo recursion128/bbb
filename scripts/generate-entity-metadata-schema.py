@@ -3264,6 +3264,114 @@ def class_pushability_kind(
     return value
 
 
+def class_pushes_local_player_on_client_tick(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    push_entities_owner_cache: dict[str, str],
+    do_push_owner_cache: dict[str, str],
+    cache: dict[str, bool],
+) -> bool:
+    """Interpret the client ``LivingEntity.pushEntities`` dispatch for a local Player.
+
+    The fixed EntityType catalog carries this source-derived virtual-dispatch fact so
+    the Rust tick owner never grows a hand-maintained Bat/ArmorStand/Parrot table.
+    Dynamic ``isPushable`` state remains instance-owned by ``WorldStore``.
+    """
+    if owner in cache:
+        return cache[owner]
+    current: str | None = owner
+    while current is not None and current != "net.minecraft.world.entity.LivingEntity":
+        item = class_map.get(current)
+        current = item.superclass if item is not None else None
+    if current is None:
+        cache[owner] = False
+        return False
+
+    push_owner = class_nearest_method_owner(
+        result, class_map, owner, "pushEntities", 0, push_entities_owner_cache
+    )
+    push_source, push_method = method_for(result, push_owner, "pushEntities", 0)
+    push_body = push_method.node.child_by_field_name("body")
+    if push_body is None:
+        raise ExtractionError(f"{push_owner}.pushEntities: method lacks body")
+    push_canonical = push_source.expression(push_body).canonical
+    if push_owner in {
+        "net.minecraft.world.entity.ambient.Bat",
+        "net.minecraft.world.entity.decoration.ArmorStand",
+    }:
+        expected = {
+            "net.minecraft.world.entity.ambient.Bat": "{}",
+            "net.minecraft.world.entity.decoration.ArmorStand": (
+                "{for (Entity entity : this.level ().getEntities (this, "
+                "this.getBoundingBox (), RIDABLE_MINECARTS)) {"
+                "if (this.distanceToSqr (entity) <= 0.2) {entity.push (this);}}}"
+            ),
+        }[push_owner]
+        if push_canonical != expected:
+            raise ExtractionError(
+                f"{push_owner}.pushEntities: stale local-player exclusion body; "
+                f"expected {expected!r}, found {push_canonical!r}"
+            )
+        cache[owner] = False
+        return False
+    if push_owner != "net.minecraft.world.entity.LivingEntity":
+        raise ExtractionError(
+            f"{push_owner}.pushEntities: unsupported local-player dispatch override"
+        )
+    push_calls = [
+        call.name
+        for call in push_source.calls
+        if push_body.start_byte <= call.span.start_byte
+        and call.span.end_byte <= push_body.end_byte
+    ]
+    if push_calls.count("getPushableEntities") != 1 or push_calls.count("doPush") != 1:
+        raise ExtractionError(
+            "LivingEntity.pushEntities: expected one getPushableEntities/doPush path"
+        )
+
+    do_push_owner = class_nearest_method_owner(
+        result, class_map, owner, "doPush", 1, do_push_owner_cache
+    )
+    do_push_source, do_push_method = method_for(result, do_push_owner, "doPush", 1)
+    do_push_body = do_push_method.node.child_by_field_name("body")
+    if do_push_body is None:
+        raise ExtractionError(f"{do_push_owner}.doPush: method lacks body")
+    do_push_canonical = do_push_source.expression(do_push_body).canonical
+    if do_push_owner == "net.minecraft.world.entity.animal.parrot.Parrot":
+        expected = "{if (! (entity instanceof Player)) {super.doPush (entity);}}"
+        if do_push_canonical != expected:
+            raise ExtractionError(
+                f"{do_push_owner}.doPush: stale Player exclusion body; "
+                f"expected {expected!r}, found {do_push_canonical!r}"
+            )
+        value = False
+    elif do_push_owner == "net.minecraft.world.entity.LivingEntity":
+        expected = "{entity.push (this);}"
+        if do_push_canonical != expected:
+            raise ExtractionError(
+                f"LivingEntity.doPush: stale forwarding body {do_push_canonical!r}"
+            )
+        value = True
+    elif do_push_owner in {
+        "net.minecraft.world.entity.animal.golem.IronGolem",
+        "net.minecraft.world.entity.monster.warden.Warden",
+    }:
+        if not method_forwards_parameter_to_super(
+            result, do_push_owner, "doPush", 1, 0
+        ):
+            raise ExtractionError(
+                f"{do_push_owner}.doPush: missing Entity parameter forwarding to super"
+            )
+        value = True
+    else:
+        raise ExtractionError(
+            f"{do_push_owner}.doPush: unsupported local-player dispatch override"
+        )
+    cache[owner] = value
+    return value
+
+
 def class_collidability_kind(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -4302,6 +4410,9 @@ def render(result: ExtractionResult) -> str:
         raise ExtractionError("EnderDragonPhase: every phase implementation is sitting")
     pickable_cache: dict[str, bool] = {}
     pushability_cache: dict[str, str] = {}
+    pushes_local_player_cache: dict[str, bool] = {}
+    push_entities_owner_cache: dict[str, str] = {}
+    do_push_owner_cache: dict[str, str] = {}
     collidability_cache: dict[str, str] = {}
     sound_source_cache: dict[str, str] = {}
     death_sound_owner_cache: dict[str, str] = {}
@@ -5089,6 +5200,7 @@ def render(result: ExtractionResult) -> str:
                 f"        sound_volume_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'getSoundVolume', 0, sound_volume_owner_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else None)},",
                 f"        sound_volume_policy: {class_sound_volume_policy(result, class_map, item.runtime_class, sound_volume_owner_cache, sound_volume_policy_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'VanillaEntitySoundVolumePolicy::NonLiving'},",
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
+                f"        pushes_local_player_on_client_tick: {str(class_pushes_local_player_on_client_tick(result, class_map, item.runtime_class, push_entities_owner_cache, do_push_owner_cache, pushes_local_player_cache)).lower()},",
                 f"        collidability_kind: VanillaEntityCollidabilityKind::{class_collidability_kind(result, class_map, item.runtime_class, collidability_cache)},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
                 f"        is_mob: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.Mob')).lower()},",
@@ -6553,18 +6665,20 @@ def render(result: ExtractionResult) -> str:
             "    fn collision_debug_pushability_consumers_do_not_restore_type_membership() {",
             '        let source = include_str!("../../client/local_player_collision.rs");',
             '        let body = source',
-            '            .split("fn debug_entity_is_pushable")',
+            '            .split("fn entity_is_pushable")',
             "            .nth(1)",
             '            .and_then(|source| source.split_once("\\n    }"))',
             "            .map(|(body, _)| body)",
             '            .expect("collision debug pushability source");',
             '        assert!(body.contains("vanilla_entity_metadata_type_pushability_kind"));',
-            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert_eq!(body.matches("VANILLA_ENTITY_TYPE_").count(), 1);',
+            '        assert!(body.contains("VANILLA_ENTITY_TYPE_PLAYER_ID"));',
             '        for required in [',
             '            "living_entity_health",',
             '            "debug_living_entity_on_climbable",',
             '            "mount(target_id)",',
             '            "pose(target_id)",',
+            '            "player_info_entry(identity.uuid)",',
             '            "vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type",',
             '        ] {',
             '            assert!(body.contains(required), "missing instance gate {required}");',
@@ -6586,6 +6700,29 @@ def render(result: ExtractionResult) -> str:
             '        assert!(fixture.contains("vanilla_entity_metadata_type_pushability_kind"));',
             '        assert!(fixture.contains("VanillaEntityPushabilityKind::Never"));',
             '        assert!(!fixture.contains("VANILLA_ENTITY_TYPE_"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn client_tick_local_player_push_keeps_one_generated_resolver() {",
+            '        let store = include_str!("../store.rs");',
+            '        let schedule = store',
+            '            .split("fn append_client_tick_passenger_tree")',
+            '            .nth(1)',
+            '            .and_then(|source| source.split("pub(crate) fn publication_snapshot_observation").next())',
+            '            .expect("client tick schedule source");',
+            '        assert!(schedule.contains("vanilla_entity_metadata_type_pushes_local_player_on_client_tick"));',
+            '        for removed in [',
+            '            "VANILLA_ENTITY_TYPE_BAT_ID",',
+            '            "VANILLA_ENTITY_TYPE_ARMOR_STAND_ID",',
+            '            "VANILLA_ENTITY_TYPE_PARROT_ID",',
+            '        ] {',
+            '            assert!(!schedule.contains(removed), "restored push override table {removed}");',
+            '        }',
+            '        assert_eq!(store.matches("apply_local_player_push_impulse(").count(), 3);',
+            '        assert!(!store.contains("can_push_local_player"));',
+            '        let world = include_str!("../animations.rs");',
+            '        assert_eq!(world.matches("entity_can_push_scoreboard_target(").count(), 1);',
+            '        assert!(world.contains("local_player_pushability_by_id"));',
             "    }",
             "",
             "    #[test]",

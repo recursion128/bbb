@@ -49,7 +49,7 @@ Matrix route: `coverage-external-client-census`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer` + `bbb-audio`
 
-Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`
+Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`
 
 Goal route: `goal.md#p2非实体客户端行为-closeout`
 
@@ -67,12 +67,6 @@ consumer, fallback and applicable live evidence.
 - **`world-client-chunk-light-lifecycle` (5 owners).** Verify chunk replace/drop,
   light-source enablement and renderer invalidation ordering with bounded retained
   chunk state.
-- **`world-client-entity-lifecycle` (17 owners).** Verify add/remove/tick/passenger,
-  multipart lookup and callback ordering through the one canonical entity store.
-  Current audit also finds only the boat consumer of
-  `ClientLevel.getPushableEntities`; ordinary ticking `LivingEntity.aiStep`
-  must apply its team/bounds/same-vehicle-gated local-player push through the
-  same ordered entity tick without a second collision resolver.
 - **`world-client-ambient-animation` (9 owners).** Verify block animation and
   ambient/mood event selection from world state through exactly-once native effects.
 - **`world-client-session-services` (8 owners).** Verify registry, scoreboard,

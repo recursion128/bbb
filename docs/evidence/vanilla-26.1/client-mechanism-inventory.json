@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "381ce732d50499cb519cddafd6682538b6683c869a7a632913a2e57b45064b91"
+      "sha256": "dd832923b2297b7fb1b8f039ab3977c45ab963f0035457770084f2c88667d4ec"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -648,7 +648,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/entities/store.rs"
       ],
-      "owner_count": 17
+      "owner_count": 17,
+      "owner_evidence_count": 17
     },
     "world-client-level-events": {
       "bbb_evidence": [
@@ -17788,6 +17789,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addDestroyBlockEffect(final BlockPos pos,final BlockState blockState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+          "crates/bbb-world/src/entities.rs#apply_remove_entities",
+          "crates/bbb-world/src/entities/store.rs#insert_or_replace",
+          "crates/bbb-world/src/entities/store.rs#remove_ids"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#level_reset_and_id_reuse_restore_generated_attribute_defaults",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18054,6 +18069,19 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#endFlashState()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities.rs#entity_model_sources_at_partial_tick",
+          "crates/bbb-world/src/entities.rs#entity_count",
+          "crates/bbb-world/src/entities.rs#probe_entity",
+          "crates/bbb-world/src/entities/store.rs#states"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+          "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18236,6 +18264,19 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getClientLeafTintColor(final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities.rs#entity_model_sources_at_partial_tick",
+          "crates/bbb-world/src/entities.rs#entity_count",
+          "crates/bbb-world/src/entities.rs#probe_entity",
+          "crates/bbb-world/src/entities/store.rs#states"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+          "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18250,6 +18291,19 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntities()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities.rs#entity_model_sources_at_partial_tick",
+          "crates/bbb-world/src/entities.rs#entity_count",
+          "crates/bbb-world/src/entities.rs#probe_entity",
+          "crates/bbb-world/src/entities/store.rs#states"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+          "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18264,6 +18318,19 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntity(final int id)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities.rs#entity_model_sources_at_partial_tick",
+          "crates/bbb-world/src/entities.rs#entity_count",
+          "crates/bbb-world/src/entities.rs#probe_entity",
+          "crates/bbb-world/src/entities/store.rs#states"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+          "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18348,6 +18415,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getMarkerParticleTarget()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18512,6 +18594,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#hasChunk(final int chunkX,final int chunkZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18764,6 +18861,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#registerForCleaning(final CacheSlot <ClientLevel, ?> slot)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+          "crates/bbb-world/src/entities.rs#apply_remove_entities",
+          "crates/bbb-world/src/entities/store.rs#insert_or_replace",
+          "crates/bbb-world/src/entities/store.rs#remove_ids"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#level_reset_and_id_reuse_restore_generated_attribute_defaults",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18886,6 +18997,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance",
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18952,6 +19072,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setTimeFromServer(final long gameTime)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19032,6 +19167,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tick(final BooleanSupplier haveTime)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19046,6 +19196,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickEntities()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19060,6 +19225,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickNonPassenger(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19396,6 +19576,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onSectionChange(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19410,6 +19605,21 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingEnd(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+          "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+          "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+          "crates/bbb-world/src/entities/store.rs#within_death_tick_distance"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19424,6 +19634,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingStart(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+          "crates/bbb-world/src/entities.rs#apply_remove_entities",
+          "crates/bbb-world/src/entities/store.rs#insert_or_replace",
+          "crates/bbb-world/src/entities/store.rs#remove_ids"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#level_reset_and_id_reuse_restore_generated_attribute_defaults",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19438,6 +19662,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTrackingEnd(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+          "crates/bbb-world/src/entities.rs#apply_remove_entities",
+          "crates/bbb-world/src/entities/store.rs#insert_or_replace",
+          "crates/bbb-world/src/entities/store.rs#remove_ids"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#level_reset_and_id_reuse_restore_generated_attribute_defaults",
+          "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player"
+        ]
+      },
       "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -41292,6 +41530,7 @@
       "rendering-level-light-query",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle",
+      "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"
     ],

@@ -1286,7 +1286,7 @@ impl WorldStore {
         player_is_above || happy_ghast_vehicle_pair || stays_still
     }
 
-    fn debug_entity_is_pushable(
+    pub(crate) fn entity_is_pushable(
         &self,
         target_id: i32,
         target_type: i32,
@@ -1307,6 +1307,15 @@ impl WorldStore {
             VanillaEntityPushabilityKind::Living
             | VanillaEntityPushabilityKind::LivingCanMove
             | VanillaEntityPushabilityKind::LivingNotDiggingOrEmerging => {}
+        }
+        if target_type == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && self
+                .entities
+                .identity(target_id)
+                .and_then(|identity| self.player_info_entry(identity.uuid))
+                .is_some_and(|player| player.is_spectator())
+        {
+            return false;
         }
         if !self
             .entities
@@ -1339,6 +1348,15 @@ impl WorldStore {
             }
         }
         true
+    }
+
+    fn debug_entity_is_pushable(
+        &self,
+        target_id: i32,
+        target_type: i32,
+        target_position: [f64; 3],
+    ) -> bool {
+        self.entity_is_pushable(target_id, target_type, target_position)
     }
 
     fn debug_living_entity_on_climbable(&self, entity_id: i32, position: [f64; 3]) -> bool {
@@ -8094,6 +8112,50 @@ mod tests {
             );
         }
         assert!(!world.debug_entity_is_pushable(i32::MAX, -1, [0.5, 0.0, 0.5]));
+    }
+
+    #[test]
+    fn living_pushability_rejects_spectator_player_instance_state() {
+        let mut world = empty_world();
+        let player_id = 42;
+        let player_uuid = uuid::Uuid::from_u128(player_id as u128 + 1);
+        add_collision_test_entity(
+            &mut world,
+            player_id,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.5, 0.0, 0.5],
+        );
+        assert!(world.entity_is_pushable(
+            player_id,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.5, 0.0, 0.5]
+        ));
+        world.apply_player_info_update(bbb_protocol::packets::PlayerInfoUpdate {
+            actions: vec![
+                bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+                bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
+            ],
+            entries: vec![bbb_protocol::packets::PlayerInfoEntry {
+                profile_id: player_uuid,
+                profile: Some(bbb_protocol::packets::GameProfile {
+                    uuid: player_uuid,
+                    name: "Spectator".to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: bbb_protocol::packets::GameType::Spectator,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+        assert!(!world.entity_is_pushable(
+            player_id,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.5, 0.0, 0.5]
+        ));
     }
 
     #[test]

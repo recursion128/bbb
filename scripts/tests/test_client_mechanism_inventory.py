@@ -241,6 +241,26 @@ public class Owner {
             ),
         )
         self.assertNotIn("world-client-level-decisions", by_mechanism)
+        entity_lifecycle_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-entity-lifecycle"
+        ]
+        self.assertEqual(len(entity_lifecycle_owners), 17)
+        self.assertEqual(
+            value["mechanisms"]["world-client-entity-lifecycle"][
+                "owner_evidence_count"
+            ],
+            17,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in entity_lifecycle_owners
+            )
+        )
         self.assertEqual(
             value["selection_contract"]["client_level_method_partition"],
             "explicit homogeneous routes plus CST-derived direct-return support owners; unclassified methods fail closed",

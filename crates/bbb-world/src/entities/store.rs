@@ -93,6 +93,7 @@ use super::schema::{
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_entity_metadata_type_pushes_local_player_on_client_tick,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
@@ -599,11 +600,23 @@ pub(crate) struct EntityInWaterTickInput {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct EntityBoatClientTickInput {
     pub(crate) entity_id: i32,
-    pub(crate) entity_type_id: i32,
-    pub(crate) uuid: Uuid,
     pub(crate) position: EntityVec3,
     pub(crate) relative_min: [f64; 3],
     pub(crate) relative_max: [f64; 3],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct EntityLocalPlayerPushTickInput {
+    pub(crate) entity_id: i32,
+    pub(crate) entity_type_id: i32,
+    pub(crate) uuid: Uuid,
+    pub(crate) position: EntityVec3,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct EntityClientTickScheduleInputs {
+    pub(crate) boats: Vec<EntityBoatClientTickInput>,
+    pub(crate) local_player_pushers: Vec<EntityLocalPlayerPushTickInput>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -612,7 +625,6 @@ pub(crate) struct EntityBoatClientTickWorldFacts {
     pub(crate) status: super::EntityBoatStatus,
     pub(crate) water_level: f64,
     pub(crate) land_friction: Option<f32>,
-    pub(crate) can_push_local_player: bool,
     pub(crate) relative_min: [f64; 3],
     pub(crate) relative_max: [f64; 3],
 }
@@ -7495,12 +7507,12 @@ impl EntityStore {
         &mut self,
         runs_normally: bool,
         is_ticking_entity: &F,
-    ) -> Vec<EntityBoatClientTickInput>
+    ) -> EntityClientTickScheduleInputs
     where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
         let mut schedule = std::mem::take(&mut self.client_tick_scratch);
-        let mut inputs = Vec::new();
+        let mut inputs = EntityClientTickScheduleInputs::default();
         self.fill_client_tick_schedule(
             &mut schedule,
             runs_normally,
@@ -8175,7 +8187,9 @@ impl EntityStore {
         spectator_player_uuids: &HashSet<Uuid>,
         fluid_facts_by_id: &HashMap<i32, EntityClientTickFluidFacts>,
         boat_world_facts: &[EntityBoatClientTickWorldFacts],
+        local_player_pushability_by_id: &HashMap<i32, bool>,
         mut local_player_pose: Option<&mut LocalPlayerPoseState>,
+        local_player_scale: f32,
         local_player_is_vehicle: bool,
         guardian_can_stand_on_below_by_id: &HashMap<i32, bool>,
         guardian_attack_target_ids: &HashSet<i32>,
@@ -8722,7 +8736,31 @@ impl EntityStore {
                             transform,
                             mount,
                             facts,
+                            local_player_pushability_by_id.get(&identity.id).copied(),
                             pose,
+                            local_player_scale,
+                            local_player_is_vehicle,
+                        );
+                    }
+                } else if let (Some(pusher_is_pushable), Some(pose)) = (
+                    local_player_pushability_by_id.get(&identity.id).copied(),
+                    local_player_pose.as_deref_mut(),
+                ) {
+                    if let Some(bounds) = vanilla_bounds_for_entity_data(
+                        identity.entity_type_id,
+                        identity.data,
+                        &metadata.data_values,
+                        &attributes.attributes,
+                        Some(animations.animations),
+                        metadata.painting_variant_projection.as_ref(),
+                    ) {
+                        apply_living_push_to_local_player(
+                            transform,
+                            mount,
+                            bounds,
+                            pusher_is_pushable,
+                            pose,
+                            local_player_scale,
                             local_player_is_vehicle,
                         );
                     }
@@ -8886,7 +8924,7 @@ impl EntityStore {
         scratch: &mut EntityClientTickScratch,
         runs_normally: bool,
         is_ticking_entity: &F,
-        mut boat_inputs: Option<&mut Vec<EntityBoatClientTickInput>>,
+        mut inputs: Option<&mut EntityClientTickScheduleInputs>,
     ) where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
@@ -8913,12 +8951,7 @@ impl EntityStore {
             {
                 continue;
             }
-            self.append_client_tick_passenger_tree(
-                id,
-                scratch,
-                is_ticking_entity,
-                &mut boat_inputs,
-            );
+            self.append_client_tick_passenger_tree(id, scratch, is_ticking_entity, &mut inputs);
         }
     }
 
@@ -8975,7 +9008,7 @@ impl EntityStore {
         id: i32,
         scratch: &mut EntityClientTickScratch,
         is_ticking_entity: &F,
-        boat_inputs: &mut Option<&mut Vec<EntityBoatClientTickInput>>,
+        inputs: &mut Option<&mut EntityClientTickScheduleInputs>,
     ) where
         F: Fn(i32, i32, EntityVec3) -> bool,
     {
@@ -8995,18 +9028,32 @@ impl EntityStore {
         };
         if is_vanilla_boat_type(identity.entity_type_id) {
             if let (Some(inputs), Some([width, height])) = (
-                boat_inputs.as_deref_mut(),
+                inputs.as_deref_mut(),
                 vanilla_entity_type_dimensions(identity.entity_type_id),
             ) {
                 let half_width = f64::from(width) * 0.5;
-                inputs.push(EntityBoatClientTickInput {
+                inputs.boats.push(EntityBoatClientTickInput {
                     entity_id: identity.id,
-                    entity_type_id: identity.entity_type_id,
-                    uuid: identity.uuid,
                     position: transform.position,
                     relative_min: [-half_width, 0.0, -half_width],
                     relative_max: [half_width, f64::from(height), half_width],
                 });
+            }
+        }
+        if is_vanilla_boat_type(identity.entity_type_id)
+            || vanilla_entity_metadata_type_pushes_local_player_on_client_tick(
+                identity.entity_type_id,
+            )
+        {
+            if let Some(inputs) = inputs.as_deref_mut() {
+                inputs
+                    .local_player_pushers
+                    .push(EntityLocalPlayerPushTickInput {
+                        entity_id: identity.id,
+                        entity_type_id: identity.entity_type_id,
+                        uuid: identity.uuid,
+                        position: transform.position,
+                    });
             }
         }
 
@@ -9031,7 +9078,7 @@ impl EntityStore {
                 passenger_id,
                 scratch,
                 is_ticking_entity,
-                boat_inputs,
+                inputs,
             );
         }
     }
@@ -9830,12 +9877,14 @@ fn apply_boat_push_to_local_player(
     boat_transform: &mut EntityTransform,
     boat_mount: &EntityMount,
     facts: &EntityBoatClientTickWorldFacts,
+    pusher_is_pushable: Option<bool>,
     local_player_pose: &mut LocalPlayerPoseState,
+    local_player_scale: f32,
     local_player_is_vehicle: bool,
 ) {
-    if !facts.can_push_local_player {
+    let Some(pusher_is_pushable) = pusher_is_pushable else {
         return;
-    }
+    };
 
     // `ClientLevel.getPushableEntities` tests the local player's bounds
     // against `boat.getBoundingBox().inflate(0.2F, -0.01F, 0.2F)` before
@@ -9850,17 +9899,7 @@ fn apply_boat_push_to_local_player(
         boat_transform.position.y + facts.relative_max[1],
         boat_transform.position.z + facts.relative_max[2],
     ];
-    let player_half_width = f64::from(0.6_f32) * 0.5;
-    let player_min = [
-        local_player_pose.position.x - player_half_width,
-        local_player_pose.position.y,
-        local_player_pose.position.z - player_half_width,
-    ];
-    let player_max = [
-        local_player_pose.position.x + player_half_width,
-        local_player_pose.position.y + local_player_pose.body_height(),
-        local_player_pose.position.z + player_half_width,
-    ];
+    let (player_min, player_max) = local_player_push_bounds(local_player_pose, local_player_scale);
     let query_min = [
         boat_min[0] - f64::from(0.2_f32),
         boat_min[1] + f64::from(0.01_f32),
@@ -9882,8 +9921,87 @@ fn apply_boat_push_to_local_player(
         return;
     }
 
-    let mut xa = local_player_pose.position.x - boat_transform.position.x;
-    let mut za = local_player_pose.position.z - boat_transform.position.z;
+    apply_local_player_push_impulse(
+        boat_transform,
+        !boat_mount.passengers.is_empty(),
+        pusher_is_pushable,
+        local_player_pose,
+        local_player_is_vehicle,
+    );
+}
+
+fn apply_living_push_to_local_player(
+    pusher_transform: &mut EntityTransform,
+    pusher_mount: &EntityMount,
+    pusher_bounds: super::EntityPickBoundsState,
+    pusher_is_pushable: bool,
+    local_player_pose: &mut LocalPlayerPoseState,
+    local_player_scale: f32,
+    local_player_is_vehicle: bool,
+) {
+    let pusher_min = [
+        pusher_transform.position.x + f64::from(pusher_bounds.min[0]),
+        pusher_transform.position.y + f64::from(pusher_bounds.min[1]),
+        pusher_transform.position.z + f64::from(pusher_bounds.min[2]),
+    ];
+    let pusher_max = [
+        pusher_transform.position.x + f64::from(pusher_bounds.max[0]),
+        pusher_transform.position.y + f64::from(pusher_bounds.max[1]),
+        pusher_transform.position.z + f64::from(pusher_bounds.max[2]),
+    ];
+    let (player_min, player_max) = local_player_push_bounds(local_player_pose, local_player_scale);
+    if !strict_aabb_intersection(player_min, player_max, pusher_min, pusher_max) {
+        return;
+    }
+    apply_local_player_push_impulse(
+        pusher_transform,
+        !pusher_mount.passengers.is_empty(),
+        pusher_is_pushable,
+        local_player_pose,
+        local_player_is_vehicle,
+    );
+}
+
+fn local_player_push_bounds(pose: &LocalPlayerPoseState, scale: f32) -> ([f64; 3], [f64; 3]) {
+    let scale = f64::from(scale);
+    let half_width = f64::from(0.6_f32) * 0.5 * scale;
+    (
+        [
+            pose.position.x - half_width,
+            pose.position.y,
+            pose.position.z - half_width,
+        ],
+        [
+            pose.position.x + half_width,
+            pose.position.y + pose.body_height() * scale,
+            pose.position.z + half_width,
+        ],
+    )
+}
+
+fn strict_aabb_intersection(
+    first_min: [f64; 3],
+    first_max: [f64; 3],
+    second_min: [f64; 3],
+    second_max: [f64; 3],
+) -> bool {
+    first_min[0] < second_max[0]
+        && first_max[0] > second_min[0]
+        && first_min[1] < second_max[1]
+        && first_max[1] > second_min[1]
+        && first_min[2] < second_max[2]
+        && first_max[2] > second_min[2]
+}
+
+fn apply_local_player_push_impulse(
+    pusher_transform: &mut EntityTransform,
+    pusher_is_vehicle: bool,
+    pusher_is_pushable: bool,
+    local_player_pose: &mut LocalPlayerPoseState,
+    local_player_is_vehicle: bool,
+) {
+    let mut xa = local_player_pose.position.x - pusher_transform.position.x;
+    let mut za = local_player_pose.position.z - pusher_transform.position.z;
     let mut distance = xa.abs().max(za.abs());
     if distance < f64::from(0.01_f32) {
         return;
@@ -9895,9 +10013,9 @@ fn apply_boat_push_to_local_player(
     xa *= power * f64::from(0.05_f32);
     za *= power * f64::from(0.05_f32);
 
-    if boat_mount.passengers.is_empty() {
-        boat_transform.delta_movement.x -= xa;
-        boat_transform.delta_movement.z -= za;
+    if !pusher_is_vehicle && pusher_is_pushable {
+        pusher_transform.delta_movement.x -= xa;
+        pusher_transform.delta_movement.z -= za;
     }
     if !local_player_is_vehicle {
         local_player_pose.delta_movement.x += xa;

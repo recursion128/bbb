@@ -1649,8 +1649,89 @@ INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities.rs#entity_model_sources_at_partial_tick",
+                "crates/bbb-world/src/entities.rs#entity_count",
+                "crates/bbb-world/src/entities.rs#probe_entity",
+                "crates/bbb-world/src/entities/store.rs#states",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+                "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#partial_tick_queries_share_canonical_transform_render_endpoints",
+                "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds",
+            ),
+        ),
+        ("entitiesForRendering", "getEntityCount", "getEntity", "getEntities"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+                "crates/bbb-world/src/entities/store.rs#fill_client_tick_schedule",
+                "crates/bbb-world/src/entities/store.rs#apply_local_player_push_impulse",
+                "crates/bbb-world/src/entities/store.rs#within_death_tick_distance",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#client_tick_schedule_follows_loaded_roots_and_recursive_player_exception",
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#frozen_client_tick_schedule_keeps_player_roots_and_player_passenger_trees_running",
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation",
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#ordinary_living_push_rejects_same_vehicle_and_spectator_local_player",
+                "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance",
+            ),
+        ),
+        (
+            "tickEntities",
+            "isTickingEntity",
+            "shouldTickDeath",
+            "tickNonPassenger",
+            "tickPassenger",
+            "getPushableEntities",
+            "onTickingStart",
+            "onTickingEnd",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/spawn.rs#apply_add_entity_packet",
+                "crates/bbb-world/src/entities.rs#apply_remove_entities",
+                "crates/bbb-world/src/entities/store.rs#insert_or_replace",
+                "crates/bbb-world/src/entities/store.rs#remove_ids",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
+                "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#level_reset_and_id_reuse_restore_generated_attribute_defaults",
+                "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#removed_player_vehicle_teleport_recovers_the_local_player",
+            ),
+        ),
+        (
+            "addEntity",
+            "removeEntity",
+            "onTrackingStart",
+            "onTrackingEnd",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/store.rs#within_death_tick_distance",
+                "crates/bbb-world/src/entities/animations.rs#advance_entity_client_animation_tick",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#simulation_distance_only_gates_living_death_ticks_by_chunk_distance",
+            ),
+        ),
+        ("setServerSimulationDistance",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
+    "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
 }

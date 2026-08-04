@@ -3655,6 +3655,264 @@ fn remote_boat_pushes_only_the_live_local_player_generation() {
 }
 
 #[test]
+fn ordinary_living_tick_uses_scaled_local_bounds_and_one_immutable_push_generation() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    let mut cow = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.uuid = Uuid::from_u128(0x20);
+    store.apply_add_entity(cow);
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = Uuid::from_u128(0x99);
+    local_player.position.x = 1.8;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.8,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default(),
+        "unscaled player bounds do not intersect the cow"
+    );
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 99,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    let retained = store.publication_snapshot();
+
+    store.advance_entity_client_animations(1);
+
+    let distance = 0.8_f64.sqrt();
+    let expected_push = (0.8 / distance) * f64::from(0.05_f32);
+    let live_pose = store.local_player_pose().unwrap();
+    let live_cow = store.entities.transform(20).unwrap();
+    assert!((live_pose.delta_movement.x - expected_push).abs() < 1.0e-12);
+    assert!((live_cow.delta_movement.x + expected_push).abs() < 1.0e-12);
+    assert_eq!(live_pose.delta_movement.z, 0.0);
+    assert_eq!(live_cow.delta_movement.z, 0.0);
+    assert_eq!(
+        retained.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default()
+    );
+    assert_eq!(
+        retained.probe_entity(20).unwrap().delta_movement,
+        EntityVec3::default()
+    );
+}
+
+#[test]
+fn ordinary_living_push_dispatch_excludes_bat_armor_stand_and_parrot() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    for (entity_id, entity_type_id) in [
+        (20, VANILLA_ENTITY_TYPE_BAT_ID),
+        (21, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID),
+        (22, VANILLA_ENTITY_TYPE_PARROT_ID),
+        (23, VANILLA_ENTITY_TYPE_COW_ID),
+    ] {
+        let mut entity = protocol_add_entity_with_type(entity_id, entity_type_id);
+        entity.uuid = Uuid::from_u128(entity_id as u128);
+        store.apply_add_entity(entity);
+    }
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = Uuid::from_u128(0x99);
+    local_player.position.x = 1.4;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.4,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+
+    store.advance_entity_client_animations(1);
+
+    let distance = 0.4_f64.sqrt();
+    let expected_push = (0.4 / distance) * f64::from(0.05_f32);
+    assert!(
+        (store.local_player_pose().unwrap().delta_movement.x - expected_push).abs() < 1.0e-12,
+        "exactly the generated Cow dispatch pushes the local player"
+    );
+}
+
+#[test]
+fn ordinary_living_push_reuses_team_and_local_target_gates() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    let cow_uuid = Uuid::from_u128(0x20);
+    let mut cow = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.uuid = cow_uuid;
+    store.apply_add_entity(cow);
+    let local_uuid = Uuid::from_u128(0x99);
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = local_uuid;
+    local_player.position.x = 1.4;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.4,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
+        name: "never-push".to_string(),
+        method: ProtocolPlayerTeamMethod::Add.into(),
+        parameters: Some(ProtocolPlayerTeamParameters {
+            display_name: bbb_protocol::RichTextComponent::plain("Never push"),
+            options: 0,
+            nametag_visibility: ProtocolTeamVisibility::Always,
+            collision_rule: ProtocolTeamCollisionRule::Never,
+            color: ProtocolChatFormatting::Reset,
+            player_prefix: bbb_protocol::RichTextComponent::plain(""),
+            player_suffix: bbb_protocol::RichTextComponent::plain(""),
+        }),
+        players: vec![cow_uuid.to_string()],
+    }));
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default()
+    );
+
+    store.apply_player_health(bbb_protocol::packets::PlayerHealth {
+        health: 0.0,
+        food: 20,
+        saturation: 5.0,
+    });
+    assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
+        name: "never-push".to_string(),
+        method: ProtocolPlayerTeamMethod::Remove.into(),
+        parameters: None,
+        players: Vec::new(),
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default(),
+        "a dead local player remains excluded after the team gate is removed"
+    );
+}
+
+#[test]
+fn ordinary_living_push_rejects_same_vehicle_and_spectator_local_player() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    let mut cow = protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID);
+    cow.uuid = Uuid::from_u128(0x20);
+    store.apply_add_entity(cow);
+    let local_uuid = Uuid::from_u128(0x99);
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = local_uuid;
+    local_player.position.x = 1.4;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.4,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20, 99],
+    }));
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default(),
+        "entities sharing one root vehicle do not push"
+    );
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: Vec::new(),
+    }));
+    store.apply_game_event(ProtocolGameEvent {
+        event_id: bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_CHANGE_GAME_MODE_ID,
+        param: 3.0,
+    });
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d::default(),
+        "the local spectator no-physics target remains excluded"
+    );
+}
+
+#[test]
+fn unpushable_warden_still_pushes_local_player_without_reciprocal_impulse() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    let mut loaded = empty_test_chunk();
+    loaded.pos = crate::ChunkPos { x: 0, z: -1 };
+    store.insert_decoded_chunk(loaded);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+    let entity_accessors = super::schema::vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![protocol_pose_data(
+            entity_accessors.pose_data_id,
+            bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_DIGGING_ID,
+        )],
+    }));
+    let mut local_player = protocol_add_entity_with_type(99, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = Uuid::from_u128(0x99);
+    local_player.position.x = 1.4;
+    store.apply_add_entity(local_player);
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.4,
+            y: 64.0,
+            z: -2.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+
+    store.advance_entity_client_animations(1);
+
+    let distance = 0.4_f64.sqrt();
+    let expected_push = (0.4 / distance) * f64::from(0.05_f32);
+    assert!((store.local_player_pose().unwrap().delta_movement.x - expected_push).abs() < 1.0e-12);
+    assert_eq!(store.entities.transform(20).unwrap().delta_movement.x, 0.0);
+}
+
+#[test]
 fn zero_client_ticks_do_not_advance_boat_physics_or_paddles() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

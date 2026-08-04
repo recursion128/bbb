@@ -7877,10 +7877,22 @@ impl WorldStore {
                 && !crate::client::local_player_is_on_climbable(self, pose)
         });
         let local_player_scoreboard_name = self.local_player_scoreboard_name();
+        let local_player_scale = self
+            .local_player_id
+            .and_then(|entity_id| self.entities.render_scale(entity_id))
+            .unwrap_or(1.0);
+        let spectator_player_uuids: std::collections::HashSet<_> = self
+            .player_info()
+            .entries
+            .iter()
+            .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
+            .collect();
         let has_terrain_chunks = !self.chunks.is_empty();
-        let boat_world_facts = self
+        let schedule_inputs = self
             .entities
-            .prepare_client_tick_schedule(runs_normally, &is_ticking_entity)
+            .prepare_client_tick_schedule(runs_normally, &is_ticking_entity);
+        let boat_world_facts = schedule_inputs
+            .boats
             .into_iter()
             .map(|input| {
                 let aabb_min = std::array::from_fn(|axis| {
@@ -7911,26 +7923,42 @@ impl WorldStore {
                         }
                     }
                 };
-                let pusher_scoreboard_name =
-                    self.scoreboard_name_for_identity(input.entity_type_id, input.uuid);
-                let can_push_local_player = local_player_can_be_pushed
-                    && self.local_player_id != Some(input.entity_id)
-                    && !self.entity_shares_local_player_root_vehicle(input.entity_id)
-                    && self.scoreboard.entity_can_push_scoreboard_target(
-                        &pusher_scoreboard_name,
-                        local_player_scoreboard_name.as_deref(),
-                    );
                 super::store::EntityBoatClientTickWorldFacts {
                     entity_id: input.entity_id,
                     status,
                     water_level,
                     land_friction,
-                    can_push_local_player,
                     relative_min: input.relative_min,
                     relative_max: input.relative_max,
                 }
             })
             .collect::<Vec<_>>();
+        let local_player_pushability_by_id = schedule_inputs
+            .local_player_pushers
+            .into_iter()
+            .filter_map(|input| {
+                let pusher_scoreboard_name =
+                    self.scoreboard_name_for_identity(input.entity_type_id, input.uuid);
+                (local_player_can_be_pushed
+                    && self.local_player_id != Some(input.entity_id)
+                    && !spectator_player_uuids.contains(&input.uuid)
+                    && !self.entity_shares_local_player_root_vehicle(input.entity_id)
+                    && self.scoreboard.entity_can_push_scoreboard_target(
+                        &pusher_scoreboard_name,
+                        local_player_scoreboard_name.as_deref(),
+                    ))
+                .then(|| {
+                    (
+                        input.entity_id,
+                        self.entity_is_pushable(
+                            input.entity_id,
+                            input.entity_type_id,
+                            [input.position.x, input.position.y, input.position.z],
+                        ),
+                    )
+                })
+            })
+            .collect::<std::collections::HashMap<_, _>>();
         let client_movement_fluid_by_id = client_movement_fluid_inputs
             .iter()
             .map(|input| {
@@ -7969,12 +7997,6 @@ impl WorldStore {
                 )
             })
             .collect::<std::collections::HashMap<_, _>>();
-        let spectator_player_uuids: std::collections::HashSet<_> = self
-            .player_info()
-            .entries
-            .iter()
-            .filter_map(|(uuid, info)| info.is_spectator().then_some(*uuid))
-            .collect();
         let mut abstract_arrow_collision_batch = self
             .entities
             .abstract_arrow_collision_batch(&spectator_player_uuids);
@@ -8251,7 +8273,9 @@ impl WorldStore {
             &spectator_player_uuids,
             &fluid_facts_by_id,
             &boat_world_facts,
+            &local_player_pushability_by_id,
             self.local_player.pose.as_mut(),
+            local_player_scale,
             local_player_is_vehicle,
             &guardian_can_stand_on_below_by_id,
             &guardian_attack_target_ids,

@@ -72,6 +72,27 @@ immutable native effect/renderer/audio projection。renderer、audio 和 diagnos
 读取 packet、pack 或另一个 consumer cache；level replacement 必须一次丢弃旧 generation 的
 transient projection，而保留/清除 canonical state 的判断只归对应 world lifecycle owner。
 
+### ClientLevel entity lifecycle owner
+
+`bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的
+唯一语义边界。protocol add 以 insertion order 建立 fresh incarnation，同 id 先 discard 旧实例；remove
+在一次 canonical mutation 中清除 mount/passenger/leash、player、dragon part 与 transient owner。
+id/UUID/count、render enumeration、pick 与 multipart query 都读取该 store，native/renderer 只消费
+immutable generation projection，不保存可独立替换的 entity cache。
+
+每个 raw client tick 从 store 重建有界 schedule：只进入 loaded client section 的 root；freeze 时只保留
+Player root 或含 Player passenger 的树；root 先 tick，再按 mount order 递归 ride tick。living death tick
+只额外受 local-player chunk 与 server simulation distance 的 Chebyshev gate，不能借此缩小普通 tick 或
+render workload。publication 在完整 tick 后原子替换，旧 publication 保持不变；level/session replacement
+整体丢弃旧 store。
+
+`ClientLevel.getPushableEntities` 的 client-only local-player target 也属于同一路径。schedule 使用生成的
+runtime-class dispatch 排除 Bat/ArmorStand/Parrot override，world 在 mutable pass 前一次解析 local
+health/spectator/climbable、same-root、scoreboard team 与 pusher dynamic pushability；ordered tick 再用当前
+pose、attribute scale 与 strict AABB 查询。boat 与 ordinary living 共用唯一 0.01/0.05 impulse helper，
+pusher 是否可推动只控制 reciprocal impulse；renderer、native 和 pack 均不拥有第二个 collision resolver。
+生成器 exact-output/source guard 锁定 override 表、单一 scoreboard query 与旧 boat fallback 调用点为零。
+
 `interaction-block-breaking` 的六个 `MultiPlayerGameMode` owner 进一步要求逐 owner evidence。
 `bbb-world::LocalPlayerInteractionState` 是 target、face、selected-item signature、progress、stage 和
 delay 的唯一 canonical owner；native mouse 只按 Vanilla 的

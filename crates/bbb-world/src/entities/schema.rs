@@ -886,6 +886,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub sound_volume_owner: Option<&'static str>,
     pub sound_volume_policy: VanillaEntitySoundVolumePolicy,
     pub pushability_kind: VanillaEntityPushabilityKind,
+    /// Source-derived virtual dispatch for whether this living runtime class's
+    /// client tick can call `Entity.push` with the local player. This excludes
+    /// Bat/ArmorStand `pushEntities` and Parrot `doPush(Player)` overrides.
+    pub pushes_local_player_on_client_tick: bool,
     pub collidability_kind: VanillaEntityCollidabilityKind,
     pub is_living: bool,
     pub is_mob: bool,
@@ -4607,6 +4611,15 @@ pub fn vanilla_entity_metadata_type_pushability_kind(
         .map(|entry| entry.pushability_kind)
 }
 
+/// Returns whether the generated living-class tick dispatch can push the local player.
+pub(crate) fn vanilla_entity_metadata_type_pushes_local_player_on_client_tick(
+    entity_type_id: i32,
+) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .is_some_and(|entry| entry.pushes_local_player_on_client_tick)
+}
+
 /// Returns the nearest generated `Entity.canBeCollidedWith(other)` class behavior.
 ///
 /// `Alive` and `HappyGhast` retain their instance predicates for the world collision owner.
@@ -6757,6 +6770,42 @@ mod tests {
         }
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(-1), None);
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(157), None);
+    }
+
+    #[test]
+    fn generated_client_tick_local_player_push_dispatch_preserves_overrides() {
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.pushes_local_player_on_client_tick)
+                .count(),
+            89
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_COW_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            VANILLA_ENTITY_TYPE_WARDEN_ID,
+        ] {
+            assert!(
+                vanilla_entity_metadata_type_pushes_local_player_on_client_tick(entity_type_id),
+                "entity type {entity_type_id}"
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ENTITY_TYPE_PARROT_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            -1,
+            157,
+        ] {
+            assert!(
+                !vanilla_entity_metadata_type_pushes_local_player_on_client_tick(entity_type_id),
+                "entity type {entity_type_id}"
+            );
+        }
     }
 
     #[test]
