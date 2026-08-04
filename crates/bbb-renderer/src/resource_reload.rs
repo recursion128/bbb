@@ -1342,8 +1342,8 @@ impl Renderer {
         take_owner!(entity_model_scroll_additive_mesh);
         take_owner!(entity_model_guardian_beam_mesh);
         take_owner!(entity_model_end_crystal_beam_mesh);
-        take_owner!(entity_model_end_gateway_beam_opaque_mesh);
-        take_owner!(entity_model_end_gateway_beam_translucent_mesh);
+        take_owner!(entity_model_beacon_beam_opaque_mesh);
+        take_owner!(entity_model_beacon_beam_translucent_mesh);
         take_owner!(entity_model_bounds);
 
         // Sky/environment owners rebuilt from pack resources.

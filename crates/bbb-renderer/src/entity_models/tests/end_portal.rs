@@ -130,8 +130,8 @@ fn end_gateway_cube_uses_unit_cube_faces_without_beam_when_inactive() {
 
     assert_eq!(meshes.end_gateway.vertices.len(), 8);
     assert_eq!(meshes.end_gateway.indices.len(), 12);
-    assert!(meshes.end_gateway_beam_opaque.vertices.is_empty());
-    assert!(meshes.end_gateway_beam_translucent.vertices.is_empty());
+    assert!(meshes.beacon_beam_opaque.vertices.is_empty());
+    assert!(meshes.beacon_beam_translucent.vertices.is_empty());
     let min_y = meshes
         .end_gateway
         .vertices
@@ -243,10 +243,10 @@ fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_eq!(meshes.end_gateway.vertices.len(), 8);
-    assert_eq!(meshes.end_gateway_beam_opaque.vertices.len(), 16);
-    assert_eq!(meshes.end_gateway_beam_opaque.indices.len(), 24);
-    assert_eq!(meshes.end_gateway_beam_translucent.vertices.len(), 16);
-    assert_eq!(meshes.end_gateway_beam_translucent.indices.len(), 24);
+    assert_eq!(meshes.beacon_beam_opaque.vertices.len(), 16);
+    assert_eq!(meshes.beacon_beam_opaque.indices.len(), 24);
+    assert_eq!(meshes.beacon_beam_translucent.vertices.len(), 16);
+    assert_eq!(meshes.beacon_beam_translucent.indices.len(), 24);
     assert_eq!(meshes.opaque_beam_draws.len(), 1);
     assert_eq!(
         (
@@ -254,7 +254,7 @@ fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
             meshes.opaque_beam_draws[0].index_start,
             meshes.opaque_beam_draws[0].index_count
         ),
-        (EntityModelLayerRenderType::EndGatewayBeamOpaque, 0, 24)
+        (EntityModelLayerRenderType::BeaconBeamOpaque, 0, 24)
     );
     assert_eq!(meshes.submissions.len(), 2);
     assert_eq!(
@@ -263,28 +263,28 @@ fn end_gateway_beam_reuses_vanilla_beacon_beam_geometry() {
     );
     assert_eq!(
         meshes.submissions[0].render_type,
-        EntityModelLayerRenderType::EndGatewayBeamOpaque
+        EntityModelLayerRenderType::BeaconBeamOpaque
     );
     assert_eq!(
         meshes.submissions[1].render_type,
-        EntityModelLayerRenderType::EndGatewayBeamTranslucent
+        EntityModelLayerRenderType::BeaconBeamTranslucent
     );
     assert_eq!(
-        meshes.end_gateway_beam_opaque.vertices[0].tint,
+        meshes.beacon_beam_opaque.vertices[0].tint,
         [199.0 / 255.0, 78.0 / 255.0, 189.0 / 255.0, 1.0]
     );
     assert_eq!(
-        meshes.end_gateway_beam_translucent.vertices[0].tint[3],
+        meshes.beacon_beam_translucent.vertices[0].tint[3],
         32.0 / 255.0
     );
     let min_y = meshes
-        .end_gateway_beam_opaque
+        .beacon_beam_opaque
         .vertices
         .iter()
         .map(|vertex| vertex.position[1])
         .fold(f32::INFINITY, f32::min);
     let max_y = meshes
-        .end_gateway_beam_opaque
+        .beacon_beam_opaque
         .vertices
         .iter()
         .map(|vertex| vertex.position[1])
@@ -321,8 +321,8 @@ fn end_gateway_beam_sorts_only_translucent_glow_with_camera() {
         None,
     );
 
-    assert_eq!(meshes.end_gateway_beam_opaque.indices.len(), 24);
-    assert_eq!(meshes.end_gateway_beam_translucent.indices.len(), 24);
+    assert_eq!(meshes.beacon_beam_opaque.indices.len(), 24);
+    assert_eq!(meshes.beacon_beam_translucent.indices.len(), 24);
     let beam_draws = meshes
         .sorted_main_translucent_draws
         .iter()
@@ -334,7 +334,7 @@ fn end_gateway_beam_sorts_only_translucent_glow_with_camera() {
     assert_eq!(beam_draws.len(), 1);
     assert_eq!(
         beam_draws[0].render_type,
-        EntityModelLayerRenderType::EndGatewayBeamTranslucent
+        EntityModelLayerRenderType::BeaconBeamTranslucent
     );
     assert_eq!(
         (beam_draws[0].index_start, beam_draws[0].index_count),

@@ -100,7 +100,7 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_boat_water_mask_submission,
+    ravager_textured_layer_passes, render_beacon_beam_model, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
     render_charged_creeper_energy_swirl, render_custom_head_skull_layer,
     render_custom_head_skull_layer_with_root_transform, render_donkey_textured_layers,
@@ -398,6 +398,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     }
 
     fn end_portal_block_model(&mut self, _instance: &EntityModelInstance) {}
+
+    fn beacon_beam_model(&mut self, _instance: &EntityModelInstance) {}
 
     fn wings_layer(&mut self, _instance: &EntityModelInstance) {}
 
@@ -1094,6 +1096,10 @@ impl EntityModelSink for TexturedSink<'_> {
 
     fn end_portal_block_model(&mut self, instance: &EntityModelInstance) {
         render_end_portal_block_model(self.meshes, *instance, self.atlas);
+    }
+
+    fn beacon_beam_model(&mut self, instance: &EntityModelInstance) {
+        render_beacon_beam_model(self.meshes, *instance, self.atlas);
     }
 
     fn wings_layer(&mut self, instance: &EntityModelInstance) {
@@ -1985,6 +1991,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             );
         }
         EntityModelKind::EndPortalBlock { .. } => sink.end_portal_block_model(instance),
+        EntityModelKind::BeaconBeam => sink.beacon_beam_model(instance),
         EntityModelKind::Chest { texture, half } => sink.model(
             ChestModel::new(half),
             chest_model_root_transform(*instance),

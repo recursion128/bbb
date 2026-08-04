@@ -270,6 +270,11 @@ pub enum EntityModelKind {
         skull: EntityCustomHeadSkull,
         attachment: SkullBlockModelAttachment,
     },
+    /// Vanilla 26.1 `BeaconRenderer` beam source. The beacon block itself is
+    /// ordinary terrain geometry; this kind carries only one beam section, so a
+    /// beacon submits one instance per `BeaconBeamOwner.Section` exactly as
+    /// vanilla loops over them.
+    BeaconBeam,
     /// Vanilla 26.1 `TheEndPortalRenderer` / `TheEndGatewayRenderer` block-entity cube source.
     /// Both submit only the Y-axis faces from `AbstractEndPortalRenderer` (`shouldRenderFace`
     /// returns true for `Direction.Axis.Y`). End portals apply the vanilla
@@ -1126,6 +1131,20 @@ impl EntityLeashRopesRenderState {
     pub fn ropes(&self) -> &[LeashRopeRenderState] {
         &self.ropes[..usize::from(self.count).min(self.ropes.len())]
     }
+}
+
+/// One `BeaconRenderer.submitBeaconBeam` call: a single beam section drawn
+/// from `beam_start` for `height` blocks in the block-entity's colour, with
+/// the camera-distance radius scale and the shared `floorMod(gameTime, 40) +
+/// partialTick` scroll clock.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BeaconBeamRenderState {
+    pub beam_start: i32,
+    pub height: i32,
+    pub color_argb: u32,
+    /// `BeaconRenderState.beamRadiusScale`.
+    pub radius_scale: f32,
+    pub animation_time: f32,
 }
 
 /// Vanilla `TheEndGatewayRenderer` beam render state. `scale` is the

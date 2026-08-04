@@ -326,6 +326,7 @@ mod auto_spin;
 mod axolotl;
 mod banner;
 mod bat;
+mod beacon;
 mod bed;
 mod bee;
 mod bell;
@@ -668,7 +669,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
         ),
         (
-            EntityModelLayerRenderType::EndGatewayBeamOpaque,
+            EntityModelLayerRenderType::BeaconBeamOpaque,
             "beacon_beam",
             EntityModelLayerRenderBucket::BeaconBeamOpaque,
             false,
@@ -676,7 +677,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
         ),
         (
-            EntityModelLayerRenderType::EndGatewayBeamTranslucent,
+            EntityModelLayerRenderType::BeaconBeamTranslucent,
             "beacon_beam",
             EntityModelLayerRenderBucket::BeaconBeamTranslucent,
             false,

@@ -76,6 +76,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EnderDragonBase,
     EnderDragonEyes,
     EnderDragonBeam,
+    BeaconBeam,
     EndGatewayBeam,
     EndermanBase,
     EndermanEyes,
@@ -243,10 +244,10 @@ pub(crate) enum EntityModelLayerRenderType {
     EndGateway,
     /// Vanilla opaque `RenderTypes.beaconBeam(texture, false)` core used by
     /// `TheEndGatewayRenderer`.
-    EndGatewayBeamOpaque,
+    BeaconBeamOpaque,
     /// Vanilla translucent `RenderTypes.beaconBeam(texture, true)` glow used by
     /// `TheEndGatewayRenderer`.
-    EndGatewayBeamTranslucent,
+    BeaconBeamTranslucent,
     /// Vanilla `RenderTypes.dragonRays()`.
     DragonRays,
     /// Vanilla `RenderTypes.dragonRaysDepth()`.
@@ -320,8 +321,8 @@ impl EntityModelLayerRenderType {
         Self::EndCrystalBeam,
         Self::EndPortal,
         Self::EndGateway,
-        Self::EndGatewayBeamOpaque,
-        Self::EndGatewayBeamTranslucent,
+        Self::BeaconBeamOpaque,
+        Self::BeaconBeamTranslucent,
         Self::DragonRays,
         Self::DragonRaysDepth,
         Self::Leash,
@@ -353,8 +354,8 @@ impl EntityModelLayerRenderType {
             Self::BreezeWind => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
             Self::EndCrystalBeam => EntityModelLayerRenderBucket::EndCrystalBeam,
-            Self::EndGatewayBeamOpaque => EntityModelLayerRenderBucket::BeaconBeamOpaque,
-            Self::EndGatewayBeamTranslucent => EntityModelLayerRenderBucket::BeaconBeamTranslucent,
+            Self::BeaconBeamOpaque => EntityModelLayerRenderBucket::BeaconBeamOpaque,
+            Self::BeaconBeamTranslucent => EntityModelLayerRenderBucket::BeaconBeamTranslucent,
             Self::EndPortal | Self::EndGateway => EntityModelLayerRenderBucket::Portal,
             Self::DragonRays | Self::Leash | Self::Lines => {
                 EntityModelLayerRenderBucket::PositionColor
@@ -415,7 +416,7 @@ impl EntityModelLayerRenderType {
                 | Self::Eyes
                 | Self::BreezeWind
                 | Self::EnergySwirl
-                | Self::EndGatewayBeamTranslucent
+                | Self::BeaconBeamTranslucent
                 | Self::DragonRays
                 | Self::Lines
         )
@@ -462,7 +463,7 @@ impl EntityModelLayerRenderType {
             Self::EndCrystalBeam => "end_crystal_beam",
             Self::EndPortal => "end_portal",
             Self::EndGateway => "end_gateway",
-            Self::EndGatewayBeamOpaque | Self::EndGatewayBeamTranslucent => "beacon_beam",
+            Self::BeaconBeamOpaque | Self::BeaconBeamTranslucent => "beacon_beam",
             Self::DragonRays => "dragonRays",
             Self::DragonRaysDepth => "dragonRaysDepth",
             Self::Leash => "leash",
@@ -969,7 +970,7 @@ pub(in crate::entity_models) fn end_gateway_beam_layer_passes() -> [EntityModelL
     [
         EntityModelLayerPass {
             kind: EntityModelLayerKind::EndGatewayBeam,
-            render_type: EntityModelLayerRenderType::EndGatewayBeamOpaque,
+            render_type: EntityModelLayerRenderType::BeaconBeamOpaque,
             model_layer: "",
             texture: END_GATEWAY_BEAM_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -979,9 +980,36 @@ pub(in crate::entity_models) fn end_gateway_beam_layer_passes() -> [EntityModelL
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::EndGatewayBeam,
-            render_type: EntityModelLayerRenderType::EndGatewayBeamTranslucent,
+            render_type: EntityModelLayerRenderType::BeaconBeamTranslucent,
             model_layer: "",
             texture: END_GATEWAY_BEAM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 2,
+        },
+    ]
+}
+
+/// Vanilla `BeaconRenderer.BEAM_LOCATION` through the same
+/// `RenderTypes.beaconBeam(location, translucent)` pair the end gateway uses.
+pub(in crate::entity_models) fn beacon_beam_layer_passes() -> [EntityModelLayerPass; 2] {
+    [
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BeaconBeam,
+            render_type: EntityModelLayerRenderType::BeaconBeamOpaque,
+            model_layer: "",
+            texture: BEACON_BEAM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 1,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BeaconBeam,
+            render_type: EntityModelLayerRenderType::BeaconBeamTranslucent,
+            model_layer: "",
+            texture: BEACON_BEAM_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,

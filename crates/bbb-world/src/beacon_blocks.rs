@@ -67,6 +67,19 @@ pub fn is_beacon_block_name(block_name: &str) -> bool {
     block_name == "minecraft:beacon"
 }
 
+/// One `BeaconRenderer.submitBeaconBeam` call: `submit` walks the published
+/// sections accumulating `beamStart`, and draws the topmost one to
+/// `MAX_RENDER_Y` instead of its scanned height.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BeaconBeamSourceState {
+    pub pos: BlockPos,
+    pub beam_start: i32,
+    pub height: i32,
+    pub color_argb: u32,
+    /// `Math.floorMod(level.getGameTime(), 40) + partialTicks`.
+    pub animation_time: f32,
+}
+
 impl WorldStore {
     /// Advances loaded beacons by `ticks` client ticks, transcribing
     /// `BeaconBlockEntity.tick`'s beam scan.
@@ -94,6 +107,33 @@ impl WorldStore {
 
     pub fn beacon_block_states(&self) -> &[BeaconBlockState] {
         &self.beacon_blocks
+    }
+
+    /// Projects the published beam sections into one submission per section,
+    /// transcribing `BeaconRenderer.submit`.
+    pub fn beacon_beam_source_states(&self, partial_tick: f32) -> Vec<BeaconBeamSourceState> {
+        let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
+        let animation_time = game_time.rem_euclid(40) as f32 + partial_tick;
+        let mut states = Vec::new();
+        for beacon in &self.beacon_blocks {
+            let mut beam_start = 0;
+            let last = beacon.beam_sections.len().saturating_sub(1);
+            for (index, section) in beacon.beam_sections.iter().enumerate() {
+                states.push(BeaconBeamSourceState {
+                    pos: beacon.pos,
+                    beam_start,
+                    height: if index == last {
+                        BEACON_MAX_RENDER_Y
+                    } else {
+                        section.height
+                    },
+                    color_argb: section.color_argb,
+                    animation_time,
+                });
+                beam_start += section.height;
+            }
+        }
+        states
     }
 
     /// One `BeaconBlockEntity.tick` beam-scan step.
@@ -292,6 +332,38 @@ mod tests {
         );
         // Air above the glass extends the topmost section up to the surface.
         assert!(sections[2].height >= 1);
+    }
+
+    #[test]
+    fn submissions_accumulate_beam_start_and_draw_the_top_section_to_the_render_limit() {
+        let mut world = beacon_world(&[
+            (0, "minecraft:beacon"),
+            (1, "minecraft:red_stained_glass"),
+            (2, "minecraft:lime_stained_glass"),
+        ]);
+        world.apply_world_time(bbb_protocol::packets::PlayTime {
+            game_time: 43,
+            clock_updates: Vec::new(),
+        });
+        world.advance_beacon_block_ticks(1);
+
+        let sections = world.beacon_block_states()[0].beam_sections.clone();
+        let submissions = world.beacon_beam_source_states(0.5);
+
+        assert_eq!(submissions.len(), sections.len());
+        assert_eq!(submissions[0].beam_start, 0);
+        assert_eq!(submissions[0].height, sections[0].height);
+        assert_eq!(submissions[1].beam_start, sections[0].height);
+        assert_eq!(submissions[1].height, sections[1].height);
+        assert_eq!(
+            submissions[2].beam_start,
+            sections[0].height + sections[1].height
+        );
+        // The topmost section always reaches `BeaconRenderer.MAX_RENDER_Y`.
+        assert_eq!(submissions[2].height, BEACON_MAX_RENDER_Y);
+        assert!(submissions
+            .iter()
+            .all(|submission| submission.animation_time == 3.5));
     }
 
     #[test]

@@ -4152,16 +4152,16 @@ impl Renderer {
                 meshes.end_crystal_beam,
                 "bbb-entity-model-end-crystal-beam",
             );
-            self.entity_model_end_gateway_beam_opaque_mesh =
+            self.entity_model_beacon_beam_opaque_mesh =
                 create_entity_model_scroll_mesh_gpu_from_mesh(
                     &self.device,
-                    meshes.end_gateway_beam_opaque,
+                    meshes.beacon_beam_opaque,
                     "bbb-entity-model-end-gateway-beam-opaque",
                 );
-            self.entity_model_end_gateway_beam_translucent_mesh =
+            self.entity_model_beacon_beam_translucent_mesh =
                 create_entity_model_scroll_mesh_gpu_from_mesh(
                     &self.device,
-                    meshes.end_gateway_beam_translucent,
+                    meshes.beacon_beam_translucent,
                     "bbb-entity-model-end-gateway-beam-translucent",
                 );
             self.entity_model_entity_glint_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
@@ -4226,8 +4226,8 @@ impl Renderer {
             self.entity_model_scroll_additive_mesh = None;
             self.entity_model_guardian_beam_mesh = None;
             self.entity_model_end_crystal_beam_mesh = None;
-            self.entity_model_end_gateway_beam_opaque_mesh = None;
-            self.entity_model_end_gateway_beam_translucent_mesh = None;
+            self.entity_model_beacon_beam_opaque_mesh = None;
+            self.entity_model_beacon_beam_translucent_mesh = None;
             self.entity_model_entity_glint_mesh = None;
             self.entity_model_armor_entity_glint_mesh = None;
         }
@@ -4368,10 +4368,10 @@ impl Renderer {
             self.entity_model_end_crystal_beam_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
-            self.entity_model_end_gateway_beam_opaque_mesh
+            self.entity_model_beacon_beam_opaque_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
-            self.entity_model_end_gateway_beam_translucent_mesh
+            self.entity_model_beacon_beam_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_entity_glint_mesh

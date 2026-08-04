@@ -4,10 +4,14 @@
 //! `LevelRenderer.extractVisibleBlockEntities` visits ordinary block entities
 //! only through visible render sections, then
 //! `BlockEntityRenderDispatcher.tryExtractRenderState` applies each renderer's
-//! `shouldRender` distance check. Renderers whose `shouldRenderOffScreen` is
-//! true use a separate global collection. None of the currently submitted
-//! native block-entity models are global renderers, so their containing 16³
-//! section is the conservative native visibility unit.
+//! `shouldRender` distance check. That containing 16³ section is the
+//! conservative native visibility unit for ordinary renderers.
+//!
+//! Renderers whose `shouldRenderOffScreen` is true are excluded from section
+//! meshes by `SectionCompiler.handleBlockEntity` and extracted instead from
+//! `Level.getGloballyRenderedBlockEntities()`, which no section or frustum gate
+//! touches. `BeaconRenderer` is one, and it replaces the spherical default with
+//! a horizontal-only distance against `renderDistance * 16`.
 
 use bbb_renderer::{
     CameraFrustum, CameraPose, EndPortalModelKind, EntityModelInstance, EntityModelKind,
@@ -33,6 +37,9 @@ struct BlockEntityCameraVisibility {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct BlockEntityVisibility {
     camera: Option<BlockEntityCameraVisibility>,
+    /// `Minecraft.getInstance().options.getEffectiveRenderDistance() * 16`,
+    /// the beacon's `getViewDistance()`.
+    render_distance_blocks: f64,
 }
 
 impl BlockEntityVisibility {
@@ -40,6 +47,7 @@ impl BlockEntityVisibility {
         camera_pose: Option<CameraPose>,
         surface_size: [u32; 2],
         camera_fov_degrees: f32,
+        render_distance_chunks: u32,
     ) -> Self {
         let camera = camera_pose.map(|pose| {
             let aspect = surface_size[0] as f32 / surface_size[1].max(1) as f32;
@@ -52,7 +60,10 @@ impl BlockEntityVisibility {
                 frustum: CameraFrustum::from_pose(pose, aspect, camera_fov_degrees),
             }
         });
-        Self { camera }
+        Self {
+            camera,
+            render_distance_blocks: f64::from(render_distance_chunks) * f64::from(SECTION_SIZE),
+        }
     }
 
     /// Returns the block position when the model survives both the renderer
@@ -99,10 +110,6 @@ impl BlockEntityVisibility {
         let Some(camera) = self.camera else {
             return true;
         };
-        if !section_compiled_and_visible {
-            return false;
-        }
-
         let Some(pos) = instance_block_position(instance) else {
             return true;
         };
@@ -111,6 +118,17 @@ impl BlockEntityVisibility {
             f64::from(pos.y) + 0.5,
             f64::from(pos.z) + 0.5,
         ];
+        if renders_off_screen(instance) {
+            // `BeaconRenderer.shouldRender`: both positions flattened to y = 0,
+            // so height above or below the camera never culls the beam.
+            let dx = center[0] - camera.position[0];
+            let dz = center[2] - camera.position[2];
+            return dx * dx + dz * dz < self.render_distance_blocks * self.render_distance_blocks;
+        }
+        if !section_compiled_and_visible {
+            return false;
+        }
+
         let distance = center
             .into_iter()
             .zip(camera.position)
@@ -168,6 +186,12 @@ fn instance_block_position(instance: &EntityModelInstance) -> Option<BlockPos> {
         })
 }
 
+/// `BlockEntityRenderer.shouldRenderOffScreen`: these models are extracted from
+/// the level's global collection rather than from visible render sections.
+fn renders_off_screen(instance: &EntityModelInstance) -> bool {
+    matches!(instance.kind, EntityModelKind::BeaconBeam)
+}
+
 fn block_entity_view_distance(instance: &EntityModelInstance) -> f64 {
     match instance.kind {
         EntityModelKind::EndPortalBlock {
@@ -193,6 +217,7 @@ mod tests {
             }),
             [1_000, 1_000],
             70.0,
+            8,
         )
     }
 
@@ -237,7 +262,20 @@ mod tests {
     fn compiled_section_gate_precedes_camera_frustum_submission() {
         let visibility = camera_visibility();
         assert!(!visibility.instance_is_visible(&ordinary([0.0, 0.0, 15.0]), false));
-        assert!(BlockEntityVisibility::new(None, [1, 1], 70.0)
+        assert!(BlockEntityVisibility::new(None, [1, 1], 70.0, 8)
             .instance_is_visible(&ordinary([0.0, 0.0, 15.0]), false));
+    }
+
+    #[test]
+    fn beacon_beams_skip_the_section_and_frustum_gates_and_cull_horizontally() {
+        let visibility = camera_visibility();
+        let beam = |position: [f32; 3]| EntityModelInstance::beacon_beam(-1, position);
+        // Behind the camera and in an uncompiled section, but still submitted.
+        assert!(visibility.instance_is_visible(&beam([0.0, 0.0, -20.0]), false));
+        // Vertical distance never culls the beam.
+        assert!(visibility.instance_is_visible(&beam([0.0, 4_000.0, 0.0]), false));
+        // `renderDistance * 16` = 128 blocks of horizontal reach.
+        assert!(visibility.instance_is_visible(&beam([0.0, 0.0, 127.0]), false));
+        assert!(!visibility.instance_is_visible(&beam([0.0, 0.0, 128.0]), false));
     }
 }

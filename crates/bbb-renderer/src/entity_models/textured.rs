@@ -19,12 +19,12 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndGatewayBeamRenderState,
-        EndPortalModelFace, EndPortalModelKind, EntityArmorTrim, EntityCustomHeadSkull,
-        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
-        EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
-        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture,
-        EntityModelKind, EntityModelOwnedTextureAtlasEntry, EntityModelTextureAtlasEntry,
+        ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndPortalModelFace,
+        EndPortalModelKind, EntityArmorTrim, EntityCustomHeadSkull, EntityDynamicPlayerSkin,
+        EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
+        EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture,
+        EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture, EntityModelKind,
+        EntityModelOwnedTextureAtlasEntry, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
         FirstPersonPlayerArm, HorseColorVariant, HorseMarkings, LeashRopeRenderState,
         ParrotModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
@@ -133,10 +133,10 @@ pub(super) use layers::warden_pulsating_spots_alpha;
 pub(crate) use layers::EntityModelLayerRenderType;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
-    banner_textured_layer_passes, bed_textured_layer_passes, bell_textured_layer_passes,
-    blaze_textured_layer_passes, boat_textured_layer_passes, book_textured_layer_passes,
-    breeze_textured_layer_passes, camel_textured_layer_passes, chest_textured_layer_passes,
-    chicken_textured_layer_passes, conduit_textured_layer_passes,
+    banner_textured_layer_passes, beacon_beam_layer_passes, bed_textured_layer_passes,
+    bell_textured_layer_passes, blaze_textured_layer_passes, boat_textured_layer_passes,
+    book_textured_layer_passes, breeze_textured_layer_passes, camel_textured_layer_passes,
+    chest_textured_layer_passes, chicken_textured_layer_passes, conduit_textured_layer_passes,
     copper_golem_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
     creeper_textured_layer_passes, custom_head_skull_layer_pass,
     decorated_pot_textured_layer_passes, donkey_textured_layer_passes,
@@ -332,15 +332,15 @@ enum EntityModelScrollOwner {
     EnergySwirl,
     GuardianBeam,
     EndCrystalBeam,
-    EndGatewayBeamOpaque,
-    EndGatewayBeamTranslucent,
+    BeaconBeamOpaque,
+    BeaconBeamTranslucent,
 }
 
 impl EntityModelScrollOwner {
     const fn is_opaque_beam(self) -> bool {
         matches!(
             self,
-            Self::GuardianBeam | Self::EndCrystalBeam | Self::EndGatewayBeamOpaque
+            Self::GuardianBeam | Self::EndCrystalBeam | Self::BeaconBeamOpaque
         )
     }
 }
@@ -422,9 +422,9 @@ pub(super) struct EntityModelTexturedMeshes {
     /// Vanilla opaque `endCrystalBeam` custom geometry.
     pub(super) end_crystal_beam: EntityModelScrollMesh,
     /// Vanilla opaque `beaconBeam` core used by the End Gateway.
-    pub(super) end_gateway_beam_opaque: EntityModelScrollMesh,
+    pub(super) beacon_beam_opaque: EntityModelScrollMesh,
     /// Vanilla translucent `beaconBeam` glow used by the End Gateway.
-    pub(super) end_gateway_beam_translucent: EntityModelScrollMesh,
+    pub(super) beacon_beam_translucent: EntityModelScrollMesh,
     /// Vanilla `entityGlint` folded through the glint texture transform.
     pub(super) entity_glint: EntityModelScrollMesh,
     /// Vanilla `armorEntityGlint` folded through the armor glint texture transform.
@@ -525,8 +525,8 @@ impl EntityModelTexturedMeshes {
             scroll_additive: EntityModelScrollMesh::new(),
             guardian_beam: EntityModelScrollMesh::new(),
             end_crystal_beam: EntityModelScrollMesh::new(),
-            end_gateway_beam_opaque: EntityModelScrollMesh::new(),
-            end_gateway_beam_translucent: EntityModelScrollMesh::new(),
+            beacon_beam_opaque: EntityModelScrollMesh::new(),
+            beacon_beam_translucent: EntityModelScrollMesh::new(),
             entity_glint: EntityModelScrollMesh::new(),
             armor_entity_glint: EntityModelScrollMesh::new(),
             water_mask: EntityModelMesh::new(),
@@ -919,12 +919,12 @@ impl EntityModelTexturedMeshes {
             EntityModelScrollOwner::EnergySwirl => self
                 .sorted_main_translucent_draws
                 .push(EntityModelTranslucentDrawRange::AdditiveScroll(draw)),
-            EntityModelScrollOwner::EndGatewayBeamTranslucent => self
+            EntityModelScrollOwner::BeaconBeamTranslucent => self
                 .sorted_main_translucent_draws
                 .push(EntityModelTranslucentDrawRange::BeaconBeamTranslucent(draw)),
             EntityModelScrollOwner::GuardianBeam
             | EntityModelScrollOwner::EndCrystalBeam
-            | EntityModelScrollOwner::EndGatewayBeamOpaque => {
+            | EntityModelScrollOwner::BeaconBeamOpaque => {
                 unreachable!("opaque scroll owners never enter the translucent sort plan")
             }
         }
@@ -2818,11 +2818,9 @@ fn scroll_owner_for_render_type(render_type: EntityModelLayerRenderType) -> Enti
         EntityModelLayerRenderType::BreezeWind => EntityModelScrollOwner::BreezeWind,
         EntityModelLayerRenderType::EnergySwirl => EntityModelScrollOwner::EnergySwirl,
         EntityModelLayerRenderType::EndCrystalBeam => EntityModelScrollOwner::EndCrystalBeam,
-        EntityModelLayerRenderType::EndGatewayBeamOpaque => {
-            EntityModelScrollOwner::EndGatewayBeamOpaque
-        }
-        EntityModelLayerRenderType::EndGatewayBeamTranslucent => {
-            EntityModelScrollOwner::EndGatewayBeamTranslucent
+        EntityModelLayerRenderType::BeaconBeamOpaque => EntityModelScrollOwner::BeaconBeamOpaque,
+        EntityModelLayerRenderType::BeaconBeamTranslucent => {
+            EntityModelScrollOwner::BeaconBeamTranslucent
         }
         _ => panic!("only dedicated scroll render types are emitted through the scroll mesh"),
     }
@@ -2837,10 +2835,8 @@ fn scroll_owner_mesh_mut(
         EntityModelScrollOwner::EnergySwirl => &mut meshes.scroll_additive,
         EntityModelScrollOwner::GuardianBeam => &mut meshes.guardian_beam,
         EntityModelScrollOwner::EndCrystalBeam => &mut meshes.end_crystal_beam,
-        EntityModelScrollOwner::EndGatewayBeamOpaque => &mut meshes.end_gateway_beam_opaque,
-        EntityModelScrollOwner::EndGatewayBeamTranslucent => {
-            &mut meshes.end_gateway_beam_translucent
-        }
+        EntityModelScrollOwner::BeaconBeamOpaque => &mut meshes.beacon_beam_opaque,
+        EntityModelScrollOwner::BeaconBeamTranslucent => &mut meshes.beacon_beam_translucent,
     }
 }
 
@@ -4034,29 +4030,89 @@ fn render_end_gateway_beam(
     if beam.height <= 0 {
         return;
     }
-    let tint = argb_to_tint(beam.color_argb);
-    let transform = Mat4::from_translation(Vec3::from_array(instance.position));
-    let [opaque_pass, translucent_pass] = end_gateway_beam_layer_passes();
-    let opaque_submit = no_overlay_layer_submission_with_tint(opaque_pass, tint, transform)
-        .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
-    let translucent_submit =
-        no_overlay_layer_submission_with_tint(translucent_pass, tint, transform)
-            .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
-    emit_end_gateway_beam_submission(meshes, opaque_submit, translucent_submit, atlas, beam);
+    // `TheEndGatewayRenderer.submit`: one call spanning `[-height, +height]`.
+    emit_beacon_beam_submission(
+        meshes,
+        atlas,
+        end_gateway_beam_layer_passes(),
+        Mat4::from_translation(Vec3::from_array(instance.position)),
+        beam.color_argb,
+        BeaconBeamSubmission {
+            beam_start: -beam.height,
+            height: beam.height * 2,
+            scale: beam.scale,
+            animation_time: beam.animation_time,
+            solid_radius: 0.15,
+            glow_radius: 0.175,
+        },
+    );
 }
 
-fn emit_end_gateway_beam_submission(
+pub(in crate::entity_models) fn render_beacon_beam_model(
     meshes: &mut EntityModelTexturedMeshes,
-    opaque_submit: EntityModelSubmissionEmit,
-    translucent_submit: EntityModelSubmissionEmit,
+    instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
-    beam: EndGatewayBeamRenderState,
 ) {
-    let beam_start = -beam.height;
-    let height = beam.height * 2;
-    let beam_end = beam_start + height;
-    let transform = opaque_submit.transform * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5));
-    let scroll = if height < 0 {
+    let Some(beam) = instance.render_state.beacon_beam else {
+        return;
+    };
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
+    // `BeaconRenderer.submitBeaconBeam(…, 0.2F * scale, 0.25F * scale)` with the
+    // fixed `scale = 1.0F` the beacon overload passes.
+    emit_beacon_beam_submission(
+        meshes,
+        atlas,
+        beacon_beam_layer_passes(),
+        Mat4::from_translation(Vec3::from_array(instance.position)),
+        beam.color_argb,
+        BeaconBeamSubmission {
+            beam_start: beam.beam_start,
+            height: beam.height,
+            scale: 1.0,
+            animation_time: beam.animation_time,
+            solid_radius: BEACON_SOLID_BEAM_RADIUS * beam.radius_scale,
+            glow_radius: BEACON_BEAM_GLOW_RADIUS * beam.radius_scale,
+        },
+    );
+}
+
+/// `BeaconRenderer.SOLID_BEAM_RADIUS`.
+const BEACON_SOLID_BEAM_RADIUS: f32 = 0.2;
+/// `BeaconRenderer.BEAM_GLOW_RADIUS`.
+const BEACON_BEAM_GLOW_RADIUS: f32 = 0.25;
+
+/// The parameters of one vanilla `BeaconRenderer.submitBeaconBeam` call. Both the
+/// beacon and the end gateway route through that single static, so the geometry
+/// below is written once and specialised only by these values.
+#[derive(Debug, Clone, Copy)]
+struct BeaconBeamSubmission {
+    beam_start: i32,
+    height: i32,
+    scale: f32,
+    animation_time: f32,
+    solid_radius: f32,
+    glow_radius: f32,
+}
+
+fn emit_beacon_beam_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    atlas: &EntityModelTextureAtlasLayout,
+    [opaque_pass, translucent_pass]: [EntityModelLayerPass; 2],
+    root: Mat4,
+    color_argb: u32,
+    beam: BeaconBeamSubmission,
+) {
+    let tint = argb_to_tint(color_argb);
+    let opaque_submit = no_overlay_layer_submission_with_tint(opaque_pass, tint, root)
+        .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+    let translucent_submit = no_overlay_layer_submission_with_tint(translucent_pass, tint, root)
+        .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
+
+    let beam_end = beam.beam_start + beam.height;
+    let transform = root * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5));
+    let scroll = if beam.height < 0 {
         beam.animation_time
     } else {
         -beam.animation_time
@@ -4064,21 +4120,21 @@ fn emit_end_gateway_beam_submission(
     let tex_v_off = frac(scroll * 0.2 - (scroll * 0.1).floor());
     let vv2 = -1.0 + tex_v_off;
 
-    let solid_radius = 0.15;
-    let solid_vv1 = height as f32 * beam.scale * (0.5 / solid_radius) + vv2;
+    let solid_radius = beam.solid_radius;
+    let solid_vv1 = beam.height as f32 * beam.scale * (0.5 / solid_radius) + vv2;
     let inner_transform =
         transform * Mat4::from_rotation_y((beam.animation_time * 2.25 - 45.0).to_radians());
     render_scroll_geometry_submission(
         meshes,
         opaque_submit,
-        EntityModelScrollOwner::EndGatewayBeamOpaque,
+        EntityModelScrollOwner::BeaconBeamOpaque,
         atlas,
         |mesh, entry, submit| {
             append_beacon_beam_part(
                 mesh,
                 entry,
                 inner_transform,
-                beam_start,
+                beam.beam_start,
                 beam_end,
                 [
                     (0.0, solid_radius),
@@ -4093,12 +4149,12 @@ fn emit_end_gateway_beam_submission(
         },
     );
 
-    let glow_radius = 0.175;
-    let glow_vv1 = height as f32 * beam.scale + vv2;
+    let glow_radius = beam.glow_radius;
+    let glow_vv1 = beam.height as f32 * beam.scale + vv2;
     render_scroll_geometry_submission(
         meshes,
         translucent_submit,
-        EntityModelScrollOwner::EndGatewayBeamTranslucent,
+        EntityModelScrollOwner::BeaconBeamTranslucent,
         atlas,
         |mesh, entry, submit| {
             let mut glow_tint = submit.tint;
@@ -4107,7 +4163,7 @@ fn emit_end_gateway_beam_submission(
                 mesh,
                 entry,
                 transform,
-                beam_start,
+                beam.beam_start,
                 beam_end,
                 [
                     (-glow_radius, -glow_radius),

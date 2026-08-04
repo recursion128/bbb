@@ -98,6 +98,7 @@ use tokio::sync::mpsc;
 use crate::{
     audio_runtime::AudioEventSink,
     banner_scene::banner_model_instances_from_world_at_partial_tick,
+    beacon_scene::beacon_beam_model_instances_from_world_at_partial_tick,
     bed_scene::bed_model_instances_from_world,
     bell_scene::bell_model_instances_from_world_at_partial_tick,
     biome_tint::biome_height_adjusted_temperature,
@@ -4231,6 +4232,7 @@ pub(crate) fn update_renderer_from_publication(
         camera_pose,
         [surface_size.width, surface_size.height],
         camera_fov.culling_degrees,
+        render_distance_chunks,
     );
     let christmas_chest_textures = non_entity_render_extraction.christmas_chest_textures();
     let block_entity_revision = world.stable_block_entity_render_revision();
@@ -4343,6 +4345,11 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         ));
     }
+    entity_instances.extend(beacon_beam_model_instances_from_world_at_partial_tick(
+        world,
+        camera_pose,
+        entity_partial_tick,
+    ));
     if dynamic_block_entities.end_portal {
         entity_instances.extend(end_portal_model_instances_from_world_at_partial_tick(
             world,

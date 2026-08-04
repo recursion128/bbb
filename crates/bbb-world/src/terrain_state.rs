@@ -3,7 +3,8 @@ pub use crate::banner_blocks::{
     BannerModelSourceState,
 };
 pub use crate::beacon_blocks::{
-    is_beacon_block_name, BeaconBeamSection, BeaconBlockState, BEACON_MAX_RENDER_Y,
+    is_beacon_block_name, BeaconBeamSection, BeaconBeamSourceState, BeaconBlockState,
+    BEACON_MAX_RENDER_Y,
 };
 pub use crate::bed_blocks::{
     bed_color_for_block_name, BedColorKind, BedModelFacing, BedModelSourceState, BedPartKind,

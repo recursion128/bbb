@@ -1226,7 +1226,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 713] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 714] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1680,6 +1680,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     END_SKY_TEXTURE_REF,
     END_PORTAL_TEXTURE_REF,
     END_GATEWAY_BEAM_TEXTURE_REF,
+    BEACON_BEAM_TEXTURE_REF,
     ARROW_TEXTURE_REF,
     ARROW_TIPPED_TEXTURE_REF,
     ARROW_SPECTRAL_TEXTURE_REF,
@@ -4439,6 +4440,11 @@ pub(in crate::entity_models) const END_GATEWAY_BEAM_TEXTURE_REF: EntityModelText
     EntityModelTextureRef {
         path: "textures/entity/end_portal/end_gateway_beam.png",
         size: [16, 256],
+    };
+pub(in crate::entity_models) const BEACON_BEAM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/beacon/beacon_beam.png",
+        size: [16, 16],
     };
 pub(in crate::entity_models) const END_CRYSTAL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
     [END_CRYSTAL_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF];

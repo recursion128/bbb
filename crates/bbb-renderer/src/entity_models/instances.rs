@@ -1440,6 +1440,9 @@ entity_render_state! {
     /// Vanilla `EndGatewayRenderState` beam fields for spawning/cooling end gateways. `None` for
     /// end portals, inactive gateways, and every ordinary entity.
     (with_end_gateway_beam) end_gateway_beam: Option<EndGatewayBeamRenderState> = None;
+    /// Vanilla `BeaconRenderState` fields for one beam section. `None` for every
+    /// model that is not a beacon beam.
+    (with_beacon_beam) beacon_beam: Option<BeaconBeamRenderState> = None;
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -1786,6 +1789,11 @@ impl EntityModelInstance {
     /// the shake angle rides `bell_ticks` / `bell_shake_direction`.
     pub fn bell(entity_id: i32, position: [f32; 3]) -> Self {
         Self::new(entity_id, EntityModelKind::Bell, position, 0.0)
+    }
+
+    /// One beacon beam section at the beacon block's min corner.
+    pub fn beacon_beam(entity_id: i32, position: [f32; 3]) -> Self {
+        Self::new(entity_id, EntityModelKind::BeaconBeam, position, 0.0)
     }
 
     /// A conduit block-entity model part at the conduit block's min corner.
@@ -3365,6 +3373,7 @@ mod tests {
                 end_crystal_beam: None,
                 ender_dragon_beam: None,
                 end_gateway_beam: None,
+                beacon_beam: None,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,

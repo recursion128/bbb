@@ -104,6 +104,7 @@ impl EntityModelKind {
             Self::LeashKnot => "leash_knot",
             Self::Conduit { .. } => "conduit",
             Self::SkullBlock { .. } => "skull_block",
+            Self::BeaconBeam => "beacon_beam",
             Self::EndPortalBlock {
                 kind: EndPortalModelKind::EndPortal,
                 ..

@@ -435,13 +435,15 @@ MINIMAL（共享 random 链）。environment spawns、level-particles 包与 fir
 ### ClientLevel block-entity-tracking owner
 
 唯一 owner（onBlockEntityAdded）的 off-screen 政策收敛在
-`block_entity_visibility.rs`：当前 native 提交的 block-entity 模型（chest/sign/end
-portal/gateway 等）均非 vanilla off-screen renderer——beacon 本体不渲染，gateway beam
-的 renderer 非 off-screen（自有 256 view distance 已建模）——因此
-globallyRenderedBlockEntities 的等价 membership 诚实为空，移除/替换边界平凡满足；
-普通模型以所在 16³ section 为保守可见性单元，先过 compiled-section gate 再过 camera
-frustum，per-renderer view distance（default 64/end gateway 256）唯一登记于此。重开
-判据：提交任何 off-screen renderer 模型（beacon/structure/test 类）。
+`block_entity_visibility.rs`，vanilla 的两条提取路径在此同址裁决：普通模型
+（chest/sign/end portal/gateway 等）以所在 16³ section 为保守可见性单元，先过
+compiled-section gate 再过 camera frustum，per-renderer view distance（default 64/end
+gateway 256）唯一登记于此；`shouldRenderOffScreen` 为真的 renderer 被
+`SectionCompiler.handleBlockEntity` 排除在 section mesh 之外，改由
+`Level.getGloballyRenderedBlockEntities()` 提取而不经任何 section/frustum 门——beacon
+beam 是当前唯一成员，其 `shouldRender` 用 y 归零后的水平距离对
+`renderDistance * 16` 判定（`renders_off_screen` 是该 membership 的唯一登记点）。重开
+判据：新增 off-screen renderer 模型（structure/test 类）或两条路径分界变化。
 
 ### ClientLevel level-events owner
 
