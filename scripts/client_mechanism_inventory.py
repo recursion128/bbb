@@ -2655,6 +2655,57 @@ LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/crosshair.rs#crosshair_target_from_world",
+                "crates/bbb-native/src/crosshair.rs#active_crosshair_attack_range",
+            ),
+            (
+                "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+                "crates/bbb-native/src/crosshair.rs#crosshair_raycast_uses_vanilla_default_block_interaction_range",
+                "crates/bbb-native/src/crosshair.rs#crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range",
+            ),
+        ),
+        ("pick", "filterHitResult", "raycastHitResult"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/camera_pose.rs#camera_pose_from_world",
+            ),
+            (
+                "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints",
+            ),
+        ),
+        ("getViewXRot", "getViewYRot"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/leash.rs#rope_hold_position",
+            ),
+            (
+                "crates/bbb-world/src/entities/leash.rs#flying_player_roll_uses_full_view_rotation_not_body_rotation",
+            ),
+        ),
+        ("getVisualRotationYInDegrees", "getRopeHoldPosition"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#apply_set_camera",
+                "crates/bbb-native/src/runtime.rs#camera_entity_id",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#camera_updates_only_for_local_or_known_entities",
+            ),
+        ),
+        ("isControlledCamera",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2818,6 +2869,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,
     "player-local-environment-effects": LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE,
     "player-local-world-edit-ui": LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE,
+    "player-local-camera-targeting": LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "e79ce6921269720f3c5ca4c87ce9a5af5340fc21a2db4b6b31933d0fca4aa494"
+      "sha256": "b5681cd8f7fe33eddd6494e2c8542c661422391405c8ae01ceb5da742f09bd40"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -220,7 +220,8 @@
         "crates/bbb-native/src/crosshair.rs",
         "crates/bbb-native/src/runtime.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "player-local-client-status-options": {
       "bbb_evidence": [
@@ -10247,6 +10248,17 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#pauseIfInactive()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_from_world",
+          "crates/bbb-native/src/crosshair.rs#active_crosshair_attack_range"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+          "crates/bbb-native/src/crosshair.rs#crosshair_raycast_uses_vanilla_default_block_interaction_range",
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24406,6 +24418,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#drop(final boolean all)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_from_world",
+          "crates/bbb-native/src/crosshair.rs#active_crosshair_attack_range"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+          "crates/bbb-native/src/crosshair.rs#crosshair_raycast_uses_vanilla_default_block_interaction_range",
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24536,6 +24559,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getRecipeBook()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/leash.rs#rope_hold_position"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/leash.rs#flying_player_roll_uses_full_view_rotation_not_body_rotation"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24578,6 +24609,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getUsedItemHand()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/camera_pose.rs#camera_pose_from_world"
+        ],
+        "tests": [
+          "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24592,6 +24631,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getViewXRot(final float a)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/camera_pose.rs#camera_pose_from_world"
+        ],
+        "tests": [
+          "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24606,6 +24653,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getViewYRot(final float a)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/leash.rs#rope_hold_position"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/leash.rs#flying_player_roll_uses_full_view_rotation_not_body_rotation"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -24737,6 +24792,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isAutoJumpEnabled()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_set_camera",
+          "crates/bbb-native/src/runtime.rs#camera_entity_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#camera_updates_only_for_local_or_known_entities"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -25399,6 +25463,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#permissions()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_from_world",
+          "crates/bbb-native/src/crosshair.rs#active_crosshair_attack_range"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+          "crates/bbb-native/src/crosshair.rs#crosshair_raycast_uses_vanilla_default_block_interaction_range",
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -25436,6 +25511,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#playSound(final SoundEvent sound,final float volume,final float pitch)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_from_world",
+          "crates/bbb-native/src/crosshair.rs#active_crosshair_attack_range"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit",
+          "crates/bbb-native/src/crosshair.rs#crosshair_raycast_uses_vanilla_default_block_interaction_range",
+          "crates/bbb-native/src/crosshair.rs#crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range"
+        ]
+      },
       "category": "targeting",
       "domain": "interaction",
       "kind": "method",
@@ -42658,6 +42744,7 @@
       "player-local-input-movement",
       "player-local-environment-effects",
       "player-local-world-edit-ui",
+      "player-local-camera-targeting",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

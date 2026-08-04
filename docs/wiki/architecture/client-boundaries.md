@@ -79,6 +79,19 @@ size）；dialog 由 world `apply_show_dialog` 与
 `sync_dialog_native_previous_screen`（stack 挂起/恢复）拥有。不得为任何 edit
 surface 另建第二条打开链或绕过 sync fn 直接置 screen 状态。
 
+## LocalPlayer camera-targeting owner
+
+九个 camera-targeting owner 收敛于唯一 crosshair resolver
+`crosshair_target_from_world`：item attack-range（`active_crosshair_attack_range`）
+优先命中、block 命中按 block-interaction range clamp（filterHitResult 语义）、
+miss 时回退双 range pick（block/entity 各自 range、fluid 剔除、pickable/marker
+判定）；getViewXRot/getViewYRot 由 camera pose tick 端点（`camera_pose_from_world`
+直取 x_rot/y_rot）拥有；getVisualRotationYInDegrees 与 getRopeHoldPosition 由
+leash 端点链（`rope_hold_position`，view-rotation 而非 body-rotation）拥有；
+isControlledCamera 由 `apply_set_camera` 的 follows_player 判定与 native
+`camera_entity_id` 消费拥有。不得建第二条 raycast 路径或在 native 内联 camera
+判定。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

@@ -236,6 +236,28 @@ public class Owner {
                 for owner in world_edit_ui_owners
             )
         )
+        camera_targeting_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-camera-targeting"
+        ]
+        # The ninth owner (`Minecraft#pick`) lives outside this partition's
+        # source filter; the mechanism-level count covers the full route.
+        self.assertEqual(len(camera_targeting_owners), 8)
+        self.assertEqual(
+            value["mechanisms"]["player-local-camera-targeting"][
+                "owner_evidence_count"
+            ],
+            9,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in camera_targeting_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods
