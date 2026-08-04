@@ -11,7 +11,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use glam::{Mat3, Mat4};
+use glam::{Mat3, Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -327,7 +327,27 @@ impl ItemModelAssetSource {
             } => bake_generated_item_quads(&mask, rect, [1.0; 4], translucent),
         }
     }
+
+    /// The source geometry's model-space corner extents in block units, i.e.
+    /// the same points vanilla `ItemStackRenderState.visitExtents` feeds into
+    /// `getModelBoundingBox`. `None` when the source bakes no geometry.
+    pub fn model_extents(&self) -> Option<(Vec3, Vec3)> {
+        let quads = self.clone().build();
+        let mut min = Vec3::splat(f32::INFINITY);
+        let mut max = Vec3::splat(f32::NEG_INFINITY);
+        for quad in &quads {
+            for corner in quad.corners {
+                let point = Vec3::from_array(corner) / MODEL_UNITS_PER_BLOCK;
+                min = min.min(point);
+                max = max.max(point);
+            }
+        }
+        min.is_finite().then_some((min, max))
+    }
 }
+
+/// Item model geometry is authored in sixteenths of a block.
+const MODEL_UNITS_PER_BLOCK: f32 = 16.0;
 
 /// One exact static owner requested by a render extraction. This contains no
 /// entity/level identity and no frame-varying transform or tint.

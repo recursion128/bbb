@@ -93,6 +93,8 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub campfire: Option<CampfireBlockEntityData>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shelf: Option<ShelfBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conduit_destroy_target: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
@@ -134,6 +136,7 @@ impl BlockEntityRecord {
             sign_text: None,
             vault_shared_data: None,
             campfire: None,
+            shelf: None,
             conduit_destroy_target: None,
             decorated_pot_sherds: None,
             banner_patterns: None,
@@ -168,6 +171,14 @@ impl CampfireBlockEntityData {
     pub fn occupied_slots(&self) -> [bool; 4] {
         std::array::from_fn(|slot| self.items[slot].is_some())
     }
+}
+
+/// The three `ShelfBlockEntity.getItems()` display slots plus the renderer's
+/// `align_items_to_bottom` flag, exactly as `getUpdateTag` sends them.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShelfBlockEntityData {
+    pub items: [Option<NbtSummaryValue>; 3],
+    pub align_items_to_bottom: bool,
 }
 
 /// The two `TrialSpawnerStateData.getUpdateTag` fields consumed by the

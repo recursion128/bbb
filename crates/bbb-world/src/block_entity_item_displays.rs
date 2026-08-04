@@ -10,11 +10,27 @@
 //! submission.
 
 use bbb_protocol::{
-    block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID,
-    packets::ItemStackSummary as ProtocolItemStackSummary, NbtSummaryValue,
+    block_entity_types::{
+        VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID,
+    },
+    packets::ItemStackSummary as ProtocolItemStackSummary,
+    NbtSummaryValue,
 };
 
-use crate::{chunks::BlockEntityRecord, BlockPos, WorldStore};
+use crate::{block_name_is_shelf, chunks::BlockEntityRecord, BlockPos, WorldStore};
+
+/// One `ShelfRenderer` render state: the block state's facing plus the occupied
+/// display slots and the block entity's bottom-alignment flag.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShelfItemDisplaySourceState {
+    pub pos: BlockPos,
+    /// `ShelfBlock.FACING.get2DDataValue()`; the property is always horizontal.
+    pub facing_2d: u8,
+    /// `ShelfBlockEntity.getAlignItemsToBottom()`.
+    pub align_items_to_bottom: bool,
+    /// Occupied `ShelfBlockEntity.getItems()` slots in slot order.
+    pub items: Vec<(u8, ProtocolItemStackSummary)>,
+}
 
 /// One `CampfireRenderer` render state: the block state's facing plus the
 /// occupied cooking slots. Vanilla extracts every slot and skips the empty ones
@@ -56,15 +72,7 @@ impl WorldStore {
             else {
                 continue;
             };
-            let items: Vec<_> = campfire
-                .items
-                .iter()
-                .enumerate()
-                .filter_map(|(slot, item)| {
-                    let stack = self.resolved_block_entity_item(item.as_ref())?;
-                    Some((slot as u8, stack))
-                })
-                .collect();
+            let items = self.resolved_container_slots(&campfire.items);
             if items.is_empty() {
                 continue;
             }
@@ -76,6 +84,60 @@ impl WorldStore {
         }
         states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
         states
+    }
+
+    /// Projects every loaded shelf block entity that carries at least one
+    /// display item into its `ShelfRenderer` inputs.
+    pub fn shelf_item_display_source_states(&self) -> Vec<ShelfItemDisplaySourceState> {
+        let mut states = Vec::new();
+        for (pos, record) in self.loaded_block_entity_records() {
+            if record.type_id != VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID {
+                continue;
+            }
+            let Some(shelf) = record.shelf.as_ref() else {
+                continue;
+            };
+            let Some(block) = self.probe_block(pos) else {
+                continue;
+            };
+            if !block.block_name.as_deref().is_some_and(block_name_is_shelf) {
+                continue;
+            }
+            let Some(facing_2d) = block
+                .block_properties
+                .get("facing")
+                .and_then(|facing| horizontal_facing_2d_data_value(facing))
+            else {
+                continue;
+            };
+            let items = self.resolved_container_slots(&shelf.items);
+            if items.is_empty() {
+                continue;
+            }
+            states.push(ShelfItemDisplaySourceState {
+                pos,
+                facing_2d,
+                align_items_to_bottom: shelf.align_items_to_bottom,
+                items,
+            });
+        }
+        states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
+        states
+    }
+
+    /// Resolves the occupied slots of one retained container payload.
+    fn resolved_container_slots(
+        &self,
+        slots: &[Option<NbtSummaryValue>],
+    ) -> Vec<(u8, ProtocolItemStackSummary)> {
+        slots
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, item)| {
+                let stack = self.resolved_block_entity_item(item.as_ref())?;
+                Some((slot as u8, stack))
+            })
+            .collect()
     }
 
     /// Resolves a retained block-entity stack through the single persistent

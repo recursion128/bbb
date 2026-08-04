@@ -4448,6 +4448,7 @@ pub(crate) fn update_renderer_from_publication(
         world,
         item_runtime,
         terrain_textures,
+        Some(renderer),
         trim_material_keys.as_deref(),
         enchantment_keys.as_deref(),
         damage_type_keys.as_deref(),

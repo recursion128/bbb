@@ -9,9 +9,9 @@ use bbb_protocol::{
         VANILLA_BLOCK_ENTITY_TYPE_CONDUIT_ID, VANILLA_BLOCK_ENTITY_TYPE_DECORATED_POT_ID,
         VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID, VANILLA_BLOCK_ENTITY_TYPE_HANGING_SIGN_ID,
         VANILLA_BLOCK_ENTITY_TYPE_JIGSAW_ID, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID, VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID,
-        VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID, VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SKULL_ID, VANILLA_BLOCK_ENTITY_TYPE_STRUCTURE_BLOCK_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_TEST_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_TEST_INSTANCE_BLOCK_ID,
         VANILLA_BLOCK_ENTITY_TYPE_TRIAL_SPAWNER_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     },
     codec::{Decoder, ProtocolError},
@@ -258,6 +258,11 @@ fn decode_block_entity_record(
     } else {
         None
     };
+    let shelf = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID {
+        crate::chunks::decode_shelf_block_entity_data(&raw_nbt)?
+    } else {
+        None
+    };
     let conduit_destroy_target = if block_entity_type_id == VANILLA_BLOCK_ENTITY_TYPE_CONDUIT_ID {
         crate::chunks::decode_conduit_destroy_target(&raw_nbt)?
     } else {
@@ -349,6 +354,7 @@ fn decode_block_entity_record(
         sign_text,
         vault_shared_data,
         campfire,
+        shelf,
         conduit_destroy_target,
         decorated_pot_sherds,
         banner_patterns,

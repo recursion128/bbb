@@ -13,7 +13,9 @@ pub use crate::block_entity_client_effects::{
     ConduitDestroyTargetState, TrialSpawnerClientEffectSource, TrialSpawnerClientState,
     VaultBlockState, VaultClientEffectSource,
 };
-pub use crate::block_entity_item_displays::CampfireItemDisplaySourceState;
+pub use crate::block_entity_item_displays::{
+    CampfireItemDisplaySourceState, ShelfItemDisplaySourceState,
+};
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,
@@ -27,8 +29,8 @@ pub use crate::chunks::{
     BannerPatternsState, BlockEntityRecord, CampfireBlockEntityData, ChunkBiomeSampler,
     ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection, ChunkState,
     ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
-    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, SignBlockEntityTextState,
-    SignTextDyeColor, SignTextSideState, TrialSpawnerBlockEntityData,
+    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, ShelfBlockEntityData,
+    SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, TrialSpawnerBlockEntityData,
     TrialSpawnerEntityNbtProjection, TrialSpawnerEquipmentNbtProjection,
     VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
 };

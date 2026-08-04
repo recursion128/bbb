@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::Result;
 
 use super::{
-    client_effects::{summary_field, summary_item_stack_is_nonempty, summary_root},
+    container_items::{summary_field, summary_item_stack_is_nonempty, summary_root},
     state::VaultSharedDataState,
 };
 
