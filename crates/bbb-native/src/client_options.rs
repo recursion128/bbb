@@ -17,9 +17,9 @@ pub(crate) mod derived;
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 pub(crate) use catalog_26_1::{
     ClientOptionDefault, ClientOptionEncoding, ClientOptionSpec, CLIENT_OPTIONS,
@@ -80,14 +80,15 @@ impl ClientOptions {
 
     /// `Options.save`: truncate, write the data version, then every catalogued
     /// key in `save` order followed by the per-element groups. Unknown keys are
-    /// not carried over, matching Vanilla.
-    #[cfg(test)]
+    /// not carried over, matching Vanilla. The write is a plain truncate, also
+    /// matching Vanilla — `Options.save` opens a `FileOutputStream` directly and
+    /// only logs on failure, unlike `ServerList.save`, which is the client's one
+    /// `Util.safeReplaceFile` caller.
     pub(crate) fn save(&self, path: &Path) -> Result<()> {
         fs::write(path, self.rendered())?;
         Ok(())
     }
 
-    #[cfg(test)]
     pub(crate) fn rendered(&self) -> String {
         let mut out = format!("version:{}\n", bbb_protocol::MC_DATA_VERSION);
         for spec in CLIENT_OPTIONS.iter() {
@@ -188,6 +189,66 @@ impl ClientOptions {
     }
 }
 
+/// The running session's `options.txt`, kept so a toggle can write it back.
+///
+/// Vanilla's writers outside the options screen are the hotkeys in
+/// `KeyboardHandler`: each flips one field and calls `Options.save`, which
+/// rewrites the whole file. BBB implements two of them —
+/// `keyDebugShowAdvancedTooltips` (F3+H) and `keyDebugFocusPause` (F3+P) — so a
+/// toggle survives a restart the way it does in the official client.
+pub(crate) struct ClientOptionsFile {
+    path: PathBuf,
+    options: ClientOptions,
+}
+
+impl ClientOptionsFile {
+    pub(crate) fn load(path: PathBuf, host: ClientOptionHost) -> Result<Self> {
+        let options = ClientOptions::load(&path, host)?;
+        Ok(Self { path, options })
+    }
+
+    pub(crate) fn options(&self) -> &ClientOptions {
+        &self.options
+    }
+
+    /// Apply the lines a hotkey changed, then rewrite the file. Nothing is
+    /// written when every value already reads that way, because Vanilla only
+    /// reaches `save` from a branch that actually flipped the field.
+    pub(crate) fn apply(&mut self, writes: &[ClientOptionWrite]) -> Result<bool> {
+        let mut changed = false;
+        for write in writes {
+            let spec = client_option_spec(write.key)
+                .unwrap_or_else(|| panic!("{} is not a catalogued option key", write.key));
+            assert_eq!(
+                spec.encoding,
+                ClientOptionEncoding::Boolean,
+                "{} is not written as a boolean",
+                write.key
+            );
+            let text = bool_text(write.value);
+            if self.options.raw(spec.key) != Some(text) {
+                self.options.set_raw(spec.key, text);
+                changed = true;
+            }
+        }
+        if !changed {
+            return Ok(false);
+        }
+        self.options
+            .save(&self.path)
+            .with_context(|| format!("write {}", self.path.display()))?;
+        Ok(true)
+    }
+}
+
+/// One `options.txt` line a hotkey toggled, carried from the input owner to the
+/// thread that may touch the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ClientOptionWrite {
+    pub(crate) key: &'static str,
+    pub(crate) value: bool,
+}
+
 /// The catalogued spec for `key`, so a binding can be checked against the
 /// encoding `save` actually writes.
 pub(crate) fn client_option_spec(key: &str) -> Option<&'static ClientOptionSpec> {
@@ -232,6 +293,60 @@ mod tests {
 
     fn options() -> ClientOptions {
         ClientOptions::defaults(ClientOptionHost::default())
+    }
+
+    #[test]
+    fn a_debug_hotkey_toggle_rewrites_the_file_and_survives_a_reload() {
+        let path = unique_options_path("hotkey");
+        fs::write(&path, "advancedItemTooltips:false\npauseOnLostFocus:true\n").unwrap();
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        assert!(file
+            .apply(&[
+                ClientOptionWrite {
+                    key: "advancedItemTooltips",
+                    value: true,
+                },
+                ClientOptionWrite {
+                    key: "pauseOnLostFocus",
+                    value: false,
+                },
+            ])
+            .unwrap());
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(reloaded.raw("advancedItemTooltips"), Some("true"));
+        assert_eq!(reloaded.raw("pauseOnLostFocus"), Some("false"));
+        // `save` rewrites the whole file, so the untouched keys come back too.
+        assert_eq!(reloaded.raw("renderDistance"), Some("12"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn a_toggle_back_to_the_stored_value_writes_nothing() {
+        let path = unique_options_path("noop");
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        // The file does not exist, so the defaults are in place; writing the
+        // default back is not a change and must not create the file, the same
+        // way `KeyboardHandler` only reaches `save` from a branch that flipped
+        // the field.
+        assert!(!file
+            .apply(&[ClientOptionWrite {
+                key: "pauseOnLostFocus",
+                value: true,
+            }])
+            .unwrap());
+        assert!(!path.exists());
+
+        assert!(file
+            .apply(&[ClientOptionWrite {
+                key: "pauseOnLostFocus",
+                value: false,
+            }])
+            .unwrap());
+        assert!(path.exists());
+        let _ = fs::remove_file(path);
     }
 
     #[test]

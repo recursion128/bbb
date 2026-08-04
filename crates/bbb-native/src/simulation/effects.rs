@@ -36,6 +36,11 @@ pub(crate) enum PlatformEffect {
     DumpDynamicTextures {
         requests: u32,
     },
+    /// `KeyboardHandler`'s `options.save()` after a debug hotkey flipped a
+    /// persisted field.
+    SaveClientOptions {
+        writes: Vec<crate::client_options::ClientOptionWrite>,
+    },
     ProfilingToggled {
         commands: Vec<DebugProfilingCommand>,
     },

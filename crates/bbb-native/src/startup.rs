@@ -284,6 +284,8 @@ pub(crate) struct Args {
     pub(crate) hide_lightning_flash: bool,
     #[arg(long = "advanced-item-tooltips")]
     pub(crate) advanced_item_tooltips: bool,
+    #[arg(long = "pause-on-lost-focus", default_value_t = true, action = ArgAction::Set)]
+    pub(crate) pause_on_lost_focus: bool,
     #[arg(long = "debug-profile", value_enum, default_value = "default")]
     pub(crate) debug_profile: DebugScreenProfileArg,
     #[arg(long = "debug-profile-store", value_name = "PATH")]
@@ -577,6 +579,11 @@ fn bind_stored_client_options(
         "advanced_item_tooltips",
         "advancedItemTooltips",
         advanced_item_tooltips
+    );
+    flag!(
+        "pause_on_lost_focus",
+        "pauseOnLostFocus",
+        pause_on_lost_focus
     );
     flag!(
         "improved_transparency",
@@ -1976,6 +1983,23 @@ mod tests {
         assert_eq!(args.client_locale, "zh_cn");
         // `fov` is stored scaled; 1.0 reads back as the 110-degree maximum.
         assert_eq!(args.client_fov, 110);
+    }
+
+    #[test]
+    fn a_stored_debug_toggle_comes_back_as_the_session_starting_value() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("advancedItemTooltips", "true");
+        options.set_raw_for_test("pauseOnLostFocus", "false");
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert!(!args.advanced_item_tooltips);
+        assert!(args.pause_on_lost_focus);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        // Both are what F3+H and F3+P write back, so the write is only useful
+        // if the next run starts from it.
+        assert!(args.advanced_item_tooltips);
+        assert!(!args.pause_on_lost_focus);
     }
 
     #[test]

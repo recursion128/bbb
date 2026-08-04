@@ -165,6 +165,7 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
+use crate::client_options::ClientOptionWrite;
 use crate::hotbar_presets::HotbarPresetStore;
 
 use crate::debug_entries::{
@@ -703,6 +704,7 @@ pub(crate) struct ClientInputState {
     debug_frustum_requests: Vec<DebugFrustumRequest>,
     debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
     debug_pause_on_lost_focus: bool,
+    debug_client_option_writes: Vec<ClientOptionWrite>,
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
     debug_profiling_recording: bool,
@@ -2932,6 +2934,14 @@ impl ClientInputState {
         self.debug_advanced_item_tooltips = enabled;
     }
 
+    /// The `options.txt` lines a debug hotkey flipped since the last drain.
+    /// `KeyboardHandler` calls `Options.save` inside each of those branches; the
+    /// file owner lives on the render thread here, so the intent is queued the
+    /// way every other debug-hotkey side effect is.
+    pub(crate) fn take_debug_client_option_writes(&mut self) -> Vec<ClientOptionWrite> {
+        std::mem::take(&mut self.debug_client_option_writes)
+    }
+
     pub(crate) fn debug_show_local_server_entity_hit_boxes(&self) -> bool {
         self.debug_show_local_server_entity_hit_boxes
     }
@@ -2971,6 +2981,10 @@ impl ClientInputState {
 
     pub(crate) fn debug_pause_on_lost_focus(&self) -> bool {
         self.debug_pause_on_lost_focus
+    }
+
+    pub(crate) fn set_debug_pause_on_lost_focus(&mut self, enabled: bool) {
+        self.debug_pause_on_lost_focus = enabled;
     }
 
     pub(crate) fn take_debug_resource_pack_reload_requests(&mut self) -> u32 {
@@ -4672,6 +4686,11 @@ impl ClientInputState {
             }
             KeyCode::KeyH => {
                 self.debug_advanced_item_tooltips = !self.debug_advanced_item_tooltips;
+                // `keyDebugShowAdvancedTooltips` saves the toggled field.
+                self.debug_client_option_writes.push(ClientOptionWrite {
+                    key: "advancedItemTooltips",
+                    value: self.debug_advanced_item_tooltips,
+                });
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
                     if self.debug_advanced_item_tooltips {
@@ -4684,6 +4703,11 @@ impl ClientInputState {
             }
             KeyCode::KeyP => {
                 self.debug_pause_on_lost_focus = !self.debug_pause_on_lost_focus;
+                // `keyDebugFocusPause` saves the toggled field.
+                self.debug_client_option_writes.push(ClientOptionWrite {
+                    key: "pauseOnLostFocus",
+                    value: self.debug_pause_on_lost_focus,
+                });
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
                     if self.debug_pause_on_lost_focus {

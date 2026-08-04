@@ -1150,6 +1150,12 @@ impl SimulationInputRuntime {
                     requests: dynamic_texture_dump_requests,
                 });
         }
+        let client_option_writes = context.input.take_debug_client_option_writes();
+        if !client_option_writes.is_empty() {
+            context.platform.submit(PlatformEffect::SaveClientOptions {
+                writes: client_option_writes,
+            });
+        }
         let profiling_toggle_requests = context.input.take_debug_profiling_toggle_requests();
         if !profiling_toggle_requests.is_empty() {
             context.platform.submit(PlatformEffect::ProfilingToggled {

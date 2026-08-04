@@ -89,7 +89,7 @@ use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
 use camera_pose::CameraEyeHeightTickState;
-use client_options::{ClientOptionHost, ClientOptions};
+use client_options::{ClientOptionHost, ClientOptionsFile};
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use crash_report::{
     default_crash_report_dir, exit_after_failure, CrashReportRuntime, RuntimeFailure,
@@ -252,6 +252,7 @@ struct NativeRenderEffectSink<'a> {
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
     control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
+    client_options: Option<&'a mut ClientOptionsFile>,
     exit_requested: &'a mut bool,
 }
 
@@ -299,6 +300,16 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     SimulationCommand::OpenPathResult { path, success },
                     "open path result",
                 );
+            }
+            PlatformEffect::SaveClientOptions { writes } => {
+                let Some(options) = self.client_options.as_mut() else {
+                    tracing::warn!("no options.txt owner to save a debug hotkey toggle into");
+                    return;
+                };
+                // `Options.save` only logs when the write fails.
+                if let Err(error) = options.apply(&writes) {
+                    tracing::warn!(%error, "failed to save options.txt");
+                }
             }
             PlatformEffect::Screenshot(path) => self.control_screenshots.push_back(path),
             PlatformEffect::ReloadTerrain => self.terrain_upload.request_reload_all_chunks(),
@@ -777,6 +788,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         input.load_debug_screen_profile(startup_debug_profile);
     }
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
+    input.set_debug_pause_on_lost_focus(args.pause_on_lost_focus);
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );
@@ -1045,18 +1057,24 @@ fn run_client(args: startup::Args) -> Result<()> {
     let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
     // `Minecraft.fillSystemReport` reports the options the failing run used, so
     // capture them once here rather than reading a file mid-failure.
-    match ClientOptions::load(
-        &args.game_dir.join("options.txt"),
+    let mut client_options = match ClientOptionsFile::load(
+        args.game_dir.join("options.txt"),
         ClientOptionHost {
             locale_is_japanese: false,
             platform_is_windows: cfg!(windows),
         },
     ) {
-        Ok(options) => fatal_failures
-            .borrow_mut()
-            .attach_client_options(options.dump_for_report()),
-        Err(error) => tracing::warn!(%error, "failed to read options.txt for the crash report"),
-    }
+        Ok(options) => {
+            fatal_failures
+                .borrow_mut()
+                .attach_client_options(options.options().dump_for_report());
+            Some(options)
+        }
+        Err(error) => {
+            tracing::warn!(%error, "failed to read options.txt");
+            None
+        }
+    };
     let event_failures = Rc::clone(&fatal_failures);
 
     let event_loop_result = event_loop.run(move |event, target| {
@@ -1125,6 +1143,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                         control_screenshots: &mut pending_control_screenshots,
+                        client_options: client_options.as_mut(),
                         exit_requested: &mut platform_exit_requested,
                     };
                     simulation_step.consume_render_effects(

@@ -2140,6 +2140,53 @@ fn debug_advanced_item_tooltips_startup_state_is_runtime_initial_value() {
         .map(|message| message.content.as_str())
         .collect();
     assert_eq!(feedback, vec!["[Debug]: Advanced tooltips: hidden"]);
+    // `keyDebugShowAdvancedTooltips` calls `options.save()` right after the
+    // toggle, so the new value has to reach the file owner.
+    assert_eq!(
+        input.take_debug_client_option_writes(),
+        vec![crate::client_options::ClientOptionWrite {
+            key: "advancedItemTooltips",
+            value: false,
+        }]
+    );
+    assert!(input.take_debug_client_option_writes().is_empty());
+}
+
+#[test]
+fn focus_pause_toggle_queues_the_option_line_vanilla_saves() {
+    let mut input = ClientInputState::new(true);
+    input.set_debug_hotkeys_enabled(true);
+    assert!(input.debug_pause_on_lost_focus());
+
+    let commands = None;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::F3),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyP),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.debug_pause_on_lost_focus());
+    assert_eq!(
+        input.take_debug_client_option_writes(),
+        vec![crate::client_options::ClientOptionWrite {
+            key: "pauseOnLostFocus",
+            value: false,
+        }]
+    );
 }
 
 #[test]
