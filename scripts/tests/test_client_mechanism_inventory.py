@@ -101,6 +101,161 @@ public class Owner {
             )
         )
 
+    def test_local_player_and_game_mode_partition_is_total_and_homogeneous(self) -> None:
+        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        selected_paths = {
+            "net/minecraft/client/player/LocalPlayer.java": 104,
+            "net/minecraft/client/multiplayer/MultiPlayerGameMode.java": 39,
+        }
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] in selected_paths
+            and owner["kind"] in {"method", "constructor"}
+        ]
+        by_source = Counter(owner["source"]["path"] for owner in methods)
+        by_mechanism = Counter(owner["mechanism_id"] for owner in methods)
+
+        self.assertEqual(len(methods), 143)
+        self.assertEqual(by_source, Counter(selected_paths))
+        self.assertEqual(
+            by_mechanism,
+            Counter(
+                {
+                    "player-local-session-respawn": 4,
+                    "player-local-vitals-status": 4,
+                    "player-local-movement-reporting": 4,
+                    "player-local-input-movement": 20,
+                    "player-local-vehicle-control": 7,
+                    "player-local-permission-chat-state": 6,
+                    "player-local-client-status-options": 4,
+                    "player-local-item-use-state": 6,
+                    "player-local-inventory-actions": 9,
+                    "player-local-world-edit-ui": 9,
+                    "player-local-environment-effects": 8,
+                    "player-local-camera-targeting": 8,
+                    "interaction-game-mode-lifecycle": 6,
+                    "interaction-game-mode-guards": 5,
+                    "interaction-block-breaking": 6,
+                    "interaction-prediction-sequence": 1,
+                    "interaction-carried-slot-sync": 2,
+                    "interaction-item-use": 4,
+                    "interaction-entity-actions": 4,
+                    "interaction-container-actions": 4,
+                    "interaction-creative-actions": 2,
+                    "interaction-pick-actions": 2,
+                    "scope-support-accessors": 18,
+                }
+            ),
+        )
+        self.assertNotIn("world-local-player-decisions", value["mechanisms"])
+        self.assertNotIn("interaction-game-mode-decisions", value["mechanisms"])
+        generator_source = Path(inventory.__file__).read_text(encoding="utf-8")
+        self.assertNotIn('"world-local-player-decisions"', generator_source)
+        self.assertNotIn('"interaction-game-mode-decisions"', generator_source)
+
+        minecraft_interaction_methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] == "net/minecraft/client/Minecraft.java"
+            and owner["vanilla_owner"].split("#", 1)[1].split("(", 1)[0]
+            in {
+                "continueAttack",
+                "startAttack",
+                "startUseItem",
+                "canSwitchGameMode",
+                "pickBlockOrEntity",
+                "pick",
+            }
+        ]
+        self.assertEqual(len(minecraft_interaction_methods), 6)
+        self.assertEqual(len(methods) + len(minecraft_interaction_methods), 149)
+
+    def test_local_player_and_game_mode_unknown_methods_fail_closed(self) -> None:
+        fixtures = (
+            (
+                "net/minecraft/client/player/LocalPlayer.java",
+                "package net.minecraft.client.player; class LocalPlayer { void newDecision() {} }",
+                "LocalPlayer method lacks a homogeneous route",
+            ),
+            (
+                "net/minecraft/client/multiplayer/MultiPlayerGameMode.java",
+                "package net.minecraft.client.multiplayer; class MultiPlayerGameMode { void newDecision() {} }",
+                "MultiPlayerGameMode method lacks a homogeneous route",
+            ),
+        )
+        for relative, source, message in fixtures:
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.write_source(root, relative, source)
+                builder = inventory.InventoryBuilder(root)
+                with self.assertRaisesRegex(
+                    inventory.ClientMechanismInventoryError,
+                    message,
+                ):
+                    builder.add_method_surface(
+                        inventory.MethodSurface("decision", "fixture", "fixture", relative)
+                    )
+
+    def test_method_route_table_rejects_duplicate_owner_names(self) -> None:
+        route = inventory.MethodRoute("decision", "fixture", "fixture-mechanism")
+        with self.assertRaisesRegex(ValueError, "duplicate method route: decide"):
+            inventory._method_routes(
+                (route, ("decide",)),
+                (route, ("decide",)),
+            )
+
+    def test_game_mode_overloads_share_one_lifecycle_route(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.multiplayer;
+class MultiPlayerGameMode {
+  void setLocalMode(int mode) {}
+  void setLocalMode(String mode) {}
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            builder.add_method_surface(
+                inventory.MethodSurface("decision", "interaction", "fixture", relative)
+            )
+
+        self.assertEqual(len(builder.owners), 2)
+        self.assertEqual(
+            {owner["mechanism_id"] for owner in builder.owners},
+            {"interaction-game-mode-lifecycle"},
+        )
+
+    def test_local_player_support_route_rejects_side_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/player/LocalPlayer.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.player;
+class LocalPlayer {
+  boolean isLocalPlayer() { mutate(); return true; }
+  void mutate() {}
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "support route is not a direct accessor",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface("decision", "movement", "fixture", relative)
+                )
+
     def test_level_renderer_method_partition_is_total_and_homogeneous(self) -> None:
         generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
         value = json.loads(generated.read_text(encoding="utf-8"))

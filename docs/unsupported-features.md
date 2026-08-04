@@ -63,17 +63,88 @@ Matrix route: `world-client-level-decisions`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-net` + `bbb-protocol`
 
-Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
+Matrix routes: `player-local-session-respawn`, `player-local-vitals-status`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-permission-chat-state`, `player-local-client-status-options`, `player-local-item-use-state`, `player-local-inventory-actions`, `player-local-world-edit-ui`, `player-local-environment-effects`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 
-- **`LocalPlayer` and `MultiPlayerGameMode` decision parity is `active`.** The
-  packet catalog and current movement/interaction tests do not by themselves
-  prove every prediction, teleport, ability, collision, pose, respawn,
-  block-breaking, use/attack/pick, carried-item, creative and spectator branch.
-  Audit the 104 local-player and 39 game-mode owners against their actual
-  command/state/presentation paths and close only after the applicable live
-  interaction cases pass. The current partition census is bounded by
-  `goal.md#active-工程合同localplayergame-mode-decision-partition-census` and
-  changes evidence/routes only; implementation starts after its full gate.
+Goal route: `goal.md#p2非实体客户端行为-closeout`
+
+The generated inventory maps all 104 `LocalPlayer`, 39 `MultiPlayerGameMode` and six
+`Minecraft` interaction entry owners exactly once. The current BBB paths below are
+real implementation evidence, but are not yet owner-complete decision→consumer/live
+evidence, so the census records each homogeneous route as `unverified` rather than
+preserving the two former broad `partial` claims.
+
+- **`player-local-session-respawn`** — canonical input is player/session construction,
+  death tick and respawn input; current owners are world player generation plus native
+  death-screen commands. Risk is stale player state or an extra/missing respawn; close
+  with create/reset/death-removal/respawn ordering evidence and external-session respawn.
+- **`player-local-vitals-status`** — canonical owner is world local health/experience,
+  currently consumed by HUD state. Close after health flash/no-op heal and experience
+  display lifetime are mapped to focused state and presentation evidence.
+- **`player-local-movement-reporting`** — native synchronized client ticks project the
+  world player into input, position/rotation/status, sprint and ability commands. Close
+  after all four Vanilla owners have exact ordering/retry/generation evidence and live
+  movement reporting.
+- **`player-local-input-movement`** — raw native input feeds the single world movement
+  owner; the unresolved evidence surface is the 20-owner normalization, pose, flight,
+  sprint, collision and auto-jump decision family. Close with exact owner coverage and
+  equal-load movement acceptance; do not create a second physics resolver.
+- **`player-local-vehicle-control`** — world vehicle authority and native movement own
+  mount input, passenger rotation, jump charge and vehicle reporting. Close after the
+  seven owners are tied to vehicle-type/order tests and a mounted external session.
+- **`player-local-permission-chat-state`** — world owns permission/chat capability state
+  and native owns message/UI projection. Close after permission event transitions,
+  filter refresh and system/overlay presentation have one current consumer chain.
+- **`player-local-client-status-options`** — world owns server flags and game type while
+  native owns death/debug presentation. Close after reduced-info, death-screen,
+  limited-crafting and spectator vertical-reset branches have decision-level evidence.
+- **`player-local-item-use-state`** — world interaction state is the only hand/use latch
+  and movement/render/audio consumers must read it. Close after local start/stop,
+  metadata reconciliation, speed multiplier and stale-generation behavior are mapped.
+- **`player-local-inventory-actions`** — native inventory input and world inventory are
+  the intended owners for drop, swing, close, recipe, creative drop and throttling.
+  Close after all nine owners prove local mutation/packet/screen order and rollback.
+- **`player-local-world-edit-ui`** — packet/world edit state must open the matching
+  native sign, command, structure, test, jigsaw, dialog or book surface. Close after all
+  nine entry owners have reachable screen lifecycle and input/presentation evidence.
+- **`player-local-environment-effects`** — world transient state feeds native audio,
+  particle and portal/water presentation. Close after the eight mood/sound/crit/portal/
+  underwater owners have ordered exactly-once and applicable audio/window acceptance.
+- **`player-local-camera-targeting`** — world camera and entity bounds feed the single
+  native crosshair resolver. Close after all nine owners prove item attack range,
+  block/entity priority, range-miss fallback and rendered/input consumer agreement.
+- **`interaction-game-mode-lifecycle`** — canonical game type/abilities live in world
+  session state and native only projects them. Close after the seven mode/player-create
+  owners prove previous-mode carry, replacement generation and stale-session rejection.
+- **`interaction-game-mode-guards`** — hurt, experience, miss-time, spectator and
+  server-controlled-inventory guards must query the same canonical game/vehicle state.
+  Close after all five guards have exact action-consumer evidence.
+- **`interaction-block-breaking`** — native mouse input drives one world prediction and
+  net command path. Close after restriction/border/start/abort/progress/finish, sound,
+  crack overlay, correction and live server behavior cover all six owners.
+- **`interaction-prediction-sequence`** — world owns the monotonically sequenced local
+  prediction lifetime. Close after allocation, mutation-before-send, ack/correction,
+  wrap/budget and session replacement are proved for the sole Vanilla owner.
+- **`interaction-carried-slot-sync`** — world selected slot and native command baseline
+  must be the only state. Close after change-only send, queue failure retry, controller
+  tick order and generation reset are proved for both owners.
+- **`interaction-item-use`** — target/input queries feed one world item-use prediction
+  path and net projection. Close after spectator, border, feature, cooldown,
+  block-before-item, hand, local mutation and correction branches cover all four owners.
+- **`interaction-entity-actions`** — native targeting feeds world combat/interaction and
+  a single net action path. Close after carried sync, attack/interact/spectate/piercing,
+  local prediction, shift and range semantics cover all four owners.
+- **`interaction-container-actions`** — world owns menu revision/slots/hash state and
+  native owns input routing. Close after mismatched id, local click, changed-slot and
+  carried hash, recipe/button/slot-state ordering cover all four owners.
+- **`interaction-creative-actions`** — world creative plans and native UI/net projection
+  must preserve instabuild, feature gate, open-menu exclusion and drop throttling. Close
+  after both owners have atomic plan/apply and external creative-session evidence.
+- **`interaction-pick-actions`** — the native crosshair result and modifier route to one
+  block/entity pick command owner. Close after the three owners prove dispatch,
+  include-data and no-target behavior against an external server.
+- **`interaction-primary-action-routing`** — native mouse/key routing selects the precise
+  break, attack, use or spectator owner. Close after the three `Minecraft` entry owners
+  prove miss/hands-busy/item/target/hand priority and downstream presentation order.
 
 ## Render-step, HUD and block-entity presentation closure
 

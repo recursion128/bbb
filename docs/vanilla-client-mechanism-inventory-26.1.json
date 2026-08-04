@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "f7c8322016330870493d903520ca35fa535911cea3ffe8ac5f05e4fec1c21787"
+      "sha256": "8238e29a0c5b8a01b8044b505150b7e120e2a39146684a176a81936245529183"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -75,11 +75,81 @@
       ],
       "owner_count": 25
     },
-    "interaction-game-mode-decisions": {
+    "interaction-block-breaking": {
       "bbb_evidence": [
-        "crates/bbb-native/src/input.rs"
+        "crates/bbb-world/src/client/local_player_destroy.rs",
+        "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 45
+      "owner_count": 6
+    },
+    "interaction-carried-slot-sync": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-world/src/client/inventory.rs"
+      ],
+      "owner_count": 2
+    },
+    "interaction-container-actions": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/inventory.rs",
+        "crates/bbb-native/src/input/inventory.rs"
+      ],
+      "owner_count": 4
+    },
+    "interaction-creative-actions": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/creative_inventory/action.rs",
+        "crates/bbb-native/src/input/inventory/creative.rs"
+      ],
+      "owner_count": 2
+    },
+    "interaction-entity-actions": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/combat.rs",
+        "crates/bbb-native/src/input/mouse.rs"
+      ],
+      "owner_count": 4
+    },
+    "interaction-game-mode-guards": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/mouse.rs"
+      ],
+      "owner_count": 5
+    },
+    "interaction-game-mode-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/movement.rs"
+      ],
+      "owner_count": 7
+    },
+    "interaction-item-use": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/inventory/use_prediction.rs",
+        "crates/bbb-native/src/input/mouse.rs"
+      ],
+      "owner_count": 4
+    },
+    "interaction-pick-actions": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-native/src/input/mouse.rs"
+      ],
+      "owner_count": 3
+    },
+    "interaction-prediction-sequence": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-world/src/client/inventory/use_prediction.rs"
+      ],
+      "owner_count": 1
+    },
+    "interaction-primary-action-routing": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/mouse.rs"
+      ],
+      "owner_count": 3
     },
     "lifecycle-client-runtime": {
       "bbb_evidence": [
@@ -124,6 +194,87 @@
         "crates/bbb-native/src/platform.rs"
       ],
       "owner_count": 67
+    },
+    "player-local-camera-targeting": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/crosshair.rs",
+        "crates/bbb-native/src/runtime.rs"
+      ],
+      "owner_count": 9
+    },
+    "player-local-client-status-options": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/death_screen.rs"
+      ],
+      "owner_count": 4
+    },
+    "player-local-environment-effects": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player_fluid.rs",
+        "crates/bbb-native/src/input/movement.rs"
+      ],
+      "owner_count": 8
+    },
+    "player-local-input-movement": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/movement.rs",
+        "crates/bbb-world/src/client/local_player_movement.rs"
+      ],
+      "owner_count": 20
+    },
+    "player-local-inventory-actions": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/inventory.rs",
+        "crates/bbb-world/src/client/inventory.rs"
+      ],
+      "owner_count": 9
+    },
+    "player-local-item-use-state": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-world/src/client/inventory/use_prediction.rs"
+      ],
+      "owner_count": 6
+    },
+    "player-local-movement-reporting": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/movement.rs"
+      ],
+      "owner_count": 4
+    },
+    "player-local-permission-chat-state": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input.rs"
+      ],
+      "owner_count": 6
+    },
+    "player-local-session-respawn": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/death_screen.rs",
+        "crates/bbb-world/src/client/combat.rs"
+      ],
+      "owner_count": 4
+    },
+    "player-local-vehicle-control": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/movement.rs",
+        "crates/bbb-world/src/entities/client_movement.rs"
+      ],
+      "owner_count": 7
+    },
+    "player-local-vitals-status": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/local_player.rs"
+      ],
+      "owner_count": 4
+    },
+    "player-local-world-edit-ui": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input.rs"
+      ],
+      "owner_count": 9
     },
     "protocol-configuration-handler-decisions": {
       "bbb_evidence": [
@@ -342,7 +493,7 @@
       "bbb_evidence": [
         "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
       ],
-      "owner_count": 64
+      "owner_count": 82
     },
     "scope-telemetry-upload": {
       "bbb_evidence": [
@@ -433,12 +584,6 @@
         "crates/bbb-world/src/lib.rs"
       ],
       "owner_count": 121
-    },
-    "world-local-player-decisions": {
-      "bbb_evidence": [
-        "crates/bbb-native/src/input/movement.rs"
-      ],
-      "owner_count": 104
     }
   },
   "owners": [
@@ -8139,10 +8284,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#canInterruptScreen()"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.Minecraft#canSwitchGameMode()",
       "role": "decision",
       "scope": "external-client",
@@ -8279,10 +8424,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#constructProfiler(final boolean shouldCollectFrameProfile,final @Nullable SingleTickProfiler tickProfiler)"
     },
     {
-      "category": "interaction",
+      "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-primary-action-routing",
       "owner_id": "method:net.minecraft.client.Minecraft#continueAttack(final boolean down)",
       "role": "decision",
       "scope": "external-client",
@@ -9987,10 +10132,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#pauseIfInactive()"
     },
     {
-      "category": "interaction",
+      "category": "targeting",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.Minecraft#pick(final float partialTicks)",
       "role": "decision",
       "scope": "external-client",
@@ -10001,10 +10146,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#pick(final float partialTicks)"
     },
     {
-      "category": "interaction",
+      "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-pick-actions",
       "owner_id": "method:net.minecraft.client.Minecraft#pickBlockOrEntity()",
       "role": "decision",
       "scope": "external-client",
@@ -10393,10 +10538,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#showOnlyReducedInfo()"
     },
     {
-      "category": "interaction",
+      "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-primary-action-routing",
       "owner_id": "method:net.minecraft.client.Minecraft#startAttack()",
       "role": "decision",
       "scope": "external-client",
@@ -10407,10 +10552,10 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#startAttack()"
     },
     {
-      "category": "interaction",
+      "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-primary-action-routing",
       "owner_id": "method:net.minecraft.client.Minecraft#startUseItem()",
       "role": "decision",
       "scope": "external-client",
@@ -21943,10 +22088,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientPacketListener#verifyCommand(final String command)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "constructor",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#MultiPlayerGameMode(final Minecraft minecraft,final ClientPacketListener connection)",
       "role": "decision",
       "scope": "external-client",
@@ -21957,10 +22102,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#MultiPlayerGameMode(final Minecraft minecraft,final ClientPacketListener connection)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#adjustPlayer(final Player player)",
       "role": "decision",
       "scope": "external-client",
@@ -21971,10 +22116,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#adjustPlayer(final Player player)"
     },
     {
-      "category": "interaction",
+      "category": "entity-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-entity-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#attack(final Player player,final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -21985,10 +22130,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#attack(final Player player,final Entity entity)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-guards",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#canHurtPlayer()",
       "role": "decision",
       "scope": "external-client",
@@ -21999,10 +22144,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#canHurtPlayer()"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock(final BlockPos pos,final Direction direction)",
       "role": "decision",
       "scope": "external-client",
@@ -22013,10 +22158,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock(final BlockPos pos,final Direction direction)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook)",
       "role": "decision",
       "scope": "external-client",
@@ -22027,10 +22172,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting)",
       "role": "decision",
       "scope": "external-client",
@@ -22041,10 +22186,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting)"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#destroyBlock(final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -22055,10 +22200,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#destroyBlock(final BlockPos pos)"
     },
     {
-      "category": "interaction",
+      "category": "carried-slot",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-carried-slot-sync",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem()",
       "role": "decision",
       "scope": "external-client",
@@ -22069,10 +22214,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem()"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#getDestroyStage()",
       "role": "decision",
       "scope": "external-client",
@@ -22083,13 +22228,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#getDestroyStage()"
     },
     {
-      "category": "interaction",
-      "domain": "interaction",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#getPlayerMode()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 542,
         "path": "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
@@ -22097,13 +22242,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#getPlayerMode()"
     },
     {
-      "category": "interaction",
-      "domain": "interaction",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#getPreviousPlayerMode()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 538,
         "path": "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
@@ -22111,10 +22256,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#getPreviousPlayerMode()"
     },
     {
-      "category": "interaction",
+      "category": "container-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-container-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput(final int containerId,final int slotNum,final int buttonNum,final ContainerInput containerInput,final Player player)",
       "role": "decision",
       "scope": "external-client",
@@ -22125,10 +22270,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput(final int containerId,final int slotNum,final int buttonNum,final ContainerInput containerInput,final Player player)"
     },
     {
-      "category": "interaction",
+      "category": "creative-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-creative-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleCreativeModeItemAdd(final ItemStack clicked,final int slot)",
       "role": "decision",
       "scope": "external-client",
@@ -22139,10 +22284,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleCreativeModeItemAdd(final ItemStack clicked,final int slot)"
     },
     {
-      "category": "interaction",
+      "category": "creative-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-creative-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleCreativeModeItemDrop(final ItemStack clicked)",
       "role": "decision",
       "scope": "external-client",
@@ -22153,10 +22298,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleCreativeModeItemDrop(final ItemStack clicked)"
     },
     {
-      "category": "interaction",
+      "category": "container-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-container-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryButtonClick(final int containerId,final int buttonId)",
       "role": "decision",
       "scope": "external-client",
@@ -22167,10 +22312,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryButtonClick(final int containerId,final int buttonId)"
     },
     {
-      "category": "interaction",
+      "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-pick-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePickItemFromBlock(final BlockPos pos,final boolean includeData)",
       "role": "decision",
       "scope": "external-client",
@@ -22181,10 +22326,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePickItemFromBlock(final BlockPos pos,final boolean includeData)"
     },
     {
-      "category": "interaction",
+      "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-pick-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePickItemFromEntity(final Entity entity,final boolean includeData)",
       "role": "decision",
       "scope": "external-client",
@@ -22195,10 +22340,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePickItemFromEntity(final Entity entity,final boolean includeData)"
     },
     {
-      "category": "interaction",
+      "category": "container-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-container-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePlaceRecipe(final int containerId,final RecipeDisplayId recipe,final boolean useMaxItems)",
       "role": "decision",
       "scope": "external-client",
@@ -22209,10 +22354,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePlaceRecipe(final int containerId,final RecipeDisplayId recipe,final boolean useMaxItems)"
     },
     {
-      "category": "interaction",
+      "category": "container-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-container-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#handleSlotStateChanged(final int slotId,final int containerId,final boolean newState)",
       "role": "decision",
       "scope": "external-client",
@@ -22223,10 +22368,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleSlotStateChanged(final int slotId,final int containerId,final boolean newState)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-guards",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#hasExperience()",
       "role": "decision",
       "scope": "external-client",
@@ -22237,10 +22382,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#hasExperience()"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-guards",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#hasMissTime()",
       "role": "decision",
       "scope": "external-client",
@@ -22251,10 +22396,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#hasMissTime()"
     },
     {
-      "category": "interaction",
+      "category": "entity-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-entity-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#interact(final Player player,final Entity entity,final EntityHitResult hitResult,final InteractionHand hand)",
       "role": "decision",
       "scope": "external-client",
@@ -22265,13 +22410,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#interact(final Player player,final Entity entity,final EntityHitResult hitResult,final InteractionHand hand)"
     },
     {
-      "category": "interaction",
-      "domain": "interaction",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#isDestroying()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 546,
         "path": "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
@@ -22279,10 +22424,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#isDestroying()"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-guards",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#isServerControlledInventory()",
       "role": "decision",
       "scope": "external-client",
@@ -22293,10 +22438,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#isServerControlledInventory()"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-guards",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#isSpectator()",
       "role": "decision",
       "scope": "external-client",
@@ -22307,10 +22452,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#isSpectator()"
     },
     {
-      "category": "interaction",
+      "category": "item-use",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-item-use",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#performUseItemOn(final LocalPlayer player,final InteractionHand hand,final BlockHitResult blockHit)",
       "role": "decision",
       "scope": "external-client",
@@ -22321,10 +22466,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#performUseItemOn(final LocalPlayer player,final InteractionHand hand,final BlockHitResult blockHit)"
     },
     {
-      "category": "interaction",
+      "category": "entity-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-entity-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#piercingAttack(final PiercingWeapon weapon)",
       "role": "decision",
       "scope": "external-client",
@@ -22335,10 +22480,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#piercingAttack(final PiercingWeapon weapon)"
     },
     {
-      "category": "interaction",
+      "category": "item-use",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-item-use",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#releaseUsingItem(final Player player)",
       "role": "decision",
       "scope": "external-client",
@@ -22349,10 +22494,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#releaseUsingItem(final Player player)"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#sameDestroyTarget(final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -22363,10 +22508,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#sameDestroyTarget(final BlockPos pos)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#setLocalMode(final GameType mode)",
       "role": "decision",
       "scope": "external-client",
@@ -22377,10 +22522,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#setLocalMode(final GameType mode)"
     },
     {
-      "category": "interaction",
+      "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-game-mode-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#setLocalMode(final GameType mode,final @Nullable GameType previousMode)",
       "role": "decision",
       "scope": "external-client",
@@ -22391,10 +22536,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#setLocalMode(final GameType mode,final @Nullable GameType previousMode)"
     },
     {
-      "category": "interaction",
+      "category": "entity-action",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-entity-actions",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#spectate(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -22405,10 +22550,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#spectate(final Entity entity)"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#startDestroyBlock(final BlockPos pos,final Direction direction)",
       "role": "decision",
       "scope": "external-client",
@@ -22419,10 +22564,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#startDestroyBlock(final BlockPos pos,final Direction direction)"
     },
     {
-      "category": "interaction",
+      "category": "prediction",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-prediction-sequence",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction(final ClientLevel level,final PredictiveAction predictiveAction)",
       "role": "decision",
       "scope": "external-client",
@@ -22433,10 +22578,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction(final ClientLevel level,final PredictiveAction predictiveAction)"
     },
     {
-      "category": "interaction",
+      "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-block-breaking",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#stopDestroyBlock()",
       "role": "decision",
       "scope": "external-client",
@@ -22447,10 +22592,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#stopDestroyBlock()"
     },
     {
-      "category": "interaction",
+      "category": "carried-slot",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-carried-slot-sync",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#tick()",
       "role": "decision",
       "scope": "external-client",
@@ -22461,10 +22606,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#tick()"
     },
     {
-      "category": "interaction",
+      "category": "item-use",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-item-use",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#useItem(final Player player,final InteractionHand hand)",
       "role": "decision",
       "scope": "external-client",
@@ -22475,10 +22620,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#useItem(final Player player,final InteractionHand hand)"
     },
     {
-      "category": "interaction",
+      "category": "item-use",
       "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "interaction-game-mode-decisions",
+      "mechanism_id": "interaction-item-use",
       "owner_id": "method:net.minecraft.client.multiplayer.MultiPlayerGameMode#useItemOn(final LocalPlayer player,final InteractionHand hand,final BlockHitResult blockHit)",
       "role": "decision",
       "scope": "external-client",
@@ -22797,10 +22942,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.chat.report.ReportingContext#setReportDraft(final @Nullable Report draftReport)"
     },
     {
-      "category": "movement",
+      "category": "player-lifecycle",
       "domain": "movement",
       "kind": "constructor",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-session-respawn",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#LocalPlayer(final Minecraft minecraft,final ClientLevel level,final ClientPacketListener connection,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting,final ChatAbilities chatAbilities)",
       "role": "decision",
       "scope": "external-client",
@@ -22814,7 +22959,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#aiStep()",
       "role": "decision",
       "scope": "external-client",
@@ -22828,7 +22973,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#applyInput()",
       "role": "decision",
       "scope": "external-client",
@@ -22842,7 +22987,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#canAutoJump()",
       "role": "decision",
       "scope": "external-client",
@@ -22853,10 +22998,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#canAutoJump()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#canDropItems()",
       "role": "decision",
       "scope": "external-client",
@@ -22870,7 +23015,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#canSpawnSprintParticle()",
       "role": "decision",
       "scope": "external-client",
@@ -22884,7 +23029,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#canStartSprinting()",
       "role": "decision",
       "scope": "external-client",
@@ -22895,13 +23040,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#canStartSprinting()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#chatAbilities()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 428,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -22909,10 +23054,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#chatAbilities()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#clientSideCloseContainer()",
       "role": "decision",
       "scope": "external-client",
@@ -22923,10 +23068,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#clientSideCloseContainer()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#closeContainer()",
       "role": "decision",
       "scope": "external-client",
@@ -22937,10 +23082,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#closeContainer()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#crit(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -22954,7 +23099,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#distanceToUnitSquare(final Vec2 direction)",
       "role": "decision",
       "scope": "external-client",
@@ -22965,10 +23110,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#distanceToUnitSquare(final Vec2 direction)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#drop(final boolean all)",
       "role": "decision",
       "scope": "external-client",
@@ -22979,10 +23124,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#drop(final boolean all)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#filterHitResult(final HitResult hitResult,final Vec3 from,final double maxRange)",
       "role": "decision",
       "scope": "external-client",
@@ -22993,10 +23138,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#filterHitResult(final HitResult hitResult,final Vec3 from,final double maxRange)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getActivePortalLocalTransition()",
       "role": "decision",
       "scope": "external-client",
@@ -23007,10 +23152,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getActivePortalLocalTransition()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getCurrentMood()",
       "role": "decision",
       "scope": "external-client",
@@ -23021,13 +23166,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getCurrentMood()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getDoLimitedCrafting()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 535,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23035,13 +23180,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getDoLimitedCrafting()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getDropSpamThrottler()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1230,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23049,13 +23194,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getDropSpamThrottler()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getJumpRidingScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 602,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23063,13 +23208,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getJumpRidingScale()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getLastSentInput()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1234,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23077,13 +23222,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getLastSentInput()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getRecipeBook()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 403,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23091,10 +23236,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getRecipeBook()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getRopeHoldPosition(final float partialTickTime)",
       "role": "decision",
       "scope": "external-client",
@@ -23105,13 +23250,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getRopeHoldPosition(final float partialTickTime)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getStats()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 399,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23119,10 +23264,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getStats()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getUsedItemHand()",
       "role": "decision",
       "scope": "external-client",
@@ -23133,10 +23278,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getUsedItemHand()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getViewXRot(final float a)",
       "role": "decision",
       "scope": "external-client",
@@ -23147,10 +23292,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getViewXRot(final float a)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getViewYRot(final float a)",
       "role": "decision",
       "scope": "external-client",
@@ -23161,10 +23306,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getViewYRot(final float a)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getVisualRotationYInDegrees()",
       "role": "decision",
       "scope": "external-client",
@@ -23175,10 +23320,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getVisualRotationYInDegrees()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#getWaterVision()",
       "role": "decision",
       "scope": "external-client",
@@ -23189,10 +23334,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getWaterVision()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#handleCreativeModeItemDrop(final ItemStack stack)",
       "role": "decision",
       "scope": "external-client",
@@ -23203,10 +23348,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handleCreativeModeItemDrop(final ItemStack stack)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#handleEntityEvent(final byte id)",
       "role": "decision",
       "scope": "external-client",
@@ -23217,10 +23362,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handleEntityEvent(final byte id)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#handlePortalTransitionEffect(final boolean active)",
       "role": "decision",
       "scope": "external-client",
@@ -23231,10 +23376,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handlePortalTransitionEffect(final boolean active)"
     },
     {
-      "category": "movement",
+      "category": "player-state",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vitals-status",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#heal(final float heal)",
       "role": "decision",
       "scope": "external-client",
@@ -23245,10 +23390,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#heal(final float heal)"
     },
     {
-      "category": "movement",
+      "category": "player-state",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vitals-status",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#hurtTo(final float newHealth)",
       "role": "decision",
       "scope": "external-client",
@@ -23259,13 +23404,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#hurtTo(final float newHealth)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isAutoJumpEnabled()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 992,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23273,10 +23418,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isAutoJumpEnabled()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isControlledCamera()",
       "role": "decision",
       "scope": "external-client",
@@ -23287,13 +23432,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isControlledCamera()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isCrouching()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 678,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23301,13 +23446,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isCrouching()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isHandsBusy()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 977,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23318,7 +23463,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isHorizontalCollisionMinor(final Vec3 movement)",
       "role": "decision",
       "scope": "external-client",
@@ -23329,13 +23474,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isHorizontalCollisionMinor(final Vec3 movement)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isLocalPlayer()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 375,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23346,7 +23491,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isMoving()",
       "role": "decision",
       "scope": "external-client",
@@ -23360,7 +23505,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isMovingSlowly()",
       "role": "decision",
       "scope": "external-client",
@@ -23374,7 +23519,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isShiftKeyDown()",
       "role": "decision",
       "scope": "external-client",
@@ -23385,10 +23530,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isShiftKeyDown()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isSlowDueToUsingItem()",
       "role": "decision",
       "scope": "external-client",
@@ -23402,7 +23547,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isSprintingPossible(final boolean allowedInShallowWater)",
       "role": "decision",
       "scope": "external-client",
@@ -23416,7 +23561,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isSuppressingSlidingDownLadder()",
       "role": "decision",
       "scope": "external-client",
@@ -23427,10 +23572,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isSuppressingSlidingDownLadder()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isTextFilteringEnabled()",
       "role": "decision",
       "scope": "external-client",
@@ -23441,13 +23586,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isTextFilteringEnabled()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isUnderWater()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1172,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23455,13 +23600,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isUnderWater()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#isUsingItem()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 554,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23469,10 +23614,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isUsingItem()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#itemUseSpeedMultiplier()",
       "role": "decision",
       "scope": "external-client",
@@ -23483,10 +23628,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#itemUseSpeedMultiplier()"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#jumpableVehicle()",
       "role": "decision",
       "scope": "external-client",
@@ -23497,10 +23642,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#jumpableVehicle()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#magicCrit(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -23514,7 +23659,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#modifyInput(final Vec2 input)",
       "role": "decision",
       "scope": "external-client",
@@ -23528,7 +23673,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#modifyInputSpeedForSquareMovement(final Vec2 input)",
       "role": "decision",
       "scope": "external-client",
@@ -23542,7 +23687,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#move(final MoverType moverType,final Vec3 delta)",
       "role": "decision",
       "scope": "external-client",
@@ -23556,7 +23701,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#moveTowardsClosestSpace(final double x,final double z)",
       "role": "decision",
       "scope": "external-client",
@@ -23567,10 +23712,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#moveTowardsClosestSpace(final double x,final double z)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-client-status-options",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#onGameModeChanged(final GameType gameType)",
       "role": "decision",
       "scope": "external-client",
@@ -23581,10 +23726,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onGameModeChanged(final GameType gameType)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#onSyncedDataUpdated(final EntityDataAccessor <?> accessor)",
       "role": "decision",
       "scope": "external-client",
@@ -23595,10 +23740,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onSyncedDataUpdated(final EntityDataAccessor <?> accessor)"
     },
     {
-      "category": "movement",
+      "category": "movement-report",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-movement-reporting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#onUpdateAbilities()",
       "role": "decision",
       "scope": "external-client",
@@ -23609,10 +23754,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onUpdateAbilities()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openCommandBlock(final CommandBlockEntity commandBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23623,10 +23768,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openCommandBlock(final CommandBlockEntity commandBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openDialog(final Holder <Dialog> dialog)",
       "role": "decision",
       "scope": "external-client",
@@ -23637,10 +23782,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openDialog(final Holder <Dialog> dialog)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openItemGui(final ItemStack itemStack,final InteractionHand hand)",
       "role": "decision",
       "scope": "external-client",
@@ -23651,10 +23796,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openItemGui(final ItemStack itemStack,final InteractionHand hand)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openJigsawBlock(final JigsawBlockEntity jigsawBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23665,10 +23810,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openJigsawBlock(final JigsawBlockEntity jigsawBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openMinecartCommandBlock(final MinecartCommandBlock commandBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23679,10 +23824,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openMinecartCommandBlock(final MinecartCommandBlock commandBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openStructureBlock(final StructureBlockEntity structureBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23693,10 +23838,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openStructureBlock(final StructureBlockEntity structureBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openTestBlock(final TestBlockEntity testBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23707,10 +23852,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openTestBlock(final TestBlockEntity testBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openTestInstanceBlock(final TestInstanceBlockEntity testInstanceBlock)",
       "role": "decision",
       "scope": "external-client",
@@ -23721,10 +23866,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openTestInstanceBlock(final TestInstanceBlockEntity testInstanceBlock)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "screen-open",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-world-edit-ui",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#openTextEdit(final SignBlockEntity sign,final boolean isFrontText)",
       "role": "decision",
       "scope": "external-client",
@@ -23735,13 +23880,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openTextEdit(final SignBlockEntity sign,final boolean isFrontText)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#permissions()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 414,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -23749,10 +23894,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#permissions()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#pick(final Entity cameraEntity,final double blockInteractionRange,final double entityInteractionRange,final float partialTicks)",
       "role": "decision",
       "scope": "external-client",
@@ -23763,10 +23908,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#pick(final Entity cameraEntity,final double blockInteractionRange,final double entityInteractionRange,final float partialTicks)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#playSound(final SoundEvent sound,final float volume,final float pitch)",
       "role": "decision",
       "scope": "external-client",
@@ -23777,10 +23922,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#playSound(final SoundEvent sound,final float volume,final float pitch)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "targeting",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-camera-targeting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#raycastHitResult(final float a,final Entity cameraEntity)",
       "role": "decision",
       "scope": "external-client",
@@ -23791,10 +23936,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#raycastHitResult(final float a,final Entity cameraEntity)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#refreshChatAbilities()",
       "role": "decision",
       "scope": "external-client",
@@ -23805,10 +23950,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#refreshChatAbilities()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#removeRecipeHighlight(final RecipeDisplayId recipe)",
       "role": "decision",
       "scope": "external-client",
@@ -23819,10 +23964,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#removeRecipeHighlight(final RecipeDisplayId recipe)"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#removeVehicle()",
       "role": "decision",
       "scope": "external-client",
@@ -23833,10 +23978,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#removeVehicle()"
     },
     {
-      "category": "movement",
+      "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-session-respawn",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#resetPos()",
       "role": "decision",
       "scope": "external-client",
@@ -23847,10 +23992,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#resetPos()"
     },
     {
-      "category": "movement",
+      "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-session-respawn",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#respawn()",
       "role": "decision",
       "scope": "external-client",
@@ -23861,10 +24006,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#respawn()"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#rideTick()",
       "role": "decision",
       "scope": "external-client",
@@ -23875,10 +24020,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#rideTick()"
     },
     {
-      "category": "movement",
+      "category": "movement-report",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-movement-reporting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendIsSprintingIfNeeded()",
       "role": "decision",
       "scope": "external-client",
@@ -23889,10 +24034,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendIsSprintingIfNeeded()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendOpenInventory()",
       "role": "decision",
       "scope": "external-client",
@@ -23903,10 +24048,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendOpenInventory()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendOverlayMessage(final Component message)",
       "role": "decision",
       "scope": "external-client",
@@ -23917,10 +24062,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendOverlayMessage(final Component message)"
     },
     {
-      "category": "movement",
+      "category": "movement-report",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-movement-reporting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendPosition()",
       "role": "decision",
       "scope": "external-client",
@@ -23931,10 +24076,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendPosition()"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendRidingJump()",
       "role": "decision",
       "scope": "external-client",
@@ -23945,10 +24090,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendRidingJump()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#sendSystemMessage(final Component message)",
       "role": "decision",
       "scope": "external-client",
@@ -23959,10 +24104,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendSystemMessage(final Component message)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-client-status-options",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setDoLimitedCrafting(final boolean value)",
       "role": "decision",
       "scope": "external-client",
@@ -23973,10 +24118,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setDoLimitedCrafting(final boolean value)"
     },
     {
-      "category": "movement",
+      "category": "player-state",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vitals-status",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setExperienceDisplayStartTickToTickCount()",
       "role": "decision",
       "scope": "external-client",
@@ -23987,10 +24132,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setExperienceDisplayStartTickToTickCount()"
     },
     {
-      "category": "movement",
+      "category": "player-state",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vitals-status",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setExperienceValues(final float experienceProgress,final int totalExp,final int experienceLevel)",
       "role": "decision",
       "scope": "external-client",
@@ -24001,10 +24146,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setExperienceValues(final float experienceProgress,final int totalExp,final int experienceLevel)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "identity",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-permission-chat-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setPermissions(final PermissionSet newPermissions)",
       "role": "decision",
       "scope": "external-client",
@@ -24015,10 +24160,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setPermissions(final PermissionSet newPermissions)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-client-status-options",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setReducedDebugInfo(final boolean reducedDebugInfo)",
       "role": "decision",
       "scope": "external-client",
@@ -24029,10 +24174,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setReducedDebugInfo(final boolean reducedDebugInfo)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "player-state",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-client-status-options",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#setShowDeathScreen(final boolean show)",
       "role": "decision",
       "scope": "external-client",
@@ -24043,10 +24188,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setShowDeathScreen(final boolean show)"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#shouldRotateWithMinecart()",
       "role": "decision",
       "scope": "external-client",
@@ -24057,13 +24202,13 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#shouldRotateWithMinecart()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#shouldShowDeathScreen()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 527,
         "path": "net/minecraft/client/player/LocalPlayer.java"
@@ -24074,7 +24219,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#shouldStopRunSprinting()",
       "role": "decision",
       "scope": "external-client",
@@ -24088,7 +24233,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#shouldStopSwimSprinting()",
       "role": "decision",
       "scope": "external-client",
@@ -24099,10 +24244,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#shouldStopSwimSprinting()"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#startRiding(final Entity entity,final boolean force,final boolean sendEventAndTriggers)",
       "role": "decision",
       "scope": "external-client",
@@ -24113,10 +24258,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#startRiding(final Entity entity,final boolean force,final boolean sendEventAndTriggers)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#startUsingItem(final InteractionHand hand)",
       "role": "decision",
       "scope": "external-client",
@@ -24127,10 +24272,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#startUsingItem(final InteractionHand hand)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "item-use",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-item-use-state",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#stopUsingItem()",
       "role": "decision",
       "scope": "external-client",
@@ -24144,7 +24289,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#suffocatesAt(final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -24155,10 +24300,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#suffocatesAt(final BlockPos pos)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#swing(final InteractionHand hand)",
       "role": "decision",
       "scope": "external-client",
@@ -24169,10 +24314,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#swing(final InteractionHand hand)"
     },
     {
-      "category": "movement",
+      "category": "movement-report",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-movement-reporting",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#tick()",
       "role": "decision",
       "scope": "external-client",
@@ -24183,10 +24328,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#tick()"
     },
     {
-      "category": "movement",
+      "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-session-respawn",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#tickDeath()",
       "role": "decision",
       "scope": "external-client",
@@ -24200,7 +24345,7 @@
       "category": "movement",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-input-movement",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#updateAutoJump(final float xa,final float za)",
       "role": "decision",
       "scope": "external-client",
@@ -24211,10 +24356,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateAutoJump(final float xa,final float za)"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "local-effect",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-environment-effects",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#updateIsUnderwater()",
       "role": "decision",
       "scope": "external-client",
@@ -24225,10 +24370,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateIsUnderwater()"
     },
     {
-      "category": "movement",
-      "domain": "movement",
+      "category": "inventory-action",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-inventory-actions",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#updateTutorialInventoryAction(final ItemStack itemCarried,final ItemStack itemInSlot,final ClickAction clickAction)",
       "role": "decision",
       "scope": "external-client",
@@ -24239,10 +24384,10 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateTutorialInventoryAction(final ItemStack itemCarried,final ItemStack itemInSlot,final ClickAction clickAction)"
     },
     {
-      "category": "movement",
+      "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
-      "mechanism_id": "world-local-player-decisions",
+      "mechanism_id": "player-local-vehicle-control",
       "owner_id": "method:net.minecraft.client.player.LocalPlayer#vehicleCanSprint(final Entity vehicle)",
       "role": "decision",
       "scope": "external-client",
@@ -42377,24 +42522,38 @@
     "by_category": {
       "accessibility": 19,
       "audio": 2,
+      "block-breaking": 6,
       "block-entity-renderer": 27,
       "built-in-registry": 95,
+      "carried-slot": 2,
+      "container-action": 4,
+      "creative-action": 2,
       "diagnostics": 38,
+      "entity-action": 4,
       "entity-layer": 90,
       "entity-renderer": 155,
       "entity-type": 157,
+      "game-mode": 12,
       "identity": 17,
       "input": 87,
-      "interaction": 45,
+      "interaction-routing": 3,
+      "inventory-action": 9,
+      "item-use": 10,
       "lifecycle": 24,
       "listener-contract": 155,
+      "local-effect": 8,
       "menu-screen": 25,
-      "movement": 104,
+      "movement": 20,
+      "movement-report": 4,
       "out-of-scope": 207,
       "packet-table": 256,
       "particle-provider": 117,
       "persistence": 158,
+      "pick-action": 3,
       "platform": 67,
+      "player-lifecycle": 4,
+      "player-state": 14,
+      "prediction": 1,
       "protocol-handler": 269,
       "reload-listener": 20,
       "render-diagnostics": 3,
@@ -42406,26 +42565,29 @@
       "render-step": 139,
       "resource-consumer": 105,
       "resources": 82,
+      "screen-open": 9,
       "security": 30,
       "serverbound-call-site": 67,
       "startup": 21,
-      "support-accessor": 64,
+      "support-accessor": 82,
       "synchronized-registry": 28,
+      "targeting": 9,
       "text": 2,
       "ui": 71,
+      "vehicle-control": 7,
       "world": 121
     },
     "by_domain": {
       "accessibility": 19,
-      "audio": 67,
+      "audio": 75,
       "diagnostics": 38,
       "entities": 402,
-      "identity": 19,
+      "identity": 25,
       "input": 87,
-      "interaction": 45,
+      "interaction": 65,
       "language": 7,
       "lifecycle": 24,
-      "movement": 104,
+      "movement": 39,
       "options": 14,
       "persistence": 158,
       "platform": 67,
@@ -42437,16 +42599,16 @@
       "security": 30,
       "singleplayer": 50,
       "startup": 19,
-      "support": 64,
+      "support": 82,
       "telemetry": 17,
       "text": 35,
-      "ui": 193,
+      "ui": 206,
       "world": 121
     },
     "by_role": {
-      "decision": 1464,
+      "decision": 1446,
       "out-of-scope": 207,
-      "support-non-decision": 64
+      "support-non-decision": 82
     },
     "mapped_owner_count": 2927,
     "owner_count": 2927,

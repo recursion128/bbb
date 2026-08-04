@@ -36,6 +36,29 @@ movement；乘客 tick 保持 rotation、authoritative vehicle movement、latch 
 level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐新 world；队列发送失败
 不推进 baseline，所以下一 tick 会重试而不形成 shadow state。
 
+## LocalPlayer 与 game-mode 决策 inventory 边界
+
+本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
+`Minecraft.continueAttack/startAttack/startUseItem/canSwitchGameMode/pickBlockOrEntity/pick`
+六个调用入口，由共享 Tree-sitter frontend 提取 signature、source line 和 source hash。
+`scripts/client_mechanism_inventory.py` 对这 149 个 owner 使用显式、fail-closed 的同质 route：
+未知方法会使生成失败；Java overload 必须进入同一语义 route；只有 CST 证明为单条直接
+field/parameter/constant return 的方法才允许归入 `scope-support-accessors`，任何 mutation、调用或
+多语句 body 都会失败。版本化 JSON 是排序稳定 evidence，不是第二份任务账本。
+
+路由边界按生命周期而不是 Java 类名划分。玩家侧区分 session/respawn、vitals、movement
+reporting、input movement、vehicle、permission/chat、client status、item-use latch、inventory action、
+world-edit UI、environment effect 与 camera targeting；game-mode 侧区分 mode lifecycle/guard、
+block breaking、prediction sequence、carried-slot sync、item/entity/container/creative/pick action 和
+primary-action routing。一个 owner 只进入一个 route；`LocalPlayer.tick`、`aiStep` 这类官方复合 tick
+方法归其外层 lifecycle/order owner，内部 canonical state 仍遵守本页 world/native/net 的单向边界。
+
+生成 evidence 中的 BBB path 只表示 physical implementation 可定位，不自动等于 consumer
+等价。matrix 的每个 route 必须独立取得 decision→canonical state→runtime/presentation 以及适用
+live evidence 后才能标记 `equivalent`；未闭合项只由 `docs/unsupported-features.md` 排程。这样
+packet encode 存在、world 字段存在或某个单元测试都不能重新抬高整类状态，也不能恢复原先两个
+broad resolver/coverage claim。
+
 ## Control command 与 simulation mailbox owner
 
 `bbb-control` 只拥有外部 DTO、只读 snapshot 和构造时绑定的

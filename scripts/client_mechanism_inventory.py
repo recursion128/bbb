@@ -174,15 +174,24 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
         ),
     ),
     (
-        MethodRoute("interaction", "interaction", "interaction-game-mode-decisions"),
-        (
-            "continueAttack",
-            "startAttack",
-            "startUseItem",
-            "canSwitchGameMode",
-            "pickBlockOrEntity",
-            "pick",
+        MethodRoute(
+            "interaction-routing",
+            "interaction",
+            "interaction-primary-action-routing",
         ),
+        ("continueAttack", "startAttack", "startUseItem"),
+    ),
+    (
+        MethodRoute("game-mode", "interaction", "interaction-game-mode-lifecycle"),
+        ("canSwitchGameMode",),
+    ),
+    (
+        MethodRoute("pick-action", "interaction", "interaction-pick-actions"),
+        ("pickBlockOrEntity",),
+    ),
+    (
+        MethodRoute("targeting", "interaction", "player-local-camera-targeting"),
+        ("pick",),
     ),
     (
         MethodRoute("platform", "platform", "platform-window-lifecycle"),
@@ -334,12 +343,236 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
     ),
 )
 
-MINECRAFT_SUPPORT_ROUTE = MethodRoute(
+DIRECT_SUPPORT_ROUTE = MethodRoute(
     "support-accessor",
     "support",
     "scope-support-accessors",
     "out-of-scope",
     "support-non-decision",
+)
+
+
+LOCAL_PLAYER_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("player-lifecycle", "movement", "player-local-session-respawn"),
+        ("LocalPlayer", "respawn", "resetPos", "tickDeath"),
+    ),
+    (
+        MethodRoute("player-state", "movement", "player-local-vitals-status"),
+        ("heal", "hurtTo", "setExperienceValues", "setExperienceDisplayStartTickToTickCount"),
+    ),
+    (
+        MethodRoute("movement-report", "movement", "player-local-movement-reporting"),
+        ("tick", "sendPosition", "sendIsSprintingIfNeeded", "onUpdateAbilities"),
+    ),
+    (
+        MethodRoute("movement", "movement", "player-local-input-movement"),
+        (
+            "isSuppressingSlidingDownLadder",
+            "canSpawnSprintParticle",
+            "moveTowardsClosestSpace",
+            "suffocatesAt",
+            "isShiftKeyDown",
+            "isMovingSlowly",
+            "applyInput",
+            "modifyInput",
+            "modifyInputSpeedForSquareMovement",
+            "distanceToUnitSquare",
+            "aiStep",
+            "shouldStopRunSprinting",
+            "shouldStopSwimSprinting",
+            "move",
+            "updateAutoJump",
+            "isHorizontalCollisionMinor",
+            "canAutoJump",
+            "isMoving",
+            "isSprintingPossible",
+            "canStartSprinting",
+        ),
+    ),
+    (
+        MethodRoute("vehicle-control", "movement", "player-local-vehicle-control"),
+        (
+            "startRiding",
+            "removeVehicle",
+            "sendRidingJump",
+            "jumpableVehicle",
+            "rideTick",
+            "shouldRotateWithMinecart",
+            "vehicleCanSprint",
+        ),
+    ),
+    (
+        MethodRoute("player-state", "identity", "player-local-permission-chat-state"),
+        (
+            "setPermissions",
+            "refreshChatAbilities",
+            "sendSystemMessage",
+            "sendOverlayMessage",
+            "handleEntityEvent",
+            "isTextFilteringEnabled",
+        ),
+    ),
+    (
+        MethodRoute("player-state", "ui", "player-local-client-status-options"),
+        (
+            "setReducedDebugInfo",
+            "setShowDeathScreen",
+            "setDoLimitedCrafting",
+            "onGameModeChanged",
+        ),
+    ),
+    (
+        MethodRoute("item-use", "interaction", "player-local-item-use-state"),
+        (
+            "isSlowDueToUsingItem",
+            "itemUseSpeedMultiplier",
+            "startUsingItem",
+            "stopUsingItem",
+            "getUsedItemHand",
+            "onSyncedDataUpdated",
+        ),
+    ),
+    (
+        MethodRoute("inventory-action", "interaction", "player-local-inventory-actions"),
+        (
+            "drop",
+            "swing",
+            "closeContainer",
+            "clientSideCloseContainer",
+            "sendOpenInventory",
+            "removeRecipeHighlight",
+            "updateTutorialInventoryAction",
+            "handleCreativeModeItemDrop",
+            "canDropItems",
+        ),
+    ),
+    (
+        MethodRoute("screen-open", "ui", "player-local-world-edit-ui"),
+        (
+            "openTextEdit",
+            "openMinecartCommandBlock",
+            "openCommandBlock",
+            "openStructureBlock",
+            "openTestBlock",
+            "openTestInstanceBlock",
+            "openJigsawBlock",
+            "openDialog",
+            "openItemGui",
+        ),
+    ),
+    (
+        MethodRoute("local-effect", "audio", "player-local-environment-effects"),
+        (
+            "getCurrentMood",
+            "playSound",
+            "crit",
+            "magicCrit",
+            "getActivePortalLocalTransition",
+            "handlePortalTransitionEffect",
+            "getWaterVision",
+            "updateIsUnderwater",
+        ),
+    ),
+    (
+        MethodRoute("targeting", "interaction", "player-local-camera-targeting"),
+        (
+            "getViewXRot",
+            "getViewYRot",
+            "isControlledCamera",
+            "getRopeHoldPosition",
+            "getVisualRotationYInDegrees",
+            "raycastHitResult",
+            "pick",
+            "filterHitResult",
+        ),
+    ),
+    (
+        DIRECT_SUPPORT_ROUTE,
+        (
+            "isLocalPlayer",
+            "getStats",
+            "getRecipeBook",
+            "permissions",
+            "chatAbilities",
+            "shouldShowDeathScreen",
+            "getDoLimitedCrafting",
+            "isUsingItem",
+            "getJumpRidingScale",
+            "isCrouching",
+            "isHandsBusy",
+            "isAutoJumpEnabled",
+            "isUnderWater",
+            "getDropSpamThrottler",
+            "getLastSentInput",
+        ),
+    ),
+)
+
+
+MULTIPLAYER_GAME_MODE_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("game-mode", "interaction", "interaction-game-mode-lifecycle"),
+        ("MultiPlayerGameMode", "adjustPlayer", "setLocalMode", "createPlayer"),
+    ),
+    (
+        MethodRoute("game-mode", "interaction", "interaction-game-mode-guards"),
+        (
+            "canHurtPlayer",
+            "hasExperience",
+            "hasMissTime",
+            "isServerControlledInventory",
+            "isSpectator",
+        ),
+    ),
+    (
+        MethodRoute("block-breaking", "interaction", "interaction-block-breaking"),
+        (
+            "destroyBlock",
+            "startDestroyBlock",
+            "stopDestroyBlock",
+            "continueDestroyBlock",
+            "sameDestroyTarget",
+            "getDestroyStage",
+        ),
+    ),
+    (
+        MethodRoute("prediction", "interaction", "interaction-prediction-sequence"),
+        ("startPrediction",),
+    ),
+    (
+        MethodRoute("carried-slot", "interaction", "interaction-carried-slot-sync"),
+        ("tick", "ensureHasSentCarriedItem"),
+    ),
+    (
+        MethodRoute("item-use", "interaction", "interaction-item-use"),
+        ("useItemOn", "performUseItemOn", "useItem", "releaseUsingItem"),
+    ),
+    (
+        MethodRoute("entity-action", "interaction", "interaction-entity-actions"),
+        ("attack", "spectate", "interact", "piercingAttack"),
+    ),
+    (
+        MethodRoute("container-action", "interaction", "interaction-container-actions"),
+        (
+            "handleContainerInput",
+            "handlePlaceRecipe",
+            "handleInventoryButtonClick",
+            "handleSlotStateChanged",
+        ),
+    ),
+    (
+        MethodRoute("creative-action", "interaction", "interaction-creative-actions"),
+        ("handleCreativeModeItemAdd", "handleCreativeModeItemDrop"),
+    ),
+    (
+        MethodRoute("pick-action", "interaction", "interaction-pick-actions"),
+        ("handlePickItemFromBlock", "handlePickItemFromEntity"),
+    ),
+    (
+        DIRECT_SUPPORT_ROUTE,
+        ("getPreviousPlayerMode", "getPlayerMode", "isDestroying"),
+    ),
 )
 
 
@@ -1059,8 +1292,8 @@ METHOD_SURFACES = (
     MethodSurface("protocol-handler", "protocol", "protocol-play-handler-decisions", "net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java"),
     MethodSurface("protocol-handler", "protocol", "protocol-play-handler-decisions", "net/minecraft/client/multiplayer/ClientPacketListener.java"),
     MethodSurface("world", "world", "world-client-level-decisions", "net/minecraft/client/multiplayer/ClientLevel.java"),
-    MethodSurface("movement", "movement", "world-local-player-decisions", "net/minecraft/client/player/LocalPlayer.java"),
-    MethodSurface("interaction", "interaction", "interaction-game-mode-decisions", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
+    MethodSurface("movement", "movement", "player-local-input-movement", "net/minecraft/client/player/LocalPlayer.java"),
+    MethodSurface("interaction", "interaction", "interaction-primary-action-routing", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
     MethodSurface("render-step", "ui", "rendering-hud-step-surface", "net/minecraft/client/gui/Gui.java"),
     MethodSurface("render-step", "rendering", "rendering-game-step-surface", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
@@ -1176,8 +1409,86 @@ MECHANISM_EVIDENCE = {
     "registries-built-in-catalogs": ("docs/registry-holder-consumer-coverage-26.1.json",),
     "registries-synchronized-data": ("docs/registry-holder-consumer-coverage-26.1.json",),
     "world-client-level-decisions": ("crates/bbb-world/src/lib.rs",),
-    "world-local-player-decisions": ("crates/bbb-native/src/input/movement.rs",),
-    "interaction-game-mode-decisions": ("crates/bbb-native/src/input.rs",),
+    "player-local-session-respawn": (
+        "crates/bbb-native/src/input/death_screen.rs",
+        "crates/bbb-world/src/client/combat.rs",
+    ),
+    "player-local-vitals-status": ("crates/bbb-world/src/client/local_player.rs",),
+    "player-local-movement-reporting": ("crates/bbb-native/src/input/movement.rs",),
+    "player-local-input-movement": (
+        "crates/bbb-native/src/input/movement.rs",
+        "crates/bbb-world/src/client/local_player_movement.rs",
+    ),
+    "player-local-vehicle-control": (
+        "crates/bbb-native/src/input/movement.rs",
+        "crates/bbb-world/src/entities/client_movement.rs",
+    ),
+    "player-local-permission-chat-state": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input.rs",
+    ),
+    "player-local-client-status-options": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/death_screen.rs",
+    ),
+    "player-local-item-use-state": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-world/src/client/inventory/use_prediction.rs",
+    ),
+    "player-local-inventory-actions": (
+        "crates/bbb-native/src/input/inventory.rs",
+        "crates/bbb-world/src/client/inventory.rs",
+    ),
+    "player-local-world-edit-ui": ("crates/bbb-native/src/input.rs",),
+    "player-local-environment-effects": (
+        "crates/bbb-world/src/client/local_player_fluid.rs",
+        "crates/bbb-native/src/input/movement.rs",
+    ),
+    "player-local-camera-targeting": (
+        "crates/bbb-native/src/crosshair.rs",
+        "crates/bbb-native/src/runtime.rs",
+    ),
+    "interaction-game-mode-lifecycle": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/movement.rs",
+    ),
+    "interaction-game-mode-guards": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-native/src/input/mouse.rs",
+    ),
+    "interaction-block-breaking": (
+        "crates/bbb-world/src/client/local_player_destroy.rs",
+        "crates/bbb-native/src/input/mouse.rs",
+    ),
+    "interaction-prediction-sequence": (
+        "crates/bbb-world/src/client/local_player.rs",
+        "crates/bbb-world/src/client/inventory/use_prediction.rs",
+    ),
+    "interaction-carried-slot-sync": (
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-world/src/client/inventory.rs",
+    ),
+    "interaction-item-use": (
+        "crates/bbb-world/src/client/inventory/use_prediction.rs",
+        "crates/bbb-native/src/input/mouse.rs",
+    ),
+    "interaction-entity-actions": (
+        "crates/bbb-world/src/client/combat.rs",
+        "crates/bbb-native/src/input/mouse.rs",
+    ),
+    "interaction-container-actions": (
+        "crates/bbb-world/src/client/inventory.rs",
+        "crates/bbb-native/src/input/inventory.rs",
+    ),
+    "interaction-creative-actions": (
+        "crates/bbb-world/src/creative_inventory/action.rs",
+        "crates/bbb-native/src/input/inventory/creative.rs",
+    ),
+    "interaction-pick-actions": (
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-native/src/input/mouse.rs",
+    ),
+    "interaction-primary-action-routing": ("crates/bbb-native/src/input/mouse.rs",),
     "entities-fixed-type-surface": ("docs/entity-coverage-26.1.json",),
     "rendering-entity-renderer-registration": ("docs/entity-coverage-26.1.json",),
     "rendering-entity-layer-registration": ("docs/entity-coverage-26.1.json",),
@@ -1364,6 +1675,31 @@ class InventoryBuilder:
         spec: MethodSurface,
         method: JavaMethod,
     ) -> MethodRoute:
+        exact_routes = None
+        owner_name = None
+        if spec.source_path == "net/minecraft/client/player/LocalPlayer.java":
+            exact_routes = LOCAL_PLAYER_METHOD_ROUTES
+            owner_name = "LocalPlayer"
+        elif (
+            spec.source_path
+            == "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
+        ):
+            exact_routes = MULTIPLAYER_GAME_MODE_METHOD_ROUTES
+            owner_name = "MultiPlayerGameMode"
+        if exact_routes is not None:
+            route = exact_routes.get(method.name)
+            signature = InventoryBuilder.method_signature(method)
+            if route is None:
+                raise ClientMechanismInventoryError(
+                    f"{owner_name} method lacks a homogeneous route: {signature}"
+                )
+            if route == DIRECT_SUPPORT_ROUTE and not InventoryBuilder.is_direct_support_accessor(
+                source, method
+            ):
+                raise ClientMechanismInventoryError(
+                    f"{owner_name} support route is not a direct accessor: {signature}"
+                )
+            return route
         if spec.source_path == "net/minecraft/client/renderer/LevelRenderer.java":
             route = LEVEL_RENDERER_METHOD_ROUTES.get(method.name)
             if route is None:
@@ -1383,7 +1719,7 @@ class InventoryBuilder:
         if method.name in MINECRAFT_METHOD_ROUTES:
             return MINECRAFT_METHOD_ROUTES[method.name]
         if InventoryBuilder.is_direct_support_accessor(source, method):
-            return MINECRAFT_SUPPORT_ROUTE
+            return DIRECT_SUPPORT_ROUTE
         signature = InventoryBuilder.method_signature(method)
         raise ClientMechanismInventoryError(
             f"Minecraft method lacks a decision/support route: {signature}"
