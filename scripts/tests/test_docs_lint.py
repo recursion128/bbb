@@ -203,6 +203,7 @@ Matrix routes: `fixture-not-needed`
             encoding="utf-8",
         )
         for name in (
+            "client-options-catalog.json",
             "entity-coverage.json",
             "item-component-coverage.json",
             "packet-coverage.json",

@@ -58,6 +58,7 @@ VANILLA_EVIDENCE_DIR = Path("docs/evidence/vanilla-26.1")
 VANILLA_EVIDENCE_MEMBERS = frozenset(
     {
         "client-mechanism-inventory.json",
+        "client-options-catalog.json",
         "entity-coverage.json",
         "item-component-coverage.json",
         "packet-coverage.json",

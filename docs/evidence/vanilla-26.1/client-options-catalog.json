@@ -1,0 +1,781 @@
+{
+  "generated_by": "scripts/generate-client-options-catalog.py",
+  "vanilla_version": "26.1",
+  "source_file": "net/minecraft/client/Options.java",
+  "line_format": "name:value, split on the first ':' only; bad lines are skipped",
+  "options": [
+    {
+      "order": 0,
+      "key": "ao",
+      "field": "ambientOcclusion",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 1,
+      "key": "biomeBlendRadius",
+      "field": "biomeBlendRadius",
+      "kind": "codec",
+      "default": "2"
+    },
+    {
+      "order": 2,
+      "key": "chunkSectionFadeInTime",
+      "field": "chunkSectionFadeInTime",
+      "kind": "codec",
+      "default": "0.75"
+    },
+    {
+      "order": 3,
+      "key": "cutoutLeaves",
+      "field": "cutoutLeaves",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 4,
+      "key": "enableVsync",
+      "field": "enableVsync",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 5,
+      "key": "entityDistanceScaling",
+      "field": "entityDistanceScaling",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 6,
+      "key": "entityShadows",
+      "field": "entityShadows",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 7,
+      "key": "forceUnicodeFont",
+      "field": "forceUnicodeFont",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 8,
+      "key": "japaneseGlyphVariants",
+      "field": "japaneseGlyphVariants",
+      "kind": "codec",
+      "default": "host:locale-is-japanese"
+    },
+    {
+      "order": 9,
+      "key": "fov",
+      "field": "fov",
+      "kind": "codec",
+      "default": "70"
+    },
+    {
+      "order": 10,
+      "key": "fovEffectScale",
+      "field": "fovEffectScale",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 11,
+      "key": "darknessEffectScale",
+      "field": "darknessEffectScale",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 12,
+      "key": "glintSpeed",
+      "field": "glintSpeed",
+      "kind": "codec",
+      "default": "0.5"
+    },
+    {
+      "order": 13,
+      "key": "glintStrength",
+      "field": "glintStrength",
+      "kind": "codec",
+      "default": "0.75"
+    },
+    {
+      "order": 14,
+      "key": "graphicsPreset",
+      "field": "graphicsPreset",
+      "kind": "codec",
+      "default": "GraphicsPreset.FANCY"
+    },
+    {
+      "order": 15,
+      "key": "prioritizeChunkUpdates",
+      "field": "prioritizeChunkUpdates",
+      "kind": "codec",
+      "default": "PrioritizeChunkUpdates.NONE"
+    },
+    {
+      "order": 16,
+      "key": "fullscreen",
+      "field": "fullscreen",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 17,
+      "key": "exclusiveFullscreen",
+      "field": "exclusiveFullscreen",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 18,
+      "key": "gamma",
+      "field": "gamma",
+      "kind": "codec",
+      "default": "0.5"
+    },
+    {
+      "order": 19,
+      "key": "guiScale",
+      "field": "guiScale",
+      "kind": "codec",
+      "default": "0"
+    },
+    {
+      "order": 20,
+      "key": "maxAnisotropyBit",
+      "field": "maxAnisotropyBit",
+      "kind": "codec",
+      "default": "2"
+    },
+    {
+      "order": 21,
+      "key": "textureFiltering",
+      "field": "textureFiltering",
+      "kind": "codec",
+      "default": "TextureFilteringMethod.NONE"
+    },
+    {
+      "order": 22,
+      "key": "maxFps",
+      "field": "framerateLimit",
+      "kind": "codec",
+      "default": "120"
+    },
+    {
+      "order": 23,
+      "key": "improvedTransparency",
+      "field": "improvedTransparency",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 24,
+      "key": "inactivityFpsLimit",
+      "field": "inactivityFpsLimit",
+      "kind": "codec",
+      "default": "InactivityFpsLimit.AFK"
+    },
+    {
+      "order": 25,
+      "key": "mipmapLevels",
+      "field": "mipmapLevels",
+      "kind": "codec",
+      "default": "4"
+    },
+    {
+      "order": 26,
+      "key": "narrator",
+      "field": "narrator",
+      "kind": "codec",
+      "default": "NarratorStatus.OFF"
+    },
+    {
+      "order": 27,
+      "key": "particles",
+      "field": "particles",
+      "kind": "codec",
+      "default": "ParticleStatus.ALL"
+    },
+    {
+      "order": 28,
+      "key": "reducedDebugInfo",
+      "field": "reducedDebugInfo",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 29,
+      "key": "renderClouds",
+      "field": "cloudStatus",
+      "kind": "codec",
+      "default": "CloudStatus.FANCY"
+    },
+    {
+      "order": 30,
+      "key": "cloudRange",
+      "field": "cloudRange",
+      "kind": "codec",
+      "default": "128"
+    },
+    {
+      "order": 31,
+      "key": "renderDistance",
+      "field": "renderDistance",
+      "kind": "codec",
+      "default": "12"
+    },
+    {
+      "order": 32,
+      "key": "simulationDistance",
+      "field": "simulationDistance",
+      "kind": "codec",
+      "default": "12"
+    },
+    {
+      "order": 33,
+      "key": "screenEffectScale",
+      "field": "screenEffectScale",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 34,
+      "key": "soundDevice",
+      "field": "soundDevice",
+      "kind": "codec",
+      "default": "\"\""
+    },
+    {
+      "order": 35,
+      "key": "vignette",
+      "field": "vignette",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 36,
+      "key": "weatherRadius",
+      "field": "weatherRadius",
+      "kind": "codec",
+      "default": "10"
+    },
+    {
+      "order": 37,
+      "key": "autoJump",
+      "field": "autoJump",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 38,
+      "key": "rotateWithMinecart",
+      "field": "rotateWithMinecart",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 39,
+      "key": "operatorItemsTab",
+      "field": "operatorItemsTab",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 40,
+      "key": "autoSuggestions",
+      "field": "autoSuggestions",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 41,
+      "key": "chatColors",
+      "field": "chatColors",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 42,
+      "key": "chatLinks",
+      "field": "chatLinks",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 43,
+      "key": "chatLinksPrompt",
+      "field": "chatLinksPrompt",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 44,
+      "key": "discrete_mouse_scroll",
+      "field": "discreteMouseScroll",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 45,
+      "key": "invertXMouse",
+      "field": "invertXMouse",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 46,
+      "key": "invertYMouse",
+      "field": "invertYMouse",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 47,
+      "key": "realmsNotifications",
+      "field": "realmsNotifications",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 48,
+      "key": "showSubtitles",
+      "field": "showSubtitles",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 49,
+      "key": "directionalAudio",
+      "field": "directionalAudio",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 50,
+      "key": "touchscreen",
+      "field": "touchscreen",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 51,
+      "key": "bobView",
+      "field": "bobView",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 52,
+      "key": "toggleCrouch",
+      "field": "toggleCrouch",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 53,
+      "key": "toggleSprint",
+      "field": "toggleSprint",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 54,
+      "key": "toggleAttack",
+      "field": "toggleAttack",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 55,
+      "key": "toggleUse",
+      "field": "toggleUse",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 56,
+      "key": "sprintWindow",
+      "field": "sprintWindow",
+      "kind": "codec",
+      "default": "7"
+    },
+    {
+      "order": 57,
+      "key": "darkMojangStudiosBackground",
+      "field": "darkMojangStudiosBackground",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 58,
+      "key": "hideLightningFlashes",
+      "field": "hideLightningFlash",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 59,
+      "key": "hideSplashTexts",
+      "field": "hideSplashTexts",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 60,
+      "key": "mouseSensitivity",
+      "field": "sensitivity",
+      "kind": "codec",
+      "default": "0.5"
+    },
+    {
+      "order": 61,
+      "key": "damageTiltStrength",
+      "field": "damageTiltStrength",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 62,
+      "key": "highContrast",
+      "field": "highContrast",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 63,
+      "key": "highContrastBlockOutline",
+      "field": "highContrastBlockOutline",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 64,
+      "key": "narratorHotkey",
+      "field": "narratorHotkey",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 65,
+      "key": "resourcePacks",
+      "field": "resourcePacks",
+      "kind": "string-list",
+      "default": "[]"
+    },
+    {
+      "order": 66,
+      "key": "incompatibleResourcePacks",
+      "field": "incompatibleResourcePacks",
+      "kind": "string-list",
+      "default": "[]"
+    },
+    {
+      "order": 67,
+      "key": "lastServer",
+      "field": "lastMpIp",
+      "kind": "string",
+      "default": "\"\""
+    },
+    {
+      "order": 68,
+      "key": "lang",
+      "field": "languageCode",
+      "kind": "string",
+      "default": "\"en_us\""
+    },
+    {
+      "order": 69,
+      "key": "chatVisibility",
+      "field": "chatVisibility",
+      "kind": "codec",
+      "default": "ChatVisiblity.FULL"
+    },
+    {
+      "order": 70,
+      "key": "chatOpacity",
+      "field": "chatOpacity",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 71,
+      "key": "chatLineSpacing",
+      "field": "chatLineSpacing",
+      "kind": "codec",
+      "default": "0.0"
+    },
+    {
+      "order": 72,
+      "key": "textBackgroundOpacity",
+      "field": "textBackgroundOpacity",
+      "kind": "codec",
+      "default": "0.5"
+    },
+    {
+      "order": 73,
+      "key": "backgroundForChatOnly",
+      "field": "backgroundForChatOnly",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 74,
+      "key": "hideServerAddress",
+      "field": "hideServerAddress",
+      "kind": "boolean",
+      "default": "false"
+    },
+    {
+      "order": 75,
+      "key": "advancedItemTooltips",
+      "field": "advancedItemTooltips",
+      "kind": "boolean",
+      "default": "false"
+    },
+    {
+      "order": 76,
+      "key": "pauseOnLostFocus",
+      "field": "pauseOnLostFocus",
+      "kind": "boolean",
+      "default": "true"
+    },
+    {
+      "order": 77,
+      "key": "overrideWidth",
+      "field": "overrideWidth",
+      "kind": "integer",
+      "default": "0"
+    },
+    {
+      "order": 78,
+      "key": "overrideHeight",
+      "field": "overrideHeight",
+      "kind": "integer",
+      "default": "0"
+    },
+    {
+      "order": 79,
+      "key": "chatHeightFocused",
+      "field": "chatHeightFocused",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 80,
+      "key": "chatDelay",
+      "field": "chatDelay",
+      "kind": "codec",
+      "default": "0.0"
+    },
+    {
+      "order": 81,
+      "key": "chatHeightUnfocused",
+      "field": "chatHeightUnfocused",
+      "kind": "codec",
+      "default": "0.4375"
+    },
+    {
+      "order": 82,
+      "key": "chatScale",
+      "field": "chatScale",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 83,
+      "key": "chatWidth",
+      "field": "chatWidth",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 84,
+      "key": "notificationDisplayTime",
+      "field": "notificationDisplayTime",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 85,
+      "key": "useNativeTransport",
+      "field": "useNativeTransport",
+      "kind": "boolean",
+      "default": "true"
+    },
+    {
+      "order": 86,
+      "key": "mainHand",
+      "field": "mainHand",
+      "kind": "codec",
+      "default": "HumanoidArm.RIGHT"
+    },
+    {
+      "order": 87,
+      "key": "attackIndicator",
+      "field": "attackIndicator",
+      "kind": "codec",
+      "default": "AttackIndicatorStatus.CROSSHAIR"
+    },
+    {
+      "order": 88,
+      "key": "tutorialStep",
+      "field": "tutorialStep",
+      "kind": "tutorial-step",
+      "default": "TutorialSteps.MOVEMENT"
+    },
+    {
+      "order": 89,
+      "key": "mouseWheelSensitivity",
+      "field": "mouseWheelSensitivity",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 90,
+      "key": "rawMouseInput",
+      "field": "rawMouseInput",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 91,
+      "key": "allowCursorChanges",
+      "field": "allowCursorChanges",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 92,
+      "key": "glDebugVerbosity",
+      "field": "glDebugVerbosity",
+      "kind": "integer",
+      "default": "1"
+    },
+    {
+      "order": 93,
+      "key": "skipMultiplayerWarning",
+      "field": "skipMultiplayerWarning",
+      "kind": "boolean",
+      "default": "false"
+    },
+    {
+      "order": 94,
+      "key": "hideMatchedNames",
+      "field": "hideMatchedNames",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 95,
+      "key": "joinedFirstServer",
+      "field": "joinedFirstServer",
+      "kind": "boolean",
+      "default": "false"
+    },
+    {
+      "order": 96,
+      "key": "syncChunkWrites",
+      "field": "syncWrites",
+      "kind": "boolean",
+      "default": "host:platform-is-windows"
+    },
+    {
+      "order": 97,
+      "key": "showAutosaveIndicator",
+      "field": "showAutosaveIndicator",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 98,
+      "key": "allowServerListing",
+      "field": "allowServerListing",
+      "kind": "codec",
+      "default": "true"
+    },
+    {
+      "order": 99,
+      "key": "onlyShowSecureChat",
+      "field": "onlyShowSecureChat",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 100,
+      "key": "saveChatDrafts",
+      "field": "saveChatDrafts",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 101,
+      "key": "panoramaScrollSpeed",
+      "field": "panoramaSpeed",
+      "kind": "codec",
+      "default": "1.0"
+    },
+    {
+      "order": 102,
+      "key": "telemetryOptInExtra",
+      "field": "telemetryOptInExtra",
+      "kind": "codec",
+      "default": "false"
+    },
+    {
+      "order": 103,
+      "key": "onboardAccessibility",
+      "field": "onboardAccessibility",
+      "kind": "boolean",
+      "default": "true"
+    },
+    {
+      "order": 104,
+      "key": "menuBackgroundBlurriness",
+      "field": "menuBackgroundBlurriness",
+      "kind": "codec",
+      "default": "5"
+    },
+    {
+      "order": 105,
+      "key": "startedCleanly",
+      "field": "startedCleanly",
+      "kind": "boolean",
+      "default": "true"
+    },
+    {
+      "order": 106,
+      "key": "musicToast",
+      "field": "musicToast",
+      "kind": "codec",
+      "default": "MusicToastDisplayState.NEVER"
+    },
+    {
+      "order": 107,
+      "key": "musicFrequency",
+      "field": "musicFrequency",
+      "kind": "codec",
+      "default": "MusicManager.MusicFrequency.DEFAULT"
+    }
+  ],
+  "dynamic_groups": [
+    {
+      "order": 108,
+      "prefix": "key_",
+      "kind": "key-mapping"
+    },
+    {
+      "order": 109,
+      "prefix": "soundCategory_",
+      "kind": "sound-source"
+    },
+    {
+      "order": 110,
+      "prefix": "modelPart_",
+      "kind": "model-part"
+    }
+  ]
+}
