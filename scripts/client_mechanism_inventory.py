@@ -426,6 +426,31 @@ OPTIONS_METHOD_ROUTES = _method_routes(
 )
 
 
+# `ServerList` is the multiplayer screen's list model that also owns
+# `servers.dat`. Only the file half has a command-line caller —
+# `QuickPlay.joinMultiplayerWorld` loads the list, looks the address up, adds a
+# hidden entry when it is new, and saves; `ClientPacketListener` then updates
+# that entry through `saveSingleServer`. Everything else is reached only from
+# `JoinMultiplayerScreen`/`ServerSelectionList`, and `replace` has no caller at
+# all in 26.1.
+SERVER_LIST_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("persistence", "persistence", "persistence-server-list"),
+        ("ServerList", "load", "save", "saveSingleServer", "set", "add", "get"),
+    ),
+    (
+        MethodRoute(
+            "out-of-scope",
+            "ui",
+            "scope-multiplayer-server-list",
+            "out-of-scope",
+            "out-of-scope",
+        ),
+        ("size", "swap", "replace", "remove", "unhide"),
+    ),
+)
+
+
 LOCAL_PLAYER_METHOD_ROUTES = _method_routes(
     (
         MethodRoute("player-lifecycle", "movement", "player-local-session-respawn"),
@@ -4292,6 +4317,7 @@ MECHANISM_EVIDENCE = {
     "scope-singleplayer-integrated": ("docs/unsupported-features.md",),
     "scope-realms": ("docs/unsupported-features.md",),
     "scope-options-ui": ("docs/unsupported-features.md",),
+    "scope-multiplayer-server-list": ("docs/unsupported-features.md",),
     "scope-telemetry-upload": ("docs/unsupported-features.md",),
     "scope-support-accessors": (
         "scripts/client_mechanism_inventory.py#is_direct_support_accessor",
@@ -4445,6 +4471,14 @@ class InventoryBuilder:
             raise ClientMechanismInventoryError(
                 f"Options method lacks a decision/support route: {signature}"
             )
+        if spec.source_path == "net/minecraft/client/multiplayer/ServerList.java":
+            route = SERVER_LIST_METHOD_ROUTES.get(method.name)
+            if route is None:
+                signature = InventoryBuilder.method_signature(method)
+                raise ClientMechanismInventoryError(
+                    f"ServerList method lacks a homogeneous route: {signature}"
+                )
+            return route
         if spec.source_path != "net/minecraft/client/Minecraft.java":
             return MethodRoute(
                 spec.category,

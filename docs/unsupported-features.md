@@ -387,8 +387,17 @@ Matrix route: `items-versioned-property-surface`
 
 ## Resource and screen surface
 
-Matrix routes: `resources-indexed-built-in-packs`, `resources-indexed-realms`, `resources-world-list-favicons`, `scope-title-screen`, `scope-realms`
+Matrix routes: `resources-indexed-built-in-packs`, `resources-indexed-realms`, `resources-world-list-favicons`, `scope-title-screen`, `scope-realms`, `scope-multiplayer-server-list`
 
+- **Server-list editing owners.** `ServerList.size`/`swap`/`replace`/`remove`/
+  `unhide` mutate or index the in-memory list rather than the file. In 26.1
+  their only callers are `ServerSelectionList` (`size`, `get(int)`, `swap` for
+  the move-up/down buttons) and `JoinMultiplayerScreen` (`remove` for delete,
+  `unhide` and `add` for the edit-server dialog); `replace` has no caller at
+  all. The command-line entry point `QuickPlay.joinMultiplayerWorld` uses only
+  `load`/`get(String)`/`add`/`save`, which is what
+  `crates/bbb-native/src/server_list.rs` owns. Reopen with a
+  server-selection screen, not before.
 - **Title splash reload listener.** Vanilla `SplashManager.prepare` reads
   `minecraft:texts/splashes.txt`, but its only consumer is
   `TitleScreen.init` calling `Minecraft.getSplashManager().getSplash()`.

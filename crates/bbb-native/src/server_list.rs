@@ -1,10 +1,15 @@
 //! Vanilla-compatible `servers.dat` persistence for the optional startup
 //! server-list owner.
 //!
-//! A CLI direct connection has no `ServerData` owner in Vanilla and therefore
-//! does not persist `ClientboundServerDataPacket`. BBB follows that boundary:
-//! this owner is constructed only when both `--server-list-store` and
-//! `--server-list-name` are supplied.
+//! Vanilla reaches a server from the command line through
+//! `QuickPlay.joinMultiplayerWorld`, which loads `servers.dat`, reuses or
+//! creates the entry for the address, and hands that `ServerData` to the
+//! connection — which is why a command-line join does persist
+//! `ClientboundServerDataPacket` through `ServerList.saveSingleServer`. BBB
+//! mirrors that owner but keeps it opt-in, so a run only touches a real game
+//! directory when both `--server-list-store` and `--server-list-name` say to:
+//! the remaining `ServerList` methods exist solely for the multiplayer
+//! server-selection screen, which BBB does not have.
 
 use std::{
     fs,
@@ -25,6 +30,8 @@ use bbb_protocol::{
 use bbb_world::WorldStore;
 
 const MAX_SERVER_LIST_FILE_BYTES: usize = 64 * 1024 * 1024;
+/// `ServerList.MAX_HIDDEN_SERVERS`.
+const MAX_HIDDEN_SERVERS: usize = 16;
 static NEXT_TEMP_FILE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 pub(crate) struct ServerListPersistence {
@@ -202,6 +209,15 @@ impl ServerListFile {
         }
     }
 
+    /// Vanilla `ServerList.get(String)` followed, on a miss, by
+    /// `QuickPlay.joinMultiplayerWorld`'s `add(data, true)`.
+    ///
+    /// The lookup compares the address alone and scans the visible list before
+    /// the hidden one, so an entry the player already named for this address is
+    /// reused instead of duplicated; the configured name only ever names an
+    /// entry this owner creates, exactly as `selectServer.defaultName` does.
+    /// A created entry is hidden, which is what keeps a command-line join out
+    /// of the server list the player curates by hand.
     fn find_or_insert(&mut self, name: &str, address: &str) -> Result<&mut Vec<NbtSummaryEntry>> {
         let NbtSummaryValue::Compound(root) = &mut self.root else {
             unreachable!("server-list root shape checked while loading");
@@ -213,34 +229,61 @@ impl ServerListFile {
         let Some(NbtSummaryValue::List(servers)) = compound_field_mut(root, "servers") else {
             unreachable!("servers field was normalized to a list");
         };
-        if let Some(index) = servers.iter().position(|server| {
-            let NbtSummaryValue::Compound(entries) = server else {
-                return false;
-            };
-            compound_string(entries, "name") == Some(name)
-                && compound_string(entries, "ip") == Some(address)
-        }) {
+        let existing = servers
+            .iter()
+            .enumerate()
+            .filter_map(|(index, server)| {
+                let NbtSummaryValue::Compound(entries) = server else {
+                    return None;
+                };
+                (compound_string(entries, "ip") == Some(address))
+                    .then(|| (entry_is_hidden(entries), index))
+            })
+            .min();
+        if let Some((_, index)) = existing {
             let NbtSummaryValue::Compound(entry) = &mut servers[index] else {
                 unreachable!("matching server entry is a compound");
             };
             return Ok(entry);
         }
 
-        servers.push(NbtSummaryValue::Compound(vec![
-            NbtSummaryEntry {
-                name: "name".to_string(),
-                value: NbtSummaryValue::String(name.to_string()),
-            },
-            NbtSummaryEntry {
-                name: "ip".to_string(),
-                value: NbtSummaryValue::String(address.to_string()),
-            },
-            NbtSummaryEntry {
-                name: "hidden".to_string(),
-                value: NbtSummaryValue::Byte(0),
-            },
-        ]));
-        let Some(NbtSummaryValue::Compound(entry)) = servers.last_mut() else {
+        // `add` puts a hidden entry at the head of the hidden list, and `save`
+        // writes the visible entries before it, so the hidden block starts at
+        // the first flagged entry.
+        let head = servers
+            .iter()
+            .position(|server| matches!(server, NbtSummaryValue::Compound(entries) if entry_is_hidden(entries)))
+            .unwrap_or(servers.len());
+        servers.insert(
+            head,
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "name".to_string(),
+                    value: NbtSummaryValue::String(name.to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "ip".to_string(),
+                    value: NbtSummaryValue::String(address.to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "hidden".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                },
+            ]),
+        );
+        // `add` then trims the tail of the hidden list; every entry it drops
+        // sits after the one just inserted, so `head` still addresses it.
+        let mut hidden_seen = 0usize;
+        servers.retain(|server| {
+            let hidden =
+                matches!(server, NbtSummaryValue::Compound(entries) if entry_is_hidden(entries));
+            if !hidden {
+                return true;
+            }
+            hidden_seen += 1;
+            hidden_seen <= MAX_HIDDEN_SERVERS
+        });
+        let Some(NbtSummaryValue::Compound(entry)) = servers.get_mut(head) else {
             unreachable!("new server entry is a compound");
         };
         Ok(entry)
@@ -278,6 +321,15 @@ fn compound_string<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a
                 NbtSummaryValue::String(value) => Some(value.as_str()),
                 _ => None,
             })
+    })
+}
+
+/// `ServerList.load` splits the file into a visible and a hidden list on this
+/// flag, reading it with `getBooleanOr("hidden", false)`; BBB keeps the file's
+/// own order and only asks the same question of each entry.
+fn entry_is_hidden(entries: &[NbtSummaryEntry]) -> bool {
+    entries.iter().any(|entry| {
+        entry.name == "hidden" && matches!(entry.value, NbtSummaryValue::Byte(flag) if flag != 0)
     })
 }
 
@@ -409,11 +461,124 @@ mod tests {
             Some(STANDARD.encode(icon).as_str())
         );
         assert!(compound_string(entry, "motd").is_none());
+        // `QuickPlay.joinMultiplayerWorld` adds its entry hidden, so a
+        // command-line join stays out of the hand-curated server list.
         assert!(matches!(
             compound_field(entry, "hidden"),
-            Some(NbtSummaryValue::Byte(0))
+            Some(NbtSummaryValue::Byte(1))
         ));
         let _ = fs::remove_file(path);
+    }
+
+    fn named_server(name: &str, address: &str, hidden: bool) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "name".to_string(),
+                value: NbtSummaryValue::String(name.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "ip".to_string(),
+                value: NbtSummaryValue::String(address.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "hidden".to_string(),
+                value: NbtSummaryValue::Byte(i8::from(hidden)),
+            },
+        ])
+    }
+
+    fn write_servers(path: &Path, servers: Vec<NbtSummaryValue>) {
+        let root = NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+            name: "servers".to_string(),
+            value: NbtSummaryValue::List(servers),
+        }]);
+        fs::write(
+            path,
+            encode_named_nbt_summary("", &root, MAX_SERVER_LIST_FILE_BYTES).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn persist_icon(path: &Path, name: &str, address: &str) {
+        let mut world = WorldStore::new();
+        world.apply_server_data(ServerData {
+            motd: RichTextComponent::plain("MOTD"),
+            icon_bytes: Some(png_icon(64, 64)),
+        });
+        let mut persistence = ServerListPersistence::new(path, name, address).unwrap();
+        assert!(persistence.persist_current_server_data(&world).unwrap());
+        persistence.flush().unwrap();
+    }
+
+    #[test]
+    fn an_entry_the_player_already_named_for_the_address_is_reused() {
+        let path = unique_store_path("reuse");
+        write_servers(
+            &path,
+            vec![
+                named_server("Unrelated", "other.invalid", false),
+                named_server("Player Named", "example.org:25565", false),
+                named_server("Stale Hidden", "example.org:25565", true),
+            ],
+        );
+
+        persist_icon(&path, "Native Server", "example.org:25565");
+
+        // `ServerList.get(String)` compares the address alone and scans the
+        // visible list first, so neither the configured name nor the hidden
+        // duplicate wins.
+        let servers = decoded_servers(&path);
+        assert_eq!(servers.len(), 3);
+        let NbtSummaryValue::Compound(entry) = &servers[1] else {
+            panic!("server compound");
+        };
+        assert_eq!(compound_string(entry, "name"), Some("Player Named"));
+        assert!(compound_string(entry, "icon").is_some());
+        let NbtSummaryValue::Compound(hidden) = &servers[2] else {
+            panic!("server compound");
+        };
+        assert!(compound_string(hidden, "icon").is_none());
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(path.with_file_name(format!(
+            "{}_old",
+            path.file_name().unwrap().to_string_lossy()
+        )));
+    }
+
+    #[test]
+    fn a_created_entry_heads_the_hidden_block_and_trims_it_to_sixteen() {
+        let path = unique_store_path("trim");
+        let mut servers = vec![named_server("Curated", "curated.invalid", false)];
+        servers.extend(
+            (0..MAX_HIDDEN_SERVERS)
+                .map(|index| named_server(&format!("Recent {index}"), &format!("h{index}"), true)),
+        );
+        write_servers(&path, servers);
+
+        persist_icon(&path, "Native Server", "example.org:25565");
+
+        let servers = decoded_servers(&path);
+        // One visible entry plus a hidden block still capped at sixteen.
+        assert_eq!(servers.len(), 1 + MAX_HIDDEN_SERVERS);
+        let names: Vec<&str> = servers
+            .iter()
+            .map(|server| {
+                let NbtSummaryValue::Compound(entries) = server else {
+                    panic!("server compound");
+                };
+                compound_string(entries, "name").expect("named entry")
+            })
+            .collect();
+        assert_eq!(names[0], "Curated");
+        assert_eq!(names[1], "Native Server");
+        assert_eq!(names[2], "Recent 0");
+        // `add` drops from the tail of the hidden list, so the oldest goes.
+        assert_eq!(names[MAX_HIDDEN_SERVERS], "Recent 14");
+        let _ = fs::remove_file(&path);
+        let _ = fs::remove_file(path.with_file_name(format!(
+            "{}_old",
+            path.file_name().unwrap().to_string_lossy()
+        )));
     }
 
     #[test]

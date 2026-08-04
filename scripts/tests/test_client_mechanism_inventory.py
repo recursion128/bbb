@@ -1490,14 +1490,58 @@ class LocalPlayer {
             == "net/minecraft/client/multiplayer/ServerList.java"
         ]
         self.assertEqual(len(server_list), 13)
+        # Only the owners `QuickPlay.joinMultiplayerWorld` and
+        # `saveSingleServer` reach persist the file; the rest edit the list for
+        # the server-selection screen, which BBB does not have.
+        self.assertEqual(
+            Counter(owner["mechanism_id"] for owner in server_list),
+            Counter(
+                {
+                    "persistence-server-list": 8,
+                    "scope-multiplayer-server-list": 5,
+                }
+            ),
+        )
         self.assertTrue(
             all(
-                owner["mechanism_id"] == "persistence-server-list"
-                and owner["role"] == "decision"
+                owner["role"] == "decision" and owner["scope"] == "external-client"
                 for owner in server_list
+                if owner["mechanism_id"] == "persistence-server-list"
             )
         )
+        self.assertEqual(
+            sorted(
+                owner["owner_id"].rsplit("#", 1)[1].split("(")[0]
+                for owner in server_list
+                if owner["mechanism_id"] == "scope-multiplayer-server-list"
+            ),
+            ["remove", "replace", "size", "swap", "unhide"],
+        )
         self.assertNotIn("persistence-client-files", value["mechanisms"])
+
+    def test_unclassified_server_list_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/ServerList.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.multiplayer;"
+                " class ServerList { void prune() { this.serverList.clear(); } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "ServerList method lacks a homogeneous route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "persistence",
+                        "persistence",
+                        "persistence-server-list",
+                        relative,
+                    )
+                )
 
     def test_unclassified_options_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

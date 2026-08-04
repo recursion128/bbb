@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "de04e7f6ffb6ecfd39c51ed17474aaafa242495d5f4b74a390a64c1cc57e71bb"
+      "sha256": "c2326c59b22f32e5f5c46922a916f2204115b13f41836b683d0478762e349185"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -234,7 +234,7 @@
       "bbb_evidence": [
         "crates/bbb-native/src/server_list.rs"
       ],
-      "owner_count": 13
+      "owner_count": 8
     },
     "platform-window-lifecycle": {
       "bbb_evidence": [
@@ -560,6 +560,12 @@
       "owner_count": 26
     },
     "scope-client-level-noop-hooks": {
+      "bbb_evidence": [
+        "docs/unsupported-features.md"
+      ],
+      "owner_count": 5
+    },
+    "scope-multiplayer-server-list": {
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
@@ -24287,13 +24293,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#load()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "persistence-server-list",
+      "mechanism_id": "scope-multiplayer-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#remove(final ServerData thing)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 114,
         "path": "net/minecraft/client/multiplayer/ServerList.java"
@@ -24301,13 +24307,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#remove(final ServerData thing)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "persistence-server-list",
+      "mechanism_id": "scope-multiplayer-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#replace(final int id,final ServerData data)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 143,
         "path": "net/minecraft/client/multiplayer/ServerList.java"
@@ -24357,13 +24363,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#set(final ServerData data,final List <ServerData> list)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "persistence-server-list",
+      "mechanism_id": "scope-multiplayer-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#size()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 132,
         "path": "net/minecraft/client/multiplayer/ServerList.java"
@@ -24371,13 +24377,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#size()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "persistence-server-list",
+      "mechanism_id": "scope-multiplayer-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#swap(final int a,final int b)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 136,
         "path": "net/minecraft/client/multiplayer/ServerList.java"
@@ -24385,13 +24391,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#swap(final int a,final int b)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "ui",
       "kind": "method",
-      "mechanism_id": "persistence-server-list",
+      "mechanism_id": "scope-multiplayer-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#unhide(final String ip)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 101,
         "path": "net/minecraft/client/multiplayer/ServerList.java"
@@ -45248,11 +45254,11 @@
       "menu-screen": 25,
       "movement": 20,
       "movement-report": 4,
-      "out-of-scope": 213,
+      "out-of-scope": 218,
       "packet-table": 256,
       "particle-provider": 117,
       "particle-routing": 6,
-      "persistence": 58,
+      "persistence": 53,
       "pick-action": 3,
       "platform": 67,
       "player-lifecycle": 4,
@@ -45297,7 +45303,7 @@
       "lifecycle": 24,
       "movement": 39,
       "options": 20,
-      "persistence": 58,
+      "persistence": 53,
       "platform": 67,
       "protocol": 747,
       "realms": 100,
@@ -45310,12 +45316,12 @@
       "support": 193,
       "telemetry": 17,
       "text": 35,
-      "ui": 206,
+      "ui": 211,
       "world": 59
     },
     "by_role": {
-      "decision": 1329,
-      "out-of-scope": 213,
+      "decision": 1324,
+      "out-of-scope": 218,
       "support-non-decision": 193
     },
     "mapped_owner_count": 2927,
