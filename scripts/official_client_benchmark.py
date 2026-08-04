@@ -1194,8 +1194,6 @@ def build_bbb_launch_argv(
         "--connect-server",
         "--control",
         f"127.0.0.1:{control_port}",
-        "--client-view-distance",
-        str(VIEW_DISTANCE),
         "--render-distance",
         str(VIEW_DISTANCE),
         "--cloud-range",

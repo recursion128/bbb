@@ -128,8 +128,6 @@ pub(crate) struct Args {
     pub(crate) narrator_command: Option<PathBuf>,
     #[arg(long = "narrator-command-arg", value_name = "ARG")]
     pub(crate) narrator_command_args: Vec<String>,
-    #[arg(long = "client-view-distance", default_value_t = 10)]
-    pub(crate) client_view_distance: i8,
     #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
     pub(crate) client_chat_visibility: ClientChatVisibilityArg,
     #[arg(
@@ -866,9 +864,13 @@ pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformat
         args.client_locale.len() <= 16,
         "client locale must be at most 16 UTF-8 bytes"
     );
+    // Vanilla builds this from `renderDistance.get()`, not a second setting,
+    // so the value the server is told matches the one the client renders.
+    let view_distance = i8::try_from(args.render_distance_chunks)
+        .context("render distance must fit the ClientInformation byte")?;
     Ok(ClientInformation {
         language: args.client_locale.clone(),
-        view_distance: args.client_view_distance,
+        view_distance,
         chat_visibility: args.client_chat_visibility.into(),
         chat_colors: args.client_chat_colors,
         displayed_skin_parts: args.client_skin_parts,
@@ -1556,7 +1558,7 @@ mod tests {
             "bbb-native",
             "--client-locale",
             "zh_cn",
-            "--client-view-distance",
+            "--render-distance",
             "12",
             "--client-chat-visibility",
             "system",
@@ -1578,7 +1580,13 @@ mod tests {
         let information = client_information_from_args(&args).unwrap();
 
         assert_eq!(information.language, "zh_cn");
+        // Vanilla reports `renderDistance.get()`, so there is no second
+        // view-distance setting that could disagree with what is rendered.
         assert_eq!(information.view_distance, 12);
+        assert_eq!(
+            i64::from(information.view_distance),
+            i64::from(args.render_distance_chunks)
+        );
         assert_eq!(information.chat_visibility, ClientChatVisibility::System);
         assert!(!information.chat_colors);
         assert_eq!(information.displayed_skin_parts, 21);

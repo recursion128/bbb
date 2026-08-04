@@ -498,7 +498,9 @@ class LaunchPlanTests(unittest.TestCase):
                 control_port=25566,
             )
         self.assertEqual(argv[argv.index("--username") + 1], "bbb-benchmark")
-        self.assertEqual(argv[argv.index("--client-view-distance") + 1], "12")
+        # `ClientInformation` reports the render distance itself, so the
+        # benchmark has one distance flag, not two that could disagree.
+        self.assertNotIn("--client-view-distance", argv)
         self.assertEqual(argv[argv.index("--render-distance") + 1], "12")
         self.assertEqual(argv[argv.index("--cloud-range") + 1], "64")
         self.assertEqual(argv[argv.index("--client-particles") + 1], "minimal")
