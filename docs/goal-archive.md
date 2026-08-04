@@ -24,22 +24,12 @@
   presentation、texture sampling、generated registry fallback、lifecycle/fault soak、Linux Wayland/Vulkan
   release gate、Vanilla `hotbar.nbt` 互换、Trial Spawner display projection 与共享 camera Water/Lava
   sampler/Lava fog 逐项闭环。
-- **2026-08-02**：官方 26.1 渲染机制/可见 workload/同载性能 P0、unihex/CJK 字体，
-  以及中文 Vanilla 机制 Wiki 与 parity/document lint 工程闭环。
-- **2026-08-02（文档工作流 v10）**：当前事实收敛到 Wiki，历史 Markdown 正文改由
-  Git-only 保留，`docs/` allowlist、30 文件 inventory 与 focused fixtures 防止回流。
-- **2026-08-02（indexed default pack）**：asset index 30 成为统一 lazy `vanilla`
-  provider，font、language、sound 经共享 pack stack 完成真实 zh_cn、OGG 与 CJK 验收。
-- **2026-08-02（external-client census）**：2,927 个 source-derived owner 的唯一 JSON
-  inventory、细分 parity matrix 与离线 evidence/双向 route/stale-output 门禁建立。
-- **2026-08-02（core pipeline generation convergence）**：core shader GPU 准备、发布
-  与回滚收敛为一个 renderer-private generation owner 和一份字段映射。
-- **2026-08-02（reload-listener generation closure）**：20 个 Vanilla listener owner 完成
-  bounded prepare、单 barrier apply/rollback 与真实 default/selected/live 验收。
-- **2026-08-02（shader generation architecture convergence）**：shader sources、static core
-  pipelines 与 post graphs 收敛为单一 CPU projection 和 renderer transaction API。
-- **2026-08-02（LocalPlayer sprint ownership）**：raw sprint key、canonical player latch 与
-  outbound baseline 分离，movement/vehicle/combat/FOV 统一读取 world owner。
+- **2026-08-02**：官方 26.1 渲染机制/可见 workload/同载性能 P0、unihex/CJK 字体、中文 Vanilla 机制 Wiki
+  与 parity/document lint 闭环；文档工作流 v10（当前事实入 Wiki、历史 Git-only、`docs/` allowlist）；
+  indexed default pack（asset index 30 统一 lazy `vanilla` provider，zh_cn/OGG/CJK 验收）；external-client
+  census（2,927 owner 的唯一 JSON inventory + parity matrix + 双向 route/stale-output 门禁）；core
+  pipeline / shader generation / reload-listener 三处收敛为单一 renderer-private generation owner；
+  LocalPlayer sprint 的 raw key、canonical latch 与 outbound baseline 分离。
 - **2026-08-03（fatal runtime crash lifecycle）**：startup/main/worker/render fatal 汇入单一
   bounded report owner，ordered shutdown 后原子发布并以非零状态退出。
 - **2026-08-03（HUD item projection convergence）**：ordinary/generated/special/composite GUI
@@ -93,5 +83,13 @@
   并逐条挂上 implementation/test evidence；产码补齐 item display 四项、beacon 光柱（与 end gateway 共用
   `beaconBeam` 几何/管线）、structure_block/test_instance_block 包围盒与错误标记、copper_golem_statue 雕像，
   piston 移动方块回到 `block_entity_visibility` 唯一政策点，route 翻 `equivalent`。
+
+- **2026-08-04（client persistence closure）**：`Options` 145 + `ServerList` 13 共 158 owner 按 canonical
+  owner 拆完并逐条挂 evidence。新增 `bbb-native::client_options`（key/编码/默认值由 `Options.java` 生成），
+  CLI 参数降级为文件 override，F3+H/F3+P 成为 vanilla 同源的 `Options.save` 触发点并补发
+  `ClientInformation`；`server_list.rs` 改按地址复用条目、新建走 quick-play 的 hidden + 16 上限。
+  `persistence-options-file`/`-derived`/`-apply`/`persistence-server-list` 四行翻 `equivalent`，无消费面的
+  8 个 owner 归 `persistence-options-unconsumed`（`missing`），只服务 options 屏的归 `scope-options-ui`，
+  多人服务器选择屏的 5 个归 `scope-multiplayer-server-list`。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

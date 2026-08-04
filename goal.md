@@ -500,25 +500,6 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
-#### Active contract：persistence-client-files（仅剩 live playable gate）
-
-- 已完成：158 owner 全部拆成同构 sub-route 并逐 owner 挂 evidence。
-  `persistence-options-file` 14/14、`persistence-options-derived` 13/13、
-  `persistence-options-apply` 3/3、`persistence-server-list` 8/8 已翻
-  `equivalent`；无 BBB 消费面的 8 个 owner 归 `persistence-options-unconsumed`
-  （`missing`，逐条 vanilla 调用方写进账本），只服务 options 屏/`onValueUpdate`
-  的 13 个归 `scope-options-ui`，5 个多人服务器选择屏 owner 归
-  `scope-multiplayer-server-list`；旧账本项已删。
-- 唯一未完成 checkpoint：④⑤ 改过启动路径（`--game-dir`、options.txt 读写、
-  render distance clamp、F3+H/F3+P 存盘与 `ClientInformation` 补发），契约要求
-  实跑一次 live playable gate 并刷新 stamp。本机跑不了：无 `DISPLAY`/
-  `WAYLAND_DISPLAY` 且未装 Xvfb，`scripts/playable-gate.sh live` 直接 exit 2。
-  有显示环境时：`BBB_PLAYABLE_SERVER_JAR=~/Work/mc-code/downloads/26.1/server-26.1.jar`
-  `BBB_PLAYABLE_ACCEPT_EULA=1`
-  `BBB_PLAYABLE_JAVA=~/Work/mc-code/downloads/java/jdk-25.0.3+9-jre/bin/java`。
-- 安全停止点：该 gate 通过并刷新 `.git/bbb/last-playable-live` 后即可删除本节，
-  并往 `docs/goal-archive.md` 补一行关闭记录。
-
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
