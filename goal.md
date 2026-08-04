@@ -433,6 +433,31 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
+### Active 工程合同：interaction prediction-sequence closure
+
+目标：关闭 `interaction-prediction-sequence` 的唯一 26.1 owner，使 block breaking、block use-on 与
+item use 共用一条 sequence allocation→predictive mutation→matching packet→ack/correction 生命周期；
+已复现差异是 BBB 将该状态放在 `LocalPlayer`、MAX 后回到 1，并允许 use 路径在 command admission
+失败前推进 sequence/本地状态。
+
+权威与 owner：本地 `MultiPlayerGameMode.startPrediction` 与 `BlockStatePredictionHandler`；
+`bbb-world` 的 level-bound block prediction store 唯一拥有 signed i32 sequence、last-teleport sequence
+及 retained positions，native 只在持有 bounded net permit 后编排预测并发送，net 只编码。顺序固定为
+reserve permit→wrapping increment exactly once→world prediction→permit send→close；ack inclusive 清理 `<=`
+sequence，同位置只更新 sequence，teleport gate 仅在 `lastTeleportSequence < ack` 时应用 player position。
+
+生命周期：同维度 respawn 保留 ClientLevel handler；dimension/client-level/session replacement 原子清空
+sequence、teleport gate 与 retained predictions。full/closed/absent command queue 不得改变 sequence、world、
+effects 或 retained bytes。阶段：A 迁移 level owner 并锁定 wrap/ack/respawn；B 给 use-on/use 建立
+reserve/predict/send commit barrier，迁移全部生产调用者并删除旧 queue route；C 补 source guard、owner
+evidence、Wiki/matrix/ledger；D review/提交/full gate，并因输入行为边界变化刷新 fixture/live playable。
+
+Focused：0→1 与 MAX→MIN；use-on/use success ordering 和 full/closed/absent no-op；ack inclusive signed
+ordering、重复位置、teleport gate；same-dimension respawn retain、dimension/login replacement reset；预算/
+retained counters；旧非原子 resolver 生产调用点为零。非目标：不扩展 item/entity/container 语义，不改
+renderer/audio。合同与最终 checkpoint full gate；安全停止点仅为干净 full-gated vertical path，blocker
+仅限外部 server 无法提供可复现 use acceptance 且本地 fixture 已证明语义。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
