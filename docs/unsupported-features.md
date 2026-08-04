@@ -41,9 +41,23 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 
 Owner: workspace production crates; census evidence owned by `scripts/docs_wiki_lint.py`
 
-Matrix route: `world-client-level-decisions`
+Matrix route: `coverage-external-client-census`
 
 <!-- architecture-candidates:start -->
+- **`arch-vanilla-evidence-layout` is `active`.**
+  - Semantic mechanism: one canonical location and closed member set for Vanilla 26.1 generated coverage/inventory evidence.
+  - Canonical input: the five checked JSON artifacts currently under `docs/` plus their existing generator schemas and exact-output contracts.
+  - Owners: `scripts/docs_wiki_lint.py`, `scripts/generate-client-mechanism-inventory.py`, and the four coverage generators currently repeat root-level output paths.
+  - Production callers: `scripts/coverage-status.py`, `scripts/docs-lint.sh`, and `crates/bbb-protocol/src/packet_coverage.rs` read the scattered paths.
+  - Direction: Vanilla/source inventory generators publish immutable evidence, then protocol/tools/docs consume canonical paths.
+  - Lifetime: checked artifacts are version-scoped and replaced only by their existing generator/check workflow.
+  - Ordering/fallback/rollback: preserve all schemas, statuses, stable ordering and exact-output failure semantics; a failed migration keeps the previous complete committed layout.
+  - Public API: generator CLI arguments and Rust coverage query APIs remain unchanged; only default/repo-local evidence paths move.
+  - Delete: all five root-level `docs/*.json` locations, repeated legacy references, and any compatibility shadow path.
+  - Evidence: `scripts/tests/test_docs_lint.py`, `scripts/tests/test_coverage_status.py`, and generator exact-output checks.
+  - Risk/benefit/rank: drift medium; behavior low; deletion/API clarity high; rank 1/1.
+  - Goal route: `architecture-convergence`; `coverage-external-client-census`.
+  - Reopen condition: reopen if a generated Vanilla evidence file or production reader returns outside the canonical version directory.
 <!-- architecture-candidates:end -->
 ## ClientLevel world and effect decision surface
 
