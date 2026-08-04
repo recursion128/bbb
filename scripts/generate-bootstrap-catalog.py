@@ -117,7 +117,8 @@ DEFAULT_REGISTRY_HOLDER_CONSUMERS_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/registry_holder_consumers.rs"
 )
 DEFAULT_REGISTRY_HOLDER_COVERAGE_OUTPUT = (
-    REPO_ROOT / "docs/registry-holder-consumer-coverage-26.1.json"
+    REPO_ROOT
+    / "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
 )
 DEFAULT_REGISTRY_HOLDER_COVERAGE_OVERRIDES = (
     REPO_ROOT / "scripts/data/registry-holder-consumer-coverage-26.1.json"

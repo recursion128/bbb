@@ -22,7 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG = REPO_ROOT / "crates/bbb-protocol/src/entity_types.rs"
 DEFAULT_OVERRIDES = REPO_ROOT / "scripts/data/entity-coverage-overrides-26.1.json"
-DEFAULT_OUTPUT = REPO_ROOT / "docs/entity-coverage-26.1.json"
+DEFAULT_OUTPUT = REPO_ROOT / "docs/evidence/vanilla-26.1/entity-coverage.json"
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 
 CELL_CATEGORIES = (

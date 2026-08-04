@@ -17,15 +17,15 @@ SPEC.loader.exec_module(coverage_status)
 
 class CoverageStatusTests(unittest.TestCase):
     def write_ledger(self, root: Path, name: str, entries: list[dict]) -> None:
-        (root / "docs" / name).write_text(
+        (root / "docs" / "evidence" / "vanilla-26.1" / name).write_text(
             json.dumps({"entries": entries}), encoding="utf-8"
         )
 
     def make_repo_root(self, root: Path) -> Path:
-        (root / "docs").mkdir()
+        (root / "docs" / "evidence" / "vanilla-26.1").mkdir(parents=True)
         self.write_ledger(
             root,
-            "packet-coverage-26.1.json",
+            "packet-coverage.json",
             [
                 {
                     "resource_id": "minecraft:closed",
@@ -49,7 +49,7 @@ class CoverageStatusTests(unittest.TestCase):
         )
         self.write_ledger(
             root,
-            "registry-holder-consumer-coverage-26.1.json",
+            "registry-holder-consumer-coverage.json",
             [
                 {"constant_name": "FLAT_CLOSED", "status": "complete"},
                 {"constant_name": "FLAT_ALSO_CLOSED", "status": "not-applicable"},
@@ -57,12 +57,12 @@ class CoverageStatusTests(unittest.TestCase):
         )
         self.write_ledger(
             root,
-            "item-component-coverage-26.1.json",
+            "item-component-coverage.json",
             [{"resource_id": "minecraft:no_status_fields"}],
         )
         self.write_ledger(
             root,
-            "entity-coverage-26.1.json",
+            "entity-coverage.json",
             [{"resource_id": "minecraft:pig", "coverage": {"status": "complete"}}],
         )
         (root / "docs" / "unsupported-features.md").write_text(
@@ -107,7 +107,7 @@ class CoverageStatusTests(unittest.TestCase):
             output = self.run_main(self.make_repo_root(Path(directory)))
 
         self.assertIn(
-            "packet-coverage-26.1.json: 3 rows | closed 1 | deferred 1 | open 1",
+            "packet-coverage.json: 3 rows | closed 1 | deferred 1 | open 1",
             output,
         )
         self.assertIn(
@@ -117,7 +117,7 @@ class CoverageStatusTests(unittest.TestCase):
         self.assertNotIn("minecraft:closed:", output)
         self.assertNotIn("minecraft:deferred:", output)
         self.assertIn(
-            "registry-holder-consumer-coverage-26.1.json: 2 rows"
+            "registry-holder-consumer-coverage.json: 2 rows"
             " | closed 2 | deferred 0 | open 0 (no open rows)",
             output,
         )

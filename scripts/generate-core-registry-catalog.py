@@ -50,7 +50,7 @@ DEFAULT_DATA_COMPONENT_TYPES_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/data_component_types.rs"
 )
 DEFAULT_ITEM_COMPONENT_COVERAGE_OUTPUT = (
-    REPO_ROOT / "docs/item-component-coverage-26.1.json"
+    REPO_ROOT / "docs/evidence/vanilla-26.1/item-component-coverage.json"
 )
 DEFAULT_ITEM_COMPONENT_COVERAGE_OVERRIDES = (
     REPO_ROOT / "scripts/data/item-component-coverage-overrides-26.1.json"

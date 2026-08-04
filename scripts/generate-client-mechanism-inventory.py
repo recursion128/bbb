@@ -13,7 +13,9 @@ from client_mechanism_inventory import render_inventory
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
-DEFAULT_OUTPUT = REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+DEFAULT_OUTPUT = (
+    REPO_ROOT / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+)
 
 
 def parse_args() -> argparse.Namespace:

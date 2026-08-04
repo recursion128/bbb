@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 const VANILLA_REGISTRY_HOLDER_COVERAGE_26_1: &str =
-    include_str!("../../../docs/registry-holder-consumer-coverage-26.1.json");
+    include_str!("../../../docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

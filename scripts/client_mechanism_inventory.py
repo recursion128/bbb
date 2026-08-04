@@ -1509,13 +1509,20 @@ MECHANISM_EVIDENCE = {
         "docs/unsupported-features.md",
     ),
     "resources-server-pack-lifecycle": ("crates/bbb-pack/src/server_pack.rs",),
-    "protocol-packet-tables": ("docs/packet-coverage-26.1.json",),
-    "protocol-listener-contracts": ("docs/packet-coverage-26.1.json",),
+    "protocol-packet-tables": ("docs/evidence/vanilla-26.1/packet-coverage.json",),
+    "protocol-listener-contracts": ("docs/evidence/vanilla-26.1/packet-coverage.json",),
     "protocol-login-handler-decisions": ("crates/bbb-net/src/event_stream.rs",),
     "protocol-configuration-handler-decisions": ("crates/bbb-net/src/event_stream.rs",),
-    "protocol-play-handler-decisions": ("crates/bbb-world/src/play_apply.rs", "docs/packet-coverage-26.1.json"),
-    "registries-built-in-catalogs": ("docs/registry-holder-consumer-coverage-26.1.json",),
-    "registries-synchronized-data": ("docs/registry-holder-consumer-coverage-26.1.json",),
+    "protocol-play-handler-decisions": (
+        "crates/bbb-world/src/play_apply.rs",
+        "docs/evidence/vanilla-26.1/packet-coverage.json",
+    ),
+    "registries-built-in-catalogs": (
+        "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json",
+    ),
+    "registries-synchronized-data": (
+        "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json",
+    ),
     "world-client-level-decisions": ("crates/bbb-world/src/lib.rs",),
     "player-local-session-respawn": (
         "crates/bbb-native/src/input/death_screen.rs",
@@ -1599,9 +1606,13 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/input/mouse.rs",
     ),
     "interaction-primary-action-routing": ("crates/bbb-native/src/input/mouse.rs",),
-    "entities-fixed-type-surface": ("docs/entity-coverage-26.1.json",),
-    "rendering-entity-renderer-registration": ("docs/entity-coverage-26.1.json",),
-    "rendering-entity-layer-registration": ("docs/entity-coverage-26.1.json",),
+    "entities-fixed-type-surface": ("docs/evidence/vanilla-26.1/entity-coverage.json",),
+    "rendering-entity-renderer-registration": (
+        "docs/evidence/vanilla-26.1/entity-coverage.json",
+    ),
+    "rendering-entity-layer-registration": (
+        "docs/evidence/vanilla-26.1/entity-coverage.json",
+    ),
     "rendering-block-entity-registration": ("crates/bbb-native/src/block_entity_visibility.rs",),
     "rendering-particle-provider-registration": ("crates/bbb-native/src/particle_runtime.rs",),
     "ui-menu-screen-registration": ("crates/bbb-native/src/input/inventory.rs",),
@@ -1643,7 +1654,10 @@ MECHANISM_EVIDENCE = {
     "input-mouse-routing": ("crates/bbb-native/src/input/mouse.rs",),
     "input-key-mapping": ("crates/bbb-native/src/input.rs",),
     "platform-window-lifecycle": ("crates/bbb-native/src/platform.rs",),
-    "protocol-serverbound-call-sites": ("crates/bbb-net/src/event_stream.rs", "docs/packet-coverage-26.1.json"),
+    "protocol-serverbound-call-sites": (
+        "crates/bbb-net/src/event_stream.rs",
+        "docs/evidence/vanilla-26.1/packet-coverage.json",
+    ),
     "ui-chat-screen-surface": (
         "crates/bbb-native/src/input.rs",
         "crates/bbb-native/src/runtime/render_extract.rs",

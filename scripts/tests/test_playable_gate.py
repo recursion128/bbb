@@ -983,9 +983,10 @@ class PlayableGateLifecycleTests(unittest.TestCase):
 class PlayableGateTimelineTests(unittest.TestCase):
     def _packet_ledger(self):
         return json.loads(
-            (REPO_ROOT / "docs" / "packet-coverage-26.1.json").read_text(
-                encoding="utf-8"
-            )
+            (
+                REPO_ROOT
+                / "docs/evidence/vanilla-26.1/packet-coverage.json"
+            ).read_text(encoding="utf-8")
         )
 
     def test_packet_trace_uses_catalog_ids_and_preserves_phase_order(self):

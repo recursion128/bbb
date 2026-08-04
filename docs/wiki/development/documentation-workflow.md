@@ -42,12 +42,16 @@ Wiki 入口、相对链接、孤儿页、唯一 mechanism id、合法状态、�
 inventory 覆盖、repo-local path、允许的 `docs/` Markdown 布局、陈旧完成语言和中文正文。
 
 外部客户端 census 的唯一生成 evidence 是
-`docs/vanilla-client-mechanism-inventory-26.1.json`。它不保存状态或任务，只保存共享
+`docs/evidence/vanilla-26.1/client-mechanism-inventory.json`。它不保存状态或任务，只保存共享
 Tree-sitter Java frontend 提取的稳定 owner id、源码位置/哈希、mechanism 映射和可定位 BBB
 evidence。`scripts/generate-client-mechanism-inventory.py --check` 对完整输出做字节级 stale
 检查；Wiki lint 还独立检查 owner/mechanism 唯一性、稳定排序、汇总计数、BBB 路径、
 inventory→matrix 映射和 ledger↔matrix 双向 route。矩阵的 `equivalent` 行必须通过该
 inventory 或本地链接/路径指向可执行、可定位证据，不能只写“已有测试”。
+
+该 inventory 与 packet、registry-holder、item-component、entity 四份 coverage JSON 共同组成
+`docs/evidence/vanilla-26.1/` 的封闭版本集合。docs lint 拒绝缺失/额外成员、`docs/` 根级 JSON
+及旧路径引用；generator、Rust consumer、gate 与 Wiki 只能读取这一目录，不保留兼容副本。
 
 本地 Vanilla tree 存在时，门禁重跑 extractor 并校验全部 source hashes；不存在时明确
 打印 exact-output/source-hash 降级，但仍检查版本化 JSON 的 schema、generator-input hash、

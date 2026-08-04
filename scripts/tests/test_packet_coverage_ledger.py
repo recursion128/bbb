@@ -87,7 +87,10 @@ class PacketCoverageLedgerTests(unittest.TestCase):
 
     def test_checked_in_fixed_matrix_has_no_partial_or_deferred_cells(self) -> None:
         ledger = json.loads(
-            (SCRIPTS.parent / "docs" / "packet-coverage-26.1.json").read_text()
+            (
+                SCRIPTS.parent
+                / "docs/evidence/vanilla-26.1/packet-coverage.json"
+            ).read_text()
         )
         self.assertEqual(
             [

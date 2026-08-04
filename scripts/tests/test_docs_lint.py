@@ -87,6 +87,8 @@ class DocsLintTests(unittest.TestCase):
         repo = root / "repo"
         (repo / "docs" / "wiki" / "parity").mkdir(parents=True)
         (repo / "docs" / "wiki" / "development").mkdir(parents=True)
+        evidence = repo / "docs" / "evidence" / "vanilla-26.1"
+        evidence.mkdir(parents=True)
         (repo / "goal.md").write_text(
             "# Goal\n\n" + ROADMAP_STATUSES,
             encoding="utf-8",
@@ -151,7 +153,7 @@ Matrix routes: `fixture-not-needed`
             encoding="utf-8",
         )
         glossary = repo / "docs" / "wiki" / "glossary.md"
-        (repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json").write_text(
+        (evidence / "client-mechanism-inventory.json").write_text(
             json.dumps(
                 {
                     "generated_by": "fixture",
@@ -200,6 +202,13 @@ Matrix routes: `fixture-not-needed`
             + "\n",
             encoding="utf-8",
         )
+        for name in (
+            "entity-coverage.json",
+            "item-component-coverage.json",
+            "packet-coverage.json",
+            "registry-holder-consumer-coverage.json",
+        ):
+            (evidence / name).write_text("{}\n", encoding="utf-8")
         self.sync_inventory(repo)
         return repo
 
@@ -504,6 +513,51 @@ Matrix route: `fixture-valid`
                 "historical Markdown outside the Wiki/flow allowlist", result.stdout
             )
 
+    def test_vanilla_evidence_missing_member_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "docs/evidence/vanilla-26.1/entity-coverage.json").unlink()
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Vanilla evidence directory missing members", result.stdout)
+
+    def test_vanilla_evidence_unexpected_member_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "docs/evidence/vanilla-26.1/extra.json").write_text(
+                "{}\n", encoding="utf-8"
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Vanilla evidence directory has unexpected members", result.stdout)
+
+    def test_root_level_docs_json_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "docs/root.json").write_text("{}\n", encoding="utf-8")
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("root-level docs JSON is not allowed", result.stdout)
+
+    def test_legacy_vanilla_evidence_reference_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            legacy = "docs/" + "packet-coverage-26.1.json"
+            goal = repo / "goal.md"
+            goal.write_text(
+                goal.read_text(encoding="utf-8") + f"\nLegacy: {legacy}\n",
+                encoding="utf-8",
+            )
+            result = self.run_lint(repo)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(
+            "legacy Vanilla evidence references are not allowed", result.stdout
+        )
+
     def test_duplicate_mechanism_id_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
@@ -569,7 +623,7 @@ Matrix route: `fixture-valid`
     def test_inventory_owner_without_mapping_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["owners"][0]["mechanism_id"] = "fixture-unmapped"
             path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -581,7 +635,7 @@ Matrix route: `fixture-valid`
     def test_inventory_mechanism_without_matrix_row_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["mechanisms"]["fixture-unmapped"] = {
                 "bbb_evidence": ["docs/wiki/glossary.md"],
@@ -596,7 +650,7 @@ Matrix route: `fixture-valid`
     def test_duplicate_inventory_owner_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["owners"].append(dict(value["owners"][0]))
             path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -608,7 +662,7 @@ Matrix route: `fixture-valid`
     def test_invalid_inventory_owner_role_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["owners"][0]["role"] = "looks-covered"
             path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -642,7 +696,7 @@ Matrix route: `fixture-valid`
     def test_stale_bbb_evidence_path_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["mechanisms"]["fixture-valid"]["bbb_evidence"] = ["crates/missing.rs"]
             path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -654,7 +708,7 @@ Matrix route: `fixture-valid`
     def test_stale_bbb_evidence_symbol_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["mechanisms"]["fixture-valid"]["bbb_evidence"] = [
                 "docs/wiki/glossary.md#missing_fixture_symbol"
@@ -668,7 +722,7 @@ Matrix route: `fixture-valid`
     def test_declared_owner_evidence_mechanism_without_owner_cells_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["selection_contract"]["owner_evidence_mechanisms"] = [
                 "fixture-valid"
@@ -683,7 +737,7 @@ Matrix route: `fixture-valid`
     def test_stale_per_owner_evidence_symbol_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = self.make_repo(Path(directory))
-            path = repo / "docs" / "vanilla-client-mechanism-inventory-26.1.json"
+            path = repo / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
             value = json.loads(path.read_text(encoding="utf-8"))
             value["selection_contract"]["owner_evidence_mechanisms"] = [
                 "fixture-valid"

@@ -234,7 +234,7 @@ fi
 # explicitly.
 vanilla_source_root=${BBB_DOCS_LINT_VANILLA_SOURCE_ROOT:-${HOME}/Work/mc-code/sources/26.1}
 client_inventory_generator="$repo_root/scripts/generate-client-mechanism-inventory.py"
-client_inventory_output="$repo_root/docs/vanilla-client-mechanism-inventory-26.1.json"
+client_inventory_output="$repo_root/docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
 if [ -d "$vanilla_source_root" ] && [ -f "$client_inventory_generator" ]; then
   if ! "$repo_root/scripts/vanilla-source-tools.sh" \
     "$client_inventory_generator" \

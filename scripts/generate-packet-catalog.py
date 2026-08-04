@@ -23,7 +23,9 @@ from vanilla_java_source import parse_source
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/packet_catalog.rs"
-DEFAULT_COVERAGE_OUTPUT = REPO_ROOT / "docs/packet-coverage-26.1.json"
+DEFAULT_COVERAGE_OUTPUT = (
+    REPO_ROOT / "docs/evidence/vanilla-26.1/packet-coverage.json"
+)
 DEFAULT_COVERAGE_OVERRIDES = (
     REPO_ROOT / "scripts/data/packet-coverage-overrides-26.1.json"
 )

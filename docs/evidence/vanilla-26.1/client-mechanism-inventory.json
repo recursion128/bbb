@@ -3,11 +3,11 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "58db72d1a3e7a9c5d0f59c7221cf53d49a278c5a1a7f8af941e709348f197f33"
+      "sha256": "f5d8d8602b0dbe214beeda43292391f6fd40f8a0da9fc41b4a9617e50efcd3eb"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
-      "sha256": "5c8b5eade40c6d9ad4ef4474469843477cc4c3f177d7ade41030c31b1064088b"
+      "sha256": "998b56be3a0b1b7a78cd92a2fd7af0d6729d7acbee3c0d5dd3d6c9d78eb91531"
     },
     {
       "path": "scripts/packet_catalog_extractor.py",
@@ -39,7 +39,7 @@
     },
     "entities-fixed-type-surface": {
       "bbb_evidence": [
-        "docs/entity-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "owner_count": 157
     },
@@ -288,7 +288,7 @@
     },
     "protocol-listener-contracts": {
       "bbb_evidence": [
-        "docs/packet-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/packet-coverage.json"
       ],
       "owner_count": 155
     },
@@ -300,33 +300,33 @@
     },
     "protocol-packet-tables": {
       "bbb_evidence": [
-        "docs/packet-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/packet-coverage.json"
       ],
       "owner_count": 256
     },
     "protocol-play-handler-decisions": {
       "bbb_evidence": [
         "crates/bbb-world/src/play_apply.rs",
-        "docs/packet-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/packet-coverage.json"
       ],
       "owner_count": 238
     },
     "protocol-serverbound-call-sites": {
       "bbb_evidence": [
         "crates/bbb-net/src/event_stream.rs",
-        "docs/packet-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/packet-coverage.json"
       ],
       "owner_count": 67
     },
     "registries-built-in-catalogs": {
       "bbb_evidence": [
-        "docs/registry-holder-consumer-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "owner_count": 95
     },
     "registries-synchronized-data": {
       "bbb_evidence": [
-        "docs/registry-holder-consumer-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json"
       ],
       "owner_count": 28
     },
@@ -338,13 +338,13 @@
     },
     "rendering-entity-layer-registration": {
       "bbb_evidence": [
-        "docs/entity-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "owner_count": 90
     },
     "rendering-entity-renderer-registration": {
       "bbb_evidence": [
-        "docs/entity-coverage-26.1.json"
+        "docs/evidence/vanilla-26.1/entity-coverage.json"
       ],
       "owner_count": 155
     },

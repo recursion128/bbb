@@ -92,9 +92,9 @@
   replacement、reload recovery、panic/join 与终态 diagnostics 经 full/live/三轮 soak 收口。
 - **2026-08-03（LevelRenderer 七机制 closure）**：77 个 owner 的 backend/section/frame/scene/effect/
   diagnostics/light 以 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
-- **2026-08-03（LocalPlayer/game-mode decision census）**：149 个 owner 拆为 23 条同质决策 route
-  与 18 条直接 accessor，unknown/side-effect support/stale output 均 fail closed。
-- **2026-08-03（interaction prediction lifecycle closure）**：block-breaking 六 owner 与
-  `startPrediction` 统一到 level-bound world handler、signed sequence/ack 和 native atomic command barrier。
+- **2026-08-03（LocalPlayer/game-mode census 与首批交互 closure）**：149 owner 拆为 23 条同质 route；
+  block-breaking 与 prediction 统一到 level-bound handler、signed ack 和 atomic command barrier。
+- **2026-08-03（generated evidence layout convergence）**：五份 26.1 coverage/inventory JSON 收敛到
+  `docs/evidence/vanilla-26.1/` 封闭集合，并以 exact-member、root/legacy reverse guard 防漂移。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

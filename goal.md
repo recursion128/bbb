@@ -81,7 +81,7 @@ non-goals 不因进入维护态而自动转成 TODO。
 - server 已下发的 dynamic registry 是该 session 的唯一权威顺序/内容来源；固定
   catalog 只负责 clean/offline fallback 与 built-in registry，fallback 启用须
   记录来源。新增 Holder/HolderSet 消费点接 resolver 并在同一 slice 登记进
-  `docs/registry-holder-consumer-coverage-26.1.json`；不得重建独立 resource
+  `docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json`；不得重建独立 resource
   数组、生产裸 holder id 或绕开 resolver 的下标查询。
 - 实体热路径（spawn/apply/clone）只写窄组件；`EntityState` 投影仅限
   probe/serialize/debug 边界。
@@ -421,7 +421,7 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p2-hud: active
 - p3-resources: active
 - p4-delivery: active
-- architecture-convergence: active
+- architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
 有 active 项时仍按 hardest-ready-first；难度相当才按 P1→P2→P3→P4 owner 顺序
@@ -430,30 +430,8 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 
 ### 架构收敛与防漂移
 
-状态：`active`。当前唯一工程合同是 `arch-vanilla-evidence-layout`：把五份 Vanilla 26.1
-generated coverage/inventory JSON 从 `docs/` 根目录收敛到唯一版本化 evidence 目录，并删除散落的
-旧路径 owner；不改变 schema、coverage 状态、生成输入语义或产品行为。
-
-- 唯一 owner 与方向：`docs/evidence/vanilla-26.1/` 拥有完整、封闭的五文件集合；各 generator 只发布
-  对应不可变 JSON，protocol/tools/docs 只读取 canonical path，不再各自定义替代目录或副本。
-- 生命周期与 rollback：生成器仍以现有 exact-output/check 语义发布单文件；本次迁移必须一次切换全部
-  production caller。任何检查失败都保留上一完整已提交布局，不允许长期 compatibility shadow path。
-- 删除目标与 API：删除五个 `docs/*.json` 旧位置及其所有生产引用；公开 schema、命令参数和 Rust
-  coverage query API 保持不变，默认输出路径统一指向 canonical evidence 目录。
-- Phase A：机械枚举文件、generator、Rust include、gate、Wiki、fixture 与 inventory 内嵌 evidence 引用，
-  冻结 exact member set 和旧路径集合；不得修改 production behavior。
-- Phase B：移动五份 artifact，迁移全部调用者并重新生成 client mechanism inventory，证明 coverage/status
-  数量与 JSON 语义除路径/自哈希外不变。
-- Phase C：docs lint 增加 exact member、根级 JSON、额外/缺失成员和 legacy reference reverse guard；fixtures
-  覆盖合法、遗漏、额外成员、根级回退、旧路径引用与 stale output。
-- 非目标：不改 extractor/parser、coverage 判定、矩阵状态、运行时 resolver 或任何 Vanilla 产品机制；
-  不新建 Markdown evidence/backlog、manifest 副本或兼容 symlink。
-- 验收：相关 Python fixtures、三个 protocol ledger consumers、全部 generator `--check`、coverage status、
-  docs lint、fmt、diff check、非测试 workspace check 与完整 diff review；行为不变，不刷新 playable/live。
-- checkpoint/full gate：合同提交先 full-gate；迁移作为生成 evidence owner 高风险 checkpoint，完成提交后再次
-  `scripts/cargo-dev.sh gate`，最终 `HEAD == .git/bbb/last-gated`。
-- 安全停止点：只允许旧布局完整存在的合同提交，或新布局全部调用者已切换且 full-gated 的干净提交；
-  不允许五份 evidence 分处两套目录。blocker 只接受可复现的 repo 外生成工具/文件系统故障。
+状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
+重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
 ### P1：可玩 Session 端到端门禁
 

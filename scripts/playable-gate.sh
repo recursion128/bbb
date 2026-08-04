@@ -467,7 +467,7 @@ if ! run_python collect-live \
   --server-log "$server_log" \
   --transfer-server-log "$transfer_server_log" \
   --transfer-server-port "$transfer_server_port" \
-  --packet-ledger "$repo_root/docs/packet-coverage-26.1.json" \
+  --packet-ledger "$repo_root/docs/evidence/vanilla-26.1/packet-coverage.json" \
   --protocol-source "$repo_root/crates/bbb-protocol/src/lib.rs" \
   --output "$evidence_json" \
   --timeout "$timeout_seconds" \

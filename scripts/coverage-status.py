@@ -18,10 +18,10 @@ import json
 from pathlib import Path
 
 LEDGERS = (
-    "docs/packet-coverage-26.1.json",
-    "docs/registry-holder-consumer-coverage-26.1.json",
-    "docs/item-component-coverage-26.1.json",
-    "docs/entity-coverage-26.1.json",
+    "docs/evidence/vanilla-26.1/packet-coverage.json",
+    "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json",
+    "docs/evidence/vanilla-26.1/item-component-coverage.json",
+    "docs/evidence/vanilla-26.1/entity-coverage.json",
 )
 FEATURE_LEDGER = "docs/unsupported-features.md"
 CLOSED_STATUSES = frozenset({"complete", "not-applicable", "not-needed"})

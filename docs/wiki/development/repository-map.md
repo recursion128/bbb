@@ -21,7 +21,7 @@ renderer 状态；跨 crate API 表达语义，不为拆文件暴露 broad `pub`
 ## 工具与生成事实
 
 `scripts/` 保存 source audit、coverage、benchmark、门禁和文档 lint；
-`scripts/fixtures/` 保存小型、可评审且无网络的 fixture。`docs/*.json` 保存 26.1
+`scripts/fixtures/` 保存小型、可评审且无网络的 fixture。`docs/evidence/vanilla-26.1/*.json` 保存 26.1
 coverage/generated catalog，不保存外部 jar/assets/capture。`tests/` 和各 crate 内
 `#[cfg(test)]` 按 owner 放置 focused tests。
 

@@ -12,7 +12,7 @@
 | 未关闭功能缺口 | [`unsupported-features.md`](unsupported-features.md) |
 | 完成 milestone 索引 | [`goal-archive.md`](goal-archive.md) 与 Git history |
 | 长期架构、机制和验证方法 | [Wiki](wiki/README.md) |
-| 版本化生成事实 | 同目录 `packet-coverage-26.1.json`、`registry-holder-consumer-coverage-26.1.json`、`item-component-coverage-26.1.json`、`entity-coverage-26.1.json` 与其代码生成 owner |
+| 版本化生成事实 | [`evidence/vanilla-26.1/`](evidence/vanilla-26.1/) 中封闭的五份 coverage/inventory JSON 与其代码生成 owner |
 
 Wiki 的 parity matrix 是审计入口，不是另一份调度 ledger。机制尚未关闭时，矩阵只
 链接上述权威状态文件。

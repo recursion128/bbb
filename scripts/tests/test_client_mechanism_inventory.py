@@ -77,7 +77,10 @@ public class Owner {
         )
 
     def test_minecraft_method_partition_is_total_and_homogeneous(self) -> None:
-        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
         value = json.loads(generated.read_text(encoding="utf-8"))
         methods = [
             owner
@@ -102,7 +105,10 @@ public class Owner {
         )
 
     def test_local_player_and_game_mode_partition_is_total_and_homogeneous(self) -> None:
-        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
         value = json.loads(generated.read_text(encoding="utf-8"))
         selected_paths = {
             "net/minecraft/client/player/LocalPlayer.java": 104,
@@ -302,7 +308,10 @@ class LocalPlayer {
                 )
 
     def test_level_renderer_method_partition_is_total_and_homogeneous(self) -> None:
-        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
         value = json.loads(generated.read_text(encoding="utf-8"))
         methods = [
             owner
@@ -695,7 +704,10 @@ class LocalPlayer {
         self.assertEqual(set(surfaces), set(expected_by_source))
         self.assertNotIn("ui-multiplayer-screen-surface", inventory.MECHANISM_EVIDENCE)
 
-        generated = inventory.REPO_ROOT / "docs/vanilla-client-mechanism-inventory-26.1.json"
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
         value = json.loads(generated.read_text(encoding="utf-8"))
         for source_path, (mechanism_id, owner_count) in expected_by_source.items():
             self.assertEqual(surfaces[source_path].mechanism_id, mechanism_id)

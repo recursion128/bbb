@@ -54,6 +54,27 @@ ARCHITECTURE_REQUIRED_FIELDS = (
     "Goal route",
     "Reopen condition",
 )
+VANILLA_EVIDENCE_DIR = Path("docs/evidence/vanilla-26.1")
+VANILLA_EVIDENCE_MEMBERS = frozenset(
+    {
+        "client-mechanism-inventory.json",
+        "entity-coverage.json",
+        "item-component-coverage.json",
+        "packet-coverage.json",
+        "registry-holder-consumer-coverage.json",
+    }
+)
+LEGACY_VANILLA_EVIDENCE_NAMES = (
+    "entity-coverage-26.1.json",
+    "item-component-coverage-26.1.json",
+    "packet-coverage-26.1.json",
+    "registry-holder-consumer-coverage-26.1.json",
+    "vanilla-client-mechanism-inventory-26.1.json",
+)
+LEGACY_VANILLA_EVIDENCE_PATHS = tuple(
+    f"docs/{name}" for name in LEGACY_VANILLA_EVIDENCE_NAMES
+)
+REPO_TEXT_SUFFIXES = frozenset({".json", ".md", ".py", ".rs", ".sh", ".toml"})
 
 
 class WikiLint:
@@ -420,7 +441,7 @@ class WikiLint:
     def check_client_mechanism_inventory(
         self, rows: dict[str, dict[str, str]]
     ) -> str:
-        relative = Path("docs/vanilla-client-mechanism-inventory-26.1.json")
+        relative = VANILLA_EVIDENCE_DIR / "client-mechanism-inventory.json"
         path = self.repo / relative
         if not path.is_file():
             self.fail(f"client mechanism inventory missing: {relative}")
@@ -744,6 +765,55 @@ class WikiLint:
             f"unmapped 0, {source_message}"
         )
 
+    def check_vanilla_evidence_layout(self) -> None:
+        directory = self.repo / VANILLA_EVIDENCE_DIR
+        actual = (
+            {path.name for path in directory.iterdir() if path.is_file()}
+            if directory.is_dir()
+            else set()
+        )
+        missing = sorted(VANILLA_EVIDENCE_MEMBERS - actual)
+        extra = sorted(actual - VANILLA_EVIDENCE_MEMBERS)
+        if missing:
+            self.fail(
+                "Vanilla evidence directory missing members: " + ", ".join(missing)
+            )
+        if extra:
+            self.fail(
+                "Vanilla evidence directory has unexpected members: "
+                + ", ".join(extra)
+            )
+
+        root_json = sorted(
+            path.relative_to(self.repo).as_posix()
+            for path in (self.repo / "docs").glob("*.json")
+        )
+        if root_json:
+            self.fail("root-level docs JSON is not allowed: " + ", ".join(root_json))
+
+        roots = [self.repo / "goal.md"]
+        for relative in ("crates", "docs", "scripts"):
+            root = self.repo / relative
+            if root.is_dir():
+                roots.extend(
+                    path
+                    for path in root.rglob("*")
+                    if path.is_file() and path.suffix in REPO_TEXT_SUFFIXES
+                )
+        legacy_references: list[str] = []
+        for path in roots:
+            text = path.read_text(encoding="utf-8")
+            for legacy in LEGACY_VANILLA_EVIDENCE_PATHS:
+                if legacy in text:
+                    legacy_references.append(
+                        f"{path.relative_to(self.repo).as_posix()} -> {legacy}"
+                    )
+        if legacy_references:
+            self.fail(
+                "legacy Vanilla evidence references are not allowed: "
+                + ", ".join(sorted(legacy_references))
+            )
+
     def check_reload_listener_projections(
         self, owners: list[object], mechanisms: dict[str, object]
     ) -> None:
@@ -907,6 +977,7 @@ class WikiLint:
         self.check_mechanisms(wiki)
         parity_rows = self.check_parity()
         self.check_architecture_candidates(parity_rows)
+        self.check_vanilla_evidence_layout()
         client_inventory_message = self.check_client_mechanism_inventory(parity_rows)
         self.check_inventory(all_markdown)
         self.check_repo_paths(wiki)
