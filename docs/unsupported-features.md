@@ -58,9 +58,12 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
-  queries the renderer's off-screen policy once, updates the generation-local global
-  membership and drops stale membership at the exact removal/replacement boundary.
+- **`rendering-client-block-entity-tracking` (1 owner).** Verify the off-screen
+  policy convergence: none of the natively submitted block-entity models is a
+  vanilla off-screen renderer, so the global membership is honestly empty and
+  the single policy point is the visibility module's section gate plus
+  per-renderer view distances; reopen the route the moment any off-screen
+  renderer model ships.
 
 ## Local-player and multiplayer game-mode decisions
 
