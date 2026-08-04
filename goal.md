@@ -456,6 +456,25 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer camera-targeting
+
+- 目标与 owner：闭合 `player-local-camera-targeting` 9 个 owner（pick(partial)、
+  pick(entity,ranges,partial)、filterHitResult、raycastHitResult、getViewXRot、
+  getViewYRot、getVisualRotationYInDegrees、isControlledCamera、
+  getRopeHoldPosition）。
+- 审计事实：crosshair.rs 单一 resolver 已拥有 block/entity 双 range pick、
+  fluid 过滤、pickable 判定与 range-miss 回退（35 focused tests）；leash.rs
+  `rope_hold_position` 已转写第一人称/第三人称 rope 起点；view-rot 插值与
+  controlled-camera 判定需在 close 时核对 camera pose/spectator 链锚点，
+  发现真缺口按既有模式补齐后注册。
+- focused evidence：census 9-owner OwnerEvidence（每 owner impl+test 锚点）+
+  scripts/tests 断言块（local-player 分区测试）。
+- 非目标：不动 use/attack 交互语义（已闭）；不新建第二条 raycast 路径；发现
+  其他 route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 9-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
