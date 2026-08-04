@@ -455,6 +455,26 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel particle-routing
+
+- 目标与 owner：闭合 `ClientLevel` particle-routing 6 个 owner（addParticle×2、
+  addAlwaysVisibleParticle×2、doAddParticle、calculateParticleLevel）；粒子准入决策由
+  particle runtime 的单一 gate 唯一拥有，environment/packet/firework 路径共用。
+- Vanilla 语义：四个变体合成 override=type.overrideLimiter||flag 与 alwaysShow；
+  doAddParticle 按 override→无条件、距 camera >1024 sqr 丢弃、particleLevel==MINIMAL 拒绝
+  的顺序准入；calculateParticleLevel 从 options.particles 起始，alwaysShow&&MINIMAL 有
+  1/10 升 DECREASED，DECREASED 有 1/3 降 MINIMAL（共享 random 链）。
+- bbb 等价（零实现缺口，只补 evidence）：generated particle catalog 携带 per-type
+  override_limiter，resolver 合成 packet flag；`should_spawn_level_particle`/
+  `calculate_particle_level` 为唯一准入 gate，environment spawns（always_show 标志）、
+  level-particles 包与 firework 路径全部经它；距离/降档/升档各有 focused test。
+- focused evidence：override/distance/status focused tests 注册进 census 6-owner
+  OwnerEvidence + scripts/tests 断言。
+- 非目标：不动粒子渲染/provider 语义（独立已闭）；发现其他缺口只登记既有 route。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
+  删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 6-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
