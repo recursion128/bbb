@@ -279,6 +279,26 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        sound_routing_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "audio-client-level-sound-routing"
+        ]
+        self.assertEqual(len(sound_routing_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["audio-client-level-sound-routing"][
+                "owner_evidence_count"
+            ],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in sound_routing_owners
+            )
+        )
         biome_tint_owners = [
             owner
             for owner in methods

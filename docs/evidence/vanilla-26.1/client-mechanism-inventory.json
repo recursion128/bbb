@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "0dc6dcb58bb1acf70569d425beb7ad6cd35ccf61492f4a5d3d84e1fb129cfb9a"
+      "sha256": "07994239591ff71f385b8c6e0a47124ab5946c467a3c11d4465b43ebdcf49fcd"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -24,7 +24,8 @@
         "crates/bbb-world/src/client/audio.rs",
         "crates/bbb-native/src/environment_audio_runtime.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "audio-sound-manager-engine": {
       "bbb_evidence": [
@@ -18947,6 +18948,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#overrideMapData(final MapId id,final MapItemSavedData data)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#guardian_attack_sound_for_entity",
+          "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sound"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#entity_client_movement_sounds_use_canonical_seed_and_vanilla_categories",
+          "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sounds_preserve_position_source_and_shared_level_seed"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -18961,6 +18972,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final Entity sourceEntity,final SoundEvent sound,final SoundSource source,final float volume,final float pitch)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#guardian_attack_sound_for_entity",
+          "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sound"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#entity_client_movement_sounds_use_canonical_seed_and_vanilla_categories",
+          "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sounds_preserve_position_source_and_shared_level_seed"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -18975,6 +18996,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final double x,final double y,final double z,final SoundEvent sound,final SoundSource source,final float volume,final float pitch,final boolean distanceDelay)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#begin_local_player_ambient_audio_tick"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound_is_player_positioned_and_advances_the_sound_seed",
+          "crates/bbb-world/src/client/audio.rs#sound_seed_random_is_deterministic_and_non_repeating"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -18989,6 +19019,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playPlayerSound(final SoundEvent sound,final SoundSource source,final float volume,final float pitch)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#apply_sound_event",
+          "crates/bbb-world/src/client/audio.rs#apply_sound_entity_event"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#minecart_and_bee_tickable_sounds_match_client_instance_math_and_generation_isolation",
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_armor_stand_death_event_waits_for_server_owned_sound_packet"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -19003,6 +19043,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final Entity sourceEntity,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#apply_sound_event",
+          "crates/bbb-world/src/client/audio.rs#apply_sound_entity_event"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#minecart_and_bee_tickable_sounds_match_client_instance_math_and_generation_isolation",
+          "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_armor_stand_death_event_waits_for_server_owned_sound_packet"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -19017,6 +19067,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final double x,final double y,final double z,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/runtime.rs#vanilla_distance_delay_ticks"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/runtime.rs#distance_delay_ticks_match_vanilla_threshold_and_flooring",
+          "crates/bbb-audio/src/runtime.rs#delayed_positioned_sounds_release_after_remaining_ticks"
+        ]
+      },
       "category": "sound-routing",
       "domain": "audio",
       "kind": "method",
@@ -42053,6 +42112,7 @@
       "world-client-respawn-data",
       "world-client-session-services",
       "rendering-client-biome-tint",
+      "audio-client-level-sound-routing",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

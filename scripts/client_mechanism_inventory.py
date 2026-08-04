@@ -2291,6 +2291,55 @@ CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/audio.rs#apply_sound_event",
+                "crates/bbb-world/src/client/audio.rs#apply_sound_entity_event",
+            ),
+            (
+                "crates/bbb-world/src/client/audio.rs#minecart_and_bee_tickable_sounds_match_client_instance_math_and_generation_isolation",
+                "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#remote_armor_stand_death_event_waits_for_server_owned_sound_packet",
+            ),
+        ),
+        ("playSeededSound",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/audio.rs#guardian_attack_sound_for_entity",
+                "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sound",
+            ),
+            (
+                "crates/bbb-world/src/client/audio.rs#entity_client_movement_sounds_use_canonical_seed_and_vanilla_categories",
+                "crates/bbb-native/src/environment_animate_runtime.rs#local_block_sounds_preserve_position_source_and_shared_level_seed",
+            ),
+        ),
+        ("playLocalSound",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/audio.rs#begin_local_player_ambient_audio_tick",),
+            (
+                "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound_is_player_positioned_and_advances_the_sound_seed",
+                "crates/bbb-world/src/client/audio.rs#sound_seed_random_is_deterministic_and_non_repeating",
+            ),
+        ),
+        ("playPlayerSound",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-audio/src/runtime.rs#vanilla_distance_delay_ticks",),
+            (
+                "crates/bbb-audio/src/runtime.rs#distance_delay_ticks_match_vanilla_threshold_and_flooring",
+                "crates/bbb-audio/src/runtime.rs#delayed_positioned_sounds_release_after_remaining_ticks",
+            ),
+        ),
+        ("playSound",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2301,6 +2350,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-respawn-data": CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE,
     "world-client-session-services": CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE,
     "rendering-client-biome-tint": CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE,
+    "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

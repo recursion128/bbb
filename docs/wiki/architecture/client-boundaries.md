@@ -198,6 +198,17 @@ TINTED_LEAVES 粒子色经 `client_leaf_tint_color` + `ClientLeaf` color source 
 `biome_id_at` 返回 None 并把该列诚实剔除出 blend 平均（不伪造样本）；重开判据=出现可见
 tint 分歧证据。不得在 renderer 侧新增 world biome 读取或第二条 tint 解析路径。
 
+### ClientLevel sound-routing owner
+
+六个 sound-routing owner 收敛为 world canonical audio state + 确定性 seed 链，audio crate 只
+消费 command：包驱动 seeded sound 经 `apply_sound_event`/`apply_sound_entity_event`（vanilla
+handleSoundEvent 的 except==local player 门在调用点恒真，positioned 变体 distanceDelay=false，
+entity-bound 受 is_silent 门）；本地变体（entity/player/positioned）每次调用从
+`sound_seed_random` 消耗一个 seed（等价 `random.nextLong()`，结构不变量已锁定该链）；
+positioned local sound 携带 distance_delay 标志，私有 `playSound` 的延迟决策由
+`vanilla_distance_delay_ticks` 唯一实现（distSqr>100 → sqrt(dist)×0.5 tick 延迟入队，
+delayed queue 按剩余 tick 释放）。不得绕过该 seed 链或另建第二条声音提交路径。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

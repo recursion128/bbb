@@ -455,26 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel sound-routing
-
-- 目标与 owner：闭合 `ClientLevel` sound-routing 6 个 owner（playSeededSound×2、
-  playLocalSound×2、playPlayerSound、私有 playSound）；声音决策由 world canonical audio
-  state + 确定性 seed 链唯一拥有，audio crate 只消费 command。
-- Vanilla 语义：包驱动 seeded sound 的 except==local player 门在 handleSoundEvent 调用点
-  恒真（服务器不回发发起者），positioned 变体 distanceDelay=false；entity-bound 实例挂实体
-  并随 tick 跟随（silent 实体不播）；本地变体每次调用消耗 random.nextLong 作 seed；私有
-  playSound 在 distanceDelay 且 distSqr>100 时按 sqrt(dist)/40 秒（×20 tick）延迟播放。
-- bbb 等价（零实现缺口，只补 evidence）：apply_sound_event/apply_sound_entity_event 承载
-  包驱动路径（is_silent 门）；`next_sound_seed`=`sound_seed_random` 确定性链（结构不变量
-  已锁）；local_block_sound 家族携带 distance_delay 标志；`vanilla_distance_delay_ticks`
-  实现阈值 100 sqr 与 0.5 tick/block 公式；delayed queue 有释放测试。
-- focused evidence：既有 packet/entity/local/delay/seed focused tests 注册进 census 6-owner
-  OwnerEvidence + scripts/tests 断言；live gate sound 场景为运行时证据。
-- 非目标：不改 audio backend、不动 music/ambience 域；发现其他缺口只登记既有 route。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 6-owner evidence 完整的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
