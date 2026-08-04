@@ -352,6 +352,80 @@ DIRECT_SUPPORT_ROUTE = MethodRoute(
 )
 
 
+# `Options` keeps its 94 `OptionInstance` getters as direct field returns, so
+# they fall through to `DIRECT_SUPPORT_ROUTE`; the persisted semantics live in
+# the field initializers that `processOptions` names and clamps. Only the 51
+# methods with a body decision are routed here.
+OPTIONS_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("persistence", "persistence", "persistence-options-file"),
+        (
+            "Options",
+            "load",
+            "save",
+            "dataFix",
+            "processOptions",
+            "processDumpedOptions",
+            "process",
+            "isTrue",
+            "isFalse",
+            "readListOfStrings",
+            "getFullscreenVideoModeString",
+        ),
+    ),
+    (
+        MethodRoute("persistence", "persistence", "persistence-options-derived"),
+        (
+            "getEffectiveRenderDistance",
+            "setServerRenderDistance",
+            "getFinalSoundSourceVolume",
+            "getSoundSourceVolume",
+            "getSoundSourceOptionInstance",
+            "createSoundSliderOptionInstance",
+            "isSoundDeviceDefault",
+            "getBackgroundOpacity",
+            "getBackgroundColor",
+            "getMenuBackgroundBlurriness",
+            "maxAnisotropyValue",
+            "japaneseGlyphVariantsDefault",
+            "getCloudStatus",
+            "isModelPartEnabled",
+            "setModelPart",
+            "setCameraType",
+            "onboardingAccessibilityFinished",
+            "logMouse",
+            "unlogMouse",
+            "applyGraphicsPreset",
+            "setGraphicsPresetToCustom",
+        ),
+    ),
+    (
+        MethodRoute("persistence", "persistence", "persistence-options-apply"),
+        (
+            "buildPlayerInformation",
+            "broadcastOptions",
+            "operateOnLevelRenderer",
+            "updateResourcePacks",
+            "loadSelectedResourcePacks",
+            "updateFontOptions",
+            "dumpOptionsForReport",
+        ),
+    ),
+    (
+        # Caption/label factories consumed only by `OptionsSubScreen` widgets;
+        # the in-game options UI is a declared non-goal.
+        MethodRoute("out-of-scope", "options", "scope-options-ui", "out-of-scope", "out-of-scope"),
+        (
+            "pixelValueLabel",
+            "percentValueLabel",
+            "genericValueLabel",
+            "genericValueOrOffLabel",
+            "percentValueOrOffLabel",
+        ),
+    ),
+)
+
+
 LOCAL_PLAYER_METHOD_ROUTES = _method_routes(
     (
         MethodRoute("player-lifecycle", "movement", "player-local-session-respawn"),
@@ -3903,8 +3977,8 @@ METHOD_SURFACES = (
     MethodSurface("ui", "ui", "ui-death-screen-surface", "net/minecraft/client/gui/screens/DeathScreen.java"),
     MethodSurface("ui", "ui", "ui-disconnected-screen-surface", "net/minecraft/client/gui/screens/DisconnectedScreen.java"),
     MethodSurface("ui", "ui", "ui-pause-screen-surface", "net/minecraft/client/gui/screens/PauseScreen.java"),
-    MethodSurface("persistence", "persistence", "persistence-client-files", "net/minecraft/client/Options.java"),
-    MethodSurface("persistence", "persistence", "persistence-client-files", "net/minecraft/client/multiplayer/ServerList.java"),
+    MethodSurface("persistence", "persistence", "persistence-options-file", "net/minecraft/client/Options.java"),
+    MethodSurface("persistence", "persistence", "persistence-server-list", "net/minecraft/client/multiplayer/ServerList.java"),
     MethodSurface("identity", "identity", "identity-skin-presentation", "net/minecraft/client/resources/SkinManager.java"),
     MethodSurface("identity", "identity", "identity-profile-key-lifecycle", "net/minecraft/client/multiplayer/AccountProfileKeyPairManager.java"),
     MethodSurface("security", "security", "security-secure-chat-reporting", "net/minecraft/client/multiplayer/chat/report/ReportingContext.java"),
@@ -4195,7 +4269,10 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/runtime/render_extract.rs",
     ),
     "ui-accessibility-surface": ("crates/bbb-native/src/narrator_runtime.rs",),
-    "persistence-client-files": ("crates/bbb-native/src/server_list.rs",),
+    "persistence-options-file": ("crates/bbb-native/src/startup.rs",),
+    "persistence-options-derived": ("crates/bbb-native/src/startup.rs",),
+    "persistence-options-apply": ("crates/bbb-native/src/startup.rs",),
+    "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": (
         "crates/bbb-net/src/chat_session.rs",
         "crates/bbb-net/src/chat_session/runtime.rs",
@@ -4358,6 +4435,16 @@ class InventoryBuilder:
                     f"LevelRenderer method lacks a homogeneous route: {signature}"
                 )
             return route
+        if spec.source_path == "net/minecraft/client/Options.java":
+            route = OPTIONS_METHOD_ROUTES.get(method.name)
+            if route is not None:
+                return route
+            if InventoryBuilder.is_direct_support_accessor(source, method):
+                return DIRECT_SUPPORT_ROUTE
+            signature = InventoryBuilder.method_signature(method)
+            raise ClientMechanismInventoryError(
+                f"Options method lacks a decision/support route: {signature}"
+            )
         if spec.source_path != "net/minecraft/client/Minecraft.java":
             return MethodRoute(
                 spec.category,

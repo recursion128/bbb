@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "5d39bf1c2b52f28aa7caab1e0dfa7bf6b22602677ed996c65205ec8e6c5e25a8"
+      "sha256": "de04e7f6ffb6ecfd39c51ed17474aaafa242495d5f4b74a390a64c1cc57e71bb"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -212,11 +212,29 @@
       ],
       "owner_count": 12
     },
-    "persistence-client-files": {
+    "persistence-options-apply": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/startup.rs"
+      ],
+      "owner_count": 7
+    },
+    "persistence-options-derived": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/startup.rs"
+      ],
+      "owner_count": 22
+    },
+    "persistence-options-file": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/startup.rs"
+      ],
+      "owner_count": 16
+    },
+    "persistence-server-list": {
       "bbb_evidence": [
         "crates/bbb-native/src/server_list.rs"
       ],
-      "owner_count": 158
+      "owner_count": 13
     },
     "platform-window-lifecycle": {
       "bbb_evidence": [
@@ -551,7 +569,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 14
+      "owner_count": 20
     },
     "scope-realms": {
       "bbb_evidence": [
@@ -569,7 +587,7 @@
       "bbb_evidence": [
         "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
       ],
-      "owner_count": 99
+      "owner_count": 193
     },
     "scope-telemetry-upload": {
       "bbb_evidence": [
@@ -11334,7 +11352,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "constructor",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#Options(final Minecraft minecraft,final File workingDirectory)",
       "role": "decision",
       "scope": "external-client",
@@ -11345,13 +11363,13 @@
       "vanilla_owner": "net.minecraft.client.Options#Options(final Minecraft minecraft,final File workingDirectory)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#allowCursorChanges()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1150,
         "path": "net/minecraft/client/Options.java"
@@ -11359,13 +11377,13 @@
       "vanilla_owner": "net.minecraft.client.Options#allowCursorChanges()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#allowServerListing()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1226,
         "path": "net/minecraft/client/Options.java"
@@ -11373,13 +11391,13 @@
       "vanilla_owner": "net.minecraft.client.Options#allowServerListing()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#ambientOcclusion()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1009,
         "path": "net/minecraft/client/Options.java"
@@ -11390,7 +11408,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#applyGraphicsPreset(final GraphicsPreset value)",
       "role": "decision",
       "scope": "external-client",
@@ -11401,13 +11419,13 @@
       "vanilla_owner": "net.minecraft.client.Options#applyGraphicsPreset(final GraphicsPreset value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#attackIndicator()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1126,
         "path": "net/minecraft/client/Options.java"
@@ -11415,13 +11433,13 @@
       "vanilla_owner": "net.minecraft.client.Options#attackIndicator()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#autoJump()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1154,
         "path": "net/minecraft/client/Options.java"
@@ -11429,13 +11447,13 @@
       "vanilla_owner": "net.minecraft.client.Options#autoJump()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#autoSuggestions()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1166,
         "path": "net/minecraft/client/Options.java"
@@ -11443,13 +11461,13 @@
       "vanilla_owner": "net.minecraft.client.Options#autoSuggestions()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#backgroundForChatOnly()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1271,
         "path": "net/minecraft/client/Options.java"
@@ -11457,13 +11475,13 @@
       "vanilla_owner": "net.minecraft.client.Options#backgroundForChatOnly()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#biomeBlendRadius()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1130,
         "path": "net/minecraft/client/Options.java"
@@ -11471,13 +11489,13 @@
       "vanilla_owner": "net.minecraft.client.Options#biomeBlendRadius()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#bobView()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1287,
         "path": "net/minecraft/client/Options.java"
@@ -11488,7 +11506,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#broadcastOptions()",
       "role": "decision",
       "scope": "external-client",
@@ -11502,7 +11520,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#buildPlayerInformation()",
       "role": "decision",
       "scope": "external-client",
@@ -11513,13 +11531,13 @@
       "vanilla_owner": "net.minecraft.client.Options#buildPlayerInformation()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatColors()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1170,
         "path": "net/minecraft/client/Options.java"
@@ -11527,13 +11545,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatColors()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatDelay()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1102,
         "path": "net/minecraft/client/Options.java"
@@ -11541,13 +11559,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatDelay()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatHeightFocused()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1098,
         "path": "net/minecraft/client/Options.java"
@@ -11555,13 +11573,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatHeightFocused()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatHeightUnfocused()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1094,
         "path": "net/minecraft/client/Options.java"
@@ -11569,13 +11587,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatHeightUnfocused()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatLineSpacing()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1050,
         "path": "net/minecraft/client/Options.java"
@@ -11583,13 +11601,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatLineSpacing()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatLinks()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1174,
         "path": "net/minecraft/client/Options.java"
@@ -11597,13 +11615,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatLinks()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatLinksPrompt()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1178,
         "path": "net/minecraft/client/Options.java"
@@ -11611,13 +11629,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatLinksPrompt()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatOpacity()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1046,
         "path": "net/minecraft/client/Options.java"
@@ -11625,13 +11643,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatOpacity()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1086,
         "path": "net/minecraft/client/Options.java"
@@ -11639,13 +11657,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatScale()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatVisibility()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1042,
         "path": "net/minecraft/client/Options.java"
@@ -11653,13 +11671,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatVisibility()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chatWidth()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1090,
         "path": "net/minecraft/client/Options.java"
@@ -11667,13 +11685,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chatWidth()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#chunkSectionFadeInTime()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1013,
         "path": "net/minecraft/client/Options.java"
@@ -11681,13 +11699,13 @@
       "vanilla_owner": "net.minecraft.client.Options#chunkSectionFadeInTime()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#cloudRange()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 989,
         "path": "net/minecraft/client/Options.java"
@@ -11695,13 +11713,13 @@
       "vanilla_owner": "net.minecraft.client.Options#cloudRange()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#cloudStatus()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 985,
         "path": "net/minecraft/client/Options.java"
@@ -11712,7 +11730,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#createSoundSliderOptionInstance(final String captionId,final SoundSource category)",
       "role": "decision",
       "scope": "external-client",
@@ -11723,13 +11741,13 @@
       "vanilla_owner": "net.minecraft.client.Options#createSoundSliderOptionInstance(final String captionId,final SoundSource category)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#cutoutLeaves()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 997,
         "path": "net/minecraft/client/Options.java"
@@ -11737,13 +11755,13 @@
       "vanilla_owner": "net.minecraft.client.Options#cutoutLeaves()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#damageTiltStrength()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1364,
         "path": "net/minecraft/client/Options.java"
@@ -11751,13 +11769,13 @@
       "vanilla_owner": "net.minecraft.client.Options#damageTiltStrength()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#darkMojangStudiosBackground()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 939,
         "path": "net/minecraft/client/Options.java"
@@ -11765,13 +11783,13 @@
       "vanilla_owner": "net.minecraft.client.Options#darkMojangStudiosBackground()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#darknessEffectScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1352,
         "path": "net/minecraft/client/Options.java"
@@ -11782,7 +11800,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#dataFix(final CompoundTag tag)",
       "role": "decision",
       "scope": "external-client",
@@ -11793,13 +11811,13 @@
       "vanilla_owner": "net.minecraft.client.Options#dataFix(final CompoundTag tag)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#directionalAudio()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1267,
         "path": "net/minecraft/client/Options.java"
@@ -11807,13 +11825,13 @@
       "vanilla_owner": "net.minecraft.client.Options#directionalAudio()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#discreteMouseScroll()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1218,
         "path": "net/minecraft/client/Options.java"
@@ -11824,7 +11842,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#dumpOptionsForReport()",
       "role": "decision",
       "scope": "external-client",
@@ -11835,13 +11853,13 @@
       "vanilla_owner": "net.minecraft.client.Options#dumpOptionsForReport()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#enableVsync()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1182,
         "path": "net/minecraft/client/Options.java"
@@ -11849,13 +11867,13 @@
       "vanilla_owner": "net.minecraft.client.Options#enableVsync()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#entityDistanceScaling()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 963,
         "path": "net/minecraft/client/Options.java"
@@ -11863,13 +11881,13 @@
       "vanilla_owner": "net.minecraft.client.Options#entityDistanceScaling()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#entityShadows()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1186,
         "path": "net/minecraft/client/Options.java"
@@ -11877,13 +11895,13 @@
       "vanilla_owner": "net.minecraft.client.Options#entityShadows()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#exclusiveFullscreen()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1283,
         "path": "net/minecraft/client/Options.java"
@@ -11891,13 +11909,13 @@
       "vanilla_owner": "net.minecraft.client.Options#exclusiveFullscreen()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#forceUnicodeFont()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1198,
         "path": "net/minecraft/client/Options.java"
@@ -11905,13 +11923,13 @@
       "vanilla_owner": "net.minecraft.client.Options#forceUnicodeFont()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#fov()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1336,
         "path": "net/minecraft/client/Options.java"
@@ -11919,13 +11937,13 @@
       "vanilla_owner": "net.minecraft.client.Options#fov()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#fovEffectScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1348,
         "path": "net/minecraft/client/Options.java"
@@ -11933,13 +11951,13 @@
       "vanilla_owner": "net.minecraft.client.Options#fovEffectScale()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#framerateLimit()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 967,
         "path": "net/minecraft/client/Options.java"
@@ -11947,13 +11965,13 @@
       "vanilla_owner": "net.minecraft.client.Options#framerateLimit()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#fullscreen()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1279,
         "path": "net/minecraft/client/Options.java"
@@ -11961,13 +11979,13 @@
       "vanilla_owner": "net.minecraft.client.Options#fullscreen()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#gamma()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1368,
         "path": "net/minecraft/client/Options.java"
@@ -11975,13 +11993,13 @@
       "vanilla_owner": "net.minecraft.client.Options#gamma()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#genericValueLabel(final Component caption,final Component value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1907,
         "path": "net/minecraft/client/Options.java"
@@ -11989,13 +12007,13 @@
       "vanilla_owner": "net.minecraft.client.Options#genericValueLabel(final Component caption,final Component value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#genericValueLabel(final Component caption,final int value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1911,
         "path": "net/minecraft/client/Options.java"
@@ -12003,13 +12021,13 @@
       "vanilla_owner": "net.minecraft.client.Options#genericValueLabel(final Component caption,final int value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#genericValueOrOffLabel(final Component caption,final int value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1915,
         "path": "net/minecraft/client/Options.java"
@@ -12020,7 +12038,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getBackgroundColor(final float defaultOpacity)",
       "role": "decision",
       "scope": "external-client",
@@ -12034,7 +12052,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getBackgroundColor(final int defaultColor)",
       "role": "decision",
       "scope": "external-client",
@@ -12048,7 +12066,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getBackgroundOpacity(final float defaultOpacity)",
       "role": "decision",
       "scope": "external-client",
@@ -12059,13 +12077,13 @@
       "vanilla_owner": "net.minecraft.client.Options#getBackgroundOpacity(final float defaultOpacity)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#getCameraType()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1853,
         "path": "net/minecraft/client/Options.java"
@@ -12076,7 +12094,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getCloudStatus()",
       "role": "decision",
       "scope": "external-client",
@@ -12090,7 +12108,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getEffectiveRenderDistance()",
       "role": "decision",
       "scope": "external-client",
@@ -12101,13 +12119,13 @@
       "vanilla_owner": "net.minecraft.client.Options#getEffectiveRenderDistance()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#getFile()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1866,
         "path": "net/minecraft/client/Options.java"
@@ -12118,7 +12136,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getFinalSoundSourceVolume(final SoundSource source)",
       "role": "decision",
       "scope": "external-client",
@@ -12132,7 +12150,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#getFullscreenVideoModeString()",
       "role": "decision",
       "scope": "external-client",
@@ -12146,7 +12164,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getMenuBackgroundBlurriness()",
       "role": "decision",
       "scope": "external-client",
@@ -12160,7 +12178,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getSoundSourceOptionInstance(final SoundSource source)",
       "role": "decision",
       "scope": "external-client",
@@ -12174,7 +12192,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getSoundSourceVolume(final SoundSource source)",
       "role": "decision",
       "scope": "external-client",
@@ -12185,13 +12203,13 @@
       "vanilla_owner": "net.minecraft.client.Options#getSoundSourceVolume(final SoundSource source)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#glintSpeed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1356,
         "path": "net/minecraft/client/Options.java"
@@ -12199,13 +12217,13 @@
       "vanilla_owner": "net.minecraft.client.Options#glintSpeed()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#glintStrength()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1360,
         "path": "net/minecraft/client/Options.java"
@@ -12213,13 +12231,13 @@
       "vanilla_owner": "net.minecraft.client.Options#glintStrength()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#graphicsPreset()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 977,
         "path": "net/minecraft/client/Options.java"
@@ -12227,13 +12245,13 @@
       "vanilla_owner": "net.minecraft.client.Options#graphicsPreset()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#guiScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1372,
         "path": "net/minecraft/client/Options.java"
@@ -12241,13 +12259,13 @@
       "vanilla_owner": "net.minecraft.client.Options#guiScale()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#hideLightningFlash()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 943,
         "path": "net/minecraft/client/Options.java"
@@ -12255,13 +12273,13 @@
       "vanilla_owner": "net.minecraft.client.Options#hideLightningFlash()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#hideMatchedNames()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1311,
         "path": "net/minecraft/client/Options.java"
@@ -12269,13 +12287,13 @@
       "vanilla_owner": "net.minecraft.client.Options#hideMatchedNames()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#hideSplashTexts()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 947,
         "path": "net/minecraft/client/Options.java"
@@ -12283,13 +12301,13 @@
       "vanilla_owner": "net.minecraft.client.Options#hideSplashTexts()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#highContrast()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1070,
         "path": "net/minecraft/client/Options.java"
@@ -12297,13 +12315,13 @@
       "vanilla_owner": "net.minecraft.client.Options#highContrast()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#highContrastBlockOutline()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1074,
         "path": "net/minecraft/client/Options.java"
@@ -12311,13 +12329,13 @@
       "vanilla_owner": "net.minecraft.client.Options#highContrastBlockOutline()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#improvedTransparency()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1005,
         "path": "net/minecraft/client/Options.java"
@@ -12325,13 +12343,13 @@
       "vanilla_owner": "net.minecraft.client.Options#improvedTransparency()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#inactivityFpsLimit()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 981,
         "path": "net/minecraft/client/Options.java"
@@ -12339,13 +12357,13 @@
       "vanilla_owner": "net.minecraft.client.Options#inactivityFpsLimit()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#invertMouseX()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1210,
         "path": "net/minecraft/client/Options.java"
@@ -12353,13 +12371,13 @@
       "vanilla_owner": "net.minecraft.client.Options#invertMouseX()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#invertMouseY()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1214,
         "path": "net/minecraft/client/Options.java"
@@ -12370,7 +12388,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#isFalse(final String value)",
       "role": "decision",
       "scope": "external-client",
@@ -12384,7 +12402,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#isModelPartEnabled(final PlayerModelPart part)",
       "role": "decision",
       "scope": "external-client",
@@ -12398,7 +12416,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#isSoundDeviceDefault(final String deviceName)",
       "role": "decision",
       "scope": "external-client",
@@ -12412,7 +12430,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#isTrue(final String value)",
       "role": "decision",
       "scope": "external-client",
@@ -12423,13 +12441,13 @@
       "vanilla_owner": "net.minecraft.client.Options#isTrue(final String value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#japaneseGlyphVariants()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1206,
         "path": "net/minecraft/client/Options.java"
@@ -12440,7 +12458,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#japaneseGlyphVariantsDefault()",
       "role": "decision",
       "scope": "external-client",
@@ -12454,7 +12472,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#load()",
       "role": "decision",
       "scope": "external-client",
@@ -12468,7 +12486,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#loadSelectedResourcePacks(final PackRepository repository)",
       "role": "decision",
       "scope": "external-client",
@@ -12482,7 +12500,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#logMouse(final int value)",
       "role": "decision",
       "scope": "external-client",
@@ -12493,13 +12511,13 @@
       "vanilla_owner": "net.minecraft.client.Options#logMouse(final int value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#mainHand()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1082,
         "path": "net/minecraft/client/Options.java"
@@ -12507,13 +12525,13 @@
       "vanilla_owner": "net.minecraft.client.Options#mainHand()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#maxAnisotropyBit()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1114,
         "path": "net/minecraft/client/Options.java"
@@ -12524,7 +12542,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#maxAnisotropyValue()",
       "role": "decision",
       "scope": "external-client",
@@ -12535,13 +12553,13 @@
       "vanilla_owner": "net.minecraft.client.Options#maxAnisotropyValue()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#menuBackgroundBlurriness()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1054,
         "path": "net/minecraft/client/Options.java"
@@ -12549,13 +12567,13 @@
       "vanilla_owner": "net.minecraft.client.Options#menuBackgroundBlurriness()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#mipmapLevels()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1110,
         "path": "net/minecraft/client/Options.java"
@@ -12563,13 +12581,13 @@
       "vanilla_owner": "net.minecraft.client.Options#mipmapLevels()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#mouseWheelSensitivity()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1142,
         "path": "net/minecraft/client/Options.java"
@@ -12577,13 +12595,13 @@
       "vanilla_owner": "net.minecraft.client.Options#mouseWheelSensitivity()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#musicFrequency()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1393,
         "path": "net/minecraft/client/Options.java"
@@ -12591,13 +12609,13 @@
       "vanilla_owner": "net.minecraft.client.Options#musicFrequency()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#musicToast()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1397,
         "path": "net/minecraft/client/Options.java"
@@ -12605,13 +12623,13 @@
       "vanilla_owner": "net.minecraft.client.Options#musicToast()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#narrator()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1380,
         "path": "net/minecraft/client/Options.java"
@@ -12619,13 +12637,13 @@
       "vanilla_owner": "net.minecraft.client.Options#narrator()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#narratorHotkey()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1078,
         "path": "net/minecraft/client/Options.java"
@@ -12633,13 +12651,13 @@
       "vanilla_owner": "net.minecraft.client.Options#narratorHotkey()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#notificationDisplayTime()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1106,
         "path": "net/minecraft/client/Options.java"
@@ -12650,7 +12668,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#onboardingAccessibilityFinished()",
       "role": "decision",
       "scope": "external-client",
@@ -12661,13 +12679,13 @@
       "vanilla_owner": "net.minecraft.client.Options#onboardingAccessibilityFinished()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#onlyShowSecureChat()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1319,
         "path": "net/minecraft/client/Options.java"
@@ -12678,7 +12696,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#operateOnLevelRenderer(final Consumer <LevelRenderer> consumer)",
       "role": "decision",
       "scope": "external-client",
@@ -12689,13 +12707,13 @@
       "vanilla_owner": "net.minecraft.client.Options#operateOnLevelRenderer(final Consumer <LevelRenderer> consumer)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#operatorItemsTab()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1162,
         "path": "net/minecraft/client/Options.java"
@@ -12703,13 +12721,13 @@
       "vanilla_owner": "net.minecraft.client.Options#operatorItemsTab()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#panoramaSpeed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1066,
         "path": "net/minecraft/client/Options.java"
@@ -12717,13 +12735,13 @@
       "vanilla_owner": "net.minecraft.client.Options#panoramaSpeed()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#particles()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1376,
         "path": "net/minecraft/client/Options.java"
@@ -12731,13 +12749,13 @@
       "vanilla_owner": "net.minecraft.client.Options#particles()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#percentValueLabel(final Component caption,final double value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1903,
         "path": "net/minecraft/client/Options.java"
@@ -12745,13 +12763,13 @@
       "vanilla_owner": "net.minecraft.client.Options#percentValueLabel(final Component caption,final double value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#percentValueOrOffLabel(final Component caption,final double value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1919,
         "path": "net/minecraft/client/Options.java"
@@ -12759,13 +12777,13 @@
       "vanilla_owner": "net.minecraft.client.Options#percentValueOrOffLabel(final Component caption,final double value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#pixelValueLabel(final Component caption,final int value)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1899,
         "path": "net/minecraft/client/Options.java"
@@ -12773,13 +12791,13 @@
       "vanilla_owner": "net.minecraft.client.Options#pixelValueLabel(final Component caption,final int value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#prioritizeChunkUpdates()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1017,
         "path": "net/minecraft/client/Options.java"
@@ -12790,7 +12808,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#processDumpedOptions(final Options.OptionAccess access)",
       "role": "decision",
       "scope": "external-client",
@@ -12804,7 +12822,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#processOptions(final Options.FieldAccess access)",
       "role": "decision",
       "scope": "external-client",
@@ -12815,13 +12833,13 @@
       "vanilla_owner": "net.minecraft.client.Options#processOptions(final Options.FieldAccess access)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#rawMouseInput()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1146,
         "path": "net/minecraft/client/Options.java"
@@ -12832,7 +12850,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#readListOfStrings(final String value)",
       "role": "decision",
       "scope": "external-client",
@@ -12843,13 +12861,13 @@
       "vanilla_owner": "net.minecraft.client.Options#readListOfStrings(final String value)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#realmsNotifications()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1222,
         "path": "net/minecraft/client/Options.java"
@@ -12857,13 +12875,13 @@
       "vanilla_owner": "net.minecraft.client.Options#realmsNotifications()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#reducedDebugInfo()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1230,
         "path": "net/minecraft/client/Options.java"
@@ -12871,13 +12889,13 @@
       "vanilla_owner": "net.minecraft.client.Options#reducedDebugInfo()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#renderDistance()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 955,
         "path": "net/minecraft/client/Options.java"
@@ -12885,13 +12903,13 @@
       "vanilla_owner": "net.minecraft.client.Options#renderDistance()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#rotateWithMinecart()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1158,
         "path": "net/minecraft/client/Options.java"
@@ -12902,7 +12920,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options#save()",
       "role": "decision",
       "scope": "external-client",
@@ -12913,13 +12931,13 @@
       "vanilla_owner": "net.minecraft.client.Options#save()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#saveChatDrafts()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1323,
         "path": "net/minecraft/client/Options.java"
@@ -12927,13 +12945,13 @@
       "vanilla_owner": "net.minecraft.client.Options#saveChatDrafts()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#screenEffectScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1344,
         "path": "net/minecraft/client/Options.java"
@@ -12941,13 +12959,13 @@
       "vanilla_owner": "net.minecraft.client.Options#screenEffectScale()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#sensitivity()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 951,
         "path": "net/minecraft/client/Options.java"
@@ -12958,7 +12976,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#setCameraType(final CameraType cameraType)",
       "role": "decision",
       "scope": "external-client",
@@ -12972,7 +12990,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#setGraphicsPresetToCustom()",
       "role": "decision",
       "scope": "external-client",
@@ -12986,7 +13004,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#setModelPart(final PlayerModelPart part,final boolean visible)",
       "role": "decision",
       "scope": "external-client",
@@ -13000,7 +13018,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#setServerRenderDistance(final int serverRenderDistance)",
       "role": "decision",
       "scope": "external-client",
@@ -13011,13 +13029,13 @@
       "vanilla_owner": "net.minecraft.client.Options#setServerRenderDistance(final int serverRenderDistance)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#showAutosaveIndicator()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1315,
         "path": "net/minecraft/client/Options.java"
@@ -13025,13 +13043,13 @@
       "vanilla_owner": "net.minecraft.client.Options#showAutosaveIndicator()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#showSubtitles()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1263,
         "path": "net/minecraft/client/Options.java"
@@ -13039,13 +13057,13 @@
       "vanilla_owner": "net.minecraft.client.Options#showSubtitles()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#simulationDistance()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 959,
         "path": "net/minecraft/client/Options.java"
@@ -13053,13 +13071,13 @@
       "vanilla_owner": "net.minecraft.client.Options#simulationDistance()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#soundDevice()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1384,
         "path": "net/minecraft/client/Options.java"
@@ -13067,13 +13085,13 @@
       "vanilla_owner": "net.minecraft.client.Options#soundDevice()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#sprintWindow()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1307,
         "path": "net/minecraft/client/Options.java"
@@ -13081,13 +13099,13 @@
       "vanilla_owner": "net.minecraft.client.Options#sprintWindow()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#telemetryOptInExtra()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1340,
         "path": "net/minecraft/client/Options.java"
@@ -13095,13 +13113,13 @@
       "vanilla_owner": "net.minecraft.client.Options#telemetryOptInExtra()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#textBackgroundOpacity()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1062,
         "path": "net/minecraft/client/Options.java"
@@ -13109,13 +13127,13 @@
       "vanilla_owner": "net.minecraft.client.Options#textBackgroundOpacity()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#textureFiltering()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1122,
         "path": "net/minecraft/client/Options.java"
@@ -13123,13 +13141,13 @@
       "vanilla_owner": "net.minecraft.client.Options#textureFiltering()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#toggleAttack()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1299,
         "path": "net/minecraft/client/Options.java"
@@ -13137,13 +13155,13 @@
       "vanilla_owner": "net.minecraft.client.Options#toggleAttack()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#toggleCrouch()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1291,
         "path": "net/minecraft/client/Options.java"
@@ -13151,13 +13169,13 @@
       "vanilla_owner": "net.minecraft.client.Options#toggleCrouch()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#toggleSprint()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1295,
         "path": "net/minecraft/client/Options.java"
@@ -13165,13 +13183,13 @@
       "vanilla_owner": "net.minecraft.client.Options#toggleSprint()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#toggleUse()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1303,
         "path": "net/minecraft/client/Options.java"
@@ -13179,13 +13197,13 @@
       "vanilla_owner": "net.minecraft.client.Options#toggleUse()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#touchscreen()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1275,
         "path": "net/minecraft/client/Options.java"
@@ -13196,7 +13214,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#unlogMouse(final double value)",
       "role": "decision",
       "scope": "external-client",
@@ -13210,7 +13228,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#updateFontOptions()",
       "role": "decision",
       "scope": "external-client",
@@ -13224,7 +13242,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-apply",
       "owner_id": "method:net.minecraft.client.Options#updateResourcePacks(final PackRepository packRepository)",
       "role": "decision",
       "scope": "external-client",
@@ -13235,13 +13253,13 @@
       "vanilla_owner": "net.minecraft.client.Options#updateResourcePacks(final PackRepository packRepository)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#useNativeTransport()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1821,
         "path": "net/minecraft/client/Options.java"
@@ -13249,13 +13267,13 @@
       "vanilla_owner": "net.minecraft.client.Options#useNativeTransport()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#vignette()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1001,
         "path": "net/minecraft/client/Options.java"
@@ -13263,13 +13281,13 @@
       "vanilla_owner": "net.minecraft.client.Options#vignette()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.Options#weatherRadius()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 993,
         "path": "net/minecraft/client/Options.java"
@@ -13280,7 +13298,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.FieldAccess#process(String name,String value)",
       "role": "decision",
       "scope": "external-client",
@@ -13294,7 +13312,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.FieldAccess#process(String name,T value,Function <String, T> reader,Function <T, String> writer)",
       "role": "decision",
       "scope": "external-client",
@@ -13308,7 +13326,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.FieldAccess#process(String name,boolean value)",
       "role": "decision",
       "scope": "external-client",
@@ -13322,7 +13340,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.FieldAccess#process(String name,float value)",
       "role": "decision",
       "scope": "external-client",
@@ -13336,7 +13354,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.FieldAccess#process(String name,int value)",
       "role": "decision",
       "scope": "external-client",
@@ -13350,7 +13368,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-options-file",
       "owner_id": "method:net.minecraft.client.Options.OptionAccess#process(String name,OptionInstance <T> option)",
       "role": "decision",
       "scope": "external-client",
@@ -24202,7 +24220,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "constructor",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#ServerList(final Minecraft minecraft)",
       "role": "decision",
       "scope": "external-client",
@@ -24216,7 +24234,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#add(final ServerData server,final boolean hidden)",
       "role": "decision",
       "scope": "external-client",
@@ -24230,7 +24248,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#get(final String ip)",
       "role": "decision",
       "scope": "external-client",
@@ -24244,7 +24262,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#get(final int index)",
       "role": "decision",
       "scope": "external-client",
@@ -24258,7 +24276,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#load()",
       "role": "decision",
       "scope": "external-client",
@@ -24272,7 +24290,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#remove(final ServerData thing)",
       "role": "decision",
       "scope": "external-client",
@@ -24286,7 +24304,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#replace(final int id,final ServerData data)",
       "role": "decision",
       "scope": "external-client",
@@ -24300,7 +24318,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#save()",
       "role": "decision",
       "scope": "external-client",
@@ -24314,7 +24332,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#saveSingleServer(final ServerData data)",
       "role": "decision",
       "scope": "external-client",
@@ -24328,7 +24346,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#set(final ServerData data,final List <ServerData> list)",
       "role": "decision",
       "scope": "external-client",
@@ -24342,7 +24360,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#size()",
       "role": "decision",
       "scope": "external-client",
@@ -24356,7 +24374,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#swap(final int a,final int b)",
       "role": "decision",
       "scope": "external-client",
@@ -24370,7 +24388,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-client-files",
+      "mechanism_id": "persistence-server-list",
       "owner_id": "method:net.minecraft.client.multiplayer.ServerList#unhide(final String ip)",
       "role": "decision",
       "scope": "external-client",
@@ -45230,11 +45248,11 @@
       "menu-screen": 25,
       "movement": 20,
       "movement-report": 4,
-      "out-of-scope": 207,
+      "out-of-scope": 213,
       "packet-table": 256,
       "particle-provider": 117,
       "particle-routing": 6,
-      "persistence": 158,
+      "persistence": 58,
       "pick-action": 3,
       "platform": 67,
       "player-lifecycle": 4,
@@ -45259,7 +45277,7 @@
       "session-services": 8,
       "sound-routing": 6,
       "startup": 21,
-      "support-accessor": 99,
+      "support-accessor": 193,
       "synchronized-registry": 28,
       "targeting": 9,
       "text": 2,
@@ -45278,8 +45296,8 @@
       "language": 7,
       "lifecycle": 24,
       "movement": 39,
-      "options": 14,
-      "persistence": 158,
+      "options": 20,
+      "persistence": 58,
       "platform": 67,
       "protocol": 747,
       "realms": 100,
@@ -45289,16 +45307,16 @@
       "security": 30,
       "singleplayer": 50,
       "startup": 19,
-      "support": 99,
+      "support": 193,
       "telemetry": 17,
       "text": 35,
       "ui": 206,
       "world": 59
     },
     "by_role": {
-      "decision": 1429,
-      "out-of-scope": 207,
-      "support-non-decision": 99
+      "decision": 1329,
+      "out-of-scope": 213,
+      "support-non-decision": 193
     },
     "mapped_owner_count": 2927,
     "owner_count": 2927,

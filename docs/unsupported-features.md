@@ -102,8 +102,10 @@ Matrix routes: `input-keyboard-routing`, `input-mouse-routing`, `input-key-mappi
 
 Owner: `bbb-native` + `bbb-net` + `bbb-item-model`
 
-Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
-`identity-skin-presentation`, `security-secure-chat-reporting`
+Matrix routes: `persistence-options-file`, `persistence-options-derived`,
+`persistence-options-apply`, `persistence-server-list`,
+`identity-profile-key-lifecycle`, `identity-skin-presentation`,
+`security-secure-chat-reporting`
 
 - **Authenticated profile-key Services acceptance is `deferred`.** This runner has
   no authorized profile UUID/access token pair, and the repository has no
@@ -114,10 +116,12 @@ Matrix routes: `persistence-client-files`, `identity-profile-key-lifecycle`,
   legal credential pair and controlled Vanilla 26.1 online-mode server runner that
   redacts process/log material and can assert that complete sequence.
 - **Client persistence and secure-chat/social/reporting decisions remain `active`.**
-  The census has not proven the 158 persistence owners or 21 security owners and
-  their atomic recovery, online/offline service boundary and live consumer behavior.
-  Split each by one canonical owner; launcher token acquisition remains outside the
-  client.
+  The 158 persistence owners are now split by canonical owner — 16 `options.txt`
+  codec/IO, 22 derived decisions, 7 apply/broadcast, 13 `servers.dat` — but BBB has
+  no `options.txt` owner at all: client options ride on startup CLI args with no
+  file round-trip, unknown-key retention or parse-failure recovery. The 30 security
+  owners and their online/offline service boundary and live consumer behavior are
+  also unproven. Launcher token acquisition remains outside the client.
 
 ## Runtime performance parity and stable frame tails
 

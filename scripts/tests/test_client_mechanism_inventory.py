@@ -1441,6 +1441,87 @@ class LocalPlayer {
                     )
                 )
 
+    def test_options_partition_is_total_and_homogeneous(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] == "net/minecraft/client/Options.java"
+        ]
+        self.assertEqual(len(methods), 145)
+
+        by_mechanism = Counter(owner["mechanism_id"] for owner in methods)
+        self.assertEqual(
+            dict(by_mechanism),
+            {
+                "persistence-options-file": 16,
+                "persistence-options-derived": 22,
+                "persistence-options-apply": 7,
+                "scope-options-ui": 6,
+                "scope-support-accessors": 94,
+            },
+        )
+        # The 94 accessors are direct field returns, so they own no decision;
+        # the persisted semantics stay with the codec and derived routes.
+        self.assertTrue(
+            all(
+                owner["role"] == "support-non-decision"
+                and owner["scope"] == "out-of-scope"
+                for owner in methods
+                if owner["mechanism_id"] == "scope-support-accessors"
+            )
+        )
+        self.assertTrue(
+            all(
+                owner["role"] == "decision" and owner["scope"] == "external-client"
+                for owner in methods
+                if owner["mechanism_id"].startswith("persistence-options-")
+            )
+        )
+
+        server_list = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"]
+            == "net/minecraft/client/multiplayer/ServerList.java"
+        ]
+        self.assertEqual(len(server_list), 13)
+        self.assertTrue(
+            all(
+                owner["mechanism_id"] == "persistence-server-list"
+                and owner["role"] == "decision"
+                for owner in server_list
+            )
+        )
+        self.assertNotIn("persistence-client-files", value["mechanisms"])
+
+    def test_unclassified_options_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/Options.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client; class Options { int decide() { return ready ? 1 : 0; } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "Options method lacks a decision/support route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "persistence",
+                        "persistence",
+                        "persistence-options-file",
+                        relative,
+                    )
+                )
+
     def test_multiplayer_screen_surfaces_are_homogeneous_and_exact(self) -> None:
         expected_by_source = {
             "net/minecraft/client/gui/screens/ChatScreen.java": (
