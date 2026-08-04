@@ -67,9 +67,12 @@ consumer, fallback and applicable live evidence.
   membership and drops stale membership at the exact removal/replacement boundary.
 - **`rendering-client-particle-routing` (6 owners).** Verify force, distance,
   always-visible and source ordering through the bounded particle projection.
-- **`audio-client-level-sound-routing` (6 owners).** Verify local/entity/delayed/
-  seeded sound decisions, listener-relative behavior and generation-safe lazy audio
-  submission through the single audio event path.
+- **`audio-client-level-sound-routing` (6 owners).** Verify the implemented
+  packet-driven seeded paths (the vanilla except-local-player gate is always
+  true at the handler call site, positioned variants carry no distance delay),
+  the entity-bound silent gate, the deterministic per-call seed chain, and the
+  private playSound delay formula (>100 sqr distance defers by 0.5 ticks per
+  block) through the single audio event path.
 - **`diagnostics-client-level-report` (4 owners).** Verify level/entity report
   sections, bounded counters and terminal diagnostics against the same world
   generation rather than a stale snapshot.
