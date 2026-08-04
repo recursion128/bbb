@@ -5000,10 +5000,11 @@
         "command_surface": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#start_destroy_block",
-            "crates/bbb-native/src/input/mouse.rs#stop_destroy_block",
+            "crates/bbb-native/src/input/mouse.rs#continue_destroy_block_tick",
             "crates/bbb-native/src/input/mouse.rs#abort_destroy_block",
             "crates/bbb-native/src/input.rs#handle_key_input",
             "crates/bbb-native/src/input/commands.rs#queue_player_action_command",
+            "crates/bbb-native/src/input/commands.rs#send_reserved_player_action_command",
             "crates/bbb-net/src/driver/commands.rs#send_player_action"
           ],
           "gap": null,
