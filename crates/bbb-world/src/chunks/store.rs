@@ -1224,6 +1224,11 @@ impl WorldStore {
         let Some(old_block_state_id) = old_block_state_id else {
             return false;
         };
+        if old_block_state_id == block_state_id {
+            // Vanilla LevelChunk.setBlockState returns null for an identical
+            // state, so Level.setBlock marks nothing and sends no notification.
+            return false;
+        }
 
         let old_non_empty = !is_empty_block_state_id(&self.registries, old_block_state_id);
         let new_non_empty = !is_empty_block_state_id(&self.registries, block_state_id);

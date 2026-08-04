@@ -8675,15 +8675,19 @@ mod tests {
     }
 
     fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
-        assert!(
-            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
-                pos: bbb_protocol::packets::BlockPos {
-                    x: pos.x,
-                    y: pos.y,
-                    z: pos.z,
-                },
-                block_state_id,
-            })
+        // Scene setup tolerates the vanilla identical-state no-op; the block
+        // must hold the requested state either way.
+        world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+            pos: bbb_protocol::packets::BlockPos {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
+            block_state_id,
+        });
+        assert_eq!(
+            world.probe_block(pos).map(|block| block.block_state_id),
+            Some(block_state_id)
         );
     }
 

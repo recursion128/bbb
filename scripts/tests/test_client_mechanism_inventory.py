@@ -261,6 +261,26 @@ public class Owner {
                 for owner in level_lifecycle_owners
             )
         )
+        dirty_handoff_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-client-level-dirty-handoff"
+        ]
+        self.assertEqual(len(dirty_handoff_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["rendering-client-level-dirty-handoff"][
+                "owner_evidence_count"
+            ],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in dirty_handoff_owners
+            )
+        )
         chunk_light_owners = [
             owner
             for owner in methods

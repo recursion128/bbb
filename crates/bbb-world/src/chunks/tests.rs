@@ -309,6 +309,51 @@ fn block_terrain_revisions_follow_three_dimensional_section_boundaries() {
 }
 
 #[test]
+fn identical_server_block_update_marks_nothing_like_vanilla_null_set() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
+    // Chunk (2, -3) local (2, 1, 3) maps to world block (34, 1, -45).
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let current = store.probe_block(pos).unwrap().block_state_id;
+    let baseline = store.terrain_revision();
+
+    // Vanilla LevelChunk.setBlockState returns null for an identical state:
+    // no dirty marking, no notification, and the update counts as ignored.
+    assert!(!store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        block_state_id: current,
+    }));
+    assert_eq!(store.terrain_revision(), baseline);
+    assert_eq!(store.counters().block_updates_ignored, 1);
+
+    // A differing state still marks the ±1 block neighborhood.
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        block_state_id: if current == 0 { 1 } else { 0 },
+    }));
+    assert!(store.terrain_revision() > baseline);
+    assert_eq!(store.counters().block_updates_applied, 1);
+}
+
+#[test]
 fn standalone_light_revisions_touch_only_masked_section_neighbors() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

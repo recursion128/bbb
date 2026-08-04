@@ -3488,10 +3488,18 @@ mod tests {
             block_entities: Vec::new(),
             light: crate::LightData::default(),
         });
-        assert!(world.apply_block_update(BlockUpdate {
+        // Scene setup tolerates the vanilla identical-state no-op (an all-air
+        // chunk already holds an air initial state).
+        world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
             block_state_id: initial_block_state_id,
-        }));
+        });
+        assert_eq!(
+            world
+                .probe_block(BlockPos { x: 0, y: 0, z: 0 })
+                .map(|block| block.block_state_id),
+            Some(initial_block_state_id)
+        );
         world
     }
 
@@ -3500,14 +3508,20 @@ mod tests {
     }
 
     fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
-        assert!(world.apply_block_update(BlockUpdate {
+        // Scene setup tolerates the vanilla identical-state no-op; the block
+        // must hold the requested state either way.
+        world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos {
                 x: pos.x,
                 y: pos.y,
                 z: pos.z,
             },
             block_state_id,
-        }));
+        });
+        assert_eq!(
+            world.probe_block(pos).map(|block| block.block_state_id),
+            Some(block_state_id)
+        );
     }
 
     fn item_use_block_hit(pos: BlockPos, direction: ProtocolDirection) -> LocalItemUsePovResult {

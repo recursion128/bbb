@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "de50fc944702ea622c27ca8765df3367d047aa5ffd9d1ca0761f4972a692ea54"
+      "sha256": "5dddfe9ebd0c8f97b319ff747b521d575d159b77295d7ad9dd2a84cca6f5246e"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -365,7 +365,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/terrain_runtime.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "rendering-client-particle-routing": {
       "bbb_evidence": [
@@ -17985,6 +17986,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#createFireworks(final double x,final double y,final double z,final double xd,final double yd,final double zd,final List <FireworkExplosion> explosions)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#apply_block_destruction",
+          "crates/bbb-world/src/block_events.rs#block_destruction_render_stages"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",
+          "crates/bbb-world/src/block_events.rs#block_destruction_render_stages_merge_server_and_local_progress",
+          "crates/bbb-world/src/block_events.rs#block_destruction_progress_expires_after_vanilla_render_tick_window"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -18700,6 +18712,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onChunkLoaded(final ChunkPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#refresh_terrain_visibility",
+          "crates/bbb-native/src/terrain_runtime/occlusion.rs#update_sections"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild",
+          "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_loaded_empty_sections_propagate_but_skip_octree"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -18958,6 +18980,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#removeEntity(final int id,final Entity.RemovalReason reason)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id",
+          "crates/bbb-world/src/chunks/store.rs#mark_terrain_block_changed"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#identical_server_block_update_marks_nothing_like_vanilla_null_set",
+          "crates/bbb-world/src/chunks/tests.rs#terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation",
+          "crates/bbb-native/src/terrain_runtime.rs#player_adjacent_dirty_chunk_schedules_before_a_distant_dirty_chunk"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -19010,6 +19043,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setBlock(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlags,final int updateLimit)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id",
+          "crates/bbb-world/src/chunks/store.rs#mark_terrain_block_changed"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#identical_server_block_update_marks_nothing_like_vanilla_null_set",
+          "crates/bbb-world/src/chunks/tests.rs#terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation",
+          "crates/bbb-native/src/terrain_runtime.rs#player_adjacent_dirty_chunk_schedules_before_a_distant_dirty_chunk"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -19038,6 +19082,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setRespawnData(final LevelData.RespawnData respawnData)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#mark_terrain_light_sections_changed"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#standalone_light_revisions_touch_only_masked_section_neighbors"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -19052,6 +19104,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSectionDirtyWithNeighbors(final int chunkX,final int chunkY,final int chunkZ)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#apply_light_data",
+          "crates/bbb-world/src/chunks/store.rs#mark_terrain_chunk_and_neighbors_changed"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#terrain_revision_tracks_view_selection_and_level_clear_lifecycle",
+          "crates/bbb-world/src/chunks/tests.rs#full_chunk_biome_reload_and_unload_invalidate_full_neighbor_height"
+        ]
+      },
       "category": "render-dirty-handoff",
       "domain": "rendering",
       "kind": "method",
@@ -41619,6 +41681,7 @@
       "rendering-level-section-lifecycle",
       "world-client-level-lifecycle",
       "world-client-chunk-light-lifecycle",
+      "rendering-client-level-dirty-handoff",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

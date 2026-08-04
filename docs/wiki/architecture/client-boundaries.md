@@ -107,6 +107,22 @@ forget/prune/level teardown 与队列一致地丢弃 pending；publication clone
 再推导承担，`startTicking`/`stopTicking` 由 `entity_is_ticking` 的 chunk 驻留派生承担；不存在第二个
 immediate light-apply 入口。
 
+### ClientLevel level-dirty handoff owner
+
+`WorldStore` 的 `mark_terrain_block_changed`/`mark_terrain_light_sections_changed`/
+`mark_terrain_chunk_and_neighbors_changed` 家族是六个 `ClientLevel` dirty delegate 的唯一失效
+resolver。`set_block_state_id` 对同态写入返回 false 且不产生任何标记/通知（vanilla
+`LevelChunk.setBlockState` 同态返回 null）；`Level.setBlock` 的双通知（requiresRender 门 +
+flag 2/4/8）折叠为单次 ±1 block→section 展开，requiresRender 的模型级比较以 state-id 变化
+为保守超集。piston 写入方在调用前过滤同态状态，与 vanilla 忽略 setBlock 返回值的行为对齐。
+
+vanilla flag-8 的 player 优先重建映射为 mesh target 的 distance-first 扫描：玩家所在/邻近
+chunk 恒为最近目标，由 order focused test 锁定。destroy progress 由 world 侧
+`block_destruction_render_stages` 单点合并 server 与本地进度（同 pos 取 max、≥10 移除、
+400 tick 过期），native/renderer 只消费该查询。`onSectionBecomingNonEmpty` 的 occlusion
+传播由 `occlusion_section_updates` 增量派生承担：section mesh/空态变化直接更新 occlusion
+graph，无独立空 section 事件通道，也不得再建第二个失效或合并入口。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

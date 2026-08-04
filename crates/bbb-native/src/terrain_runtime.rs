@@ -3152,6 +3152,40 @@ mod initial_light_gate_tests {
     }
 
     #[test]
+    fn player_adjacent_dirty_chunk_schedules_before_a_distant_dirty_chunk() {
+        let mut world = WorldStore::new();
+        let near = world
+            .insert_level_chunk_with_light(synthetic_chunk_packet())
+            .unwrap();
+        let mut distant_packet = synthetic_chunk_packet();
+        distant_packet.x = near.x + 8;
+        let distant = world.insert_level_chunk_with_light(distant_packet).unwrap();
+        assert_eq!(world.poll_queued_light_updates(), 2);
+        world.set_local_player_pose(bbb_world::LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: f64::from(near.x) * 16.0 + 8.0,
+                y: 64.0,
+                z: f64::from(near.z) * 16.0 + 8.0,
+            },
+            ..bbb_world::LocalPlayerPoseState::default()
+        });
+
+        // Vanilla's flag-8 player-priority rebuild maps to the distance-first
+        // target scan: both chunks need work, the player's chunk wins.
+        let selected = selected_terrain_chunks(&world, near);
+        assert_eq!(selected, vec![near, distant]);
+        let loaded: HashSet<_> = world.chunk_positions().into_iter().collect();
+        let mut upload = TerrainUploadState::default();
+        upload.selected_chunks = selected;
+        match next_terrain_cache_work(&world, &upload, &loaded) {
+            TerrainCacheWork::RefreshSnapshot(pos) => {
+                assert!((pos.x - near.x).abs() <= 1 && (pos.z - near.z).abs() <= 1);
+            }
+            work => panic!("expected near-chunk snapshot work, got {work:?}"),
+        }
+    }
+
+    #[test]
     fn mesh_targets_withhold_a_chunk_until_its_initial_light_applies() {
         let mut world = WorldStore::new();
         let pos = world

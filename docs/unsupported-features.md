@@ -75,12 +75,6 @@ consumer, fallback and applicable live evidence.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
   queries the renderer's off-screen policy once, updates the generation-local global
   membership and drops stale membership at the exact removal/replacement boundary.
-- **`rendering-client-level-dirty-handoff` (6 owners).** Make block/section/range
-  dirty and destroy-progress handoff follow the six `ClientLevel` delegates: the
-  identical-state server update must stop marking terrain (vanilla `setBlockState`
-  returns null), piston callers pre-filter same-state writes, player-adjacent mesh
-  scheduling order and the empty-section occlusion derivation carry decision-level
-  evidence through the single mark_terrain_* resolver family.
 - **`rendering-client-particle-routing` (6 owners).** Verify force, distance,
   always-visible and source ordering through the bounded particle projection.
 - **`rendering-client-biome-tint` (6 owners).** Verify biome sampling, tint cache

@@ -212,6 +212,15 @@ impl WorldStore {
             self.moving_pistons.retain(|record| record.pos != touched);
         }
         for (update_pos, state_id) in updates {
+            // Vanilla Level.setBlock no-ops on an identical state; only a
+            // differing write may fail hard here.
+            if self
+                .probe_block(update_pos)
+                .map(|block| block.block_state_id)
+                == Some(state_id)
+            {
+                continue;
+            }
             self.remove_block_entity_record_at(update_pos);
             if !self.set_block_state_id(update_pos, state_id) {
                 return false;
@@ -307,6 +316,11 @@ impl WorldStore {
         effects: &mut dyn PlayApplyEffects,
     ) -> bool {
         for (pos, state_id) in &plan.updates {
+            // Vanilla Level.setBlock no-ops on an identical state; only a
+            // differing write may fail hard here.
+            if self.probe_block(*pos).map(|block| block.block_state_id) == Some(*state_id) {
+                continue;
+            }
             self.remove_block_entity_record_at(*pos);
             if !self.set_block_state_id(*pos, *state_id) {
                 return false;

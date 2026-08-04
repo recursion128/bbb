@@ -1842,10 +1842,77 @@ CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#set_block_state_id",
+                "crates/bbb-world/src/chunks/store.rs#mark_terrain_block_changed",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#identical_server_block_update_marks_nothing_like_vanilla_null_set",
+                "crates/bbb-world/src/chunks/tests.rs#terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation",
+                "crates/bbb-native/src/terrain_runtime.rs#player_adjacent_dirty_chunk_schedules_before_a_distant_dirty_chunk",
+            ),
+        ),
+        ("sendBlockUpdated", "setBlocksDirty"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/chunks/store.rs#mark_terrain_light_sections_changed",),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#standalone_light_revisions_touch_only_masked_section_neighbors",
+            ),
+        ),
+        ("setSectionDirtyWithNeighbors",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#apply_light_data",
+                "crates/bbb-world/src/chunks/store.rs#mark_terrain_chunk_and_neighbors_changed",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#terrain_revision_tracks_view_selection_and_level_clear_lifecycle",
+                "crates/bbb-world/src/chunks/tests.rs#full_chunk_biome_reload_and_unload_invalidate_full_neighbor_height",
+            ),
+        ),
+        ("setSectionRangeDirty",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/block_events.rs#apply_block_destruction",
+                "crates/bbb-world/src/block_events.rs#block_destruction_render_stages",
+            ),
+            (
+                "crates/bbb-world/src/block_events.rs#tracks_block_destruction_progress_by_id",
+                "crates/bbb-world/src/block_events.rs#block_destruction_render_stages_merge_server_and_local_progress",
+                "crates/bbb-world/src/block_events.rs#block_destruction_progress_expires_after_vanilla_render_tick_window",
+            ),
+        ),
+        ("destroyBlockProgress",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/terrain_runtime.rs#refresh_terrain_visibility",
+                "crates/bbb-native/src/terrain_runtime/occlusion.rs#update_sections",
+            ),
+            (
+                "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_partial_compile_propagates_without_full_rebuild",
+                "crates/bbb-native/src/terrain_runtime/occlusion.rs#terrain_runtime_occlusion_loaded_empty_sections_propagate_but_skip_octree",
+            ),
+        ),
+        ("onSectionBecomingNonEmpty",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
+    "rendering-client-level-dirty-handoff": CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
