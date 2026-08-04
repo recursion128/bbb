@@ -3114,6 +3114,44 @@ LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_VITALS_STATUS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#apply_player_health",
+                "crates/bbb-world/src/entities/store.rs#apply_local_living_heal",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+                "crates/bbb-world/src/client/inventory/use_prediction.rs#iron_golem_interaction_applies_client_heal_before_selecting_result",
+            ),
+        ),
+        ("heal", "hurtTo"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#apply_player_experience",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+            ),
+        ),
+        ("setExperienceValues",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#hud_locator_bar_from_world",
+            ),
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#contextual_bar_uses_vanilla_idle_and_jump_priority",
+            ),
+        ),
+        ("setExperienceDisplayStartTickToTickCount",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3286,6 +3324,7 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-primary-action-routing": INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE,
     "interaction-game-mode-guards": INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE,
     "player-local-session-respawn": LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE,
+    "player-local-vitals-status": LOCAL_PLAYER_VITALS_STATUS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

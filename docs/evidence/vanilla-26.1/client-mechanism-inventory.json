@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "992fa0a99d1c755fed6c2adbe123243ee0ff089614ed6436bad2e52ea3b4f299"
+      "sha256": "6ce1e299aa594ea7441b057be33ef0ddeada106a382f167a4f26798e6b02fe29"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -299,7 +299,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/client/local_player.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "player-local-world-edit-ui": {
       "bbb_evidence": [
@@ -24960,6 +24961,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handlePortalTransitionEffect(final boolean active)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_player_health",
+          "crates/bbb-world/src/entities/store.rs#apply_local_living_heal"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#iron_golem_interaction_applies_client_heal_before_selecting_result"
+        ]
+      },
       "category": "player-state",
       "domain": "movement",
       "kind": "method",
@@ -24974,6 +24985,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#heal(final float heal)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_player_health",
+          "crates/bbb-world/src/entities/store.rs#apply_local_living_heal"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state",
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#iron_golem_interaction_applies_client_heal_before_selecting_result"
+        ]
+      },
       "category": "player-state",
       "domain": "movement",
       "kind": "method",
@@ -26062,6 +26083,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setDoLimitedCrafting(final boolean value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/waypoint_locator.rs#hud_locator_bar_from_world"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/waypoint_locator.rs#contextual_bar_uses_vanilla_idle_and_jump_priority"
+        ]
+      },
       "category": "player-state",
       "domain": "movement",
       "kind": "method",
@@ -26076,6 +26105,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setExperienceDisplayStartTickToTickCount()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_player_experience"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_player_packets_update_canonical_state"
+        ]
+      },
       "category": "player-state",
       "domain": "movement",
       "kind": "method",
@@ -43175,6 +43212,7 @@
       "interaction-primary-action-routing",
       "interaction-game-mode-guards",
       "player-local-session-respawn",
+      "player-local-vitals-status",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

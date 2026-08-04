@@ -408,6 +408,26 @@ public class Owner {
                 for owner in session_respawn_owners
             )
         )
+        vitals_status_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-vitals-status"
+        ]
+        self.assertEqual(len(vitals_status_owners), 4)
+        self.assertEqual(
+            value["mechanisms"]["player-local-vitals-status"][
+                "owner_evidence_count"
+            ],
+            4,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in vitals_status_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

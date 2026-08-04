@@ -184,6 +184,14 @@ survival/adventure HUD 门在 `update_renderer_from_publication` 提取链内联
 `advance_client_tick` 的 death 计数（synced health<=0 起递增，驱动倒地渲染）
 拥有。不得在 native 侧另存玩家会话状态或第二条 respawn 命令路径。
 
+## LocalPlayer vitals-status owner
+
+四个 vitals-status owner 收敛于三条链：heal/hurtTo 由 `apply_player_health`
+（packet 权威）与 `apply_local_living_heal`（mob-interact 本地预测）拥有；
+setExperienceValues 由 `apply_player_experience` 唯一应用；experience display
+start tick 由 contextual bar `hud_locator_bar_from_world`（locator/jump/
+experience 优先级）拥有。HUD 只读这些状态，不得另存 vitals 副本。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
