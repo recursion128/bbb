@@ -6,10 +6,15 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 
-from client_options_catalog_extractor import client_option_entries
+from client_options_catalog_extractor import (
+    ClientOptionsCatalogExtractionError,
+    client_option_entries,
+    resolve_enum_default,
+)
 from vanilla_java_source import parse_source
 
 
@@ -27,10 +32,52 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _enum_source_loader(source_root: Path, package: str):
+    """Resolve the file that declares an enum named in `Options`.
+
+    A nested enum (`MusicManager.MusicFrequency`) lives in its imported owner's
+    file, an imported enum in its own, and everything else in `Options`' own
+    package.
+    """
+
+    cache: dict[str, object] = {}
+
+    def load(qualifier: str, imports: dict[str, str]):
+        if qualifier in cache:
+            return cache[qualifier]
+        outer = qualifier.split(".")[0]
+        qualified = imports.get(outer)
+        if qualified is None:
+            qualified = f"{package}.{outer}"
+        relative = qualified.replace(".", "/") + ".java"
+        path = source_root / relative
+        if not path.is_file():
+            raise ClientOptionsCatalogExtractionError(
+                f"cannot locate the source that declares {qualifier}"
+            )
+        parsed = parse_source(relative, path.read_bytes())
+        cache[qualifier] = parsed
+        return parsed
+
+    return load
+
+
 def render_catalog(source_root: Path) -> str:
     raw = (source_root / OPTIONS_SOURCE).read_bytes()
     source = parse_source(OPTIONS_SOURCE, raw)
     options, groups = client_option_entries(source)
+    load_enum = _enum_source_loader(source_root, source.package)
+    options = [
+        option
+        if not option.encoding.startswith("enum")
+        else replace(
+            option,
+            default=resolve_enum_default(
+                load_enum, source, option.encoding, option.default
+            ),
+        )
+        for option in options
+    ]
     document = {
         "generated_by": "scripts/generate-client-options-catalog.py",
         "vanilla_version": "26.1",

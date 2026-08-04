@@ -122,7 +122,7 @@
       "field": "graphicsPreset",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "GraphicsPreset.FANCY"
+      "default": "\"fancy\""
     },
     {
       "order": 15,
@@ -130,7 +130,7 @@
       "field": "prioritizeChunkUpdates",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "PrioritizeChunkUpdates.NONE"
+      "default": "0"
     },
     {
       "order": 16,
@@ -178,7 +178,7 @@
       "field": "textureFiltering",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "TextureFilteringMethod.NONE"
+      "default": "0"
     },
     {
       "order": 22,
@@ -202,7 +202,7 @@
       "field": "inactivityFpsLimit",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "InactivityFpsLimit.AFK"
+      "default": "\"afk\""
     },
     {
       "order": 25,
@@ -218,7 +218,7 @@
       "field": "narrator",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "NarratorStatus.OFF"
+      "default": "0"
     },
     {
       "order": 27,
@@ -226,7 +226,7 @@
       "field": "particles",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "ParticleStatus.ALL"
+      "default": "0"
     },
     {
       "order": 28,
@@ -242,7 +242,7 @@
       "field": "cloudStatus",
       "kind": "codec",
       "encoding": "enum-name-or-boolean",
-      "default": "CloudStatus.FANCY"
+      "default": "\"true\""
     },
     {
       "order": 30,
@@ -562,7 +562,7 @@
       "field": "chatVisibility",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "ChatVisiblity.FULL"
+      "default": "0"
     },
     {
       "order": 70,
@@ -698,7 +698,7 @@
       "field": "mainHand",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "HumanoidArm.RIGHT"
+      "default": "\"right\""
     },
     {
       "order": 87,
@@ -706,7 +706,7 @@
       "field": "attackIndicator",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "AttackIndicatorStatus.CROSSHAIR"
+      "default": "1"
     },
     {
       "order": 88,
@@ -858,7 +858,7 @@
       "field": "musicToast",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "MusicToastDisplayState.NEVER"
+      "default": "\"never\""
     },
     {
       "order": 107,
@@ -866,7 +866,7 @@
       "field": "musicFrequency",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "MusicManager.MusicFrequency.DEFAULT"
+      "default": "\"DEFAULT\""
     }
   ],
   "dynamic_groups": [

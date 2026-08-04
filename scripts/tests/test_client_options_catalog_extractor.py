@@ -203,6 +203,16 @@ class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
                 }
             ),
         )
+        # Enum defaults arrive as the text `save` writes, resolved from the
+        # enum's own constructor rather than a table beside the option.
+        defaults = {option["key"]: option["default"] for option in options}
+        self.assertEqual(defaults["graphicsPreset"], '"fancy"')
+        self.assertEqual(defaults["mainHand"], '"right"')
+        self.assertEqual(defaults["musicFrequency"], '"DEFAULT"')
+        self.assertEqual(defaults["attackIndicator"], "1")
+        self.assertEqual(defaults["narrator"], "0")
+        # `CloudStatus.FANCY` serializes as the legacy `true`.
+        self.assertEqual(defaults["renderClouds"], '"true"')
         # `renderClouds` is the one key that still reads the pre-1.20 boolean
         # through `Codec.withAlternative`.
         self.assertEqual(

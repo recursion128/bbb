@@ -268,6 +268,99 @@ def _enum_encoding(source: JavaSource, field: JavaField, value_set_node) -> str:
     )
 
 
+def _enum_declaration(source: JavaSource, simple_name: str):
+    for declaration in descendants(source.root_node):
+        if declaration.type != "enum_declaration":
+            continue
+        name_node = declaration.child_by_field_name("name")
+        if name_node is not None and source.text(name_node) == simple_name:
+            return declaration
+    raise ClientOptionsCatalogExtractionError(
+        f"{source.relative_path} declares no enum {simple_name}"
+    )
+
+
+def _serialized_name_field(source: JavaSource, declaration) -> str:
+    """The field ``getSerializedName`` returns, so the on-disk name is read from
+    the constructor rather than guessed from the constant's argument order."""
+
+    for node in descendants(declaration):
+        if node.type != "method_declaration":
+            continue
+        name_node = node.child_by_field_name("name")
+        if name_node is None or source.text(name_node) != "getSerializedName":
+            continue
+        body = node.child_by_field_name("body")
+        if body is None or len(body.named_children) != 1:
+            break
+        statement = body.named_children[0]
+        if statement.type != "return_statement" or not statement.named_children:
+            break
+        returned = source.text(statement.named_children[0])
+        if returned.startswith("this."):
+            return returned.removeprefix("this.")
+        break
+    raise ClientOptionsCatalogExtractionError(
+        "enum getSerializedName is not a direct field return"
+    )
+
+
+def _constructor_parameter_index(source: JavaSource, declaration, field_name: str) -> int:
+    for node in descendants(declaration):
+        if node.type != "constructor_declaration":
+            continue
+        parameters = node.child_by_field_name("parameters")
+        if parameters is None:
+            continue
+        names = []
+        for parameter in parameters.named_children:
+            parameter_name = parameter.child_by_field_name("name")
+            names.append(source.text(parameter_name) if parameter_name else "")
+        if field_name in names:
+            return names.index(field_name)
+    raise ClientOptionsCatalogExtractionError(
+        f"enum constructor takes no {field_name} parameter"
+    )
+
+
+def _enum_constant_argument(source: JavaSource, declaration, constant: str, index: int) -> str:
+    for node in descendants(declaration):
+        if node.type != "enum_constant":
+            continue
+        name_node = node.child_by_field_name("name")
+        if name_node is None or source.text(name_node) != constant:
+            continue
+        arguments = node.child_by_field_name("arguments")
+        if arguments is None or len(arguments.named_children) <= index:
+            break
+        return source.text(arguments.named_children[index])
+    raise ClientOptionsCatalogExtractionError(
+        f"enum constant {constant} has no argument at index {index}"
+    )
+
+
+def resolve_enum_default(
+    load_source, options: JavaSource, encoding: str, java_default: str
+) -> str:
+    """Turn ``GraphicsPreset.FANCY`` into the text ``save`` writes for it.
+
+    ``LEGACY_CODEC`` is ``Codec.INT`` over the enum's ``id`` field and ``CODEC``
+    is ``StringRepresentable.fromEnum``, so both values live in the enum's own
+    constructor — never in a table copied alongside the option.
+    """
+
+    qualifier, _, constant = java_default.rpartition(".")
+    simple_name = qualifier.rpartition(".")[2]
+    source = load_source(qualifier, options.imports)
+    declaration = _enum_declaration(source, simple_name)
+    if encoding == "enum-id":
+        field_name = "id"
+    else:
+        field_name = _serialized_name_field(source, declaration)
+    index = _constructor_parameter_index(source, declaration, field_name)
+    return _enum_constant_argument(source, declaration, constant, index)
+
+
 def _scalar_default(source: JavaSource, field: JavaField, node) -> str:
     if node is not None:
         return source.text(node)
