@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "2f9d6d3b86319a1e64483174ada5b926a26670391c56dec8d6e56a89d235e72d"
+      "sha256": "78a9248c742a14d9cba6f6fd74c18abfa68a65ee6309014da058f9ae436c506f"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -259,7 +259,8 @@
         "crates/bbb-world/src/client/local_player.rs",
         "crates/bbb-world/src/client/inventory/use_prediction.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "player-local-movement-reporting": {
       "bbb_evidence": [
@@ -24632,6 +24633,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getStats()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#set_local_using_item_with_hand",
+          "crates/bbb-world/src/client/local_player.rs#take_local_using_item"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_interaction_state_tracks_prediction_destroy_and_use_item",
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -24996,6 +25007,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isShiftKeyDown()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_is_slow_due_to_using_item",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_using_item_speed_multiplier"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -25101,6 +25121,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isUsingItem()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_is_slow_due_to_using_item",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_using_item_speed_multiplier"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -25275,6 +25304,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onGameModeChanged(final GameType gameType)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/store.rs#model_source"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/schema.rs#generated_living_entity_accessors_own_membership_indices_defaults_and_masks"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -25998,6 +26035,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#startRiding(final Entity entity,final boolean force,final boolean sendEventAndTriggers)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#set_local_using_item_with_hand",
+          "crates/bbb-world/src/client/local_player.rs#take_local_using_item"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_interaction_state_tracks_prediction_destroy_and_use_item",
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -26012,6 +26059,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#startUsingItem(final InteractionHand hand)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#set_local_using_item_with_hand",
+          "crates/bbb-world/src/client/local_player.rs#take_local_using_item"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_interaction_state_tracks_prediction_destroy_and_use_item",
+          "crates/bbb-world/src/client/inventory/use_prediction.rs#trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned"
+        ]
+      },
       "category": "item-use",
       "domain": "interaction",
       "kind": "method",
@@ -42888,6 +42945,7 @@
       "player-local-camera-targeting",
       "player-local-inventory-actions",
       "player-local-vehicle-control",
+      "player-local-item-use-state",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

@@ -298,6 +298,26 @@ public class Owner {
                 for owner in vehicle_control_owners
             )
         )
+        item_use_state_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-item-use-state"
+        ]
+        self.assertEqual(len(item_use_state_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["player-local-item-use-state"][
+                "owner_evidence_count"
+            ],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in item_use_state_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

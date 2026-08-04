@@ -90,9 +90,6 @@ preserving the two former broad `partial` claims.
 - **`player-local-client-status-options`** — world owns server flags and game type while
   native owns death/debug presentation. Close after reduced-info, death-screen,
   limited-crafting and spectator vertical-reset branches have decision-level evidence.
-- **`player-local-item-use-state`** — world interaction state is the only hand/use latch
-  and movement/render/audio consumers must read it. Close after local start/stop,
-  metadata reconciliation, speed multiplier and stale-generation behavior are mapped.
 - **`interaction-game-mode-lifecycle`** — canonical game type/abilities live in world
   session state and native only projects them. Close after the seven mode/player-create
   owners prove previous-mode carry, replacement generation and stale-session rejection.

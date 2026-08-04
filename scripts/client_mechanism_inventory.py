@@ -2851,6 +2851,45 @@ LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#set_local_using_item_with_hand",
+                "crates/bbb-world/src/client/local_player.rs#take_local_using_item",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#local_interaction_state_tracks_prediction_destroy_and_use_item",
+                "crates/bbb-world/src/client/inventory/use_prediction.rs#trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned",
+            ),
+        ),
+        ("startUsingItem", "stopUsingItem", "getUsedItemHand"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_is_slow_due_to_using_item",
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_using_item_speed_multiplier",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch",
+            ),
+        ),
+        ("isSlowDueToUsingItem", "itemUseSpeedMultiplier"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/store.rs#model_source",
+            ),
+            (
+                "crates/bbb-world/src/entities/schema.rs#generated_living_entity_accessors_own_membership_indices_defaults_and_masks",
+            ),
+        ),
+        ("onSyncedDataUpdated",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3017,6 +3056,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-camera-targeting": LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE,
     "player-local-inventory-actions": LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE,
     "player-local-vehicle-control": LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE,
+    "player-local-item-use-state": LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

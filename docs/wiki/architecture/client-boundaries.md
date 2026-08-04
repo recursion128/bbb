@@ -121,6 +121,17 @@ startRiding/removeVehicle 由 `apply_set_passengers`/`clear_local_player_mount`
 默认服务器该 flag 关闭不可达，实现 experimental minecart 移动时重开。不得在
 native 侧内联 mount/jump 判定或建第二条 passenger 权威路径。
 
+## LocalPlayer item-use-state owner
+
+六个 item-use-state owner 收敛于三条链：startUsingItem/stopUsingItem/
+getUsedItemHand 由 use-prediction 本地状态
+`set_local_using_item_with_hand`/`take_local_using_item`（hand 记录+drain 语义）
+唯一拥有；isSlowDueToUsingItem/itemUseSpeedMultiplier 由 movement 输入归一链
+`local_player_is_slow_due_to_using_item`/`local_player_using_item_speed_multiplier`
+拥有（input-movement 已消费）；onSyncedDataUpdated 的 LIVING_ENTITY_FLAGS
+reconcile（is_using/off_hand 掩码）由 entity store `model_source` 投影链拥有。
+不得在 render/audio 侧内联第二份 use 状态。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
