@@ -102,9 +102,12 @@ preserving the two former broad `partial` claims.
 - **`player-local-world-edit-ui`** — packet/world edit state must open the matching
   native sign, command, structure, test, jigsaw, dialog or book surface. Close after all
   nine entry owners have reachable screen lifecycle and input/presentation evidence.
-- **`player-local-environment-effects`** — world transient state feeds native audio,
-  particle and portal/water presentation. Close after the eight mood/sound/crit/portal/
-  underwater owners have ordered exactly-once and applicable audio/window acceptance.
+- **`player-local-environment-effects`** — close the attacker-side gap: vanilla
+  spawns crit/magic-crit tracking emitters locally (the Animate broadcast skips
+  the attacker), so the local attack chain must decide the critical gates and
+  the enchant magic boost and feed the existing tracking-emitter path; mood,
+  portal-spinning, water-vision and local playSound surfaces verify onto their
+  existing owners.
 - **`player-local-camera-targeting`** — world camera and entity bounds feed the single
   native crosshair resolver. Close after all nine owners prove item attack range,
   block/entity priority, range-miss fallback and rendered/input consumer agreement.
