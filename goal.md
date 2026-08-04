@@ -506,18 +506,21 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
   sub-route 并逐 owner 挂机械可达 evidence；`options.txt` 成为唯一 typed client
   options owner；matrix 行翻 `equivalent`，账本删项。
 - 审计事实：仓内无任何 `options.txt` 读写，客户端选项全部由 71 个 clap arg
-  承载，无文件 round-trip、无未知 key 保留、无解析失败恢复；`server_list.rs`
-  已有 `servers.dat` 读写与 `_old` 备份原子替换，但无 list 变更 owner；145 个
-  `Options` owner 含成批只服务 options UI 的 label/slider 工厂，须以 vanilla
-  依据判 out-of-scope 而非静默计入。
-- 串行阶段：① 逐 method 路由表与 scope/role 判据（未分类 method fail-closed）；
-  ② `options.txt` 编解码（`processOptions` 行格式、逐字段 key/默认值/夹取、
-  `dataFix`、未知 key 保留、load/save round-trip）；③ 原子写与解析失败恢复，
-  与 `server_list.rs` 的 `safely_replace` 收敛为唯一原子替换 owner；④ CLI
-  precedence 与 consumer 收敛（arg 降级为 store override，消费点只读单一
-  store）；⑤ 派生决策 owner（effective render distance、final sound volume、
-  background color/opacity、model part、`buildPlayerInformation`、
-  `broadcastOptions`）；⑥ `ServerList` 列表变更与 hidden 语义；⑦ census close。
+  承载，无文件 round-trip；`server_list.rs` 已有 `servers.dat` 读写与 `_old`
+  备份原子替换，但无 list 变更 owner；145 个 `Options` owner 里 94 个是直接
+  字段返回（归 support accessor）、6 个只服务 options UI 的 caption 工厂（判
+  out-of-scope），真正的决策面是 16+22+7。
+- 串行阶段：① 逐 method 路由表与 scope/role 判据（未分类 method fail-closed，
+  已完成）；② `options.txt` 编解码（`Splitter.on(':').limit(2)` 行格式、
+  `version:` 头、由 vanilla 字段初始化式派生的 key/默认值表、坏行逐行跳过、
+  未知 key 按 vanilla 在下次 save 丢弃、直写非原子且失败仅记录——三条都要反向
+  断言，防止顺手加 vanilla 没有的原子写/备份/未知 key 保留）；③ CLI precedence
+  与 consumer 收敛（arg 降级为 store override，消费点只读单一 store）；④ 派生
+  决策 22 owner（effective render distance、final sound volume、background
+  color/opacity、model part、graphics preset custom 回写）；⑤ apply/broadcast
+  7 owner（`buildPlayerInformation`、`broadcastOptions`、resource-pack/font/
+  level-renderer 应用、report dump）；⑥ `ServerList` 13 owner（列表变更、hidden、
+  单条保存、`Util.safeReplaceFile` 唯一原子替换 owner）；⑦ census close。
 - 非目标：不做 `OptionsScreen` 及其 widget/label，不做 Realms/singleplayer 字段
   的 UI 消费，不新增第二套配置来源。
 - 每阶段 focused tests：文件 round-trip/损坏恢复 + 派生决策 + consumer 投影断言。
