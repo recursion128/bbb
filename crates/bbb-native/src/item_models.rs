@@ -84,7 +84,7 @@ pub(crate) use dropped::held_item_models;
 pub(crate) use dropped::{
     display_matrix, dropped_item_models, entity_block_models,
     held_item_models_with_variant_textures, item_pickup_particle_item_models, item_stack_foil_mode,
-    ominous_item_spawner_models, push_resident_item_instances,
+    ominous_item_spawner_models, push_resident_item_instances, MovingPistonVisibility,
 };
 #[cfg(test)]
 pub(crate) use first_person::first_person_item_models;

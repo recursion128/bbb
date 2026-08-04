@@ -718,6 +718,7 @@ fn entity_block_attachments_collect_snow_golem_iron_golem_and_mooshroom_layers()
         &world,
         None,
         1.0,
+        MovingPistonVisibility::default(),
     );
 
     assert_eq!(attachments.len(), 5);
@@ -754,7 +755,13 @@ fn entity_block_attachments_record_invisible_glowing_outline_only_layers() {
         .with_invisible(true)
         .with_outline_color(0xff55_aa11);
 
-    let attachments = entity_block_attachments(&[snow_golem, mooshroom], &world, None, 1.0);
+    let attachments = entity_block_attachments(
+        &[snow_golem, mooshroom],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(attachments.len(), 4);
     assert!(attachments.iter().all(|attachment| attachment.outline_only));
@@ -793,7 +800,14 @@ fn entity_block_models_retain_outline_only_solid_and_translucent_geometry() {
         Arc::from(quads),
     );
 
-    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+    let residency = entity_block_models(
+        &[snow_golem],
+        &world,
+        None,
+        &terrain_textures,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(residency.assets.len(), 2);
     assert_eq!(residency.instances.len(), 2);
@@ -848,7 +862,14 @@ fn entity_block_models_reuse_visible_attachment_geometry_for_main_and_outline() 
         Arc::from(quads),
     );
 
-    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+    let residency = entity_block_models(
+        &[snow_golem],
+        &world,
+        None,
+        &terrain_textures,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(
         residency.assets.len(),
@@ -901,7 +922,14 @@ fn entity_block_models_emit_no_outline_copy_for_zero_color() {
         Arc::from(unit_block_quads()),
     );
 
-    let residency = entity_block_models(&[snow_golem], &world, None, &terrain_textures, 1.0);
+    let residency = entity_block_models(
+        &[snow_golem],
+        &world,
+        None,
+        &terrain_textures,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(residency.assets.len(), 1);
     assert_eq!(residency.instances.len(), 1);
@@ -922,7 +950,13 @@ fn entity_block_attachments_collect_enderman_carried_block_from_world() {
         .with_light_coords(light_coords)
         .with_outline_color(0xff55_aa11);
 
-    let attachments = entity_block_attachments(&[enderman], &world, None, 1.0);
+    let attachments = entity_block_attachments(
+        &[enderman],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(attachments.len(), 1);
     assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
@@ -943,7 +977,13 @@ fn entity_block_attachments_collect_minecart_display_block_from_world() {
     let minecart = EntityModelInstance::minecart(entity_id, [0.0, 64.0, 0.0], 45.0)
         .with_light_coords(light_coords);
 
-    let attachments = entity_block_attachments(&[minecart], &world, None, 1.0);
+    let attachments = entity_block_attachments(
+        &[minecart],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(attachments.len(), 1);
     assert_eq!(attachments[0].block_id.as_ref(), "minecraft:chest");
@@ -964,15 +1004,34 @@ fn entity_block_attachments_collect_minecart_display_block_from_world() {
         .is_finite());
 
     let glowing = minecart.with_outline_color(0xff55_aa11);
-    let glowing_attachments = entity_block_attachments(&[glowing], &world, None, 1.0);
+    let glowing_attachments = entity_block_attachments(
+        &[glowing],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
     assert_eq!(glowing_attachments[0].outline_color, 0xff55_aa11);
     assert!(!glowing_attachments[0].outline_only);
 
     let hidden = minecart.with_invisible(true);
-    assert!(entity_block_attachments(&[hidden], &world, None, 1.0).is_empty());
+    assert!(entity_block_attachments(
+        &[hidden],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default()
+    )
+    .is_empty());
 
     let outline = hidden.with_appears_glowing(true);
-    let outline_attachments = entity_block_attachments(&[outline], &world, None, 1.0);
+    let outline_attachments = entity_block_attachments(
+        &[outline],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
     assert_eq!(outline_attachments.len(), 1);
     assert!(
         !outline_attachments[0].outline_only,
@@ -989,7 +1048,13 @@ fn entity_block_attachments_apply_tnt_minecart_fuse_scale_and_white_overlay() {
         .with_light_coords(light_coords)
         .with_minecart_tnt_fuse_remaining_in_ticks(4.5);
 
-    let attachments = entity_block_attachments(&[primed], &world, None, 1.0);
+    let attachments = entity_block_attachments(
+        &[primed],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(attachments.len(), 1);
     assert_eq!(attachments[0].block_id.as_ref(), "minecraft:tnt");
@@ -1007,22 +1072,40 @@ fn entity_block_attachments_apply_tnt_minecart_fuse_scale_and_white_overlay() {
     );
 
     let unprimed = primed.with_minecart_tnt_fuse_remaining_in_ticks(-1.0);
-    let unprimed_attachment = entity_block_attachments(&[unprimed], &world, None, 1.0)
-        .pop()
-        .expect("unprimed tnt attachment");
+    let unprimed_attachment = entity_block_attachments(
+        &[unprimed],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    )
+    .pop()
+    .expect("unprimed tnt attachment");
     assert_eq!(unprimed_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
     assert_ne!(unprimed_attachment.transform, attachments[0].transform);
 
     let odd_strobe = primed.with_minecart_tnt_fuse_remaining_in_ticks(6.0);
-    let odd_strobe_attachment = entity_block_attachments(&[odd_strobe], &world, None, 1.0)
-        .pop()
-        .expect("odd strobe tnt attachment");
+    let odd_strobe_attachment = entity_block_attachments(
+        &[odd_strobe],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    )
+    .pop()
+    .expect("odd strobe tnt attachment");
     assert_eq!(odd_strobe_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
 
     let glowing = primed.with_outline_color(0xff55_aa11);
-    let glowing_attachment = entity_block_attachments(&[glowing], &world, None, 1.0)
-        .pop()
-        .expect("glowing tnt minecart attachment");
+    let glowing_attachment = entity_block_attachments(
+        &[glowing],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    )
+    .pop()
+    .expect("glowing tnt minecart attachment");
     assert_eq!(glowing_attachment.outline_color, 0xff55_aa11);
     assert!(!glowing_attachment.outline_only);
 }
@@ -1036,7 +1119,8 @@ fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
     let tnt = EntityModelInstance::no_render(entity_id, [0.0, 64.0, 0.0], 0.0)
         .with_light_coords(light_coords);
 
-    let attachments = entity_block_attachments(&[tnt], &world, None, 0.5);
+    let attachments =
+        entity_block_attachments(&[tnt], &world, None, 0.5, MovingPistonVisibility::default());
 
     assert_eq!(attachments.len(), 1);
     assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
@@ -1050,9 +1134,22 @@ fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
     assert_eq!(attachments[0].outline_color, 0);
     assert!(!attachments[0].outline_only);
     let hidden = tnt.with_invisible(true);
-    assert!(entity_block_attachments(&[hidden], &world, None, 0.5).is_empty());
+    assert!(entity_block_attachments(
+        &[hidden],
+        &world,
+        None,
+        0.5,
+        MovingPistonVisibility::default()
+    )
+    .is_empty());
     let outline = hidden.with_appears_glowing(true);
-    let outline_attachments = entity_block_attachments(&[outline], &world, None, 0.5);
+    let outline_attachments = entity_block_attachments(
+        &[outline],
+        &world,
+        None,
+        0.5,
+        MovingPistonVisibility::default(),
+    );
     assert_eq!(outline_attachments.len(), 1);
     assert!(
         !outline_attachments[0].outline_only,
@@ -1061,9 +1158,15 @@ fn entity_block_attachments_apply_primed_tnt_block_state_fuse_and_outline() {
     assert_ne!(outline_attachments[0].outline_color, 0);
 
     let default_world = world_with_primed_tnt(entity_id, 6, None);
-    let default_attachment = entity_block_attachments(&[tnt], &default_world, None, 0.0)
-        .pop()
-        .expect("default primed tnt attachment");
+    let default_attachment = entity_block_attachments(
+        &[tnt],
+        &default_world,
+        None,
+        0.0,
+        MovingPistonVisibility::default(),
+    )
+    .pop()
+    .expect("default primed tnt attachment");
     assert_eq!(default_attachment.block_id.as_ref(), "minecraft:tnt");
     assert_eq!(
         default_attachment.properties,
@@ -1081,7 +1184,13 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
     let falling = EntityModelInstance::no_render(entity_id, [1.5, 4.0, 2.5], 90.0)
         .with_light_coords(light_coords);
 
-    let attachments = entity_block_attachments(&[falling], &world, None, 1.0);
+    let attachments = entity_block_attachments(
+        &[falling],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
 
     assert_eq!(attachments.len(), 1);
     assert_eq!(attachments[0].block_id.as_ref(), "minecraft:grass_block");
@@ -1104,7 +1213,13 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
     );
 
     let hidden_outline = falling.with_invisible(true).with_appears_glowing(true);
-    let hidden_attachments = entity_block_attachments(&[hidden_outline], &world, None, 1.0);
+    let hidden_attachments = entity_block_attachments(
+        &[hidden_outline],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
     assert_eq!(hidden_attachments.len(), 1);
     assert!(
         !hidden_attachments[0].outline_only,
@@ -1124,7 +1239,14 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
         &world,
         GRASS_BLOCK_STATE_ID
     ));
-    assert!(entity_block_attachments(&[falling], &world, None, 1.0).is_empty());
+    assert!(entity_block_attachments(
+        &[falling],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default()
+    )
+    .is_empty());
 
     set_entity_block_test_block(&mut world, feet, bbb_world::vanilla_air_block_state_id());
     assert!(falling_block_should_render(
@@ -1133,15 +1255,90 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
         GRASS_BLOCK_STATE_ID
     ));
     assert_eq!(
-        entity_block_attachments(&[falling], &world, None, 1.0).len(),
+        entity_block_attachments(
+            &[falling],
+            &world,
+            None,
+            1.0,
+            MovingPistonVisibility::default()
+        )
+        .len(),
         1
     );
-    let loaded = entity_block_attachments(&[falling], &world, None, 1.0);
+    let loaded = entity_block_attachments(
+        &[falling],
+        &world,
+        None,
+        1.0,
+        MovingPistonVisibility::default(),
+    );
     assert_eq!(
         loaded[0].moving_block.unwrap().biome_id,
         Some(0),
         "MovingBlockRenderState samples the biome at blockPos"
     );
+}
+
+#[test]
+fn moving_piston_blocks_go_through_the_block_entity_visibility_gate() {
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    insert_entity_block_test_chunk(&mut world);
+    let base = BlockPos { x: 1, y: 5, z: 5 };
+    let arm = BlockPos { x: 2, y: 5, z: 5 };
+    let piston = bbb_world::vanilla_block_state_id(
+        "minecraft:piston",
+        &BTreeMap::from([
+            ("extended".to_string(), "false".to_string()),
+            ("facing".to_string(), "east".to_string()),
+        ]),
+    )
+    .expect("east retracted piston state");
+    let stone = bbb_world::vanilla_block_state_id("minecraft:stone", &BTreeMap::new())
+        .expect("stone state");
+    set_entity_block_test_block(&mut world, base, piston);
+    set_entity_block_test_block(&mut world, arm, stone);
+    assert!(world.apply_block_event(BlockEvent {
+        pos: ProtocolBlockPos {
+            x: base.x,
+            y: base.y,
+            z: base.z,
+        },
+        b0: 0,
+        b1: 0,
+        block_id: bbb_protocol::block_types::VANILLA_BLOCK_PISTON_ID,
+    }));
+
+    // Without a gate every moving block is submitted.
+    assert_eq!(
+        entity_block_attachments(&[], &world, None, 0.0, MovingPistonVisibility::default()).len(),
+        2
+    );
+
+    // `PistonHeadRenderer` is an ordinary renderer, so an uncompiled section
+    // drops both submissions even though they are metres from the camera.
+    let terrain_upload = crate::terrain_runtime::TerrainUploadState::default();
+    let visibility = crate::block_entity_visibility::BlockEntityVisibility::new(
+        Some(bbb_renderer::CameraPose {
+            position: [1.5, 5.5, 5.5],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        }),
+        [1_000, 1_000],
+        70.0,
+        8,
+    );
+    assert!(entity_block_attachments(
+        &[],
+        &world,
+        None,
+        0.0,
+        MovingPistonVisibility::new(visibility, &terrain_upload),
+    )
+    .is_empty());
 }
 
 #[test]
@@ -1177,7 +1374,8 @@ fn entity_block_attachments_submit_interpolated_moving_piston_blocks() {
         block_id: bbb_protocol::block_types::VANILLA_BLOCK_PISTON_ID,
     }));
 
-    let initial = entity_block_attachments(&[], &world, None, 0.0);
+    let initial =
+        entity_block_attachments(&[], &world, None, 0.0, MovingPistonVisibility::default());
     assert_eq!(initial.len(), 2);
     let initial_head = initial
         .iter()
@@ -1215,7 +1413,8 @@ fn entity_block_attachments_submit_interpolated_moving_piston_blocks() {
     );
 
     world.advance_moving_piston_ticks(1);
-    let interpolated = entity_block_attachments(&[], &world, None, 0.5);
+    let interpolated =
+        entity_block_attachments(&[], &world, None, 0.5, MovingPistonVisibility::default());
     assert_eq!(interpolated.len(), 2);
     let interpolated_head = interpolated
         .iter()

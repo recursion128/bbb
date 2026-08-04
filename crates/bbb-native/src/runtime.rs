@@ -201,7 +201,7 @@ use crate::{
         world_instrument_tooltip_context, world_jukebox_song_tooltip_context,
         world_painting_variant_tooltip_context, world_trim_material_keys,
         world_trim_material_tooltip_context, world_trim_pattern_keys,
-        world_trim_pattern_tooltip_context, FirstPersonHandPresentation,
+        world_trim_pattern_tooltip_context, FirstPersonHandPresentation, MovingPistonVisibility,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
@@ -4458,6 +4458,7 @@ pub(crate) fn update_renderer_from_publication(
         item_runtime,
         terrain_textures,
         entity_partial_tick,
+        MovingPistonVisibility::new(block_entity_visibility, terrain_upload),
     );
     let block_entity_item_models = block_entity_item_models(
         world,

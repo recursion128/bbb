@@ -52,6 +52,9 @@ impl MovingPistonState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MovingPistonRenderBlockState {
+    /// `PistonMovingBlockEntity.getBlockPos()`, i.e. what `shouldRender`
+    /// measures against — not the movement-origin `block_pos` the bake uses.
+    pub piston_pos: BlockPos,
     pub block_state_id: i32,
     pub random_seed_pos: BlockPos,
     pub block_pos: BlockPos,
@@ -424,6 +427,7 @@ impl WorldStore {
                     continue;
                 };
                 blocks.push(MovingPistonRenderBlockState {
+                    piston_pos: moving.pos,
                     block_state_id: state_id,
                     random_seed_pos: render_pos,
                     block_pos: render_pos,
@@ -442,6 +446,7 @@ impl WorldStore {
                     continue;
                 };
                 blocks.push(MovingPistonRenderBlockState {
+                    piston_pos: moving.pos,
                     block_state_id: head_state_id,
                     random_seed_pos: render_pos,
                     block_pos: render_pos,
@@ -454,6 +459,7 @@ impl WorldStore {
                     .block_state_id_by_name_and_properties(&moved_state.name, &base_properties)
                 {
                     blocks.push(MovingPistonRenderBlockState {
+                        piston_pos: moving.pos,
                         block_state_id: base_state_id,
                         random_seed_pos: moving.pos,
                         block_pos: moving.pos,
@@ -466,6 +472,7 @@ impl WorldStore {
                 }
             } else {
                 blocks.push(MovingPistonRenderBlockState {
+                    piston_pos: moving.pos,
                     block_state_id: moving.moved_block_state_id,
                     random_seed_pos: render_pos,
                     block_pos: render_pos,

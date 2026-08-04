@@ -1,5 +1,7 @@
 use super::*;
+use crate::block_entity_visibility::{BlockEntityVisibility, PISTON_HEAD_VIEW_DISTANCE};
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
+use crate::terrain_runtime::TerrainUploadState;
 
 /// Vanilla `FLAT_ITEM_DEPTH_THRESHOLD` / `ITEM_MIN_HOVER_HEIGHT`: a rendered model thinner than this in Z
 /// is stacked back-to-front; a thicker one is scattered in 3D.
@@ -129,12 +131,14 @@ pub(crate) fn entity_block_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     entity_partial_tick: f32,
+    moving_piston_visibility: MovingPistonVisibility<'_>,
 ) -> ItemModelResidencyFrame {
     let attachments = entity_block_attachments(
         instances,
         world,
         item_runtime,
         entity_partial_tick.clamp(0.0, 1.0),
+        moving_piston_visibility,
     );
     if attachments.is_empty() {
         return ItemModelResidencyFrame::default();
@@ -320,11 +324,39 @@ pub(super) fn block_item_variant_identity(properties: &BTreeMap<String, String>)
     Arc::from(identity)
 }
 
+/// `PistonHeadRenderer` is an ordinary block-entity renderer, so its moving
+/// blocks pass the same visible-section + `getViewDistance()` gate as any other
+/// block-entity submission. The gate is absent in unit tests, where every
+/// moving block is submitted.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct MovingPistonVisibility<'a> {
+    gate: Option<(BlockEntityVisibility, &'a TerrainUploadState)>,
+}
+
+impl<'a> MovingPistonVisibility<'a> {
+    pub(crate) fn new(
+        visibility: BlockEntityVisibility,
+        terrain_upload: &'a TerrainUploadState,
+    ) -> Self {
+        Self {
+            gate: Some((visibility, terrain_upload)),
+        }
+    }
+
+    fn allows(self, world: &WorldStore, pos: BlockPos) -> bool {
+        let Some((visibility, terrain_upload)) = self.gate else {
+            return true;
+        };
+        visibility.block_position_is_visible(pos, PISTON_HEAD_VIEW_DISTANCE, world, terrain_upload)
+    }
+}
+
 pub(super) fn entity_block_attachments(
     instances: &[EntityModelInstance],
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_partial_tick: f32,
+    moving_piston_visibility: MovingPistonVisibility<'_>,
 ) -> Vec<EntityBlockAttachment> {
     let mut attachments = Vec::new();
     for instance in instances {
@@ -449,6 +481,9 @@ pub(super) fn entity_block_attachments(
     // deterministic model offsets. Reuse the shared moving-block terrain bake
     // that already serves falling blocks, but keep piston state owned by world.
     for moving in world.moving_piston_render_blocks(entity_partial_tick) {
+        if !moving_piston_visibility.allows(world, moving.piston_pos) {
+            continue;
+        }
         let Some(block_state) = world.registries().block_state(moving.block_state_id) else {
             continue;
         };

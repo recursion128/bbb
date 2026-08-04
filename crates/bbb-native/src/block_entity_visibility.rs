@@ -28,6 +28,8 @@ const DEFAULT_BLOCK_ENTITY_VIEW_DISTANCE: f64 = 64.0;
 const END_GATEWAY_VIEW_DISTANCE: f64 = 256.0;
 /// `BlockEntityWithBoundingBoxRenderer.getViewDistance()`.
 const BOUNDING_BOX_VIEW_DISTANCE: f64 = 96.0;
+/// `PistonHeadRenderer.getViewDistance()`.
+pub(crate) const PISTON_HEAD_VIEW_DISTANCE: f64 = 68.0;
 const SECTION_SIZE: i32 = 16;
 
 /// Which off-screen renderer owns a submission, i.e. whose `shouldRender`
@@ -161,6 +163,23 @@ impl BlockEntityVisibility {
         }
     }
 
+    /// `shouldRender` plus the visible-section/frustum gate for an ordinary
+    /// block-entity renderer whose submission is not an entity-model instance.
+    /// `PistonHeadRenderer`'s moving blocks take this path.
+    pub(crate) fn block_position_is_visible(
+        self,
+        pos: BlockPos,
+        view_distance: f64,
+        world: &WorldStore,
+        terrain_upload: &TerrainUploadState,
+    ) -> bool {
+        self.ordinary_position_is_visible(
+            pos,
+            view_distance,
+            terrain_upload.is_block_section_compiled_and_visible(world, pos),
+        )
+    }
+
     pub(crate) fn is_visible(
         self,
         instance: &EntityModelInstance,
@@ -183,28 +202,42 @@ impl BlockEntityVisibility {
         instance: &EntityModelInstance,
         section_compiled_and_visible: bool,
     ) -> bool {
-        let Some(camera) = self.camera else {
-            return true;
-        };
         let Some(pos) = instance_block_position(instance) else {
             return true;
         };
+        if renders_off_screen(instance) {
+            // The projection already applied this renderer's `shouldRender`
+            // through `off_screen_owner_is_visible`; the beam's owner is not
+            // recoverable from the model kind alone.
+            return true;
+        }
+        self.ordinary_position_is_visible(
+            pos,
+            block_entity_view_distance(instance),
+            section_compiled_and_visible,
+        )
+    }
+
+    /// The ordinary (non-off-screen) gate: compiled-and-visible section, then
+    /// `shouldRender`'s spherical distance, then the containing section against
+    /// the camera frustum.
+    fn ordinary_position_is_visible(
+        self,
+        pos: BlockPos,
+        view_distance: f64,
+        section_compiled_and_visible: bool,
+    ) -> bool {
+        let Some(camera) = self.camera else {
+            return true;
+        };
+        if !section_compiled_and_visible {
+            return false;
+        }
         let center = [
             f64::from(pos.x) + 0.5,
             f64::from(pos.y) + 0.5,
             f64::from(pos.z) + 0.5,
         ];
-        if renders_off_screen(instance) {
-            // `BeaconRenderer.shouldRender`: both positions flattened to y = 0,
-            // so height above or below the camera never culls the beam.
-            let dx = center[0] - camera.position[0];
-            let dz = center[2] - camera.position[2];
-            return dx * dx + dz * dz < self.render_distance_blocks * self.render_distance_blocks;
-        }
-        if !section_compiled_and_visible {
-            return false;
-        }
-
         let distance = center
             .into_iter()
             .zip(camera.position)
@@ -213,7 +246,6 @@ impl BlockEntityVisibility {
                 delta * delta
             })
             .sum::<f64>();
-        let view_distance = block_entity_view_distance(instance);
         if distance >= view_distance * view_distance {
             return false;
         }
@@ -350,6 +382,22 @@ mod tests {
         // the projection owns the distance check for off-screen renderers.
         assert!(visibility.instance_is_visible(&beam([0.0, 0.0, -20.0]), false));
         assert!(visibility.instance_is_visible(&beam([0.0, 4_000.0, 0.0]), false));
+    }
+
+    #[test]
+    fn the_piston_head_renderer_uses_its_own_sixty_eight_block_view_distance() {
+        let visibility = camera_visibility();
+        let visible = |z: i32, compiled| {
+            visibility.ordinary_position_is_visible(
+                BlockPos { x: 0, y: 0, z },
+                PISTON_HEAD_VIEW_DISTANCE,
+                compiled,
+            )
+        };
+        assert!(visible(67, true));
+        assert!(!visible(68, true));
+        // The visible-section gate still precedes the distance check.
+        assert!(!visible(1, false));
     }
 
     #[test]
