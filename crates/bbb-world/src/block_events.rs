@@ -56,6 +56,30 @@ pub struct LocalBlockPredictionState {
 }
 
 impl WorldStore {
+    /// Starts one Vanilla `BlockStatePredictionHandler` scope. Java `int`
+    /// arithmetic wraps from MAX to MIN, and acknowledgements compare the
+    /// signed values directly.
+    pub fn next_local_prediction_sequence(&mut self) -> i32 {
+        self.local_prediction_sequence = self.local_prediction_sequence.wrapping_add(1);
+        self.local_prediction_sequence
+    }
+
+    pub fn local_prediction_sequence(&self) -> i32 {
+        self.local_prediction_sequence
+    }
+
+    pub fn set_local_prediction_sequence(&mut self, sequence: i32) {
+        self.local_prediction_sequence = sequence;
+    }
+
+    pub fn local_prediction_last_teleport_sequence(&self) -> Option<i32> {
+        self.local_prediction_last_teleport_sequence
+    }
+
+    pub(crate) fn mark_local_prediction_teleport(&mut self) {
+        self.local_prediction_last_teleport_sequence = Some(self.local_prediction_sequence);
+    }
+
     pub fn apply_block_changed_ack(&mut self, ack: ProtocolBlockChangedAck) {
         self.counters.block_changed_ack_packets += 1;
         self.last_block_changed_ack = Some(BlockChangedAckState {
@@ -370,6 +394,43 @@ mod tests {
         BlockChangedAck, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
         PlayLogin as ProtocolPlayLogin,
     };
+
+    #[test]
+    fn prediction_sequence_uses_java_signed_wrap_and_ack_order() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+        store.set_local_prediction_sequence(i32::MAX);
+        assert_eq!(store.next_local_prediction_sequence(), i32::MIN);
+
+        store.record_local_block_prediction(i32::MAX, BlockPos { x: 1, y: 2, z: 3 }, 1, 2, None);
+        store.record_local_block_prediction(i32::MIN, BlockPos { x: 4, y: 5, z: 6 }, 1, 2, None);
+
+        let ended = store.take_local_block_predictions_through_sequence(i32::MIN);
+        assert_eq!(ended.len(), 1);
+        assert_eq!(ended[0].sequence, i32::MIN);
+        assert_eq!(store.local_block_predictions()[0].sequence, i32::MAX);
+        assert_eq!(
+            store
+                .take_local_block_predictions_through_sequence(i32::MAX)
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn local_player_state_cannot_restore_the_level_prediction_owner() {
+        let source = include_str!("client/local_player.rs");
+        let start = source
+            .find("pub struct LocalPlayerInteractionState")
+            .expect("interaction state source");
+        let tail = &source[start..];
+        let end = tail
+            .find("pub struct LocalPlayerAutoSpinAttackState")
+            .expect("next local-player state source");
+        let interaction = &tail[..end];
+        assert!(!interaction.contains("prediction_sequence"));
+        assert!(!interaction.contains("last_teleport_prediction_sequence"));
+    }
 
     #[test]
     fn tracks_block_changed_ack_sequence_and_counter() {

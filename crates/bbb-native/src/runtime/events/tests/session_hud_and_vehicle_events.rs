@@ -1411,13 +1411,7 @@ fn mounted_player_position_event_acknowledges_unchanged_canonical_pose() {
             state: initial_pose.position_state(),
         })
     );
-    assert_eq!(
-        world
-            .local_player()
-            .interaction
-            .last_teleport_prediction_sequence,
-        Some(12)
-    );
+    assert_eq!(world.local_prediction_last_teleport_sequence(), Some(12));
 }
 
 #[test]

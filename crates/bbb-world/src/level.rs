@@ -989,6 +989,8 @@ impl WorldStore {
         self.level_events.clear();
         self.client_audio.playing_jukebox_songs.clear();
         self.clear_tickable_entity_sounds();
+        self.local_prediction_sequence = 0;
+        self.local_prediction_last_teleport_sequence = None;
         self.local_block_predictions.clear();
         self.entities.clear();
         self.counters.block_destructions_tracked = 0;
@@ -1578,6 +1580,9 @@ mod tests {
             yaw: 0.0,
             pitch: 0.0,
         });
+        store.set_local_prediction_sequence(12);
+        store.mark_local_prediction_teleport();
+        store.record_local_block_prediction(12, BlockPos { x: 3, y: 4, z: 5 }, 1, 2, None);
 
         let same_dimension = store.apply_respawn(&ProtocolRespawn {
             common_spawn_info: ProtocolSpawnInfo {
@@ -1605,6 +1610,9 @@ mod tests {
         assert!(store.last_debug_block_value().is_some());
         assert!(store.local_player().default_spawn.is_some());
         assert_eq!(store.client_level_generation(), 1);
+        assert_eq!(store.local_prediction_sequence(), 12);
+        assert_eq!(store.local_prediction_last_teleport_sequence(), Some(12));
+        assert_eq!(store.local_block_predictions().len(), 1);
         let available_levels = store.available_levels().clone();
         let server_enforces_secure_chat = store.server_enforces_secure_chat();
 
@@ -1636,6 +1644,9 @@ mod tests {
         assert_eq!(store.chunk_count(), 0);
         assert_eq!(store.first_chunk(), None);
         assert_eq!(store.entity_count(), 0);
+        assert_eq!(store.local_prediction_sequence(), 0);
+        assert_eq!(store.local_prediction_last_teleport_sequence(), None);
+        assert!(store.local_block_predictions().is_empty());
         assert!(store.last_debug_block_value().is_none());
         assert!(store.last_debug_chunk_value().is_none());
         assert!(store.last_debug_entity_value().is_none());

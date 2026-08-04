@@ -1350,9 +1350,37 @@ INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/block_events.rs#next_local_prediction_sequence",
+                "crates/bbb-world/src/block_events.rs#apply_block_changed_ack",
+                "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+                "crates/bbb-native/src/input/mouse.rs#start_use_item_with_effects",
+                "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_command",
+                "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_on_command",
+            ),
+            (
+                "crates/bbb-world/src/block_events.rs#prediction_sequence_uses_java_signed_wrap_and_ack_order",
+                "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+                "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back",
+                "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+                "crates/bbb-native/src/input/mouse.rs#unavailable_item_use_command_keeps_sequence_and_world_unchanged",
+                "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_keeps_prediction_and_item_unchanged",
+                "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_does_not_open_prediction_owned_editor",
+                "crates/bbb-native/src/input/mouse.rs#admitted_block_use_does_not_start_unadmitted_item_fallback",
+                "crates/bbb-native/src/input/commands.rs#prediction_commands_cannot_restore_unreserved_queue_helpers",
+            ),
+        ),
+        ("startPrediction",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
+    "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
 }
 
 OWNER_EVIDENCE_MECHANISMS = tuple(METHOD_OWNER_EVIDENCE)
@@ -1541,8 +1569,10 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/input/mouse.rs",
     ),
     "interaction-prediction-sequence": (
-        "crates/bbb-world/src/client/local_player.rs",
-        "crates/bbb-world/src/client/inventory/use_prediction.rs",
+        "crates/bbb-world/src/block_events.rs",
+        "crates/bbb-world/src/chunks/store.rs",
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-native/src/input/mouse.rs",
     ),
     "interaction-carried-slot-sync": (
         "crates/bbb-native/src/input/commands.rs",

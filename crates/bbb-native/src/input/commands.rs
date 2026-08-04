@@ -850,54 +850,46 @@ pub(super) fn queue_swing_command(
     }
 }
 
-pub(super) fn queue_use_item_on_command(
+pub(super) fn send_reserved_use_item_on_command(
     counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    permit: mpsc::Permit<'_, NetCommand>,
     selected_hotbar_slot: u8,
     hand: InteractionHand,
     hit: CrosshairBlockHit,
     sequence: i32,
 ) {
-    if let Some(tx) = net_commands {
-        let command = UseItemOnCommand {
-            packet: UseItemOn {
-                hand,
-                hit: protocol_block_hit_result_from_crosshair_hit(hit),
-                sequence,
-            },
-            selected_hotbar_slot: selected_hotbar_slot.min(8),
-        };
-        if tx.try_send(NetCommand::UseItemOn(command)).is_ok() {
-            counters.use_item_on_commands_queued += 1;
-        }
-    }
+    let command = UseItemOnCommand {
+        packet: UseItemOn {
+            hand,
+            hit: protocol_block_hit_result_from_crosshair_hit(hit),
+            sequence,
+        },
+        selected_hotbar_slot: selected_hotbar_slot.min(8),
+    };
+    permit.send(NetCommand::UseItemOn(command));
+    counters.use_item_on_commands_queued += 1;
 }
 
-pub(super) fn queue_use_item_command(
+pub(super) fn send_reserved_use_item_command(
     counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    permit: mpsc::Permit<'_, NetCommand>,
     selected_hotbar_slot: u8,
     hand: InteractionHand,
     y_rot: f32,
     x_rot: f32,
     sequence: i32,
-) -> bool {
-    if let Some(tx) = net_commands {
-        let command = UseItemCommand {
-            packet: UseItem {
-                hand,
-                sequence,
-                y_rot,
-                x_rot,
-            },
-            selected_hotbar_slot: selected_hotbar_slot.min(8),
-        };
-        if tx.try_send(NetCommand::UseItem(command)).is_ok() {
-            counters.use_item_commands_queued += 1;
-            return true;
-        }
-    }
-    false
+) {
+    let command = UseItemCommand {
+        packet: UseItem {
+            hand,
+            sequence,
+            y_rot,
+            x_rot,
+        },
+        selected_hotbar_slot: selected_hotbar_slot.min(8),
+    };
+    permit.send(NetCommand::UseItem(command));
+    counters.use_item_commands_queued += 1;
 }
 
 pub(super) fn queue_pick_item_from_block_command(
@@ -1854,9 +1846,14 @@ mod tests {
             inside: false,
         };
 
-        queue_use_item_on_command(
+        let permit = commands
+            .as_ref()
+            .unwrap()
+            .try_reserve()
+            .expect("use-item-on command permit");
+        send_reserved_use_item_on_command(
             &mut counters,
-            &commands,
+            permit,
             6,
             InteractionHand::OffHand,
             hit,
@@ -1887,6 +1884,25 @@ mod tests {
                 selected_hotbar_slot: 6,
             })
         );
+    }
+
+    #[test]
+    fn prediction_commands_cannot_restore_unreserved_queue_helpers() {
+        let commands_source = include_str!("commands.rs");
+        let old_use = ["pub(super) fn queue_", "use_item_command"].concat();
+        let old_use_on = ["pub(super) fn queue_", "use_item_on_command"].concat();
+        let unreserved_use = ["try_send(NetCommand::", "UseItem("].concat();
+        let unreserved_use_on = ["try_send(NetCommand::", "UseItemOn("].concat();
+        assert!(!commands_source.contains(&old_use));
+        assert!(!commands_source.contains(&old_use_on));
+        assert!(!commands_source.contains(&unreserved_use));
+        assert!(!commands_source.contains(&unreserved_use_on));
+
+        let mouse_source = include_str!("mouse.rs");
+        let old_call = ["queue_", "use_item_command("].concat();
+        let old_call_on = ["queue_", "use_item_on_command("].concat();
+        assert!(!mouse_source.contains(&old_call));
+        assert!(!mouse_source.contains(&old_call_on));
     }
 
     #[test]

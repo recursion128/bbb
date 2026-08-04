@@ -26,9 +26,9 @@ use super::{
     commands::{
         hotbar_slot_for_scroll, queue_attack_entity_command, queue_interact_entity_command,
         queue_pick_item_from_block_command, queue_pick_item_from_entity_command,
-        queue_spectate_entity_command, queue_swing_command, queue_use_item_command,
-        queue_use_item_on_command, queue_zero_pos_player_action_command, select_hotbar_slot,
-        send_reserved_player_action_command,
+        queue_spectate_entity_command, queue_swing_command, queue_zero_pos_player_action_command,
+        select_hotbar_slot, send_reserved_player_action_command, send_reserved_use_item_command,
+        send_reserved_use_item_on_command,
     },
     release_active_input, ClientInputState,
 };
@@ -453,30 +453,10 @@ fn start_use_item_with_effects(
         None => {}
     }
 
-    match camera_target {
-        Some(CrosshairTarget::Entity(hit)) => {
-            if world.try_open_minecart_command_block_editor(hit.entity_id) {
-                input.sync_minecart_command_block_editor(world, counters, net_commands);
-            }
+    if let Some(CrosshairTarget::Entity(hit)) = camera_target {
+        if world.try_open_minecart_command_block_editor(hit.entity_id) {
+            input.sync_minecart_command_block_editor(world, counters, net_commands);
         }
-        Some(CrosshairTarget::Block(hit)) => {
-            if world.try_open_command_block_editor(hit.pos) {
-                input.sync_command_block_editor(world, counters, net_commands);
-            }
-            if world.try_open_structure_block_editor(hit.pos) {
-                input.sync_structure_block_editor(world, counters, net_commands);
-            }
-            if world.try_open_jigsaw_block_editor(hit.pos) {
-                input.sync_jigsaw_block_editor(world, counters, net_commands);
-            }
-            if world.try_open_test_block_editor(hit.pos) {
-                input.sync_test_block_editor(world, counters, net_commands);
-            }
-            if world.try_open_test_instance_block_editor(hit.pos) {
-                input.sync_test_instance_block_editor(world, counters, net_commands);
-            }
-        }
-        None => {}
     }
 
     for hand in [InteractionHand::MainHand, InteractionHand::OffHand] {
@@ -501,7 +481,28 @@ fn start_use_item_with_effects(
                 Some(prediction)
             }
             Some(CrosshairTarget::Block(hit)) => {
+                let Some(tx) = net_commands else {
+                    return true;
+                };
+                let Ok(permit) = tx.try_reserve() else {
+                    return true;
+                };
                 let sequence = world.next_local_prediction_sequence();
+                if world.try_open_command_block_editor(hit.pos) {
+                    input.sync_command_block_editor(world, counters, net_commands);
+                }
+                if world.try_open_structure_block_editor(hit.pos) {
+                    input.sync_structure_block_editor(world, counters, net_commands);
+                }
+                if world.try_open_jigsaw_block_editor(hit.pos) {
+                    input.sync_jigsaw_block_editor(world, counters, net_commands);
+                }
+                if world.try_open_test_block_editor(hit.pos) {
+                    input.sync_test_block_editor(world, counters, net_commands);
+                }
+                if world.try_open_test_instance_block_editor(hit.pos) {
+                    input.sync_test_instance_block_editor(world, counters, net_commands);
+                }
                 let prediction = world.predict_local_block_use_with_hit_and_random(
                     hit.pos,
                     hit.face,
@@ -512,9 +513,9 @@ fn start_use_item_with_effects(
                     sequence,
                     level_random,
                 );
-                queue_use_item_on_command(
+                send_reserved_use_item_on_command(
                     counters,
-                    net_commands,
+                    permit,
                     world.local_player().selected_hotbar_slot,
                     hand,
                     hit,
@@ -586,20 +587,24 @@ fn start_use_item_with_effects(
                 local_item_use_pov_result_from_crosshair_hit,
             )
         });
+        let Some(tx) = net_commands else {
+            return true;
+        };
+        let Ok(permit) = tx.try_reserve() else {
+            return true;
+        };
         let sequence = world.next_local_prediction_sequence();
         let prediction =
             world.predict_local_item_use_with_pov_and_sequence(hand, pov, sequence, input.sneak);
-        if !queue_use_item_command(
+        send_reserved_use_item_command(
             counters,
-            net_commands,
+            permit,
             world.local_player().selected_hotbar_slot,
             hand,
             pose.y_rot,
             pose.x_rot,
             sequence,
-        ) {
-            return true;
-        }
+        );
         let opened_writable_book =
             world.open_writable_book_editor(hand, input.client_text_filtering_enabled());
         match prediction {
@@ -1557,6 +1562,166 @@ mod tests {
                 sequence: 0,
             })
         );
+    }
+
+    #[test]
+    fn unavailable_item_use_command_keeps_sequence_and_world_unchanged() {
+        let assert_noop = |commands: &Option<mpsc::Sender<NetCommand>>| {
+            let mut input = ClientInputState::new(true);
+            let mut world = WorldStore::new();
+            world.set_local_player_pose(LocalPlayerPoseState::default());
+            install_consumable(&mut world, 0, 42, 1.6);
+            let item_before = world.local_item_in_hand(InteractionHand::MainHand).cloned();
+            let mut counters = NetCounters::default();
+            let player_pose = world.local_player_pose();
+
+            assert!(start_use_item(
+                &mut input,
+                &mut world,
+                &mut counters,
+                commands,
+                None,
+                player_pose,
+            ));
+
+            assert_eq!(world.local_prediction_sequence(), 0);
+            assert_eq!(
+                world.local_item_in_hand(InteractionHand::MainHand),
+                item_before.as_ref()
+            );
+            assert!(!world.local_player().interaction.using_item);
+            assert!(world.local_block_predictions().is_empty());
+            assert!(input.pending_local_player_action_particles.is_empty());
+            assert_eq!(counters.use_item_commands_queued, 0);
+        };
+
+        assert_noop(&None);
+
+        let (full_tx, mut full_rx) = mpsc::channel(1);
+        full_tx
+            .try_send(NetCommand::Swing(InteractionHand::OffHand))
+            .unwrap();
+        assert_noop(&Some(full_tx));
+        assert_eq!(
+            full_rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
+        );
+
+        let (closed_tx, closed_rx) = mpsc::channel(1);
+        drop(closed_rx);
+        assert_noop(&Some(closed_tx));
+    }
+
+    #[test]
+    fn unavailable_block_use_command_keeps_prediction_and_item_unchanged() {
+        let assert_noop = |commands: &Option<mpsc::Sender<NetCommand>>| {
+            let mut input = ClientInputState::new(true);
+            let mut world = world_with_crosshair_lodestone();
+            world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+                slot: 0,
+                item: item_stack(VANILLA_ITEM_COMPASS_ID, 1),
+            });
+            let item_before = world.local_item_in_hand(InteractionHand::MainHand).cloned();
+            let mut counters = NetCounters::default();
+
+            handle_mouse_input(
+                &mut input,
+                &mut world,
+                &mut counters,
+                commands,
+                MouseButton::Right,
+                ElementState::Pressed,
+            );
+
+            assert_eq!(world.local_prediction_sequence(), 0);
+            assert_eq!(
+                world.local_item_in_hand(InteractionHand::MainHand),
+                item_before.as_ref()
+            );
+            assert!(world.local_block_predictions().is_empty());
+            assert!(input.pending_local_player_action_particles.is_empty());
+            assert_eq!(counters.use_item_on_commands_queued, 0);
+            assert_eq!(counters.swing_commands_queued, 0);
+        };
+
+        assert_noop(&None);
+
+        let (full_tx, mut full_rx) = mpsc::channel(1);
+        full_tx
+            .try_send(NetCommand::Swing(InteractionHand::OffHand))
+            .unwrap();
+        assert_noop(&Some(full_tx));
+        assert_eq!(
+            full_rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
+        );
+
+        let (closed_tx, closed_rx) = mpsc::channel(1);
+        drop(closed_rx);
+        assert_noop(&Some(closed_tx));
+    }
+
+    #[test]
+    fn unavailable_block_use_command_does_not_open_prediction_owned_editor() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+            .unwrap();
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_command_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_prediction_sequence(), 0);
+        assert!(world.command_block_editor().is_none());
+        assert!(!input.command_block_editor_is_active());
+        assert_eq!(counters.use_item_on_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
+        );
+    }
+
+    #[test]
+    fn admitted_block_use_does_not_start_unadmitted_item_fallback() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_WATER_BUCKET_ID, 1),
+        });
+        let item_before = world.local_item_in_hand(InteractionHand::MainHand).cloned();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_prediction_sequence(), 1);
+        assert_eq!(
+            world.local_item_in_hand(InteractionHand::MainHand),
+            item_before.as_ref()
+        );
+        assert!(world.local_block_predictions().is_empty());
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(counters.use_item_commands_queued, 0);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::UseItemOn(_))));
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -3992,7 +4157,7 @@ mod tests {
             ElementState::Pressed,
         );
 
-        assert_eq!(world.local_player().interaction.prediction_sequence, 1);
+        assert_eq!(world.local_prediction_sequence(), 1);
         assert_eq!(
             world.local_player().interaction.destroying_block,
             Some(CROSSHAIR_BLOCK_POS)
@@ -4480,7 +4645,7 @@ mod tests {
             );
 
             assert!(input.destroy_block_held);
-            assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+            assert_eq!(world.local_prediction_sequence(), 0);
             assert_eq!(world.local_player().interaction.destroying_block, None);
             assert!(world.local_block_predictions().is_empty());
             assert!(input.pending_local_player_action_particles.is_empty());
@@ -4627,7 +4792,7 @@ mod tests {
             world.local_player().interaction.destroying_block_face,
             Some(ProtocolDirection::South)
         );
-        assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+        assert_eq!(world.local_prediction_sequence(), 0);
         assert_eq!(counters.player_action_commands_queued, 0);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -5009,7 +5174,7 @@ mod tests {
             Some(CROSSHAIR_BLOCK_POS)
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 17);
-        assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+        assert_eq!(world.local_prediction_sequence(), 0);
         while rx.try_recv().is_ok() {}
 
         advance_destroying_block_at_partial_tick(
@@ -5022,7 +5187,7 @@ mod tests {
             1,
         );
         assert_eq!(world.local_player().interaction.destroying_block, None);
-        assert_eq!(world.local_player().interaction.prediction_sequence, 1);
+        assert_eq!(world.local_prediction_sequence(), 1);
         assert!(matches!(
             rx.try_recv(),
             Ok(NetCommand::PlayerAction(PlayerAction {

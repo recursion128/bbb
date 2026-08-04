@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "b38e206be54cb8e64b34297aac6dedf47c497f09901fd0bacd0691ac55407b9a"
+      "sha256": "58db72d1a3e7a9c5d0f59c7221cf53d49a278c5a1a7f8af941e709348f197f33"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -141,10 +141,13 @@
     },
     "interaction-prediction-sequence": {
       "bbb_evidence": [
-        "crates/bbb-world/src/client/local_player.rs",
-        "crates/bbb-world/src/client/inventory/use_prediction.rs"
+        "crates/bbb-world/src/block_events.rs",
+        "crates/bbb-world/src/chunks/store.rs",
+        "crates/bbb-native/src/input/commands.rs",
+        "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 1
+      "owner_count": 1,
+      "owner_evidence_count": 1
     },
     "interaction-primary-action-routing": {
       "bbb_evidence": [
@@ -22615,6 +22618,27 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#startDestroyBlock(final BlockPos pos,final Direction direction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#next_local_prediction_sequence",
+          "crates/bbb-world/src/block_events.rs#apply_block_changed_ack",
+          "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+          "crates/bbb-native/src/input/mouse.rs#start_use_item_with_effects",
+          "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_command",
+          "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_on_command"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#prediction_sequence_uses_java_signed_wrap_and_ack_order",
+          "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back",
+          "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+          "crates/bbb-native/src/input/mouse.rs#unavailable_item_use_command_keeps_sequence_and_world_unchanged",
+          "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_keeps_prediction_and_item_unchanged",
+          "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_does_not_open_prediction_owned_editor",
+          "crates/bbb-native/src/input/mouse.rs#admitted_block_use_does_not_start_unadmitted_item_fallback",
+          "crates/bbb-native/src/input/commands.rs#prediction_commands_cannot_restore_unreserved_queue_helpers"
+        ]
+      },
       "category": "prediction",
       "domain": "interaction",
       "kind": "method",
@@ -41135,7 +41159,8 @@
       "rendering-level-light-query",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle",
-      "interaction-block-breaking"
+      "interaction-block-breaking",
+      "interaction-prediction-sequence"
     ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
     "serverbound_scan_paths": [

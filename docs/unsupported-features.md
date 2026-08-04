@@ -118,10 +118,6 @@ preserving the two former broad `partial` claims.
 - **`interaction-game-mode-guards`** — hurt, experience, miss-time, spectator and
   server-controlled-inventory guards must query the same canonical game/vehicle state.
   Close after all five guards have exact action-consumer evidence.
-- **`interaction-prediction-sequence`** — world owns the monotonically sequenced local
-  prediction lifetime. Close after allocation, mutation-before-send, ack/correction,
-  wrap/budget and session replacement are proved for the sole Vanilla owner. Active
-  contract: `goal.md#active-工程合同interaction-prediction-sequence-closure`.
 - **`interaction-carried-slot-sync`** — world selected slot and native command baseline
   must be the only state. Close after change-only send, queue failure retry, controller
   tick order and generation reset are proved for both owners.

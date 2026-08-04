@@ -94,7 +94,7 @@
   diagnostics/light 以 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
 - **2026-08-03（LocalPlayer/game-mode decision census）**：149 个 owner 拆为 23 条同质决策 route
   与 18 条直接 accessor，unknown/side-effect support/stale output 均 fail closed。
-- **2026-08-03（interaction block-breaking closure）**：六 owner 统一到 world prediction 与 native
-  atomic command barrier，生成式 item/block gate、border、abort/start/finish、ack/rollback 经 focused/live 闭环。
+- **2026-08-03（interaction prediction lifecycle closure）**：block-breaking 六 owner 与
+  `startPrediction` 统一到 level-bound world handler、signed sequence/ack 和 native atomic command barrier。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

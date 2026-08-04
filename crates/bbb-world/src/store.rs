@@ -188,6 +188,12 @@ pub struct WorldStore {
     pub(crate) level_events: Vec<LevelEventRecord>,
     #[serde(default)]
     pub(crate) last_block_changed_ack: Option<BlockChangedAckState>,
+    /// Vanilla `ClientLevel.blockStatePredictionHandler` state. This stays
+    /// level-bound when a same-dimension respawn replaces only LocalPlayer.
+    #[serde(default)]
+    pub(crate) local_prediction_sequence: i32,
+    #[serde(default)]
+    pub(crate) local_prediction_last_teleport_sequence: Option<i32>,
     #[serde(default)]
     pub(crate) local_block_predictions: Vec<LocalBlockPredictionState>,
     pub(crate) entities: crate::entities::EntityStore,

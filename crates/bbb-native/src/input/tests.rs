@@ -2081,14 +2081,14 @@ fn render_input_publication_projects_display_state_without_simulation_queues() {
 }
 
 #[test]
-fn prediction_sequence_starts_at_one_and_wraps_positive() {
+fn prediction_sequence_starts_at_one_and_wraps_like_java_int() {
     let mut world = WorldStore::new();
 
     assert_eq!(world.next_local_prediction_sequence(), 1);
     assert_eq!(world.next_local_prediction_sequence(), 2);
 
     world.set_local_prediction_sequence(i32::MAX);
-    assert_eq!(world.next_local_prediction_sequence(), 1);
+    assert_eq!(world.next_local_prediction_sequence(), i32::MIN);
 }
 
 #[test]

@@ -60,8 +60,8 @@ packet encode 存在、world 字段存在或某个单元测试都不能重新抬
 broad resolver/coverage claim。
 
 `interaction-block-breaking` 的六个 `MultiPlayerGameMode` owner 进一步要求逐 owner evidence。
-`bbb-world::LocalPlayerInteractionState` 是 target、face、selected-item signature、progress、stage、
-delay 和 prediction sequence 的唯一 canonical owner；native mouse 只按 Vanilla 的
+`bbb-world::LocalPlayerInteractionState` 是 target、face、selected-item signature、progress、stage 和
+delay 的唯一 canonical owner；native mouse 只按 Vanilla 的
 restriction → 初始 world-border → prediction/attack → command 顺序编排，net 只编码已确定的
 `START/ABORT/STOP_DESTROY_BLOCK`。生存模式进入同一 target 后不重新查询 world border；若 block
 已变成 air，则 world 清理 active progress，native 不再发 swing、hit particle 或声音。creative 的
@@ -73,9 +73,18 @@ interface 机械生成的七项 membership。任一 gate 拒绝时仍发送 Vani
 有界 net queue 是本地 mutation 的 commit barrier：start/finish/abort 必须先取得一个 command permit，
 retarget 必须一次取得 ABORT 与 START 两个 permit；full、closed 或 absent sender 时 prediction sequence、
 target、tutorial、block prediction 与 effect 均保留上一完整状态，下一 input/tick 重试。release/focus-loss
-也调用同一个 atomic abort owner，不另行清 cache。发送成功后 world prediction 仍由 block update 与
-`BlockChangedAck` 校正；level/session replacement 一次清除 interaction 与 retained prediction，native、
-renderer 不持有第二份破坏状态。
+也调用同一个 atomic abort owner，不另行清 cache。
+
+`MultiPlayerGameMode.startPrediction` 的唯一对应 owner 是 `WorldStore` 中与
+`local_block_predictions` 同生命周期的 level-bound sequence/teleport state，而不是随 respawn 替换的
+`LocalPlayerInteractionState`。每次 block breaking、block use-on 或 item use 都先取得一个 net permit，
+再按 signed Java `int` wrapping 分配一次 sequence、执行 world predictive action，最后用同一 permit 发送
+matching packet；full、closed 或 absent sender 不推进 sequence，也不发布 item/block mutation、effect 或
+retained prediction。同位置再次变化只更新 sequence，保留首次 server state/player position；
+`BlockChangedAck` 以 signed `<=` inclusive 清理，且只有 `lastTeleportSequence < ack sequence` 才允许碰撞
+校正移动玩家。同维度 respawn 只替换 `LocalPlayer`，所以保留该 handler；dimension、ClientLevel 或 session
+replacement 一次清除 sequence、teleport gate 与 retained prediction。native、net 与 renderer 均不缓存
+第二份 handler 状态，旧非预留 use resolver 由 reverse source guard 禁止恢复。
 
 ## Control command 与 simulation mailbox owner
 

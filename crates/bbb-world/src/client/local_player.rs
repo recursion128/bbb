@@ -185,13 +185,6 @@ pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub auto_spin_attack: Option<LocalPlayerAutoSpinAttackState>,
     #[serde(default)]
-    pub prediction_sequence: i32,
-    /// Prediction sequence current when the last player-position teleport was
-    /// applied. Predictions at or before this sequence may still reconcile
-    /// blocks, but must not move the player back across the teleport.
-    #[serde(default)]
-    pub last_teleport_prediction_sequence: Option<i32>,
-    #[serde(default)]
     pub attack: LocalPlayerAttackState,
 }
 
@@ -567,10 +560,7 @@ impl WorldStore {
             self.local_player.pose = Some(pose);
             Some(pose)
         };
-        self.local_player
-            .interaction
-            .last_teleport_prediction_sequence =
-            Some(self.local_player.interaction.prediction_sequence);
+        self.mark_local_prediction_teleport();
         applied_pose
     }
 
@@ -911,20 +901,6 @@ impl WorldStore {
 
     pub fn client_local_player(&self) -> &LocalPlayerState {
         self.local_player()
-    }
-
-    pub fn next_local_prediction_sequence(&mut self) -> i32 {
-        let sequence = self.local_player.interaction.prediction_sequence;
-        self.local_player.interaction.prediction_sequence = if sequence == i32::MAX {
-            1
-        } else {
-            sequence + 1
-        };
-        self.local_player.interaction.prediction_sequence
-    }
-
-    pub fn set_local_prediction_sequence(&mut self, sequence: i32) {
-        self.local_player.interaction.prediction_sequence = sequence.max(0);
     }
 
     pub fn set_local_destroying_block(&mut self, pos: BlockPos) {
@@ -1659,13 +1635,6 @@ mod tests {
     fn local_interaction_state_tracks_prediction_destroy_and_use_item() {
         let mut store = WorldStore::new();
 
-        assert_eq!(store.next_local_prediction_sequence(), 1);
-        assert_eq!(store.next_local_prediction_sequence(), 2);
-        store.set_local_prediction_sequence(i32::MAX);
-        assert_eq!(store.next_local_prediction_sequence(), 1);
-        store.set_local_prediction_sequence(-5);
-        assert_eq!(store.next_local_prediction_sequence(), 1);
-
         let pos = BlockPos { x: 4, y: 70, z: -6 };
         store.set_local_destroying_block(pos);
         store.local_player.interaction.destroying_block_progress = 123;
@@ -1733,11 +1702,10 @@ mod tests {
                 using_item_hand: Some(InteractionHand::MainHand),
                 using_item_ticks: 0,
                 auto_spin_attack: None,
-                prediction_sequence: 1,
-                last_teleport_prediction_sequence: None,
                 attack: LocalPlayerAttackState::default(),
             }
         );
+        assert_eq!(restored.local_prediction_sequence(), 1);
     }
 
     #[test]
@@ -2025,13 +1993,7 @@ mod tests {
             None
         );
         assert_eq!(store.local_player_pose(), Some(initial_pose));
-        assert_eq!(
-            store
-                .local_player()
-                .interaction
-                .last_teleport_prediction_sequence,
-            Some(0)
-        );
+        assert_eq!(store.local_prediction_last_teleport_sequence(), Some(0));
         assert_eq!(store.counters().player_position_packets, 1);
     }
 
