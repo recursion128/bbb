@@ -120,7 +120,8 @@ preserving the two former broad `partial` claims.
   Close after all five guards have exact action-consumer evidence.
 - **`interaction-block-breaking`** — native mouse input drives one world prediction and
   net command path. Close after restriction/border/start/abort/progress/finish, sound,
-  crack overlay, correction and live server behavior cover all six owners.
+  crack overlay, correction and live server behavior cover all six owners. Active
+  contract: `goal.md#active-工程合同interaction-block-breaking-closure`.
 - **`interaction-prediction-sequence`** — world owns the monotonically sequenced local
   prediction lifetime. Close after allocation, mutation-before-send, ack/correction,
   wrap/budget and session replacement are proved for the sole Vanilla owner.
