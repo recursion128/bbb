@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "444b870ed6206d0c2e85d5b5212eb1dd72184de9619991335606a6a61562e4a3"
+      "sha256": "e79ce6921269720f3c5ca4c87ce9a5af5340fc21a2db4b6b31933d0fca4aa494"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -296,7 +296,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/input.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "protocol-configuration-handler-decisions": {
       "bbb_evidence": [
@@ -25183,6 +25184,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onUpdateAbilities()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#sync_command_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#command_block_editor_waits_for_authoritative_data_and_done_sends_exact_state_once"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25197,6 +25206,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openCommandBlock(final CommandBlockEntity commandBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+          "crates/bbb-native/src/input.rs#sync_dialog_native_previous_screen"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25211,6 +25229,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openDialog(final Holder <Dialog> dialog)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/book.rs#sync_book_screen"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/book/tests.rs#book_screen_editor_applies_text_rules_and_done_sends_unsigned_submission"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25225,6 +25251,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openItemGui(final ItemStack itemStack,final InteractionHand hand)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/jigsaw_block.rs#sync_jigsaw_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#jigsaw_block_editor_preloads_and_done_sends_exact_set_once"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25239,6 +25273,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openJigsawBlock(final JigsawBlockEntity jigsawBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/minecart_command_block.rs#sync_minecart_command_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_preserves_unsent_command_and_done_sends_exact_state_once"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25253,6 +25295,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openMinecartCommandBlock(final MinecartCommandBlock commandBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/structure_block.rs#sync_structure_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#structure_block_editor_preloads_and_done_sends_clamped_exact_packet"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25267,6 +25317,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openStructureBlock(final StructureBlockEntity structureBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/test_block.rs#sync_test_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25281,6 +25339,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openTestBlock(final TestBlockEntity testBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/test_instance_block.rs#sync_test_instance_block_editor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#test_instance_block_editor_initializes_queries_and_applies_only_present_response_size"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -25295,6 +25361,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#openTestInstanceBlock(final TestInstanceBlockEntity testInstanceBlock)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/ui.rs#apply_open_sign_editor",
+          "crates/bbb-native/src/input.rs#sync_sign_editor"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/ui.rs#open_sign_editor_ignores_missing_sign_without_replacing_screen",
+          "crates/bbb-native/src/input/tests.rs#sign_editor_tick_range_guard_submits_once"
+        ]
+      },
       "category": "screen-open",
       "domain": "ui",
       "kind": "method",
@@ -42581,6 +42657,7 @@
       "rendering-client-block-entity-tracking",
       "player-local-input-movement",
       "player-local-environment-effects",
+      "player-local-world-edit-ui",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

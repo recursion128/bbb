@@ -2550,6 +2550,111 @@ LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/ui.rs#apply_open_sign_editor",
+                "crates/bbb-native/src/input.rs#sync_sign_editor",
+            ),
+            (
+                "crates/bbb-world/src/client/ui.rs#open_sign_editor_ignores_missing_sign_without_replacing_screen",
+                "crates/bbb-native/src/input/tests.rs#sign_editor_tick_range_guard_submits_once",
+            ),
+        ),
+        ("openTextEdit",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/book.rs#sync_book_screen",
+            ),
+            (
+                "crates/bbb-native/src/input/book/tests.rs#book_screen_editor_applies_text_rules_and_done_sends_unsigned_submission",
+            ),
+        ),
+        ("openItemGui",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#sync_command_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#command_block_editor_waits_for_authoritative_data_and_done_sends_exact_state_once",
+            ),
+        ),
+        ("openCommandBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/minecart_command_block.rs#sync_minecart_command_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#minecart_command_block_editor_preserves_unsent_command_and_done_sends_exact_state_once",
+            ),
+        ),
+        ("openMinecartCommandBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/structure_block.rs#sync_structure_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#structure_block_editor_preloads_and_done_sends_clamped_exact_packet",
+            ),
+        ),
+        ("openStructureBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/jigsaw_block.rs#sync_jigsaw_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#jigsaw_block_editor_preloads_and_done_sends_exact_set_once",
+            ),
+        ),
+        ("openJigsawBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/test_block.rs#sync_test_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once",
+            ),
+        ),
+        ("openTestBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/test_instance_block.rs#sync_test_instance_block_editor",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#test_instance_block_editor_initializes_queries_and_applies_only_present_response_size",
+            ),
+        ),
+        ("openTestInstanceBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+                "crates/bbb-native/src/input.rs#sync_dialog_native_previous_screen",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+            ),
+        ),
+        ("openDialog",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2712,6 +2817,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
     "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,
     "player-local-environment-effects": LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE,
+    "player-local-world-edit-ui": LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

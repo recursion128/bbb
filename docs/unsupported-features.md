@@ -99,9 +99,6 @@ preserving the two former broad `partial` claims.
 - **`player-local-inventory-actions`** — native inventory input and world inventory are
   the intended owners for drop, swing, close, recipe, creative drop and throttling.
   Close after all nine owners prove local mutation/packet/screen order and rollback.
-- **`player-local-world-edit-ui`** — packet/world edit state must open the matching
-  native sign, command, structure, test, jigsaw, dialog or book surface. Close after all
-  nine entry owners have reachable screen lifecycle and input/presentation evidence.
 - **`player-local-camera-targeting`** — world camera and entity bounds feed the single
   native crosshair resolver. Close after all nine owners prove item attack range,
   block/entity priority, range-miss fallback and rendered/input consumer agreement.

@@ -66,6 +66,19 @@ environment_audio_runtime `advance_mood`、water-vision 由 lightmap `tick_water
 underwater enter/exit 由 ambient-audio tick 的 transition 链拥有。不得在 native 侧
 另建 portal intensity 或本地 crit 判定第二路径。
 
+## LocalPlayer world-edit-ui owner
+
+九个 `LocalPlayer.open*` owner 各由唯一 native 打开链拥有：sign 由 world
+`apply_open_sign_editor`（missing-sign 防替换）与 native `sync_sign_editor`
+（range guard、单次提交）拥有；book 由 `sync_book_screen`（use 触发、text rules、
+unsigned submission）拥有；command block 与 minecart command block 各经
+`sync_command_block_editor`/`sync_minecart_command_block_editor`（authoritative
+data 等待、exact-state 单发）；structure/jigsaw/test/test-instance 四个 editor 各经
+`sync_*_editor`（preload、clamp/exact-set 单发、mode cycle、present-response
+size）；dialog 由 world `apply_show_dialog` 与
+`sync_dialog_native_previous_screen`（stack 挂起/恢复）拥有。不得为任何 edit
+surface 另建第二条打开链或绕过 sync fn 直接置 screen 状态。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
