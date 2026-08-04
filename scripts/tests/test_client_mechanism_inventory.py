@@ -1521,6 +1521,67 @@ class LocalPlayer {
         )
         self.assertNotIn("persistence-client-files", value["mechanisms"])
 
+    def test_gui_partition_is_total_and_homogeneous(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] == "net/minecraft/client/gui/Gui.java"
+        ]
+
+        self.assertEqual(len(methods), 70)
+        self.assertEqual(
+            Counter(owner["mechanism_id"] for owner in methods),
+            Counter(
+                {
+                    "hud-frame-extract-order": 9,
+                    "hud-player-vitals": 18,
+                    "hud-hotbar-selection": 6,
+                    "hud-overlay-effects": 11,
+                    "hud-text-and-lists": 19,
+                    # `getFont`/`getChat`/`getTabList`/`getBossOverlay`/
+                    # `getDebugOverlay`/`getSpectatorGui`/`getGuiTicks`.
+                    "scope-support-accessors": 7,
+                }
+            ),
+        )
+        self.assertTrue(
+            all(
+                owner["role"] == "support-non-decision"
+                for owner in methods
+                if owner["mechanism_id"] == "scope-support-accessors"
+            )
+        )
+        self.assertNotIn("rendering-hud-step-surface", value["mechanisms"])
+
+    def test_unclassified_gui_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/gui/Gui.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.gui;"
+                " class Gui { void extractNewLayer() { this.layers.add(1); } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "Gui method lacks a decision/support route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-step",
+                        "ui",
+                        "hud-frame-extract-order",
+                        relative,
+                    )
+                )
+
     def test_unclassified_server_list_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

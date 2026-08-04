@@ -234,7 +234,7 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
         ),
     ),
     (
-        MethodRoute("render-step", "ui", "rendering-hud-step-surface"),
+        MethodRoute("render-step", "ui", "hud-frame-extract-order"),
         (
             "showOnlyReducedInfo",
             "getDebugOverlay",
@@ -452,6 +452,102 @@ SERVER_LIST_METHOD_ROUTES = _method_routes(
             "out-of-scope",
         ),
         ("size", "swap", "replace", "remove", "unhide"),
+    ),
+)
+
+
+# `Gui` is one class holding every HUD layer, so it is split by the state each
+# owner decides rather than by the frame it is drawn in. The seven direct field
+# returns fall through to `DIRECT_SUPPORT_ROUTE`; anything else must be named
+# here, so a new Vanilla HUD owner fails the build instead of landing silently.
+GUI_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("render-step", "ui", "hud-frame-extract-order"),
+        (
+            "Gui",
+            "extractRenderState",
+            "extractHotbarAndDecorations",
+            "extractCameraOverlays",
+            "tick",
+            "clearCache",
+            "onDisconnected",
+            "getCameraPlayer",
+            "showOnlyReducedInfo",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "ui", "hud-player-vitals"),
+        (
+            "extractPlayerHealth",
+            "extractHearts",
+            "extractHeart",
+            "extractArmor",
+            "extractFood",
+            "extractAirBubbles",
+            "extractVehicleHealth",
+            "HeartType",
+            "forPlayer",
+            "getVehicleMaxHearts",
+            "getVisibleVehicleHeartRows",
+            "getPlayerVehicleWithHealth",
+            "getAirBubbleYLine",
+            "getCurrentAirSupplyBubble",
+            "getEmptyBubbleDelayDuration",
+            "playAirBubblePoppedSound",
+            "willPrioritizeExperienceInfo",
+            "willPrioritizeJumpInfo",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "ui", "hud-hotbar-selection"),
+        (
+            "extractItemHotbar",
+            "extractSlot",
+            "extractSelectedItemName",
+            "extractCrosshair",
+            "canRenderCrosshairForSpectator",
+            "nextContextualInfoState",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "ui", "hud-overlay-effects"),
+        (
+            "extractVignette",
+            "updateVignetteBrightness",
+            "extractPortalOverlay",
+            "extractConfusionOverlay",
+            "extractSpyglassOverlay",
+            "extractTextureOverlay",
+            "extractSleepOverlay",
+            "extractDemoOverlay",
+            "extractEffects",
+            "getMobEffectSprite",
+            "getSprite",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "ui", "hud-text-and-lists"),
+        (
+            "extractChat",
+            "extractTitle",
+            "setTitle",
+            "setSubtitle",
+            "setTimes",
+            "clearTitles",
+            "resetTitleTimes",
+            "extractOverlayMessage",
+            "setOverlayMessage",
+            "setNowPlaying",
+            "extractSubtitleOverlay",
+            "extractDeferredSubtitles",
+            "extractTabList",
+            "extractScoreboardSidebar",
+            "displayScoreboardSidebar",
+            "extractBossOverlay",
+            "extractDebugOverlay",
+            "extractSavingIndicator",
+            "tickAutosaveIndicator",
+        ),
     ),
 )
 
@@ -4282,7 +4378,7 @@ METHOD_SURFACES = (
     MethodSurface("world", "world", "world-client-level-decisions", "net/minecraft/client/multiplayer/ClientLevel.java"),
     MethodSurface("movement", "movement", "player-local-input-movement", "net/minecraft/client/player/LocalPlayer.java"),
     MethodSurface("interaction", "interaction", "interaction-primary-action-routing", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
-    MethodSurface("render-step", "ui", "rendering-hud-step-surface", "net/minecraft/client/gui/Gui.java"),
+    MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/Gui.java"),
     MethodSurface("render-step", "rendering", "rendering-game-step-surface", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
@@ -4528,7 +4624,11 @@ MECHANISM_EVIDENCE = {
     "rendering-block-entity-registration": ("crates/bbb-native/src/block_entity_visibility.rs",),
     "rendering-particle-provider-registration": ("crates/bbb-native/src/particle_runtime.rs",),
     "ui-menu-screen-registration": ("crates/bbb-native/src/input/inventory.rs",),
-    "rendering-hud-step-surface": ("crates/bbb-native/src/runtime/render_extract.rs",),
+    "hud-frame-extract-order": ("crates/bbb-native/src/runtime/render_extract.rs",),
+    "hud-player-vitals": ("crates/bbb-native/src/runtime.rs",),
+    "hud-hotbar-selection": ("crates/bbb-native/src/runtime.rs",),
+    "hud-overlay-effects": ("crates/bbb-native/src/runtime.rs",),
+    "hud-text-and-lists": ("crates/bbb-native/src/runtime.rs",),
     "rendering-game-step-surface": ("crates/bbb-renderer/src/lib.rs",),
     "rendering-level-backend-lifecycle": (
         "crates/bbb-renderer/src/resource_reload.rs",
@@ -4768,6 +4868,16 @@ class InventoryBuilder:
             signature = InventoryBuilder.method_signature(method)
             raise ClientMechanismInventoryError(
                 f"Options method lacks a decision/support route: {signature}"
+            )
+        if spec.source_path == "net/minecraft/client/gui/Gui.java":
+            route = GUI_METHOD_ROUTES.get(method.name)
+            if route is not None:
+                return route
+            if InventoryBuilder.is_direct_support_accessor(source, method):
+                return DIRECT_SUPPORT_ROUTE
+            signature = InventoryBuilder.method_signature(method)
+            raise ClientMechanismInventoryError(
+                f"Gui method lacks a decision/support route: {signature}"
             )
         if spec.source_path == "net/minecraft/client/multiplayer/ServerList.java":
             route = SERVER_LIST_METHOD_ROUTES.get(method.name)

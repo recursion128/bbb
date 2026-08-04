@@ -77,11 +77,12 @@ on each matrix row.
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-hud-step-surface`, `rendering-game-step-surface`
+Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selection`,
+`hud-overlay-effects`, `hud-text-and-lists`, `rendering-game-step-surface`
 
 - **The remaining frame/HUD step surfaces are `active`.** Existing focused and
   pixel tests cover many branches, but do not yet provide one mechanically
-  reachable evidence cell for every 70 GUI owner and 46 game-renderer owner.
+  reachable evidence cell for every GUI owner — now split into the five `hud-*` routes — and every game-renderer owner.
   Split only by semantic owner and preserve the single frame-extract/submission
   path.
 
