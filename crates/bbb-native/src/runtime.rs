@@ -113,6 +113,7 @@ use crate::{
     },
     cartography_preview::hud_map_preview_models,
     chest_scene::chest_model_instances_from_world_at_partial_tick,
+    client_options::derived::effective_render_distance,
     code_of_conduct::CodeOfConductAcceptance,
     component_text::{localized_component_runs, visit_localized_template, LocalizedTemplatePart},
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
@@ -3291,6 +3292,11 @@ pub(crate) fn update_renderer_from_publication(
     let profiling_enabled =
         input.debug_profiler_chart_visible() || input.debug_profiling_recording();
     let world = publication.world.as_ref();
+    // `Options.getEffectiveRenderDistance`: every consumer below reads the
+    // distance the server actually streams, not the configured one, so a client
+    // set beyond the server's `SetChunkCacheRadius` does not render past it.
+    let render_distance_chunks =
+        effective_render_distance(render_distance_chunks, world.chunk_cache_radius());
     let stable_world_unchanged =
         non_entity_render_extraction.begin_stable_world_frame(&publication.world);
     if non_entity_render_extraction

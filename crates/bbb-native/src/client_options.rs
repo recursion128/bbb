@@ -13,6 +13,7 @@
 
 pub(crate) mod args;
 mod catalog_26_1;
+pub(crate) mod derived;
 
 use std::collections::BTreeMap;
 use std::fs;

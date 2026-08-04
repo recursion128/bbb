@@ -28718,3 +28718,25 @@ fn unique_runtime_temp_dir(label: &str) -> PathBuf {
         .as_nanos();
     std::env::temp_dir().join(format!("bbb-native-runtime-{label}-{nanos}"))
 }
+
+#[test]
+fn the_render_distance_consumers_see_is_clamped_by_the_server_radius() {
+    use crate::client_options::derived::effective_render_distance;
+
+    let mut world = WorldStore::new();
+    assert_eq!(world.chunk_cache_radius(), None);
+    // Before the server says anything the configured distance stands.
+    assert_eq!(
+        effective_render_distance(16, world.chunk_cache_radius()),
+        16
+    );
+
+    world.apply_set_chunk_cache_radius(bbb_protocol::packets::SetChunkCacheRadius { radius: 8 });
+
+    // `handleSetChunkCacheRadius` is what feeds `setServerRenderDistance`, and
+    // every consumer downstream of `update_renderer_from_publication` reads the
+    // clamped value rather than the configured one.
+    assert_eq!(world.chunk_cache_radius(), Some(8));
+    assert_eq!(effective_render_distance(16, world.chunk_cache_radius()), 8);
+    assert_eq!(effective_render_distance(4, world.chunk_cache_radius()), 4);
+}
