@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "8238e29a0c5b8a01b8044b505150b7e120e2a39146684a176a81936245529183"
+      "sha256": "b38e206be54cb8e64b34297aac6dedf47c497f09901fd0bacd0691ac55407b9a"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -80,7 +80,8 @@
         "crates/bbb-world/src/client/local_player_destroy.rs",
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "interaction-carried-slot-sync": {
       "bbb_evidence": [
@@ -22144,6 +22145,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#canHurtPlayer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#continue_destroy_block_tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#survival_same_target_continues_after_world_border_moves_past_block",
+          "crates/bbb-native/src/input/mouse.rs#held_left_mouse_same_target_finishes_destroy_with_stop"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -22186,6 +22196,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#predict_local_destroy_block",
+          "crates/bbb-world/src/client/local_player_destroy.rs#local_selected_main_hand_can_destroy_block",
+          "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_block_gamemaster_gate_allows"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#survival_instant_left_mouse_press_predicts_destroy_without_delay",
+          "crates/bbb-native/src/input/mouse.rs#creative_debug_stick_sends_start_without_local_destroy_prediction",
+          "crates/bbb-native/src/input/mouse.rs#creative_game_master_prediction_requires_permission_but_start_still_sends",
+          "crates/bbb-protocol/src/item_types.rs#destroy_block_consumer_uses_generated_direct_deny_catalog",
+          "crates/bbb-protocol/src/block_types.rs#block_destroy_consumer_uses_generated_game_master_membership"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -22214,6 +22238,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_stage"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_stage_tracks_active_progress_range"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -22494,6 +22526,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#releaseUsingItem(final Player player)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#local_destroying_block_matches_current_item"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_target_item_signature_follows_vanilla_same_item_same_components"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -22550,6 +22590,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#spectate(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#start_destroy_block",
+          "crates/bbb-native/src/input/mouse.rs#apply_start_destroy_block"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_block_queues_start_destroy_and_swing",
+          "crates/bbb-native/src/input/mouse.rs#repeated_survival_press_on_same_target_keeps_prediction_and_only_swings_again",
+          "crates/bbb-native/src/input/mouse.rs#full_or_closed_start_queue_keeps_prediction_and_destroy_state_unchanged"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -22578,6 +22629,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction(final ClientLevel level,final PredictiveAction predictiveAction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#abort_destroy_block"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_release_aborts_destroying_block",
+          "crates/bbb-native/src/input/mouse.rs#completion_and_abort_retry_without_publishing_partial_state_when_queue_is_full",
+          "crates/bbb-native/src/input/tests.rs#focus_loss_retries_destroy_abort_without_clearing_state_when_queue_is_full"
+        ]
+      },
       "category": "block-breaking",
       "domain": "interaction",
       "kind": "method",
@@ -41073,7 +41134,8 @@
       "rendering-level-frame-graph",
       "rendering-level-light-query",
       "rendering-level-scene-projection",
-      "rendering-level-section-lifecycle"
+      "rendering-level-section-lifecycle",
+      "interaction-block-breaking"
     ],
     "policy": "bounded external-client decision, registration, listener, consumer, lifecycle, and explicit out-of-scope owner surfaces",
     "serverbound_scan_paths": [

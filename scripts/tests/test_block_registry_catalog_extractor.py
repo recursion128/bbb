@@ -17,6 +17,7 @@ from block_registry_catalog_extractor import (  # noqa: E402
     extract_block_can_survive_override_owners,
     extract_concrete_powder_targets,
     extract_block_get_state_for_placement_override_owners,
+    extract_block_interface_membership,
     extract_block_liquid_container_owners,
     extract_block_registry_catalog,
     extract_block_propagates_skylight_down_override_owners,
@@ -298,7 +299,7 @@ class StairBlock extends Block {
                 "net/minecraft/world/level/block/ChainBlock.java",
                 """
 package net.minecraft.world.level.block;
-class ChainBlock extends Block {
+class ChainBlock extends Block implements GameMasterBlock {
   protected boolean hasAnalogOutputSignal(BlockState state) {
     return true;
   }
@@ -318,6 +319,13 @@ class ChainBlock extends Block {
     return 15;
   }
 }
+""",
+            ),
+            parse(
+                "net/minecraft/world/level/block/GameMasterBlock.java",
+                """
+package net.minecraft.world.level.block;
+interface GameMasterBlock {}
 """,
             ),
             parse(
@@ -441,6 +449,20 @@ class WeatheringCopperChainBlock extends ChainBlock {
                 "ChainBlock": False,
                 "StairBlock": False,
                 "WeatheringCopperChainBlock": False,
+            },
+        )
+        self.assertEqual(
+            extract_block_interface_membership(
+                declarations,
+                sources,
+                "net.minecraft.world.level.block.GameMasterBlock",
+            ),
+            {
+                "AirBlock": False,
+                "Block": False,
+                "ChainBlock": True,
+                "StairBlock": False,
+                "WeatheringCopperChainBlock": True,
             },
         )
         self.assertEqual(

@@ -595,15 +595,28 @@ pub(super) fn queue_player_action_command(
     let Some(tx) = net_commands else {
         return;
     };
+    let Ok(permit) = tx.try_reserve() else {
+        return;
+    };
+    send_reserved_player_action_command(counters, permit, action_kind, pos, direction, sequence);
+}
+
+pub(super) fn send_reserved_player_action_command(
+    counters: &mut NetCounters,
+    permit: mpsc::Permit<'_, NetCommand>,
+    action_kind: PlayerActionKind,
+    pos: BlockPos,
+    direction: ProtocolDirection,
+    sequence: i32,
+) {
     let action = PlayerAction {
         action: action_kind,
         pos: protocol_block_pos_from_world(pos),
         direction,
         sequence,
     };
-    if tx.try_send(NetCommand::PlayerAction(action)).is_ok() {
-        counters.player_action_commands_queued += 1;
-    }
+    permit.send(NetCommand::PlayerAction(action));
+    counters.player_action_commands_queued += 1;
 }
 
 pub(crate) fn queue_chat_command(

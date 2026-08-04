@@ -119,6 +119,16 @@ server 与 local stage 只在 world owner 合并；native 不再保存 resolver/
 再调用 world expiry；pause/frozen tick 不推进，server step 恢复推进。level teardown 清除 breaking
 entries 和 local stage，但与 Vanilla 的长期 `LevelRenderer` 一样不重置 render/weather cursor。
 
+local stage 的上游同样只有一条路径：world 的 `LocalPlayerInteractionState` 按 mining profile 和
+selected-item signature 计算 progress/stage，native 在成功预留对应 `START/ABORT/STOP` command 后才允许
+发布 prediction 或清理 target。queue admission 失败保留旧 stage；server block update/ack 再校正同一
+world prediction。初次 start 与 creative continue 查询 world border，survival same-target continue 不
+重复查询；目标变 air 时清 stage 且本 tick 不提交 hit particle/swing。因而 renderer 只消费最终有序值，
+不能从 input latch、command queue 或 block 文件反推破坏进度。最终 local-air publication 同时消费
+item catalog 机械提取的唯一 `Item.canDestroyBlock` 直接拒绝覆写（`DebugStickItem`）、Tool creative flag，
+以及 block catalog 的 Tree-sitter `GameMasterBlock` class/interface membership；拒绝时仍保留 outbound
+action，但不发布 local air prediction，且 source guard 禁止恢复手写物品/方块名表。
+
 网络新增 breaker id 的 retained 上限为 4096；达到上限后已有 id 仍可更新/移除，新 id 被拒绝并计入
 `block_destructions_ignored`，`block_destructions_tracked` 始终给出当前 retained count。stage projection
 只分配本帧 immutable 值，不保留第二 generation；缺 destroy texture 继续产生零 overlay。

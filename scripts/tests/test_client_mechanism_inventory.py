@@ -172,6 +172,51 @@ public class Owner {
         self.assertEqual(len(minecraft_interaction_methods), 6)
         self.assertEqual(len(methods) + len(minecraft_interaction_methods), 149)
 
+        block_breaking_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "interaction-block-breaking"
+        ]
+        self.assertEqual(len(block_breaking_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["interaction-block-breaking"][
+                "owner_evidence_count"
+            ],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in block_breaking_owners
+            )
+        )
+
+    def test_block_breaking_owner_without_implementation_test_evidence_fails_closed(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.multiplayer; class MultiPlayerGameMode { void stopDestroyBlock() {} }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "decision", "interaction", "fixture", relative
+                    )
+                )
+
     def test_local_player_and_game_mode_unknown_methods_fail_closed(self) -> None:
         fixtures = (
             (

@@ -716,6 +716,72 @@ def extract_block_subclass_membership(
     return memberships
 
 
+def extract_block_interface_membership(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+    target_fqcn: str,
+) -> dict[str, bool]:
+    """Resolve each registered factory class against one authoritative interface."""
+    types = [item for source in block_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_fqcn = {item.fqcn: item for item in types}
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+    if target_fqcn not in by_fqcn:
+        raise BlockRegistryCatalogExtractionError(
+            f"unresolved block interface membership target {target_fqcn}"
+        )
+
+    memberships: dict[str, bool] = {}
+    for factory_class in sorted(
+        {block_factory_class(declaration) for declaration in declarations}
+    ):
+        matches = by_simple_name.get(factory_class, [])
+        if len(matches) != 1:
+            raise BlockRegistryCatalogExtractionError(
+                f"expected exactly one block class {factory_class}, got "
+                f"{len(matches)}"
+            )
+        block_type = matches[0]
+        class_chain = []
+        seen_classes = set()
+        while block_type.fqcn not in seen_classes:
+            seen_classes.add(block_type.fqcn)
+            class_chain.append(block_type)
+            if (
+                block_type.superclass is None
+                or block_type.superclass not in by_fqcn
+            ):
+                break
+            block_type = by_fqcn[block_type.superclass]
+        else:
+            raise BlockRegistryCatalogExtractionError(
+                f"superclass cycle while resolving {factory_class} interface membership"
+            )
+
+        pending = [
+            interface
+            for class_type in class_chain
+            for interface in class_type.interfaces
+        ]
+        seen_interfaces = set()
+        is_member = False
+        while pending:
+            interface = pending.pop(0)
+            if interface in seen_interfaces:
+                continue
+            seen_interfaces.add(interface)
+            if interface == target_fqcn:
+                is_member = True
+                break
+            interface_type = by_fqcn.get(interface)
+            if interface_type is not None:
+                pending.extend(interface_type.interfaces)
+        memberships[factory_class] = is_member
+    return memberships
+
+
 def resolve_block_resource_path(
     source: JavaSource,
     expression: JavaExpression,

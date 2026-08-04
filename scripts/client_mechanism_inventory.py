@@ -1275,7 +1275,87 @@ LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
 }
 
-OWNER_EVIDENCE_MECHANISMS = tuple(LEVEL_RENDERER_OWNER_EVIDENCE)
+INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#predict_local_destroy_block",
+                "crates/bbb-world/src/client/local_player_destroy.rs#local_selected_main_hand_can_destroy_block",
+                "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_block_gamemaster_gate_allows",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#survival_instant_left_mouse_press_predicts_destroy_without_delay",
+                "crates/bbb-native/src/input/mouse.rs#creative_debug_stick_sends_start_without_local_destroy_prediction",
+                "crates/bbb-native/src/input/mouse.rs#creative_game_master_prediction_requires_permission_but_start_still_sends",
+                "crates/bbb-protocol/src/item_types.rs#destroy_block_consumer_uses_generated_direct_deny_catalog",
+                "crates/bbb-protocol/src/block_types.rs#block_destroy_consumer_uses_generated_game_master_membership",
+            ),
+        ),
+        ("destroyBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/mouse.rs#start_destroy_block",
+                "crates/bbb-native/src/input/mouse.rs#apply_start_destroy_block",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_block_queues_start_destroy_and_swing",
+                "crates/bbb-native/src/input/mouse.rs#repeated_survival_press_on_same_target_keeps_prediction_and_only_swings_again",
+                "crates/bbb-native/src/input/mouse.rs#full_or_closed_start_queue_keeps_prediction_and_destroy_state_unchanged",
+            ),
+        ),
+        ("startDestroyBlock",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/mouse.rs#abort_destroy_block",),
+            (
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_release_aborts_destroying_block",
+                "crates/bbb-native/src/input/mouse.rs#completion_and_abort_retry_without_publishing_partial_state_when_queue_is_full",
+                "crates/bbb-native/src/input/tests.rs#focus_loss_retries_destroy_abort_without_clearing_state_when_queue_is_full",
+            ),
+        ),
+        ("stopDestroyBlock",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/mouse.rs#continue_destroy_block_tick",),
+            (
+                "crates/bbb-native/src/input/mouse.rs#survival_same_target_continues_after_world_border_moves_past_block",
+                "crates/bbb-native/src/input/mouse.rs#held_left_mouse_same_target_finishes_destroy_with_stop",
+            ),
+        ),
+        ("continueDestroyBlock",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#local_destroying_block_matches_current_item",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_target_item_signature_follows_vanilla_same_item_same_components",
+            ),
+        ),
+        ("sameDestroyTarget",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_stage",),
+            (
+                "crates/bbb-world/src/client/local_player_destroy.rs#local_destroy_stage_tracks_active_progress_range",
+            ),
+        ),
+        ("getDestroyStage",),
+    ),
+)
+
+METHOD_OWNER_EVIDENCE = {
+    **LEVEL_RENDERER_OWNER_EVIDENCE,
+    "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
+}
+
+OWNER_EVIDENCE_MECHANISMS = tuple(METHOD_OWNER_EVIDENCE)
 
 
 METHOD_SURFACES = (
@@ -1650,10 +1730,10 @@ class InventoryBuilder:
             signature = self.method_signature(method)
             evidence = None
             if route.mechanism_id in OWNER_EVIDENCE_MECHANISMS:
-                evidence = LEVEL_RENDERER_OWNER_EVIDENCE[route.mechanism_id].get(method.name)
+                evidence = METHOD_OWNER_EVIDENCE[route.mechanism_id].get(method.name)
                 if evidence is None:
                     raise ClientMechanismInventoryError(
-                        f"LevelRenderer owner lacks BBB implementation/test evidence: {signature}"
+                        f"method owner lacks BBB implementation/test evidence: {signature}"
                     )
             self.add_owner(
                 owner_id=f"method:{signature}",

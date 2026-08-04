@@ -13,10 +13,8 @@
 
 ## 里程碑
 
-- **2026-07-09～17**：原生客户端架构、P0 audit、coverage/extractor、生成式
-  entity metadata/model/render policy 与基础 session/packet owner 建立。
-- **2026-07-18～20**：server/client resource-pack stack、known-pack、registry typed
-  revision、simulation publication 和 render-thread 生命周期闭环。
+- **2026-07-09～20**：原生架构、P0/coverage、生成式 entity/render policy、基础 session/packet、
+  resource-pack、registry revision、simulation publication 与 render-thread 生命周期建立。
 - **2026-07-21**：entity client tick、movement、save/debug、collision/pick、equipment、
   passenger、leash 与 157 类 entity coverage 收口。
 - **2026-07-22**：194 行 registry holder/tag、configuration registry、SetEntityData、
@@ -96,5 +94,7 @@
   diagnostics/light 以 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
 - **2026-08-03（LocalPlayer/game-mode decision census）**：149 个 owner 拆为 23 条同质决策 route
   与 18 条直接 accessor，unknown/side-effect support/stale output 均 fail closed。
+- **2026-08-03（interaction block-breaking closure）**：六 owner 统一到 world prediction 与 native
+  atomic command barrier，生成式 item/block gate、border、abort/start/finish、ack/rollback 经 focused/live 闭环。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

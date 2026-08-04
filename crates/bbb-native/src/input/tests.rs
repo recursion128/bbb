@@ -28185,6 +28185,17 @@ fn focus_loss_aborts_destroying_block() {
     let mut input = ClientInputState::new(true);
     let pos = BlockPos { x: 4, y: 70, z: -6 };
     let mut world = world_with_local_player_id(77);
+    world.apply_add_entity(AddEntity {
+        id: 77,
+        uuid: Uuid::from_u128(77),
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
     insert_empty_chunk_for_block(&mut world, pos);
     assert!(world.apply_block_update(ProtocolBlockUpdate {
         pos: ProtocolBlockPos {
@@ -28214,11 +28225,14 @@ fn focus_loss_aborts_destroying_block() {
         Some(500_000)
     );
     world.set_local_destroying_block(pos);
+    world.advance_client_level_entity_ticks_with_observation(6);
+    assert!(world.local_player_attack_strength_ticks() > 0);
     let mut counters = NetCounters::default();
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
     assert_eq!(world.local_player().interaction.destroying_block, None);
+    assert_eq!(world.local_player_attack_strength_ticks(), 0);
     assert_eq!(
         world
             .active_tutorial_toast()
@@ -28240,6 +28254,59 @@ fn focus_loss_aborts_destroying_block() {
             sequence: 0,
         })
     );
+}
+
+#[test]
+fn focus_loss_retries_destroy_abort_without_clearing_state_when_queue_is_full() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+        .unwrap();
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let pos = BlockPos { x: 4, y: 70, z: -6 };
+    let mut world = world_with_local_player_id(77);
+    world.apply_add_entity(AddEntity {
+        id: 77,
+        uuid: Uuid::from_u128(77),
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.set_local_destroying_block(pos);
+    world.advance_client_level_entity_ticks_with_observation(6);
+    let attack_strength_before = world.local_player_attack_strength_ticks();
+    assert!(attack_strength_before > 0);
+    let mut counters = NetCounters::default();
+
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
+
+    assert_eq!(world.local_player().interaction.destroying_block, Some(pos));
+    assert_eq!(
+        world.local_player_attack_strength_ticks(),
+        attack_strength_before
+    );
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::OffHand)
+    );
+
+    release_active_input(&mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(world.local_player().interaction.destroying_block, None);
+    assert_eq!(world.local_player_attack_strength_ticks(), 0);
+    assert_eq!(counters.player_action_commands_queued, 1);
+    assert!(matches!(
+        rx.try_recv(),
+        Ok(NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::AbortDestroyBlock,
+            ..
+        }))
+    ));
 }
 
 #[test]

@@ -13,6 +13,7 @@ from item_registry_catalog_extractor import (  # noqa: E402
     extract_block_item_behaviors,
     extract_bucket_item_behaviors,
     extract_item_interact_living_entity_override_owners,
+    extract_item_can_destroy_block_override_owners,
     extract_item_registry_catalog,
     extract_item_use_on_override_owners,
     extract_item_use_override_owners,
@@ -442,6 +443,10 @@ class Item {
       ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
     return InteractionResult.PASS;
   }
+  public boolean canDestroyBlock(
+      ItemStack stack, BlockState state, Level level, BlockPos pos, LivingEntity user) {
+    return true;
+  }
 }
 """,
         )
@@ -491,6 +496,18 @@ class DyeItem extends Item {
 }
 """,
         )
+        debug_stick_source = parse(
+            "net/minecraft/world/item/DebugStickItem.java",
+            """
+package net.minecraft.world.item;
+class DebugStickItem extends Item {
+  public boolean canDestroyBlock(
+      ItemStack stack, BlockState state, Level level, BlockPos pos, LivingEntity user) {
+    return false;
+  }
+}
+""",
+        )
         items = parse(
             "net/minecraft/world/item/Items.java",
             """
@@ -507,6 +524,8 @@ class Items {
           new Item.Properties());
   public static final Item RED_DYE =
       registerItem("red_dye", properties -> new DyeItem(DyeColor.RED, properties));
+  public static final Item DEBUG_STICK =
+      registerItem("debug_stick", DebugStickItem::new, new Item.Properties());
 }
 """,
         )
@@ -525,6 +544,7 @@ class Items {
                 "SnowballItem",
                 "FoodOnAStickItem",
                 "DyeItem",
+                "DebugStickItem",
             ],
         )
         sources = [
@@ -533,12 +553,14 @@ class Items {
             snowball_source,
             food_on_a_stick_source,
             dye_source,
+            debug_stick_source,
         ]
         self.assertEqual(
             extract_item_use_override_owners(declarations, sources),
             {
                 "BlockItem": None,
                 "DyeItem": None,
+                "DebugStickItem": None,
                 "FoodOnAStickItem": "FoodOnAStickItem",
                 "Item": None,
                 "SnowballItem": "SnowballItem",
@@ -549,6 +571,7 @@ class Items {
             {
                 "BlockItem": "BlockItem",
                 "DyeItem": None,
+                "DebugStickItem": None,
                 "FoodOnAStickItem": None,
                 "Item": None,
                 "SnowballItem": None,
@@ -561,11 +584,50 @@ class Items {
             {
                 "BlockItem": None,
                 "DyeItem": "DyeItem",
+                "DebugStickItem": None,
                 "FoodOnAStickItem": None,
                 "Item": None,
                 "SnowballItem": None,
             },
         )
+        self.assertEqual(
+            extract_item_can_destroy_block_override_owners(declarations, sources),
+            {
+                "BlockItem": None,
+                "DebugStickItem": "DebugStickItem",
+                "DyeItem": None,
+                "FoodOnAStickItem": None,
+                "Item": None,
+                "SnowballItem": None,
+            },
+        )
+
+        changed_debug_stick = parse(
+            "net/minecraft/world/item/DebugStickItem.java",
+            """
+package net.minecraft.world.item;
+class DebugStickItem extends Item {
+  public boolean canDestroyBlock(
+      ItemStack stack, BlockState state, Level level, BlockPos pos, LivingEntity user) {
+    return true;
+  }
+}
+""",
+        )
+        with self.assertRaisesRegex(
+            ItemRegistryCatalogExtractionError, "no longer a direct deny"
+        ):
+            extract_item_can_destroy_block_override_owners(
+                declarations,
+                [
+                    item_source,
+                    block_item_source,
+                    snowball_source,
+                    food_on_a_stick_source,
+                    dye_source,
+                    changed_debug_stick,
+                ],
+            )
 
     def test_local_vanilla_catalog_closes_every_field_when_available(self) -> None:
         root = Path.home() / "Work/mc-code/sources/26.1"

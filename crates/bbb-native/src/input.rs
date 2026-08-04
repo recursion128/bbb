@@ -11005,19 +11005,7 @@ pub(crate) fn release_active_input(
         counters,
         net_commands,
     );
-    if let Some(pos) = world.local_player().interaction.destroying_block {
-        world.tutorial_on_destroy_block(pos, -1);
-    }
-    if let Some(pos) = world.take_local_destroying_block() {
-        queue_player_action_command(
-            counters,
-            net_commands,
-            PlayerActionKind::AbortDestroyBlock,
-            pos,
-            ProtocolDirection::Down,
-            0,
-        );
-    }
+    mouse::abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
     if world.local_player().interaction.using_item {
         queue_zero_pos_player_action_command(
             counters,

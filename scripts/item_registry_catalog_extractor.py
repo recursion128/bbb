@@ -16,6 +16,7 @@ from typing import Any, Sequence
 from vanilla_java_source import (
     JavaExpression,
     JavaSource,
+    descendants,
     expression_fact,
     resolve_class_hierarchy,
 )
@@ -321,6 +322,7 @@ def _is_item_behavior_method(
     method,
     method_name: str,
     parameter_types: tuple[str, ...],
+    return_type_spelling: str = "InteractionResult",
 ) -> bool:
     if (
         method.is_constructor
@@ -337,7 +339,7 @@ def _is_item_behavior_method(
         and all(
             parameter_type is not None for parameter_type in actual_parameter_types
         )
-        and source.text(return_type) == "InteractionResult"
+        and source.text(return_type) == return_type_spelling
         and tuple(
             source.text(parameter_type) for parameter_type in actual_parameter_types
         )
@@ -350,6 +352,7 @@ def _extract_item_behavior_override_owners(
     item_class_sources: Sequence[JavaSource],
     method_name: str,
     parameter_types: tuple[str, ...],
+    return_type_spelling: str = "InteractionResult",
 ) -> dict[str, str | None]:
     types = [item for source in item_class_sources for item in source.types]
     resolve_class_hierarchy(types)
@@ -362,7 +365,11 @@ def _extract_item_behavior_override_owners(
         for source in item_class_sources
         for method in source.methods
         if _is_item_behavior_method(
-            source, method, method_name, parameter_types
+            source,
+            method,
+            method_name,
+            parameter_types,
+            return_type_spelling,
         )
     }
 
@@ -391,7 +398,7 @@ def _extract_item_behavior_override_owners(
             item_type = by_fqcn[item_type.superclass]
         else:
             raise ItemRegistryCatalogExtractionError(
-                f"superclass cycle while resolving {factory_class}.use"
+                f"superclass cycle while resolving {factory_class}.{method_name}"
             )
     return owners
 
@@ -430,6 +437,48 @@ def extract_item_interact_living_entity_override_owners(
         "interactLivingEntity",
         ("ItemStack", "Player", "LivingEntity", "InteractionHand"),
     )
+
+
+def extract_item_can_destroy_block_override_owners(
+    declarations: Sequence[dict],
+    item_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    owners = _extract_item_behavior_override_owners(
+        declarations,
+        item_class_sources,
+        "canDestroyBlock",
+        ("ItemStack", "BlockState", "Level", "BlockPos", "LivingEntity"),
+        "boolean",
+    )
+    override_owners = {owner for owner in owners.values() if owner is not None}
+    for source in item_class_sources:
+        for method in source.methods:
+            if (
+                method.owner.rsplit(".", 1)[-1] not in override_owners
+                or not _is_item_behavior_method(
+                    source,
+                    method,
+                    "canDestroyBlock",
+                    ("ItemStack", "BlockState", "Level", "BlockPos", "LivingEntity"),
+                    "boolean",
+                )
+            ):
+                continue
+            returns = [
+                node
+                for node in descendants(method.node)
+                if node.type == "return_statement"
+            ]
+            if (
+                len(returns) != 1
+                or len(returns[0].named_children) != 1
+                or source.expression(returns[0].named_children[0]).canonical != "false"
+            ):
+                raise ItemRegistryCatalogExtractionError(
+                    f"{source.relative_path}: {method.owner}.canDestroyBlock "
+                    "override is no longer a direct deny"
+                )
+    return owners
 
 
 def _unique_field(source: JavaSource, owner: str, name: str):

@@ -59,6 +59,24 @@ live evidence 后才能标记 `equivalent`；未闭合项只由 `docs/unsupporte
 packet encode 存在、world 字段存在或某个单元测试都不能重新抬高整类状态，也不能恢复原先两个
 broad resolver/coverage claim。
 
+`interaction-block-breaking` 的六个 `MultiPlayerGameMode` owner 进一步要求逐 owner evidence。
+`bbb-world::LocalPlayerInteractionState` 是 target、face、selected-item signature、progress、stage、
+delay 和 prediction sequence 的唯一 canonical owner；native mouse 只按 Vanilla 的
+restriction → 初始 world-border → prediction/attack → command 顺序编排，net 只编码已确定的
+`START/ABORT/STOP_DESTROY_BLOCK`。生存模式进入同一 target 后不重新查询 world border；若 block
+已变成 air，则 world 清理 active progress，native 不再发 swing、hit particle 或声音。creative 的
+每次 continue 仍重新经过 border gate。真正发布 local destroy 前先执行同一个
+`Item.canDestroyBlock` 投影：默认 Tool 的 `canDestroyBlocksInCreative` 只限制 instabuild，Tree-sitter item
+catalog 机械锁定唯一直接拒绝覆写 `DebugStickItem`；随后读取 block catalog 从 `GameMasterBlock`
+interface 机械生成的七项 membership。任一 gate 拒绝时仍发送 Vanilla START/STOP，但不把目标本地预测为空气。
+
+有界 net queue 是本地 mutation 的 commit barrier：start/finish/abort 必须先取得一个 command permit，
+retarget 必须一次取得 ABORT 与 START 两个 permit；full、closed 或 absent sender 时 prediction sequence、
+target、tutorial、block prediction 与 effect 均保留上一完整状态，下一 input/tick 重试。release/focus-loss
+也调用同一个 atomic abort owner，不另行清 cache。发送成功后 world prediction 仍由 block update 与
+`BlockChangedAck` 校正；level/session replacement 一次清除 interaction 与 retained prediction，native、
+renderer 不持有第二份破坏状态。
+
 ## Control command 与 simulation mailbox owner
 
 `bbb-control` 只拥有外部 DTO、只读 snapshot 和构造时绑定的

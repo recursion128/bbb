@@ -63,7 +63,7 @@ Matrix route: `world-client-level-decisions`
 
 Owner: `bbb-world` + `bbb-native` + `bbb-net` + `bbb-protocol`
 
-Matrix routes: `player-local-session-respawn`, `player-local-vitals-status`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-permission-chat-state`, `player-local-client-status-options`, `player-local-item-use-state`, `player-local-inventory-actions`, `player-local-world-edit-ui`, `player-local-environment-effects`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-block-breaking`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
+Matrix routes: `player-local-session-respawn`, `player-local-vitals-status`, `player-local-movement-reporting`, `player-local-input-movement`, `player-local-vehicle-control`, `player-local-permission-chat-state`, `player-local-client-status-options`, `player-local-item-use-state`, `player-local-inventory-actions`, `player-local-world-edit-ui`, `player-local-environment-effects`, `player-local-camera-targeting`, `interaction-game-mode-lifecycle`, `interaction-game-mode-guards`, `interaction-prediction-sequence`, `interaction-carried-slot-sync`, `interaction-item-use`, `interaction-entity-actions`, `interaction-container-actions`, `interaction-creative-actions`, `interaction-pick-actions`, `interaction-primary-action-routing`
 
 Goal route: `goal.md#p2非实体客户端行为-closeout`
 
@@ -118,10 +118,6 @@ preserving the two former broad `partial` claims.
 - **`interaction-game-mode-guards`** — hurt, experience, miss-time, spectator and
   server-controlled-inventory guards must query the same canonical game/vehicle state.
   Close after all five guards have exact action-consumer evidence.
-- **`interaction-block-breaking`** — native mouse input drives one world prediction and
-  net command path. Close after restriction/border/start/abort/progress/finish, sound,
-  crack overlay, correction and live server behavior cover all six owners. Active
-  contract: `goal.md#active-工程合同interaction-block-breaking-closure`.
 - **`interaction-prediction-sequence`** — world owns the monotonically sequenced local
   prediction lifetime. Close after allocation, mutation-before-send, ack/correction,
   wrap/budget and session replacement are proved for the sole Vanilla owner.

@@ -433,30 +433,6 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
-### Active 工程合同：interaction block-breaking closure
-
-目标：关闭 `interaction-block-breaking` 的六个 26.1 owner，使本地破坏 restriction/border、
-start/abort/continue/finish、预测 sequence/ack、声音/粒子/crack overlay 与 bounded command failure
-形成一条可验收路径；已复现的差异是生存模式同一 target 在 world-border 移动后被 BBB 错误冻结。
-
-权威与 owner：本地 `MultiPlayerGameMode.destroyBlock/startDestroyBlock/stopDestroyBlock/
-continueDestroyBlock/sameDestroyTarget/getDestroyStage`；`bbb-world::LocalPlayerInteractionState` 唯一拥有
-进度、item signature、stage、delay 与 prediction sequence，native mouse 只编排 target/effect/command，
-net 只编码。顺序固定为 restriction→初始 border gate→prediction/attack→packet；continue 的 delay→
-creative border gate→same-target survival progress→retarget，完成后 local prediction→STOP；ack/update 校正。
-
-阶段：A 冻结六 owner exact evidence 与现有 command/state 调用图；B 以窄 prepare/admit/apply 边界修复
-border 语义及 full/closed queue 时旧状态保留，retarget 的 ABORT+START 不得半提交；C 复验 mining speed、
-item-change、sound/particle/tutorial/crack、prediction ack/update 与 session reset；D 更新 owner evidence、Wiki、
-matrix/ledger，完整 review/提交/full gate，并因输入行为变化刷新 fixture/live playable。
-
-Focused：restriction 与 initial border 拒绝；survival same-target 跨 border 继续、creative 拒绝；retarget/item
-change；instant/normal completion 与 5-tick delay；ABORT/START/STOP sequence/order；queue success/full/closed
-原子性；sound 四 tick、particle/swing/tutorial/crack；ack/update rollback；level generation 清理；六 owner
-evidence 全覆盖和旧 broad route guard。非目标：不改 primary action、item/entity use、carried-slot 或 renderer/
-audio backend；合同与最终 checkpoint full gate，行为提交刷新 playable；安全停止点仅为干净 full-gated
-vertical path，blocker 仅限外部 server 无法提供可复现破坏 acceptance 且本地 fixture 已证明语义。
-
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败

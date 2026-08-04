@@ -2,7 +2,11 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID, VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID,
     VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
 };
+use bbb_protocol::block_types::{
+    vanilla_block_type_for_resource_id, VANILLA_GAME_MASTER_BLOCK_IDS,
+};
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_TOOL_TYPE_ID;
+use bbb_protocol::item_types::VANILLA_DESTROY_BLOCK_DENIED_ITEM_IDS;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
     VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
@@ -136,6 +140,16 @@ impl WorldStore {
             .is_some_and(|progress| progress >= LOCAL_DESTROY_PROGRESS_SCALE)
     }
 
+    pub fn local_destroy_block_gamemaster_gate_allows(&self, pos: BlockPos) -> bool {
+        let is_game_master_block = self
+            .probe_block(pos)
+            .and_then(|block| block.block_name)
+            .as_deref()
+            .and_then(vanilla_block_type_for_resource_id)
+            .is_some_and(|block_type| VANILLA_GAME_MASTER_BLOCK_IDS.contains(&block_type.id));
+        !is_game_master_block || self.local_player_can_use_gamemaster_blocks()
+    }
+
     pub fn advance_local_destroying_block_tick(&mut self) -> Option<LocalDestroyBlockFinished> {
         let pos = self.local_player.interaction.destroying_block?;
         let progress_delta = match self.local_destroy_progress_per_tick(pos) {
@@ -180,12 +194,32 @@ impl WorldStore {
         interaction.destroying_block_ticks = 0;
         interaction.destroy_delay_ticks = LOCAL_DESTROY_COMPLETION_DELAY_TICKS;
         let sequence = self.next_local_prediction_sequence();
-        self.predict_local_destroy_block(pos, sequence);
+        if self.local_selected_main_hand_can_destroy_block()
+            && self.local_destroy_block_gamemaster_gate_allows(pos)
+        {
+            self.predict_local_destroy_block(pos, sequence);
+        }
         Some(LocalDestroyBlockFinished {
             pos,
             face,
             sequence,
         })
+    }
+
+    pub fn local_destroying_block_will_finish_next_tick(&self) -> bool {
+        let Some(pos) = self.local_player.interaction.destroying_block else {
+            return false;
+        };
+        self.local_destroy_progress_per_tick(pos)
+            .is_some_and(|progress| {
+                progress > 0
+                    && self
+                        .local_player
+                        .interaction
+                        .destroying_block_progress
+                        .saturating_add(progress)
+                        >= LOCAL_DESTROY_PROGRESS_SCALE
+            })
     }
 
     fn local_destroy_progress_per_tick(&self, pos: BlockPos) -> Option<u32> {
@@ -279,10 +313,26 @@ impl WorldStore {
         .unwrap_or(false)
     }
 
-    pub fn local_selected_main_hand_can_destroy_block_in_creative(&self) -> bool {
+    pub fn local_selected_main_hand_can_destroy_block(&self) -> bool {
         let hotbar_items = self.inventory.hotbar_items();
         let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
-        match self.effective_item_tool(&hotbar_items[selected_slot]) {
+        let item = &hotbar_items[selected_slot];
+        if item.count > 0
+            && item
+                .item_id
+                .is_some_and(|item_id| VANILLA_DESTROY_BLOCK_DENIED_ITEM_IDS.contains(&item_id))
+        {
+            return false;
+        }
+        if !self
+            .local_player
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| abilities.instabuild)
+        {
+            return true;
+        }
+        match self.effective_item_tool(item) {
             EffectiveItemTool::Patched(tool) => tool.can_destroy_blocks_in_creative,
             EffectiveItemTool::Default(profile) => profile.can_destroy_blocks_in_creative,
             EffectiveItemTool::Absent => true,
@@ -509,6 +559,7 @@ mod tests {
         DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
         Direction as ProtocolDirection, ItemEnchantmentSummary as ProtocolItemEnchantmentSummary,
         ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
+        PlayerAbilities as ProtocolPlayerAbilities,
         SetPlayerInventory as ProtocolSetPlayerInventory,
         UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
         Vec3d as ProtocolVec3d,
@@ -720,7 +771,15 @@ mod tests {
             item: item_stack(42, 1),
         });
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
-        assert!(!world.local_selected_main_hand_can_destroy_block_in_creative());
+        world.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(!world.local_selected_main_hand_can_destroy_block());
 
         let mut patched = item_stack(42, 1);
         patched.component_patch.added = 1;
@@ -749,7 +808,7 @@ mod tests {
             item: patched.clone(),
         });
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(40_000));
-        assert!(world.local_selected_main_hand_can_destroy_block_in_creative());
+        assert!(world.local_selected_main_hand_can_destroy_block());
 
         patched.component_patch.tool.as_mut().unwrap().rules[0].correct_for_drops = None;
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -765,7 +824,28 @@ mod tests {
             item: removed,
         });
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
-        assert!(world.local_selected_main_hand_can_destroy_block_in_creative());
+        assert!(world.local_selected_main_hand_can_destroy_block());
+    }
+
+    #[test]
+    fn generated_item_override_denies_debug_stick_destroy_in_every_game_mode() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 9);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(bbb_protocol::item_types::VANILLA_ITEM_DEBUG_STICK_ID, 1),
+        });
+
+        assert!(!world.local_selected_main_hand_can_destroy_block());
+        world.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(!world.local_selected_main_hand_can_destroy_block());
     }
 
     #[test]
@@ -1032,6 +1112,41 @@ mod tests {
     }
 
     #[test]
+    fn local_destroy_game_master_gate_uses_generated_block_membership_and_permission() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let command_block_type = vanilla_block_type_for_resource_id("minecraft:command_block")
+            .expect("command block type");
+        let command_block_state =
+            bbb_protocol::block_state_types::vanilla_block_default_state_id(command_block_type.id)
+                .expect("command block default state");
+        let mut world = world_with_block(pos, command_block_state);
+
+        assert!(!world.local_destroy_block_gamemaster_gate_allows(pos));
+        assert!(world.local_destroy_block_gamemaster_gate_allows(BlockPos {
+            x: pos.x,
+            y: pos.y + 1,
+            z: pos.z,
+        }));
+
+        world.local_player_id = Some(7);
+        world.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(
+            world.apply_entity_event(bbb_protocol::packets::EntityEvent {
+                entity_id: 7,
+                event_id: 26,
+            })
+        );
+        assert!(world.local_destroy_block_gamemaster_gate_allows(pos));
+    }
+
+    #[test]
     fn local_destroy_stage_tracks_active_progress_range() {
         assert_eq!(local_destroy_stage(0), None);
         assert_eq!(local_destroy_stage(1), Some(0));
@@ -1050,6 +1165,7 @@ mod tests {
         let pos = BlockPos { x: 0, y: 1, z: 3 };
         let mut world = world_with_block(pos, 9);
         world.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+        assert!(!world.local_destroying_block_will_finish_next_tick());
 
         for _ in 0..17 {
             assert_eq!(world.advance_local_destroying_block_tick(), None);
@@ -1061,6 +1177,7 @@ mod tests {
             world.local_player().interaction.destroying_block_stage,
             Some(9)
         );
+        assert!(world.local_destroying_block_will_finish_next_tick());
 
         assert_eq!(
             world.advance_local_destroying_block_tick(),
@@ -1081,6 +1198,7 @@ mod tests {
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert!(!world.local_destroying_block_will_finish_next_tick());
         assert_eq!(world.probe_block(pos).unwrap().block_state_id, 0);
         assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(world.local_block_predictions()[0].sequence, 1);
@@ -1089,6 +1207,31 @@ mod tests {
             world.local_block_predictions()[0].predicted_block_state_id,
             0
         );
+    }
+
+    #[test]
+    fn debug_stick_completion_sends_finish_without_local_air_prediction() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 9);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(bbb_protocol::item_types::VANILLA_ITEM_DEBUG_STICK_ID, 1),
+        });
+        world.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+
+        for _ in 0..17 {
+            assert_eq!(world.advance_local_destroying_block_tick(), None);
+        }
+        assert_eq!(
+            world.advance_local_destroying_block_tick(),
+            Some(LocalDestroyBlockFinished {
+                pos,
+                face: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, 9);
+        assert!(world.local_block_predictions().is_empty());
     }
 
     #[test]

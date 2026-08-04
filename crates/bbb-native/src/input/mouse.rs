@@ -4,10 +4,10 @@ use bbb_protocol::packets::{
     Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
 };
 use bbb_world::{
-    BlockPos as WorldBlockPos, ItemAttackRange, LevelEventSoundRandomState,
-    LocalDestroyBlockFinished, LocalInteractionResult, LocalInteractionSoundEffect,
-    LocalInteractionSuccess, LocalInteractionSwingSource, LocalItemUsePovResult,
-    LocalItemUsePrediction, LocalPlayerPoseState, LocalTargetUsePrediction, WorldStore,
+    BlockPos as WorldBlockPos, ItemAttackRange, LevelEventSoundRandomState, LocalInteractionResult,
+    LocalInteractionSoundEffect, LocalInteractionSuccess, LocalInteractionSwingSource,
+    LocalItemUsePovResult, LocalItemUsePrediction, LocalPlayerPoseState, LocalTargetUsePrediction,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -26,9 +26,9 @@ use super::{
     commands::{
         hotbar_slot_for_scroll, queue_attack_entity_command, queue_interact_entity_command,
         queue_pick_item_from_block_command, queue_pick_item_from_entity_command,
-        queue_player_action_command, queue_spectate_entity_command, queue_swing_command,
-        queue_use_item_command, queue_use_item_on_command, queue_zero_pos_player_action_command,
-        select_hotbar_slot,
+        queue_spectate_entity_command, queue_swing_command, queue_use_item_command,
+        queue_use_item_on_command, queue_zero_pos_player_action_command, select_hotbar_slot,
+        send_reserved_player_action_command,
     },
     release_active_input, ClientInputState,
 };
@@ -795,6 +795,10 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     destroy_ticks: u32,
 ) {
     let mut audio_events = audio_events;
+    if !input.destroy_block_held && world.local_player().interaction.destroying_block.is_some() {
+        abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
+        return;
+    }
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
         || world.death_screen().is_some()
@@ -817,9 +821,8 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
             entity_partial_tick,
         );
         if let Some(CrosshairTarget::Block(hit)) = camera_target {
-            if block_target_within_world_border(world, hit.pos)
-                && (world.local_player().interaction.destroying_block != Some(hit.pos)
-                    || !world.local_destroying_block_matches_current_item())
+            if world.local_player().interaction.destroying_block != Some(hit.pos)
+                || !world.local_destroying_block_matches_current_item()
             {
                 retarget_destroy_block(input, counters, world, net_commands, hit);
             }
@@ -839,9 +842,6 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
             abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
             continue;
         };
-        if !block_target_within_world_border(world, hit.pos) {
-            continue;
-        }
         if continue_destroy_block_tick(input, counters, world, net_commands, &mut audio_events, hit)
         {
             if let Some(state) = local_destroy_hit_particle_state(world, hit.pos, hit.face) {
@@ -866,12 +866,33 @@ fn continue_destroy_block_tick(
     if world.local_player().interaction.destroying_block == Some(hit.pos)
         && world.local_destroying_block_matches_current_item()
     {
+        let completion_permit = if world.local_destroying_block_will_finish_next_tick() {
+            let Some(tx) = net_commands else {
+                return false;
+            };
+            let Ok(permit) = tx.try_reserve() else {
+                return false;
+            };
+            Some(permit)
+        } else {
+            None
+        };
         world.update_local_destroying_block_face(hit.face);
         maybe_play_destroy_hit_sound(audio_events, world, hit.pos);
         if let Some(finished) = world.advance_local_destroying_block_tick() {
-            stop_destroy_block(counters, net_commands, finished);
+            let permit =
+                completion_permit.expect("finishing destroy reserved its player-action command");
+            send_reserved_player_action_command(
+                counters,
+                permit,
+                PlayerActionKind::StopDestroyBlock,
+                finished.pos,
+                finished.face,
+                finished.sequence,
+            );
+            return true;
         }
-        return true;
+        return world.local_player().interaction.destroying_block == Some(hit.pos);
     }
 
     retarget_destroy_block(input, counters, world, net_commands, hit)
@@ -884,20 +905,40 @@ fn retarget_destroy_block(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hit: CrosshairBlockHit,
 ) -> bool {
-    if local_player_block_action_is_restricted(world, hit.pos) {
+    if local_player_block_action_is_restricted(world, hit.pos)
+        || !block_target_within_world_border(world, hit.pos)
+    {
         return false;
     }
+    let command_count = if world.local_player().interaction.destroying_block.is_some() {
+        2
+    } else {
+        1
+    };
+    let Some(tx) = net_commands else {
+        return false;
+    };
+    let Ok(mut permits) = tx.try_reserve_many(command_count) else {
+        return false;
+    };
     if let Some(old_pos) = world.take_local_destroying_block() {
-        queue_player_action_command(
+        send_reserved_player_action_command(
             counters,
-            net_commands,
+            permits.next().expect("retarget reserved its abort command"),
             PlayerActionKind::AbortDestroyBlock,
             old_pos,
             hit.face,
             0,
         );
     }
-    start_destroy_block(input, counters, world, net_commands, hit)
+    apply_start_destroy_block(
+        input,
+        counters,
+        world,
+        permits.next().expect("retarget reserved its start command"),
+        hit,
+    );
+    true
 }
 
 fn maybe_play_destroy_hit_sound(
@@ -929,10 +970,40 @@ fn start_destroy_block(
         return false;
     }
 
+    if !local_player_instabuild(world)
+        && world.local_player().interaction.destroying_block.is_some()
+    {
+        if world.local_player().interaction.destroying_block == Some(hit.pos)
+            && world.local_destroying_block_matches_current_item()
+        {
+            return true;
+        }
+        return retarget_destroy_block(input, counters, world, net_commands, hit);
+    }
+
+    let Some(tx) = net_commands else {
+        return false;
+    };
+    let Ok(permit) = tx.try_reserve() else {
+        return false;
+    };
+    apply_start_destroy_block(input, counters, world, permit, hit);
+    true
+}
+
+fn apply_start_destroy_block(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    permit: mpsc::Permit<'_, NetCommand>,
+    hit: CrosshairBlockHit,
+) {
     let sequence = world.next_local_prediction_sequence();
     if local_player_instabuild(world) {
         world.tutorial_on_destroy_block(hit.pos, 1_000_000);
-        if world.local_selected_main_hand_can_destroy_block_in_creative() {
+        if world.local_selected_main_hand_can_destroy_block()
+            && world.local_destroy_block_gamemaster_gate_allows(hit.pos)
+        {
             world.predict_local_destroy_block(hit.pos, sequence);
         }
         world.set_local_destroy_delay_ticks(5);
@@ -942,20 +1013,23 @@ fn start_destroy_block(
         }
         world.tutorial_on_destroy_block(hit.pos, 0);
         if world.local_destroy_block_is_immediate(hit.pos) {
-            world.predict_local_destroy_block(hit.pos, sequence);
+            if world.local_selected_main_hand_can_destroy_block()
+                && world.local_destroy_block_gamemaster_gate_allows(hit.pos)
+            {
+                world.predict_local_destroy_block(hit.pos, sequence);
+            }
         } else {
             world.set_local_destroying_block_hit(hit.pos, hit.face);
         }
     }
-    queue_player_action_command(
+    send_reserved_player_action_command(
         counters,
-        net_commands,
+        permit,
         PlayerActionKind::StartDestroyBlock,
         hit.pos,
         hit.face,
         sequence,
     );
-    true
 }
 
 fn local_player_block_action_is_restricted(world: &WorldStore, pos: WorldBlockPos) -> bool {
@@ -963,40 +1037,35 @@ fn local_player_block_action_is_restricted(world: &WorldStore, pos: WorldBlockPo
         && !world.local_selected_main_hand_can_break_block_in_adventure_mode(pos)
 }
 
-fn stop_destroy_block(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    finished: LocalDestroyBlockFinished,
-) {
-    queue_player_action_command(
-        counters,
-        net_commands,
-        PlayerActionKind::StopDestroyBlock,
-        finished.pos,
-        finished.face,
-        finished.sequence,
-    );
-}
-
-fn abort_destroy_block(
+pub(super) fn abort_destroy_block(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     direction: ProtocolDirection,
-) {
-    if let Some(pos) = world.local_player().interaction.destroying_block {
-        world.tutorial_on_destroy_block(pos, -1);
-    }
-    if let Some(pos) = world.take_local_destroying_block() {
-        queue_player_action_command(
-            counters,
-            net_commands,
-            PlayerActionKind::AbortDestroyBlock,
-            pos,
-            direction,
-            0,
-        );
-    }
+) -> bool {
+    let Some(pos) = world.local_player().interaction.destroying_block else {
+        return true;
+    };
+    let Some(tx) = net_commands else {
+        return false;
+    };
+    let Ok(permit) = tx.try_reserve() else {
+        return false;
+    };
+    world.tutorial_on_destroy_block(pos, -1);
+    let cleared = world
+        .take_local_destroying_block()
+        .expect("reserved destroy abort still owns its target");
+    world.reset_only_local_player_attack_strength();
+    send_reserved_player_action_command(
+        counters,
+        permit,
+        PlayerActionKind::AbortDestroyBlock,
+        cleared,
+        direction,
+        0,
+    );
+    true
 }
 
 fn local_player_instabuild(world: &WorldStore) -> bool {
@@ -1140,13 +1209,13 @@ mod tests {
         VANILLA_ITEM_APPLE_ID, VANILLA_ITEM_ARROW_ID, VANILLA_ITEM_BONE_MEAL_ID,
         VANILLA_ITEM_BOW_ID, VANILLA_ITEM_BRUSH_ID, VANILLA_ITEM_BUNDLE_ID,
         VANILLA_ITEM_CARROT_ON_A_STICK_ID, VANILLA_ITEM_CHICKEN_SPAWN_EGG_ID,
-        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID, VANILLA_ITEM_ENDER_EYE_ID,
-        VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID, VANILLA_ITEM_FIRE_CHARGE_ID,
-        VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID, VANILLA_ITEM_GLASS_BOTTLE_ID,
-        VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID, VANILLA_ITEM_MAP_ID,
-        VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POTION_ID, VANILLA_ITEM_RED_DYE_ID,
-        VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID, VANILLA_ITEM_STONE_ID,
-        VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_WATER_BUCKET_ID,
+        VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_CROSSBOW_ID, VANILLA_ITEM_DEBUG_STICK_ID,
+        VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_ENDER_PEARL_ID, VANILLA_ITEM_FIREWORK_ROCKET_ID,
+        VANILLA_ITEM_FIRE_CHARGE_ID, VANILLA_ITEM_FISHING_ROD_ID, VANILLA_ITEM_FLINT_AND_STEEL_ID,
+        VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_GOAT_HORN_ID, VANILLA_ITEM_KNOWLEDGE_BOOK_ID,
+        VANILLA_ITEM_MAP_ID, VANILLA_ITEM_OAK_BOAT_ID, VANILLA_ITEM_POTION_ID,
+        VANILLA_ITEM_RED_DYE_ID, VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_SPYGLASS_ID,
+        VANILLA_ITEM_STONE_ID, VANILLA_ITEM_TRIDENT_ID, VANILLA_ITEM_WATER_BUCKET_ID,
     };
     use bbb_protocol::packets::{
         AddEntity, AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackEntity,
@@ -3899,6 +3968,56 @@ mod tests {
     }
 
     #[test]
+    fn repeated_survival_press_on_same_target_keeps_prediction_and_only_swings_again() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player().interaction.prediction_sequence, 1);
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 2);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                sequence: 1,
+                ..
+            }))
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
     fn adventure_mode_block_destroy_requires_matching_can_break_predicate() {
         let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
@@ -4028,6 +4147,13 @@ mod tests {
             pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
             block_state_id: unlit,
         }));
+        world.set_default_block_destroy_profiles(BTreeMap::from([(
+            "minecraft:redstone_ore".to_string(),
+            WorldBlockDestroyProfile {
+                destroy_time_tenths: Some(30),
+                requires_correct_tool: true,
+            },
+        )]));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -4258,6 +4384,118 @@ mod tests {
     }
 
     #[test]
+    fn survival_same_target_continues_after_world_border_moves_past_block() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        set_world_border_excluding_crosshair_block(&mut world);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert!(world.local_player().interaction.destroying_block_progress > 0);
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 1);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn survival_same_target_air_update_clears_without_hit_effect_or_swing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: bbb_world::vanilla_air_block_state_id(),
+        }));
+        let mut counters = NetCounters::default();
+
+        let mut audio_events = None;
+        assert!(!continue_destroy_block_tick(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            &mut audio_events,
+            CrosshairBlockHit {
+                pos: CROSSHAIR_BLOCK_POS,
+                face: ProtocolDirection::North,
+                cursor: [0.5; 3],
+                inside: false,
+            },
+        ));
+
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert!(input.pending_local_player_action_particles.is_empty());
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn full_or_closed_start_queue_keeps_prediction_and_destroy_state_unchanged() {
+        for closed in [false, true] {
+            let (tx, rx) = mpsc::channel(1);
+            let mut rx = Some(rx);
+            if closed {
+                rx.take();
+            } else {
+                tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+                    .unwrap();
+            }
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = world_with_crosshair_block();
+            let mut counters = NetCounters::default();
+
+            handle_mouse_input(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Left,
+                ElementState::Pressed,
+            );
+
+            assert!(input.destroy_block_held);
+            assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+            assert_eq!(world.local_player().interaction.destroying_block, None);
+            assert!(world.local_block_predictions().is_empty());
+            assert!(input.pending_local_player_action_particles.is_empty());
+            assert_eq!(counters.player_action_commands_queued, 0);
+            assert_eq!(counters.swing_commands_queued, 0);
+            if let Some(rx) = rx.as_mut() {
+                assert_eq!(
+                    rx.try_recv().unwrap(),
+                    NetCommand::Swing(InteractionHand::OffHand)
+                );
+            }
+        }
+    }
+
+    #[test]
     fn spectator_left_mouse_press_on_block_does_not_start_destroy_or_swing() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -4355,6 +4593,45 @@ mod tests {
                 direction: ProtocolDirection::North,
                 sequence: 1,
             })
+        );
+    }
+
+    #[test]
+    fn retarget_reserves_abort_and_start_before_changing_the_old_target() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+            .unwrap();
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        let old_pos = BlockPos { x: 2, y: 65, z: -3 };
+        world.set_local_destroying_block_hit(old_pos, ProtocolDirection::South);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            0,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(old_pos)
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_face,
+            Some(ProtocolDirection::South)
+        );
+        assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::OffHand)
         );
     }
 
@@ -4696,6 +4973,126 @@ mod tests {
     }
 
     #[test]
+    fn completion_and_abort_retry_without_publishing_partial_state_when_queue_is_full() {
+        let (tx, mut rx) = mpsc::channel(18);
+        let commands = Some(tx.clone());
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            17,
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 17);
+        tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+            .unwrap();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 17);
+        assert_eq!(world.local_player().interaction.prediction_sequence, 0);
+        while rx.try_recv().is_ok() {}
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(world.local_player().interaction.prediction_sequence, 1);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StopDestroyBlock,
+                sequence: 1,
+                ..
+            }))
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        input.destroy_block_held = false;
+        for _ in 0..18 {
+            tx.try_send(NetCommand::Swing(InteractionHand::OffHand))
+                .unwrap();
+        }
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        while rx.try_recv().is_ok() {}
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::AbortDestroyBlock,
+                sequence: 0,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn release_input_uses_the_single_atomic_destroy_abort_owner() {
+        let source = include_str!("../input.rs");
+        let start = source
+            .find("pub(crate) fn release_active_input(")
+            .expect("release_active_input source");
+        let tail = &source[start..];
+        let end = tail
+            .find("\nfn dialog_ime_preedit_char_index_for_byte")
+            .expect("release_active_input end");
+        let body = &tail[..end];
+        assert!(body.contains("mouse::abort_destroy_block("));
+        assert!(!body.contains("take_local_destroying_block("));
+        assert!(!body.contains("PlayerActionKind::AbortDestroyBlock"));
+    }
+
+    #[test]
     fn held_left_mouse_same_target_updates_local_destroy_stage_on_client_tick() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -4862,6 +5259,68 @@ mod tests {
     }
 
     #[test]
+    fn creative_game_master_prediction_requires_permission_but_start_still_sends() {
+        for permitted in [false, true] {
+            let (tx, mut rx) = mpsc::channel(2);
+            let commands = Some(tx);
+            let mut input = ClientInputState::new(true);
+            let mut world = world_with_crosshair_command_block();
+            if !permitted {
+                assert!(world.apply_entity_event(ProtocolEntityEvent {
+                    entity_id: 42,
+                    event_id: 24,
+                }));
+            }
+            let initial_state = world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .expect("command block")
+                .block_state_id;
+            let mut counters = NetCounters::default();
+
+            handle_mouse_input(
+                &mut input,
+                &mut world,
+                &mut counters,
+                &commands,
+                MouseButton::Left,
+                ElementState::Pressed,
+            );
+
+            assert_eq!(world.local_player().interaction.destroying_block, None);
+            assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+            assert_eq!(
+                world.local_block_predictions().len(),
+                usize::from(permitted)
+            );
+            assert_eq!(
+                world
+                    .probe_block(CROSSHAIR_BLOCK_POS)
+                    .expect("predicted command block cell")
+                    .block_state_id,
+                if permitted {
+                    bbb_world::vanilla_air_block_state_id()
+                } else {
+                    initial_state
+                }
+            );
+            assert_eq!(counters.player_action_commands_queued, 1);
+            assert_eq!(counters.swing_commands_queued, 1);
+            assert!(matches!(
+                rx.try_recv(),
+                Ok(NetCommand::PlayerAction(PlayerAction {
+                    action: PlayerActionKind::StartDestroyBlock,
+                    sequence: 1,
+                    ..
+                }))
+            ));
+            assert_eq!(
+                rx.try_recv().unwrap(),
+                NetCommand::Swing(InteractionHand::MainHand)
+            );
+        }
+    }
+
+    #[test]
     fn creative_tool_flag_suppresses_local_destroy_but_still_queues_start() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -4887,6 +5346,61 @@ mod tests {
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
             slot: 0,
             item: stack,
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.destroy_block_held);
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            VANILLA_GRASS_BLOCK_STATE_ID
+        );
+        assert!(world.local_block_predictions().is_empty());
+        assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                ..
+            })
+        ));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn creative_debug_stick_sends_start_without_local_destroy_prediction() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(VANILLA_ITEM_DEBUG_STICK_ID, 1),
         });
         let mut counters = NetCounters::default();
 
