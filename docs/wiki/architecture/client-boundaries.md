@@ -50,6 +50,22 @@ minor-collision 角度门、auto-jump（can/update）与 climbable sneak 抑制
 （isSuppressingSlidingDownLadder，scaffolding 例外）各有唯一具名 fn。不得在 native 侧
 内联任何 movement 判定或建第二条 sprint 粒子路径。
 
+## LocalPlayer environment-effects owner
+
+八个 environment-effects owner 全部落在既有机制上：crit/magicCrit 经服务端
+`sendToTrackingPlayersAndSelf` 的 Animate 4/5 广播由
+`tracking_emitter_for_entity_animation` → `tracking_emitter_particle_batch` 唯一裁决
+（发起者也在广播内，本地判定不另建路径，代价是 1 RTT 视觉延迟）；playSound
+（`ClientLevel.playLocalSound` at-feet 变体）由 audio store 的 positioned-sound
+记录链拥有；portal transition 由 world 侧
+`advance_local_player_portal_transition_effect` 唯一步进（inside 探测
+`local_player_inside_nether_portal` 用 bounding-box epsilon 收缩，+0.0125/-0.05/clamp、
+0→rising 置 PORTAL_TRIGGER pending、inside 时置容器关闭 pending），native 只消费
+pending 并把 intensity 喂给 camera spinning 的 `portal*20+nausea*7` 加权公式；mood 由
+environment_audio_runtime `advance_mood`、water-vision 由 lightmap `tick_water_vision`、
+underwater enter/exit 由 ambient-audio tick 的 transition 链拥有。不得在 native 侧
+另建 portal intensity 或本地 crit 判定第二路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

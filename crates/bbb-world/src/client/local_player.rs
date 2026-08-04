@@ -16,6 +16,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::local_player_collision::local_player_inside_nether_portal;
 use super::local_player_fluid::{local_player_eye_in_water, local_player_fluid_contact};
 use super::local_player_movement::{
     advance_local_player_auto_spin_attack_after_move, apply_local_player_input_look,
@@ -51,6 +52,13 @@ pub struct LocalPlayerState {
     /// LocalPlayer. This is client tick state, not portal/world authority.
     #[serde(default)]
     pub portal_cooldown: i32,
+    /// Vanilla `LocalPlayer.portalEffectIntensity`: the CONFUSION-portal
+    /// screen-effect ramp advanced once per client tick.
+    #[serde(default)]
+    pub portal_effect_intensity: f32,
+    /// Vanilla `LocalPlayer.oPortalEffectIntensity` for frame interpolation.
+    #[serde(default)]
+    pub previous_portal_effect_intensity: f32,
     #[serde(default)]
     pub camera: CameraState,
     #[serde(default)]
@@ -81,6 +89,8 @@ impl Default for LocalPlayerState {
             default_spawn: None,
             simulation_distance: None,
             portal_cooldown: 0,
+            portal_effect_intensity: 0.0,
+            previous_portal_effect_intensity: 0.0,
             camera: CameraState::default(),
             pose: None,
             sprinting: false,
@@ -633,6 +643,47 @@ impl WorldStore {
         let pose = advance_local_player_auto_spin_attack_after_move(self, old_pose, pose);
         self.local_player.pose = Some(pose);
         Some(pose)
+    }
+
+    /// Vanilla `LocalPlayer.handlePortalTransitionEffect` driven by
+    /// `getActivePortalLocalTransition() == CONFUSION` (the nether portal is
+    /// the only confusion-transition portal): inside the portal the intensity
+    /// ramps `+0.0125` per tick, requests the vanilla screen close and fires
+    /// the `PORTAL_TRIGGER` ambience on the `0 →` rising edge; outside it
+    /// decays `-0.05`, clamped to `0..=1`.
+    pub(crate) fn advance_local_player_portal_transition_effect(&mut self) {
+        let inside = self
+            .local_player
+            .pose
+            .is_some_and(|pose| local_player_inside_nether_portal(self, pose));
+        self.local_player.previous_portal_effect_intensity =
+            self.local_player.portal_effect_intensity;
+        let mut step = 0.0_f32;
+        if inside {
+            if self.local_player.portal_effect_intensity == 0.0 {
+                self.pending_portal_transition_trigger_sound = true;
+            }
+            step = 0.0125;
+            if self.open_container_id().is_some() {
+                self.pending_portal_transition_container_close = true;
+            }
+        } else if self.local_player.portal_effect_intensity > 0.0 {
+            step = -0.05;
+        }
+        self.local_player.portal_effect_intensity =
+            (self.local_player.portal_effect_intensity + step).clamp(0.0, 1.0);
+    }
+
+    /// Drains the one-shot portal-transition side effects for the native
+    /// consumer: `(trigger_sound, close_container)`.
+    pub fn take_pending_portal_transition_effects(&mut self) -> (bool, bool) {
+        let effects = (
+            self.pending_portal_transition_trigger_sound,
+            self.pending_portal_transition_container_close,
+        );
+        self.pending_portal_transition_trigger_sound = false;
+        self.pending_portal_transition_container_close = false;
+        effects
     }
 
     pub fn local_player_is_sprinting(&self) -> bool {

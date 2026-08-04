@@ -7765,6 +7765,7 @@ impl WorldStore {
                 );
             }
             self.advance_local_player_attack_strength_ticks(1);
+            self.advance_local_player_portal_transition_effect();
             if runs_normally {
                 // Vanilla `ClientLevel.tick` advances these owners after
                 // `tickEntities`, in this order, for every catch-up tick.

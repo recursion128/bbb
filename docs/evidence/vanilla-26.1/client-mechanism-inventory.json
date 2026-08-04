@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "fe29d4d517d105f7f05887ff0a3e14d51e3bc019c56fbd6286e09d50117f5175"
+      "sha256": "444b870ed6206d0c2e85d5b5212eb1dd72184de9619991335606a6a61562e4a3"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -234,7 +234,8 @@
         "crates/bbb-world/src/client/local_player_fluid.rs",
         "crates/bbb-native/src/input/movement.rs"
       ],
-      "owner_count": 8
+      "owner_count": 8,
+      "owner_evidence_count": 8
     },
     "player-local-input-movement": {
       "bbb_evidence": [
@@ -24342,6 +24343,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#closeContainer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/play_apply.rs#tracking_emitter_for_entity_animation",
+          "crates/bbb-native/src/particle_runtime/resolver_entity_events.rs#tracking_emitter_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-world/src/play_apply.rs#entity_animation_forwards_crit_tracking_emitters",
+          "crates/bbb-native/src/particle_runtime/tests.rs#tracking_emitter_batch_spawns_totem_particles_around_entity_bounds"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -24408,6 +24419,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#filterHitResult(final HitResult hitResult,final Vec3 from,final double maxRange)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#advance_local_player_portal_transition_effect",
+          "crates/bbb-world/src/client/local_player_collision.rs#local_player_inside_nether_portal"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_portal_transition_effect_tracks_vanilla_intensity_curve",
+          "crates/bbb-native/src/runtime/tests.rs#camera_spinning_effect_blends_portal_intensity_like_vanilla"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -24422,6 +24443,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getActivePortalLocalTransition()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_audio_runtime.rs#advance_mood"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_projects_vanilla_rounded_mood_percent"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -24590,6 +24619,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getVisualRotationYInDegrees()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#tick_water_vision",
+          "crates/bbb-native/src/runtime.rs#water_vision"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_water_vision_fades_out_when_eye_leaves_water"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -24632,6 +24670,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handleEntityEvent(final byte id)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#advance_local_player_portal_transition_effect",
+          "crates/bbb-world/src/client/local_player_collision.rs#local_player_inside_nether_portal"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_portal_transition_effect_tracks_vanilla_intensity_curve",
+          "crates/bbb-native/src/runtime/tests.rs#camera_spinning_effect_blends_portal_intensity_like_vanilla"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -24971,6 +25019,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#jumpableVehicle()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/play_apply.rs#tracking_emitter_for_entity_animation",
+          "crates/bbb-native/src/particle_runtime/resolver_entity_events.rs#tracking_emitter_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-world/src/play_apply.rs#entity_animation_forwards_crit_tracking_emitters",
+          "crates/bbb-native/src/particle_runtime/tests.rs#tracking_emitter_batch_spawns_totem_particles_around_entity_bounds"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -25279,6 +25337,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#pick(final Entity cameraEntity,final double blockInteractionRange,final double entityInteractionRange,final float partialTicks)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound",
+          "crates/bbb-world/src/client/audio.rs#record_positioned_sound"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound_is_player_positioned_and_advances_the_sound_seed"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -25771,6 +25838,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateAutoJump(final float xa,final float za)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#begin_local_player_ambient_audio_tick",
+          "crates/bbb-native/src/environment_audio_runtime.rs#apply_underwater_tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_audio_runtime.rs#underwater_audio_plays_transition_sounds_and_fades_loop_at_vanilla_rates"
+        ]
+      },
       "category": "local-effect",
       "domain": "audio",
       "kind": "method",
@@ -42504,6 +42580,7 @@
       "world-client-level-events",
       "rendering-client-block-entity-tracking",
       "player-local-input-movement",
+      "player-local-environment-effects",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

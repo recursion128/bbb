@@ -2474,6 +2474,82 @@ LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/play_apply.rs#tracking_emitter_for_entity_animation",
+                "crates/bbb-native/src/particle_runtime/resolver_entity_events.rs#tracking_emitter_particle_batch",
+            ),
+            (
+                "crates/bbb-world/src/play_apply.rs#entity_animation_forwards_crit_tracking_emitters",
+                "crates/bbb-native/src/particle_runtime/tests.rs#tracking_emitter_batch_spawns_totem_particles_around_entity_bounds",
+            ),
+        ),
+        ("crit", "magicCrit"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound",
+                "crates/bbb-world/src/client/audio.rs#record_positioned_sound",
+            ),
+            (
+                "crates/bbb-world/src/client/audio.rs#hud_air_bubble_pop_sound_is_player_positioned_and_advances_the_sound_seed",
+            ),
+        ),
+        ("playSound",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#advance_local_player_portal_transition_effect",
+                "crates/bbb-world/src/client/local_player_collision.rs#local_player_inside_nether_portal",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_portal_transition_effect_tracks_vanilla_intensity_curve",
+                "crates/bbb-native/src/runtime/tests.rs#camera_spinning_effect_blends_portal_intensity_like_vanilla",
+            ),
+        ),
+        ("getActivePortalLocalTransition", "handlePortalTransitionEffect"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/environment_audio_runtime.rs#advance_mood",
+            ),
+            (
+                "crates/bbb-native/src/environment_audio_runtime.rs#environment_audio_projects_vanilla_rounded_mood_percent",
+            ),
+        ),
+        ("getCurrentMood",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#tick_water_vision",
+                "crates/bbb-native/src/runtime.rs#water_vision",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_water_vision_fades_out_when_eye_leaves_water",
+            ),
+        ),
+        ("getWaterVision",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/audio.rs#begin_local_player_ambient_audio_tick",
+                "crates/bbb-native/src/environment_audio_runtime.rs#apply_underwater_tick",
+            ),
+            (
+                "crates/bbb-native/src/environment_audio_runtime.rs#underwater_audio_plays_transition_sounds_and_fades_loop_at_vanilla_rates",
+            ),
+        ),
+        ("updateIsUnderwater",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2635,6 +2711,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
     "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
     "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,
+    "player-local-environment-effects": LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

@@ -6479,6 +6479,88 @@ fn local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts() {
     assert!(world.local_player_sprint_particle_state().is_some());
 }
 
+#[test]
+fn local_player_portal_transition_effect_tracks_vanilla_intensity_curve() {
+    let mut world = flat_collision_world();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    });
+
+    world.advance_local_player_portal_transition_effect();
+    assert_eq!(world.local_player.portal_effect_intensity, 0.0);
+    assert_eq!(
+        world.take_pending_portal_transition_effects(),
+        (false, false),
+        "outside a portal nothing is pending"
+    );
+
+    set_test_block(&mut world, 0, 1, 0, NETHER_PORTAL_X_BLOCK_STATE_ID);
+    world.advance_local_player_portal_transition_effect();
+    assert_f32_near(world.local_player.portal_effect_intensity, 0.0125);
+    assert_eq!(world.local_player.previous_portal_effect_intensity, 0.0);
+    assert_eq!(
+        world.take_pending_portal_transition_effects(),
+        (true, false),
+        "the 0 -> rising edge queues the portal trigger sound once"
+    );
+
+    world.advance_local_player_portal_transition_effect();
+    assert_f32_near(world.local_player.portal_effect_intensity, 0.025);
+    assert_f32_near(world.local_player.previous_portal_effect_intensity, 0.0125);
+    assert_eq!(
+        world.take_pending_portal_transition_effects(),
+        (false, false),
+        "the trigger sound only fires on the rising edge"
+    );
+
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X1_ID,
+        title: bbb_protocol::RichTextComponent::plain("Container"),
+    });
+    world.advance_local_player_portal_transition_effect();
+    assert_f32_near(world.local_player.portal_effect_intensity, 0.0375);
+    assert_eq!(
+        world.take_pending_portal_transition_effects(),
+        (false, true),
+        "standing inside the portal closes any open container screen"
+    );
+
+    set_test_block(&mut world, 0, 1, 0, GRASS_BLOCK_STATE_ID);
+    world.advance_local_player_portal_transition_effect();
+    assert_eq!(
+        world.local_player.portal_effect_intensity, 0.0,
+        "leaving the portal decays by 0.05 per tick, clamped at zero"
+    );
+    assert_f32_near(world.local_player.previous_portal_effect_intensity, 0.0375);
+
+    assert!(
+        world.close_local_container(7),
+        "the consumer closes the container after draining the pending flag"
+    );
+    world.local_player.portal_effect_intensity = 0.999;
+    set_test_block(&mut world, 0, 1, 0, NETHER_PORTAL_X_BLOCK_STATE_ID);
+    world.advance_local_player_portal_transition_effect();
+    assert_eq!(
+        world.local_player.portal_effect_intensity, 1.0,
+        "the rising intensity clamps at one"
+    );
+    assert_eq!(
+        world.take_pending_portal_transition_effects(),
+        (false, false),
+        "a non-zero starting intensity does not retrigger the sound"
+    );
+}
+
+fn assert_f32_near(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() <= 1.0e-6,
+        "expected {actual} to be within 1e-6 of {expected}"
+    );
+}
+
 fn flat_collision_world() -> WorldStore {
     let mut world = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

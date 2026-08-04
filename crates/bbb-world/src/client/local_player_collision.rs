@@ -245,6 +245,38 @@ fn local_player_collides_with_suffocating_block(
     false
 }
 
+/// Vanilla nether-portal `entityInside` occupancy for the local player: the
+/// pose AABB (deflated `1.0E-7` like `Entity.checkInsideBlocks`) intersects a
+/// `minecraft:nether_portal` block, which is the only CONFUSION-transition
+/// portal.
+pub(super) fn local_player_inside_nether_portal(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+) -> bool {
+    const INSIDE_EPSILON: f64 = 1.0e-7;
+    let bounds = LocalPlayerBounds::for_pose(pose);
+    let min_x = block_floor(bounds.min_x + INSIDE_EPSILON);
+    let max_x = block_floor(bounds.max_x - INSIDE_EPSILON);
+    let min_y = block_floor(bounds.min_y + INSIDE_EPSILON);
+    let max_y = block_floor(bounds.max_y - INSIDE_EPSILON);
+    let min_z = block_floor(bounds.min_z + INSIDE_EPSILON);
+    let max_z = block_floor(bounds.max_z - INSIDE_EPSILON);
+    for x in min_x..=max_x {
+        for y in min_y..=max_y {
+            for z in min_z..=max_z {
+                let inside = world
+                    .probe_block(BlockPos { x, y, z })
+                    .and_then(|probe| probe.block_name)
+                    .is_some_and(|name| name == "minecraft:nether_portal");
+                if inside {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn find_supporting_block(
     world: &WorldStore,
     entity_position: [f64; 3],

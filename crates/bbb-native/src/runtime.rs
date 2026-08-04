@@ -1563,13 +1563,15 @@ pub(crate) struct CameraSpinningEffectTickState {
 impl CameraSpinningEffectTickState {
     fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) {
         for _ in 0..ticks {
+            let portal_intensity = world.local_player().portal_effect_intensity;
             let nausea_intensity = local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)
                 .map(|effect| effect.blend_factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK))
                 .unwrap_or(0.0);
-            if nausea_intensity > 0.0 {
-                // With no portal contribution yet, vanilla's weighted
-                // `(portal * 20 + nausea * 7) / (portal + nausea)` is exactly 7.
-                self.speed_degrees_per_tick = 7.0;
+            if portal_intensity > 0.0 || nausea_intensity > 0.0 {
+                // Vanilla GameRenderer.tick weights the spin speed by both
+                // sources: `(portal * 20 + nausea * 7) / (portal + nausea)`.
+                self.speed_degrees_per_tick = (portal_intensity * 20.0 + nausea_intensity * 7.0)
+                    / (portal_intensity + nausea_intensity);
                 self.time_degrees += self.speed_degrees_per_tick;
             } else {
                 self.speed_degrees_per_tick = 0.0;
@@ -1582,12 +1584,18 @@ impl CameraSpinningEffectTickState {
         world: &WorldStore,
         partial_tick: f32,
     ) -> Option<bbb_renderer::CameraSpinningEffect> {
-        let intensity =
-            local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)?.blend_factor(partial_tick);
+        let partial_tick = partial_tick.clamp(0.0, 1.0);
+        let player = world.local_player();
+        let portal_intensity = player.previous_portal_effect_intensity
+            + (player.portal_effect_intensity - player.previous_portal_effect_intensity)
+                * partial_tick;
+        let nausea_intensity = local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)
+            .map(|effect| effect.blend_factor(partial_tick))
+            .unwrap_or(0.0);
+        let intensity = portal_intensity.max(nausea_intensity);
         (intensity > 0.0).then_some(bbb_renderer::CameraSpinningEffect {
             intensity,
-            angle_degrees: self.time_degrees
-                + partial_tick.clamp(0.0, 1.0) * self.speed_degrees_per_tick,
+            angle_degrees: self.time_degrees + partial_tick * self.speed_degrees_per_tick,
         })
     }
 }
@@ -3109,6 +3117,31 @@ pub(crate) fn advance_simulation(
         sound_profile_duration,
         profiling_enabled,
     );
+    let (portal_transition_trigger_sound, portal_transition_container_close) =
+        world.take_pending_portal_transition_effects();
+    if portal_transition_trigger_sound {
+        if let Some(audio_events) = audio_events.as_deref_mut() {
+            // Vanilla `LocalPlayer.handlePortalTransitionEffect` plays
+            // `SimpleSoundInstance.forLocalAmbience(PORTAL_TRIGGER,
+            // random.nextFloat() * 0.4F + 0.8F, 0.25F)` on the 0 -> rising
+            // intensity edge.
+            audio_events.play_local_sound(&LocalSoundEventState {
+                sound: SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:block.portal.trigger".to_string()),
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                volume: 0.25,
+                pitch: level_event_sound_random.next_float() * 0.4 + 0.8,
+                seed: 0,
+            });
+        }
+    }
+    if portal_transition_container_close {
+        crate::input::queue_container_close_command(net_counters, world, net_commands);
+    }
     // Vanilla sends the marker after logical particle spawning. Backend
     // particle execution consumes the owned batches on the render side and
     // must not delay the connection command.

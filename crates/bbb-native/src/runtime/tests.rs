@@ -3807,6 +3807,50 @@ fn camera_spinning_effect_ticks_and_interpolates_nausea_like_vanilla() {
 }
 
 #[test]
+fn camera_spinning_effect_blends_portal_intensity_like_vanilla() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    world.set_local_player_pose(local_player_pose([0.5, 1.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    let portal = world
+        .registries()
+        .block_state_id_by_name_and_properties(
+            "minecraft:nether_portal",
+            &BTreeMap::from([("axis".to_string(), "x".to_string())]),
+        )
+        .expect("vanilla nether portal state");
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 1, z: 0 }, portal);
+    set_lightmap_test_block(&mut world, BlockPos { x: 0, y: 2, z: 0 }, portal);
+
+    let mut spinning = CameraSpinningEffectTickState::default();
+    world.advance_client_level_entity_ticks_with_observation(1);
+    spinning.advance_for_world(1, &world);
+
+    // A pure portal source spins at the vanilla-weighted 20 deg/tick.
+    assert_eq!(spinning.effect_for_world(&world, 0.0), None);
+    let effect = spinning.effect_for_world(&world, 1.0).unwrap();
+    assert!((effect.intensity - 0.0125).abs() < 1e-6);
+    assert_eq!(effect.angle_degrees, 40.0);
+
+    assert!(world.apply_update_mob_effect(mob_effect_with_blend(
+        42,
+        VANILLA_MOB_EFFECT_NAUSEA_ID,
+        260,
+        true,
+    )));
+    world.advance_client_level_entity_ticks_with_observation(1);
+    spinning.advance_for_world(1, &world);
+
+    let portal_intensity = 0.025_f32;
+    let nausea_intensity = 1.0_f32 / 150.0;
+    let blended_speed =
+        (portal_intensity * 20.0 + nausea_intensity * 7.0) / (portal_intensity + nausea_intensity);
+    let effect = spinning.effect_for_world(&world, 1.0).unwrap();
+    assert!((effect.intensity - portal_intensity).abs() < 1e-6);
+    assert!((effect.angle_degrees - (20.0 + 2.0 * blended_speed)).abs() < 1e-4);
+}
+
+#[test]
 fn camera_spinning_effect_stops_without_resetting_phase_after_nausea_removal() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     attach_lightmap_local_player(&mut world, 42);

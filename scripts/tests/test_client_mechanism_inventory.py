@@ -196,6 +196,26 @@ public class Owner {
                 for owner in input_movement_owners
             )
         )
+        environment_effects_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-environment-effects"
+        ]
+        self.assertEqual(len(environment_effects_owners), 8)
+        self.assertEqual(
+            value["mechanisms"]["player-local-environment-effects"][
+                "owner_evidence_count"
+            ],
+            8,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in environment_effects_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

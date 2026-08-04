@@ -219,6 +219,11 @@ pub struct WorldStore {
     /// fallback can continue after the client-visible block callback.
     #[serde(skip)]
     pub(crate) pending_local_interaction_particle_actions: Vec<LocalInteractionParticleAction>,
+    /// One-shot portal-transition side effects produced by the client tick:
+    /// the `PORTAL_TRIGGER` ambience on the 0→rising edge and the vanilla
+    /// screen-close request while standing inside the portal.
+    pub(crate) pending_portal_transition_trigger_sound: bool,
+    pub(crate) pending_portal_transition_container_close: bool,
     #[serde(default)]
     pub(crate) client_ui: ClientUiState,
     #[serde(default)]

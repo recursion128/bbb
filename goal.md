@@ -451,31 +451,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
 census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 22 条 census route 由唯一账本
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 19 条 census route 由唯一账本
 排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
-
-#### Active contract：LocalPlayer environment-effects
-
-- 目标与 owner：闭合 `player-local-environment-effects` 8 个 owner（crit、magicCrit、
-  playSound、getActivePortalLocalTransition、handlePortalTransitionEffect、
-  getCurrentMood、getWaterVision、updateIsUnderwater）。
-- 缺口（本地 crit 粒子）：vanilla attackVisualEffects 在发起端本地调 crit/magicCrit
-  （Animate 4/5 broadcast 不含发起者）；criticalAttack=fullStrength && fallDistance>0
-  && !onGround && !onClimbable && !inWater && !mobilityRestricted && !passenger &&
-  target LivingEntity && !sprinting；magicBoost>0（攻击 enchant 伤害加成）→
-  ENCHANTED_HIT。bbb 需在本地 attack 链判定并走既有 tracking-emitter 粒子机制；
-  enchant 加成事实过重时允许登记有界差异并附重开判据。
-- 已有面（核对+注册）：playSound=sound-routing local 变体；mood=moodiness 链
-  （sound_mood_percent）；portal transition=camera spinning（portal*20+nausea*7 公式）
-  ；water vision/underwater=render_extract water_vision 与 underwater audio transition。
-- focused evidence：census 8-owner OwnerEvidence + scripts/tests 断言；crit 判定门
-  focused 测试 + emitter 粒子测试。
-- 非目标：不动 attack swing/攻击网络包语义（已闭）；发现其他缺口只登记既有 route。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 8-owner evidence 完整的干净提交。
 
 ### P2：屏幕、HUD、字体与截图
 
