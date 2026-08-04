@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "cdf155310d84b4d456de18d1b02d3233cc1d72bec5cc4e706accdf8179af7f1f"
+      "sha256": "de50fc944702ea622c27ca8765df3367d047aa5ffd9d1ca0761f4972a692ea54"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -636,7 +636,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/chunks/store.rs"
       ],
-      "owner_count": 5
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "world-client-clock-weather": {
       "bbb_evidence": [
@@ -18674,6 +18675,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onBlockEntityAdded(final BlockEntity blockEntity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light",
+          "crates/bbb-world/src/chunks/store.rs#apply_biome_update",
+          "crates/bbb-world/src/entities/movement.rs#entity_is_ticking"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#full_chunk_biome_reload_and_unload_invalidate_full_neighbor_height",
+          "crates/bbb-world/src/chunks/tests.rs#pending_initial_light_lifecycle_follows_load_apply_prune_and_direct_insert"
+        ]
+      },
       "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18814,6 +18826,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#players()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
+          "crates/bbb-native/src/terrain_runtime.rs#next_terrain_cache_work"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#terrain_revision_tracks_view_selection_and_level_clear_lifecycle",
+          "crates/bbb-native/src/terrain_runtime.rs#mesh_targets_withhold_a_chunk_until_its_initial_light_applies"
+        ]
+      },
       "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18842,6 +18864,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#potionBrewing()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#queue_light_update",
+          "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#queued_light_updates_preserve_fifo_order_and_vanilla_poll_budget",
+          "crates/bbb-world/src/chunks/tests.rs#light_validation_rejects_wrong_dimension_domains_before_mutation"
+        ]
+      },
       "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19361,6 +19393,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#trySpawnDripParticles(final BlockPos pos,final BlockState state,final ParticleOptions dripParticle,final boolean isTopSolid)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#forget_chunk",
+          "crates/bbb-world/src/chunks/store.rs#discard_queued_light_updates_for_chunk"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#forget_and_level_clear_discard_pending_light_without_stale_application",
+          "crates/bbb-world/src/chunks/tests.rs#light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_content"
+        ]
+      },
       "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -19375,6 +19417,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#unload(final LevelChunk levelChunk)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#advance_simulation"
+        ],
+        "tests": [
+          "crates/bbb-native/src/simulation.rs#queued_light_poll_follows_the_single_network_drain_before_presentation_sync"
+        ]
+      },
       "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -41568,6 +41618,7 @@
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle",
       "world-client-level-lifecycle",
+      "world-client-chunk-light-lifecycle",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

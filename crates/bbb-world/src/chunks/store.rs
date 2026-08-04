@@ -68,13 +68,17 @@ impl WorldStore {
         };
         let light = std::mem::take(&mut column.light);
         let light_array_count = light.sky_updates.len() + light.block_updates.len();
-        self.insert_decoded_chunk(column);
+        let stored = self.store_decoded_chunk(column);
         self.counters.light_arrays_seen += light_array_count;
-        if self.probe_chunk(pos).is_some() {
+        if stored {
+            // Vanilla defers the loaded chunk's terrain dirty marking and its
+            // first renderability to the queued light closure; the chunk stays
+            // light-disabled until that closure runs.
+            self.chunks_pending_initial_light.insert(pos);
             self.queued_light_updates.push_back(QueuedLightUpdate {
                 pos,
                 light,
-                schedule_rebuild: false,
+                initial_chunk_load: true,
                 counted_packet: false,
             });
         }
@@ -83,6 +87,17 @@ impl WorldStore {
 
     pub fn insert_decoded_chunk(&mut self, column: ChunkColumn) {
         let pos = column.pos;
+        if self.store_decoded_chunk(column) {
+            // Direct callers deliver light inline with the column, so the
+            // chunk is renderable immediately (vanilla's applyLightData →
+            // setLightEnabled collapsed into the insert).
+            self.chunks_pending_initial_light.remove(&pos);
+            self.mark_terrain_chunk_and_neighbors_changed(pos);
+        }
+    }
+
+    fn store_decoded_chunk(&mut self, column: ChunkColumn) -> bool {
+        let pos = column.pos;
         self.counters.chunks_received += 1;
         self.counters.chunks_decoded += 1;
         self.counters.sections_decoded += column.sections.len();
@@ -90,7 +105,7 @@ impl WorldStore {
         self.counters.light_arrays_seen +=
             column.light.sky_updates.len() + column.light.block_updates.len();
         if !chunk_is_in_view(self.chunk_view, pos) {
-            return;
+            return false;
         }
         self.prune_moving_pistons_in_chunk(pos);
         self.prune_trial_spawner_blocks_in_chunk(pos);
@@ -100,7 +115,7 @@ impl WorldStore {
         } else {
             self.chunks.push(column.into());
         }
-        self.mark_terrain_chunk_and_neighbors_changed(pos);
+        true
     }
 
     pub fn apply_block_update(&mut self, update: ProtocolBlockUpdate) -> bool {
@@ -199,20 +214,6 @@ impl WorldStore {
         Ok(true)
     }
 
-    pub fn apply_light_update(&mut self, update: ProtocolLightUpdate) -> Result<bool> {
-        let update_light = update.light_data.into();
-        let pos = ChunkPos {
-            x: update.chunk_x,
-            z: update.chunk_z,
-        };
-        if let Err(err) = self.validate_light_update(&update_light) {
-            self.record_apply_error("light_update", &err);
-            return Err(err);
-        }
-        self.counters.light_updates_received += 1;
-        Ok(self.apply_light_data(pos, update_light, true, true))
-    }
-
     pub fn queue_light_update(&mut self, update: ProtocolLightUpdate) -> Result<()> {
         let light = update.light_data.into();
         if let Err(err) = self.validate_light_update(&light) {
@@ -226,10 +227,19 @@ impl WorldStore {
                 z: update.chunk_z,
             },
             light,
-            schedule_rebuild: true,
+            initial_chunk_load: false,
             counted_packet: true,
         });
         Ok(())
+    }
+
+    /// Whether the chunk's packet-load light is still queued, i.e. vanilla's
+    /// light engine has not yet run `setLightEnabled(pos, true)` for it. The
+    /// terrain mesh consumer withholds such a chunk's own mesh (a fresh chunk
+    /// stays invisible, a re-sent chunk keeps its previous mesh) while still
+    /// serving it as neighbor context for face culling.
+    pub fn terrain_chunk_initial_light_pending(&self, pos: ChunkPos) -> bool {
+        self.chunks_pending_initial_light.contains(&pos)
     }
 
     pub fn queued_light_update_count(&self) -> usize {
@@ -251,7 +261,7 @@ impl WorldStore {
             self.apply_light_data(
                 update.pos,
                 update.light,
-                update.schedule_rebuild,
+                update.initial_chunk_load,
                 update.counted_packet,
             );
             applied += 1;
@@ -267,6 +277,7 @@ impl WorldStore {
             .count();
         self.counters.light_updates_ignored += ignored;
         self.queued_light_updates.clear();
+        self.chunks_pending_initial_light.clear();
     }
 
     fn validate_light_update(&self, light: &crate::LightData) -> Result<()> {
@@ -277,7 +288,7 @@ impl WorldStore {
         &mut self,
         pos: ChunkPos,
         update_light: crate::LightData,
-        schedule_rebuild: bool,
+        initial_chunk_load: bool,
         counted_packet: bool,
     ) -> bool {
         let updated_sections = updated_light_section_indices(&update_light);
@@ -292,7 +303,13 @@ impl WorldStore {
         if counted_packet {
             self.counters.light_updates_applied += 1;
         }
-        if schedule_rebuild && !updated_sections.is_empty() {
+        // Vanilla's applyLightData ends with setLightEnabled(pos, true).
+        self.chunks_pending_initial_light.remove(&pos);
+        if initial_chunk_load {
+            // Vanilla's chunk-load closure: enableChunkLight →
+            // setSectionRangeDirty(x±1, full height, z±1) → onChunkReadyToRender.
+            self.mark_terrain_chunk_and_neighbors_changed(pos);
+        } else if !updated_sections.is_empty() {
             self.mark_terrain_light_sections_changed(pos, &updated_sections);
         }
         true
@@ -436,6 +453,8 @@ impl WorldStore {
             keep
         });
         self.counters.light_updates_ignored += ignored;
+        // Vanilla's unload path disables the chunk's light exactly once.
+        self.chunks_pending_initial_light.remove(&pos);
     }
 
     pub fn probe_chunk(&self, pos: ChunkPos) -> Option<&ChunkColumn> {

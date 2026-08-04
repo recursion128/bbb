@@ -36,6 +36,21 @@ mod terrain;
 mod terrain_fluids;
 mod terrain_materials;
 
+/// Vanilla has no immediate light-apply entry point: handleLightUpdate queues a
+/// closure and the frame poll drains it. Tests that want the applied end state
+/// queue and drain in one step, reporting whether the update reached a chunk.
+fn apply_light_update_now(
+    store: &mut WorldStore,
+    update: ProtocolLightUpdate,
+) -> crate::Result<bool> {
+    let applied_before = store.counters().light_updates_applied;
+    store.queue_light_update(update)?;
+    while store.queued_light_update_count() > 0 {
+        store.poll_queued_light_updates();
+    }
+    Ok(store.counters().light_updates_applied > applied_before)
+}
+
 #[test]
 fn decodes_level_chunk_with_light_structure() {
     let packet = synthetic_level_chunk_packet();
@@ -181,6 +196,7 @@ fn terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
 
     let inserted = store.terrain_revision();
     assert!(inserted > 0);
@@ -303,11 +319,13 @@ fn standalone_light_revisions_touch_only_masked_section_neighbors() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(3))
         .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
     let inserted = store.terrain_revision();
     let diagonal_snapshot = store.terrain_chunk_snapshot_revision(diagonal);
 
-    assert!(store
-        .apply_light_update(ProtocolLightUpdate {
+    assert!(apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: chunk.x,
             chunk_z: chunk.z,
             // Light-section index 1 is absolute section y=0 because the
@@ -320,8 +338,9 @@ fn standalone_light_revisions_touch_only_masked_section_neighbors() {
                 vec![vec![7; LIGHT_ARRAY_BYTES]],
                 Vec::new(),
             ),
-        })
-        .unwrap());
+        }
+    )
+    .unwrap());
     let relit = store.terrain_revision();
     assert_eq!(
         terrain_section_revisions(&store, chunk),
@@ -337,13 +356,15 @@ fn standalone_light_revisions_touch_only_masked_section_neighbors() {
         diagonal_snapshot
     );
 
-    assert!(store
-        .apply_light_update(ProtocolLightUpdate {
+    assert!(apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: chunk.x,
             chunk_z: chunk.z,
             light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
-        })
-        .unwrap());
+        }
+    )
+    .unwrap());
     assert_eq!(store.terrain_revision(), relit);
 }
 
@@ -357,6 +378,7 @@ fn retained_publication_keeps_exact_section_revision_generation() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet_with_sections(2))
         .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
     let generation_a = store.publication_snapshot();
     let inserted = store.terrain_revision();
 
@@ -434,14 +456,16 @@ fn light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_conten
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
+    assert_eq!(store.poll_queued_light_updates(), 1);
     let mut neighbor_column = store.probe_chunk(chunk).unwrap().clone();
     neighbor_column.pos = neighbor;
     store.insert_decoded_chunk(neighbor_column);
     let inserted = store.terrain_revision();
     let neighbor_content = store.terrain_chunk_content_revision(neighbor);
 
-    assert!(store
-        .apply_light_update(ProtocolLightUpdate {
+    assert!(apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: chunk.x,
             chunk_z: chunk.z,
             light_data: light_update_data(
@@ -452,8 +476,9 @@ fn light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_conten
                 vec![vec![5; LIGHT_ARRAY_BYTES]],
                 Vec::new(),
             ),
-        })
-        .unwrap());
+        }
+    )
+    .unwrap());
     let relit = store.terrain_revision();
     assert!(relit > inserted);
     assert_eq!(store.terrain_chunk_content_revision(chunk), relit);
@@ -494,8 +519,15 @@ fn terrain_revision_tracks_view_selection_and_level_clear_lifecycle() {
     store
         .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
         .unwrap();
+    // Vanilla defers the loaded chunk's terrain invalidation to the queued
+    // light closure: the synchronous chunk replacement itself marks nothing.
+    assert_eq!(store.terrain_revision(), recentered);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), 0);
+    assert!(store.terrain_chunk_initial_light_pending(chunk));
+    assert_eq!(store.poll_queued_light_updates(), 1);
     let inserted = store.terrain_revision();
     assert!(inserted > recentered);
+    assert!(!store.terrain_chunk_initial_light_pending(chunk));
     assert_eq!(store.terrain_chunk_content_revision(chunk), inserted);
 
     store.clear_client_level();
@@ -611,13 +643,15 @@ fn applies_light_update_to_existing_chunk_sections() {
     set_light_nibble(&mut sky, index, 4);
     set_light_nibble(&mut block, index, 13);
 
-    let applied = store
-        .apply_light_update(ProtocolLightUpdate {
+    let applied = apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 
     assert!(applied);
     assert_eq!(store.counters().light_updates_received, 1);
@@ -631,13 +665,15 @@ fn applies_light_update_to_existing_chunk_sections() {
         TerrainLight { sky: 4, block: 13 }
     );
 
-    let applied = store
-        .apply_light_update(ProtocolLightUpdate {
+    let applied = apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[], &[], &[], &[0b10], Vec::new(), Vec::new()),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 
     assert!(applied);
     let terrain = store
@@ -782,10 +818,15 @@ fn forget_and_level_clear_discard_pending_light_without_stale_application() {
         })
         .unwrap();
     assert_eq!(store.queued_light_update_count(), 2);
-    assert_eq!(store.publication_snapshot().queued_light_update_count(), 0);
+    let publication = store.publication_snapshot();
+    assert_eq!(publication.queued_light_update_count(), 0);
+    // The pending-initial-light flag is canonical state and crosses the
+    // publication boundary even though the queued work itself does not.
+    assert!(publication.terrain_chunk_initial_light_pending(ChunkPos { x: 2, z: -3 }));
     assert_eq!(store.queued_light_update_count(), 2);
     assert!(store.forget_chunk(ChunkPos { x: 2, z: -3 }));
     assert_eq!(store.queued_light_update_count(), 0);
+    assert!(!store.terrain_chunk_initial_light_pending(ChunkPos { x: 2, z: -3 }));
     assert_eq!(store.counters().light_updates_received, 1);
     assert_eq!(store.counters().light_updates_applied, 0);
     assert_eq!(store.counters().light_updates_ignored, 1);
@@ -803,9 +844,64 @@ fn forget_and_level_clear_discard_pending_light_without_stale_application() {
     store.clear_client_level();
     assert_eq!(store.queued_light_update_count(), 0);
     assert_eq!(store.poll_queued_light_updates(), 0);
+    assert!(!store.terrain_chunk_initial_light_pending(ChunkPos { x: 2, z: -3 }));
     assert_eq!(store.counters().light_updates_received, 2);
     assert_eq!(store.counters().light_updates_applied, 0);
     assert_eq!(store.counters().light_updates_ignored, 2);
+}
+
+#[test]
+fn pending_initial_light_lifecycle_follows_load_apply_prune_and_direct_insert() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert!(store.terrain_chunk_initial_light_pending(chunk));
+    assert_eq!(store.poll_queued_light_updates(), 1);
+    assert!(!store.terrain_chunk_initial_light_pending(chunk));
+
+    // A re-sent chunk goes back to pending until its queued light applies, and
+    // its previous content revision survives so the old mesh keeps rendering.
+    let relit = store.terrain_chunk_content_revision(chunk);
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert!(store.terrain_chunk_initial_light_pending(chunk));
+    assert_eq!(store.terrain_chunk_content_revision(chunk), relit);
+    assert_eq!(store.poll_queued_light_updates(), 1);
+    assert!(!store.terrain_chunk_initial_light_pending(chunk));
+    assert!(store.terrain_chunk_content_revision(chunk) > relit);
+
+    // View-range pruning discards pending initial light like vanilla's unload.
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert!(store.terrain_chunk_initial_light_pending(chunk));
+    store.apply_set_chunk_cache_radius(ProtocolSetChunkCacheRadius { radius: 2 });
+    store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 100,
+        chunk_z: 100,
+    });
+    assert!(!store.terrain_chunk_initial_light_pending(chunk));
+    assert_eq!(store.queued_light_update_count(), 0);
+
+    // A direct decoded insert carries its light inline and is immediately
+    // renderable: vanilla's applyLightData → setLightEnabled collapsed.
+    store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 2,
+        chunk_z: -3,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    assert!(store.terrain_chunk_initial_light_pending(chunk));
+    let replacement = store.probe_chunk(chunk).unwrap().clone();
+    store.insert_decoded_chunk(replacement);
+    assert!(!store.terrain_chunk_initial_light_pending(chunk));
 }
 
 #[test]
@@ -822,13 +918,15 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
     let mut block = vec![0; LIGHT_ARRAY_BYTES];
     set_light_nibble(&mut sky, index, 4);
     set_light_nibble(&mut block, index, 13);
-    store
-        .apply_light_update(ProtocolLightUpdate {
+    apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 
     // Chunk (2, -3) local (2, 1, 3) maps to world block (34, 1, -45).
     let pos = BlockPos {
@@ -848,13 +946,15 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
     let mut block = vec![0; LIGHT_ARRAY_BYTES];
     set_light_nibble(&mut sky, index, 4);
     set_light_nibble(&mut block, index, 2);
-    store
-        .apply_light_update(ProtocolLightUpdate {
+    apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
     let lit_torch = crate::registries::vanilla_block_state_id(
         "minecraft:redstone_torch",
         &BTreeMap::from([("lit".to_string(), "true".to_string())]),
@@ -958,13 +1058,15 @@ fn debug_light_sampling_reads_the_light_engine_vertical_padding() {
     let mut block = vec![0; LIGHT_ARRAY_BYTES];
     set_light_nibble(&mut sky, index, 4);
     set_light_nibble(&mut block, index, 13);
-    store
-        .apply_light_update(ProtocolLightUpdate {
+    apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[0b1], &[0b1], &[], &[], vec![sky], vec![block]),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
     let below_world = BlockPos {
         x: 34,
         y: -1,
@@ -1344,13 +1446,15 @@ fn block_update_materializes_omitted_motion_blocking_heightmaps() {
 fn light_update_for_missing_chunk_is_counted_but_not_applied() {
     let mut store = WorldStore::new();
 
-    let applied = store
-        .apply_light_update(ProtocolLightUpdate {
+    let applied = apply_light_update_now(
+        &mut store,
+        ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
             light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
-        })
-        .unwrap();
+        },
+    )
+    .unwrap();
 
     assert!(!applied);
     assert_eq!(store.counters().light_updates_received, 1);

@@ -61,12 +61,6 @@ consumer, fallback and applicable live evidence.
 - **`world-client-clock-weather` (8 owners).** Verify game/day time and rain/thunder
   interpolation, tick order and dimension/session replacement without a native
   shadow clock.
-- **`world-client-chunk-light-lifecycle` (5 owners).** Make chunk replace/drop and
-  light enablement follow `onChunkLoaded`/`unload`/`queueLightUpdate`/
-  `pollLightUpdates`/`update` ownership: packet-loaded chunks defer terrain dirty
-  marking and first renderability to the bounded queued light apply, forget/prune/
-  teardown discard pending light exactly once, and the immediate second light-apply
-  entry point is deleted.
 - **`world-client-ambient-animation` (9 owners).** Verify block animation and
   ambient/mood event selection from world state through exactly-once native effects.
 - **`world-client-session-services` (8 owners).** Verify registry, scoreboard,

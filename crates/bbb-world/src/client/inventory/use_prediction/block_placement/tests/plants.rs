@@ -756,8 +756,8 @@ fn pitcher_crop_placement_requires_crop_support_and_raw_brightness_eight() {
         let light_section_mask =
             1_i64 << u32::try_from(light_section_index).expect("light section");
         let packed_nibbles = |value: u8| value | (value << 4);
-        assert!(world
-            .apply_light_update(LightUpdate {
+        world
+            .queue_light_update(LightUpdate {
                 chunk_x: 0,
                 chunk_z: 0,
                 light_data: LightUpdateData {
@@ -769,7 +769,8 @@ fn pitcher_crop_placement_requires_crop_support_and_raw_brightness_eight() {
                     block_updates: vec![vec![packed_nibbles(block); 2048]],
                 },
             })
-            .unwrap());
+            .unwrap();
+        assert!(world.poll_queued_light_updates() > 0);
     };
 
     let mut supported = placement_world();

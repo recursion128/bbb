@@ -344,8 +344,8 @@ mod tests {
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
             block_state_id: 1,
         }));
-        assert!(world
-            .apply_light_update(LightUpdate {
+        world
+            .queue_light_update(LightUpdate {
                 chunk_x: 0,
                 chunk_z: 0,
                 light_data: LightUpdateData {
@@ -357,7 +357,8 @@ mod tests {
                     block_updates: Vec::new(),
                 },
             })
-            .unwrap());
+            .unwrap();
+        assert_eq!(world.poll_queued_light_updates(), 1);
         world.insert_decoded_chunk(test_chunk(ChunkPos { x: 2, z: 0 }, 4));
         assert!(world.forget_chunk(ChunkPos { x: 1, z: 0 }));
         let generation_b = world.publication_snapshot();

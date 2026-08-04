@@ -1777,9 +1777,75 @@ CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light",
+                "crates/bbb-world/src/chunks/store.rs#apply_biome_update",
+                "crates/bbb-world/src/entities/movement.rs#entity_is_ticking",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#full_chunk_biome_reload_and_unload_invalidate_full_neighbor_height",
+                "crates/bbb-world/src/chunks/tests.rs#pending_initial_light_lifecycle_follows_load_apply_prune_and_direct_insert",
+            ),
+        ),
+        ("onChunkLoaded",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#forget_chunk",
+                "crates/bbb-world/src/chunks/store.rs#discard_queued_light_updates_for_chunk",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#forget_and_level_clear_discard_pending_light_without_stale_application",
+                "crates/bbb-world/src/chunks/tests.rs#light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_content",
+            ),
+        ),
+        ("unload",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#queue_light_update",
+                "crates/bbb-world/src/chunks/store.rs#insert_level_chunk_with_light",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#queued_light_updates_preserve_fifo_order_and_vanilla_poll_budget",
+                "crates/bbb-world/src/chunks/tests.rs#light_validation_rejects_wrong_dimension_domains_before_mutation",
+            ),
+        ),
+        ("queueLightUpdate",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#poll_queued_light_updates",
+                "crates/bbb-native/src/terrain_runtime.rs#next_terrain_cache_work",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#terrain_revision_tracks_view_selection_and_level_clear_lifecycle",
+                "crates/bbb-native/src/terrain_runtime.rs#mesh_targets_withhold_a_chunk_until_its_initial_light_applies",
+            ),
+        ),
+        ("pollLightUpdates",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#advance_simulation",),
+            (
+                "crates/bbb-native/src/simulation.rs#queued_light_poll_follows_the_single_network_drain_before_presentation_sync",
+            ),
+        ),
+        ("update",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
+    "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

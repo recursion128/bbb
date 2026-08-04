@@ -128,6 +128,15 @@ pub struct WorldStore {
     /// canonical snapshots publish light only after the bounded frame poll.
     #[serde(skip)]
     pub(crate) queued_light_updates: RuntimeLightUpdateQueue,
+    /// Chunks whose packet-load light is still queued — the inverse of vanilla's
+    /// per-chunk `LevelLightEngine.setLightEnabled(pos, true)` flag, which only
+    /// flips once the queued `applyLightData` closure has run. Unlike the queue
+    /// itself this crosses the publication boundary, so the mesh consumer can
+    /// withhold a chunk's first renderability until its light applies. A
+    /// restored snapshot has an empty queue, so every resident chunk restores
+    /// as enabled.
+    #[serde(skip)]
+    pub(crate) chunks_pending_initial_light: BTreeSet<ChunkPos>,
     /// Runtime extraction revisions for the chunk terrain cache. These are
     /// deterministic derivatives of canonical chunk mutations, but are not
     /// part of serialized world snapshots: a restored runtime starts with an

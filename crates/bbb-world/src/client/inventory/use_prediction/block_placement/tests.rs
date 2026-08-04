@@ -1216,8 +1216,8 @@ fn set_raw_light(world: &mut WorldStore, pos: BlockPos, sky: u8, block: u8) {
     let light_section_index = pos.y.div_euclid(16) - (world.dimension().min_section_y() - 1);
     let light_section_mask = 1_i64 << u32::try_from(light_section_index).expect("light section");
     let packed_nibbles = |value: u8| value | (value << 4);
-    assert!(world
-        .apply_light_update(LightUpdate {
+    world
+        .queue_light_update(LightUpdate {
             chunk_x: pos.x.div_euclid(16),
             chunk_z: pos.z.div_euclid(16),
             light_data: LightUpdateData {
@@ -1229,7 +1229,8 @@ fn set_raw_light(world: &mut WorldStore, pos: BlockPos, sky: u8, block: u8) {
                 block_updates: vec![vec![packed_nibbles(block); 2048]],
             },
         })
-        .unwrap());
+        .unwrap();
+    assert!(world.poll_queued_light_updates() > 0);
 }
 
 fn held(world: &WorldStore) -> &ItemStackSummary {

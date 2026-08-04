@@ -90,6 +90,23 @@ readiness 也携带同一 load identity，不能用旧 level 的 ready edge 放�
 generation 只有一个 mutator、respawn advance 只在 dimension-change 分支，并禁止这些 local/load consumer
 恢复成只看 level generation 的旧路径。
 
+### ClientLevel chunk-light lifecycle owner
+
+`WorldStore` 的 chunk store 与 light 队列是五个 `ClientLevel` chunk/light owner 的唯一状态。
+chunk-with-light 包同步替换 chunk 内容（同 pos 原位、越界丢弃），light 数据以 initial-load 形态
+入队；`advance_simulation` 每 pump 在唯一 net drain 之后、presentation 同步之前按 vanilla 公式
+（size<1000 时 `max(10, size/10)` 否则全量）drain 队列。terrain 失效不在 insert 时发生：initial
+light 应用点执行 vanilla `setSectionRangeDirty(±1 全高)` 等价的 chunk+邻居标记，standalone light
+更新只标记变化的 light section 邻域。
+
+`chunks_pending_initial_light` 是 vanilla light-engine per-chunk `setLightEnabled` 标志的逆向等价：
+packet 装载的 chunk 在其 queued light 应用前保持 pending，native mesh target 扫描跳过 pending chunk
+（fresh chunk 不可见、re-send chunk 保留旧 mesh），但仍作为邻接 snapshot 上下文参与 face culling。
+forget/prune/level teardown 与队列一致地丢弃 pending；publication clone 携带 pending 集合而不携带
+队列本身；restore 的空队列世界默认全 enabled。`onChunkLoaded` 的 tint 失效由 mesh 重建时的 tint
+再推导承担，`startTicking`/`stopTicking` 由 `entity_is_ticking` 的 chunk 驻留派生承担；不存在第二个
+immediate light-apply 入口。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

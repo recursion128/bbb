@@ -261,6 +261,26 @@ public class Owner {
                 for owner in level_lifecycle_owners
             )
         )
+        chunk_light_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-chunk-light-lifecycle"
+        ]
+        self.assertEqual(len(chunk_light_owners), 5)
+        self.assertEqual(
+            value["mechanisms"]["world-client-chunk-light-lifecycle"][
+                "owner_evidence_count"
+            ],
+            5,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in chunk_light_owners
+            )
+        )
         entity_lifecycle_owners = [
             owner
             for owner in methods

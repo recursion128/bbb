@@ -15,7 +15,11 @@ pub(crate) const LIGHT_ARRAY_BYTES: usize = 2048;
 pub(crate) struct QueuedLightUpdate {
     pub(crate) pos: ChunkPos,
     pub(crate) light: LightData,
-    pub(crate) schedule_rebuild: bool,
+    /// Vanilla queues two closure shapes: the chunk-load closure (apply light,
+    /// enable the chunk, mark its 3x3 neighborhood dirty, report it ready to
+    /// render) and the standalone light-update closure (apply light, mark only
+    /// the changed light sections).
+    pub(crate) initial_chunk_load: bool,
     pub(crate) counted_packet: bool,
 }
 

@@ -822,6 +822,13 @@ fn next_terrain_cache_work(
     loaded: &HashSet<ChunkPos>,
 ) -> TerrainCacheWork {
     for &target in &upload.selected_chunks {
+        // Vanilla only reports a chunk ready to render from its queued light
+        // closure: withhold the chunk's own mesh until its packet-load light
+        // applies (a fresh chunk stays invisible, a re-sent chunk keeps its
+        // previous mesh). The chunk still serves as neighbor snapshot context.
+        if world.terrain_chunk_initial_light_pending(target) {
+            continue;
+        }
         let mesh_revision = world.terrain_chunk_mesh_revision(target);
         if upload
             .meshes
@@ -3099,5 +3106,74 @@ mod tests {
             camera_position: [0.0; 3],
             layers: TerrainSectionMeshLayers::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod initial_light_gate_tests {
+    use super::*;
+    use bbb_protocol::codec::Encoder;
+    use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
+    use bbb_protocol::packets::{
+        ChunkHeightmapData, LevelChunkData, LevelChunkWithLight, LightUpdateData,
+    };
+    use std::collections::HashSet;
+
+    fn synthetic_chunk_packet() -> LevelChunkWithLight {
+        let mut sections = Encoder::new();
+        for _ in 0..bbb_world::WorldDimension::default().section_count() {
+            sections.write_i16(0);
+            sections.write_i16(0);
+            sections.write_u8(0);
+            sections.write_var_i32(0);
+            sections.write_u8(0);
+            sections.write_var_i32(0);
+        }
+        LevelChunkWithLight {
+            x: 1,
+            z: -2,
+            chunk_data: LevelChunkData {
+                heightmaps: vec![ChunkHeightmapData {
+                    kind_id: VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
+                    data: vec![42],
+                }],
+                section_data: sections.into_inner(),
+                block_entities: Vec::new(),
+            },
+            light_data: LightUpdateData {
+                sky_y_mask: Vec::new(),
+                block_y_mask: Vec::new(),
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: Vec::new(),
+                block_updates: Vec::new(),
+            },
+        }
+    }
+
+    #[test]
+    fn mesh_targets_withhold_a_chunk_until_its_initial_light_applies() {
+        let mut world = WorldStore::new();
+        let pos = world
+            .insert_level_chunk_with_light(synthetic_chunk_packet())
+            .unwrap();
+        let loaded: HashSet<_> = world.chunk_positions().into_iter().collect();
+        let mut upload = TerrainUploadState::default();
+        upload.selected_chunks = vec![pos];
+
+        // Vanilla only reports the chunk ready to render from its queued light
+        // closure: before the poll the chunk contributes no mesh work of its own.
+        assert!(world.terrain_chunk_initial_light_pending(pos));
+        assert!(matches!(
+            next_terrain_cache_work(&world, &upload, &loaded),
+            TerrainCacheWork::Idle
+        ));
+
+        assert_eq!(world.poll_queued_light_updates(), 1);
+        assert!(!world.terrain_chunk_initial_light_pending(pos));
+        assert!(matches!(
+            next_terrain_cache_work(&world, &upload, &loaded),
+            TerrainCacheWork::RefreshSnapshot(snapshot) if snapshot == pos
+        ));
     }
 }
