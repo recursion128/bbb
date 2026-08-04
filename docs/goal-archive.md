@@ -92,9 +92,8 @@
   replacement、reload recovery、panic/join 与终态 diagnostics 经 full/live/三轮 soak 收口。
 - **2026-08-03（LevelRenderer 七机制 closure）**：77 个 owner 的 backend/section/frame/scene/effect/
   diagnostics/light 以 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
-- **2026-08-03（LocalPlayer/game-mode census 与首批交互 closure）**：149 owner 拆为 23 条同质 route；
-  block-breaking/prediction 统一到 level-bound handler 与 atomic barrier；08-04 input-movement 20 owner
-  经唯一 movement tick/输入归一/sprint 链（补 sprint 粒子）/squish/auto-jump/minor-collision fn 收口。
+- **2026-08-03/04（LocalPlayer census 首批 closure）**：149 owner 拆 23 route；block-breaking/prediction 统一
+  level-bound handler+barrier；input-movement 20 owner 经唯一 tick/归一/sprint 链（补粒子）/squish fn 收口。
 - **2026-08-03/04（generated evidence/layout、ClientLevel census 与 lifecycle closures）**：五份 JSON 收敛；
   121 owner 拆 18 route；全部 18 route（entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report/map-data/level-events/block-entity-tracking 等）95 owner 经唯一 store/resolver/gate/装配/分派链收口，census 域关闭。
 
