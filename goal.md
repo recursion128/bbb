@@ -455,6 +455,37 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel entity lifecycle closure
+
+- 目标与 owner：闭合 Vanilla 26.1 `ClientLevel` 的 17 个 entity-lifecycle owner；
+  `bbb-world::WorldStore`/private `EntityStore` 是 add/remove/query/tick/passenger/tracking 与
+  generation 的唯一 semantic owner，native/renderer 只读 immutable projection。
+- Vanilla 决策：保留 protocol insertion order；只 tick loaded client section 内的 root，跳过 removed/
+  passenger，freeze 时仅 Player 或含 Player passenger 的树继续；root 先 old pose/tick，再按 passenger
+  顺序递归 ride tick，断裂 vehicle edge 先解除。
+- 查询与移除：同 id add 先 discard 旧 incarnation 再 fresh reset；remove 必须一次清 sound/editor、mount/
+  passenger/leash/player/dragon-part projection；entity count、id/UUID lookup、render enumeration 只读同一 store。
+- push consumer：普通 ticking `LivingEntity.aiStep` 在其 client tick 尾部复用唯一 team-collision owner，按
+  current local pose + scale bounds、strict AABB intersection、same-root-vehicle/noPhysics/pushability gate 与
+  Vanilla 0.01/0.05 公式更新 local delta；Bat/ArmorStand/Parrot override 及 generated dynamic pushability
+  语义精确保留，不能复制 boat resolver。
+- simulation distance：只 gate living death tick，使用 local-player chunk 的 Chebyshev distance；不缩小正常
+  entity tick/render workload。
+- 生命周期与 rollback：每 raw client tick 重新构造有界 scratch/facts，成功后随 world generation 原子发布；
+  retained publication immutable，level/session replacement 清旧 entity store，不新增 native/renderer cache。
+- API 与删除目标：不增加跨 crate public state；把 boat 与 ordinary living push 收敛到 private impulse/query
+  helper，删除独立 boat team/fallback 判断；生产 caller 仍只有 ordered client-level tick path。
+- focused evidence：generated 17-owner implementation/test evidence；world add/re-add/remove/count/query、loaded/
+  unloaded/frozen/passenger schedule、death distance、team/spectator/same-vehicle/override/scale push、generation
+  immutability；native spawn→render/pick→remove consumer；reverse source guard 禁止第二个 local push resolver。
+- 非目标：不实现 server AI/pathfinding、remote authoritative physics、renderer model/layer、local movement 其余
+  20-owner 决策或新 UI；仅做该 lifecycle 所需窄 local-push wiring。
+- acceptance/gate：`bbb-world` 与 native focused tests、inventory exact-output/source guard、既有真实
+  external-session entity spawn/render/pick/remove acceptance、docs lint/fmt/diff/workspace check；高风险提交后
+  full gate，产品行为变化后刷新 fixture/live playable stamp。
+- 安全停止点/blocker：只允许本合同的 full-gated 提交，或 17-owner evidence 完整、旧 push resolver 为零、
+  focused/live/full gate 全通过的干净提交；内部实现或测试失败不是 external blocker。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

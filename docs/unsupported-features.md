@@ -69,6 +69,10 @@ consumer, fallback and applicable live evidence.
   chunk state.
 - **`world-client-entity-lifecycle` (17 owners).** Verify add/remove/tick/passenger,
   multipart lookup and callback ordering through the one canonical entity store.
+  Current audit also finds only the boat consumer of
+  `ClientLevel.getPushableEntities`; ordinary ticking `LivingEntity.aiStep`
+  must apply its team/bounds/same-vehicle-gated local-player push through the
+  same ordered entity tick without a second collision resolver.
 - **`world-client-ambient-animation` (9 owners).** Verify block animation and
   ambient/mood event selection from world state through exactly-once native effects.
 - **`world-client-session-services` (8 owners).** Verify registry, scoreboard,
