@@ -14,6 +14,7 @@ from typing import Any, Sequence
 from vanilla_java_source import (
     JavaExpression,
     JavaSource,
+    descendants,
     expression_fact,
     resolve_class_hierarchy,
 )
@@ -666,6 +667,88 @@ def extract_concrete_powder_targets(
             "ConcretePowderBlock registrations do not have unique concrete targets"
         )
     return targets
+
+
+DYE_COLOR_OWNER = "net.minecraft.world.item.DyeColor"
+BEACON_BEAM_BLOCK_FQCN = "net.minecraft.world.level.block.BeaconBeamBlock"
+
+
+def _dye_color_constant_from_facts(expression: dict) -> str | None:
+    """The single ``DyeColor.<CONSTANT>`` argument of a block registration."""
+    constants = {
+        fact["canonical"].split(".", 1)[1]
+        for fact in _walk_expression_facts(expression)
+        if fact.get("kind") in {"field_access", "scoped_identifier"}
+        and fact.get("canonical", "").startswith("DyeColor.")
+    }
+    if len(constants) > 1:
+        raise BlockRegistryCatalogExtractionError(
+            f"block registration mentions {len(constants)} dye colors"
+        )
+    return next(iter(constants), None)
+
+
+def _returned_dye_color_constant(
+    source: JavaSource, block_type, method_name: str
+) -> str | None:
+    """The constant returned by a no-argument ``DyeColor`` accessor."""
+    for method in source.methods_for(block_type):
+        if method.name != method_name or method.parameters:
+            continue
+        returns = [
+            node
+            for node in descendants(method.node)
+            if node.type == "return_statement"
+        ]
+        if len(returns) != 1:
+            return None
+        value = returns[0].named_children[0] if returns[0].named_children else None
+        if value is None:
+            return None
+        canonical = source.expression(value).canonical.replace(" ", "")
+        if not canonical.startswith("DyeColor."):
+            return None
+        return canonical.split(".", 1)[1]
+    return None
+
+
+def extract_beacon_beam_colors(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str]:
+    """Map every registered ``BeaconBeamBlock`` field to its ``DyeColor``.
+
+    `BeaconBlockEntity.tick` reads `BeaconBeamBlock.getColor()` for each block
+    above a beacon, so the beam colour is exactly this interface's value: an
+    explicit registration argument where the block stores one, otherwise the
+    constant its `getColor()` returns.
+    """
+    membership = extract_block_interface_membership(
+        declarations, block_class_sources, BEACON_BEAM_BLOCK_FQCN
+    )
+    types_by_simple_name: dict[str, tuple[JavaSource, Any]] = {}
+    for source in block_class_sources:
+        for block_type in source.types:
+            types_by_simple_name.setdefault(block_type.simple_name, (source, block_type))
+
+    colors: dict[str, str] = {}
+    for declaration in declarations:
+        factory_class = block_factory_class(declaration)
+        if not membership.get(factory_class):
+            continue
+        color = _dye_color_constant_from_facts(declaration["initializer"])
+        if color is None:
+            entry = types_by_simple_name.get(factory_class)
+            if entry is not None:
+                color = _returned_dye_color_constant(entry[0], entry[1], "getColor")
+        if color is None:
+            raise BlockRegistryCatalogExtractionError(
+                f"Blocks.{declaration['field']}: unresolved beacon beam dye color"
+            )
+        colors[declaration["field"]] = color
+    if not colors:
+        raise BlockRegistryCatalogExtractionError("no beacon beam blocks resolved")
+    return colors
 
 
 def extract_block_subclass_membership(

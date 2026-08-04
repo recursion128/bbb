@@ -24,6 +24,7 @@ from block_registry_catalog_extractor import (
     extract_block_propagates_skylight_down_override_owners,
     extract_block_redstone_signal_owners,
     extract_block_replaceable_membership,
+    extract_beacon_beam_colors,
     extract_block_subclass_membership,
     extract_block_use_item_on_override_owners,
     extract_block_use_without_item_override_owners,
@@ -104,6 +105,7 @@ def render_protocol(
     skylight_down_owner_by_factory: dict[str, str | None],
     replaceable_by_field: dict[str, bool],
     concrete_powder_targets: dict[str, str],
+    beacon_beam_colors: dict[str, str],
 ) -> str:
     analog_output_owners = [
         analog_output_owner_by_factory[block_factory_class(declaration)]
@@ -330,6 +332,9 @@ def render_protocol(
             "    pub bonemeal_target_override: Option<VanillaBonemealTargetOverride>,",
             "    pub propagates_skylight_down_override: Option<VanillaPropagatesSkylightDownOverride>,",
             "    pub replaceable: bool,",
+            "    /// `BeaconBeamBlock.getColor()` for the blocks `BeaconBlockEntity.tick`",
+            "    /// reads while walking the beam upward.",
+            "    pub beacon_beam_dye_color_id: Option<i32>,",
             "}",
             "",
         ]
@@ -467,6 +472,13 @@ def render_protocol(
                     else "        propagates_skylight_down_override: None,"
                 ),
                 f"        replaceable: {str(replaceable_by_field[declaration['field']]).lower()},",
+                (
+                    "        beacon_beam_dye_color_id: Some("
+                    "crate::builtin_enum_component_values::VANILLA_DYE_COLOR_"
+                    f"{beacon_beam_colors[declaration['field']]}_ID),"
+                    if declaration["field"] in beacon_beam_colors
+                    else "        beacon_beam_dye_color_id: None,"
+                ),
                 "    },",
             )
         )
@@ -511,6 +523,17 @@ def render_protocol(
             "    vanilla_block_type(block_type_id)?.block_entity_type_id",
             "}",
             "",
+            "/// `BeaconBeamBlock.getColor()` for one block resource id, i.e. the beam",
+            "/// colour `BeaconBlockEntity.tick` folds into its beam sections.",
+            "pub fn vanilla_beacon_beam_dye_color_id_for_block_name(",
+            "    resource_id: &str,",
+            ") -> Option<i32> {",
+            "    VANILLA_BLOCK_TYPES",
+            "        .iter()",
+            "        .find(|entry| entry.resource_id == resource_id)?",
+            "        .beacon_beam_dye_color_id",
+            "}",
+            "",
             "#[cfg(test)]",
             "mod tests {",
             "    use std::{collections::HashSet, fs, path::Path};",
@@ -553,6 +576,10 @@ def render_protocol(
             "        assert_eq!(vanilla_concrete_block_type_id_for_powder(VANILLA_BLOCK_STONE_ID), None);",
             "        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| vanilla_concrete_block_type_id_for_powder(entry.id).is_some()).count(), 16);",
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap().block_entity_type_id, None);",
+            f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.beacon_beam_dye_color_id.is_some()).count(), {len(beacon_beam_colors)});",
+            "        assert_eq!(vanilla_beacon_beam_dye_color_id_for_block_name(\"minecraft:stone\"), None);",
+            "        assert_eq!(vanilla_beacon_beam_dye_color_id_for_block_name(\"minecraft:beacon\"), Some(crate::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID));",
+            "        assert_eq!(vanilla_beacon_beam_dye_color_id_for_block_name(\"minecraft:lime_stained_glass_pane\"), Some(crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIME_ID));",
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_CHEST_ID).unwrap().block_entity_type_id, Some(crate::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID));",
             f"        assert_eq!(VANILLA_BLOCK_TYPES.iter().filter(|entry| entry.analog_output_override.is_some()).count(), {sum(owner is not None for owner in analog_output_owners)});",
             "        assert_eq!(vanilla_block_type(VANILLA_BLOCK_STONE_ID).unwrap().analog_output_override, None);",
@@ -745,6 +772,10 @@ def main() -> int:
     concrete_powder_targets = extract_concrete_powder_targets(
         catalog.declarations
     )
+    beacon_beam_colors = extract_beacon_beam_colors(
+        catalog.declarations,
+        block_class_sources,
+    )
     outputs = (
         (args.output, render_json(catalog)),
         (
@@ -768,6 +799,7 @@ def main() -> int:
                     skylight_down_owner_by_factory,
                     replaceable_by_field,
                     concrete_powder_targets,
+                    beacon_beam_colors,
                 )
             ),
         ),

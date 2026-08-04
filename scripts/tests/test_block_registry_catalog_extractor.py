@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPTS))
 from block_registry_catalog_extractor import (  # noqa: E402
     BlockRegistryCatalogExtractionError,
     block_factory_class,
+    extract_beacon_beam_colors,
     extract_block_analog_output_owners,
     extract_block_bonemeal_target_override_owners,
     extract_block_bucket_pickup_owners,
@@ -700,3 +701,125 @@ def _walk(expression):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+BEACON_BEAM_BLOCKS = """
+package net.minecraft.world.level.block;
+class Blocks {
+  static final Block BEACON = register(
+      "beacon", BeaconBlock::new, BlockBehaviour.Properties.of());
+  static final Block WHITE_STAINED_GLASS = registerStainedGlass(
+      "white_stained_glass", DyeColor.WHITE);
+  static final Block RED_STAINED_GLASS_PANE = register(
+      "red_stained_glass_pane",
+      p -> new StainedGlassPaneBlock(DyeColor.RED, p),
+      BlockBehaviour.Properties.of());
+  static final Block DIRT = register(
+      "dirt", p -> new Block(p), BlockBehaviour.Properties.of());
+}
+"""
+
+
+BEACON_BEAM_CLASSES = [
+    (
+        "net/minecraft/world/level/block/BeaconBeamBlock.java",
+        """
+package net.minecraft.world.level.block;
+public interface BeaconBeamBlock {
+  DyeColor getColor();
+}
+""",
+    ),
+    (
+        "net/minecraft/world/level/block/BeaconBlock.java",
+        """
+package net.minecraft.world.level.block;
+public class BeaconBlock extends Block implements BeaconBeamBlock {
+  @Override
+  public DyeColor getColor() {
+    return DyeColor.WHITE;
+  }
+}
+""",
+    ),
+    (
+        "net/minecraft/world/level/block/StainedGlassBlock.java",
+        """
+package net.minecraft.world.level.block;
+public class StainedGlassBlock extends Block implements BeaconBeamBlock {
+  private final DyeColor color;
+  @Override
+  public DyeColor getColor() {
+    return this.color;
+  }
+}
+""",
+    ),
+    (
+        "net/minecraft/world/level/block/StainedGlassPaneBlock.java",
+        """
+package net.minecraft.world.level.block;
+public class StainedGlassPaneBlock extends Block implements BeaconBeamBlock {
+  private final DyeColor color;
+  @Override
+  public DyeColor getColor() {
+    return this.color;
+  }
+}
+""",
+    ),
+    (
+        "net/minecraft/world/level/block/Block.java",
+        """
+package net.minecraft.world.level.block;
+public class Block {
+}
+""",
+    ),
+]
+
+
+class BeaconBeamColorTests(unittest.TestCase):
+    def sources(self):
+        return [parse(path, source) for path, source in BEACON_BEAM_CLASSES]
+
+    def test_beam_colors_come_from_registration_or_the_get_color_constant(self):
+        catalog = extract(blocks=BEACON_BEAM_BLOCKS)
+        colors = extract_beacon_beam_colors(catalog.declarations, self.sources())
+        self.assertEqual(
+            colors,
+            {
+                # `BeaconBlock.getColor()` returns a constant.
+                "BEACON": "WHITE",
+                # The helper and the lambda both carry an explicit argument.
+                "WHITE_STAINED_GLASS": "WHITE",
+                "RED_STAINED_GLASS_PANE": "RED",
+            },
+        )
+
+    def test_unresolved_beam_color_is_an_explicit_failure(self):
+        classes = [
+            (path, source)
+            for path, source in BEACON_BEAM_CLASSES
+            if not path.endswith("BeaconBlock.java")
+        ]
+        classes.append(
+            (
+                "net/minecraft/world/level/block/BeaconBlock.java",
+                """
+package net.minecraft.world.level.block;
+public class BeaconBlock extends Block implements BeaconBeamBlock {
+  @Override
+  public DyeColor getColor() {
+    return this.color;
+  }
+}
+""",
+            )
+        )
+        catalog = extract(blocks=BEACON_BEAM_BLOCKS)
+        with self.assertRaises(BlockRegistryCatalogExtractionError):
+            extract_beacon_beam_colors(
+                catalog.declarations,
+                [parse(path, source) for path, source in classes],
+            )

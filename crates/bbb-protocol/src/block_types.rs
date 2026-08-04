@@ -424,6 +424,9 @@ pub struct BlockTypeCatalogEntry {
     pub bonemeal_target_override: Option<VanillaBonemealTargetOverride>,
     pub propagates_skylight_down_override: Option<VanillaPropagatesSkylightDownOverride>,
     pub replaceable: bool,
+    /// `BeaconBeamBlock.getColor()` for the blocks `BeaconBlockEntity.tick`
+    /// reads while walking the beam upward.
+    pub beacon_beam_dye_color_id: Option<i32>,
 }
 
 pub const VANILLA_BLOCK_AIR_ID: i32 = 0;
@@ -1625,6 +1628,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1,
@@ -1645,6 +1649,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 2,
@@ -1665,6 +1670,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 3,
@@ -1685,6 +1691,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 4,
@@ -1705,6 +1712,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 5,
@@ -1725,6 +1733,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 6,
@@ -1745,6 +1754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 7,
@@ -1765,6 +1775,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 8,
@@ -1785,6 +1796,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrassBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 9,
@@ -1805,6 +1817,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 10,
@@ -1825,6 +1838,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 11,
@@ -1845,6 +1859,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 12,
@@ -1865,6 +1880,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 13,
@@ -1885,6 +1901,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 14,
@@ -1905,6 +1922,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 15,
@@ -1925,6 +1943,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 16,
@@ -1945,6 +1964,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 17,
@@ -1965,6 +1985,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 18,
@@ -1985,6 +2006,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 19,
@@ -2005,6 +2027,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 20,
@@ -2027,6 +2050,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 21,
@@ -2047,6 +2071,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 22,
@@ -2067,6 +2092,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 23,
@@ -2087,6 +2113,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 24,
@@ -2107,6 +2134,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 25,
@@ -2129,6 +2157,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 26,
@@ -2151,6 +2180,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 27,
@@ -2173,6 +2203,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 28,
@@ -2195,6 +2226,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 29,
@@ -2217,6 +2249,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 30,
@@ -2239,6 +2272,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 31,
@@ -2261,6 +2295,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 32,
@@ -2283,6 +2318,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 33,
@@ -2309,6 +2345,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 34,
@@ -2329,6 +2366,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 35,
@@ -2349,6 +2387,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::LiquidBlock),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 36,
@@ -2369,6 +2408,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::LiquidBlock),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 37,
@@ -2389,6 +2429,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 38,
@@ -2411,6 +2452,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 39,
@@ -2431,6 +2473,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 40,
@@ -2451,6 +2494,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 41,
@@ -2473,6 +2517,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 42,
@@ -2493,6 +2538,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 43,
@@ -2513,6 +2559,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 44,
@@ -2533,6 +2580,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 45,
@@ -2553,6 +2601,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 46,
@@ -2573,6 +2622,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 47,
@@ -2593,6 +2643,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 48,
@@ -2613,6 +2664,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 49,
@@ -2635,6 +2687,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 50,
@@ -2657,6 +2710,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 51,
@@ -2679,6 +2733,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 52,
@@ -2701,6 +2756,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 53,
@@ -2723,6 +2779,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 54,
@@ -2745,6 +2802,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 55,
@@ -2767,6 +2825,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 56,
@@ -2789,6 +2848,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 57,
@@ -2811,6 +2871,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 58,
@@ -2835,6 +2896,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 59,
@@ -2857,6 +2919,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 60,
@@ -2879,6 +2942,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 61,
@@ -2901,6 +2965,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 62,
@@ -2923,6 +2988,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 63,
@@ -2945,6 +3011,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 64,
@@ -2967,6 +3034,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 65,
@@ -2989,6 +3057,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 66,
@@ -3011,6 +3080,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 67,
@@ -3033,6 +3103,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 68,
@@ -3055,6 +3126,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 69,
@@ -3077,6 +3149,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 70,
@@ -3099,6 +3172,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 71,
@@ -3121,6 +3195,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 72,
@@ -3143,6 +3218,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 73,
@@ -3165,6 +3241,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 74,
@@ -3187,6 +3264,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 75,
@@ -3209,6 +3287,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 76,
@@ -3231,6 +3310,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 77,
@@ -3253,6 +3333,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 78,
@@ -3275,6 +3356,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 79,
@@ -3297,6 +3379,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 80,
@@ -3319,6 +3402,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 81,
@@ -3341,6 +3425,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 82,
@@ -3363,6 +3448,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 83,
@@ -3385,6 +3471,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 84,
@@ -3407,6 +3494,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 85,
@@ -3429,6 +3517,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 86,
@@ -3451,6 +3540,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 87,
@@ -3473,6 +3563,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 88,
@@ -3495,6 +3586,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 89,
@@ -3517,6 +3609,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 90,
@@ -3539,6 +3632,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 91,
@@ -3561,6 +3655,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 92,
@@ -3583,6 +3678,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 93,
@@ -3605,6 +3701,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 94,
@@ -3627,6 +3724,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 95,
@@ -3649,6 +3747,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 96,
@@ -3671,6 +3770,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::MangroveLeavesBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 97,
@@ -3693,6 +3793,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 98,
@@ -3715,6 +3816,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 99,
@@ -3735,6 +3837,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 100,
@@ -3755,6 +3858,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 101,
@@ -3777,6 +3881,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 102,
@@ -3797,6 +3902,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 103,
@@ -3817,6 +3923,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 104,
@@ -3837,6 +3944,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 105,
@@ -3859,6 +3967,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 106,
@@ -3879,6 +3988,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 107,
@@ -3899,6 +4009,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 108,
@@ -3919,6 +4030,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 109,
@@ -3939,6 +4051,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 110,
@@ -3959,6 +4072,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 111,
@@ -3979,6 +4093,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 112,
@@ -3999,6 +4114,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 113,
@@ -4019,6 +4135,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 114,
@@ -4039,6 +4156,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 115,
@@ -4059,6 +4177,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 116,
@@ -4079,6 +4198,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 117,
@@ -4099,6 +4219,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 118,
@@ -4119,6 +4240,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 119,
@@ -4139,6 +4261,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 120,
@@ -4159,6 +4282,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 121,
@@ -4179,6 +4303,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 122,
@@ -4199,6 +4324,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 123,
@@ -4219,6 +4345,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 124,
@@ -4239,6 +4366,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 125,
@@ -4259,6 +4387,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 126,
@@ -4281,6 +4410,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 127,
@@ -4303,6 +4433,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 128,
@@ -4325,6 +4456,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 129,
@@ -4345,6 +4477,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 130,
@@ -4367,6 +4500,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 131,
@@ -4389,6 +4523,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 132,
@@ -4411,6 +4546,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 133,
@@ -4433,6 +4569,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 134,
@@ -4455,6 +4592,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 135,
@@ -4477,6 +4615,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 136,
@@ -4499,6 +4638,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 137,
@@ -4525,6 +4665,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 138,
@@ -4547,6 +4688,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 139,
@@ -4567,6 +4709,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 140,
@@ -4587,6 +4730,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 141,
@@ -4607,6 +4751,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 142,
@@ -4627,6 +4772,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 143,
@@ -4647,6 +4793,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 144,
@@ -4667,6 +4814,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 145,
@@ -4687,6 +4835,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 146,
@@ -4707,6 +4856,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 147,
@@ -4727,6 +4877,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 148,
@@ -4747,6 +4898,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 149,
@@ -4767,6 +4919,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 150,
@@ -4787,6 +4940,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 151,
@@ -4807,6 +4961,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 152,
@@ -4827,6 +4982,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 153,
@@ -4847,6 +5003,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 154,
@@ -4867,6 +5024,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 155,
@@ -4887,6 +5045,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 156,
@@ -4907,6 +5066,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 157,
@@ -4929,6 +5089,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 158,
@@ -4951,6 +5112,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 159,
@@ -4973,6 +5135,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 160,
@@ -4995,6 +5158,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 161,
@@ -5017,6 +5181,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 162,
@@ -5039,6 +5204,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 163,
@@ -5061,6 +5227,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 164,
@@ -5083,6 +5250,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 165,
@@ -5105,6 +5273,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 166,
@@ -5127,6 +5296,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 167,
@@ -5149,6 +5319,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 168,
@@ -5171,6 +5342,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 169,
@@ -5193,6 +5365,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 170,
@@ -5215,6 +5388,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 171,
@@ -5237,6 +5411,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 172,
@@ -5259,6 +5434,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 173,
@@ -5281,6 +5457,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 174,
@@ -5301,6 +5478,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 175,
@@ -5321,6 +5499,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 176,
@@ -5341,6 +5520,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 177,
@@ -5361,6 +5541,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 178,
@@ -5381,6 +5562,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 179,
@@ -5405,6 +5587,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 180,
@@ -5427,6 +5610,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 181,
@@ -5449,6 +5633,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 182,
@@ -5471,6 +5656,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 183,
@@ -5493,6 +5679,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 184,
@@ -5515,6 +5702,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 185,
@@ -5537,6 +5725,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 186,
@@ -5559,6 +5748,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 187,
@@ -5581,6 +5771,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 188,
@@ -5603,6 +5794,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 189,
@@ -5625,6 +5817,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 190,
@@ -5647,6 +5840,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 191,
@@ -5669,6 +5863,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 192,
@@ -5689,6 +5884,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 193,
@@ -5709,6 +5905,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 194,
@@ -5729,6 +5926,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 195,
@@ -5749,6 +5947,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 196,
@@ -5769,6 +5968,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 197,
@@ -5789,6 +5989,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 198,
@@ -5811,6 +6012,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 199,
@@ -5835,6 +6037,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 200,
@@ -5857,6 +6060,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 201,
@@ -5879,6 +6083,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 202,
@@ -5901,6 +6106,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 203,
@@ -5921,6 +6127,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 204,
@@ -5941,6 +6148,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 205,
@@ -5961,6 +6169,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 206,
@@ -5981,6 +6190,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 207,
@@ -6003,6 +6213,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 208,
@@ -6023,6 +6234,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 209,
@@ -6045,6 +6257,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 210,
@@ -6069,6 +6282,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 211,
@@ -6093,6 +6307,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 212,
@@ -6117,6 +6332,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 213,
@@ -6141,6 +6357,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 214,
@@ -6165,6 +6382,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 215,
@@ -6189,6 +6407,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 216,
@@ -6213,6 +6432,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 217,
@@ -6237,6 +6457,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 218,
@@ -6261,6 +6482,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 219,
@@ -6285,6 +6507,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 220,
@@ -6305,6 +6528,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 221,
@@ -6327,6 +6551,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 222,
@@ -6349,6 +6574,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 223,
@@ -6371,6 +6597,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 224,
@@ -6393,6 +6620,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 225,
@@ -6415,6 +6643,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 226,
@@ -6437,6 +6666,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 227,
@@ -6459,6 +6689,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 228,
@@ -6481,6 +6712,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 229,
@@ -6503,6 +6735,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 230,
@@ -6525,6 +6758,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 231,
@@ -6547,6 +6781,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 232,
@@ -6569,6 +6804,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 233,
@@ -6591,6 +6827,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 234,
@@ -6617,6 +6854,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 235,
@@ -6643,6 +6881,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 236,
@@ -6669,6 +6908,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 237,
@@ -6695,6 +6935,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 238,
@@ -6721,6 +6962,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 239,
@@ -6747,6 +6989,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 240,
@@ -6773,6 +7016,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 241,
@@ -6799,6 +7043,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 242,
@@ -6825,6 +7070,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 243,
@@ -6851,6 +7097,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 244,
@@ -6877,6 +7124,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 245,
@@ -6903,6 +7151,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 246,
@@ -6929,6 +7178,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 247,
@@ -6955,6 +7205,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 248,
@@ -6981,6 +7232,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 249,
@@ -7007,6 +7259,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 250,
@@ -7033,6 +7286,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 251,
@@ -7059,6 +7313,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 252,
@@ -7085,6 +7340,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 253,
@@ -7111,6 +7367,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 254,
@@ -7137,6 +7394,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 255,
@@ -7163,6 +7421,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 256,
@@ -7189,6 +7448,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 257,
@@ -7215,6 +7475,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 258,
@@ -7239,6 +7500,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 259,
@@ -7259,6 +7521,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 260,
@@ -7279,6 +7542,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 261,
@@ -7299,6 +7563,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 262,
@@ -7319,6 +7584,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 263,
@@ -7339,6 +7605,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 264,
@@ -7359,6 +7626,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 265,
@@ -7379,6 +7647,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 266,
@@ -7399,6 +7668,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 267,
@@ -7419,6 +7689,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 268,
@@ -7439,6 +7710,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 269,
@@ -7459,6 +7731,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 270,
@@ -7479,6 +7752,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 271,
@@ -7499,6 +7773,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 272,
@@ -7519,6 +7794,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 273,
@@ -7539,6 +7815,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 274,
@@ -7561,6 +7838,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 275,
@@ -7585,6 +7863,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 276,
@@ -7605,6 +7884,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 277,
@@ -7625,6 +7905,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 278,
@@ -7645,6 +7926,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 279,
@@ -7665,6 +7947,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 280,
@@ -7687,6 +7970,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 281,
@@ -7707,6 +7991,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 282,
@@ -7727,6 +8012,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 283,
@@ -7747,6 +8033,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 284,
@@ -7771,6 +8058,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 285,
@@ -7791,6 +8079,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::NetherrackBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 286,
@@ -7811,6 +8100,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 287,
@@ -7831,6 +8121,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 288,
@@ -7853,6 +8144,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 289,
@@ -7875,6 +8167,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 290,
@@ -7895,6 +8188,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 291,
@@ -7915,6 +8209,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 292,
@@ -7935,6 +8230,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 293,
@@ -7955,6 +8251,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 294,
@@ -7975,6 +8272,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 295,
@@ -7995,6 +8293,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 296,
@@ -8017,6 +8316,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 297,
@@ -8039,6 +8339,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 298,
@@ -8059,6 +8360,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 299,
@@ -8079,6 +8381,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 300,
@@ -8101,6 +8404,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 301,
@@ -8123,6 +8429,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_ORANGE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 302,
@@ -8145,6 +8454,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_MAGENTA_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 303,
@@ -8167,6 +8479,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIGHT_BLUE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 304,
@@ -8189,6 +8504,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_YELLOW_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 305,
@@ -8211,6 +8529,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIME_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 306,
@@ -8233,6 +8554,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_PINK_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 307,
@@ -8255,6 +8579,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_GRAY_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 308,
@@ -8277,6 +8604,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIGHT_GRAY_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 309,
@@ -8299,6 +8629,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_CYAN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 310,
@@ -8321,6 +8654,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_PURPLE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 311,
@@ -8343,6 +8679,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BLUE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 312,
@@ -8365,6 +8704,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BROWN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 313,
@@ -8387,6 +8729,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_GREEN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 314,
@@ -8409,6 +8754,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 315,
@@ -8431,6 +8779,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BLACK_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 316,
@@ -8453,6 +8804,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 317,
@@ -8475,6 +8827,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 318,
@@ -8497,6 +8850,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 319,
@@ -8519,6 +8873,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 320,
@@ -8541,6 +8896,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 321,
@@ -8563,6 +8919,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 322,
@@ -8585,6 +8942,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 323,
@@ -8607,6 +8965,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 324,
@@ -8629,6 +8988,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 325,
@@ -8651,6 +9011,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 326,
@@ -8671,6 +9032,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 327,
@@ -8691,6 +9053,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 328,
@@ -8711,6 +9074,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 329,
@@ -8731,6 +9095,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 330,
@@ -8751,6 +9116,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 331,
@@ -8771,6 +9137,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 332,
@@ -8791,6 +9158,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 333,
@@ -8811,6 +9179,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 334,
@@ -8831,6 +9200,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 335,
@@ -8851,6 +9221,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 336,
@@ -8871,6 +9242,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 337,
@@ -8891,6 +9263,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 338,
@@ -8913,6 +9286,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 339,
@@ -8935,6 +9309,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 340,
@@ -8957,6 +9332,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 341,
@@ -8981,6 +9357,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 342,
@@ -9005,6 +9382,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 343,
@@ -9029,6 +9407,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 344,
@@ -9053,6 +9432,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 345,
@@ -9077,6 +9457,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 346,
@@ -9101,6 +9482,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 347,
@@ -9125,6 +9507,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 348,
@@ -9149,6 +9532,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 349,
@@ -9173,6 +9557,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 350,
@@ -9195,6 +9580,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 351,
@@ -9217,6 +9603,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 352,
@@ -9239,6 +9626,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 353,
@@ -9261,6 +9649,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 354,
@@ -9283,6 +9672,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 355,
@@ -9305,6 +9695,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 356,
@@ -9327,6 +9718,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 357,
@@ -9349,6 +9741,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 358,
@@ -9371,6 +9764,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 359,
@@ -9395,6 +9789,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 360,
@@ -9415,6 +9810,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 361,
@@ -9435,6 +9831,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 362,
@@ -9457,6 +9854,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 363,
@@ -9479,6 +9877,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 364,
@@ -9501,6 +9900,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 365,
@@ -9523,6 +9923,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 366,
@@ -9543,6 +9944,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::VineBlock),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 367,
@@ -9567,6 +9969,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::GlowLichenBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 368,
@@ -9589,6 +9992,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 369,
@@ -9609,6 +10013,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 370,
@@ -9631,6 +10036,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 371,
@@ -9653,6 +10059,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 372,
@@ -9675,6 +10082,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 373,
@@ -9695,6 +10103,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 374,
@@ -9717,6 +10126,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 375,
@@ -9737,6 +10147,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 376,
@@ -9757,6 +10168,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 377,
@@ -9779,6 +10191,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 378,
@@ -9799,6 +10212,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 379,
@@ -9821,6 +10235,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 380,
@@ -9841,6 +10256,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 381,
@@ -9861,6 +10277,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 382,
@@ -9885,6 +10302,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 383,
@@ -9907,6 +10325,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 384,
@@ -9929,6 +10348,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 385,
@@ -9951,6 +10371,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 386,
@@ -9973,6 +10394,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 387,
@@ -9993,6 +10415,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 388,
@@ -10013,6 +10436,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 389,
@@ -10033,6 +10457,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 390,
@@ -10053,6 +10478,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 391,
@@ -10075,6 +10501,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 392,
@@ -10097,6 +10524,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 393,
@@ -10117,6 +10545,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 394,
@@ -10137,6 +10566,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 395,
@@ -10159,6 +10589,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 396,
@@ -10179,6 +10610,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::CocoaBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 397,
@@ -10201,6 +10633,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 398,
@@ -10221,6 +10654,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 399,
@@ -10241,6 +10675,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 400,
@@ -10267,6 +10702,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 401,
@@ -10289,6 +10725,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 402,
@@ -10309,6 +10746,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 403,
@@ -10329,6 +10767,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 404,
@@ -10351,6 +10790,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 405,
@@ -10373,6 +10813,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 406,
@@ -10395,6 +10836,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 407,
@@ -10417,6 +10859,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 408,
@@ -10437,6 +10880,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 409,
@@ -10459,6 +10905,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 410,
@@ -10481,6 +10928,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 411,
@@ -10501,6 +10949,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 412,
@@ -10521,6 +10970,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 413,
@@ -10541,6 +10991,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 414,
@@ -10561,6 +11012,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 415,
@@ -10581,6 +11033,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 416,
@@ -10601,6 +11054,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 417,
@@ -10621,6 +11075,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 418,
@@ -10641,6 +11096,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 419,
@@ -10661,6 +11117,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 420,
@@ -10681,6 +11138,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 421,
@@ -10701,6 +11159,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 422,
@@ -10721,6 +11180,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 423,
@@ -10741,6 +11201,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 424,
@@ -10761,6 +11222,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 425,
@@ -10781,6 +11243,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 426,
@@ -10801,6 +11264,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 427,
@@ -10821,6 +11285,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 428,
@@ -10841,6 +11306,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 429,
@@ -10861,6 +11327,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 430,
@@ -10881,6 +11348,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 431,
@@ -10901,6 +11369,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 432,
@@ -10921,6 +11390,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 433,
@@ -10941,6 +11411,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 434,
@@ -10961,6 +11432,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 435,
@@ -10981,6 +11453,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 436,
@@ -11001,6 +11474,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 437,
@@ -11021,6 +11495,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 438,
@@ -11041,6 +11516,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 439,
@@ -11061,6 +11537,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 440,
@@ -11081,6 +11558,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 441,
@@ -11103,6 +11581,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 442,
@@ -11125,6 +11604,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 443,
@@ -11149,6 +11629,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 444,
@@ -11173,6 +11654,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 445,
@@ -11197,6 +11679,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 446,
@@ -11221,6 +11704,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 447,
@@ -11245,6 +11729,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 448,
@@ -11269,6 +11754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 449,
@@ -11293,6 +11779,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 450,
@@ -11317,6 +11804,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 451,
@@ -11341,6 +11829,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 452,
@@ -11365,6 +11854,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 453,
@@ -11385,6 +11875,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 454,
@@ -11405,6 +11896,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 455,
@@ -11425,6 +11917,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 456,
@@ -11445,6 +11938,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 457,
@@ -11465,6 +11959,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 458,
@@ -11485,6 +11980,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 459,
@@ -11505,6 +12001,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 460,
@@ -11525,6 +12022,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 461,
@@ -11545,6 +12043,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 462,
@@ -11565,6 +12064,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 463,
@@ -11585,6 +12085,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 464,
@@ -11605,6 +12106,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 465,
@@ -11625,6 +12127,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 466,
@@ -11645,6 +12148,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 467,
@@ -11665,6 +12169,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 468,
@@ -11685,6 +12190,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 469,
@@ -11705,6 +12211,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 470,
@@ -11729,6 +12236,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 471,
@@ -11749,6 +12257,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 472,
@@ -11769,6 +12278,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 473,
@@ -11791,6 +12301,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 474,
@@ -11813,6 +12324,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 475,
@@ -11833,6 +12345,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 476,
@@ -11853,6 +12366,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 477,
@@ -11873,6 +12387,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 478,
@@ -11893,6 +12408,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 479,
@@ -11913,6 +12429,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 480,
@@ -11935,6 +12452,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 481,
@@ -11957,6 +12475,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 482,
@@ -11979,6 +12498,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 483,
@@ -11999,6 +12519,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 484,
@@ -12019,6 +12540,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 485,
@@ -12039,6 +12561,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 486,
@@ -12059,6 +12582,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 487,
@@ -12079,6 +12603,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 488,
@@ -12099,6 +12624,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 489,
@@ -12119,6 +12645,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 490,
@@ -12139,6 +12666,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 491,
@@ -12159,6 +12687,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 492,
@@ -12179,6 +12708,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 493,
@@ -12199,6 +12729,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 494,
@@ -12219,6 +12750,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 495,
@@ -12239,6 +12771,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 496,
@@ -12259,6 +12792,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 497,
@@ -12279,6 +12813,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 498,
@@ -12299,6 +12834,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 499,
@@ -12319,6 +12855,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 500,
@@ -12343,6 +12880,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 501,
@@ -12367,6 +12907,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_ORANGE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 502,
@@ -12391,6 +12934,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_MAGENTA_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 503,
@@ -12415,6 +12961,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIGHT_BLUE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 504,
@@ -12439,6 +12988,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_YELLOW_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 505,
@@ -12463,6 +13015,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIME_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 506,
@@ -12487,6 +13042,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_PINK_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 507,
@@ -12511,6 +13069,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_GRAY_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 508,
@@ -12535,6 +13096,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIGHT_GRAY_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 509,
@@ -12559,6 +13123,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_CYAN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 510,
@@ -12583,6 +13150,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_PURPLE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 511,
@@ -12607,6 +13177,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BLUE_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 512,
@@ -12631,6 +13204,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BROWN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 513,
@@ -12655,6 +13231,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_GREEN_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 514,
@@ -12679,6 +13258,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_RED_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 515,
@@ -12703,6 +13285,9 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: Some(
+            crate::builtin_enum_component_values::VANILLA_DYE_COLOR_BLACK_ID,
+        ),
     },
     BlockTypeCatalogEntry {
         id: 516,
@@ -12725,6 +13310,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 517,
@@ -12747,6 +13333,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 518,
@@ -12769,6 +13356,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 519,
@@ -12791,6 +13379,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 520,
@@ -12813,6 +13402,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 521,
@@ -12835,6 +13425,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 522,
@@ -12857,6 +13448,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 523,
@@ -12877,6 +13469,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 524,
@@ -12899,6 +13492,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::BarrierBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 525,
@@ -12921,6 +13515,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::LightBlock),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 526,
@@ -12943,6 +13538,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 527,
@@ -12963,6 +13559,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 528,
@@ -12983,6 +13580,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 529,
@@ -13003,6 +13601,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 530,
@@ -13025,6 +13624,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 531,
@@ -13047,6 +13647,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 532,
@@ -13069,6 +13670,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 533,
@@ -13089,6 +13691,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 534,
@@ -13109,6 +13712,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 535,
@@ -13129,6 +13733,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 536,
@@ -13149,6 +13754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 537,
@@ -13171,6 +13777,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 538,
@@ -13191,6 +13798,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 539,
@@ -13211,6 +13819,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 540,
@@ -13231,6 +13840,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 541,
@@ -13251,6 +13861,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 542,
@@ -13271,6 +13882,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 543,
@@ -13291,6 +13903,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 544,
@@ -13311,6 +13924,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 545,
@@ -13331,6 +13945,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 546,
@@ -13351,6 +13966,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 547,
@@ -13371,6 +13987,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 548,
@@ -13391,6 +14008,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 549,
@@ -13411,6 +14029,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 550,
@@ -13431,6 +14050,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 551,
@@ -13451,6 +14071,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 552,
@@ -13471,6 +14092,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 553,
@@ -13491,6 +14113,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 554,
@@ -13511,6 +14134,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 555,
@@ -13531,6 +14155,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 556,
@@ -13551,6 +14176,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 557,
@@ -13575,6 +14201,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 558,
@@ -13599,6 +14226,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 559,
@@ -13623,6 +14251,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 560,
@@ -13647,6 +14276,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 561,
@@ -13671,6 +14301,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 562,
@@ -13695,6 +14326,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 563,
@@ -13715,6 +14347,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 564,
@@ -13735,6 +14368,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 565,
@@ -13755,6 +14389,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 566,
@@ -13775,6 +14410,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 567,
@@ -13795,6 +14431,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 568,
@@ -13815,6 +14452,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 569,
@@ -13835,6 +14473,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 570,
@@ -13855,6 +14494,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 571,
@@ -13875,6 +14515,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 572,
@@ -13895,6 +14536,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 573,
@@ -13915,6 +14557,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 574,
@@ -13935,6 +14578,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 575,
@@ -13955,6 +14599,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 576,
@@ -13975,6 +14620,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 577,
@@ -13995,6 +14641,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 578,
@@ -14015,6 +14662,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 579,
@@ -14037,6 +14685,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 580,
@@ -14059,6 +14708,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 581,
@@ -14081,6 +14731,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 582,
@@ -14103,6 +14754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 583,
@@ -14125,6 +14777,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 584,
@@ -14147,6 +14800,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 585,
@@ -14169,6 +14823,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 586,
@@ -14191,6 +14846,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 587,
@@ -14213,6 +14869,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 588,
@@ -14235,6 +14892,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 589,
@@ -14257,6 +14915,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 590,
@@ -14279,6 +14938,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 591,
@@ -14301,6 +14961,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 592,
@@ -14323,6 +14984,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 593,
@@ -14345,6 +15007,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 594,
@@ -14367,6 +15030,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 595,
@@ -14387,6 +15051,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 596,
@@ -14407,6 +15072,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 597,
@@ -14427,6 +15093,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 598,
@@ -14449,6 +15116,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 599,
@@ -14469,6 +15137,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 600,
@@ -14489,6 +15158,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 601,
@@ -14509,6 +15179,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 602,
@@ -14529,6 +15200,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 603,
@@ -14549,6 +15221,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 604,
@@ -14569,6 +15242,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 605,
@@ -14589,6 +15263,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 606,
@@ -14609,6 +15284,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 607,
@@ -14629,6 +15305,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 608,
@@ -14649,6 +15326,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 609,
@@ -14669,6 +15347,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 610,
@@ -14689,6 +15368,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 611,
@@ -14709,6 +15389,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 612,
@@ -14729,6 +15410,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 613,
@@ -14749,6 +15431,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 614,
@@ -14769,6 +15452,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 615,
@@ -14789,6 +15473,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 616,
@@ -14809,6 +15494,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 617,
@@ -14829,6 +15515,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 618,
@@ -14849,6 +15536,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 619,
@@ -14869,6 +15557,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 620,
@@ -14889,6 +15578,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 621,
@@ -14909,6 +15599,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 622,
@@ -14929,6 +15620,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 623,
@@ -14949,6 +15641,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 624,
@@ -14969,6 +15662,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 625,
@@ -14989,6 +15683,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 626,
@@ -15009,6 +15704,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 627,
@@ -15029,6 +15725,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 628,
@@ -15049,6 +15746,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 629,
@@ -15069,6 +15767,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 630,
@@ -15089,6 +15788,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 631,
@@ -15109,6 +15809,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 632,
@@ -15129,6 +15830,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 633,
@@ -15149,6 +15851,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 634,
@@ -15169,6 +15872,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 635,
@@ -15189,6 +15893,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 636,
@@ -15209,6 +15914,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 637,
@@ -15233,6 +15939,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 638,
@@ -15257,6 +15964,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 639,
@@ -15281,6 +15989,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 640,
@@ -15305,6 +16014,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 641,
@@ -15329,6 +16039,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 642,
@@ -15353,6 +16064,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 643,
@@ -15377,6 +16089,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 644,
@@ -15401,6 +16114,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 645,
@@ -15425,6 +16139,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 646,
@@ -15445,6 +16160,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 647,
@@ -15465,6 +16181,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 648,
@@ -15485,6 +16202,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 649,
@@ -15505,6 +16223,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 650,
@@ -15525,6 +16244,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 651,
@@ -15545,6 +16265,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 652,
@@ -15565,6 +16286,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 653,
@@ -15585,6 +16307,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 654,
@@ -15605,6 +16328,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 655,
@@ -15625,6 +16349,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 656,
@@ -15647,6 +16372,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::PipeBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 657,
@@ -15667,6 +16393,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 658,
@@ -15687,6 +16414,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 659,
@@ -15709,6 +16437,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 660,
@@ -15731,6 +16460,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 661,
@@ -15751,6 +16481,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 662,
@@ -15773,6 +16504,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 663,
@@ -15797,6 +16529,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 664,
@@ -15821,6 +16554,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 665,
@@ -15843,6 +16577,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 666,
@@ -15863,6 +16598,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 667,
@@ -15885,6 +16621,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 668,
@@ -15907,6 +16644,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 669,
@@ -15929,6 +16667,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 670,
@@ -15949,6 +16688,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 671,
@@ -15969,6 +16709,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 672,
@@ -15989,6 +16730,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 673,
@@ -16009,6 +16751,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 674,
@@ -16031,6 +16774,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 675,
@@ -16051,6 +16795,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 676,
@@ -16071,6 +16816,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 677,
@@ -16097,6 +16843,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 678,
@@ -16123,6 +16870,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 679,
@@ -16149,6 +16897,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 680,
@@ -16175,6 +16924,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 681,
@@ -16201,6 +16951,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 682,
@@ -16227,6 +16978,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 683,
@@ -16253,6 +17005,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 684,
@@ -16279,6 +17032,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 685,
@@ -16305,6 +17059,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 686,
@@ -16331,6 +17086,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 687,
@@ -16357,6 +17113,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 688,
@@ -16383,6 +17140,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 689,
@@ -16409,6 +17167,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 690,
@@ -16435,6 +17194,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 691,
@@ -16461,6 +17221,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 692,
@@ -16487,6 +17248,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 693,
@@ -16513,6 +17275,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::ShulkerBoxBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 694,
@@ -16535,6 +17298,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 695,
@@ -16557,6 +17321,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 696,
@@ -16579,6 +17344,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 697,
@@ -16601,6 +17367,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 698,
@@ -16623,6 +17390,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 699,
@@ -16645,6 +17413,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 700,
@@ -16667,6 +17436,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 701,
@@ -16689,6 +17459,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 702,
@@ -16711,6 +17482,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 703,
@@ -16733,6 +17505,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 704,
@@ -16755,6 +17528,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 705,
@@ -16777,6 +17551,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 706,
@@ -16799,6 +17574,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 707,
@@ -16821,6 +17597,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 708,
@@ -16843,6 +17620,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 709,
@@ -16865,6 +17643,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 710,
@@ -16885,6 +17664,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 711,
@@ -16905,6 +17685,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 712,
@@ -16925,6 +17706,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 713,
@@ -16945,6 +17727,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 714,
@@ -16965,6 +17748,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 715,
@@ -16985,6 +17769,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 716,
@@ -17005,6 +17790,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 717,
@@ -17025,6 +17811,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 718,
@@ -17045,6 +17832,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 719,
@@ -17065,6 +17853,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 720,
@@ -17085,6 +17874,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 721,
@@ -17105,6 +17895,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 722,
@@ -17125,6 +17916,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 723,
@@ -17145,6 +17937,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 724,
@@ -17165,6 +17958,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 725,
@@ -17185,6 +17979,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 726,
@@ -17207,6 +18002,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 727,
@@ -17229,6 +18025,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 728,
@@ -17251,6 +18048,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 729,
@@ -17273,6 +18071,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 730,
@@ -17295,6 +18094,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 731,
@@ -17317,6 +18117,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 732,
@@ -17339,6 +18140,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 733,
@@ -17361,6 +18163,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 734,
@@ -17383,6 +18186,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 735,
@@ -17405,6 +18209,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 736,
@@ -17427,6 +18232,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 737,
@@ -17449,6 +18255,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 738,
@@ -17471,6 +18278,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 739,
@@ -17493,6 +18301,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 740,
@@ -17515,6 +18324,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 741,
@@ -17537,6 +18347,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 742,
@@ -17557,6 +18368,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantHeadBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 743,
@@ -17579,6 +18391,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantBodyBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 744,
@@ -17599,6 +18412,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 745,
@@ -17619,6 +18433,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 746,
@@ -17639,6 +18454,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 747,
@@ -17663,6 +18479,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 748,
@@ -17683,6 +18500,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 749,
@@ -17703,6 +18521,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 750,
@@ -17723,6 +18542,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 751,
@@ -17743,6 +18563,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 752,
@@ -17763,6 +18584,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 753,
@@ -17783,6 +18605,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 754,
@@ -17803,6 +18626,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 755,
@@ -17823,6 +18647,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 756,
@@ -17843,6 +18668,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 757,
@@ -17863,6 +18689,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 758,
@@ -17887,6 +18714,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 759,
@@ -17911,6 +18739,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 760,
@@ -17935,6 +18764,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 761,
@@ -17959,6 +18789,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 762,
@@ -17983,6 +18814,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 763,
@@ -18007,6 +18839,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 764,
@@ -18031,6 +18864,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 765,
@@ -18055,6 +18889,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 766,
@@ -18079,6 +18914,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 767,
@@ -18103,6 +18939,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 768,
@@ -18127,6 +18964,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 769,
@@ -18151,6 +18989,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 770,
@@ -18175,6 +19014,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 771,
@@ -18199,6 +19039,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 772,
@@ -18223,6 +19064,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 773,
@@ -18247,6 +19089,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 774,
@@ -18271,6 +19114,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 775,
@@ -18295,6 +19139,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 776,
@@ -18319,6 +19164,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 777,
@@ -18343,6 +19189,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 778,
@@ -18367,6 +19214,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 779,
@@ -18391,6 +19239,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 780,
@@ -18415,6 +19264,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 781,
@@ -18439,6 +19289,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 782,
@@ -18463,6 +19314,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 783,
@@ -18487,6 +19339,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 784,
@@ -18511,6 +19364,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 785,
@@ -18535,6 +19389,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 786,
@@ -18559,6 +19414,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 787,
@@ -18583,6 +19439,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 788,
@@ -18607,6 +19464,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 789,
@@ -18627,6 +19485,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 790,
@@ -18649,6 +19508,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 791,
@@ -18669,6 +19529,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::BambooSaplingBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 792,
@@ -18693,6 +19554,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::BambooStalkBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 793,
@@ -18713,6 +19575,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 794,
@@ -18733,6 +19596,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 795,
@@ -18753,6 +19617,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 796,
@@ -18773,6 +19638,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 797,
@@ -18795,6 +19661,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 798,
@@ -18817,6 +19684,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 799,
@@ -18839,6 +19707,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 800,
@@ -18861,6 +19730,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 801,
@@ -18883,6 +19753,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 802,
@@ -18905,6 +19776,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 803,
@@ -18927,6 +19799,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 804,
@@ -18949,6 +19822,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 805,
@@ -18971,6 +19845,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 806,
@@ -18993,6 +19868,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 807,
@@ -19015,6 +19891,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 808,
@@ -19037,6 +19914,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 809,
@@ -19059,6 +19937,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 810,
@@ -19081,6 +19960,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 811,
@@ -19101,6 +19981,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 812,
@@ -19121,6 +20002,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 813,
@@ -19141,6 +20023,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 814,
@@ -19161,6 +20044,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 815,
@@ -19181,6 +20065,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 816,
@@ -19201,6 +20086,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 817,
@@ -19221,6 +20107,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 818,
@@ -19241,6 +20128,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 819,
@@ -19261,6 +20149,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 820,
@@ -19281,6 +20170,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 821,
@@ -19301,6 +20191,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 822,
@@ -19321,6 +20212,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 823,
@@ -19341,6 +20233,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 824,
@@ -19363,6 +20256,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 825,
@@ -19385,6 +20279,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 826,
@@ -19407,6 +20302,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 827,
@@ -19429,6 +20325,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 828,
@@ -19451,6 +20348,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 829,
@@ -19473,6 +20371,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 830,
@@ -19495,6 +20394,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 831,
@@ -19517,6 +20417,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 832,
@@ -19539,6 +20440,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 833,
@@ -19561,6 +20463,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 834,
@@ -19583,6 +20486,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 835,
@@ -19605,6 +20509,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 836,
@@ -19627,6 +20532,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 837,
@@ -19651,6 +20557,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 838,
@@ -19671,6 +20578,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 839,
@@ -19691,6 +20599,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 840,
@@ -19713,6 +20622,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 841,
@@ -19737,6 +20647,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 842,
@@ -19757,6 +20668,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 843,
@@ -19777,6 +20689,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 844,
@@ -19799,6 +20712,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 845,
@@ -19819,6 +20733,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 846,
@@ -19839,6 +20754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 847,
@@ -19861,6 +20777,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 848,
@@ -19881,6 +20798,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 849,
@@ -19903,6 +20821,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 850,
@@ -19925,6 +20844,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 851,
@@ -19947,6 +20867,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 852,
@@ -19969,6 +20890,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 853,
@@ -19991,6 +20913,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 854,
@@ -20013,6 +20936,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 855,
@@ -20035,6 +20959,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 856,
@@ -20057,6 +20982,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 857,
@@ -20079,6 +21005,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 858,
@@ -20101,6 +21028,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 859,
@@ -20125,6 +21053,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 860,
@@ -20149,6 +21078,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 861,
@@ -20171,6 +21101,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 862,
@@ -20193,6 +21124,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 863,
@@ -20215,6 +21147,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 864,
@@ -20237,6 +21170,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 865,
@@ -20259,6 +21193,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 866,
@@ -20279,6 +21214,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::NyliumBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 867,
@@ -20301,6 +21237,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 868,
@@ -20321,6 +21258,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 869,
@@ -20343,6 +21281,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 870,
@@ -20365,6 +21304,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 871,
@@ -20387,6 +21327,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 872,
@@ -20409,6 +21350,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 873,
@@ -20431,6 +21373,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 874,
@@ -20453,6 +21396,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 875,
@@ -20473,6 +21417,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::NyliumBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 876,
@@ -20495,6 +21440,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 877,
@@ -20515,6 +21461,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 878,
@@ -20537,6 +21484,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantHeadBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 879,
@@ -20559,6 +21507,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantBodyBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 880,
@@ -20581,6 +21530,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantHeadBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 881,
@@ -20603,6 +21553,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::GrowingPlantBodyBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 882,
@@ -20625,6 +21576,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 883,
@@ -20645,6 +21597,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 884,
@@ -20665,6 +21618,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 885,
@@ -20685,6 +21639,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 886,
@@ -20705,6 +21660,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 887,
@@ -20725,6 +21681,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 888,
@@ -20745,6 +21702,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 889,
@@ -20769,6 +21727,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 890,
@@ -20793,6 +21752,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::CrossCollisionBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 891,
@@ -20815,6 +21775,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 892,
@@ -20837,6 +21798,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 893,
@@ -20857,6 +21819,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 894,
@@ -20877,6 +21840,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 895,
@@ -20899,6 +21863,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 896,
@@ -20921,6 +21886,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 897,
@@ -20945,6 +21911,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 898,
@@ -20969,6 +21936,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 899,
@@ -20989,6 +21957,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 900,
@@ -21009,6 +21978,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 901,
@@ -21033,6 +22003,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 902,
@@ -21057,6 +22028,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 903,
@@ -21079,6 +22051,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 904,
@@ -21101,6 +22074,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 905,
@@ -21123,6 +22097,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 906,
@@ -21143,6 +22118,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 907,
@@ -21165,6 +22141,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 908,
@@ -21187,6 +22164,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 909,
@@ -21207,6 +22185,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 910,
@@ -21227,6 +22206,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 911,
@@ -21247,6 +22227,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 912,
@@ -21267,6 +22248,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 913,
@@ -21287,6 +22269,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 914,
@@ -21307,6 +22290,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 915,
@@ -21327,6 +22311,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 916,
@@ -21347,6 +22332,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 917,
@@ -21367,6 +22353,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 918,
@@ -21387,6 +22374,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 919,
@@ -21407,6 +22395,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 920,
@@ -21427,6 +22416,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 921,
@@ -21447,6 +22437,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 922,
@@ -21467,6 +22458,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 923,
@@ -21487,6 +22479,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 924,
@@ -21507,6 +22500,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 925,
@@ -21529,6 +22523,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 926,
@@ -21551,6 +22546,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 927,
@@ -21571,6 +22567,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 928,
@@ -21591,6 +22588,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 929,
@@ -21611,6 +22609,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 930,
@@ -21631,6 +22630,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 931,
@@ -21651,6 +22651,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 932,
@@ -21671,6 +22672,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 933,
@@ -21693,6 +22695,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 934,
@@ -21715,6 +22718,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 935,
@@ -21735,6 +22739,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 936,
@@ -21757,6 +22762,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 937,
@@ -21777,6 +22783,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 938,
@@ -21797,6 +22804,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 939,
@@ -21821,6 +22829,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 940,
@@ -21843,6 +22852,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 941,
@@ -21863,6 +22873,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 942,
@@ -21883,6 +22894,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 943,
@@ -21903,6 +22915,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 944,
@@ -21925,6 +22938,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 945,
@@ -21947,6 +22961,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 946,
@@ -21969,6 +22984,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 947,
@@ -21991,6 +23007,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 948,
@@ -22013,6 +23030,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 949,
@@ -22035,6 +23053,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 950,
@@ -22057,6 +23076,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 951,
@@ -22079,6 +23099,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 952,
@@ -22101,6 +23122,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 953,
@@ -22123,6 +23145,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 954,
@@ -22145,6 +23168,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 955,
@@ -22167,6 +23191,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 956,
@@ -22189,6 +23214,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 957,
@@ -22211,6 +23237,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 958,
@@ -22233,6 +23260,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 959,
@@ -22255,6 +23283,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 960,
@@ -22277,6 +23306,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 961,
@@ -22297,6 +23327,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 962,
@@ -22317,6 +23348,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 963,
@@ -22337,6 +23369,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 964,
@@ -22357,6 +23390,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 965,
@@ -22377,6 +23411,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 966,
@@ -22397,6 +23432,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 967,
@@ -22417,6 +23453,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 968,
@@ -22437,6 +23474,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 969,
@@ -22457,6 +23495,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 970,
@@ -22477,6 +23516,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 971,
@@ -22497,6 +23537,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 972,
@@ -22517,6 +23558,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 973,
@@ -22537,6 +23579,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 974,
@@ -22557,6 +23600,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 975,
@@ -22577,6 +23621,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 976,
@@ -22597,6 +23642,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 977,
@@ -22617,6 +23663,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 978,
@@ -22637,6 +23684,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 979,
@@ -22657,6 +23705,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 980,
@@ -22681,6 +23730,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 981,
@@ -22705,6 +23755,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 982,
@@ -22729,6 +23780,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 983,
@@ -22753,6 +23805,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 984,
@@ -22773,6 +23826,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 985,
@@ -22793,6 +23847,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 986,
@@ -22815,6 +23870,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 987,
@@ -22837,6 +23893,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 988,
@@ -22857,6 +23914,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 989,
@@ -22877,6 +23935,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 990,
@@ -22899,6 +23958,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 991,
@@ -22921,6 +23981,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 992,
@@ -22941,6 +24002,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 993,
@@ -22961,6 +24023,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 994,
@@ -22981,6 +24044,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 995,
@@ -23003,6 +24067,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 996,
@@ -23025,6 +24090,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 997,
@@ -23045,6 +24111,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 998,
@@ -23065,6 +24132,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 999,
@@ -23087,6 +24155,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TintedGlassBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1000,
@@ -23107,6 +24176,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1001,
@@ -23133,6 +24203,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1002,
@@ -23159,6 +24230,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1003,
@@ -23179,6 +24251,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1004,
@@ -23201,6 +24274,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1005,
@@ -23223,6 +24297,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1006,
@@ -23249,6 +24324,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1007,
@@ -23269,6 +24345,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1008,
@@ -23289,6 +24366,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1009,
@@ -23309,6 +24387,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1010,
@@ -23329,6 +24408,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1011,
@@ -23349,6 +24429,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1012,
@@ -23369,6 +24450,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1013,
@@ -23389,6 +24471,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1014,
@@ -23409,6 +24492,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1015,
@@ -23429,6 +24513,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1016,
@@ -23449,6 +24534,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1017,
@@ -23469,6 +24555,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1018,
@@ -23489,6 +24576,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1019,
@@ -23509,6 +24597,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1020,
@@ -23529,6 +24618,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1021,
@@ -23549,6 +24639,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1022,
@@ -23569,6 +24660,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1023,
@@ -23589,6 +24681,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1024,
@@ -23609,6 +24702,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1025,
@@ -23631,6 +24725,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1026,
@@ -23653,6 +24748,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1027,
@@ -23675,6 +24771,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1028,
@@ -23697,6 +24794,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1029,
@@ -23717,6 +24815,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1030,
@@ -23737,6 +24836,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1031,
@@ -23757,6 +24857,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1032,
@@ -23777,6 +24878,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1033,
@@ -23797,6 +24899,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1034,
@@ -23817,6 +24920,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1035,
@@ -23837,6 +24941,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1036,
@@ -23857,6 +24962,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1037,
@@ -23877,6 +24983,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1038,
@@ -23897,6 +25004,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1039,
@@ -23917,6 +25025,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1040,
@@ -23937,6 +25046,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1041,
@@ -23959,6 +25069,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1042,
@@ -23981,6 +25092,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1043,
@@ -24003,6 +25115,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1044,
@@ -24025,6 +25138,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1045,
@@ -24045,6 +25159,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1046,
@@ -24065,6 +25180,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1047,
@@ -24085,6 +25201,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1048,
@@ -24105,6 +25222,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1049,
@@ -24125,6 +25243,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1050,
@@ -24145,6 +25264,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1051,
@@ -24165,6 +25285,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1052,
@@ -24185,6 +25306,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1053,
@@ -24205,6 +25327,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1054,
@@ -24225,6 +25348,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1055,
@@ -24245,6 +25369,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1056,
@@ -24265,6 +25390,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1057,
@@ -24287,6 +25413,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1058,
@@ -24309,6 +25436,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1059,
@@ -24331,6 +25459,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1060,
@@ -24353,6 +25482,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1061,
@@ -24375,6 +25505,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1062,
@@ -24397,6 +25528,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1063,
@@ -24419,6 +25551,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1064,
@@ -24441,6 +25574,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1065,
@@ -24467,6 +25601,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1066,
@@ -24493,6 +25628,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1067,
@@ -24519,6 +25655,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1068,
@@ -24545,6 +25682,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1069,
@@ -24571,6 +25709,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1070,
@@ -24597,6 +25736,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1071,
@@ -24623,6 +25763,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1072,
@@ -24649,6 +25790,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::TransparentBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1073,
@@ -24669,6 +25811,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1074,
@@ -24689,6 +25832,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1075,
@@ -24709,6 +25853,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1076,
@@ -24729,6 +25874,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1077,
@@ -24749,6 +25895,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1078,
@@ -24769,6 +25916,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1079,
@@ -24789,6 +25937,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1080,
@@ -24809,6 +25958,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1081,
@@ -24833,6 +25983,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1082,
@@ -24857,6 +26008,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1083,
@@ -24881,6 +26033,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1084,
@@ -24905,6 +26058,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1085,
@@ -24929,6 +26083,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1086,
@@ -24953,6 +26108,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1087,
@@ -24977,6 +26133,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1088,
@@ -25001,6 +26158,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1089,
@@ -25027,6 +26185,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1090,
@@ -25053,6 +26212,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1091,
@@ -25079,6 +26239,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1092,
@@ -25105,6 +26266,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1093,
@@ -25131,6 +26293,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1094,
@@ -25157,6 +26320,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1095,
@@ -25183,6 +26347,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1096,
@@ -25209,6 +26374,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1097,
@@ -25233,6 +26399,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1098,
@@ -25257,6 +26424,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1099,
@@ -25281,6 +26449,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1100,
@@ -25305,6 +26474,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1101,
@@ -25329,6 +26499,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1102,
@@ -25353,6 +26524,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1103,
@@ -25377,6 +26549,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1104,
@@ -25401,6 +26574,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1105,
@@ -25425,6 +26599,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1106,
@@ -25445,6 +26620,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1107,
@@ -25467,6 +26643,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::CaveVinesBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1108,
@@ -25489,6 +26666,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::CaveVinesPlantBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1109,
@@ -25509,6 +26687,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1110,
@@ -25531,6 +26710,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1111,
@@ -25553,6 +26733,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1112,
@@ -25573,6 +26754,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1113,
@@ -25595,6 +26777,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1114,
@@ -25617,6 +26800,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1115,
@@ -25641,6 +26825,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1116,
@@ -25663,6 +26848,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         ),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1117,
@@ -25687,6 +26873,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::BigDripleafBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1118,
@@ -25709,6 +26896,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::BigDripleafStemBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1119,
@@ -25735,6 +26923,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1120,
@@ -25759,6 +26948,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: true,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1121,
@@ -25779,6 +26969,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: Some(VanillaBonemealTargetOverride::RootedDirtBlock),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1122,
@@ -25799,6 +26990,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1123,
@@ -25821,6 +27013,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1124,
@@ -25841,6 +27034,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1125,
@@ -25863,6 +27057,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1126,
@@ -25883,6 +27078,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1127,
@@ -25905,6 +27101,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1128,
@@ -25925,6 +27122,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1129,
@@ -25947,6 +27145,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1130,
@@ -25967,6 +27166,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1131,
@@ -25989,6 +27189,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1132,
@@ -26009,6 +27210,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1133,
@@ -26031,6 +27233,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1134,
@@ -26051,6 +27254,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1135,
@@ -26073,6 +27277,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1136,
@@ -26093,6 +27298,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1137,
@@ -26115,6 +27321,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1138,
@@ -26135,6 +27342,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1139,
@@ -26157,6 +27365,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: Some(VanillaPropagatesSkylightDownOverride::WallBlock),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1140,
@@ -26177,6 +27386,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1141,
@@ -26197,6 +27407,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1142,
@@ -26217,6 +27428,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1143,
@@ -26239,6 +27451,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1144,
@@ -26259,6 +27472,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1145,
@@ -26279,6 +27493,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1146,
@@ -26299,6 +27514,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1147,
@@ -26319,6 +27535,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1148,
@@ -26339,6 +27556,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1149,
@@ -26359,6 +27577,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1150,
@@ -26381,6 +27600,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1151,
@@ -26403,6 +27623,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1152,
@@ -26425,6 +27646,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1153,
@@ -26445,6 +27667,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1154,
@@ -26465,6 +27688,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1155,
@@ -26491,6 +27715,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1156,
@@ -26511,6 +27736,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1157,
@@ -26533,6 +27759,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1158,
@@ -26553,6 +27780,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1159,
@@ -26575,6 +27803,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1160,
@@ -26597,6 +27826,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         ),
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1161,
@@ -26621,6 +27851,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::MossyCarpetBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1162,
@@ -26643,6 +27874,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::HangingMossBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1163,
@@ -26665,6 +27897,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1164,
@@ -26687,6 +27920,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1165,
@@ -26707,6 +27941,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1166,
@@ -26727,6 +27962,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
         bonemeal_target_override: None,
         propagates_skylight_down_override: None,
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
     BlockTypeCatalogEntry {
         id: 1167,
@@ -26749,6 +27985,7 @@ pub const VANILLA_BLOCK_TYPES: &[BlockTypeCatalogEntry] = &[
             VanillaPropagatesSkylightDownOverride::VegetationBlock,
         ),
         replaceable: false,
+        beacon_beam_dye_color_id: None,
     },
 ];
 
@@ -26788,6 +28025,15 @@ pub const fn vanilla_concrete_block_type_id_for_powder(block_type_id: i32) -> Op
 
 pub fn vanilla_block_entity_type_id_for_block_type_id(block_type_id: i32) -> Option<i32> {
     vanilla_block_type(block_type_id)?.block_entity_type_id
+}
+
+/// `BeaconBeamBlock.getColor()` for one block resource id, i.e. the beam
+/// colour `BeaconBlockEntity.tick` folds into its beam sections.
+pub fn vanilla_beacon_beam_dye_color_id_for_block_name(resource_id: &str) -> Option<i32> {
+    VANILLA_BLOCK_TYPES
+        .iter()
+        .find(|entry| entry.resource_id == resource_id)?
+        .beacon_beam_dye_color_id
 }
 
 #[cfg(test)]
@@ -26851,6 +28097,25 @@ mod tests {
                 .unwrap()
                 .block_entity_type_id,
             None
+        );
+        assert_eq!(
+            VANILLA_BLOCK_TYPES
+                .iter()
+                .filter(|entry| entry.beacon_beam_dye_color_id.is_some())
+                .count(),
+            33
+        );
+        assert_eq!(
+            vanilla_beacon_beam_dye_color_id_for_block_name("minecraft:stone"),
+            None
+        );
+        assert_eq!(
+            vanilla_beacon_beam_dye_color_id_for_block_name("minecraft:beacon"),
+            Some(crate::builtin_enum_component_values::VANILLA_DYE_COLOR_WHITE_ID)
+        );
+        assert_eq!(
+            vanilla_beacon_beam_dye_color_id_for_block_name("minecraft:lime_stained_glass_pane"),
+            Some(crate::builtin_enum_component_values::VANILLA_DYE_COLOR_LIME_ID)
         );
         assert_eq!(
             vanilla_block_type(VANILLA_BLOCK_CHEST_ID)
