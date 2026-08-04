@@ -456,6 +456,24 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer world-edit-ui
+
+- 目标与 owner：闭合 `player-local-world-edit-ui` 9 个 owner（openTextEdit、
+  openItemGui、openCommandBlock、openMinecartCommandBlock、openStructureBlock、
+  openJigsawBlock、openTestBlock、openTestInstanceBlock、openDialog）。
+- 审计事实：九个面的 native 模块均已存在（sign editor input state、book、
+  command block、minecart_command_block、structure_block、jigsaw_block、
+  test_block、test_instance_block、dialog screen）；工作为逐面核对
+  packet/interaction→screen state→input lifecycle 打开链并注册 evidence，
+  发现真缺口时按既有模式补齐后再注册。
+- focused evidence：census 9-owner OwnerEvidence（每面 impl+test 锚点）+
+  scripts/tests 断言块（local-player 分区测试）。
+- 非目标：不新建 screen surface；不动 use-interaction/packet 语义；发现其他
+  route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 9-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
