@@ -3162,6 +3162,81 @@ mod tests {
     }
 
     #[test]
+    fn connection_services_survive_respawn_and_reset_only_with_the_listener() {
+        let mut world = WorldStore::new();
+        world.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(
+            world.apply_set_objective(bbb_protocol::packets::SetObjective {
+                objective_name: "session".to_string(),
+                method: bbb_protocol::packets::SetObjectiveMethod::Add.into(),
+                parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
+                    display_name: bbb_protocol::RichTextComponent::plain("Session"),
+                    render_type: bbb_protocol::objective_render_types::ObjectiveRenderType::Integer,
+                    number_format: None,
+                }),
+            })
+        );
+        world.apply_update_recipes(bbb_protocol::packets::UpdateRecipes {
+            property_sets: vec![bbb_protocol::packets::RecipePropertySetSummary {
+                key: "minecraft:smithing_base".to_string(),
+                item_ids: vec![7],
+            }],
+            stonecutter_recipes: Vec::new(),
+        });
+        world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec!["minecraft:vanilla".to_string()],
+        });
+        world.set_brewing_potion_item_ids(BTreeSet::from([44]));
+        world.set_furnace_fuel_item_ids(BTreeSet::from([43]));
+
+        // Vanilla keeps the same ClientPacketListener across any respawn, so
+        // every connection-scoped service survives a dimension change.
+        world.apply_respawn(&respawn_packet(0));
+        assert_eq!(world.scoreboard.objectives.len(), 1);
+        assert_eq!(world.recipes().property_sets.len(), 1);
+        assert!(world.is_feature_enabled("minecraft:vanilla"));
+        assert_eq!(*world.items.brewing_potion_item_ids, BTreeSet::from([44]));
+        assert_eq!(*world.furnace_fuel_item_ids(), BTreeSet::from([43]));
+
+        // A fresh listener (login/configuration re-entry) owns fresh final
+        // Scoreboard and pending-recipe state, while CommonListenerCookie
+        // carries enabled features and the registry-derived brewing/fuel
+        // values persist until the next registry rebuild overwrites them.
+        world.clear_client_level();
+        assert!(world.scoreboard.objectives.is_empty());
+        assert!(world.recipes().property_sets.is_empty());
+        assert!(world.is_feature_enabled("minecraft:vanilla"));
+        assert_eq!(*world.items.brewing_potion_item_ids, BTreeSet::from([44]));
+        assert_eq!(*world.furnace_fuel_item_ids(), BTreeSet::from([43]));
+    }
+
+    #[test]
+    fn client_world_owns_no_scheduled_tick_simulation_or_socket() {
+        // Vanilla `ClientLevel.getBlockTicks`/`getFluidTicks` return
+        // `BlackholeTickAccess`: the client never simulates scheduled ticks,
+        // every block/fluid change arrives as a server packet. The world
+        // crate must not grow a scheduled-tick queue, and
+        // `sendPacketToServer` delegation means it must not own a socket.
+        let production = |source: &'static str| {
+            source
+                .split("#[cfg(test)]")
+                .next()
+                .expect("production source")
+                .to_string()
+        };
+        let source = production(include_str!("store.rs"))
+            + &production(include_str!("level.rs"))
+            + &production(include_str!("chunks/store.rs"));
+        assert_eq!(source.matches("scheduled_tick").count(), 0);
+        assert_eq!(source.matches("TcpStream").count(), 0);
+        assert_eq!(
+            source.matches("std::net").count(),
+            0,
+            "outbound packets leave only through the net crate's send path"
+        );
+    }
+
+    #[test]
     fn horizon_height_and_void_darkness_range_follow_the_flat_level_flag() {
         let mut world = WorldStore::new();
         // Without a level the non-flat defaults apply.

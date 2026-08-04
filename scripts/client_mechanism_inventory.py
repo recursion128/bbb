@@ -2142,6 +2142,87 @@ CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-net/src/connection.rs#send_packet",),
+            (
+                "crates/bbb-net/src/driver.rs#drive_connection_sends_movement_net_commands_in_play",
+                "crates/bbb-world/src/level.rs#client_world_owns_no_scheduled_tick_simulation_or_socket",
+            ),
+        ),
+        ("sendPacketToServer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/recipes.rs#apply_update_recipes",
+                "crates/bbb-world/src/recipes.rs#reset_recipes_for_new_listener",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+            ),
+        ),
+        ("recipeAccess",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/chunks/store.rs#set_block_state_id",),
+            (
+                "crates/bbb-world/src/level.rs#client_world_owns_no_scheduled_tick_simulation_or_socket",
+            ),
+        ),
+        ("getBlockTicks", "getFluidTicks"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/scoreboard.rs#apply_set_objective",
+                "crates/bbb-world/src/level.rs#clear_client_level",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+            ),
+        ),
+        ("getScoreboard",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/features.rs#is_feature_enabled",),
+            (
+                "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+            ),
+        ),
+        ("enabledFeatures",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/item_profiles.rs#set_brewing_potion_item_ids",
+                "crates/bbb-native/src/resource_reload.rs#apply",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+                "crates/bbb-world/src/client/inventory/tests.rs#apply_local_brewing_stand_pickup_all_collects_matching_menu_and_player_stacks",
+            ),
+        ),
+        ("potionBrewing",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/item_profiles.rs#set_furnace_fuel_item_ids",
+                "crates/bbb-world/src/client/inventory.rs#furnace_fuel_item_ids",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+                "crates/bbb-world/src/client/inventory/tests.rs#local_container_slot_access_matches_specialized_input_predicates",
+            ),
+        ),
+        ("fuelValues",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2150,6 +2231,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-clock-weather": CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE,
     "world-client-ambient-animation": CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE,
     "world-client-respawn-data": CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE,
+    "world-client-session-services": CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

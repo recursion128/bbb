@@ -58,12 +58,6 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-session-services` (8 owners).** Verify the connection-scoped
-  service delegations: every service survives respawn; a fresh listener resets
-  only scoreboard/recipes while enabled features (cookie-carried) and
-  brewing/fuel (registry-rebuilt) carry; packets leave only through the single
-  net send path; block/fluid ticks stay the vanilla client blackhole (no
-  scheduled-tick simulation).
 - **`world-client-map-data` (4 owners).** Verify map get/set/free identity,
   replacement and retained-byte lifetime through the canonical map store.
 - **`world-client-level-events` (3 owners).** Verify global/level/explosion event

@@ -279,6 +279,26 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        session_services_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-session-services"
+        ]
+        self.assertEqual(len(session_services_owners), 8)
+        self.assertEqual(
+            value["mechanisms"]["world-client-session-services"][
+                "owner_evidence_count"
+            ],
+            8,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in session_services_owners
+            )
+        )
         respawn_data_owners = [
             owner
             for owner in methods

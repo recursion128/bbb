@@ -171,6 +171,20 @@ fog 颜色的 void darkness 基值（clamp((range+minY−camera.y)/range)，效�
 (1−darkness)² 应用；bbb 无 POWDER_SNOW camera fog 变体，排除面即 LAVA）。不得另建第二个
 difficulty/spawn 存储或 renderer 侧 horizon 判定。
 
+### ClientLevel session-services owner
+
+八个 session-services owner 全部是 connection-scoped 委托：`WorldStore` 持
+scoreboard/recipes/enabled features/brewing/fuel 的唯一状态，任意 respawn（同/跨维度）全部
+携带；`clear_client_level`（login/configuration 重入=新 listener）只清 scoreboard（vanilla
+fresh final field）与 recipes（待重下发），enabled features 经 CommonListenerCookie 携带，
+brewing/fuel 由 registry-dependent resource reload 覆盖式重建（旧值保留至新值到达）。分界由
+复合生命周期测试锁定。
+
+`getBlockTicks`/`getFluidTicks` 恒为 BlackholeTickAccess：客户端不模拟 scheduled tick，方块/
+流体变化只来自服务器包（唯一入口 `set_block_state_id`）；`sendPacketToServer` 只委托当前
+connection——world crate 无 socket、无 scheduled-tick 队列，由 source guard 断言，出站包唯一
+经 `bbb-net` 的 `send_packet`。不得为任一服务另建可独立替换的缓存或第二条出站路径。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

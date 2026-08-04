@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "ffd323dcc40fc4277bd3eabebadeeb15c8e786dcde639adad2e560e39ba34946"
+      "sha256": "ad8ef60da68f2d668dcd6c6ec02641fc185245c6bc8b70ab227fa87742632662"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -686,7 +686,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/registries.rs"
       ],
-      "owner_count": 8
+      "owner_count": 8,
+      "owner_evidence_count": 8
     }
   },
   "owners": [
@@ -18147,6 +18148,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#dragonParts()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/features.rs#is_feature_enabled"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -18244,6 +18253,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#fillReportDetails(final CrashReport report)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/item_profiles.rs#set_furnace_fuel_item_ids",
+          "crates/bbb-world/src/client/inventory.rs#furnace_fuel_item_ids"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+          "crates/bbb-world/src/client/inventory/tests.rs#local_container_slot_access_matches_specialized_input_predicates"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -18314,6 +18333,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getBlockStatePredictionHandler()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#client_world_owns_no_scheduled_tick_simulation_or_socket"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -18451,6 +18478,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntityCount()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#client_world_owns_no_scheduled_tick_simulation_or_socket"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -18582,6 +18617,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getRespawnData()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/scoreboard.rs#apply_set_objective",
+          "crates/bbb-world/src/level.rs#clear_client_level"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -18969,6 +19013,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#pollLightUpdates()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/item_profiles.rs#set_brewing_potion_item_ids",
+          "crates/bbb-native/src/resource_reload.rs#apply"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener",
+          "crates/bbb-world/src/client/inventory/tests.rs#apply_local_brewing_stand_pickup_all_collects_matching_menu_and_player_stacks"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -19007,6 +19061,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#queueLightUpdate(final Runnable update)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/recipes.rs#apply_update_recipes",
+          "crates/bbb-world/src/recipes.rs#reset_recipes_for_new_listener"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#connection_services_survive_respawn_and_reset_only_with_the_listener"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -19102,6 +19165,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#sendBlockUpdated(final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-net/src/connection.rs#send_packet"
+        ],
+        "tests": [
+          "crates/bbb-net/src/driver.rs#drive_connection_sends_movement_net_commands_in_play",
+          "crates/bbb-world/src/level.rs#client_world_owns_no_scheduled_tick_simulation_or_socket"
+        ]
+      },
       "category": "session-services",
       "domain": "world",
       "kind": "method",
@@ -41923,6 +41995,7 @@
       "world-client-clock-weather",
       "world-client-ambient-animation",
       "world-client-respawn-data",
+      "world-client-session-services",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"
