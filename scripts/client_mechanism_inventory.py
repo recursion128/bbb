@@ -2223,6 +2223,74 @@ CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/biome_tint.rs#build_biome_blend",
+                "crates/bbb-native/src/terrain_runtime.rs#build_chunk_biome_blend",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_biome_blend_is_centered_at_each_spawn_position",
+                "crates/bbb-native/src/particle_runtime/tests.rs#local_destroy_hit_particle_uses_captured_biome_blend",
+            ),
+        ),
+        ("calculateBlockTint",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_color",
+                "crates/bbb-native/src/terrain_runtime/textures.rs#terrain_tint_particle_rgb",),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_commands_use_installed_block_tint_colors",
+                "crates/bbb-native/src/particle_runtime/tests.rs#falling_dust_block_tint_uses_biome_blend_at_spawn_position",
+            ),
+        ),
+        ("getBlockTint",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime.rs#next_terrain_cache_work",),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap",
+            ),
+        ),
+        ("clearTintCaches",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/chunks/store.rs#biome_id_at",),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#falling_dust_tint_samples_biome_foliage_color_at_spawn_position",
+            ),
+        ),
+        ("getUncachedNoiseBiome",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#cardinal_lighting",
+                "crates/bbb-native/src/terrain_runtime.rs#terrain_cardinal_lighting",
+            ),
+            (
+                "crates/bbb-renderer/src/terrain/mesh/tests.rs#terrain_diffuse_uses_vanilla_nether_cardinal_shade",
+                "crates/bbb-native/src/terrain_runtime/textures/tests.rs#moving_block_quads_use_start_seed_and_cardinal_context",
+            ),
+        ),
+        ("cardinalLighting",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/terrain_runtime/textures.rs#client_leaf_tint_color",),
+            (
+                "crates/bbb-native/src/environment_animate_runtime.rs#leaf_particles_preserve_untinted_and_fixed_color_profiles",
+                "crates/bbb-native/src/particle_runtime/tests.rs#tinted_leaves_particle_options_decode_argb_color_into_spawn_command",
+            ),
+        ),
+        ("getClientLeafTintColor",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2232,6 +2300,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-ambient-animation": CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE,
     "world-client-respawn-data": CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE,
     "world-client-session-services": CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE,
+    "rendering-client-biome-tint": CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "ad8ef60da68f2d668dcd6c6ec02641fc185245c6bc8b70ab227fa87742632662"
+      "sha256": "0dc6dcb58bb1acf70569d425beb7ad6cd35ccf61492f4a5d3d84e1fb129cfb9a"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -353,7 +353,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/biome_tint.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "rendering-client-block-entity-tracking": {
       "bbb_evidence": [
@@ -17943,6 +17944,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#animateTick(final int xt,final int yt,final int zt)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/biome_tint.rs#build_biome_blend",
+          "crates/bbb-native/src/terrain_runtime.rs#build_chunk_biome_blend"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_biome_blend_is_centered_at_each_spawn_position",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_destroy_hit_particle_uses_captured_biome_blend"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -17971,6 +17982,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#calculateParticleLevel(final boolean alwaysShowParticles)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#cardinal_lighting",
+          "crates/bbb-native/src/terrain_runtime.rs#terrain_cardinal_lighting"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#terrain_diffuse_uses_vanilla_nether_cardinal_shade",
+          "crates/bbb-native/src/terrain_runtime/textures/tests.rs#moving_block_quads_use_start_seed_and_cardinal_context"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -17985,6 +18006,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#cardinalLighting()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime.rs#next_terrain_cache_work"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_tint_snapshot_accepts_session_biome_remap"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -18355,6 +18384,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getBlockTicks()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_color",
+          "crates/bbb-native/src/terrain_runtime/textures.rs#terrain_tint_particle_rgb"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#terrain_particle_commands_use_installed_block_tint_colors",
+          "crates/bbb-native/src/particle_runtime/tests.rs#falling_dust_block_tint_uses_biome_blend_at_spawn_position"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -18383,6 +18422,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getChunkSource()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/terrain_runtime/textures.rs#client_leaf_tint_color"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#leaf_particles_preserve_untinted_and_fixed_color_profiles",
+          "crates/bbb-native/src/particle_runtime/tests.rs#tinted_leaves_particle_options_decode_argb_color_into_spawn_command"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -18691,6 +18739,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getSkyFlashTime()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#biome_id_at"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#falling_dust_tint_samples_biome_foliage_color_at_spawn_position"
+        ]
+      },
       "category": "biome-tint",
       "domain": "rendering",
       "kind": "method",
@@ -41996,6 +42052,7 @@
       "world-client-ambient-animation",
       "world-client-respawn-data",
       "world-client-session-services",
+      "rendering-client-biome-tint",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

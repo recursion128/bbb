@@ -67,12 +67,6 @@ consumer, fallback and applicable live evidence.
   membership and drops stale membership at the exact removal/replacement boundary.
 - **`rendering-client-particle-routing` (6 owners).** Verify force, distance,
   always-visible and source ordering through the bounded particle projection.
-- **`rendering-client-biome-tint` (6 owners).** Verify the implemented blend
-  window (vanilla default radius, fixed-y plane), the derivational tint-cache
-  fold (per-remesh/per-spawn recomputation instead of an invalidatable cache),
-  the cardinal-lighting projection and the leaf tint source, and record the
-  honest-truncation divergence: an unloaded biome column drops out of the blend
-  average instead of fabricating the vanilla PLAINS fallback.
 - **`audio-client-level-sound-routing` (6 owners).** Verify local/entity/delayed/
   seeded sound decisions, listener-relative behavior and generation-safe lazy audio
   submission through the single audio event path.

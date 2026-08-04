@@ -279,6 +279,24 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        biome_tint_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-client-biome-tint"
+        ]
+        self.assertEqual(len(biome_tint_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["rendering-client-biome-tint"]["owner_evidence_count"],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in biome_tint_owners
+            )
+        )
         session_services_owners = [
             owner
             for owner in methods

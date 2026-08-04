@@ -455,28 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel biome-tint
-
-- 目标与 owner：闭合 `ClientLevel` biome-tint 6 个 owner（getBlockTint、calculateBlockTint、
-  clearTintCaches、getUncachedNoiseBiome、cardinalLighting、getClientLeafTintColor）；tint
-  决策全部由 world biome 数据 + native 派生链唯一拥有，renderer 不做 world 读取。
-- Vanilla 语义：calculateBlockTint 按 biomeBlendRadius 的 x/z 平面窗口（Cursor3D 固定
-  y）平均 resolver 色；getBlockTint 经 per-resolver BlockTintCache；clearTintCaches 全失效；
-  getUncachedNoiseBiome 恒 PLAINS；cardinalLighting=dimensionType.cardinalLightType；
-  getClientLeafTintColor 取 state 的 tint source 世界色供 TINTED_LEAVES 粒子。
-- bbb 等价（零实现缺口，只补 evidence）：blend=`build_biome_blend` 固定 vanilla 默认
-  radius 2（无 options UI）；tint cache 折叠为 meshing/spawn 时按需派生+remesh 失效链，无
-  可失效缓存；biome 采样 None（未加载列）诚实剔除样本而非 fabricate PLAINS——记录为
-  设计差异，重开判据=可见 tint 分歧证据；cardinal 经 level→terrain 投影；leaf tint 经
-  terrain tint catalog + ClientLeaf color source。
-- focused evidence：既有 blend/tint/leaf/cardinal focused tests 注册进 census 6-owner
-  OwnerEvidence + scripts/tests 断言；无新增代码面。
-- 非目标：不实现 biomeBlendRadius option、噪声 biome 生成或 PLAINS fabricate；发现其他
-  缺口只登记既有 route。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节（含差异判据）、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 6-owner evidence 完整的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

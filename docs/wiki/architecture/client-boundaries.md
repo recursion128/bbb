@@ -185,6 +185,19 @@ brewing/fuel 由 registry-dependent resource reload 覆盖式重建（旧值保�
 connection——world crate 无 socket、无 scheduled-tick 队列，由 source guard 断言，出站包唯一
 经 `bbb-net` 的 `send_packet`。不得为任一服务另建可独立替换的缓存或第二条出站路径。
 
+### ClientLevel biome-tint owner
+
+六个 biome-tint owner 收敛为 world biome 数据→native 派生链，renderer 只消费成品颜色：
+`build_biome_blend`/`build_chunk_biome_blend` 以 vanilla 默认 biomeBlendRadius=2 的固定 y
+x/z 窗口平均 resolver 色（无 options UI，半径不可变）；vanilla per-resolver `BlockTintCache`
+与 `clearTintCaches` 折叠为 meshing/粒子 spawn 时按需重算 + section remesh 失效链，无可失效
+缓存实体；cardinal lighting 由 `level.cardinal_lighting`→`terrain_cardinal_lighting` 投影；
+TINTED_LEAVES 粒子色经 `client_leaf_tint_color` + `ClientLeaf` color source 唯一解析。
+
+已记录差异：vanilla `getUncachedNoiseBiome` 对未加载 chunk fabricate 恒 PLAINS，bbb 的
+`biome_id_at` 返回 None 并把该列诚实剔除出 blend 平均（不伪造样本）；重开判据=出现可见
+tint 分歧证据。不得在 renderer 侧新增 world biome 读取或第二条 tint 解析路径。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的
