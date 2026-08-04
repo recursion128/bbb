@@ -461,6 +461,29 @@ Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级
 active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
 不得借此加入 title、singleplayer、Realms 或 options UI。
 
+#### Active contract：rendering-block-entity-registration
+
+- 目标与完成标准：闭合 `BlockEntityRenderers` 27 条注册 owner，每条有一格机械
+  可达 evidence（实现 + focused test）；matrix 行翻 `equivalent`，账本删项。
+- 审计事实：18 条已有唯一提交链（sign/hanging_sign、end_portal/end_gateway、
+  skull、banner、shulker_box、bed、conduit、bell、mob_spawner、trial_spawner、
+  decorated_pot、chest/ender_chest/trapped_chest、enchanting_table、lectern）
+  属验证型；9 条真缺口需产码：beacon 光柱、campfire/vault/shelf/brushable 的
+  item 展示、structure_block/test_instance_block 包围盒、copper_golem_statue
+  雕像模型、piston 移动方块。
+- 串行阶段：① item 展示四项（campfire/vault/shelf/brushable，复用既有
+  item-model 提交链）；② beacon 光柱（world 侧 beam section 扫描 + 复用
+  end-gateway 已有 beacon_beam 几何/管线）；③ structure_block 与
+  test_instance_block 包围盒/错误标记；④ copper_golem_statue 雕像；
+  ⑤ piston 移动方块与 head；⑥ census close（27 evidence cell + 边界页 owner
+  节 + archive 行）。
+- 非目标：不改 block-entity 可见性/视距既有语义，不新增 texture-backed
+  direct mesh bypass，不做 Gui/GameRenderer step route（各自 route 另立）。
+- 每阶段 focused tests：对应 world 投影 + native scene + renderer 提交断言。
+- checkpoint：每阶段一次干净提交，累计 4 个提交或阶段跨 crate 里程碑时 gate；
+  ⑥ 触及 generator 属高风险，单独一次完整 gate；最终 HEAD 必须 full-gated。
+- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
+
 ### P3：动态资源 presentation breadth
 
 状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、
