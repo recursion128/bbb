@@ -500,6 +500,28 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
+#### Active contract：rendering-hud-step-surface
+
+- 目标与完成标准：闭合 `Gui.java` 72 owner。按语义 owner 拆成同构 sub-route，
+  未分类方法 fail-closed，逐 owner 挂机械可达 evidence，matrix 行翻
+  `equivalent`，账本对应 active 项收敛。
+- 审计事实：仓内 HUD 由 `runtime/render_extract.rs` + `runtime/hud.rs` 承载，
+  已有大量 focused 与 pixel 测试但无逐 owner evidence cell。72 owner 里 7 个是
+  直接字段返回（CST 判据实测：`getFont`/`getChat`/`getTabList`/`getBossOverlay`/
+  `getDebugOverlay`/`getSpectatorGui`/`getGuiTicks`，归 support accessor），
+  其余 65 个是决策面。
+- 串行阶段：① 逐 method 路由表与 fail-closed 判据；②～⑥ 按 sub-route 逐族补齐
+  实现缺口与 focused evidence（frame order / vitals / hotbar+crosshair /
+  overlay effects / text+lists）；⑦ census close。每族先 grep 现有 owner 再动手，
+  证伪「已实现」比新增实现优先。
+- 非目标：不改单一 frame-extract/submission 路径，不加 title/singleplayer/
+  Realms/options UI，不把 pixel 测试替换成结构断言。
+- 每阶段 focused tests：owner 级投影断言；涉及像素的族补 readback。
+- checkpoint：① 与 ⑦ 触及 generator 属高风险，各自单独一次完整 gate；②～⑥ 每
+  族一次干净提交，累计 4 个提交时 gate；最终 HEAD 必须 full-gated，且因 HUD
+  改动需再跑一次 live playable gate（headless weston，见 memory 配方）。
+- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
+
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
