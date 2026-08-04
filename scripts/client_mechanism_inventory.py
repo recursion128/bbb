@@ -2706,6 +2706,89 @@ LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/inventory.rs#drop_local_selected_hotbar_item",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#drop_key_predicts_one_selected_item_and_swings_when_non_empty",
+                "crates/bbb-native/src/input/tests.rs#control_drop_key_predicts_selected_stack_and_swings_when_non_empty",
+            ),
+        ),
+        ("drop",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_swing_command",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#spectator_drop_key_does_not_drop_or_swing",
+            ),
+        ),
+        ("swing",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/inventory/creative.rs#submit_action_inner",
+            ),
+            (
+                "crates/bbb-native/src/input/inventory/creative.rs#creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner",
+            ),
+        ),
+        ("canDropItems", "handleCreativeModeItemDrop"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/inventory.rs#close_local_container",
+                "crates/bbb-native/src/input/commands.rs#queue_container_close_command",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#escape_key_closes_local_inventory_and_queues_container_zero",
+            ),
+        ),
+        ("closeContainer", "clientSideCloseContainer"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#handle_key_input_with_item_runtime",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command",
+                "crates/bbb-native/src/input/tests.rs#inventory_key_closes_open_container_before_open_inventory_command",
+            ),
+        ),
+        ("sendOpenInventory",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/recipe_book.rs#remove_recipe_highlight",
+            ),
+            (
+                "crates/bbb-world/src/recipe_book.rs#local_recipe_highlight_removal_is_guarded_and_updates_counts",
+            ),
+        ),
+        ("removeRecipeHighlight",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/inventory.rs#apply_local_container_click_slot",
+            ),
+            (
+                "crates/bbb-world/src/client/inventory/tests.rs#apply_local_mount_quick_move_moves_mount_slots_to_player_reverse",
+            ),
+        ),
+        ("updateTutorialInventoryAction",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2870,6 +2953,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-environment-effects": LOCAL_PLAYER_ENVIRONMENT_EFFECTS_OWNER_EVIDENCE,
     "player-local-world-edit-ui": LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE,
     "player-local-camera-targeting": LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE,
+    "player-local-inventory-actions": LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

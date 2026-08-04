@@ -96,9 +96,6 @@ preserving the two former broad `partial` claims.
 - **`player-local-item-use-state`** — world interaction state is the only hand/use latch
   and movement/render/audio consumers must read it. Close after local start/stop,
   metadata reconciliation, speed multiplier and stale-generation behavior are mapped.
-- **`player-local-inventory-actions`** — native inventory input and world inventory are
-  the intended owners for drop, swing, close, recipe, creative drop and throttling.
-  Close after all nine owners prove local mutation/packet/screen order and rollback.
 - **`interaction-game-mode-lifecycle`** — canonical game type/abilities live in world
   session state and native only projects them. Close after the seven mode/player-create
   owners prove previous-mode carry, replacement generation and stale-session rejection.

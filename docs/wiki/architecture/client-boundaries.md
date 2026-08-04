@@ -92,6 +92,21 @@ isControlledCamera 由 `apply_set_camera` 的 follows_player 判定与 native
 `camera_entity_id` 消费拥有。不得建第二条 raycast 路径或在 native 内联 camera
 判定。
 
+## LocalPlayer inventory-actions owner
+
+九个 inventory-actions owner 各有唯一链：drop 由 world
+`drop_local_selected_hotbar_item`（Q/Ctrl-Q 本地预测）+ 非空时 `queue_swing_command`
+拥有，spectator 剔除在 key 层；closeContainer/clientSideCloseContainer 由
+`close_local_container` + `queue_container_close_command` 唯一拥有（Esc/E 与
+portal transition 消费同一命令链）；sendOpenInventory 由
+`handle_key_input_with_item_runtime` 的 E 键分支（server-controlled mount 走
+OpenInventory 命令）拥有；canDropItems/handleCreativeModeItemDrop 由 creative
+`submit_action_inner` 的 drop-spam throttler（+20/1280、tick -1、仅 creative
+increment——vanilla survival 门恒真；creative 下普通容器 THROW 未查 throttler
+为有界差异）拥有；removeRecipeHighlight 由 recipe_book 守卫删除拥有；
+updateTutorialInventoryAction 的 vanilla hook 为空方法，owner 挂
+`apply_local_container_click_slot` 调用链。不得建第二条 drop 预测或 close 命令路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

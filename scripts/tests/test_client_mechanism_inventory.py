@@ -258,6 +258,26 @@ public class Owner {
                 for owner in camera_targeting_owners
             )
         )
+        inventory_actions_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-inventory-actions"
+        ]
+        self.assertEqual(len(inventory_actions_owners), 9)
+        self.assertEqual(
+            value["mechanisms"]["player-local-inventory-actions"][
+                "owner_evidence_count"
+            ],
+            9,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in inventory_actions_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

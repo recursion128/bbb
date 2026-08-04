@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "b5681cd8f7fe33eddd6494e2c8542c661422391405c8ae01ceb5da742f09bd40"
+      "sha256": "a77999b9a03d23047626bcf2bf8ebea7fc3efe7b69e61507596ab5fc7154dd4c"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -251,7 +251,8 @@
         "crates/bbb-native/src/input/inventory.rs",
         "crates/bbb-world/src/client/inventory.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "player-local-item-use-state": {
       "bbb_evidence": [
@@ -24248,6 +24249,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#canAutoJump()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/inventory/creative.rs#submit_action_inner"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/creative.rs#creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -24328,6 +24337,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#chatAbilities()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/inventory.rs#close_local_container",
+          "crates/bbb-native/src/input/commands.rs#queue_container_close_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#escape_key_closes_local_inventory_and_queues_container_zero"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -24342,6 +24360,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#clientSideCloseContainer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/inventory.rs#close_local_container",
+          "crates/bbb-native/src/input/commands.rs#queue_container_close_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#escape_key_closes_local_inventory_and_queues_container_zero"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -24404,6 +24431,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#distanceToUnitSquare(final Vec2 direction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/inventory.rs#drop_local_selected_hotbar_item"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#drop_key_predicts_one_selected_item_and_swings_when_non_empty",
+          "crates/bbb-native/src/input/tests.rs#control_drop_key_predicts_selected_stack_and_swings_when_non_empty"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -24698,6 +24734,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#getWaterVision()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/inventory/creative.rs#submit_action_inner"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/inventory/creative.rs#creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -25550,6 +25594,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#refreshChatAbilities()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/recipe_book.rs#remove_recipe_highlight"
+        ],
+        "tests": [
+          "crates/bbb-world/src/recipe_book.rs#local_recipe_highlight_removal_is_guarded_and_updates_counts"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -25634,6 +25686,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendIsSprintingIfNeeded()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#handle_key_input_with_item_runtime"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command",
+          "crates/bbb-native/src/input/tests.rs#inventory_key_closes_open_container_before_open_inventory_command"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -25934,6 +25995,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#suffocatesAt(final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_swing_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#spectator_drop_key_does_not_drop_or_swing"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -26023,6 +26092,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateIsUnderwater()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/inventory.rs#apply_local_container_click_slot"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/inventory/tests.rs#apply_local_mount_quick_move_moves_mount_slots_to_player_reverse"
+        ]
+      },
       "category": "inventory-action",
       "domain": "interaction",
       "kind": "method",
@@ -42745,6 +42822,7 @@
       "player-local-environment-effects",
       "player-local-world-edit-ui",
       "player-local-camera-targeting",
+      "player-local-inventory-actions",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
