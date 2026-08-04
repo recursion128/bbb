@@ -455,6 +455,37 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel chunk-light lifecycle
+
+- 目标与 owner：闭合 Vanilla 26.1 `ClientLevel` `onChunkLoaded`、`unload`、`queueLightUpdate`、
+  `pollLightUpdates`、`update` 五个 owner；`WorldStore` 的 chunk store + light 队列是 chunk 替换/
+  丢弃与光照启用的唯一 canonical owner，native terrain 只消费 generation/revision 投影。
+- Vanilla 决策序：chunk-with-light 同步替换内容（同 pos 原位、越界丢弃）→ `onChunkLoaded`
+  （tint 失效 + startTicking）→ light 数据入队；`update()` 每帧先 poll（size<1000 时
+  `max(10, size/10)` 否则全量）再 runLightUpdates；chunk 首次可渲染由 queued light 应用后的
+  `setSectionRangeDirty(±1 全高)` + `onChunkReadyToRender` 决定；forget → 同步 drop + `unload`
+  （clearAllBlockEntities → setLightEnabled(false) → stopTicking）+ queued light removal；
+  standalone light update 同样入队且应用尾部 `setLightEnabled(true)`。
+- cache/ordering：把 packet 路径 insert 时的 terrain 标记推迟到 queued initial light 应用点
+  （vanilla 光照先于 mesh dirty；修正 bounded drain 下 mesh 带空光照且永不重建的竞态）；新增
+  `chunks_pending_initial_light` sidecar（serde skip、正常 Clone 过 publication）等价 vanilla
+  light-engine per-chunk enabled 标志；native mesh target 扫描跳过 pending chunk（fresh=洞、
+  re-send=旧 mesh 保留，均为 vanilla 可观察行为）；邻接 snapshot 上下文不受 pending 影响
+  （vanilla `shouldRenderFace` 读真实邻块）。
+- lifecycle/rollback：forget/prune/level teardown 清 pending 与队列；restore 的空队列世界默认
+  全 enabled；direct `insert_decoded_chunk` 调用方（light 随列内联）保持 insert 即 enabled。
+- API/删除目标：删除 immediate `apply_light_update` 第二入口（唯一测试调用方迁移到
+  queue+poll）；不新增第二 light resolver 或跨 crate API 扩宽。
+- focused evidence：五个 owner 的 implementation/test cell；ordering（insert 不推 terrain
+  revision、initial apply 推 chunk+邻居全高）、pending 生命周期（insert→apply/forget/prune/
+  teardown）、budget/FIFO 与 meta 顺序测试（已有）、native 跳过 pending target。
+- 非目标：`setBlocksDirty` 等 dirty-handoff 其余 owner、level-events、biome tint 内部机制、
+  audio routing；发现缺口只登记对应既有 route。
+- acceptance/gate：world/native focused tests、inventory exact-output/source guard、docs lint/
+  fmt/diff/workspace check；高风险提交后 full gate，并刷新 fixture/live playable stamp。
+- 安全停止点/blocker：只允许合同 full-gated 提交，或五个 owner evidence 完整、ordering/pending
+  语义落地且 focused/live/full gate 全通过的干净提交；内部测试失败不是 external blocker。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
