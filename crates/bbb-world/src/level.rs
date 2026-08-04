@@ -969,6 +969,13 @@ impl WorldStore {
         }
         self.gameplay.game_type = game_type.id();
         self.gameplay.game_type_name = game_type.serialized_name().to_string();
+        // Vanilla `LocalPlayer.onGameModeChanged`: entering spectator zeroes
+        // the vertical motion so the camera does not keep falling.
+        if game_type.id() == VANILLA_GAME_TYPE_SPECTATOR_ID {
+            if let Some(pose) = self.local_player.pose.as_mut() {
+                pose.delta_movement.y = 0.0;
+            }
+        }
     }
 
     fn clear_level_bound_state(&mut self) {
@@ -2481,11 +2488,25 @@ mod tests {
         });
 
         assert!(!store.local_player_is_spectator());
+        store.set_local_player_pose(crate::LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: -0.5,
+                z: 0.2,
+            },
+            ..crate::LocalPlayerPoseState::default()
+        });
         store.apply_game_event(ProtocolGameEvent {
             event_id: 3,
             param: 3.0,
         });
         assert!(store.local_player_is_spectator());
+        let pose = store.local_player().pose.expect("pose survives the switch");
+        assert_eq!(
+            pose.delta_movement.y, 0.0,
+            "entering spectator zeroes vertical motion like onGameModeChanged"
+        );
+        assert_eq!(pose.delta_movement.x, 0.1);
         store.apply_game_event(ProtocolGameEvent {
             event_id: 11,
             param: 1.0,

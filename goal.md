@@ -456,6 +456,23 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：五条同族验证型 route 批量收口
+
+- 目标与 owner：闭合 `player-local-client-status-options`（4）、
+  `interaction-item-use`（4）、`interaction-entity-actions`（4）、
+  `interaction-container-actions`（4）、`interaction-creative-actions`（2）
+  共 18 个 owner——全部为既有命令/预测链的验证型注册（≤5 同族批量门禁内）。
+- 审计事实：status options 由 game event/entity event 链拥有（onGameModeChanged
+  的 spectator Y 清零为本合同唯一补实现）；item-use 由 reserved use-item 命令
+  与 use-prediction 链、entity-actions 由 attack/interact/spectate 命令链、
+  container-actions 由 click/button/recipe/slot-state 命令链、creative-actions
+  由 creative submit 链拥有，各有 focused tests。
+- focused evidence：census 18-owner OwnerEvidence + scripts/tests 断言块。
+- 非目标：不动命令/预测语义；发现其他 route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
