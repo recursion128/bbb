@@ -223,6 +223,20 @@ pick-actions 三 owner 由中键路由的
 唯一拥有（crosshair 命中分派 block/entity、include-data 由修饰键决定）。不得
 另建 held-slot 或 pick 命令入口。
 
+## PauseScreen 决策面 owner
+
+`PauseScreen` 17 owner 加 `Minecraft.pauseGame` 由 pause input/投影唯一链拥有：
+按钮网格与 feedback 两页由预计算矩形路由，custom-additions 三分支（单
+dialog、多条→builtin CUSTOM_OPTIONS list、serverLinks→SERVER_LINKS）由
+world 侧 tag 解析拥有；链接经 chat-url 确认 owner；disconnect 按
+`draftReportHandled(quitToTitle=true)` 语义——有草稿先经 renderer 同源
+confirmation layout 的 Edit/Discard 确认页（Edit 打开草稿编辑屏、退出恢复
+pause，Discard/Esc 丢草稿并断开），draft sprite 投影在 disconnect 按钮右上。
+F3+Esc 与 Esc 共走 with-menu 打开（vanilla 外部客户端 `canGameReallyBePaused`
+恒 false）；no-menu 变体是 singleplayer-only 分支，仅保留渲染契约；
+`rendersNowPlayingToast` 因 `musicToast` 默认 `NEVER` 且 options UI
+out-of-scope 恒 false。不得另建 pause 打开入口或第二条 disconnect 路径。
+
 ## UI screen-lifecycle owner
 
 `Minecraft.setScreen/setOverlay/canInterruptScreen` 三 owner 由 per-screen 状态

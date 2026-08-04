@@ -75,7 +75,7 @@
   count/retained-byte 分区、背压与 terminal close，control 拒绝及 generation diagnostics 可观测。
 - **2026-08-03（MenuScreens registration closure）**：25 项 menu-type→screen-kind 映射改由
   Tree-sitter catalog 唯一生成，并逐项贯通 world、layout/input、render 与 close lifecycle。
-- **2026-08-03/04（screen inventory split + ui-screen-lifecycle）**：66-owner 屏幕面拆 Chat 25/Death 16/Disconnected 8/Pause 17 四 route；setScreen/setOverlay/canInterruptScreen 3 owner 经 per-screen 替换（cursor 统一判定、teardown 全关）、reload barrier overlay 与 debug-options 开门收口。
+- **2026-08-03/04（screen split + screen-lifecycle + PauseScreen 全闭）**：66-owner 屏幕面拆四 route 后全部 equivalent；setScreen/setOverlay/canInterruptScreen 经 per-screen 替换/reload barrier/debug-options 开门收口；PauseScreen 18 owner 补 disconnect draftReportHandled 确认+draft sprite、F3+Esc with-menu 化（no-menu 归单人分类）、NowPlayingToast 经 musicToast=NEVER 证伪——多人 screen surface 账本节关闭。
 - **2026-08-03（remote disconnect screen lifecycle）**：远端 typed terminal outcome 经原子
   session teardown、唯一 input owner 与 immutable renderer/control projection 呈现并保持存活。
 - **2026-08-03（indexed disconnect panorama）**：默认 pack 六面/overlay 经唯一 CPU catalog、

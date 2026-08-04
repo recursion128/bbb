@@ -85,18 +85,6 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   registration, 70 GUI owner and 46 game-renderer owner. Split only by semantic
   owner and preserve the single frame-extract/submission path.
 
-## Multiplayer screen surface closure
-
-Owner: `bbb-native` + `bbb-renderer` + `bbb-world`
-
-Matrix routes: `ui-chat-screen-surface`, `ui-death-screen-surface`,
-`ui-pause-screen-surface`, `ui-screen-lifecycle`
-
-- **The 17-owner `PauseScreen` decision surface is `active`.** Audit external-
-  multiplayer pause menu, server dialog/link, reporting, disconnect, toast,
-  render and close lifecycle against the existing pause-screen owner; classify
-  singleplayer-only branches precisely rather than implementing them.
-
 ## Native input, accessibility and window lifecycle closure
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-control`
