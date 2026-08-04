@@ -451,27 +451,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
 census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 13 条 census route 由唯一账本
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 12 条 census route 由唯一账本
 排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
-
-#### Active contract：game-mode lifecycle
-
-- 目标与 owner：闭合 `interaction-game-mode-lifecycle` 7 个 owner
-  （MultiPlayerGameMode 构造器、setLocalMode×2、adjustPlayer、createPlayer×2、
-  canSwitchGameMode）。
-- 审计事实：game type 由 GameEvent CHANGE_GAME_MODE 唯一设置
-  （set_game_type_from_game_event_param）；login/respawn 玩家重建链
-  （reset_local_player_for_login/for_respawn，keep-data 分支）已有 focused
-  tests；abilities 由 game_type_player_abilities 唯一映射；canSwitchGameMode
-  由 F3+F4 switcher 开门判定拥有——全部验证型，无缺口。
-- focused evidence：census 7-owner OwnerEvidence + scripts/tests 断言块
-  （local-player 分区测试）。
-- 非目标：不动 respawn/login packet 语义；发现其他 route 缺口只登记账本。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 7-owner evidence 完整的干净提交。
 
 ### P2：屏幕、HUD、字体与截图
 

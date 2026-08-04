@@ -2939,6 +2939,56 @@ LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#set_game_type_from_game_event_param",
+                "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape",
+                "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state",
+            ),
+        ),
+        ("MultiPlayerGameMode", "setLocalMode"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#game_type_player_abilities",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#login_player_abilities_match_vanilla_game_types",
+            ),
+        ),
+        ("adjustPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#reset_local_player_for_respawn",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+                "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state",
+            ),
+        ),
+        ("createPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#debug_game_mode_switcher_can_open",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_f4_game_mode_switcher_does_not_open_over_existing_screen",
+            ),
+        ),
+        ("canSwitchGameMode",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3107,6 +3157,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-vehicle-control": LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE,
     "player-local-item-use-state": LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE,
     "player-local-permission-chat-state": LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE,
+    "interaction-game-mode-lifecycle": INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

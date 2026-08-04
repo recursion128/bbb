@@ -144,6 +144,18 @@ isTextFilteringEnabled 由 startup 启动项经 `client_text_filtering_enabled`
 唯一透出（book screen 等消费）。不得在 native 侧内联 permission 判定或建第二条
 chat 呈现链。
 
+## Game-mode lifecycle owner
+
+七个 game-mode-lifecycle owner 收敛于四条链：game type（构造器初值与
+setLocalMode 两重载）由 GameEvent CHANGE_GAME_MODE 的
+`set_game_type_from_game_event_param` 与 login 的
+`reset_local_player_for_login` 唯一设置；adjustPlayer 的 abilities 更新由
+`game_type_player_abilities` 唯一映射（login/respawn/mode 变更共用）；
+createPlayer 两重载由 `reset_local_player_for_respawn`（keep-data 分支保留
+sprint/pose/attribute modifiers，fresh 分支全量重建）拥有；canSwitchGameMode
+由 F3+F4 switcher 的 `debug_game_mode_switcher_can_open` 开门判定拥有。native
+只投影 game type/abilities，不得另存副本。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

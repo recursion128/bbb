@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "9db2218a8567fc1e751370a1df13f8c4c08c407ff4f7fa1c0711e1ed0892a1f2"
+      "sha256": "b12e3752187db09aa474b6e5b2bc6371df883c627ef46b552b02d4c93c34c4ee"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -139,7 +139,8 @@
         "crates/bbb-world/src/client/local_player.rs",
         "crates/bbb-native/src/input/movement.rs"
       ],
-      "owner_count": 7
+      "owner_count": 7,
+      "owner_evidence_count": 7
     },
     "interaction-item-use": {
       "bbb_evidence": [
@@ -8404,6 +8405,14 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#canInterruptScreen()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#debug_game_mode_switcher_can_open"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#f3_f4_game_mode_switcher_does_not_open_over_existing_screen"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23229,6 +23238,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientPacketListener#verifyCommand(final String command)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#set_game_type_from_game_event_param",
+          "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape",
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "constructor",
@@ -23243,6 +23262,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#MultiPlayerGameMode(final Minecraft minecraft,final ClientPacketListener connection)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#game_type_player_abilities"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#login_player_abilities_match_vanilla_game_types"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23308,6 +23335,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock(final BlockPos pos,final Direction direction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#reset_local_player_for_respawn"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23322,6 +23358,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#createPlayer(final ClientLevel level,final StatsCounter stats,final ClientRecipeBook recipeBook)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#reset_local_player_for_respawn"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23688,6 +23733,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#sameDestroyTarget(final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#set_game_type_from_game_event_param",
+          "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape",
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23702,6 +23757,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#setLocalMode(final GameType mode)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#set_game_type_from_game_event_param",
+          "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape",
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -43000,6 +43065,7 @@
       "player-local-vehicle-control",
       "player-local-item-use-state",
       "player-local-permission-chat-state",
+      "interaction-game-mode-lifecycle",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

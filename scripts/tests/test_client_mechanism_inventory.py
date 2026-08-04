@@ -338,6 +338,28 @@ public class Owner {
                 for owner in permission_chat_state_owners
             )
         )
+        game_mode_lifecycle_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "interaction-game-mode-lifecycle"
+        ]
+        # The seventh owner (`Minecraft#canSwitchGameMode`) lives outside this
+        # partition's source filter; the mechanism-level count covers the route.
+        self.assertEqual(len(game_mode_lifecycle_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["interaction-game-mode-lifecycle"][
+                "owner_evidence_count"
+            ],
+            7,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in game_mode_lifecycle_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods
