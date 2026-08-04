@@ -87,9 +87,6 @@ preserving the two former broad `partial` claims.
 - **`player-local-client-status-options`** — world owns server flags and game type while
   native owns death/debug presentation. Close after reduced-info, death-screen,
   limited-crafting and spectator vertical-reset branches have decision-level evidence.
-- **`interaction-game-mode-guards`** — hurt, experience, miss-time, spectator and
-  server-controlled-inventory guards must query the same canonical game/vehicle state.
-  Close after all five guards have exact action-consumer evidence.
 - **`interaction-carried-slot-sync`** — world selected slot and native command baseline
   must be the only state. Close after change-only send, queue failure retry, controller
   tick order and generation reset are proved for both owners.

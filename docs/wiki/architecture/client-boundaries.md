@@ -165,6 +165,16 @@ miss-time sentinel；按住持续破坏受 using-item/piercing 抑制分支约�
 `start_use_item`（bucket 预测、instrument、equippable swap 优先级）。不得在
 key/HUD 层另建 attack/use 入口。
 
+## Game-mode guards owner
+
+五个 game-mode guard 各查同一 canonical 状态：canHurtPlayer/hasExperience 的
+survival/adventure HUD 门在 `update_renderer_from_publication` 提取链内联判定
+（health/food/experience 帧仅在门开时提取）；hasMissTime 由
+`advance_attack_miss_time` 的 sentinel 链拥有；isSpectator 由
+`local_player_is_spectator`、isServerControlledInventory 由
+`local_player_server_controlled_inventory_vehicle_id` 唯一拥有（inventory E 键
+与 open-inventory 命令消费）。不得复制 game type 判定到其他消费点。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

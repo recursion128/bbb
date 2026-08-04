@@ -368,6 +368,26 @@ public class Owner {
             ],
             3,
         )
+        game_mode_guards_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "interaction-game-mode-guards"
+        ]
+        self.assertEqual(len(game_mode_guards_owners), 5)
+        self.assertEqual(
+            value["mechanisms"]["interaction-game-mode-guards"][
+                "owner_evidence_count"
+            ],
+            5,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in game_mode_guards_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

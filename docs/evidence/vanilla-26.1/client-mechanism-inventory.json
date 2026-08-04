@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "653e6a5a0bb3d3b363e8af0d952edfd789835fe72225c1188a865070d86eb4d3"
+      "sha256": "9233b4815b0a55e53c46c279b224d0a7ddfa06b411f560499f9ae8deb273c0bb"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -132,7 +132,8 @@
         "crates/bbb-world/src/client/local_player.rs",
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 5
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "interaction-game-mode-lifecycle": {
       "bbb_evidence": [
@@ -23327,6 +23328,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#attack(final Player player,final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#update_renderer_from_publication"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#hud_heart_health_frame_matches_vanilla_damage_hold_and_blink_phase"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23614,6 +23623,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleSlotStateChanged(final int slotId,final int containerId,final boolean newState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#update_renderer_from_publication"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#hud_heart_health_frame_matches_vanilla_damage_hold_and_blink_phase"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23628,6 +23645,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#hasExperience()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#advance_attack_miss_time"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23670,6 +23695,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#isDestroying()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#local_player_server_controlled_inventory_vehicle_id"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -23684,6 +23717,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#isServerControlledInventory()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#local_player_is_spectator"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape"
+        ]
+      },
       "category": "game-mode",
       "domain": "interaction",
       "kind": "method",
@@ -43096,6 +43137,7 @@
       "player-local-permission-chat-state",
       "interaction-game-mode-lifecycle",
       "interaction-primary-action-routing",
+      "interaction-game-mode-guards",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

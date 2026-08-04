@@ -3029,6 +3029,53 @@ INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_heart_health_frame_matches_vanilla_damage_hold_and_blink_phase",
+            ),
+        ),
+        ("canHurtPlayer", "hasExperience"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#advance_attack_miss_time",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release",
+            ),
+        ),
+        ("hasMissTime",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#local_player_is_spectator",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_spectator_skips_suffocation_escape",
+            ),
+        ),
+        ("isSpectator",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/passengers.rs#local_player_server_controlled_inventory_vehicle_id",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#inventory_key_on_server_controlled_mount_queues_open_inventory_command",
+            ),
+        ),
+        ("isServerControlledInventory",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3199,6 +3246,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-permission-chat-state": LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE,
     "interaction-game-mode-lifecycle": INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-primary-action-routing": INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE,
+    "interaction-game-mode-guards": INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

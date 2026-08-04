@@ -451,25 +451,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
 census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 11 条 census route 由唯一账本
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 10 条 census route 由唯一账本
 排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
-
-#### Active contract：game-mode guards
-
-- 目标与 owner：闭合 `interaction-game-mode-guards` 5 个 owner（canHurtPlayer、
-  hasExperience、hasMissTime、isSpectator、isServerControlledInventory）。
-- 审计事实：canHurtPlayer/hasExperience 的 HUD 显示门（survival/adventure 判定）
-  在 renderer publication 提取链；miss-time 由 attack sentinel 链拥有；
-  spectator 与 server-controlled-inventory 判定各有唯一 world fn 与消费
-  tests——全部验证型，无缺口。
-- focused evidence：census 5-owner OwnerEvidence + scripts/tests 断言块
-  （local-player 分区测试）。
-- 非目标：不动 HUD 帧结构/attack 语义；发现其他 route 缺口只登记账本。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 5-owner evidence 完整的干净提交。
 
 ### P2：屏幕、HUD、字体与截图
 
