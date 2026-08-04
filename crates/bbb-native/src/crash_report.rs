@@ -115,6 +115,8 @@ pub(crate) struct RuntimeFailureSet {
     /// key/value details captured live at the failure boundary. Empty when no
     /// level was available when the failure was recorded.
     level_details: Vec<(String, String)>,
+    /// `Options.dumpOptionsForReport`: the settings the failing run used.
+    client_options: Vec<(String, String)>,
 }
 
 impl RuntimeFailureSet {
@@ -124,6 +126,7 @@ impl RuntimeFailureSet {
             suppressed: Vec::new(),
             dropped_suppressed: 0,
             level_details: Vec::new(),
+            client_options: Vec::new(),
         }
     }
 
@@ -151,6 +154,9 @@ impl Error for RuntimeFailureSet {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct RuntimeFailureAccumulator {
     failures: Option<RuntimeFailureSet>,
+    /// `Options.dumpOptionsForReport`, captured at startup so the report does
+    /// not read a file while the client is already failing.
+    client_options: Vec<(String, String)>,
 }
 
 impl RuntimeFailureAccumulator {
@@ -161,7 +167,9 @@ impl RuntimeFailureAccumulator {
             failures.record(failure);
             false
         } else {
-            self.failures = Some(RuntimeFailureSet::new(failure));
+            let mut failures = RuntimeFailureSet::new(failure);
+            failures.client_options = self.client_options.clone();
+            self.failures = Some(failures);
             true
         }
     }
@@ -169,6 +177,14 @@ impl RuntimeFailureAccumulator {
     /// Attaches the "Affected level" details produced by the current world
     /// generation at the failure boundary. The first non-empty capture wins so
     /// the report reflects the level state closest to the primary failure.
+    /// `Minecraft.fillSystemReport` writes the current options alongside the
+    /// failure, so a bad frame can be read against the settings that produced
+    /// it. Recorded once at startup because the report itself must not read a
+    /// file while the client is already failing.
+    pub(crate) fn attach_client_options(&mut self, options: Vec<(String, String)>) {
+        self.client_options = options;
+    }
+
     pub(crate) fn attach_level_details(&mut self, details: Vec<(String, String)>) {
         if details.is_empty() {
             return;
@@ -222,6 +238,13 @@ impl CrashReport {
             let level_category = report.add_category("Affected level");
             for (key, value) in &level_details {
                 report.add_category_detail(level_category, key, format_args!("{value}"));
+            }
+        }
+        let client_options = report.failures.client_options.clone();
+        if !client_options.is_empty() {
+            let options_category = report.add_category("Client options");
+            for (key, value) in &client_options {
+                report.add_category_detail(options_category, key, format_args!("{value}"));
             }
         }
         let uptime_category = report.add_category("Uptime");
@@ -526,6 +549,7 @@ fn retain_failure_set(
         suppressed,
         dropped_suppressed: failures.dropped_suppressed,
         level_details: failures.level_details,
+        client_options: failures.client_options,
     }
 }
 
@@ -972,5 +996,47 @@ mod tests {
         assert!(main.contains("simulation_thread.shutdown_and_join()"));
         assert!(main.contains("fatal_failures.borrow_mut().take()"));
         assert!(simulation.contains("JoinHandle<Result<(), RuntimeFailure>>"));
+    }
+}
+
+#[cfg(test)]
+mod client_options_report_tests {
+    use super::*;
+
+    fn fixed_time() -> DateTime<Utc> {
+        DateTime::from_timestamp(0, 0).unwrap()
+    }
+
+    fn failure() -> RuntimeFailure {
+        RuntimeFailure::new("renderer frame", "boom", "gpu lost")
+    }
+
+    #[test]
+    fn the_options_captured_at_startup_reach_the_report() {
+        let mut failures = RuntimeFailureAccumulator::default();
+        failures.attach_client_options(vec![
+            ("ao".to_string(), "true".to_string()),
+            ("renderDistance".to_string(), "16".to_string()),
+        ]);
+        assert!(failures.record(failure()));
+
+        let report = CrashReport::new(failures.take().unwrap(), Duration::from_secs(1));
+        let rendered = report.friendly_report_at(fixed_time());
+
+        assert!(rendered.contains("Client options"), "{rendered}");
+        assert!(rendered.contains("renderDistance"), "{rendered}");
+        assert!(rendered.contains("16"), "{rendered}");
+    }
+
+    #[test]
+    fn a_run_with_no_captured_options_has_no_options_category() {
+        let mut failures = RuntimeFailureAccumulator::default();
+        assert!(failures.record(failure()));
+
+        let report = CrashReport::new(failures.take().unwrap(), Duration::from_secs(1));
+
+        assert!(!report
+            .friendly_report_at(fixed_time())
+            .contains("-- Client options --"));
     }
 }

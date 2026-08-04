@@ -23,7 +23,7 @@ use anyhow::Result;
 
 pub(crate) use catalog_26_1::{
     ClientOptionDefault, ClientOptionEncoding, ClientOptionSpec, CLIENT_OPTIONS,
-    CLIENT_OPTION_PREFIXES,
+    CLIENT_OPTION_PREFIXES, CLIENT_OPTION_REPORT_EXTRA_KEYS,
 };
 
 /// Facts about the running host that Vanilla resolves through the JDK.
@@ -109,6 +109,28 @@ impl ClientOptions {
             }
         }
         out
+    }
+
+    /// `Options.dumpOptionsForReport`: the `processDumpedOptions` block plus
+    /// the keys the dump names itself, sorted by key. A crash report carries
+    /// this so a bad frame can be read against the settings that produced it.
+    pub(crate) fn dump_for_report(&self) -> Vec<(String, String)> {
+        let mut entries: Vec<(String, String)> = CLIENT_OPTIONS
+            .iter()
+            .filter(|spec| spec.dumped)
+            .chain(
+                CLIENT_OPTION_REPORT_EXTRA_KEYS
+                    .iter()
+                    .filter_map(|key| client_option_spec(key)),
+            )
+            .filter_map(|spec| {
+                self.raw(spec.key)
+                    .map(|value| (spec.key.to_owned(), value.to_owned()))
+            })
+            .collect();
+        entries.sort_by(|left, right| left.0.cmp(&right.0));
+        entries.dedup_by(|left, right| left.0 == right.0);
+        entries
     }
 
     /// The text currently on the line for `key`, if the catalog has one.
@@ -349,5 +371,45 @@ mod tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod report_tests {
+    use super::*;
+
+    #[test]
+    fn the_report_dump_covers_the_dumped_block_and_the_keys_it_names() {
+        let options = ClientOptions::defaults(ClientOptionHost::default());
+
+        let dump = options.dump_for_report();
+
+        // `processDumpedOptions` names 37 keys and the dump adds 7 more, one of
+        // which (`fullscreenResolution`) `save` writes separately and so is not
+        // a catalogued line.
+        let dumped = CLIENT_OPTIONS.iter().filter(|spec| spec.dumped).count();
+        let extras = CLIENT_OPTION_REPORT_EXTRA_KEYS
+            .iter()
+            .filter(|key| client_option_spec(key).is_some_and(|spec| !spec.dumped))
+            .count();
+        assert_eq!(dump.len(), dumped + extras);
+
+        let keys: Vec<&str> = dump.iter().map(|(key, _)| key.as_str()).collect();
+        // Vanilla sorts by key before joining.
+        let mut sorted = keys.clone();
+        sorted.sort_unstable();
+        assert_eq!(keys, sorted);
+        assert!(keys.contains(&"ao"));
+        assert!(keys.contains(&"renderDistance"));
+        assert!(keys.contains(&"resourcePacks"));
+        assert!(keys.contains(&"useNativeTransport"));
+        // A key only `processOptions` names stays out of the dump.
+        assert!(!keys.contains(&"autoJump"));
+
+        let values: Vec<&str> = dump.iter().map(|(_, value)| value.as_str()).collect();
+        assert_eq!(
+            values[keys.iter().position(|key| *key == "ao").unwrap()],
+            "true"
+        );
     }
 }

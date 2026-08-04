@@ -10,7 +10,8 @@
       "field": "ambientOcclusion",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": true
     },
     {
       "order": 1,
@@ -18,7 +19,8 @@
       "field": "biomeBlendRadius",
       "kind": "codec",
       "encoding": "integer",
-      "default": "2"
+      "default": "2",
+      "dumped": true
     },
     {
       "order": 2,
@@ -26,7 +28,8 @@
       "field": "chunkSectionFadeInTime",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.75"
+      "default": "0.75",
+      "dumped": true
     },
     {
       "order": 3,
@@ -34,7 +37,8 @@
       "field": "cutoutLeaves",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": true
     },
     {
       "order": 4,
@@ -42,7 +46,8 @@
       "field": "enableVsync",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": true
     },
     {
       "order": 5,
@@ -50,7 +55,8 @@
       "field": "entityDistanceScaling",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": true
     },
     {
       "order": 6,
@@ -58,7 +64,8 @@
       "field": "entityShadows",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": true
     },
     {
       "order": 7,
@@ -66,7 +73,8 @@
       "field": "forceUnicodeFont",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": true
     },
     {
       "order": 8,
@@ -74,7 +82,8 @@
       "field": "japaneseGlyphVariants",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "host:locale-is-japanese"
+      "default": "host:locale-is-japanese",
+      "dumped": true
     },
     {
       "order": 9,
@@ -82,7 +91,8 @@
       "field": "fov",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.0"
+      "default": "0.0",
+      "dumped": true
     },
     {
       "order": 10,
@@ -90,7 +100,8 @@
       "field": "fovEffectScale",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": true
     },
     {
       "order": 11,
@@ -98,7 +109,8 @@
       "field": "darknessEffectScale",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": true
     },
     {
       "order": 12,
@@ -106,7 +118,8 @@
       "field": "glintSpeed",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.5"
+      "default": "0.5",
+      "dumped": true
     },
     {
       "order": 13,
@@ -114,7 +127,8 @@
       "field": "glintStrength",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.75"
+      "default": "0.75",
+      "dumped": true
     },
     {
       "order": 14,
@@ -122,7 +136,8 @@
       "field": "graphicsPreset",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "\"fancy\""
+      "default": "\"fancy\"",
+      "dumped": true
     },
     {
       "order": 15,
@@ -130,7 +145,8 @@
       "field": "prioritizeChunkUpdates",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "0"
+      "default": "0",
+      "dumped": true
     },
     {
       "order": 16,
@@ -138,7 +154,8 @@
       "field": "fullscreen",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": true
     },
     {
       "order": 17,
@@ -146,7 +163,8 @@
       "field": "exclusiveFullscreen",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": true
     },
     {
       "order": 18,
@@ -154,7 +172,8 @@
       "field": "gamma",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.5"
+      "default": "0.5",
+      "dumped": true
     },
     {
       "order": 19,
@@ -162,7 +181,8 @@
       "field": "guiScale",
       "kind": "codec",
       "encoding": "integer",
-      "default": "0"
+      "default": "0",
+      "dumped": true
     },
     {
       "order": 20,
@@ -170,7 +190,8 @@
       "field": "maxAnisotropyBit",
       "kind": "codec",
       "encoding": "integer",
-      "default": "2"
+      "default": "2",
+      "dumped": true
     },
     {
       "order": 21,
@@ -178,7 +199,8 @@
       "field": "textureFiltering",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "0"
+      "default": "0",
+      "dumped": true
     },
     {
       "order": 22,
@@ -186,7 +208,8 @@
       "field": "framerateLimit",
       "kind": "codec",
       "encoding": "integer",
-      "default": "120"
+      "default": "120",
+      "dumped": true
     },
     {
       "order": 23,
@@ -194,7 +217,8 @@
       "field": "improvedTransparency",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": true
     },
     {
       "order": 24,
@@ -202,7 +226,8 @@
       "field": "inactivityFpsLimit",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "\"afk\""
+      "default": "\"afk\"",
+      "dumped": true
     },
     {
       "order": 25,
@@ -210,7 +235,8 @@
       "field": "mipmapLevels",
       "kind": "codec",
       "encoding": "integer",
-      "default": "4"
+      "default": "4",
+      "dumped": true
     },
     {
       "order": 26,
@@ -218,7 +244,8 @@
       "field": "narrator",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "0"
+      "default": "0",
+      "dumped": true
     },
     {
       "order": 27,
@@ -226,7 +253,8 @@
       "field": "particles",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "0"
+      "default": "0",
+      "dumped": true
     },
     {
       "order": 28,
@@ -234,7 +262,8 @@
       "field": "reducedDebugInfo",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": true
     },
     {
       "order": 29,
@@ -242,7 +271,8 @@
       "field": "cloudStatus",
       "kind": "codec",
       "encoding": "enum-name-or-boolean",
-      "default": "\"true\""
+      "default": "\"true\"",
+      "dumped": true
     },
     {
       "order": 30,
@@ -250,7 +280,8 @@
       "field": "cloudRange",
       "kind": "codec",
       "encoding": "integer",
-      "default": "128"
+      "default": "128",
+      "dumped": true
     },
     {
       "order": 31,
@@ -258,7 +289,8 @@
       "field": "renderDistance",
       "kind": "codec",
       "encoding": "integer",
-      "default": "12"
+      "default": "12",
+      "dumped": true
     },
     {
       "order": 32,
@@ -266,7 +298,8 @@
       "field": "simulationDistance",
       "kind": "codec",
       "encoding": "integer",
-      "default": "12"
+      "default": "12",
+      "dumped": true
     },
     {
       "order": 33,
@@ -274,7 +307,8 @@
       "field": "screenEffectScale",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": true
     },
     {
       "order": 34,
@@ -282,7 +316,8 @@
       "field": "soundDevice",
       "kind": "codec",
       "encoding": "string",
-      "default": "\"\""
+      "default": "\"\"",
+      "dumped": true
     },
     {
       "order": 35,
@@ -290,7 +325,8 @@
       "field": "vignette",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": true
     },
     {
       "order": 36,
@@ -298,7 +334,8 @@
       "field": "weatherRadius",
       "kind": "codec",
       "encoding": "integer",
-      "default": "10"
+      "default": "10",
+      "dumped": true
     },
     {
       "order": 37,
@@ -306,7 +343,8 @@
       "field": "autoJump",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 38,
@@ -314,7 +352,8 @@
       "field": "rotateWithMinecart",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 39,
@@ -322,7 +361,8 @@
       "field": "operatorItemsTab",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 40,
@@ -330,7 +370,8 @@
       "field": "autoSuggestions",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 41,
@@ -338,7 +379,8 @@
       "field": "chatColors",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 42,
@@ -346,7 +388,8 @@
       "field": "chatLinks",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 43,
@@ -354,7 +397,8 @@
       "field": "chatLinksPrompt",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 44,
@@ -362,7 +406,8 @@
       "field": "discreteMouseScroll",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 45,
@@ -370,7 +415,8 @@
       "field": "invertXMouse",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 46,
@@ -378,7 +424,8 @@
       "field": "invertYMouse",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 47,
@@ -386,7 +433,8 @@
       "field": "realmsNotifications",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 48,
@@ -394,7 +442,8 @@
       "field": "showSubtitles",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 49,
@@ -402,7 +451,8 @@
       "field": "directionalAudio",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 50,
@@ -410,7 +460,8 @@
       "field": "touchscreen",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 51,
@@ -418,7 +469,8 @@
       "field": "bobView",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 52,
@@ -426,7 +478,8 @@
       "field": "toggleCrouch",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 53,
@@ -434,7 +487,8 @@
       "field": "toggleSprint",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 54,
@@ -442,7 +496,8 @@
       "field": "toggleAttack",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 55,
@@ -450,7 +505,8 @@
       "field": "toggleUse",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 56,
@@ -458,7 +514,8 @@
       "field": "sprintWindow",
       "kind": "codec",
       "encoding": "integer",
-      "default": "7"
+      "default": "7",
+      "dumped": false
     },
     {
       "order": 57,
@@ -466,7 +523,8 @@
       "field": "darkMojangStudiosBackground",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 58,
@@ -474,7 +532,8 @@
       "field": "hideLightningFlash",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 59,
@@ -482,7 +541,8 @@
       "field": "hideSplashTexts",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 60,
@@ -490,7 +550,8 @@
       "field": "sensitivity",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.5"
+      "default": "0.5",
+      "dumped": false
     },
     {
       "order": 61,
@@ -498,7 +559,8 @@
       "field": "damageTiltStrength",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 62,
@@ -506,7 +568,8 @@
       "field": "highContrast",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 63,
@@ -514,7 +577,8 @@
       "field": "highContrastBlockOutline",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 64,
@@ -522,7 +586,8 @@
       "field": "narratorHotkey",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 65,
@@ -530,7 +595,8 @@
       "field": "resourcePacks",
       "kind": "string-list",
       "encoding": "string-list",
-      "default": "[]"
+      "default": "[]",
+      "dumped": false
     },
     {
       "order": 66,
@@ -538,7 +604,8 @@
       "field": "incompatibleResourcePacks",
       "kind": "string-list",
       "encoding": "string-list",
-      "default": "[]"
+      "default": "[]",
+      "dumped": false
     },
     {
       "order": 67,
@@ -546,7 +613,8 @@
       "field": "lastMpIp",
       "kind": "string",
       "encoding": "string",
-      "default": ""
+      "default": "",
+      "dumped": false
     },
     {
       "order": 68,
@@ -554,7 +622,8 @@
       "field": "languageCode",
       "kind": "string",
       "encoding": "string",
-      "default": "en_us"
+      "default": "en_us",
+      "dumped": false
     },
     {
       "order": 69,
@@ -562,7 +631,8 @@
       "field": "chatVisibility",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "0"
+      "default": "0",
+      "dumped": false
     },
     {
       "order": 70,
@@ -570,7 +640,8 @@
       "field": "chatOpacity",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 71,
@@ -578,7 +649,8 @@
       "field": "chatLineSpacing",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.0"
+      "default": "0.0",
+      "dumped": false
     },
     {
       "order": 72,
@@ -586,7 +658,8 @@
       "field": "textBackgroundOpacity",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.5"
+      "default": "0.5",
+      "dumped": false
     },
     {
       "order": 73,
@@ -594,7 +667,8 @@
       "field": "backgroundForChatOnly",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 74,
@@ -602,7 +676,8 @@
       "field": "hideServerAddress",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 75,
@@ -610,7 +685,8 @@
       "field": "advancedItemTooltips",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 76,
@@ -618,7 +694,8 @@
       "field": "pauseOnLostFocus",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 77,
@@ -626,7 +703,8 @@
       "field": "overrideWidth",
       "kind": "integer",
       "encoding": "integer",
-      "default": "0"
+      "default": "0",
+      "dumped": false
     },
     {
       "order": 78,
@@ -634,7 +712,8 @@
       "field": "overrideHeight",
       "kind": "integer",
       "encoding": "integer",
-      "default": "0"
+      "default": "0",
+      "dumped": false
     },
     {
       "order": 79,
@@ -642,7 +721,8 @@
       "field": "chatHeightFocused",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 80,
@@ -650,7 +730,8 @@
       "field": "chatDelay",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.0"
+      "default": "0.0",
+      "dumped": false
     },
     {
       "order": 81,
@@ -658,7 +739,8 @@
       "field": "chatHeightUnfocused",
       "kind": "codec",
       "encoding": "double",
-      "default": "0.4375"
+      "default": "0.4375",
+      "dumped": false
     },
     {
       "order": 82,
@@ -666,7 +748,8 @@
       "field": "chatScale",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 83,
@@ -674,7 +757,8 @@
       "field": "chatWidth",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 84,
@@ -682,7 +766,8 @@
       "field": "notificationDisplayTime",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 85,
@@ -690,7 +775,8 @@
       "field": "useNativeTransport",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 86,
@@ -698,7 +784,8 @@
       "field": "mainHand",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "\"right\""
+      "default": "\"right\"",
+      "dumped": false
     },
     {
       "order": 87,
@@ -706,7 +793,8 @@
       "field": "attackIndicator",
       "kind": "codec",
       "encoding": "enum-id",
-      "default": "1"
+      "default": "1",
+      "dumped": false
     },
     {
       "order": 88,
@@ -714,7 +802,8 @@
       "field": "tutorialStep",
       "kind": "tutorial-step",
       "encoding": "tutorial-step",
-      "default": "movement"
+      "default": "movement",
+      "dumped": false
     },
     {
       "order": 89,
@@ -722,7 +811,8 @@
       "field": "mouseWheelSensitivity",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 90,
@@ -730,7 +820,8 @@
       "field": "rawMouseInput",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 91,
@@ -738,7 +829,8 @@
       "field": "allowCursorChanges",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 92,
@@ -746,7 +838,8 @@
       "field": "glDebugVerbosity",
       "kind": "integer",
       "encoding": "integer",
-      "default": "1"
+      "default": "1",
+      "dumped": false
     },
     {
       "order": 93,
@@ -754,7 +847,8 @@
       "field": "skipMultiplayerWarning",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 94,
@@ -762,7 +856,8 @@
       "field": "hideMatchedNames",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 95,
@@ -770,7 +865,8 @@
       "field": "joinedFirstServer",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 96,
@@ -778,7 +874,8 @@
       "field": "syncWrites",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "host:platform-is-windows"
+      "default": "host:platform-is-windows",
+      "dumped": false
     },
     {
       "order": 97,
@@ -786,7 +883,8 @@
       "field": "showAutosaveIndicator",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 98,
@@ -794,7 +892,8 @@
       "field": "allowServerListing",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 99,
@@ -802,7 +901,8 @@
       "field": "onlyShowSecureChat",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 100,
@@ -810,7 +910,8 @@
       "field": "saveChatDrafts",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 101,
@@ -818,7 +919,8 @@
       "field": "panoramaSpeed",
       "kind": "codec",
       "encoding": "double",
-      "default": "1.0"
+      "default": "1.0",
+      "dumped": false
     },
     {
       "order": 102,
@@ -826,7 +928,8 @@
       "field": "telemetryOptInExtra",
       "kind": "codec",
       "encoding": "boolean",
-      "default": "false"
+      "default": "false",
+      "dumped": false
     },
     {
       "order": 103,
@@ -834,7 +937,8 @@
       "field": "onboardAccessibility",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 104,
@@ -842,7 +946,8 @@
       "field": "menuBackgroundBlurriness",
       "kind": "codec",
       "encoding": "integer",
-      "default": "5"
+      "default": "5",
+      "dumped": false
     },
     {
       "order": 105,
@@ -850,7 +955,8 @@
       "field": "startedCleanly",
       "kind": "boolean",
       "encoding": "boolean",
-      "default": "true"
+      "default": "true",
+      "dumped": false
     },
     {
       "order": 106,
@@ -858,7 +964,8 @@
       "field": "musicToast",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "\"never\""
+      "default": "\"never\"",
+      "dumped": false
     },
     {
       "order": 107,
@@ -866,7 +973,8 @@
       "field": "musicFrequency",
       "kind": "codec",
       "encoding": "enum-name",
-      "default": "\"DEFAULT\""
+      "default": "\"DEFAULT\"",
+      "dumped": false
     }
   ],
   "dynamic_groups": [
@@ -885,5 +993,14 @@
       "prefix": "modelPart_",
       "kind": "model-part"
     }
+  ],
+  "report_extra_keys": [
+    "fullscreenResolution",
+    "glDebugVerbosity",
+    "overrideHeight",
+    "overrideWidth",
+    "syncChunkWrites",
+    "useNativeTransport",
+    "resourcePacks"
   ]
 }

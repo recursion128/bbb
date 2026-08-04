@@ -104,6 +104,9 @@ class ClientOption:
     #: codec that `xmap`s stores a different value than it writes.
     codec: str
     default: str
+    #: `processDumpedOptions` names these, so `dumpOptionsForReport` carries
+    #: them into the crash report without naming them again.
+    dumped: bool
 
 
 @dataclass(frozen=True)
@@ -278,6 +281,42 @@ def _enum_encoding(source: JavaSource, field: JavaField, value_set_node) -> str:
     )
 
 
+def reported_option_keys(source: JavaSource) -> list[str]:
+    """The keys `dumpOptionsForReport` adds on top of `processDumpedOptions`.
+
+    They are spelled out as `optionsForReport.add(Pair.of("name", ...))`, so the
+    list stays derived instead of copied into Rust.
+    """
+
+    methods = [
+        method
+        for method in source.methods
+        if method.name == "dumpOptionsForReport" and method.owner.endswith("Options")
+    ]
+    if len(methods) != 1:
+        raise ClientOptionsCatalogExtractionError(
+            f"expected exactly one Options#dumpOptionsForReport, found {len(methods)}"
+        )
+    body = methods[0].node.child_by_field_name("body")
+    keys: list[str] = []
+    for node in descendants(body):
+        if node.type != "method_invocation":
+            continue
+        if source.text(node.child_by_field_name("name")) != "of":
+            continue
+        arguments = node.child_by_field_name("arguments")
+        if arguments is None or not arguments.named_children:
+            continue
+        key = _string_literal(source, arguments.named_children[0])
+        if key is not None:
+            keys.append(key)
+    if not keys:
+        raise ClientOptionsCatalogExtractionError(
+            "dumpOptionsForReport names no additional keys"
+        )
+    return keys
+
+
 def _enum_declaration(source: JavaSource, simple_name: str):
     for declaration in descendants(source.root_node):
         if declaration.type != "enum_declaration":
@@ -408,6 +447,7 @@ def client_option_entries(
     seen: set[str] = set()
     order = 0
     for method_name in ("processDumpedOptions", "processOptions"):
+        dumped = method_name == "processDumpedOptions"
         for call in _process_calls(source, method_name):
             arguments = list(call.child_by_field_name("arguments").named_children)
             if len(arguments) not in {2, 4}:
@@ -471,6 +511,7 @@ def client_option_entries(
                     encoding=encoding,
                     codec=codec,
                     default=COMPUTED_DEFAULTS.get(default, default),
+                    dumped=dumped,
                 )
             )
             order += 1

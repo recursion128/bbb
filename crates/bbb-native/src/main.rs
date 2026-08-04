@@ -89,6 +89,7 @@ use bbb_item_model::default_player_skin_cache_dir;
 use bbb_item_model::NativeItemRuntime;
 use camera_fov::CameraFovTickState;
 use camera_pose::CameraEyeHeightTickState;
+use client_options::{ClientOptionHost, ClientOptions};
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use crash_report::{
     default_crash_report_dir, exit_after_failure, CrashReportRuntime, RuntimeFailure,
@@ -1042,6 +1043,20 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut render_publication = shared_publication.load_full();
     let mut event_cursor_position = None;
     let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
+    // `Minecraft.fillSystemReport` reports the options the failing run used, so
+    // capture them once here rather than reading a file mid-failure.
+    match ClientOptions::load(
+        &args.game_dir.join("options.txt"),
+        ClientOptionHost {
+            locale_is_japanese: false,
+            platform_is_windows: cfg!(windows),
+        },
+    ) {
+        Ok(options) => fatal_failures
+            .borrow_mut()
+            .attach_client_options(options.dump_for_report()),
+        Err(error) => tracing::warn!(%error, "failed to read options.txt for the crash report"),
+    }
     let event_failures = Rc::clone(&fatal_failures);
 
     let event_loop_result = event_loop.run(move |event, target| {
