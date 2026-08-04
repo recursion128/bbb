@@ -455,6 +455,33 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel clock-weather
+
+- 目标与 owner：闭合 `tick`、`tickTime`、`setTimeFromServer`、`setGameTime`、`clockManager`、
+  `getSkyFlashTime`、`setSkyFlashTime`、`addEnvironmentAttributeLayers` 八个 owner；
+  `WorldStore` 的 world_time/weather/ticking/sky_flash 是唯一 canonical owner，native 只做
+  lightmap/sky/shadow 派生投影，无影子时钟。
+- Vanilla 决策序：`ClientLevel.tick` 先 updateSkyBrightness，runsNormally 门内 worldBorder+
+  tickTime（gameTime+1），skyFlash 每 tick 无条件衰减，尾部 invalidateTickCache；SetTime =
+  setTimeFromServer + clockManager.handleUpdates（先按 delta tick 既有 clock 再覆盖包内
+  holder）+ cache 失效；clockManager 每 client tick 按 gameTime delta 推进 rate 化 clock；
+  rain/thunder 事件为 snap 语义（START→0、STOP→1、LEVEL_CHANGE clamp）；skyFlash 消费经
+  hideLightningFlash 门、SKY_COLOR srgbLerp(0.22) 与 SKY_LIGHT_FACTOR=1 layer。
+- 现状判定：机制已全部实现且带 vanilla 引注（`advance_client_time`/`consume_running_render_
+  ticks`/`apply_world_time`/`entity_shadow_sky_darken`/lightmap flash/end-flash 家族）；本合同
+  为验证+证据型闭合，唯一新增 focused test 是 frozen ticking 经生产入口
+  `advance_client_level_entity_ticks_with_observation` 不推 game_time/clock 而 SetTime 重同步
+  仍无条件生效的复合断言。
+- focused evidence：八 owner 的 implementation/test cell（既有 time/clock/weather/flash/
+  ticking 测试族 + 新复合断言）；等价论证（updateSkyBrightness ≙ 按需派生、
+  invalidateTickCache ≙ 每 pump 重算）记边界页。
+- 非目标：ambient/mood、biome tint、rain 粒子/渲染 routing、level events；发现缺口只登记
+  对应既有 route。
+- acceptance/gate：world/native focused tests、inventory exact-output、docs lint/fmt/diff/
+  workspace check；高风险提交后 full gate 并刷新 fixture/live playable stamp。
+- 安全停止点/blocker：只允许合同 full-gated 提交，或八 owner evidence 完整且 focused/live/
+  full gate 全通过的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

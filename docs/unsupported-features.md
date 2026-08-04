@@ -58,9 +58,11 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-clock-weather` (8 owners).** Verify game/day time and rain/thunder
-  interpolation, tick order and dimension/session replacement without a native
-  shadow clock.
+- **`world-client-clock-weather` (8 owners).** Verify the implemented time/clock/
+  weather/sky-flash owners against vanilla tick order and SetTime resync, add the
+  frozen-ticking composite gate evidence (production entry advances no game time
+  while raw client ticks still run and SetTime stays unconditional), and record
+  the derivational sky-brightness/tick-cache equivalences.
 - **`world-client-ambient-animation` (9 owners).** Verify block animation and
   ambient/mood event selection from world state through exactly-once native effects.
 - **`world-client-session-services` (8 owners).** Verify registry, scoreboard,
