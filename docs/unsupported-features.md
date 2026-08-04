@@ -582,7 +582,27 @@ Matrix route: `interaction-server-authority-exclusions`
 
 Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-ui`,
 `resources-runtime-mipmap-update`, `scope-singleplayer-integrated`,
-`debug-integrated-server-mirrors`
+`debug-integrated-server-mirrors`, `persistence-options-unconsumed`
+
+- **`options.txt` keys whose consumer subsystem does not exist yet.** The values
+  round-trip through `crates/bbb-native/src/client_options.rs` like every other
+  key, but eight `Options` owners have nothing to hand them to. `dataFix` needs a
+  DataFixer, which bbb does not have at all, so an options file written by an
+  older version is read as-is rather than migrated.
+  `getFullscreenVideoModeString` needs the window's video-mode list, which the
+  native window never enumerates. `maxAnisotropyValue` and `getCloudStatus` feed
+  `GameRenderer`'s `OptionsRenderState` (`GameRenderer.java:765, 775`); the
+  renderer has neither anisotropic terrain filtering nor a cloud-status branch.
+  `isSoundDeviceDefault` picks the OpenAL device in `SoundEngine.java:106, 198`;
+  bbb-audio always uses the system default. `applyGraphicsPreset`
+  (`Minecraft.java:517`) fans a preset out over the individual graphics options,
+  none of which bbb models. `loadSelectedResourcePacks` (`Minecraft.java:522`)
+  reconciles the stored pack list against the repository — bbb takes packs from
+  explicit startup/server arguments and has no options-selected list — and
+  `updateFontOptions` reloads every `FontSet` for the `UNIFORM` /
+  `JAPANESE_VARIANTS` `FontOption`s, which the font pipeline does not implement.
+  Reopen each one with its consumer, not before; the persisted line already
+  survives, so no options work is owed first.
 
 - **Shift-local F3+I server-private entity save residuals.** Not needed on an
   external client: ordinary F3+I queries the authoritative server tag, while

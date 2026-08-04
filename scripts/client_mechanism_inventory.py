@@ -363,14 +363,12 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "Options",
             "load",
             "save",
-            "dataFix",
             "processOptions",
             "processDumpedOptions",
             "process",
             "isTrue",
             "isFalse",
             "readListOfStrings",
-            "getFullscreenVideoModeString",
         ),
     ),
     (
@@ -380,40 +378,40 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "setServerRenderDistance",
             "getFinalSoundSourceVolume",
             "getSoundSourceVolume",
-            "getSoundSourceOptionInstance",
-            "createSoundSliderOptionInstance",
-            "isSoundDeviceDefault",
             "getBackgroundOpacity",
             "getBackgroundColor",
             "getMenuBackgroundBlurriness",
-            "maxAnisotropyValue",
             "japaneseGlyphVariantsDefault",
-            "getCloudStatus",
             "isModelPartEnabled",
-            "setModelPart",
             "setCameraType",
-            "onboardingAccessibilityFinished",
             "logMouse",
             "unlogMouse",
-            "applyGraphicsPreset",
-            "setGraphicsPresetToCustom",
         ),
     ),
     (
         MethodRoute("persistence", "persistence", "persistence-options-apply"),
+        ("buildPlayerInformation", "broadcastOptions", "dumpOptionsForReport"),
+    ),
+    (
+        # The stored value round-trips, but the subsystem that would read it does
+        # not exist here yet. Each caller is named in the ledger.
+        MethodRoute("persistence", "persistence", "persistence-options-unconsumed"),
         (
-            "buildPlayerInformation",
-            "broadcastOptions",
-            "operateOnLevelRenderer",
-            "updateResourcePacks",
+            "dataFix",
+            "getFullscreenVideoModeString",
+            "maxAnisotropyValue",
+            "getCloudStatus",
+            "isSoundDeviceDefault",
+            "applyGraphicsPreset",
             "loadSelectedResourcePacks",
             "updateFontOptions",
-            "dumpOptionsForReport",
         ),
     ),
     (
-        # Caption/label factories consumed only by `OptionsSubScreen` widgets;
-        # the in-game options UI is a declared non-goal.
+        # Caption/label factories consumed only by `OptionsSubScreen` widgets,
+        # plus the owners whose only caller is an options screen or an
+        # `OptionInstance.onValueUpdate` lambda; the in-game options UI is a
+        # declared non-goal.
         MethodRoute("out-of-scope", "options", "scope-options-ui", "out-of-scope", "out-of-scope"),
         (
             "pixelValueLabel",
@@ -421,6 +419,13 @@ OPTIONS_METHOD_ROUTES = _method_routes(
             "genericValueLabel",
             "genericValueOrOffLabel",
             "percentValueOrOffLabel",
+            "getSoundSourceOptionInstance",
+            "createSoundSliderOptionInstance",
+            "setModelPart",
+            "onboardingAccessibilityFinished",
+            "setGraphicsPresetToCustom",
+            "operateOnLevelRenderer",
+            "updateResourcePacks",
         ),
     ),
 )
@@ -3658,6 +3663,219 @@ CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+OPTIONS_CATALOG_IMPLEMENTATION = (
+    "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+    "scripts/client_options_catalog_extractor.py#client_option_entries",
+    "scripts/generate-client-options-catalog.py#render_rust_catalog",
+)
+
+OPTIONS_FILE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            OPTIONS_CATALOG_IMPLEMENTATION
+            + ("crates/bbb-native/src/client_options.rs#default_text",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#defaults_carry_the_text_vanilla_writes_for_every_catalogued_key",
+                "crates/bbb-native/src/client_options.rs"
+                "#host_derived_defaults_follow_the_host",
+                "scripts/tests/test_client_options_catalog_extractor.py"
+                "#test_committed_catalog_matches_the_vanilla_source",
+            ),
+        ),
+        ("Options",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options.rs#set_raw",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#a_line_splits_on_its_first_colon_only_and_bad_lines_are_skipped",
+                "crates/bbb-native/src/client_options.rs"
+                "#a_missing_file_leaves_the_defaults_in_place",
+            ),
+        ),
+        ("load",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options.rs#rendered",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#save_writes_every_catalogued_key_in_vanilla_order",
+                "crates/bbb-native/src/client_options.rs"
+                "#save_round_trips_and_drops_keys_this_client_does_not_know",
+            ),
+        ),
+        ("save",),
+    ),
+    (
+        # `process`/`isTrue`/`isFalse`/`readListOfStrings` are the overload set
+        # that decides how one line is written and read back; BBB resolves the
+        # same choice from the generated per-key encoding.
+        OwnerEvidence(
+            OPTIONS_CATALOG_IMPLEMENTATION
+            + ("crates/bbb-native/src/client_options/args.rs#bind",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#every_encoding_parses_its_own_default",
+                "scripts/tests/test_client_options_catalog_extractor.py"
+                "#test_catalog_covers_every_options_txt_line",
+                "crates/bbb-native/src/client_options/args.rs"
+                "#binding_a_key_through_the_wrong_encoding_fails_closed",
+            ),
+        ),
+        ("processOptions", "processDumpedOptions", "process", "isTrue", "isFalse"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options.rs#TextList",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#every_encoding_parses_its_own_default",
+            ),
+        ),
+        ("readListOfStrings",),
+    ),
+)
+
+
+OPTIONS_DERIVED_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/derived.rs#effective_render_distance",
+                "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
+            ),
+            (
+                "crates/bbb-native/src/client_options/derived.rs"
+                "#the_server_radius_only_clamps_when_it_is_set_and_smaller",
+            ),
+        ),
+        ("getEffectiveRenderDistance",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/chunks/store.rs#apply_set_chunk_cache_radius",),
+            ("crates/bbb-world/src/chunks/store.rs#chunk_cache_radius",),
+        ),
+        ("setServerRenderDistance",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-audio/src/command.rs#final_source_volume",),
+            (
+                "crates/bbb-audio/src/command.rs"
+                "#final_source_volume_matches_vanilla_master_and_category_mix",
+            ),
+        ),
+        ("getFinalSoundSourceVolume", "getSoundSourceVolume"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/startup.rs#parse_text_background_opacity",),
+            (
+                "crates/bbb-native/src/startup.rs"
+                "#args_reject_text_background_opacity_outside_unit_range",
+            ),
+        ),
+        ("getBackgroundOpacity", "getBackgroundColor"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/screen_blur.rs#sanitize_menu_background_blurriness",),
+            (
+                "crates/bbb-native/src/startup.rs"
+                "#args_accept_vanilla_menu_background_blurriness_range",
+                "crates/bbb-native/src/startup.rs"
+                "#args_reject_menu_background_blurriness_outside_vanilla_range",
+            ),
+        ),
+        ("getMenuBackgroundBlurriness",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options.rs#LocaleIsJapanese",),
+            ("crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host",),
+        ),
+        ("japaneseGlyphVariantsDefault",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/startup.rs#client_information_from_args",),
+            (
+                "crates/bbb-native/src/startup.rs"
+                "#args_build_client_information_from_startup_options",
+            ),
+        ),
+        ("isModelPartEnabled",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#cycle_camera_type",),
+            ("crates/bbb-native/src/input.rs#camera_type",),
+        ),
+        ("setCameraType",),
+    ),
+    (
+        # The log/unlog pair is only the `sensitivity` codec, so the generated
+        # encoding is what has to round-trip it.
+        OwnerEvidence(
+            OPTIONS_CATALOG_IMPLEMENTATION,
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#every_encoding_parses_its_own_default",
+            ),
+        ),
+        ("logMouse", "unlogMouse"),
+    ),
+)
+
+
+OPTIONS_APPLY_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/startup.rs#client_information_from_args",),
+            (
+                "crates/bbb-native/src/startup.rs"
+                "#args_build_client_information_from_startup_options",
+                "crates/bbb-native/src/startup.rs"
+                "#stored_options_fill_arguments_the_user_did_not_type",
+            ),
+        ),
+        ("buildPlayerInformation",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs"
+                "#queue_broadcast_client_information_command",
+                "crates/bbb-net/src/driver/commands.rs#send_play_client_information",
+            ),
+            (
+                "crates/bbb-net/src/driver/commands/tests.rs"
+                "#broadcast_client_information_keeps_each_phase_own_packet_id",
+                "crates/bbb-native/src/input/tests.rs"
+                "#focus_pause_toggle_queues_the_option_line_vanilla_saves",
+            ),
+        ),
+        ("broadcastOptions",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options.rs#dump_for_report",),
+            (
+                "crates/bbb-native/src/client_options.rs"
+                "#the_report_dump_covers_the_dumped_block_and_the_keys_it_names",
+                "crates/bbb-native/src/crash_report.rs"
+                "#the_options_captured_at_startup_reach_the_report",
+            ),
+        ),
+        ("dumpOptionsForReport",),
+    ),
+)
+
+
 SERVER_LIST_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3747,6 +3965,9 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
     "persistence-server-list": SERVER_LIST_OWNER_EVIDENCE,
+    "persistence-options-file": OPTIONS_FILE_OWNER_EVIDENCE,
+    "persistence-options-derived": OPTIONS_DERIVED_OWNER_EVIDENCE,
+    "persistence-options-apply": OPTIONS_APPLY_OWNER_EVIDENCE,
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
     "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
     "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,
@@ -4370,9 +4591,10 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-native/src/runtime/render_extract.rs",
     ),
     "ui-accessibility-surface": ("crates/bbb-native/src/narrator_runtime.rs",),
-    "persistence-options-file": ("crates/bbb-native/src/startup.rs",),
-    "persistence-options-derived": ("crates/bbb-native/src/startup.rs",),
-    "persistence-options-apply": ("crates/bbb-native/src/startup.rs",),
+    "persistence-options-file": ("crates/bbb-native/src/client_options.rs",),
+    "persistence-options-derived": ("crates/bbb-native/src/client_options.rs",),
+    "persistence-options-apply": ("crates/bbb-native/src/client_options.rs",),
+    "persistence-options-unconsumed": ("docs/unsupported-features.md",),
     "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),
     "identity-profile-key-lifecycle": (
         "crates/bbb-net/src/chat_session.rs",

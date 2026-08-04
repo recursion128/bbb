@@ -1458,10 +1458,12 @@ class LocalPlayer {
         self.assertEqual(
             dict(by_mechanism),
             {
-                "persistence-options-file": 16,
-                "persistence-options-derived": 22,
-                "persistence-options-apply": 7,
-                "scope-options-ui": 6,
+                "persistence-options-file": 14,
+                "persistence-options-derived": 13,
+                "persistence-options-apply": 3,
+                # Values that round-trip but have no consumer subsystem here.
+                "persistence-options-unconsumed": 8,
+                "scope-options-ui": 13,
                 "scope-support-accessors": 94,
             },
         )

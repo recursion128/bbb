@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "3fbb46268e56a833f44298ddcdd963434c905a232918104cda5e6499bc605948"
+      "sha256": "efb97191de23a1d04a30d1418a62ad81ec2544ea1dc2de3da571291ebfedf149"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -214,21 +214,30 @@
     },
     "persistence-options-apply": {
       "bbb_evidence": [
-        "crates/bbb-native/src/startup.rs"
+        "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 7
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "persistence-options-derived": {
       "bbb_evidence": [
-        "crates/bbb-native/src/startup.rs"
+        "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 22
+      "owner_count": 13,
+      "owner_evidence_count": 13
     },
     "persistence-options-file": {
       "bbb_evidence": [
-        "crates/bbb-native/src/startup.rs"
+        "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 16
+      "owner_count": 14,
+      "owner_evidence_count": 14
+    },
+    "persistence-options-unconsumed": {
+      "bbb_evidence": [
+        "docs/unsupported-features.md"
+      ],
+      "owner_count": 8
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -576,7 +585,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 20
+      "owner_count": 27
     },
     "scope-realms": {
       "bbb_evidence": [
@@ -11356,6 +11365,19 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#ypos()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options.rs#default_text"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#defaults_carry_the_text_vanilla_writes_for_every_catalogued_key",
+          "crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_committed_catalog_matches_the_vanilla_source"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "constructor",
@@ -11415,7 +11437,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#applyGraphicsPreset(final GraphicsPreset value)",
       "role": "decision",
       "scope": "external-client",
@@ -11510,6 +11532,16 @@
       "vanilla_owner": "net.minecraft.client.Options#bobView()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_broadcast_client_information_command",
+          "crates/bbb-net/src/driver/commands.rs#send_play_client_information"
+        ],
+        "tests": [
+          "crates/bbb-net/src/driver/commands/tests.rs#broadcast_client_information_keeps_each_phase_own_packet_id",
+          "crates/bbb-native/src/input/tests.rs#focus_pause_toggle_queues_the_option_line_vanilla_saves"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -11524,6 +11556,15 @@
       "vanilla_owner": "net.minecraft.client.Options#broadcastOptions()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#client_information_from_args"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
+          "crates/bbb-native/src/startup.rs#stored_options_fill_arguments_the_user_did_not_type"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -11734,13 +11775,13 @@
       "vanilla_owner": "net.minecraft.client.Options#cloudStatus()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#createSoundSliderOptionInstance(final String captionId,final SoundSource category)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1248,
         "path": "net/minecraft/client/Options.java"
@@ -11807,7 +11848,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-file",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#dataFix(final CompoundTag tag)",
       "role": "decision",
       "scope": "external-client",
@@ -11846,6 +11887,15 @@
       "vanilla_owner": "net.minecraft.client.Options#discreteMouseScroll()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#dump_for_report"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#the_report_dump_covers_the_dumped_block_and_the_keys_it_names",
+          "crates/bbb-native/src/crash_report.rs#the_options_captured_at_startup_reach_the_report"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12042,6 +12092,14 @@
       "vanilla_owner": "net.minecraft.client.Options#genericValueOrOffLabel(final Component caption,final int value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#parse_text_background_opacity"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_reject_text_background_opacity_outside_unit_range"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12056,6 +12114,14 @@
       "vanilla_owner": "net.minecraft.client.Options#getBackgroundColor(final float defaultOpacity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#parse_text_background_opacity"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_reject_text_background_opacity_outside_unit_range"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12070,6 +12136,14 @@
       "vanilla_owner": "net.minecraft.client.Options#getBackgroundColor(final int defaultColor)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#parse_text_background_opacity"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_reject_text_background_opacity_outside_unit_range"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12101,7 +12175,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#getCloudStatus()",
       "role": "decision",
       "scope": "external-client",
@@ -12112,6 +12186,15 @@
       "vanilla_owner": "net.minecraft.client.Options#getCloudStatus()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/derived.rs#effective_render_distance",
+          "crates/bbb-native/src/runtime.rs#update_renderer_from_publication"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/derived.rs#the_server_radius_only_clamps_when_it_is_set_and_smaller"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12140,6 +12223,14 @@
       "vanilla_owner": "net.minecraft.client.Options#getFile()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/command.rs#final_source_volume"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/command.rs#final_source_volume_matches_vanilla_master_and_category_mix"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12157,7 +12248,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-file",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#getFullscreenVideoModeString()",
       "role": "decision",
       "scope": "external-client",
@@ -12168,6 +12259,15 @@
       "vanilla_owner": "net.minecraft.client.Options#getFullscreenVideoModeString()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/screen_blur.rs#sanitize_menu_background_blurriness"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_accept_vanilla_menu_background_blurriness_range",
+          "crates/bbb-native/src/startup.rs#args_reject_menu_background_blurriness_outside_vanilla_range"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12182,13 +12282,13 @@
       "vanilla_owner": "net.minecraft.client.Options#getMenuBackgroundBlurriness()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#getSoundSourceOptionInstance(final SoundSource source)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1244,
         "path": "net/minecraft/client/Options.java"
@@ -12196,6 +12296,14 @@
       "vanilla_owner": "net.minecraft.client.Options#getSoundSourceOptionInstance(final SoundSource source)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-audio/src/command.rs#final_source_volume"
+        ],
+        "tests": [
+          "crates/bbb-audio/src/command.rs#final_source_volume_matches_vanilla_master_and_category_mix"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12392,6 +12500,19 @@
       "vanilla_owner": "net.minecraft.client.Options#invertMouseY()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12406,6 +12527,14 @@
       "vanilla_owner": "net.minecraft.client.Options#isFalse(final String value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/startup.rs#client_information_from_args"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12423,7 +12552,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#isSoundDeviceDefault(final String deviceName)",
       "role": "decision",
       "scope": "external-client",
@@ -12434,6 +12563,19 @@
       "vanilla_owner": "net.minecraft.client.Options#isSoundDeviceDefault(final String deviceName)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12462,6 +12604,14 @@
       "vanilla_owner": "net.minecraft.client.Options#japaneseGlyphVariants()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#LocaleIsJapanese"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#host_derived_defaults_follow_the_host"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12476,6 +12626,15 @@
       "vanilla_owner": "net.minecraft.client.Options#japaneseGlyphVariantsDefault()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#set_raw"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#a_line_splits_on_its_first_colon_only_and_bad_lines_are_skipped",
+          "crates/bbb-native/src/client_options.rs#a_missing_file_leaves_the_defaults_in_place"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12493,7 +12652,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-apply",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#loadSelectedResourcePacks(final PackRepository repository)",
       "role": "decision",
       "scope": "external-client",
@@ -12504,6 +12663,16 @@
       "vanilla_owner": "net.minecraft.client.Options#loadSelectedResourcePacks(final PackRepository repository)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12549,7 +12718,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#maxAnisotropyValue()",
       "role": "decision",
       "scope": "external-client",
@@ -12672,13 +12841,13 @@
       "vanilla_owner": "net.minecraft.client.Options#notificationDisplayTime()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#onboardingAccessibilityFinished()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1388,
         "path": "net/minecraft/client/Options.java"
@@ -12700,13 +12869,13 @@
       "vanilla_owner": "net.minecraft.client.Options#onlyShowSecureChat()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-apply",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#operateOnLevelRenderer(final Consumer <LevelRenderer> consumer)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 932,
         "path": "net/minecraft/client/Options.java"
@@ -12812,6 +12981,19 @@
       "vanilla_owner": "net.minecraft.client.Options#prioritizeChunkUpdates()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12826,6 +13008,19 @@
       "vanilla_owner": "net.minecraft.client.Options#processDumpedOptions(final Options.OptionAccess access)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12854,6 +13049,14 @@
       "vanilla_owner": "net.minecraft.client.Options#rawMouseInput()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#TextList"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12924,6 +13127,15 @@
       "vanilla_owner": "net.minecraft.client.Options#rotateWithMinecart()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#rendered"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#save_writes_every_catalogued_key_in_vanilla_order",
+          "crates/bbb-native/src/client_options.rs#save_round_trips_and_drops_keys_this_client_does_not_know"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12980,6 +13192,14 @@
       "vanilla_owner": "net.minecraft.client.Options#sensitivity()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#cycle_camera_type"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input.rs#camera_type"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -12994,13 +13214,13 @@
       "vanilla_owner": "net.minecraft.client.Options#setCameraType(final CameraType cameraType)"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#setGraphicsPresetToCustom()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1327,
         "path": "net/minecraft/client/Options.java"
@@ -13008,13 +13228,13 @@
       "vanilla_owner": "net.minecraft.client.Options#setGraphicsPresetToCustom()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-derived",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#setModelPart(final PlayerModelPart part,final boolean visible)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1805,
         "path": "net/minecraft/client/Options.java"
@@ -13022,6 +13242,14 @@
       "vanilla_owner": "net.minecraft.client.Options#setModelPart(final PlayerModelPart part,final boolean visible)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#apply_set_chunk_cache_radius"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/store.rs#chunk_cache_radius"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13218,6 +13446,16 @@
       "vanilla_owner": "net.minecraft.client.Options#touchscreen()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13235,7 +13473,7 @@
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-apply",
+      "mechanism_id": "persistence-options-unconsumed",
       "owner_id": "method:net.minecraft.client.Options#updateFontOptions()",
       "role": "decision",
       "scope": "external-client",
@@ -13246,13 +13484,13 @@
       "vanilla_owner": "net.minecraft.client.Options#updateFontOptions()"
     },
     {
-      "category": "persistence",
-      "domain": "persistence",
+      "category": "out-of-scope",
+      "domain": "options",
       "kind": "method",
-      "mechanism_id": "persistence-options-apply",
+      "mechanism_id": "scope-options-ui",
       "owner_id": "method:net.minecraft.client.Options#updateResourcePacks(final PackRepository packRepository)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "out-of-scope",
+      "scope": "out-of-scope",
       "source": {
         "line": 1021,
         "path": "net/minecraft/client/Options.java"
@@ -13302,6 +13540,19 @@
       "vanilla_owner": "net.minecraft.client.Options#weatherRadius()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13316,6 +13567,19 @@
       "vanilla_owner": "net.minecraft.client.Options.FieldAccess#process(String name,String value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13330,6 +13594,19 @@
       "vanilla_owner": "net.minecraft.client.Options.FieldAccess#process(String name,T value,Function <String, T> reader,Function <T, String> writer)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13344,6 +13621,19 @@
       "vanilla_owner": "net.minecraft.client.Options.FieldAccess#process(String name,boolean value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13358,6 +13648,19 @@
       "vanilla_owner": "net.minecraft.client.Options.FieldAccess#process(String name,float value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -13372,6 +13675,19 @@
       "vanilla_owner": "net.minecraft.client.Options.FieldAccess#process(String name,int value)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTIONS",
+          "scripts/client_options_catalog_extractor.py#client_option_entries",
+          "scripts/generate-client-options-catalog.py#render_rust_catalog",
+          "crates/bbb-native/src/client_options/args.rs#bind"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#every_encoding_parses_its_own_default",
+          "scripts/tests/test_client_options_catalog_extractor.py#test_catalog_covers_every_options_txt_line",
+          "crates/bbb-native/src/client_options/args.rs#binding_a_key_through_the_wrong_encoding_fails_closed"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -43812,6 +44128,9 @@
       "rendering-client-particle-routing",
       "world-client-map-data",
       "persistence-server-list",
+      "persistence-options-file",
+      "persistence-options-derived",
+      "persistence-options-apply",
       "world-client-level-events",
       "rendering-client-block-entity-tracking",
       "player-local-input-movement",
@@ -45324,11 +45643,11 @@
       "menu-screen": 25,
       "movement": 20,
       "movement-report": 4,
-      "out-of-scope": 218,
+      "out-of-scope": 225,
       "packet-table": 256,
       "particle-provider": 117,
       "particle-routing": 6,
-      "persistence": 53,
+      "persistence": 46,
       "pick-action": 3,
       "platform": 67,
       "player-lifecycle": 4,
@@ -45372,8 +45691,8 @@
       "language": 7,
       "lifecycle": 24,
       "movement": 39,
-      "options": 20,
-      "persistence": 53,
+      "options": 27,
+      "persistence": 46,
       "platform": 67,
       "protocol": 747,
       "realms": 100,
@@ -45390,8 +45709,8 @@
       "world": 59
     },
     "by_role": {
-      "decision": 1324,
-      "out-of-scope": 218,
+      "decision": 1317,
+      "out-of-scope": 225,
       "support-non-decision": 193
     },
     "mapped_owner_count": 2927,
