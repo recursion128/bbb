@@ -456,6 +456,21 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer permission-chat-state
+
+- 目标与 owner：闭合 `player-local-permission-chat-state` 6 个 owner
+  （setPermissions、handleEntityEvent、refreshChatAbilities、sendSystemMessage、
+  sendOverlayMessage、isTextFilteringEnabled）。
+- 审计事实：permission entity event（24-28 op level→gamemaster 门）、system/
+  overlay chat 应用链、chat visibility 过滤（can_receive_system_messages）、
+  client text filtering 启动项均已实现并有 focused tests——全部验证型，无缺口。
+- focused evidence：census 6-owner OwnerEvidence + scripts/tests 断言块
+  （local-player 分区测试）。
+- 非目标：不动 chat packet/secure-chat 语义；发现其他 route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 6-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
