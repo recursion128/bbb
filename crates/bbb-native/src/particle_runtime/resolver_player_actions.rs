@@ -302,6 +302,65 @@ impl ParticleCommandResolver {
         }
     }
 
+    /// Vanilla `Entity.spawnSprintParticle` for the local player: one BLOCK
+    /// particle per sprint tick at a random point across the entity width,
+    /// clamped into the on-pos column when the entity stands on a neighbour
+    /// block, with the trailing `(-4dx, 1.5, -4dz)` velocity.
+    pub(super) fn local_sprint_particle_batch(
+        &mut self,
+        state: bbb_world::LocalSprintParticleState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_BLOCK_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut x = state.position.x + (self.particle_level_random.next_f64() - 0.5) * state.width;
+        let mut z = state.position.z + (self.particle_level_random.next_f64() - 0.5) * state.width;
+        if state.entity_block_pos.x != state.on_pos.x {
+            x = x.clamp(f64::from(state.on_pos.x), f64::from(state.on_pos.x) + 1.0);
+        }
+        if state.entity_block_pos.z != state.on_pos.z {
+            z = z.clamp(f64::from(state.on_pos.z), f64::from(state.on_pos.z) + 1.0);
+        }
+        let option_state = ParticleOptionRenderState {
+            block: Some(ParticleBlockOptionState {
+                block_state_id: state.block_state_id,
+            }),
+            color: self.terrain_particle_tint_color_for_block_position(
+                state.block_state_id,
+                state.on_pos,
+                state.biome_id,
+                None,
+            ),
+            ..ParticleOptionRenderState::default()
+        };
+        ParticleSpawnBatch {
+            commands: vec![self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x,
+                    y: state.position.y + 0.1,
+                    z,
+                },
+                Vec3d {
+                    x: state.velocity_x,
+                    y: 1.5,
+                    z: state.velocity_z,
+                },
+                template.particle_type.override_limiter,
+                false,
+                positive_var_i32_len(state.block_state_id),
+                0,
+                option_state,
+                None,
+                None,
+            )],
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     pub(super) fn local_destroy_hit_particle_batch(
         &mut self,
         state: LocalDestroyHitParticleState,

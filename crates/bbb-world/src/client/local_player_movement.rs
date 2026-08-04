@@ -1830,6 +1830,89 @@ fn local_player_trapdoor_usable_as_ladder(
             == Some(facing)
 }
 
+/// Facts behind one vanilla `Entity.spawnSprintParticle` call for the local
+/// player: the on-pos block, the clamp inputs and the trailing velocity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LocalSprintParticleState {
+    pub block_state_id: i32,
+    pub biome_id: Option<i32>,
+    pub on_pos: BlockPos,
+    pub entity_block_pos: BlockPos,
+    pub position: ProtocolVec3d,
+    pub width: f64,
+    pub velocity_x: f64,
+    pub velocity_z: f64,
+}
+
+impl WorldStore {
+    /// Vanilla `Entity.canSpawnSprintParticle` plus the `LocalPlayer` flying
+    /// override, resolved with the `spawnSprintParticle` on-pos facts: the
+    /// sprinting shared flag, the water/lava/spectator/crouch/alive gates and
+    /// the `getOnPosLegacy` block whose render shape must not be invisible.
+    pub fn local_player_sprint_particle_state(&self) -> Option<LocalSprintParticleState> {
+        let player = self.local_player();
+        if !player.sprinting {
+            return None;
+        }
+        if player.abilities.is_some_and(|abilities| abilities.flying) {
+            return None;
+        }
+        if self.local_player_is_spectator() {
+            return None;
+        }
+        if player.health.is_some_and(|health| health.health <= 0.0) {
+            return None;
+        }
+        let pose = player.pose?;
+        if pose.sneaking {
+            return None;
+        }
+        let contact = local_player_fluid_contact(self, pose);
+        if contact.in_water() || contact.in_lava() {
+            return None;
+        }
+        let probe = self.local_player_sprint_effect_probe(pose)?;
+        if probe
+            .block_name
+            .as_deref()
+            .is_none_or(crate::terrain::block_name_has_invisible_render_shape)
+        {
+            return None;
+        }
+        Some(LocalSprintParticleState {
+            block_state_id: probe.block_state_id,
+            biome_id: probe.biome_id,
+            on_pos: probe.pos,
+            entity_block_pos: BlockPos {
+                x: pose.position.x.floor() as i32,
+                y: pose.position.y.floor() as i32,
+                z: pose.position.z.floor() as i32,
+            },
+            position: pose.position,
+            width: 2.0 * LOCAL_PLAYER_HALF_WIDTH,
+            velocity_x: pose.delta_movement.x * -4.0,
+            velocity_z: pose.delta_movement.z * -4.0,
+        })
+    }
+
+    /// `Entity.getOnPosLegacy` for the sprint particle: the supporting-block
+    /// override on the ground and the plain `y - 0.2` sample in the air.
+    fn local_player_sprint_effect_probe(&self, pose: LocalPlayerPoseState) -> Option<BlockProbe> {
+        if pose.on_ground {
+            self.local_player_legacy_effect_block(pose, pose.delta_movement.y < 0.0)
+        } else {
+            self.probe_block(self.legacy_on_pos(
+                None,
+                EntityVec3 {
+                    x: pose.position.x,
+                    y: pose.position.y,
+                    z: pose.position.z,
+                },
+            ))
+        }
+    }
+}
+
 fn local_player_climbable_limited_velocity(
     velocity: ProtocolVec3d,
     input: LocalPlayerInputState,

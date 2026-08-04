@@ -426,6 +426,13 @@ impl NativeParticleRuntime {
         self.resolver.local_destroy_hit_particle_batch(state)
     }
 
+    pub(crate) fn local_sprint_particle_batch(
+        &mut self,
+        state: bbb_world::LocalSprintParticleState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.local_sprint_particle_batch(state)
+    }
+
     pub(crate) fn local_block_attack_particle_batch(
         &mut self,
         world: &WorldStore,

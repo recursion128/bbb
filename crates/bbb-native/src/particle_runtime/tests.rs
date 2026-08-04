@@ -2117,6 +2117,56 @@ fn rabbit_sprint_batch_preserves_block_option_position_and_velocity() {
 }
 
 #[test]
+fn local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity() {
+    let mut resolver = test_resolver(0);
+    let stone_state_id = test_block_state_id("minecraft:stone", []);
+    let state = bbb_world::LocalSprintParticleState {
+        block_state_id: stone_state_id,
+        biome_id: None,
+        on_pos: bbb_world::BlockPos { x: 9, y: 63, z: -4 },
+        entity_block_pos: bbb_world::BlockPos {
+            x: 10,
+            y: 64,
+            z: -4,
+        },
+        position: bbb_protocol::packets::Vec3d {
+            x: 10.05,
+            y: 64.0,
+            z: -3.75,
+        },
+        width: 0.6,
+        velocity_x: -1.0,
+        velocity_z: 0.4,
+    };
+
+    let batch = resolver.local_sprint_particle_batch(state);
+
+    assert_eq!(batch.len(), 1);
+    let command = &batch.commands[0];
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_BLOCK_ID);
+    assert!(
+        command.position[0] >= 9.0 && command.position[0] <= 10.0,
+        "x {} clamps into the on-pos column",
+        command.position[0]
+    );
+    assert_close(command.position[1], 64.1);
+    assert!(
+        (command.position[2] + 3.75).abs() <= 0.300001,
+        "z {} keeps the unclamped width offset",
+        command.position[2]
+    );
+    assert_close(command.velocity[0], -1.0);
+    assert_close(command.velocity[1], 1.5);
+    assert_close(command.velocity[2], 0.4);
+    assert_eq!(
+        command.option_block,
+        Some(ParticleBlockOptionState {
+            block_state_id: stone_state_id,
+        })
+    );
+}
+
+#[test]
 fn count_zero_emits_single_spawn_with_offset_velocity() {
     let mut resolver = test_resolver(0);
     let batch = resolver

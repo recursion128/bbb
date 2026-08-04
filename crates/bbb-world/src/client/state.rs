@@ -83,6 +83,7 @@ pub use crate::client::local_player_destroy::{
     LocalBlockAttackEffect, LocalDestroyBlockFinished, WorldBlockDestroyProfile,
     WorldItemMiningProfile, WorldItemMiningRule,
 };
+pub use crate::client::local_player_movement::LocalSprintParticleState;
 pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,
 };

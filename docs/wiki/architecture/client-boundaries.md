@@ -36,6 +36,20 @@ movement；乘客 tick 保持 rotation、authoritative vehicle movement、latch 
 level generation 变化时丢弃旧 edge/timer 并把 outbound baseline 对齐新 world；队列发送失败
 不推进 baseline，所以下一 tick 会重试而不形成 shadow state。
 
+## LocalPlayer input-movement owner
+
+二十个 input-movement owner 收敛为唯一 movement tick owner
+`integrate_local_player_input_pose_with_world_effects`：输入归一由
+`local_player_modified_input`（0.98 缩放、item-use 乘子、慢速属性=isMovingSlowly 内联）
+与 `local_player_unit_square_input`（unit-square 投影）唯一拥有；sprint 起停链
+（can_start/should_stop 的 run/swim 双分支）延伸出 `local_player_sprint_particle_state`
+——canSpawnSprintParticle 全门（sprint latch/水/岩浆/旁观/蹲/死亡/飞行）加 getOnPosLegacy
+on-pos 块与 INVISIBLE 剔除在 world 侧唯一裁决，native 只按 `(-4dx, 1.5, -4dz)` 速度与
+宽度随机+列 clamp 生成 BLOCK 粒子；squish 逃逸（suffocates_at+towards_closest_space）、
+minor-collision 角度门、auto-jump（can/update）与 climbable sneak 抑制
+（isSuppressingSlidingDownLadder，scaffolding 例外）各有唯一具名 fn。不得在 native 侧
+内联任何 movement 判定或建第二条 sprint 粒子路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

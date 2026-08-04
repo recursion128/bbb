@@ -2380,6 +2380,100 @@ CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch",
+            ),
+        ),
+        (
+            "aiStep",
+            "applyInput",
+            "modifyInput",
+            "modifyInputSpeedForSquareMovement",
+            "isMoving",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#update_local_player_auto_jump",
+                "crates/bbb-world/src/client/local_player_movement.rs#can_local_player_auto_jump",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_arms_on_block_and_forces_next_tick_jump",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_disabled_option_and_low_jump_factor_do_not_arm",
+            ),
+        ),
+        ("move", "canAutoJump", "updateAutoJump"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+                "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity",
+            ),
+        ),
+        (
+            "canStartSprinting",
+            "isSprintingPossible",
+            "shouldStopRunSprinting",
+            "shouldStopSwimSprinting",
+            "canSpawnSprintParticle",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#move_local_player_towards_closest_space",
+                "crates/bbb-world/src/client/local_player_collision.rs#local_player_suffocates_at",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_uses_live_state_fact_and_collision_shape",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_escape_selects_closest_open_direction",
+            ),
+        ),
+        ("suffocatesAt", "moveTowardsClosestSpace", "distanceToUnitSquare"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_climbable_limited_velocity",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_suppresses_climbable_sliding",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_uses_default_sneaking_speed_multiplier",
+            ),
+        ),
+        ("isShiftKeyDown", "isMovingSlowly", "isSuppressingSlidingDownLadder"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player_movement.rs#local_player_horizontal_collision_is_minor",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_minor_horizontal_collision_angle_threshold_matches_vanilla",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_minor_horizontal_collision_tracks_tangential_input_in_air_and_fluid",
+            ),
+        ),
+        ("isHorizontalCollisionMinor",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2540,6 +2634,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
     "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
+    "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

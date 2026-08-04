@@ -178,6 +178,24 @@ public class Owner {
         self.assertEqual(len(minecraft_interaction_methods), 6)
         self.assertEqual(len(methods) + len(minecraft_interaction_methods), 149)
 
+        input_movement_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-input-movement"
+        ]
+        self.assertEqual(len(input_movement_owners), 20)
+        self.assertEqual(
+            value["mechanisms"]["player-local-input-movement"]["owner_evidence_count"],
+            20,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in input_movement_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

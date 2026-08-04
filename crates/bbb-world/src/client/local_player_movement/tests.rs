@@ -6398,6 +6398,87 @@ fn advance_forward_from_standard_start(
         .unwrap()
 }
 
+#[test]
+fn local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts() {
+    let mut world = flat_collision_world();
+    let standing = LocalPlayerPoseState {
+        position: vec3(0.5, 1.0, 0.5),
+        delta_movement: vec3(0.25, -0.08, -0.1),
+        on_ground: true,
+        ..LocalPlayerPoseState::default()
+    };
+    world.set_local_player_pose(standing);
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "no sprint flag -> no particle"
+    );
+
+    world.local_player.sprinting = true;
+    let state = world
+        .local_player_sprint_particle_state()
+        .expect("sprinting on grass emits the on-pos facts");
+    assert_eq!(state.block_state_id, GRASS_BLOCK_STATE_ID);
+    assert_eq!(state.on_pos, BlockPos { x: 0, y: 0, z: 0 });
+    assert_eq!(state.entity_block_pos, BlockPos { x: 0, y: 1, z: 0 });
+    assert_f64_near(state.width, 0.6, 0.000001);
+    assert_f64_near(state.velocity_x, -1.0, 0.000001);
+    assert_f64_near(state.velocity_z, 0.4, 0.000001);
+    assert_f64_near(state.position.y, 1.0, 0.000001);
+
+    world.set_local_player_pose(LocalPlayerPoseState {
+        sneaking: true,
+        ..standing
+    });
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "crouching suppresses the sprint particle"
+    );
+
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: vec3(0.5, 8.0, 0.5),
+        on_ground: false,
+        ..standing
+    });
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "the airborne on-pos block is invisible air"
+    );
+
+    world.set_local_player_pose(standing);
+    world.local_player.abilities = Some(LocalPlayerAbilitiesState {
+        invulnerable: false,
+        flying: true,
+        can_fly: true,
+        instabuild: false,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "the LocalPlayer override suppresses flying sprint particles"
+    );
+    world.local_player.abilities = None;
+
+    world.local_player.health = Some(crate::LocalPlayerHealthState {
+        health: 0.0,
+        food: 20,
+        saturation: 0.0,
+    });
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "dead players spawn no sprint particles"
+    );
+    world.local_player.health = None;
+
+    world.gameplay.game_type = 3;
+    assert!(
+        world.local_player_sprint_particle_state().is_none(),
+        "spectators spawn no sprint particles"
+    );
+    world.gameplay.game_type = 0;
+    assert!(world.local_player_sprint_particle_state().is_some());
+}
+
 fn flat_collision_world() -> WorldStore {
     let mut world = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

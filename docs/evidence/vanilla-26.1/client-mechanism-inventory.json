@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "9b88a2398500060bd4e7e11ae1fc9fbb0741de8140b0f68461e49e14014bddb1"
+      "sha256": "fe29d4d517d105f7f05887ff0a3e14d51e3bc019c56fbd6286e09d50117f5175"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -241,7 +241,8 @@
         "crates/bbb-native/src/input/movement.rs",
         "crates/bbb-world/src/client/local_player_movement.rs"
       ],
-      "owner_count": 20
+      "owner_count": 20,
+      "owner_evidence_count": 20
     },
     "player-local-inventory-actions": {
       "bbb_evidence": [
@@ -24159,6 +24160,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#LocalPlayer(final Minecraft minecraft,final ClientLevel level,final ClientPacketListener connection,final StatsCounter stats,final ClientRecipeBook recipeBook,final Input lastSentInput,final boolean wasSprinting,final ChatAbilities chatAbilities)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24173,6 +24185,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#aiStep()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24187,6 +24210,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#applyInput()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#update_local_player_auto_jump",
+          "crates/bbb-world/src/client/local_player_movement.rs#can_local_player_auto_jump"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_arms_on_block_and_forces_next_tick_jump",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_disabled_option_and_low_jump_factor_do_not_arm"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24215,6 +24248,18 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#canDropItems()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24229,6 +24274,18 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#canSpawnSprintParticle()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24299,6 +24356,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#crit(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#move_local_player_towards_closest_space",
+          "crates/bbb-world/src/client/local_player_collision.rs#local_player_suffocates_at"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_uses_live_state_fact_and_collision_shape",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_escape_selects_closest_open_direction"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24663,6 +24730,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isHandsBusy()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_horizontal_collision_is_minor"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_minor_horizontal_collision_angle_threshold_matches_vanilla",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_minor_horizontal_collision_tracks_tangential_input_in_air_and_fluid"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24691,6 +24767,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isLocalPlayer()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24705,6 +24792,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isMoving()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_climbable_limited_velocity"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_suppresses_climbable_sliding",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_uses_default_sneaking_speed_multiplier"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24719,6 +24815,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isMovingSlowly()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_climbable_limited_velocity"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_suppresses_climbable_sliding",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_uses_default_sneaking_speed_multiplier"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24747,6 +24852,18 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isSlowDueToUsingItem()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24761,6 +24878,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isSprintingPossible(final boolean allowedInShallowWater)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_climbable_limited_velocity"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_suppresses_climbable_sliding",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sneak_uses_default_sneaking_speed_multiplier"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24859,6 +24985,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#magicCrit(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24873,6 +25010,17 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#modifyInput(final Vec2 input)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#integrate_local_player_input_pose_with_world_effects",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_modified_input",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_unit_square_input"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_input_stops_at_full_block_wall_and_reports_collision",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_using_item_slows_input_without_stopping_an_active_sprint_latch"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24887,6 +25035,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#modifyInputSpeedForSquareMovement(final Vec2 input)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#update_local_player_auto_jump",
+          "crates/bbb-world/src/client/local_player_movement.rs#can_local_player_auto_jump"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_arms_on_block_and_forces_next_tick_jump",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_disabled_option_and_low_jump_factor_do_not_arm"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -24901,6 +25059,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#move(final MoverType moverType,final Vec3 delta)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#move_local_player_towards_closest_space",
+          "crates/bbb-world/src/client/local_player_collision.rs#local_player_suffocates_at"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_uses_live_state_fact_and_collision_shape",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_escape_selects_closest_open_direction"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -25419,6 +25587,18 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#shouldShowDeathScreen()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -25433,6 +25613,18 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#shouldStopRunSprinting()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_can_start_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_should_stop_sprinting",
+          "crates/bbb-world/src/client/local_player_movement.rs#local_player_sprint_particle_state"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_shallow_water_stops_run_sprint_before_fluid_travel",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_particle_state_applies_vanilla_gates_and_on_pos_facts",
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_sprint_particle_batch_clamps_into_on_pos_column_with_trailing_velocity"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -25489,6 +25681,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#stopUsingItem()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#move_local_player_towards_closest_space",
+          "crates/bbb-world/src/client/local_player_collision.rs#local_player_suffocates_at"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_uses_live_state_fact_and_collision_shape",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_suffocation_escape_selects_closest_open_direction"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -25545,6 +25747,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#tickDeath()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player_movement.rs#update_local_player_auto_jump",
+          "crates/bbb-world/src/client/local_player_movement.rs#can_local_player_auto_jump"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_arms_on_block_and_forces_next_tick_jump",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_auto_jump_disabled_option_and_low_jump_factor_do_not_arm"
+        ]
+      },
       "category": "movement",
       "domain": "movement",
       "kind": "method",
@@ -42291,6 +42503,7 @@
       "world-client-map-data",
       "world-client-level-events",
       "rendering-client-block-entity-tracking",
+      "player-local-input-movement",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

@@ -84,10 +84,6 @@ preserving the two former broad `partial` claims.
   world player into input, position/rotation/status, sprint and ability commands. Close
   after all four Vanilla owners have exact ordering/retry/generation evidence and live
   movement reporting.
-- **`player-local-input-movement`** — raw native input feeds the single world movement
-  owner; the unresolved evidence surface is the 20-owner normalization, pose, flight,
-  sprint, collision and auto-jump decision family. Close with exact owner coverage and
-  equal-load movement acceptance; do not create a second physics resolver.
 - **`player-local-vehicle-control`** — world vehicle authority and native movement own
   mount input, passenger rotation, jump charge and vehicle reporting. Close after the
   seven owners are tied to vehicle-type/order tests and a mounted external session.

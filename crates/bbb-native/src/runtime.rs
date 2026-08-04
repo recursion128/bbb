@@ -3073,6 +3073,12 @@ pub(crate) fn advance_simulation(
         }
     }
     submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);
+    submit_local_player_sprint_particles(
+        particle_batches,
+        world,
+        particle_runtime.as_mut(),
+        advanced_ticks,
+    );
     let mut particle_events = particle_runtime
         .as_mut()
         .map(|runtime| runtime as &mut dyn ParticleEventSink);
@@ -4931,6 +4937,28 @@ fn submit_local_player_action_particles(
             }
         };
         batches.submit_particle_batch(batch);
+    }
+}
+
+/// Vanilla `Entity.tick`: one `spawnSprintParticle` per client tick while
+/// `canSpawnSprintParticle` holds for the local player.
+fn submit_local_player_sprint_particles(
+    batches: &mut dyn ParticleBatchSink,
+    world: &WorldStore,
+    particle_runtime: Option<&mut NativeParticleRuntime>,
+    ticks: u32,
+) {
+    if ticks == 0 {
+        return;
+    }
+    let Some(particle_runtime) = particle_runtime else {
+        return;
+    };
+    let Some(state) = world.local_player_sprint_particle_state() else {
+        return;
+    };
+    for _ in 0..ticks {
+        batches.submit_particle_batch(particle_runtime.local_sprint_particle_batch(state));
     }
 }
 
