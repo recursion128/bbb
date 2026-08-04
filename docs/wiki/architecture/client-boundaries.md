@@ -448,6 +448,22 @@ gateway 256）唯一登记于此；`shouldRenderOffScreen` 为真的 renderer �
 kind 还原，故 beam 在投影处过门、进流后不再重复判距。重开判据：新增 off-screen
 renderer 或两条提取路径的分界变化。
 
+### Block-entity renderer 注册 owner
+
+`BlockEntityRenderers.bootstrap` 的 27 条 `register` 调用在 BBB 侧收敛为 23 个投影
+owner，generated inventory 为每条注册登记一格 implementation/test evidence，注册表本身
+不在 BBB 复制：类型→渲染的绑定就是「哪个投影函数读这个 block entity」，没有第二处
+注册表可以漂移。合并只发生在 vanilla 本身共用 renderer 的地方——sign/hanging_sign 同
+`sign_scene`，chest/ender_chest/trapped_chest 同 `chest_scene`，mob_spawner/trial_spawner
+同 `spawner_scene`，end_portal/end_gateway 同 `end_portal_scene`；其余 19 类各有唯一
+owner。四类 item display（campfire/brushable_block/vault/shelf）不各建 scene，而是共用
+`item_models/block_entity.rs` 的单一提交路径、按 per-renderer transform 分叉；piston 的
+移动方块同理挂在 `item_models/dropped.rs::entity_block_attachments`，并经
+`MovingPistonVisibility` 回到上一节的 section gate。beacon/structure_block/
+test_instance_block 是三个 `shouldRenderOffScreen` 成员，投影处即过
+`off_screen_owner_is_visible`。重开判据：vanilla 增删 `register` 调用，或某类型的投影
+搬离其 owner 文件。
+
 ### ClientLevel level-events owner
 
 三个 level-events owner 收敛为 packet apply 的唯一分派链：`global_level_event_sound` 按

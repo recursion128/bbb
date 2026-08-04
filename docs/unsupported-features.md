@@ -73,17 +73,17 @@ now `equivalent` with per-owner implementation/test evidence; reopen conditions 
 on each matrix row.
 
 
-## Render-step, HUD and block-entity presentation closure
+## Render-step and HUD presentation closure
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`
+Matrix routes: `rendering-hud-step-surface`, `rendering-game-step-surface`
 
-- **The registered block-entity and remaining frame/HUD step surfaces are `active`.**
-  Existing focused and pixel tests cover many branches, but do not yet provide
-  one mechanically reachable evidence cell for every 27 block-entity
-  registration, 70 GUI owner and 46 game-renderer owner. Split only by semantic
-  owner and preserve the single frame-extract/submission path.
+- **The remaining frame/HUD step surfaces are `active`.** Existing focused and
+  pixel tests cover many branches, but do not yet provide one mechanically
+  reachable evidence cell for every 70 GUI owner and 46 game-renderer owner.
+  Split only by semantic owner and preserve the single frame-extract/submission
+  path.
 
 ## Native input, accessibility and window lifecycle closure
 

@@ -13,24 +13,17 @@
 
 ## 里程碑
 
-- **2026-07-09～20**：原生架构、P0/coverage、生成式 entity/render policy、基础 session/packet、
-  resource-pack、registry revision、simulation publication 与 render-thread 生命周期建立。
-- **2026-07-21**：entity client tick、movement、save/debug、collision/pick、equipment、
-  passenger、leash 与 157 类 entity coverage 收口。
-- **2026-07-22**：194 行 registry holder/tag、configuration registry、SetEntityData、
-  light/chunk/block/event/UI packet families 与 entity presentation 矩阵闭环。
-- **2026-07-23**：world effect、screen/HUD、item-component 110 项六维 coverage 与主要
-  item interaction prediction 工程收口。
-- **2026-07-25～26**：block/item use prediction、container/recipe/creative UI、special
-  item/equipment rendering、camera/HUD/pause/player-list 与 profiler 闭环。
-- **2026-07-27～28**：post-processing、untrusted decode budgets、stable renderer
-  extraction、tutorial/debug、resource/platform workflow、packet 256 行与粒子矩阵闭环。
-- **2026-07-29**：block animateTick、collision/survival physics、rich text、render
-  state/layer、双向 shaping、多类 UI screen 与可见性/occlusion 工程闭环。
-- **2026-07-30**：entity/block-entity presentation、texture sampling、generated
-  registry fallback、lifecycle/fault soak 与 Linux Wayland/Vulkan release gate 闭环。
-- **2026-07-31**：Vanilla `hotbar.nbt` 互换、Trial Spawner display projection、共享
-  camera Water/Lava sampler 与 Lava fog 闭环。
+- **2026-07**：原生架构、P0/coverage、生成式 entity/render policy、session/packet、resource-pack、
+  registry revision、simulation publication 与 render-thread 生命周期建立；entity client tick/movement/
+  collision/pick/equipment/passenger/leash 与 157 类 entity、194 行 registry holder/tag 与
+  light/chunk/block/event/UI packet families、world effect/screen/HUD 与 item-component 110 项六维
+  coverage、block/item use prediction 与 container/recipe/creative UI、special item/equipment rendering、
+  camera/HUD/pause/player-list、profiler、post-processing、untrusted decode budgets、stable renderer
+  extraction、tutorial/debug、resource/platform workflow、packet 256 行与粒子矩阵、block animateTick、
+  survival physics、rich text、render state/layer、双向 shaping、可见性/occlusion、entity/block-entity
+  presentation、texture sampling、generated registry fallback、lifecycle/fault soak、Linux Wayland/Vulkan
+  release gate、Vanilla `hotbar.nbt` 互换、Trial Spawner display projection 与共享 camera Water/Lava
+  sampler/Lava fog 逐项闭环。
 - **2026-08-02**：官方 26.1 渲染机制/可见 workload/同载性能 P0、unihex/CJK 字体，
   以及中文 Vanilla 机制 Wiki 与 parity/document lint 工程闭环。
 - **2026-08-02（文档工作流 v10）**：当前事实收敛到 Wiki，历史 Markdown 正文改由
@@ -95,5 +88,10 @@
   handler+barrier；input-movement 20 owner 经唯一 tick/归一/sprint 链收口；environment-effects 8 owner（crit 经 AndSelf 验证、portal intensity/trigger/spinning 补实现）、world-edit-ui 9 owner（九面唯一 sync_*_editor/screen 链）、camera-targeting 9 owner（唯一 crosshair resolver/camera pose/leash/SetCamera 链）、inventory-actions 9 owner（drop 预测/close 命令/creative throttler/recipe/tutorial-noop 链）、vehicle-control 7 owner（ride tick/riding jump/sprintable/SetPassengers/minecart-flag 链）、item-use-state 6 owner（use-prediction/movement 乘子/flags 投影链）、permission-chat-state 6 owner（permission event/system-chat/visibility/text-filtering 链）、game-mode-lifecycle 7 owner（game-event/login-respawn 重建/abilities/switcher 链）、primary-action-routing 3 owner（mouse 左/右键唯一路由链）、game-mode-guards 5 owner（HUD 门/miss-time/spectator/mount 判定链）、session-respawn 4 owner（login-respawn 重建/respawn 命令/death 计数链）、vitals-status 4 owner（health/experience 应用与 contextual bar 链）、movement-reporting 4 owner（per-tick 报文/sprint 转换/abilities 命令链）、status-options/item-use/entity-actions/container-actions/creative-actions 批量 18 owner（game-event/命令族链，补 spectator 垂直清零）、carried-slot-sync/pick-actions 5 owner 收口——**LocalPlayer/game-mode census 22 route 全 equivalent，域关闭**。
 - **2026-08-03/04（generated evidence/layout、ClientLevel census 与 lifecycle closures）**：五份 JSON 收敛；
   121 owner 拆 18 route；全部 18 route（entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report/map-data/level-events/block-entity-tracking 等）95 owner 经唯一 store/resolver/gate/装配/分派链收口，census 域关闭。
+
+- **2026-08-04（block-entity registration closure）**：`BlockEntityRenderers` 27 条注册收敛为 23 个投影 owner
+  并逐条挂上 implementation/test evidence；产码补齐 item display 四项、beacon 光柱（与 end gateway 共用
+  `beaconBeam` 几何/管线）、structure_block/test_instance_block 包围盒与错误标记、copper_golem_statue 雕像，
+  piston 移动方块回到 `block_entity_visibility` 唯一政策点，route 翻 `equivalent`。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

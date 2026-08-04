@@ -3602,7 +3602,272 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
 }
 
-OWNER_EVIDENCE_MECHANISMS = tuple(METHOD_OWNER_EVIDENCE)
+def _registration_evidence(
+    *groups: tuple[OwnerEvidence, tuple[str, ...]],
+) -> dict[str, OwnerEvidence]:
+    evidence: dict[str, OwnerEvidence] = {}
+    for owner_evidence, registered in groups:
+        for key in registered:
+            if key in evidence:
+                raise ValueError(f"duplicate registration evidence: {key}")
+            evidence[key] = owner_evidence
+    return evidence
+
+
+BLOCK_ENTITY_RENDERER_OWNER_EVIDENCE = _registration_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/sign_scene.rs#sign_scene_from_world",),
+            (
+                "crates/bbb-native/src/sign_scene.rs#projects_sign_instances_with_kind_rotation_and_light",
+                "crates/bbb-native/src/sign_scene.rs#bakes_text_surfaces_only_for_faces_with_text",
+            ),
+        ),
+        ("BlockEntityType.SIGN", "BlockEntityType.HANGING_SIGN"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/spawner_scene.rs#spawner_display_entity_submissions_from_world_at_partial_tick",
+            ),
+            (
+                "crates/bbb-native/src/spawner_scene.rs#projects_spawner_display_entity_as_wrapped_entity_model_instance",
+                "crates/bbb-native/src/spawner_scene.rs#projects_trial_spawner_custom_entity_through_shared_entity_world",
+            ),
+        ),
+        ("BlockEntityType.MOB_SPAWNER", "BlockEntityType.TRIAL_SPAWNER"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/item_models/dropped.rs#entity_block_attachments",),
+            (
+                "crates/bbb-native/src/item_models/tests.rs#entity_block_attachments_submit_interpolated_moving_piston_blocks",
+                "crates/bbb-native/src/item_models/tests.rs#moving_piston_blocks_go_through_the_block_entity_visibility_gate",
+            ),
+        ),
+        ("BlockEntityType.PISTON",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/chest_scene.rs#chest_model_instances_from_world_at_partial_tick",),
+            (
+                "crates/bbb-native/src/chest_scene.rs#projects_single_chest_instance_with_facing_openness_and_light",
+                "crates/bbb-native/src/chest_scene.rs#projects_double_chest_halves_with_shared_max_openness",
+            ),
+        ),
+        (
+            "BlockEntityType.CHEST",
+            "BlockEntityType.ENDER_CHEST",
+            "BlockEntityType.TRAPPED_CHEST",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/enchanting_table_book_scene.rs#enchanting_table_book_model_instances_from_world_at_partial_tick",
+            ),
+            (
+                "crates/bbb-native/src/enchanting_table_book_scene.rs#projects_a_closed_book_for_an_untouched_table",
+                "crates/bbb-native/src/enchanting_table_book_scene.rs#extracts_partial_tick_lerp_and_book_state_fields",
+            ),
+        ),
+        ("BlockEntityType.ENCHANTING_TABLE",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/lectern_book_scene.rs#lectern_book_model_instances_from_world",),
+            (
+                "crates/bbb-native/src/lectern_book_scene.rs#projects_only_lecterns_with_a_book_with_fixed_state_and_facing_yaw",
+                "crates/bbb-native/src/lectern_book_scene.rs#facing_maps_to_the_clockwise_yaw",
+            ),
+        ),
+        ("BlockEntityType.LECTERN",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/end_portal_scene.rs#end_portal_model_instances_from_world_at_partial_tick",
+            ),
+            (
+                "crates/bbb-native/src/end_portal_scene.rs#end_portal_and_gateway_project_to_renderer_block_instances",
+                "crates/bbb-native/src/end_portal_scene.rs#active_gateway_projects_beam_render_state",
+            ),
+        ),
+        ("BlockEntityType.END_PORTAL", "BlockEntityType.END_GATEWAY"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/beacon_scene.rs#beacon_beam_model_instances_from_world_at_partial_tick",
+                "crates/bbb-world/src/beacon_blocks.rs#beacon_beam_source_states",
+            ),
+            (
+                "crates/bbb-world/src/beacon_blocks.rs#beam_publishes_sections_once_the_scan_reaches_the_surface",
+                "crates/bbb-native/src/beacon_scene.rs#each_section_becomes_one_beam_instance_at_the_block_corner",
+                "crates/bbb-renderer/src/entity_models/tests/beacon.rs#beacon_beam_spans_its_section_and_carries_the_vanilla_radii",
+            ),
+        ),
+        ("BlockEntityType.BEACON",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/skull_scene.rs#skull_model_instances_from_world_at_partial_tick",),
+            (
+                "crates/bbb-native/src/skull_scene.rs#ground_skull_projects_rotation_and_static_kind",
+                "crates/bbb-native/src/skull_scene.rs#powered_dragon_head_projects_animation_progress",
+            ),
+        ),
+        ("BlockEntityType.SKULL",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/banner_scene.rs#banner_model_instances_from_world_at_partial_tick",),
+            (
+                "crates/bbb-native/src/banner_scene.rs#projects_banner_instances_with_color_patterns_yaw_phase_and_light",
+                "crates/bbb-native/src/banner_scene.rs#named_block_entity_layer_uses_synchronized_pattern_value_not_static_resource_name",
+            ),
+        ),
+        ("BlockEntityType.BANNER",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/bounding_box_gizmos.rs#bounding_box_gizmo_lines",
+                "crates/bbb-world/src/bounding_box_blocks.rs#bounding_box_renderable_source_states",
+            ),
+            (
+                "crates/bbb-world/src/bounding_box_blocks.rs#extraction_is_gated_on_game_master_access_and_scans_invisible_blocks",
+                "crates/bbb-native/src/bounding_box_gizmos.rs#the_bounding_box_marks_its_three_axis_edges_at_the_min_corner",
+                "crates/bbb-native/src/bounding_box_gizmos.rs#invisible_block_markers_use_the_vanilla_colors_and_air_inflation",
+            ),
+        ),
+        ("BlockEntityType.STRUCTURE_BLOCK",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/test_instance_gizmos.rs#test_instance_error_gizmos",
+                "crates/bbb-world/src/test_instance_blocks.rs#test_instance_beam_sections",
+            ),
+            (
+                "crates/bbb-native/src/test_instance_gizmos.rs#error_markers_match_vanilla_geometry_color_and_label",
+                "crates/bbb-world/src/test_instance_blocks.rs#beam_sections_and_boxes_follow_the_run_status_and_definition_defaults",
+                "crates/bbb-native/src/block_entity_visibility.rs#off_screen_renderers_use_their_own_should_render_rules",
+            ),
+        ),
+        ("BlockEntityType.TEST_INSTANCE_BLOCK",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/shulker_box_scene.rs#shulker_box_model_instances_from_world_at_partial_tick",
+            ),
+            (
+                "crates/bbb-native/src/shulker_box_scene.rs#projects_opening_and_resting_boxes_with_color_facing_and_light",
+            ),
+        ),
+        ("BlockEntityType.SHULKER_BOX",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/bed_scene.rs#bed_model_instances_from_world",),
+            (
+                "crates/bbb-native/src/bed_scene.rs#projects_bed_halves_with_color_part_and_facing_angle",
+                "crates/bbb-native/src/bed_scene.rs#projects_facing_angles_like_vanilla_to_y_rot",
+            ),
+        ),
+        ("BlockEntityType.BED",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/conduit_scene.rs#conduit_model_instances_from_world_at_partial_tick",),
+            (
+                "crates/bbb-native/src/conduit_scene.rs#inactive_conduit_projects_only_the_shell_part",
+                "crates/bbb-native/src/conduit_scene.rs#active_conduit_projects_cage_winds_and_camera_facing_eye",
+            ),
+        ),
+        ("BlockEntityType.CONDUIT",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/bell_scene.rs#bell_model_instances_from_world_at_partial_tick",),
+            (
+                "crates/bbb-native/src/bell_scene.rs#projects_shaking_and_resting_bells_with_partial_ticks_and_light",
+                "crates/bbb-native/src/bell_scene.rs#shake_ends_after_the_vanilla_duration",
+            ),
+        ),
+        ("BlockEntityType.BELL",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/item_models/block_entity.rs#campfire_item_transform",),
+            (
+                "crates/bbb-native/src/item_models/block_entity.rs#campfire_slots_rotate_through_the_block_facing_data_value",
+                "crates/bbb-native/src/item_models/block_entity.rs#campfire_items_lie_flat_in_their_quadrant_at_the_vanilla_scale",
+            ),
+        ),
+        ("BlockEntityType.CAMPFIRE",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/item_models/block_entity.rs#brushable_item_transform",),
+            (
+                "crates/bbb-native/src/item_models/block_entity.rs#brushable_items_slide_out_of_the_brushed_face_by_the_dust_stage",
+            ),
+        ),
+        ("BlockEntityType.BRUSHABLE_BLOCK",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/decorated_pot_scene.rs#decorated_pot_model_instances_from_world_at_partial_tick",
+            ),
+            (
+                "crates/bbb-native/src/decorated_pot_scene.rs#projects_pot_instances_with_patterns_facing_wobble_and_light",
+                "crates/bbb-native/src/decorated_pot_scene.rs#facing_angles_match_vanilla_model_transformation",
+            ),
+        ),
+        ("BlockEntityType.DECORATED_POT",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/item_models/block_entity.rs#vault_item_transform",),
+            (
+                "crates/bbb-native/src/item_models/block_entity.rs#vault_items_spin_above_the_cage_floor_from_the_ticked_client_data",
+            ),
+        ),
+        ("BlockEntityType.VAULT",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/copper_golem_statue_scene.rs#copper_golem_statue_model_instances_from_world",
+            ),
+            (
+                "crates/bbb-native/src/copper_golem_statue_scene.rs#statues_project_their_pose_weathering_and_facing",
+                "crates/bbb-renderer/src/entity_models/tests/copper_golem.rs#copper_golem_statue_block_root_transform_faces_away_from_the_block_facing",
+            ),
+        ),
+        ("BlockEntityType.COPPER_GOLEM_STATUE",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/item_models/block_entity.rs#shelf_item_transform",),
+            (
+                "crates/bbb-native/src/item_models/block_entity.rs#shelf_slots_spread_along_the_board_and_face_the_block_facing",
+            ),
+        ),
+        ("BlockEntityType.SHELF",),
+    ),
+)
+
+
+REGISTRATION_OWNER_EVIDENCE = {
+    "rendering-block-entity-registration": BLOCK_ENTITY_RENDERER_OWNER_EVIDENCE,
+}
+
+
+OWNER_EVIDENCE_MECHANISMS = tuple(METHOD_OWNER_EVIDENCE) + tuple(REGISTRATION_OWNER_EVIDENCE)
 
 
 METHOD_SURFACES = (
@@ -4199,9 +4464,19 @@ class InventoryBuilder:
         source = self.source(path)
         calls = [call for call in source.calls if call.name in call_names]
         calls.sort(key=lambda item: item.span.start_byte)
+        registration_evidence = REGISTRATION_OWNER_EVIDENCE.get(mechanism_id)
         for ordinal, call in enumerate(calls):
             detail = ",".join(argument.canonical for argument in call.arguments)
             owner = call.owner or source.package
+            evidence: OwnerEvidence | None = None
+            if registration_evidence is not None:
+                registered = call.arguments[0].canonical if call.arguments else ""
+                evidence = registration_evidence.get(registered)
+                if evidence is None:
+                    raise ClientMechanismInventoryError(
+                        "registration owner lacks BBB implementation/test evidence: "
+                        f"{owner}#{call.name}({detail})"
+                    )
             self.add_owner(
                 owner_id=f"registration:{category}:{owner}#{call.name}:{ordinal}",
                 category=category,
@@ -4211,6 +4486,7 @@ class InventoryBuilder:
                 path=path,
                 line=call.span.start_point[0] + 1,
                 kind="registration-call",
+                evidence=evidence,
             )
 
     def add_entity_layers(self) -> None:

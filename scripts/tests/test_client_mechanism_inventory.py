@@ -1506,6 +1506,70 @@ public class Registrations {
         self.assertEqual(len(builder.owners), 1)
         self.assertIn("REAL", builder.owners[0]["vanilla_owner"])
 
+    def test_block_entity_renderer_registrations_carry_per_owner_evidence(self) -> None:
+        mechanism_id = "rendering-block-entity-registration"
+        self.assertIn(mechanism_id, inventory.OWNER_EVIDENCE_MECHANISMS)
+
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        owners = [
+            owner
+            for owner in value["owners"]
+            if owner["mechanism_id"] == mechanism_id
+        ]
+        self.assertEqual(len(owners), 27)
+        self.assertEqual(value["mechanisms"][mechanism_id]["owner_count"], 27)
+        self.assertEqual(
+            value["mechanisms"][mechanism_id]["owner_evidence_count"], 27
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in owners
+            )
+        )
+        # Every registered `BlockEntityType` resolves to its own evidence cell;
+        # sharing one cell across several types (chests, signs, spawners) is a
+        # single BBB owner rendering several Vanilla registrations.
+        registered = {
+            owner["vanilla_owner"].split("(", 1)[1].split(",", 1)[0]
+            for owner in owners
+        }
+        self.assertEqual(
+            registered, set(inventory.BLOCK_ENTITY_RENDERER_OWNER_EVIDENCE)
+        )
+
+    def test_registration_owner_without_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/blockentity/BlockEntityRenderers.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.renderer.blockentity;
+public class BlockEntityRenderers {
+  private static void bootstrap() {
+    register(BlockEntityType.NEWLY_ADDED, NewRenderer::new);
+  }
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaises(inventory.ClientMechanismInventoryError):
+                builder.add_registration_surface(
+                    "block-entity-renderer",
+                    "rendering",
+                    "rendering-block-entity-registration",
+                    relative,
+                    ("register",),
+                )
+
     def test_synchronized_registry_entries_come_from_list_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
