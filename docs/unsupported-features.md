@@ -65,9 +65,12 @@ consumer, fallback and applicable live evidence.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
   queries the renderer's off-screen policy once, updates the generation-local global
   membership and drops stale membership at the exact removal/replacement boundary.
-- **`diagnostics-client-level-report` (4 owners).** Verify level/entity report
-  sections, bounded counters and terminal diagnostics against the same world
-  generation rather than a stale snapshot.
+- **`diagnostics-client-level-report` (4 owners).** Close the crash-report gap:
+  a single bbb-world live assembly owns every "Affected level" detail (players,
+  chunk stats shared with the debug HUD line, dimension, time, spawn location,
+  server brand/type, tracked entity count, weather) and the terminal crash
+  report attaches it from the same world generation at the failure boundary,
+  never from a stale pre-respawn snapshot.
 
 ## Local-player and multiplayer game-mode decisions
 
