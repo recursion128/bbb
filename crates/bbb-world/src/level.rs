@@ -2344,6 +2344,45 @@ mod tests {
     }
 
     #[test]
+    fn frozen_ticking_gates_production_time_advance_but_not_set_time_resync() {
+        let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: vec![ProtocolClockUpdate {
+                clock_id: 0,
+                total_ticks: 6_000,
+                partial_tick: 0.0,
+                rate: 1.0,
+            }],
+        });
+        store.apply_ticking_state(ProtocolTickingState {
+            tick_rate: 20.0,
+            frozen: true,
+        });
+
+        // The production entry consumes zero running ticks while frozen, so
+        // neither gameTime nor any clock instance advances (vanilla
+        // tickRateManager.runsNormally gating ClientLevel.tickTime).
+        let (_, running_ticks) = store.advance_client_level_entity_ticks_with_observation(3);
+        assert_eq!(running_ticks, 0);
+        let time = store.world_time().expect("world time");
+        assert_eq!(time.game_time, 100);
+        assert_eq!(time.clock_updates[0].total_ticks, 6_000);
+
+        // Sky flash decay uses raw client ticks, outside the freeze gate.
+        store.trigger_sky_flash();
+        store.advance_sky_flash_time(2);
+        assert_eq!(store.sky_flash_time(), 0);
+
+        // Vanilla handleSetTime resyncs unconditionally while frozen.
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 220,
+            clock_updates: Vec::new(),
+        });
+        assert_eq!(store.world_time().expect("world time").game_time, 220);
+    }
+
+    #[test]
     fn consume_running_render_ticks_respects_frozen_tick_steps() {
         let mut store = WorldStore::new();
         assert_eq!(store.consume_running_render_ticks(3), 3);

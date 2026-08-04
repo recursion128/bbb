@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "5dddfe9ebd0c8f97b319ff747b521d575d159b77295d7ad9dd2a84cca6f5246e"
+      "sha256": "02754e740f6d95f5b06fa99a3abeb7ba0e5355eca8f1dffc74568665325d97da"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -644,7 +644,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/level.rs"
       ],
-      "owner_count": 8
+      "owner_count": 8,
+      "owner_evidence_count": 8
     },
     "world-client-entity-lifecycle": {
       "bbb_evidence": [
@@ -17832,6 +17833,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addEntity(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime.rs#entity_shadow_sky_darken",
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_with_sky_flash"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_applies_client_sky_flash_layer_after_timeline",
+          "crates/bbb-native/src/runtime/tests.rs#sky_environment_applies_client_sky_flash_layer_and_dimension_gate"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -17958,6 +17969,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#clearTintCaches()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_world_time",
+          "crates/bbb-world/src/level.rs#advance_client_time"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#world_time_merges_partial_clock_updates_like_client_clock_manager",
+          "crates/bbb-world/src/level.rs#advance_client_time_preserves_paused_clock_updates",
+          "crates/bbb-world/src/level.rs#world_time_selects_dimension_default_clock_by_session_holder_identity"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -18536,6 +18558,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getServerSimulationDistance()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/runtime/render_extract.rs#clear_color_with_sky_flash"
+        ],
+        "tests": [
+          "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_hides_client_sky_flash_when_option_is_enabled",
+          "crates/bbb-native/src/runtime/tests.rs#clear_color_hides_client_sky_flash_when_option_is_enabled"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -19175,6 +19206,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setServerVerifiedBlockState(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlag)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#set_sky_flash_time",
+          "crates/bbb-world/src/level.rs#trigger_sky_flash"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#sky_flash_time_decrements_on_client_ticks_and_clears_with_level"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -19189,6 +19229,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSkyFlashTime(final int skyFlashTime)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_world_time"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#world_time_weather_and_ticking_are_canonical_state",
+          "crates/bbb-world/src/level.rs#frozen_ticking_gates_production_time_advance_but_not_set_time_resync"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -19284,6 +19333,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#syncBlockState(final BlockPos pos,final BlockState state,final @Nullable Vec3 playerPos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_client_level_entity_ticks_with_observation",
+          "crates/bbb-world/src/level.rs#consume_running_render_ticks"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#frozen_ticking_gates_production_time_advance_but_not_set_time_resync",
+          "crates/bbb-world/src/level.rs#consume_running_render_ticks_respects_frozen_tick_steps"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -19399,6 +19458,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickRateManager()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#advance_client_time"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#advance_client_time_ticks_game_time_and_clock_instances_like_vanilla"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -19641,6 +19708,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficultyLocked(final boolean locked)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_world_time"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#world_time_weather_and_ticking_are_canonical_state",
+          "crates/bbb-world/src/level.rs#frozen_ticking_gates_production_time_advance_but_not_set_time_resync"
+        ]
+      },
       "category": "clock-weather",
       "domain": "world",
       "kind": "method",
@@ -41682,6 +41758,7 @@
       "world-client-level-lifecycle",
       "world-client-chunk-light-lifecycle",
       "rendering-client-level-dirty-handoff",
+      "world-client-clock-weather",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

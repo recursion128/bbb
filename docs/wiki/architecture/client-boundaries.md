@@ -123,6 +123,22 @@ chunk 恒为最近目标，由 order focused test 锁定。destroy progress 由 
 传播由 `occlusion_section_updates` 增量派生承担：section mesh/空态变化直接更新 occlusion
 graph，无独立空 section 事件通道，也不得再建第二个失效或合并入口。
 
+### ClientLevel clock-weather owner
+
+`WorldStore` 的 world_time/weather/ticking/sky_flash 是八个 time/weather owner 的唯一状态，
+native 侧没有影子时钟。生产入口 `advance_client_level_entity_ticks_with_observation` 经
+`consume_running_render_ticks` 实现 tickRateManager 的 runsNormally 门：frozen 时 gameTime 与
+clock 实例都不推进，而 skyFlash 衰减、HUD tick 等使用原始 client tick；SetTime 重同步无条件生效
+（`apply_world_time` 先按 gameTime delta tick 既有 clock 再覆盖包内 holder，转写
+`ClientClockManager.handleUpdates`）。rain/thunder 事件是 26.1 snap 语义（START→0、STOP→1、
+LEVEL_CHANGE clamp，o/current 同写故 lerp 恒等）。
+
+vanilla `updateSkyBrightness` 与 `invalidateTickCache` 折叠为按需派生：skyDarken 由
+`entity_shadow_sky_darken` 从 environment attributes + weather 每次查询重算，lightmap/sky/fog
+环境每 pump 从 world 重建，无可失效缓存。skyFlash 消费链（hideLightningFlash 门、SKY_COLOR
+srgbLerp(0.22) 与 SKY_LIGHT_FACTOR=1 layer、End flash 时钟）在 render extract/lightmap 侧有
+成对 focused tests；不得另建缓存式 attribute system 或第二个时间推进入口。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

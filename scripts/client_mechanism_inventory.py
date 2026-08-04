@@ -1908,11 +1908,96 @@ CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/animations.rs#advance_client_level_entity_ticks_with_observation",
+                "crates/bbb-world/src/level.rs#consume_running_render_ticks",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#frozen_ticking_gates_production_time_advance_but_not_set_time_resync",
+                "crates/bbb-world/src/level.rs#consume_running_render_ticks_respects_frozen_tick_steps",
+            ),
+        ),
+        ("tick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/level.rs#advance_client_time",),
+            (
+                "crates/bbb-world/src/level.rs#advance_client_time_ticks_game_time_and_clock_instances_like_vanilla",
+            ),
+        ),
+        ("tickTime",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/level.rs#apply_world_time",),
+            (
+                "crates/bbb-world/src/level.rs#world_time_weather_and_ticking_are_canonical_state",
+                "crates/bbb-world/src/level.rs#frozen_ticking_gates_production_time_advance_but_not_set_time_resync",
+            ),
+        ),
+        ("setTimeFromServer", "setGameTime"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#apply_world_time",
+                "crates/bbb-world/src/level.rs#advance_client_time",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#world_time_merges_partial_clock_updates_like_client_clock_manager",
+                "crates/bbb-world/src/level.rs#advance_client_time_preserves_paused_clock_updates",
+                "crates/bbb-world/src/level.rs#world_time_selects_dimension_default_clock_by_session_holder_identity",
+            ),
+        ),
+        ("clockManager",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#clear_color_with_sky_flash",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_hides_client_sky_flash_when_option_is_enabled",
+                "crates/bbb-native/src/runtime/tests.rs#clear_color_hides_client_sky_flash_when_option_is_enabled",
+            ),
+        ),
+        ("getSkyFlashTime",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#set_sky_flash_time",
+                "crates/bbb-world/src/level.rs#trigger_sky_flash",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#sky_flash_time_decrements_on_client_ticks_and_clears_with_level",
+            ),
+        ),
+        ("setSkyFlashTime",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#entity_shadow_sky_darken",
+                "crates/bbb-native/src/runtime/render_extract.rs#clear_color_with_sky_flash",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_applies_client_sky_flash_layer_after_timeline",
+                "crates/bbb-native/src/runtime/tests.rs#sky_environment_applies_client_sky_flash_layer_and_dimension_gate",
+            ),
+        ),
+        ("addEnvironmentAttributeLayers",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
     "rendering-client-level-dirty-handoff": CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE,
+    "world-client-clock-weather": CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
