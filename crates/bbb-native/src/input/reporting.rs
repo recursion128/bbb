@@ -18,8 +18,8 @@ use winit::{
 };
 
 use super::{
-    death_screen::DeathScreenMainInputState, social::SocialInteractionsRuntime, text_edit,
-    ClientInputState,
+    death_screen::DeathScreenMainInputState, pause_screen::DebugPauseScreenState,
+    social::SocialInteractionsRuntime, text_edit, ClientInputState,
 };
 
 mod support;
@@ -79,6 +79,7 @@ impl PlayerReportingTarget {
 enum PlayerReportingPreviousInputState {
     SocialInteractions(SocialInteractionsRuntime),
     Death(DeathScreenMainInputState),
+    Pause(DebugPauseScreenState),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,9 +240,29 @@ impl ClientInputState {
         world: &mut WorldStore,
         parent: DeathScreenMainInputState,
     ) -> bool {
-        if world.player_reporting().environment.is_none()
-            || world.death_screen().map(|screen| screen.generation) != Some(parent.generation)
-        {
+        if world.death_screen().map(|screen| screen.generation) != Some(parent.generation) {
+            return false;
+        }
+        self.open_player_reporting_draft(world, PlayerReportingPreviousInputState::Death(parent))
+    }
+
+    /// Vanilla `ConfirmScreen` Continue Editing path of
+    /// `draftReportHandled(quitToTitle = true)`: the draft report editor
+    /// reopens over the pause screen that asked to disconnect.
+    pub(super) fn open_player_reporting_draft_from_pause(
+        &mut self,
+        world: &mut WorldStore,
+        parent: DebugPauseScreenState,
+    ) -> bool {
+        self.open_player_reporting_draft(world, PlayerReportingPreviousInputState::Pause(parent))
+    }
+
+    fn open_player_reporting_draft(
+        &mut self,
+        world: &mut WorldStore,
+        previous_screen: PlayerReportingPreviousInputState,
+    ) -> bool {
+        if world.player_reporting().environment.is_none() {
             return false;
         }
         let Some(draft) = world.copy_player_report_draft() else {
@@ -255,7 +276,7 @@ impl ClientInputState {
             generation: canonical.generation,
             target: target.clone(),
             requested_target: target,
-            previous_screen: Some(PlayerReportingPreviousInputState::Death(parent)),
+            previous_screen: Some(previous_screen),
             screen: PlayerReportingRuntimeScreen::Editor(report_type),
             focus: editor_initial_focus(report_type),
             hovered: None,
@@ -835,7 +856,8 @@ impl ClientInputState {
                         .rows()
                         .iter()
                         .find(|player| player.profile.uuid == profile_id),
-                    PlayerReportingPreviousInputState::Death(_) => None,
+                    PlayerReportingPreviousInputState::Death(_)
+                    | PlayerReportingPreviousInputState::Pause(_) => None,
                 })
                 .cloned()
             {
@@ -974,6 +996,9 @@ impl ClientInputState {
             }
             Some(PlayerReportingPreviousInputState::Death(parent)) => {
                 self.restore_death_screen_after_reporting(world, parent);
+            }
+            Some(PlayerReportingPreviousInputState::Pause(parent)) => {
+                self.restore_pause_screen_after_reporting(world, parent);
             }
             None => {}
         }

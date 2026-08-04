@@ -709,7 +709,7 @@ pub(crate) struct ClientInputState {
     debug_profiling_toggle_requests: Vec<DebugProfilingToggleRequest>,
     debug_profiler_chart_navigation_requests: Vec<u8>,
     debug_options_screen_requests: u32,
-    debug_pause_without_menu_requests: u32,
+    debug_pause_screen_requests: u32,
     debug_options_screen: Option<DebugOptionsScreenState>,
     debug_pause_screen: Option<DebugPauseScreenState>,
     debug_game_mode_switcher: Option<DebugGameModeSwitcherState>,
@@ -2995,8 +2995,8 @@ impl ClientInputState {
         std::mem::take(&mut self.debug_options_screen_requests)
     }
 
-    pub(crate) fn take_debug_pause_without_menu_requests(&mut self) -> u32 {
-        std::mem::take(&mut self.debug_pause_without_menu_requests)
+    pub(crate) fn take_debug_pause_screen_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.debug_pause_screen_requests)
     }
 
     pub(crate) fn take_debug_frustum_requests(&mut self) -> Vec<DebugFrustumRequest> {
@@ -4603,8 +4603,8 @@ impl ClientInputState {
         }
         match code {
             KeyCode::Escape => {
-                self.debug_pause_without_menu_requests =
-                    self.debug_pause_without_menu_requests.saturating_add(1);
+                self.debug_pause_screen_requests =
+                    self.debug_pause_screen_requests.saturating_add(1);
                 true
             }
             KeyCode::KeyA => {
@@ -11829,7 +11829,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         return;
     }
 
-    if input.handle_debug_pause_screen_key(physical_key, state) {
+    if input.handle_debug_pause_screen_key(world, physical_key, state) {
         return;
     }
 

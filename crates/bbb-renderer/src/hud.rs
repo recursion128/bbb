@@ -873,6 +873,26 @@ pub struct HudPauseScreen {
     pub player_reporting_enabled: bool,
     pub disconnect_hovered: bool,
     pub disconnect_enabled: bool,
+    pub has_draft_report: bool,
+    pub draft_confirmation: Option<HudPauseDraftConfirmationScreen>,
+}
+
+/// Vanilla `ReportingContext.draftReportHandled` quit-to-title `ConfirmScreen`
+/// projected inside the pause screen: Continue Editing reopens the draft
+/// report editor, Discard drops the draft and disconnects.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudPauseDraftConfirmationScreen {
+    pub title: String,
+    pub message: String,
+    pub edit_label: String,
+    pub discard_label: String,
+    pub hovered: Option<HudPauseDraftButton>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudPauseDraftButton {
+    Edit,
+    Discard,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6123,6 +6143,18 @@ impl Renderer {
         )
     }
 
+    pub fn hud_pause_draft_hit_target_at(
+        &self,
+        position: (f64, f64),
+    ) -> Option<HudPauseDraftButton> {
+        hud_pause_draft_hit_target_in(
+            self.hud_pause_screen.as_ref()?,
+            &self.hud_font_book,
+            self.surface_size(),
+            position,
+        )
+    }
+
     pub fn set_hud_game_event_screen(&mut self, screen: Option<HudGameEventScreen>) {
         self.hud_game_event_screen = screen.and_then(game_event::sanitize_hud_game_event_screen);
     }
@@ -8181,6 +8213,7 @@ impl Renderer {
                 &self.hud_white_pixel,
                 self.hud_tooltip_background.as_ref(),
                 self.hud_tooltip_frame.as_ref(),
+                self.hud_draft_report_icon.as_ref(),
                 self.hud_font_atlas.as_ref(),
                 &self.hud_font_glyphs,
                 &self.hud_obfuscated_glyph_pool,
@@ -11295,6 +11328,7 @@ fn push_hud_pause_screen<'a>(
     white_pixel: &'a HudSpriteGpu,
     tooltip_background: Option<&'a HudNineSliceSprite>,
     tooltip_frame: Option<&'a HudNineSliceSprite>,
+    draft_report_icon: Option<&'a HudSpriteGpu>,
     font_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &HudFontGlyphMap,
     obfuscated_pool: &HudObfuscatedGlyphPool,
@@ -11309,6 +11343,53 @@ fn push_hud_pause_screen<'a>(
     let Some(font_atlas) = font_atlas else {
         return;
     };
+    if let Some(confirmation) = screen.draft_confirmation.as_ref() {
+        let layout = death_screen::confirmation_layout(
+            &confirmation.title,
+            &confirmation.message,
+            death_screen::QUIT_BUTTON_WIDTH,
+            2,
+            glyphs,
+            surface_size,
+        );
+        death_screen::push_confirmation_text(
+            vertices,
+            commands,
+            white_pixel,
+            font_atlas,
+            glyphs,
+            obfuscated_pool,
+            frame_index,
+            surface_size,
+            &layout,
+        );
+        for (index, (button, label)) in [
+            (HudPauseDraftButton::Edit, confirmation.edit_label.as_str()),
+            (
+                HudPauseDraftButton::Discard,
+                confirmation.discard_label.as_str(),
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            push_hud_pause_button(
+                vertices,
+                commands,
+                white_pixel,
+                font_atlas,
+                glyphs,
+                obfuscated_pool,
+                frame_index,
+                surface_size,
+                layout.buttons[index].xywh(),
+                label,
+                confirmation.hovered == Some(button),
+                true,
+            );
+        }
+        return;
+    }
     let runs = [HudStyledTextRun::plain(screen.title.as_str())];
     let draw = HudScreenTextDraw {
         runs: &runs,
@@ -11495,6 +11576,21 @@ fn push_hud_pause_screen<'a>(
             screen.disconnect_hovered,
             screen.disconnect_enabled,
         );
+        if let (true, Some(icon)) = (screen.has_draft_report, draft_report_icon) {
+            let (x, y, width, _) = hud_pause_disconnect_button_rect(surface_size);
+            push_hud_draw(
+                vertices,
+                commands,
+                icon,
+                surface_size,
+                absolute_hud_rect(
+                    x.saturating_add(width).saturating_sub(17) as f32,
+                    y.saturating_add(3) as f32,
+                    15,
+                    15,
+                ),
+            );
+        }
     }
     if let Some(tooltip) = screen.custom_dialog_tooltip.as_ref() {
         push_hud_rich_tooltip(
@@ -11517,6 +11613,30 @@ fn push_hud_pause_screen<'a>(
 
 fn hud_pause_screen_draws_background(screen: &HudPauseScreen) -> bool {
     screen.show_pause_menu
+}
+
+/// Hit test for the pause draft-quit `ConfirmScreen` buttons. Shares the exact
+/// confirmation layout the renderer draws, so native input can never act on a
+/// button rectangle the frame did not present.
+fn hud_pause_draft_hit_target_in(
+    screen: &HudPauseScreen,
+    fonts: &HudFontGlyphBook,
+    surface_size: PhysicalSize<u32>,
+    position: (f64, f64),
+) -> Option<HudPauseDraftButton> {
+    let confirmation = screen.draft_confirmation.as_ref()?;
+    let layout = death_screen::confirmation_layout(
+        &confirmation.title,
+        &confirmation.message,
+        death_screen::QUIT_BUTTON_WIDTH,
+        2,
+        fonts.glyphs(None),
+        surface_size,
+    );
+    [HudPauseDraftButton::Edit, HudPauseDraftButton::Discard]
+        .into_iter()
+        .zip(layout.buttons)
+        .find_map(|(button, rect)| rect.contains(position).then_some(button))
 }
 
 fn push_hud_pause_background<'a>(
@@ -21339,6 +21459,19 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         let text = sanitize_hud_multiline_text(tooltip.text, 512);
         (!text.is_empty()).then_some(HudPauseScreenTooltip { text, ..tooltip })
     });
+    let draft_confirmation = screen.draft_confirmation.and_then(|confirmation| {
+        let title = sanitize_hud_text_line(confirmation.title)?;
+        let message = sanitize_hud_multiline_text(confirmation.message, 512);
+        let edit_label = sanitize_hud_text_line(confirmation.edit_label)?;
+        let discard_label = sanitize_hud_text_line(confirmation.discard_label)?;
+        (!title.is_empty()).then_some(HudPauseDraftConfirmationScreen {
+            title,
+            message,
+            edit_label,
+            discard_label,
+            hovered: confirmation.hovered,
+        })
+    });
     (!title.is_empty()).then_some(HudPauseScreen {
         title,
         show_pause_menu: screen.show_pause_menu,
@@ -21359,6 +21492,8 @@ fn sanitize_hud_pause_screen(screen: HudPauseScreen) -> Option<HudPauseScreen> {
         player_reporting_enabled: screen.player_reporting_enabled,
         disconnect_hovered: screen.disconnect_hovered,
         disconnect_enabled: screen.disconnect_enabled,
+        has_draft_report: screen.has_draft_report,
+        draft_confirmation,
     })
 }
 
@@ -31145,6 +31280,8 @@ mod tests {
             player_reporting_enabled: false,
             disconnect_hovered: true,
             disconnect_enabled: false,
+            has_draft_report: false,
+            draft_confirmation: None,
         })
         .expect("pause screen");
         assert_eq!(screen.title, "GamePaused");
@@ -31190,6 +31327,8 @@ mod tests {
             player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
+            has_draft_report: false,
+            draft_confirmation: None,
         })
         .is_none());
     }
@@ -31505,6 +31644,84 @@ mod tests {
     }
 
     #[test]
+    fn pause_draft_hit_target_matches_the_drawn_confirmation_layout() {
+        let glyphs = styled_test_glyphs();
+        let fonts = HudFontGlyphBook::from(glyphs.clone());
+        let size = PhysicalSize::new(320, 240);
+        let screen = HudPauseScreen {
+            title: "Game Menu".to_string(),
+            show_pause_menu: true,
+            feedback_subscreen: false,
+            return_to_game_hovered: false,
+            advancements_hovered: false,
+            stats_hovered: false,
+            send_feedback_hovered: false,
+            report_bugs_hovered: false,
+            report_bugs_enabled: true,
+            custom_dialog_label: None,
+            custom_dialog_hovered: false,
+            custom_dialog_tooltip: None,
+            feedback_back_hovered: false,
+            options_hovered: false,
+            options_enabled: false,
+            player_reporting_hovered: false,
+            player_reporting_enabled: true,
+            disconnect_hovered: false,
+            disconnect_enabled: true,
+            has_draft_report: false,
+            draft_confirmation: Some(HudPauseDraftConfirmationScreen {
+                title: "Draft title".to_string(),
+                message: "Continue or discard?".to_string(),
+                edit_label: "Continue Editing".to_string(),
+                discard_label: "Discard".to_string(),
+                hovered: None,
+            }),
+        };
+        let confirmation = screen.draft_confirmation.as_ref().unwrap();
+        let layout = death_screen::confirmation_layout(
+            &confirmation.title,
+            &confirmation.message,
+            death_screen::QUIT_BUTTON_WIDTH,
+            2,
+            &glyphs,
+            size,
+        );
+        let centers: Vec<(f64, f64)> = layout
+            .buttons
+            .iter()
+            .map(|rect| {
+                let (x, y, width, height) = rect.xywh();
+                (
+                    f64::from(x) + f64::from(width) / 2.0,
+                    f64::from(y) + f64::from(height) / 2.0,
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            hud_pause_draft_hit_target_in(&screen, &fonts, size, centers[0]),
+            Some(HudPauseDraftButton::Edit)
+        );
+        assert_eq!(
+            hud_pause_draft_hit_target_in(&screen, &fonts, size, centers[1]),
+            Some(HudPauseDraftButton::Discard)
+        );
+        assert_eq!(
+            hud_pause_draft_hit_target_in(&screen, &fonts, size, (1.0, 1.0)),
+            None
+        );
+
+        let no_confirmation = HudPauseScreen {
+            draft_confirmation: None,
+            ..screen
+        };
+        assert_eq!(
+            hud_pause_draft_hit_target_in(&no_confirmation, &fonts, size, centers[0]),
+            None
+        );
+    }
+
+    #[test]
     fn pause_screen_title_origin_matches_vanilla_y_positions() {
         let glyphs = styled_test_glyphs();
         let no_menu = HudPauseScreen {
@@ -31527,6 +31744,8 @@ mod tests {
             player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
+            has_draft_report: false,
+            draft_confirmation: None,
         };
         let menu = HudPauseScreen {
             title: "ab".to_string(),
@@ -31548,6 +31767,8 @@ mod tests {
             player_reporting_enabled: false,
             disconnect_hovered: false,
             disconnect_enabled: true,
+            has_draft_report: false,
+            draft_confirmation: None,
         };
         let feedback = HudPauseScreen {
             feedback_subscreen: true,

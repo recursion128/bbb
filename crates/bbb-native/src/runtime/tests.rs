@@ -11955,10 +11955,10 @@ fn hud_pause_screen_projects_no_menu_title() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
 
-    assert!(hud_pause_screen(&input, None, surface).is_none());
-    input.open_debug_pause_screen_without_menu();
+    assert!(hud_pause_screen(&input, &WorldStore::new(), None, surface).is_none());
+    input.open_debug_pause_screen_without_menu_for_test();
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Paused");
     assert!(!screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
@@ -11981,7 +11981,7 @@ fn hud_pause_screen_projects_menu_title() {
     let surface = winit::dpi::PhysicalSize::new(320, 240);
     input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert_eq!(screen.title, "Game Menu");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
@@ -11999,6 +11999,53 @@ fn hud_pause_screen_projects_menu_title() {
 }
 
 #[test]
+fn hud_pause_screen_projects_draft_report_icon_and_quit_confirmation() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    let report_id = uuid::Uuid::from_u128(31);
+    world.set_player_report_environment(Some(bbb_world::PlayerReportEnvironment::third_party(
+        "26.1",
+        "en-US",
+        "example.org:25565",
+    )));
+    world
+        .start_username_report_draft(report_id, 0, uuid::Uuid::from_u128(32), "ReportedPlayer")
+        .unwrap();
+    input.open_debug_pause_screen_with_menu(&world);
+
+    let screen = hud_pause_screen(&input, &world, None, surface).expect("pause screen");
+    assert!(screen.has_draft_report);
+    assert!(screen.draft_confirmation.is_none());
+
+    assert!(input.handle_debug_pause_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        winit::event::MouseButton::Left,
+        winit::event::ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(68.0, 198.0)),
+        surface,
+        None,
+    ));
+    let screen = hud_pause_screen(&input, &world, None, surface).expect("pause screen");
+    assert!(!screen.has_draft_report);
+    let confirmation = screen.draft_confirmation.expect("draft quit confirmation");
+    assert_eq!(
+        confirmation.title,
+        "You have a draft chat report that will be lost if you quit"
+    );
+    assert_eq!(
+        confirmation.message,
+        "Would you like to continue editing it or discard it?"
+    );
+    assert_eq!(confirmation.edit_label, "Continue Editing");
+    assert_eq!(confirmation.discard_label, "Discard");
+    assert_eq!(confirmation.hovered, None);
+}
+
+#[test]
 fn hud_pause_screen_projects_return_to_game_hover() {
     let mut input = ClientInputState::new(true);
     let surface = winit::dpi::PhysicalSize::new(320, 240);
@@ -12010,7 +12057,7 @@ fn hud_pause_screen_projects_return_to_game_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
@@ -12034,7 +12081,7 @@ fn hud_pause_screen_projects_advancements_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(screen.advancements_hovered);
@@ -12058,7 +12105,7 @@ fn hud_pause_screen_projects_stats_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.return_to_game_hovered);
     assert!(!screen.advancements_hovered);
@@ -12082,7 +12129,7 @@ fn hud_pause_screen_projects_send_feedback_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.send_feedback_hovered);
     assert!(!screen.report_bugs_hovered);
@@ -12104,7 +12151,7 @@ fn hud_pause_screen_projects_report_bugs_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.send_feedback_hovered);
     assert!(screen.report_bugs_hovered);
@@ -12161,7 +12208,8 @@ fn hud_pause_screen_projects_custom_dialog_and_feedback_subscreen() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("custom pause screen");
+    let screen =
+        hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("custom pause screen");
     assert_eq!(screen.title, "Game Menu");
     assert!(!screen.feedback_subscreen);
     assert_eq!(screen.custom_dialog_label.as_deref(), Some("External"));
@@ -12179,6 +12227,7 @@ fn hud_pause_screen_projects_custom_dialog_and_feedback_subscreen() {
         ElementState::Pressed,
         Some(winit::dpi::PhysicalPosition::new(68.0, 126.0)),
         surface,
+        None,
     ));
     assert!(
         input.handle_debug_pause_screen_cursor_moved(Some(winit::dpi::PhysicalPosition::new(
@@ -12186,7 +12235,8 @@ fn hud_pause_screen_projects_custom_dialog_and_feedback_subscreen() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("feedback subscreen");
+    let screen =
+        hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("feedback subscreen");
     assert_eq!(screen.title, "Feedback");
     assert!(screen.feedback_subscreen);
     assert!(screen.send_feedback_hovered);
@@ -12207,7 +12257,7 @@ fn hud_pause_screen_projects_disabled_options_row_shell() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.options_hovered);
     assert!(!screen.options_enabled);
@@ -12228,7 +12278,7 @@ fn social_interactions_pause_screen_projects_player_reporting_hover() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(!screen.options_hovered);
     assert!(screen.player_reporting_hovered);
@@ -12336,7 +12386,7 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
         )))
     );
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(screen.show_pause_menu);
     assert!(screen.disconnect_hovered);
     assert!(screen.disconnect_enabled);
@@ -12349,9 +12399,10 @@ fn hud_pause_screen_projects_disconnect_hover_and_disabled_after_click() {
         ElementState::Pressed,
         Some(winit::dpi::PhysicalPosition::new(68.0, 198.0)),
         surface,
+        None,
     ));
 
-    let screen = hud_pause_screen(&input, None, surface).expect("pause screen");
+    let screen = hud_pause_screen(&input, &WorldStore::new(), None, surface).expect("pause screen");
     assert!(!screen.disconnect_hovered);
     assert!(!screen.disconnect_enabled);
 }
@@ -13838,14 +13889,20 @@ fn vanilla_stat_formatters_preserve_thresholds_and_grouping() {
 fn hud_debug_options_screen_projects_visible_rows_and_suppresses_pause() {
     let mut input = ClientInputState::new(true);
     let world = WorldStore::new();
-    input.open_debug_pause_screen_without_menu();
+    input.open_debug_pause_screen_without_menu_for_test();
     input.open_debug_options_screen();
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::Biome,
         crate::debug_entries::DebugScreenEntryStatus::AlwaysOn,
     );
 
-    assert!(hud_pause_screen(&input, None, winit::dpi::PhysicalSize::new(420, 240)).is_none());
+    assert!(hud_pause_screen(
+        &input,
+        &WorldStore::new(),
+        None,
+        winit::dpi::PhysicalSize::new(420, 240)
+    )
+    .is_none());
     let screen = hud_debug_options_screen(
         &input,
         &world,
@@ -25879,7 +25936,7 @@ fn native_pause_screens_never_freeze_external_client_or_running_level_ticks() {
         if show_menu {
             input.open_debug_pause_screen_with_menu(&world);
         } else {
-            input.open_debug_pause_screen_without_menu();
+            input.open_debug_pause_screen_without_menu_for_test();
         }
 
         assert!(!native_pause_freezes_client_ticks(&input, &world));

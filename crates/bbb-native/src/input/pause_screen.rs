@@ -1,6 +1,7 @@
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::MC_STABLE;
+use bbb_renderer::HudPauseDraftButton;
 use bbb_world::{PauseScreenCustomDialogState, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
@@ -37,6 +38,12 @@ pub(crate) enum PauseScreenPage {
     #[default]
     Main,
     Feedback,
+    /// Vanilla `ReportingContext.draftReportHandled(quitToTitle = true)`
+    /// `ConfirmScreen` shown before the Disconnect action while a draft
+    /// player report exists.
+    DraftQuitConfirmation {
+        hovered: Option<HudPauseDraftButton>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +61,12 @@ pub(crate) enum PauseScreenLinkRequest {
 }
 
 impl ClientInputState {
-    pub(crate) fn open_debug_pause_screen_without_menu(&mut self) {
+    /// Vanilla-shape constructor for `PauseScreen(showPauseMenu = false)`.
+    /// Reachable in vanilla only when an unpublished singleplayer server can
+    /// really pause (F3+Esc); the external client never opens it in
+    /// production, so this exists only to pin the no-menu render contract.
+    #[cfg(test)]
+    pub(crate) fn open_debug_pause_screen_without_menu_for_test(&mut self) {
         self.debug_options_screen = None;
         self.pause_screen_disconnect_requested = false;
         self.debug_pause_screen = Some(DebugPauseScreenState {
@@ -91,6 +103,7 @@ impl ClientInputState {
 
     pub(crate) fn handle_debug_pause_screen_key(
         &mut self,
+        world: &mut WorldStore,
         physical_key: PhysicalKey,
         state: ElementState,
     ) -> bool {
@@ -109,16 +122,16 @@ impl ClientInputState {
         }
         if matches!(state, ElementState::Pressed) && matches!(code, KeyCode::Escape) {
             self.set_key_down(code, false);
-            let feedback = self
-                .debug_pause_screen
-                .as_ref()
-                .is_some_and(|screen| screen.page == PauseScreenPage::Feedback);
-            if feedback {
-                if let Some(screen) = self.debug_pause_screen.as_mut() {
-                    screen.page = PauseScreenPage::Main;
+            match self.debug_pause_screen.as_ref().map(|screen| screen.page) {
+                Some(PauseScreenPage::DraftQuitConfirmation { .. }) => {
+                    self.discard_pause_draft_and_disconnect(world);
                 }
-            } else {
-                self.close_debug_pause_screen();
+                Some(PauseScreenPage::Feedback) => {
+                    if let Some(screen) = self.debug_pause_screen.as_mut() {
+                        screen.page = PauseScreenPage::Main;
+                    }
+                }
+                _ => self.close_debug_pause_screen(),
             }
             return true;
         }
@@ -149,6 +162,7 @@ impl ClientInputState {
         state: ElementState,
         cursor_position: Option<PhysicalPosition<f64>>,
         surface_size: PhysicalSize<u32>,
+        pause_draft_target: Option<HudPauseDraftButton>,
     ) -> bool {
         let Some((show_pause_menu, page, cursor_position, custom_dialog)) =
             self.debug_pause_screen.as_mut().map(|screen| {
@@ -167,6 +181,29 @@ impl ClientInputState {
             return true;
         }
         if !show_pause_menu {
+            return true;
+        }
+        if matches!(page, PauseScreenPage::DraftQuitConfirmation { .. }) {
+            match pause_draft_target {
+                Some(HudPauseDraftButton::Edit) => {
+                    let parent =
+                        self.debug_pause_screen
+                            .clone()
+                            .map(|screen| DebugPauseScreenState {
+                                page: PauseScreenPage::Main,
+                                ..screen
+                            });
+                    if let Some(parent) = parent {
+                        if self.open_player_reporting_draft_from_pause(world, parent) {
+                            self.close_debug_pause_screen();
+                        }
+                    }
+                }
+                Some(HudPauseDraftButton::Discard) => {
+                    self.discard_pause_draft_and_disconnect(world);
+                }
+                None => {}
+            }
             return true;
         }
         if page == PauseScreenPage::Feedback {
@@ -224,10 +261,51 @@ impl ClientInputState {
                         url: SNAPSHOT_BUGS_URL,
                     });
             }
-        } else if pause_screen_disconnect_button_contains(cursor_position, surface_size) {
-            self.pause_screen_disconnect_requested = true;
+        } else if pause_screen_disconnect_button_contains(cursor_position, surface_size)
+            && !self.pause_screen_disconnect_requested
+        {
+            if world.player_reporting().draft.is_some() {
+                if let Some(screen) = self.debug_pause_screen.as_mut() {
+                    screen.page = PauseScreenPage::DraftQuitConfirmation { hovered: None };
+                }
+            } else {
+                self.pause_screen_disconnect_requested = true;
+            }
         }
         true
+    }
+
+    /// Vanilla `ConfirmScreen` Discard/Escape path of
+    /// `draftReportHandled(quitToTitle = true)`: the draft is dropped and the
+    /// disconnect the pause screen requested proceeds.
+    fn discard_pause_draft_and_disconnect(&mut self, world: &mut WorldStore) {
+        if let Some(draft) = world.copy_player_report_draft() {
+            world.discard_player_report_draft(draft.common().report_id);
+        }
+        if let Some(screen) = self.debug_pause_screen.as_mut() {
+            screen.page = PauseScreenPage::Main;
+        }
+        self.pause_screen_disconnect_requested = true;
+    }
+
+    pub(super) fn restore_pause_screen_after_reporting(
+        &mut self,
+        world: &WorldStore,
+        parent: DebugPauseScreenState,
+    ) {
+        self.pause_screen_disconnect_requested = false;
+        self.debug_pause_screen = Some(DebugPauseScreenState {
+            custom_dialog: world.pause_screen_custom_dialog(),
+            ..parent
+        });
+    }
+
+    pub(crate) fn handle_pause_draft_hover(&mut self, target: Option<HudPauseDraftButton>) {
+        if let Some(screen) = self.debug_pause_screen.as_mut() {
+            if let PauseScreenPage::DraftQuitConfirmation { hovered } = &mut screen.page {
+                *hovered = target;
+            }
+        }
     }
 
     pub(crate) fn pause_screen_disconnect_requested(&self) -> bool {
@@ -523,9 +601,168 @@ fn rect_contains(cursor_position: Option<(i32, i32)>, rect: (i32, i32, i32, i32)
 #[cfg(test)]
 mod tests {
     use bbb_protocol::packets::{RegistryTags, TagNetworkPayload, UpdateTags};
-    use bbb_world::RegistryPacketEntry;
+    use bbb_world::{PlayerReportEnvironment, RegistryPacketEntry};
+    use uuid::Uuid;
 
     use super::*;
+
+    fn add_username_draft(world: &mut WorldStore, comments: &str) -> Uuid {
+        let report_id = Uuid::from_u128(21);
+        world.set_player_report_environment(Some(PlayerReportEnvironment::third_party(
+            "26.1",
+            "en-US",
+            "example.org:25565",
+        )));
+        world
+            .start_username_report_draft(report_id, 0, Uuid::from_u128(22), "ReportedPlayer")
+            .unwrap();
+        assert!(world.set_player_report_comments(report_id, comments.to_string()));
+        report_id
+    }
+
+    fn open_pause_and_click_disconnect(
+        input: &mut ClientInputState,
+        world: &mut WorldStore,
+        counters: &mut NetCounters,
+    ) {
+        let surface = PhysicalSize::new(320, 240);
+        input.open_debug_pause_screen_with_menu(world);
+        assert!(input.handle_debug_pause_screen_mouse_input(
+            counters,
+            world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(68.0, 198.0)),
+            surface,
+            None,
+        ));
+    }
+
+    #[test]
+    fn disconnect_with_draft_asks_before_disconnecting_and_discard_drops_the_draft() {
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut input = ClientInputState::new(true);
+        add_username_draft(&mut world, "saved draft");
+
+        open_pause_and_click_disconnect(&mut input, &mut world, &mut counters);
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::DraftQuitConfirmation { hovered: None })
+        );
+        assert!(!input.pause_screen_disconnect_requested());
+
+        assert!(input.handle_debug_pause_screen_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 120.0)),
+            PhysicalSize::new(320, 240),
+            Some(HudPauseDraftButton::Discard),
+        ));
+        assert!(world.player_reporting().draft.is_none());
+        assert!(input.pause_screen_disconnect_requested());
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::Main)
+        );
+    }
+
+    #[test]
+    fn disconnect_without_draft_requests_disconnect_directly() {
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut input = ClientInputState::new(true);
+
+        open_pause_and_click_disconnect(&mut input, &mut world, &mut counters);
+        assert!(input.pause_screen_disconnect_requested());
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::Main)
+        );
+    }
+
+    #[test]
+    fn draft_quit_confirmation_escape_matches_vanilla_confirm_screen_no_path() {
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut input = ClientInputState::new(true);
+        add_username_draft(&mut world, "saved draft");
+
+        open_pause_and_click_disconnect(&mut input, &mut world, &mut counters);
+        assert!(input.handle_debug_pause_screen_key(
+            &mut world,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(world.player_reporting().draft.is_none());
+        assert!(input.pause_screen_disconnect_requested());
+        assert!(input.debug_pause_screen_is_open());
+    }
+
+    #[test]
+    fn draft_quit_confirmation_edit_reopens_the_editor_and_restores_pause_on_return() {
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut input = ClientInputState::new(true);
+        add_username_draft(&mut world, "saved draft");
+
+        open_pause_and_click_disconnect(&mut input, &mut world, &mut counters);
+        assert!(input.handle_debug_pause_screen_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 120.0)),
+            PhysicalSize::new(320, 240),
+            Some(HudPauseDraftButton::Edit),
+        ));
+        assert!(world.player_reporting_screen().is_some());
+        assert!(world.player_reporting().draft.is_some());
+        assert!(!input.debug_pause_screen_is_open());
+        assert!(!input.pause_screen_disconnect_requested());
+
+        let parent = DebugPauseScreenState {
+            show_pause_menu: true,
+            page: PauseScreenPage::Main,
+            cursor_position: None,
+            custom_dialog: None,
+        };
+        input.restore_pause_screen_after_reporting(&world, parent);
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::Main)
+        );
+        assert!(!input.pause_screen_disconnect_requested());
+    }
+
+    #[test]
+    fn draft_hover_updates_only_the_confirmation_page() {
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut input = ClientInputState::new(true);
+        add_username_draft(&mut world, "saved draft");
+
+        input.open_debug_pause_screen_with_menu(&world);
+        input.handle_pause_draft_hover(Some(HudPauseDraftButton::Edit));
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::Main)
+        );
+
+        open_pause_and_click_disconnect(&mut input, &mut world, &mut counters);
+        input.handle_pause_draft_hover(Some(HudPauseDraftButton::Discard));
+        assert_eq!(
+            input.debug_pause_screen().map(|screen| screen.page),
+            Some(PauseScreenPage::DraftQuitConfirmation {
+                hovered: Some(HudPauseDraftButton::Discard),
+            })
+        );
+    }
 
     fn network_notice_dialog(title: &str, external_title: &str) -> Vec<u8> {
         fn write_string_tag(payload: &mut Vec<u8>, name: &str, value: &str) {
@@ -598,6 +835,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(170.0, 126.0)),
             surface,
+            None,
         ));
         assert_eq!(
             world
@@ -631,6 +869,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(68.0, 126.0)),
             surface,
+            None,
         ));
         assert_eq!(
             input.debug_pause_screen().map(|screen| screen.page),
@@ -638,6 +877,7 @@ mod tests {
         );
 
         assert!(input.handle_debug_pause_screen_key(
+            &mut world,
             PhysicalKey::Code(KeyCode::Escape),
             ElementState::Pressed,
         ));
@@ -654,6 +894,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(68.0, 126.0)),
             surface,
+            None,
         ));
         assert!(input.handle_debug_pause_screen_mouse_input(
             &mut counters,
@@ -663,6 +904,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(68.0, 68.0)),
             surface,
+            None,
         ));
         assert_eq!(
             input.take_pause_screen_link_requests(),
@@ -679,6 +921,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(170.0, 68.0)),
             surface,
+            None,
         ));
         assert_eq!(
             input.take_pause_screen_link_requests(),
@@ -695,6 +938,7 @@ mod tests {
             ElementState::Pressed,
             Some(PhysicalPosition::new(68.0, 220.0)),
             surface,
+            None,
         ));
         assert_eq!(
             input.debug_pause_screen().map(|screen| screen.page),

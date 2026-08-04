@@ -26,7 +26,7 @@ const SCORE_Y: f32 = 100.0;
 const FONT_LINE_HEIGHT: i32 = 9;
 const TITLE_SCALE: f32 = 2.0;
 const MENU_BACKGROUND_TILE_SIZE: f32 = 32.0;
-const QUIT_BUTTON_WIDTH: i32 = 150;
+pub(super) const QUIT_BUTTON_WIDTH: i32 = 150;
 const LINK_BUTTON_WIDTH: i32 = 100;
 const CONFIRM_BUTTON_GAP: i32 = 4;
 const CONFIRM_CHILD_SPACING: i32 = 8;
@@ -133,7 +133,7 @@ impl HudDeathScreen {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ButtonRect {
+pub(super) struct ButtonRect {
     x: i32,
     y: i32,
     width: i32,
@@ -141,7 +141,11 @@ struct ButtonRect {
 }
 
 impl ButtonRect {
-    fn contains(self, position: (f64, f64)) -> bool {
+    pub(super) fn xywh(self) -> (i32, i32, i32, i32) {
+        (self.x, self.y, self.width, self.height)
+    }
+
+    pub(super) fn contains(self, position: (f64, f64)) -> bool {
         position.0 >= f64::from(self.x)
             && position.1 >= f64::from(self.y)
             && position.0 < f64::from(self.x.saturating_add(self.width))
@@ -150,11 +154,11 @@ impl ButtonRect {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct ConfirmationLayout {
+pub(super) struct ConfirmationLayout {
     title_lines: Vec<Vec<HudStyledTextRun>>,
     message_lines: Vec<Vec<HudStyledTextRun>>,
     content_y: i32,
-    buttons: Vec<ButtonRect>,
+    pub(super) buttons: Vec<ButtonRect>,
 }
 
 pub(super) fn sanitize_hud_death_screen(screen: HudDeathScreen) -> Option<HudDeathScreen> {
@@ -783,7 +787,7 @@ fn push_link_confirmation<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn push_confirmation_text<'a>(
+pub(super) fn push_confirmation_text<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
@@ -929,7 +933,7 @@ fn push_centered_component_runs<'a>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn push_button<'a>(
+pub(super) fn push_button<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
     white_pixel: &'a HudSpriteGpu,
@@ -1027,7 +1031,7 @@ fn link_confirmation_layout(
     )
 }
 
-fn confirmation_layout(
+pub(super) fn confirmation_layout(
     title: &str,
     message: &str,
     button_width: i32,

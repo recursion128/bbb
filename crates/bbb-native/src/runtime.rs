@@ -3709,7 +3709,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_pause_screen = if exclusive_game_screen_present || hud_debug_options_screen.is_some() {
         None
     } else {
-        hud_pause_screen(input, item_runtime, surface_size)
+        hud_pause_screen(input, world, item_runtime, surface_size)
     };
     let hud_game_rules_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -5699,11 +5699,44 @@ fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
 
 fn hud_pause_screen(
     input: &ClientInputState,
+    world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     surface_size: winit::dpi::PhysicalSize<u32>,
 ) -> Option<HudPauseScreen> {
     let state = input.debug_pause_screen()?;
     let feedback_subscreen = state.page == PauseScreenPage::Feedback;
+    let draft_confirmation = match state.page {
+        PauseScreenPage::DraftQuitConfirmation { hovered } => {
+            Some(bbb_renderer::HudPauseDraftConfirmationScreen {
+                title: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.quittotitle.title",
+                    "You have a draft chat report that will be lost if you quit",
+                ),
+                message: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.quittotitle.content",
+                    "Would you like to continue editing it or discard it?",
+                ),
+                edit_label: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.edit",
+                    "Continue Editing",
+                ),
+                discard_label: localized_gui_text(
+                    item_runtime,
+                    "gui.abuseReport.draft.discard",
+                    "Discard",
+                ),
+                hovered,
+            })
+        }
+        _ => None,
+    };
+    let has_draft_report = state.show_pause_menu
+        && !feedback_subscreen
+        && draft_confirmation.is_none()
+        && world.player_reporting().draft.is_some();
     let return_to_game_hovered = state.show_pause_menu
         && !feedback_subscreen
         && pause_screen_return_to_game_button_contains(state.cursor_position, surface_size);
@@ -5789,6 +5822,8 @@ fn hud_pause_screen(
         player_reporting_enabled: pause_screen_player_reporting_button_enabled(),
         disconnect_hovered,
         disconnect_enabled,
+        has_draft_report,
+        draft_confirmation,
     })
 }
 

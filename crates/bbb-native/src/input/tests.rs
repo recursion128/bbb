@@ -17040,8 +17040,8 @@ fn f3_escape_records_pause_without_menu_request_without_toggling_overlay() {
         None,
         None
     ));
-    assert_eq!(input.take_debug_pause_without_menu_requests(), 1);
-    assert_eq!(input.take_debug_pause_without_menu_requests(), 0);
+    assert_eq!(input.take_debug_pause_screen_requests(), 1);
+    assert_eq!(input.take_debug_pause_screen_requests(), 0);
     assert!(input.handle_debug_overlay_key(
         PhysicalKey::Code(KeyCode::F3),
         ElementState::Released,
@@ -17069,7 +17069,7 @@ fn releasing_active_input_preserves_f3_escape_debug_action_state() {
         None,
         None
     ));
-    assert_eq!(input.take_debug_pause_without_menu_requests(), 1);
+    assert_eq!(input.take_debug_pause_screen_requests(), 1);
 
     release_active_input(&mut input, &mut world, &mut counters, &None);
 
@@ -17086,7 +17086,7 @@ fn releasing_active_input_preserves_f3_escape_debug_action_state() {
 fn debug_pause_screen_consumes_gameplay_keys_and_escape_closes() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    input.open_debug_pause_screen_without_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     handle_key_input_without_world(
         &mut input,
@@ -17165,6 +17165,7 @@ fn debug_pause_screen_return_to_game_button_closes_menu_screen() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(68.0, 78.0)),
         surface,
+        None,
     ));
 
     assert!(!input.debug_pause_screen_is_open());
@@ -17195,6 +17196,7 @@ fn debug_pause_screen_advancements_button_opens_advancements_screen() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(68.0, 102.0)),
         surface,
+        None,
     ));
 
     assert!(!input.debug_pause_screen_is_open());
@@ -17231,6 +17233,7 @@ fn debug_pause_screen_stats_button_opens_stats_screen_and_requests_stats() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(170.0, 102.0)),
         surface,
+        None,
     ));
 
     assert!(!input.debug_pause_screen_is_open());
@@ -17257,6 +17260,7 @@ fn social_interactions_pause_player_reporting_button_opens_with_pause_return() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(170.0, 150.0)),
         surface,
+        None,
     ));
 
     assert!(!input.debug_pause_screen_is_open());
@@ -17283,6 +17287,7 @@ fn debug_pause_screen_send_feedback_button_records_link_request() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(68.0, 126.0)),
         surface,
+        None,
     ));
 
     assert!(input.debug_pause_screen_is_open());
@@ -17311,6 +17316,7 @@ fn debug_pause_screen_report_bugs_button_records_link_request_when_enabled() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(170.0, 126.0)),
         surface,
+        None,
     ));
 
     assert!(input.debug_pause_screen_is_open());
@@ -17338,6 +17344,7 @@ fn debug_pause_screen_disconnect_button_records_disconnect_request() {
         ElementState::Pressed,
         Some(PhysicalPosition::new(68.0, 198.0)),
         surface,
+        None,
     ));
 
     assert!(input.debug_pause_screen_is_open());
@@ -17349,7 +17356,7 @@ fn debug_pause_screen_disconnect_button_records_disconnect_request() {
 fn debug_pause_screen_still_allows_global_f3_overlay_toggle() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    input.open_debug_pause_screen_without_menu();
+    input.open_debug_pause_screen_with_menu(&WorldStore::new());
 
     handle_key_input_without_world(
         &mut input,

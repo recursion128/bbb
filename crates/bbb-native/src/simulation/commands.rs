@@ -16,7 +16,7 @@ use bbb_control::{
 use bbb_protocol::packets::Vec3d;
 use bbb_renderer::{
     HudBookHitTarget, HudChatHitTarget, HudDeathScreenHitTarget, HudDisconnectedScreenHitTarget,
-    HudFontGlyphMap, HudGameEventHitTarget, HudPlayerReportingHitTarget,
+    HudFontGlyphMap, HudGameEventHitTarget, HudPauseDraftButton, HudPlayerReportingHitTarget,
     HudSocialInteractionsHitTarget,
 };
 use winit::{
@@ -139,6 +139,7 @@ pub(crate) enum SimulationCommand {
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
+        pause_draft_target: Option<HudPauseDraftButton>,
     },
     MouseMotion {
         delta: (f64, f64),
@@ -153,6 +154,7 @@ pub(crate) enum SimulationCommand {
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
+        pause_draft_target: Option<HudPauseDraftButton>,
     },
     GameEventScreenRenderDelta {
         generation: u64,
@@ -787,6 +789,7 @@ fn try_coalesce_tail(
                 game_event_target,
                 player_reporting_target,
                 social_interactions_target,
+                pause_draft_target,
             },
             SimulationCommand::CursorMoved {
                 position: incoming_position,
@@ -795,6 +798,7 @@ fn try_coalesce_tail(
                 game_event_target: incoming_game_event_target,
                 player_reporting_target: incoming_player_reporting_target,
                 social_interactions_target: incoming_social_interactions_target,
+                pause_draft_target: incoming_pause_draft_target,
             },
         ) => {
             *position = *incoming_position;
@@ -803,6 +807,7 @@ fn try_coalesce_tail(
             *game_event_target = *incoming_game_event_target;
             *player_reporting_target = *incoming_player_reporting_target;
             *social_interactions_target = *incoming_social_interactions_target;
+            *pause_draft_target = *incoming_pause_draft_target;
             true
         }
         (
@@ -1248,6 +1253,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         ControlRequestSink::submit(
@@ -1335,6 +1341,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         let latest = HudDeathScreenHitTarget {
@@ -1350,6 +1357,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         enqueue(
@@ -1364,6 +1372,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
 
@@ -1403,6 +1412,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         let latest = HudDisconnectedScreenHitTarget {
@@ -1418,6 +1428,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         enqueue(
@@ -1432,6 +1443,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
 
@@ -1471,6 +1483,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: None,
+                pause_draft_target: None,
             },
         );
         let latest = HudSocialInteractionsHitTarget {
@@ -1486,6 +1499,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: Some(latest),
+                pause_draft_target: None,
             },
         );
         enqueue(
@@ -1500,6 +1514,7 @@ mod tests {
                 game_event_target: None,
                 player_reporting_target: None,
                 social_interactions_target: Some(latest),
+                pause_draft_target: None,
             },
         );
 

@@ -11,7 +11,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
 use bbb_renderer::{
     HudBookHitTarget, HudBookMode, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
-    HudDisconnectedScreenHitTarget, HudFontGlyphMap, HudGameEventHitTarget,
+    HudDisconnectedScreenHitTarget, HudFontGlyphMap, HudGameEventHitTarget, HudPauseDraftButton,
     HudPlayerReportingHitTarget, HudSocialInteractionsHitTarget,
 };
 use bbb_world::WorldStore;
@@ -262,6 +262,7 @@ impl SimulationInputRuntime {
                 game_event_target,
                 player_reporting_target,
                 social_interactions_target,
+                pause_draft_target,
             } => {
                 self.apply_mouse_button(
                     button,
@@ -273,6 +274,7 @@ impl SimulationInputRuntime {
                     game_event_target,
                     player_reporting_target,
                     social_interactions_target,
+                    pause_draft_target,
                     context,
                 );
             }
@@ -285,6 +287,7 @@ impl SimulationInputRuntime {
                 game_event_target,
                 player_reporting_target,
                 social_interactions_target,
+                pause_draft_target,
             } => {
                 self.apply_cursor_moved(
                     position,
@@ -293,6 +296,7 @@ impl SimulationInputRuntime {
                     game_event_target,
                     player_reporting_target,
                     social_interactions_target,
+                    pause_draft_target,
                     context,
                 );
             }
@@ -505,6 +509,7 @@ impl SimulationInputRuntime {
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
+        pause_draft_target: Option<HudPauseDraftButton>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         let previous_cursor_position = self.cursor_position;
@@ -568,6 +573,7 @@ impl SimulationInputRuntime {
             .input
             .handle_debug_pause_screen_cursor_moved(self.cursor_position)
         {
+            context.input.handle_pause_draft_hover(pause_draft_target);
             return;
         }
         if context.world.death_screen().is_some() {
@@ -898,7 +904,7 @@ impl SimulationInputRuntime {
         let pause_was_open = context.input.debug_pause_screen_is_open();
         if context
             .input
-            .handle_debug_pause_screen_key(physical_key, state)
+            .handle_debug_pause_screen_key(context.world, physical_key, state)
         {
             if simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(false, context.platform);
@@ -1233,19 +1239,25 @@ impl SimulationInputRuntime {
                 "debug recreate server query requested by F3+I"
             );
         }
-        let pause_without_menu_requests = context.input.take_debug_pause_without_menu_requests();
-        if pause_without_menu_requests > 0 {
+        // Vanilla `pauseGame(debugModifierDown)` only suppresses the menu when
+        // an unpublished singleplayer server can really pause; an external
+        // multiplayer client always opens the full pause menu, so F3+Esc and
+        // Esc share one with-menu path.
+        let pause_screen_requests = context.input.take_debug_pause_screen_requests();
+        if pause_screen_requests > 0 {
             release_active_input(
                 context.input,
                 context.world,
                 context.net_counters,
                 context.net_commands,
             );
-            context.input.open_debug_pause_screen_without_menu();
+            context
+                .input
+                .open_debug_pause_screen_with_menu(context.world);
             self.request_cursor_capture(false, context.platform);
             tracing::info!(
-                pause_without_menu_requests,
-                "opened no-menu pause screen requested by debug hotkey"
+                pause_screen_requests,
+                "opened pause screen requested by debug hotkey"
             );
         }
     }
@@ -1414,6 +1426,7 @@ impl SimulationInputRuntime {
         game_event_target: Option<HudGameEventHitTarget>,
         player_reporting_target: Option<HudPlayerReportingHitTarget>,
         social_interactions_target: Option<HudSocialInteractionsHitTarget>,
+        pause_draft_target: Option<HudPauseDraftButton>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
         if context.input.disconnected_screen_runtime().is_some() {
@@ -1489,6 +1502,7 @@ impl SimulationInputRuntime {
                 state,
                 self.cursor_position,
                 self.surface_size,
+                pause_draft_target,
             );
             let queued_effects = RefCell::new(Vec::new());
             for request in context.input.take_pause_screen_link_requests() {
@@ -2831,6 +2845,21 @@ mod tests {
             .expect("dialog parent sync");
         assert!(open_url < collect && collect < sync);
         assert!(!pause_branch.contains("confirm-link screen is not implemented"));
+    }
+
+    #[test]
+    fn debug_pause_hotkey_opens_the_full_menu_like_vanilla_external_clients() {
+        // Vanilla `pauseGame(debugModifierDown)` suppresses the menu only when
+        // an unpublished singleplayer server can really pause; the external
+        // client always constructs `PauseScreen(true)`.
+        let source = include_str!("input_commands.rs");
+        let start = source
+            .find("take_debug_pause_screen_requests")
+            .expect("pause hotkey consumer");
+        let branch = &source[start..start + 700];
+        assert!(branch.contains("open_debug_pause_screen_with_menu"));
+        assert!(!include_str!("../input/pause_screen.rs")
+            .contains("fn open_debug_pause_screen_without_menu("));
     }
 
     #[test]

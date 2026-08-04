@@ -1882,6 +1882,9 @@ fn enqueue_simulation_window_event(
                     || renderer
                         .hud_chat_hit_target_at((position.x, position.y))
                         .is_some()
+                    || renderer
+                        .hud_pause_draft_hit_target_at((position.x, position.y))
+                        .is_some()
                 {
                     CursorIcon::Pointer
                 } else {
@@ -1899,6 +1902,8 @@ fn enqueue_simulation_window_event(
                     .hud_player_reporting_hit_target_at((position.x, position.y)),
                 social_interactions_target: renderer
                     .hud_social_interactions_hit_target_at((position.x, position.y)),
+                pause_draft_target: renderer
+                    .hud_pause_draft_hit_target_at((position.x, position.y)),
             }
         }
         WindowEvent::CursorLeft { .. } => {
@@ -1992,6 +1997,16 @@ fn enqueue_simulation_window_event(
             .then(|| {
                 (*cursor_position).and_then(|position| {
                     renderer.hud_social_interactions_hit_target_at((position.x, position.y))
+                })
+            })
+            .flatten(),
+            pause_draft_target: (matches!(
+                (*button, *state),
+                (winit::event::MouseButton::Left, ElementState::Pressed)
+            ))
+            .then(|| {
+                (*cursor_position).and_then(|position| {
+                    renderer.hud_pause_draft_hit_target_at((position.x, position.y))
                 })
             })
             .flatten(),
@@ -2248,7 +2263,7 @@ mod tests {
         let world = WorldStore::new();
 
         assert!(!runtime_wants_cursor(&input, &world));
-        input.open_debug_pause_screen_without_menu();
+        input.open_debug_pause_screen_without_menu_for_test();
         assert!(runtime_wants_cursor(&input, &world));
     }
 
