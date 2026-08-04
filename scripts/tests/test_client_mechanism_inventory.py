@@ -318,6 +318,26 @@ public class Owner {
                 for owner in item_use_state_owners
             )
         )
+        permission_chat_state_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-permission-chat-state"
+        ]
+        self.assertEqual(len(permission_chat_state_owners), 6)
+        self.assertEqual(
+            value["mechanisms"]["player-local-permission-chat-state"][
+                "owner_evidence_count"
+            ],
+            6,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in permission_chat_state_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

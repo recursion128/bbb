@@ -2890,6 +2890,55 @@ LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#apply_local_player_permission_entity_event",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#local_player_permission_entity_events_update_gamemaster_gate_without_entity_projection",
+            ),
+        ),
+        ("setPermissions", "handleEntityEvent"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/hud.rs#apply_system_chat_at",
+                "crates/bbb-world/src/client/chat.rs#push_rich_server_system_chat_message",
+            ),
+            (
+                "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+                "crates/bbb-world/src/client/chat.rs#client_system_chat_tracks_local_display_message_without_protocol_counters",
+            ),
+        ),
+        ("sendSystemMessage", "sendOverlayMessage"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/chat/presentation.rs#can_receive_system_messages",
+            ),
+            (
+                "crates/bbb-world/src/client/chat.rs#disguised_chat_tracks_system_like_message",
+            ),
+        ),
+        ("refreshChatAbilities",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#client_text_filtering_enabled",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
+            ),
+        ),
+        ("isTextFilteringEnabled",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3057,6 +3106,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-inventory-actions": LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE,
     "player-local-vehicle-control": LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE,
     "player-local-item-use-state": LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE,
+    "player-local-permission-chat-state": LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

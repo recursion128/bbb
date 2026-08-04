@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "78a9248c742a14d9cba6f6fd74c18abfa68a65ee6309014da058f9ae436c506f"
+      "sha256": "9db2218a8567fc1e751370a1df13f8c4c08c407ff4f7fa1c0711e1ed0892a1f2"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -273,7 +273,8 @@
         "crates/bbb-world/src/client/local_player.rs",
         "crates/bbb-native/src/input.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "player-local-session-respawn": {
       "bbb_evidence": [
@@ -24768,6 +24769,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#handleCreativeModeItemDrop(final ItemStack stack)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_local_player_permission_entity_event"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_player_permission_entity_events_update_gamemaster_gate_without_entity_projection"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -25079,6 +25088,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#isSuppressingSlidingDownLadder()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#client_text_filtering_enabled"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -25628,6 +25645,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#raycastHitResult(final float a,final Entity cameraEntity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/chat/presentation.rs#can_receive_system_messages"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/chat.rs#disguised_chat_tracks_system_like_message"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -25774,6 +25799,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendOpenInventory()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/hud.rs#apply_system_chat_at",
+          "crates/bbb-world/src/client/chat.rs#push_rich_server_system_chat_message"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+          "crates/bbb-world/src/client/chat.rs#client_system_chat_tracks_local_display_message_without_protocol_counters"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -25826,6 +25861,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendRidingJump()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/hud.rs#apply_system_chat_at",
+          "crates/bbb-world/src/client/chat.rs#push_rich_server_system_chat_message"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+          "crates/bbb-world/src/client/chat.rs#client_system_chat_tracks_local_display_message_without_protocol_counters"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -25882,6 +25927,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setExperienceValues(final float experienceProgress,final int totalExp,final int experienceLevel)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_local_player_permission_entity_event"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player.rs#local_player_permission_entity_events_update_gamemaster_gate_without_entity_projection"
+        ]
+      },
       "category": "player-state",
       "domain": "identity",
       "kind": "method",
@@ -42946,6 +42999,7 @@
       "player-local-inventory-actions",
       "player-local-vehicle-control",
       "player-local-item-use-state",
+      "player-local-permission-chat-state",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

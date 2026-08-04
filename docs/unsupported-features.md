@@ -84,9 +84,6 @@ preserving the two former broad `partial` claims.
   world player into input, position/rotation/status, sprint and ability commands. Close
   after all four Vanilla owners have exact ordering/retry/generation evidence and live
   movement reporting.
-- **`player-local-permission-chat-state`** — world owns permission/chat capability state
-  and native owns message/UI projection. Close after permission event transitions,
-  filter refresh and system/overlay presentation have one current consumer chain.
 - **`player-local-client-status-options`** — world owns server flags and game type while
   native owns death/debug presentation. Close after reduced-info, death-screen,
   limited-crafting and spectator vertical-reset branches have decision-level evidence.

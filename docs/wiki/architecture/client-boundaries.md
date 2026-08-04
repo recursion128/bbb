@@ -132,6 +132,18 @@ getUsedItemHand 由 use-prediction 本地状态
 reconcile（is_using/off_hand 掩码）由 entity store `model_source` 投影链拥有。
 不得在 render/audio 侧内联第二份 use 状态。
 
+## LocalPlayer permission-chat-state owner
+
+六个 permission-chat-state owner 收敛于四条链：setPermissions/handleEntityEvent
+由 `apply_local_player_permission_entity_event`（24-28 op level entity event →
+gamemaster 门，无 entity 投影副作用）唯一拥有；sendSystemMessage/
+sendOverlayMessage 由 `apply_system_chat_at` 与
+`push_rich_server_system_chat_message` 的唯一应用链拥有；refreshChatAbilities
+的可见性过滤由 `can_receive_system_messages`（hidden/system 门）拥有；
+isTextFilteringEnabled 由 startup 启动项经 `client_text_filtering_enabled`
+唯一透出（book screen 等消费）。不得在 native 侧内联 permission 判定或建第二条
+chat 呈现链。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及
