@@ -510,17 +510,16 @@ present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration�
   备份原子替换，但无 list 变更 owner；145 个 `Options` owner 里 94 个是直接
   字段返回（归 support accessor）、6 个只服务 options UI 的 caption 工厂（判
   out-of-scope），真正的决策面是 16+22+7。
-- 串行阶段：① 逐 method 路由表与 scope/role 判据（未分类 method fail-closed，
-  已完成）；② `options.txt` 编解码（`Splitter.on(':').limit(2)` 行格式、
-  `version:` 头、由 vanilla 字段初始化式派生的 key/默认值表、坏行逐行跳过、
-  未知 key 按 vanilla 在下次 save 丢弃、直写非原子且失败仅记录——三条都要反向
-  断言，防止顺手加 vanilla 没有的原子写/备份/未知 key 保留）；③ CLI precedence
-  与 consumer 收敛（arg 降级为 store override，消费点只读单一 store）；④ 派生
-  决策 22 owner（effective render distance、final sound volume、background
-  color/opacity、model part、graphics preset custom 回写）；⑤ apply/broadcast
-  7 owner（`buildPlayerInformation`、`broadcastOptions`、resource-pack/font/
-  level-renderer 应用、report dump）；⑥ `ServerList` 13 owner（列表变更、hidden、
-  单条保存、`Util.safeReplaceFile` 唯一原子替换 owner）；⑦ census close。
+- 串行阶段 ①～⑥ 已完成（路由表 fail-closed、派生 key/默认值 catalog、CLI 降为
+  override、effective render distance、`buildPlayerInformation`/`broadcastOptions`/
+  report dump、F3+H/F3+P 的 `Options.save` 触发、`ServerList` 拆 8 file owner +
+  5 屏幕 owner 判 out-of-scope 并已 `equivalent` 关闭）。⑦ 剩余：为
+  `persistence-options-file` 11、`persistence-options-derived` 21、
+  `persistence-options-apply` 7 个 method 名逐条挂 evidence（配方照抄
+  `SERVER_LIST_OWNER_EVIDENCE`），再翻这三行 matrix。已知非等价点须先判：
+  `dataFix` 无 DataFixer owner，`updateFontOptions` 的 `FontOption` 过滤与
+  `loadSelectedResourcePacks`/`updateResourcePacks` 的 pack 选择面 BBB 都没有，
+  三者要么落 ledger 要么降级说明，不能默认写成 equivalent。
 - 非目标：不做 `OptionsScreen` 及其 widget/label，不做 Realms/singleplayer 字段
   的 UI 消费，不新增第二套配置来源。
 - 每阶段 focused tests：文件 round-trip/损坏恢复 + 派生决策 + consumer 投影断言。
