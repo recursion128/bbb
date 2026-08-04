@@ -220,6 +220,15 @@ particles 档起始，always-show&&MINIMAL 有 1/10 升 DECREASED、DECREASED �
 MINIMAL（共享 random 链）。environment spawns、level-particles 包与 firework 路径全部
 经该 gate，不得另建第二条粒子准入路径或在调用点内联距离/降档判断。
 
+### ClientLevel map-data owner
+
+四个 map-data owner 收敛为 `WorldStore.maps` 唯一 store：`apply_map_item_data` 唯一拥有
+handleMapItemData 的缺失即建（scale/locked+零 colors=createForClient）与 bounds 校验
+patch merge（patch 外字节保留，非法 patch 原子拒绝不动旧表）；`map_item` 是 getMapData
+读路径（item frame 贴图消费）；dimension-change respawn 保留整表（等价
+getAllMapData→addMapData 携带），login/transfer 重建空表并归零 map counter，二者由同一
+测试对照锁定。不得在 store 外缓存 map 字节或绕过 respawn/login 生命周期规则。
+
 ### ClientLevel diagnostics-report owner
 
 四个 diagnostics-report owner 收敛为 `bbb-world` 的单一活值装配：

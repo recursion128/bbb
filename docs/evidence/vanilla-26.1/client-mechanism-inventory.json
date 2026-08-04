@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "ca97d68a0af19be5a9a01ebbb44c010241e7eb90dd8d8da2f5440eaaadcd7a88"
+      "sha256": "be51e581b5cc4b5e314692d43efebecefa941a6ade2ebc52b8b7e10cc9b9dec1"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -678,7 +678,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/maps.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "world-client-respawn-data": {
       "bbb_evidence": [
@@ -17902,6 +17903,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addEnvironmentAttributeLayers(final EnvironmentAttributeSystem.Builder environmentAttributes)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_respawn",
+          "crates/bbb-world/src/maps.rs#map_items"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+          "crates/bbb-world/src/level.rs#login_resets_map_store_while_dimension_respawn_carries_it_over"
+        ]
+      },
       "category": "map-data",
       "domain": "world",
       "kind": "method",
@@ -18415,6 +18426,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#gatherChunkSourceStats()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_respawn",
+          "crates/bbb-world/src/maps.rs#map_items"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+          "crates/bbb-world/src/level.rs#login_resets_map_store_while_dimension_respawn_carries_it_over"
+        ]
+      },
       "category": "map-data",
       "domain": "world",
       "kind": "method",
@@ -18657,6 +18678,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getLevelData()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/maps.rs#map_item",
+          "crates/bbb-native/src/item_frames.rs#item_frame_models_with_map_cache"
+        ],
+        "tests": [
+          "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists"
+        ]
+      },
       "category": "map-data",
       "domain": "world",
       "kind": "method",
@@ -19014,6 +19044,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onSectionBecomingNonEmpty(final long sectionNode)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/maps.rs#apply_map_item_data"
+        ],
+        "tests": [
+          "crates/bbb-world/src/maps.rs#map_item_data_rejects_invalid_patch_without_replacing_last_patch",
+          "crates/bbb-world/src/client/component_owner.rs#advancement_and_map_batches_reject_atomically_and_keep_old_publication"
+        ]
+      },
       "category": "map-data",
       "domain": "world",
       "kind": "method",
@@ -42210,6 +42249,7 @@
       "rendering-client-biome-tint",
       "audio-client-level-sound-routing",
       "rendering-client-particle-routing",
+      "world-client-map-data",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

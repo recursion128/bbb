@@ -654,6 +654,13 @@ impl WorldStore {
         self.scoreboard = crate::ScoreboardState::default();
         self.waypoints = crate::ClientWaypointsState::default();
         self.counters.waypoints_tracked = 0;
+        // Vanilla login constructs a new ClientLevel with an empty map table;
+        // only the dimension-change respawn path carries maps over via
+        // getAllMapData→addMapData, which never reaches this reset.
+        self.maps.clear();
+        self.last_map_color_patch = None;
+        self.counters.maps_tracked = 0;
+        self.counters.map_decorations_tracked = 0;
         self.reset_command_tree_for_new_listener();
         self.reset_command_suggestions_for_new_listener();
         self.reset_recipes_for_new_listener();
@@ -2866,6 +2873,50 @@ mod tests {
             y_head_rot: 30.0,
             data: 99,
         }
+    }
+
+    #[test]
+    fn login_resets_map_store_while_dimension_respawn_carries_it_over() {
+        let mut store = WorldStore::new();
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(store.apply_map_item_data(ProtocolMapItemData {
+            map_id: 9,
+            scale: 1,
+            locked: false,
+            decorations: None,
+            color_patch: None,
+        }));
+        assert_eq!(store.counters().maps_tracked, 1);
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 1,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 32,
+            },
+            data_to_keep: 0,
+        });
+        assert!(
+            store.map_item(9).is_some(),
+            "dimension respawn carries the map table over"
+        );
+
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(
+            store.map_item(9).is_none(),
+            "login starts from an empty map table"
+        );
+        assert!(store.map_items().is_empty());
+        assert!(store.last_map_color_patch().is_none());
+        assert_eq!(store.counters().maps_tracked, 0);
+        assert_eq!(store.counters().map_decorations_tracked, 0);
     }
 
     #[test]

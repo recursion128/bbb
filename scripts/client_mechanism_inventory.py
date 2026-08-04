@@ -2380,6 +2380,46 @@ CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/maps.rs#map_item",
+                "crates/bbb-native/src/item_frames.rs#item_frame_models_with_map_cache",
+            ),
+            (
+                "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_decoded_full_frame_map_when_data_exists",
+            ),
+        ),
+        ("getMapData",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/maps.rs#apply_map_item_data",
+            ),
+            (
+                "crates/bbb-world/src/maps.rs#map_item_data_rejects_invalid_patch_without_replacing_last_patch",
+                "crates/bbb-world/src/client/component_owner.rs#advancement_and_map_batches_reject_atomically_and_keep_old_publication",
+            ),
+        ),
+        ("overrideMapData",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#apply_respawn",
+                "crates/bbb-world/src/maps.rs#map_items",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+                "crates/bbb-world/src/level.rs#login_resets_map_store_while_dimension_respawn_carries_it_over",
+            ),
+        ),
+        ("addMapData", "getAllMapData"),
+    ),
+)
+
 CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2442,6 +2482,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-biome-tint": CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE,
     "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
+    "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
