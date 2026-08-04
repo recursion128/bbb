@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "f96478d1641e5e926f7dbca1e6af6a28d4bf35e6d8513a723108ac142060dc20"
+      "sha256": "9b88a2398500060bd4e7e11ae1fc9fbb0741de8140b0f68461e49e14014bddb1"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -363,7 +363,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/block_entity_visibility.rs"
       ],
-      "owner_count": 1
+      "owner_count": 1,
+      "owner_evidence_count": 1
     },
     "rendering-client-level-dirty-handoff": {
       "bbb_evidence": [
@@ -19000,6 +19001,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#levelEvent(final @Nullable Entity source,final int type,final BlockPos pos,final int data)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/block_entity_visibility.rs#visible_block_position"
+        ],
+        "tests": [
+          "crates/bbb-native/src/block_entity_visibility.rs#default_and_end_gateway_renderers_use_vanilla_view_distances",
+          "crates/bbb-native/src/block_entity_visibility.rs#ordinary_models_use_the_containing_section_as_the_frustum_unit",
+          "crates/bbb-native/src/block_entity_visibility.rs#compiled_section_gate_precedes_camera_frustum_submission"
+        ]
+      },
       "category": "block-entity-render-tracking",
       "domain": "rendering",
       "kind": "method",
@@ -42279,6 +42290,7 @@
       "rendering-client-particle-routing",
       "world-client-map-data",
       "world-client-level-events",
+      "rendering-client-block-entity-tracking",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

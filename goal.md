@@ -449,31 +449,12 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 ### P2：非实体客户端行为 closeout
 
-状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；机械 census 已把
-`ClientLevel` 121 个 owner 拆为 18 条同质 route，其中 prediction/accessor/no-op 已有闭合归属，
-其余 13 条与 `LocalPlayer`/`MultiPlayerGameMode` 未关闭 route 均由唯一账本排程。按 hardest-ready-first
-逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
-codec/state 字段或 physical BBB path 替代 consumer evidence。
-
-#### Active contract：ClientLevel block-entity-tracking
-
-- 目标与 owner：闭合 `rendering-client-block-entity-tracking` 唯一 owner
-  （onBlockEntityAdded）；off-screen 渲染政策由 block-entity visibility 模块唯一拥有。
-- Vanilla 语义：add 时向 dispatcher 取 renderer 并一次询问 shouldRenderOffScreen，
-  true（Beacon/TestInstance/BoundingBox 类）才进 globallyRenderedBlockEntities，
-  set 随 block entity 移除/替换丢弃成员。
-- bbb 等价与差异：当前 native 提交的 block-entity 模型（chest/sign/end portal/
-  gateway 等）均非 off-screen renderer——beacon 本体不渲染，gateway beam 复用
-  beam pipeline 但其 renderer 非 off-screen（自有 256 view distance 已建模）；
-  global membership 恒空、移除边界平凡满足，政策查询点唯一收敛在
-  `block_entity_visibility.rs`（section gate + per-renderer view distance）。
-  登记差异与重开判据：一旦提交任何 off-screen renderer 模型即重开本 route。
-- focused evidence：view-distance/section-unit/gate-precedes-frustum 三测试注册进
-  census 1-owner OwnerEvidence + scripts/tests 断言。
-- 非目标：不实现 beacon/structure/test 渲染（block-entity registration breadth 另有账）。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 1-owner evidence 完整的干净提交。
+状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
+census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 22 条 census route 由唯一账本
+排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
+和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
+evidence。
 
 ### P2：屏幕、HUD、字体与截图
 

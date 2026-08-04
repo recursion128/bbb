@@ -54,16 +54,10 @@ Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `wo
 Goal route: `goal.md#p2非实体客户端行为-closeout`
 
 The generated census maps all 121 `ClientLevel` constructor/method owners exactly
-once. Physical BBB paths below are locatable evidence only; each `unverified` route
-must independently close its Vanilla decision order, canonical lifetime, runtime
-consumer, fallback and applicable live evidence.
+once. All 18 routes are now `equivalent`: every owner closed its Vanilla decision
+order, canonical lifetime, runtime consumer and fallback with focused evidence,
+and each matrix row carries its own reopen criteria.
 
-- **`rendering-client-block-entity-tracking` (1 owner).** Verify the off-screen
-  policy convergence: none of the natively submitted block-entity models is a
-  vanilla off-screen renderer, so the global membership is honestly empty and
-  the single policy point is the visibility module's section gate plus
-  per-renderer view distances; reopen the route the moment any off-screen
-  renderer model ships.
 
 ## Local-player and multiplayer game-mode decisions
 

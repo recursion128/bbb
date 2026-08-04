@@ -279,6 +279,26 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        block_entity_tracking_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "rendering-client-block-entity-tracking"
+        ]
+        self.assertEqual(len(block_entity_tracking_owners), 1)
+        self.assertEqual(
+            value["mechanisms"]["rendering-client-block-entity-tracking"][
+                "owner_evidence_count"
+            ],
+            1,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in block_entity_tracking_owners
+            )
+        )
         level_events_owners = [
             owner
             for owner in methods

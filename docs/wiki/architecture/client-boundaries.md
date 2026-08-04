@@ -220,6 +220,17 @@ particles 档起始，always-show&&MINIMAL 有 1/10 升 DECREASED、DECREASED �
 MINIMAL（共享 random 链）。environment spawns、level-particles 包与 firework 路径全部
 经该 gate，不得另建第二条粒子准入路径或在调用点内联距离/降档判断。
 
+### ClientLevel block-entity-tracking owner
+
+唯一 owner（onBlockEntityAdded）的 off-screen 政策收敛在
+`block_entity_visibility.rs`：当前 native 提交的 block-entity 模型（chest/sign/end
+portal/gateway 等）均非 vanilla off-screen renderer——beacon 本体不渲染，gateway beam
+的 renderer 非 off-screen（自有 256 view distance 已建模）——因此
+globallyRenderedBlockEntities 的等价 membership 诚实为空，移除/替换边界平凡满足；
+普通模型以所在 16³ section 为保守可见性单元，先过 compiled-section gate 再过 camera
+frustum，per-renderer view distance（default 64/end gateway 256）唯一登记于此。重开
+判据：提交任何 off-screen renderer 模型（beacon/structure/test 类）。
+
 ### ClientLevel level-events owner
 
 三个 level-events owner 收敛为 packet apply 的唯一分派链：`global_level_event_sound` 按

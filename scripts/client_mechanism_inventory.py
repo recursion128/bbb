@@ -2380,6 +2380,22 @@ CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/block_entity_visibility.rs#visible_block_position",
+            ),
+            (
+                "crates/bbb-native/src/block_entity_visibility.rs#default_and_end_gateway_renderers_use_vanilla_view_distances",
+                "crates/bbb-native/src/block_entity_visibility.rs#ordinary_models_use_the_containing_section_as_the_frustum_unit",
+                "crates/bbb-native/src/block_entity_visibility.rs#compiled_section_gate_precedes_camera_frustum_submission",
+            ),
+        ),
+        ("onBlockEntityAdded",),
+    ),
+)
+
 CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2523,6 +2539,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
+    "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
