@@ -154,6 +154,23 @@ fluid drip 三分支（sturdy-top 0.95 面、impermeable 抑制、bottom-shape �
 `destroy_block_particle_batch`，breaking crack 走 `local_destroy_hit_particle_batch`，
 fireworks 走 firework resolver batch。不得为任一 owner 另建第二个采样循环或 effect 通道。
 
+### ClientLevel respawn-data owner
+
+`WorldStore` 是九个 `ClientLevelData` owner 的唯一状态：difficulty（`client_hud.difficulty`，
+login 默认 Normal、`ChangeDifficulty` 包覆盖、respawn 不重置=vanilla 从旧 level 携带）、
+hardcore（login 写入随 respawn 携带）、is_flat（每次 spawn info 重取）与 default_spawn
+（同维度 respawn 携带、跨维度清除，compass 消费）。`apply_default_spawn_position` 转写
+`Level.getWorldBorderAdjustedRespawnData`：越界 spawn 回落到 border center 的
+MOTION_BLOCKING heightmap 位置（未加载 chunk 用 `Level.getHeight` 的 minY 分支），
+dimension/yaw/pitch 保留。
+
+两个派生值由 world 唯一决策：`client_horizon_height`（is_flat?minY:63）门控 renderer 的
+below-horizon dark disc（`buildSkyDisc(-16)`+translate(0,12,0) 烘焙为 y=−4 黑盘，sky pass
+最后绘制，门=player eye−horizon<0）；`client_void_darkness_onset_range`（is_flat?1:32）作
+fog 颜色的 void darkness 基值（clamp((range+minY−camera.y)/range)，效果环境以 max() 抬升后
+(1−darkness)² 应用；bbb 无 POWDER_SNOW camera fog 变体，排除面即 LAVA）。不得另建第二个
+difficulty/spawn 存储或 renderer 侧 horizon 判定。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

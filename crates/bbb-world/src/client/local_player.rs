@@ -511,9 +511,26 @@ impl WorldStore {
 
     pub fn apply_default_spawn_position(&mut self, packet: ProtocolSetDefaultSpawnPosition) {
         self.counters.default_spawn_position_packets += 1;
+        // Vanilla `ClientLevel.setRespawnData` routes through
+        // `Level.getWorldBorderAdjustedRespawnData`: an out-of-border spawn
+        // falls back to the MOTION_BLOCKING heightmap position at the border
+        // center while keeping dimension/yaw/pitch; an unloaded center chunk
+        // reads `Level.getHeight`'s minY fallback.
+        let packet_pos = protocol_block_pos(packet.pos);
+        let pos = if self.world_border().contains_block_pos(packet_pos) {
+            packet_pos
+        } else {
+            let border = self.world_border();
+            let x = border.center_x.floor() as i32;
+            let z = border.center_z.floor() as i32;
+            let y = self
+                .sample_motion_blocking_height(x, z)
+                .unwrap_or(self.dimension.min_y);
+            BlockPos { x, y, z }
+        };
         self.local_player.default_spawn = Some(DefaultSpawnState {
             dimension: packet.dimension,
-            pos: protocol_block_pos(packet.pos),
+            pos,
             yaw: packet.yaw,
             pitch: packet.pitch,
         });

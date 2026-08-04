@@ -18642,6 +18642,7 @@ pub(crate) struct CameraEnvironmentColors {
     water_fog_start_distance: Option<f32>,
     water_fog_end_distance: Option<f32>,
     camera_forward: Option<[f32; 3]>,
+    camera_eye_y: Option<f32>,
     fog_type: CameraFogType,
 }
 
@@ -19299,6 +19300,7 @@ fn camera_environment_colors(
         water_fog_start_distance: attributes.water_fog_start_distance,
         water_fog_end_distance: attributes.water_fog_end_distance,
         camera_forward: camera_pose.map(camera_forward_vector),
+        camera_eye_y: camera_pose.map(|camera| camera.position[1] + camera.eye_height),
         fog_type: match camera_fluid {
             CameraFluid::None => CameraFogType::Atmospheric,
             CameraFluid::Water => CameraFogType::Water,

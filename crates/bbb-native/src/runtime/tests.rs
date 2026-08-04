@@ -8698,6 +8698,102 @@ fn clear_color_hides_client_sky_flash_when_option_is_enabled() {
 }
 
 #[test]
+fn void_darkness_below_the_level_floor_darkens_the_fog_color() {
+    let camera_at = |y: f32| {
+        Some(CameraPose {
+            position: [0.0, y, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        })
+    };
+    let clear_at = |world: &WorldStore, y: f32| {
+        clear_color_for_world_at_camera_with_water_vision(
+            world,
+            camera_at(y),
+            VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
+            0.0,
+            false,
+        )
+    };
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+
+    // Overworld min_y = -64, onset range 32: a camera above min_y + 32 sees
+    // no darkening.
+    let baseline = clear_at(&world, 0.0);
+    // Halfway into the onset range the vanilla (1 - darkness)^2 factor dims
+    // the fog without blacking it out.
+    let mid = clear_at(&world, -48.0);
+    assert!(mid.r < baseline.r && mid.r > 0.0);
+    assert!(mid.g < baseline.g && mid.g > 0.0);
+    assert!(mid.b < baseline.b && mid.b > 0.0);
+    assert_eq!(mid.a, baseline.a);
+    // Below the full onset range the fog is black.
+    let deep = clear_at(&world, -112.0);
+    assert!(deep.r < 1.0 / 255.0 + 1e-6);
+    assert!(deep.g < 1.0 / 255.0 + 1e-6);
+    assert!(deep.b < 1.0 / 255.0 + 1e-6);
+    assert_eq!(deep.a, baseline.a);
+
+    // A flat level compresses the onset range to one block, so the same
+    // mid-range camera height stays untouched.
+    let mut flat = world_with_dimension(0, "minecraft:overworld");
+    let mut flat_login = PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    };
+    flat_login.common_spawn_info.is_flat = true;
+    flat.apply_login(&flat_login);
+    set_world_day_time(&mut flat, 6_000);
+    assert_clear_color_close(clear_at(&flat, -48.0), baseline);
+}
+
+#[test]
+fn sky_environment_renders_the_dark_disc_only_below_the_horizon() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    // No player pose keeps the disc hidden.
+    assert!(
+        !sky_environment_for_world_at_camera(&world, camera_pose_from_world(&world), false)
+            .dark_disc
+    );
+
+    // Standing eye height 1.62 puts the eye at 62.62, under the 63.0 horizon.
+    world.set_local_player_pose(local_player_pose([0.0, 61.0, 0.0], 0.0, 0.0));
+    assert!(
+        sky_environment_for_world_at_camera(&world, camera_pose_from_world(&world), false)
+            .dark_disc
+    );
+
+    world.set_local_player_pose(local_player_pose([0.0, 61.5, 0.0], 0.0, 0.0));
+    assert!(
+        !sky_environment_for_world_at_camera(&world, camera_pose_from_world(&world), false)
+            .dark_disc
+    );
+}
+
+#[test]
 fn clear_color_uses_vanilla_dimension_fog_and_sky_color_without_camera_biome() {
     let mut overworld = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut overworld, 6_000);

@@ -455,31 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel respawn-data
-
-- 目标与 owner：闭合 Vanilla 26.1 `ClientLevel`/`ClientLevelData` respawn-data 9 个 owner
-  （setRespawnData、getRespawnData×2、ClientLevelData ctor、setSpawn、setDifficulty、
-  setDifficultyLocked、getHorizonHeight、voidDarknessOnsetRange）；world 持 canonical
-  difficulty/hardcore/is_flat/default_spawn，native/renderer 只消费派生值。
-- 实现缺口①（spawn 钳制）：`setRespawnData` 等价 apply 必须先做 world-border 越界检查，
-  越界时用 border center 的 MOTION_BLOCKING heightmap 位置替换 pos（dimension/yaw/pitch
-  保留），公式照 `Level.getWorldBorderAdjustedRespawnData`。
-- 实现缺口②（void darkness）：fog 颜色需 vanilla 基值
-  darkness=clamp((range+minY−camera.y)/range,0,1)，range=is_flat?1:32；基值先算、mob effect
-  修改后应用 (1−darkness)²，LAVA/POWDER_SNOW 排除；bbb 现只有 effect 项、基值恒 0。
-- 实现缺口③（dark disc）：sky 需 below-horizon 黑盘，门=eye.y−horizonHeight<0，
-  horizonHeight=is_flat?minY:63；形状/位移照 `SkyRenderer.renderDarkDisc`。
-- 已等价只补 evidence：difficulty 生命周期（login 默认 Normal、ChangeDifficulty 覆盖、
-  respawn 携带 difficulty/hardcore、is_flat 每次取新 spawn info）、compass 消费
-  default_spawn、同维度携带/跨维度清除 default_spawn。
-- focused evidence：world 钳制/生命周期测试、native fog 基值与 extract 门测试、renderer
-  disc 顶点测试；census 9-owner OwnerEvidence + scripts/tests 断言。
-- 非目标：不动 world-border 渲染/警告面（已有 owner）、不实现 sky 其他元素、不改
-  respawn/local-player 归属（属 session-respawn）；发现其他缺口只登记既有 route。
-- acceptance/gate：focused tests、docs lint/fmt/diff、full gate 后刷新 fixture/live stamp；
-  matrix 翻 equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 9-owner evidence 完整且三缺口闭合的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

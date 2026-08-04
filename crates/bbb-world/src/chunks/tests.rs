@@ -1149,6 +1149,87 @@ fn samples_motion_blocking_height_from_chunk_heightmap() {
 }
 
 #[test]
+fn out_of_border_default_spawn_falls_back_to_the_border_center_heightmap_position() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![motion_blocking_heightmap(dimension, &[(2, 3, 7)])];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+    // Chunk (2, -3) local (2, 3) is world column (34, -45); the border center
+    // (34.5, -44.5) floors onto that column with size-16 bounds
+    // x in [26.5, 42.5) and z in [-52.5, -36.5).
+    store.apply_initialize_border(bbb_protocol::packets::InitializeBorder {
+        new_center_x: 34.5,
+        new_center_z: -44.5,
+        old_size: 16.0,
+        new_size: 16.0,
+        lerp_time: 0,
+        new_absolute_max_size: 1000,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+
+    let spawn_packet = |x: i32, z: i32| bbb_protocol::packets::SetDefaultSpawnPosition {
+        dimension: "minecraft:overworld".to_string(),
+        pos: bbb_protocol::packets::BlockPos { x, y: 70, z },
+        yaw: 90.0,
+        pitch: -10.0,
+    };
+    store.apply_default_spawn_position(spawn_packet(500, 12));
+    let spawn = store
+        .local_player()
+        .default_spawn
+        .clone()
+        .expect("default spawn stored");
+    assert_eq!(
+        spawn.pos,
+        BlockPos {
+            x: 34,
+            y: 7,
+            z: -45
+        }
+    );
+    assert_eq!(spawn.dimension, "minecraft:overworld");
+    assert_eq!(spawn.yaw, 90.0);
+    assert_eq!(spawn.pitch, -10.0);
+
+    // An in-bounds spawn keeps the packet position untouched.
+    store.apply_default_spawn_position(spawn_packet(30, -42));
+    assert_eq!(
+        store.local_player().default_spawn.as_ref().unwrap().pos,
+        BlockPos {
+            x: 30,
+            y: 70,
+            z: -42
+        }
+    );
+
+    // An unloaded border-center chunk reads Level.getHeight's minY fallback.
+    store.apply_initialize_border(bbb_protocol::packets::InitializeBorder {
+        new_center_x: 200.5,
+        new_center_z: 300.5,
+        old_size: 16.0,
+        new_size: 16.0,
+        lerp_time: 0,
+        new_absolute_max_size: 1000,
+        warning_blocks: 5,
+        warning_time: 15,
+    });
+    store.apply_default_spawn_position(spawn_packet(500, 12));
+    assert_eq!(
+        store.local_player().default_spawn.as_ref().unwrap().pos,
+        BlockPos {
+            x: 200,
+            y: 0,
+            z: 300
+        }
+    );
+}
+
+#[test]
 fn samples_requested_heightmap_kind_from_chunk_heightmap() {
     let dimension = WorldDimension {
         min_y: 0,

@@ -414,6 +414,22 @@ impl Renderer {
                     pass.draw(0..stars.vertex_count, 0..1);
                     stats.sky_draw_calls += 1;
                 }
+
+                // Vanilla `addSkyPass` draws the below-horizon dark disc last,
+                // after sun/moon/stars (`LevelRenderer.java:1207`).
+                if sky_disc.dark_disc_vertex_count > 0 {
+                    pass.set_pipeline(&self.sky_pipeline);
+                    stats.pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &sky_disc.dark_dynamic.bind_group, &[]);
+                    let vertex_buffer = sky_disc
+                        .dark_disc_vertex_buffer
+                        .as_ref()
+                        .expect("dark sky disc vertex buffer exists when count is non-zero");
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.draw(0..sky_disc.dark_disc_vertex_count, 0..1);
+                    stats.sky_draw_calls += 1;
+                }
             }
 
             // Vanilla 26.1 renders ChunkSectionLayerGroup.OPAQUE as SOLID then CUTOUT

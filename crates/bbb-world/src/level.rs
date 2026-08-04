@@ -1026,6 +1026,37 @@ impl WorldStore {
         self.gameplay.hardcore
     }
 
+    /// Vanilla `ClientLevelData.getHorizonHeight`: flat levels drop the
+    /// horizon to the level floor, every other level uses the fixed 63.0
+    /// overworld horizon.
+    pub fn client_horizon_height(&self) -> f64 {
+        if self.level_info().is_some_and(|info| info.is_flat) {
+            f64::from(self.dimension.min_y)
+        } else {
+            63.0
+        }
+    }
+
+    /// Vanilla `ClientLevelData.voidDarknessOnsetRange`: flat levels compress
+    /// the void-darkness fog onset to one block, every other level fades over
+    /// 32 blocks below the level floor.
+    pub fn client_void_darkness_onset_range(&self) -> f32 {
+        if self.level_info().is_some_and(|info| info.is_flat) {
+            1.0
+        } else {
+            32.0
+        }
+    }
+
+    /// Vanilla `SkyRenderer.shouldRenderDarkDisc`: the below-horizon dark
+    /// disc renders while the local player's eye sits under the level's
+    /// horizon height.
+    pub fn local_player_eye_below_horizon(&self) -> bool {
+        self.local_player_pose().is_some_and(|pose| {
+            pose.position.y + pose.eye_height() - self.client_horizon_height() < 0.0
+        })
+    }
+
     pub fn local_player_is_spectator(&self) -> bool {
         self.gameplay.game_type == VANILLA_GAME_TYPE_SPECTATOR_ID
     }
@@ -3128,6 +3159,46 @@ mod tests {
         // A later non-hardcore login clears it.
         world.apply_login(&login_packet(0, "minecraft:overworld"));
         assert!(!world.is_hardcore());
+    }
+
+    #[test]
+    fn horizon_height_and_void_darkness_range_follow_the_flat_level_flag() {
+        let mut world = WorldStore::new();
+        // Without a level the non-flat defaults apply.
+        assert_eq!(world.client_horizon_height(), 63.0);
+        assert_eq!(world.client_void_darkness_onset_range(), 32.0);
+
+        world.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert_eq!(world.client_horizon_height(), 63.0);
+        assert_eq!(world.client_void_darkness_onset_range(), 32.0);
+
+        let mut flat_login = login_packet(0, "minecraft:overworld");
+        flat_login.common_spawn_info.is_flat = true;
+        world.apply_login(&flat_login);
+        assert_eq!(
+            world.client_horizon_height(),
+            f64::from(world.dimension().min_y)
+        );
+        assert_eq!(world.client_void_darkness_onset_range(), 1.0);
+    }
+
+    #[test]
+    fn dark_disc_gate_compares_the_player_eye_against_the_horizon_height() {
+        let mut world = WorldStore::new();
+        world.apply_login(&login_packet(0, "minecraft:overworld"));
+        // No player pose keeps the disc hidden.
+        assert!(!world.local_player_eye_below_horizon());
+
+        let mut pose = LocalPlayerPoseState::default();
+        pose.position.y = 61.0;
+        world.local_player.pose = Some(pose);
+        // Standing eye height 1.62 puts the eye at 62.62, under the 63.0
+        // overworld horizon.
+        assert!(world.local_player_eye_below_horizon());
+
+        pose.position.y = 61.5;
+        world.local_player.pose = Some(pose);
+        assert!(!world.local_player_eye_below_horizon());
     }
 
     fn login_packet(dimension_type_id: i32, dimension: &str) -> ProtocolPlayLogin {

@@ -1236,6 +1236,7 @@ pub(crate) fn clear_color_for_world_with_environment_colors_and_water_vision(
         clear,
         colors.fog_type,
         water_vision,
+        colors.camera_eye_y,
         VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
     )
 }
@@ -1245,19 +1246,27 @@ fn apply_camera_mob_effect_fog_color(
     clear: ClearColor,
     fog_type: CameraFogType,
     water_vision: f32,
+    camera_eye_y: Option<f32>,
     partial_tick: f32,
 ) -> ClearColor {
+    // Vanilla `FogRenderer.computeFogColor` seeds the darkness factor with the
+    // void-darkness term clamp((onsetRange + minY - camera.y) / onsetRange)
+    // before the blindness/darkness fog environments raise it via max().
+    let void_darkness = camera_eye_y.map_or(0.0, |camera_y| {
+        let onset_range = world.client_void_darkness_onset_range();
+        ((onset_range + world.dimension().min_y as f32 - camera_y) / onset_range).clamp(0.0, 1.0)
+    });
     let blindness = camera_entity_effect(world, VANILLA_MOB_EFFECT_BLINDNESS_ID);
     let darkness_effect = camera_entity_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID);
     let darkness = blindness.map_or_else(
         || {
             darkness_effect
-                .map(|effect| effect.blend_factor(partial_tick))
-                .unwrap_or(0.0)
+                .map(|effect| effect.blend_factor(partial_tick).max(void_darkness))
+                .unwrap_or(void_darkness)
         },
         |effect| {
             if mob_effect_ends_within(effect, 19) {
-                effect.duration_ticks as f32 / 20.0
+                (effect.duration_ticks as f32 / 20.0).max(void_darkness)
             } else {
                 1.0
             }
@@ -1429,6 +1438,7 @@ pub(crate) fn sky_environment_for_world_with_environment_colors(
             thunder as f32,
         ),
     )
+    .with_dark_disc(world.local_player_eye_below_horizon())
 }
 
 pub(crate) fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironment {

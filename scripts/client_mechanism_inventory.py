@@ -2071,6 +2071,77 @@ CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/local_player.rs#apply_default_spawn_position",),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#out_of_border_default_spawn_falls_back_to_the_border_center_heightmap_position",
+            ),
+        ),
+        ("setRespawnData", "setSpawn"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/local_player.rs#local_player",),
+            (
+                "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+                "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters",
+            ),
+        ),
+        ("getRespawnData",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#apply_login",
+                "crates/bbb-world/src/level.rs#apply_spawn_info",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#apply_login_records_the_hardcore_flag",
+                "crates/bbb-world/src/level.rs#horizon_height_and_void_darkness_range_follow_the_flat_level_flag",
+            ),
+        ),
+        ("ClientLevelData",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/hud.rs#apply_change_difficulty",),
+            (
+                "crates/bbb-world/src/client/hud.rs#change_difficulty_updates_client_level_data_state",
+            ),
+        ),
+        ("setDifficulty", "setDifficultyLocked"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#client_horizon_height",
+                "crates/bbb-world/src/level.rs#local_player_eye_below_horizon",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#dark_disc_gate_compares_the_player_eye_against_the_horizon_height",
+                "crates/bbb-native/src/runtime/tests.rs#sky_environment_renders_the_dark_disc_only_below_the_horizon",
+                "crates/bbb-renderer/src/sky.rs#dark_sky_disc_vertices_mirror_the_bottom_disc_with_the_baked_translate",
+            ),
+        ),
+        ("getHorizonHeight",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#client_void_darkness_onset_range",
+                "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#horizon_height_and_void_darkness_range_follow_the_flat_level_flag",
+                "crates/bbb-native/src/runtime/tests.rs#void_darkness_below_the_level_floor_darkens_the_fog_color",
+            ),
+        ),
+        ("voidDarknessOnsetRange",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2078,6 +2149,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-level-dirty-handoff": CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE,
     "world-client-clock-weather": CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE,
     "world-client-ambient-animation": CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE,
+    "world-client-respawn-data": CLIENT_LEVEL_RESPAWN_DATA_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "5a49159beff0b0834a81815e0f0e876a1751bc1dd2f5795ccec1653d02afa560"
+      "sha256": "ffd323dcc40fc4277bd3eabebadeeb15c8e786dcde639adad2e560e39ba34946"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -679,7 +679,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/level.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "world-client-session-services": {
       "bbb_evidence": [
@@ -18558,6 +18559,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getPushableEntities(final Entity pusher,final AABB boundingBox)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#local_player"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+          "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19155,6 +19165,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setBlocksDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_default_spawn_position"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#out_of_border_default_spawn_falls_back_to_the_border_center_heightmap_position"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19648,6 +19666,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#update()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_login",
+          "crates/bbb-world/src/level.rs#apply_spawn_info"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#apply_login_records_the_hardcore_flag",
+          "crates/bbb-world/src/level.rs#horizon_height_and_void_darkness_range_follow_the_flat_level_flag"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "constructor",
@@ -19704,6 +19732,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getGameTime()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#client_horizon_height",
+          "crates/bbb-world/src/level.rs#local_player_eye_below_horizon"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#dark_disc_gate_compares_the_player_eye_against_the_horizon_height",
+          "crates/bbb-native/src/runtime/tests.rs#sky_environment_renders_the_dark_disc_only_below_the_horizon",
+          "crates/bbb-renderer/src/sky.rs#dark_sky_disc_vertices_mirror_the_bottom_disc_with_the_baked_translate"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19718,6 +19757,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getHorizonHeight(final LevelHeightAccessor level)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#local_player"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
+          "crates/bbb-native/src/runtime/events/client_state/tests.rs#player_abilities_spawn_distance_and_chat_update_world_counters"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19760,6 +19808,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#isHardcore()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/hud.rs#apply_change_difficulty"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/hud.rs#change_difficulty_updates_client_level_data_state"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19774,6 +19830,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficulty(final Difficulty difficulty)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/hud.rs#apply_change_difficulty"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/hud.rs#change_difficulty_updates_client_level_data_state"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19811,6 +19875,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setGameTime(final long time)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#apply_default_spawn_position"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#out_of_border_default_spawn_falls_back_to_the_border_center_heightmap_position"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -19825,6 +19897,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setSpawn(final LevelData.RespawnData respawnData)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#client_void_darkness_onset_range",
+          "crates/bbb-native/src/runtime/render_extract.rs#apply_camera_mob_effect_fog_color"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#horizon_height_and_void_darkness_range_follow_the_flat_level_flag",
+          "crates/bbb-native/src/runtime/tests.rs#void_darkness_below_the_level_floor_darkens_the_fog_color"
+        ]
+      },
       "category": "respawn-data",
       "domain": "world",
       "kind": "method",
@@ -41840,6 +41922,7 @@
       "rendering-client-level-dirty-handoff",
       "world-client-clock-weather",
       "world-client-ambient-animation",
+      "world-client-respawn-data",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

@@ -65,14 +65,6 @@ consumer, fallback and applicable live evidence.
   replacement and retained-byte lifetime through the canonical map store.
 - **`world-client-level-events` (3 owners).** Verify global/level/explosion event
   ordering from packet apply through canonical mutation and presentation effects.
-- **`world-client-respawn-data` (9 owners).** Verify the equivalent difficulty/
-  hardcore/spawn lifecycle (login Normal default, ChangeDifficulty overwrite,
-  respawn carry, per-level is_flat) and close three real gaps: the missing
-  world-border clamp in default-spawn apply (out-of-bounds spawn falls back to
-  the MOTION_BLOCKING heightmap position at the border center), the missing
-  void-darkness fog base term (clamp((range+minY−camera.y)/range) with
-  range=is_flat?1:32 before mob-effect modification), and the missing
-  below-horizon sky dark disc gated on eye.y−(is_flat?minY:63)<0.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
   queries the renderer's off-screen policy once, updates the generation-local global
   membership and drops stale membership at the exact removal/replacement boundary.

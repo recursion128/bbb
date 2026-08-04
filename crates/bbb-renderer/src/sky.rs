@@ -9,6 +9,10 @@ use crate::{
 
 const SKY_DISC_RADIUS: f32 = 512.0;
 const SKY_DISC_Y: f32 = 16.0;
+/// Vanilla `SkyRenderer` builds the dark disc with `buildSkyDisc(-16.0F)` and
+/// draws it under a `translate(0.0F, 12.0F, 0.0F)` model view, so the baked
+/// disc sits 4 blocks below the camera.
+const DARK_SKY_DISC_Y: f32 = -16.0 + 12.0;
 const SUNRISE_STEPS: usize = 16;
 const SUNRISE_CENTER_Y: f32 = 100.0;
 const SUNRISE_RING_RADIUS: f32 = 120.0;
@@ -502,6 +506,10 @@ pub struct SkyEnvironment {
     pub moon_phase: SkyMoonPhase,
     pub star_angle_radians: f32,
     pub star_brightness: f32,
+    /// Vanilla `SkyRenderState.shouldRenderDarkDisc`: the below-horizon dark
+    /// disc drawn after sun/moon/stars while the player's eye is under the
+    /// level's horizon height.
+    pub dark_disc: bool,
 }
 
 impl Default for SkyEnvironment {
@@ -522,6 +530,7 @@ impl SkyEnvironment {
             moon_phase: SkyMoonPhase::FullMoon,
             star_angle_radians: 0.0,
             star_brightness: 0.0,
+            dark_disc: false,
         }
     }
 
@@ -536,6 +545,7 @@ impl SkyEnvironment {
             moon_phase: SkyMoonPhase::FullMoon,
             star_angle_radians: 0.0,
             star_brightness: 0.0,
+            dark_disc: false,
         }
     }
 
@@ -550,6 +560,7 @@ impl SkyEnvironment {
             moon_phase: SkyMoonPhase::FullMoon,
             star_angle_radians: 0.0,
             star_brightness: 0.0,
+            dark_disc: false,
         }
         .sanitized()
     }
@@ -578,6 +589,11 @@ impl SkyEnvironment {
         self.sanitized()
     }
 
+    pub fn with_dark_disc(mut self, dark_disc: bool) -> Self {
+        self.dark_disc = dark_disc;
+        self.sanitized()
+    }
+
     pub fn sanitized(self) -> Self {
         Self {
             skybox: self.skybox,
@@ -599,6 +615,7 @@ impl SkyEnvironment {
             moon_phase: self.moon_phase,
             star_angle_radians: sanitize_radians(self.star_angle_radians),
             star_brightness: sanitize_unit(self.star_brightness),
+            dark_disc: self.dark_disc,
         }
     }
 
@@ -673,9 +690,12 @@ pub(super) struct SkyDynamicGpu {
 pub(super) struct SkyDiscGpu {
     pub(super) disc_vertex_buffer: Option<wgpu::Buffer>,
     pub(super) sunrise_vertex_buffer: Option<wgpu::Buffer>,
+    pub(super) dark_disc_vertex_buffer: Option<wgpu::Buffer>,
     pub(super) disc_vertex_count: u32,
     pub(super) sunrise_vertex_count: u32,
+    pub(super) dark_disc_vertex_count: u32,
     pub(super) dynamic: SkyDynamicGpu,
+    pub(super) dark_dynamic: SkyDynamicGpu,
 }
 
 pub(super) struct EndSkyGpu {
@@ -1190,6 +1210,13 @@ pub(super) fn create_sky_disc_gpu(
         Mat4::IDENTITY,
         environment.color,
     );
+    // Vanilla `renderDarkDisc` writes a (0, 0, 0, 1) color modulator.
+    let dark_dynamic = create_sky_dynamic_gpu(
+        device,
+        dynamic_bind_group_layout,
+        Mat4::IDENTITY,
+        [0.0, 0.0, 0.0, 1.0],
+    );
     let disc_vertex_buffer =
         create_sky_vertex_buffer(device, "bbb-sky-disc-vertices", &batch.disc_vertices);
     let sunrise_vertex_buffer = create_sky_vertex_buffer(
@@ -1197,12 +1224,20 @@ pub(super) fn create_sky_disc_gpu(
         "bbb-sunrise-sunset-vertices",
         &batch.sunrise_vertices,
     );
+    let dark_disc_vertex_buffer = create_sky_vertex_buffer(
+        device,
+        "bbb-dark-sky-disc-vertices",
+        &batch.dark_disc_vertices,
+    );
     Some(SkyDiscGpu {
         disc_vertex_buffer,
         sunrise_vertex_buffer,
+        dark_disc_vertex_buffer,
         disc_vertex_count: batch.disc_vertex_count,
         sunrise_vertex_count: batch.sunrise_vertex_count,
+        dark_disc_vertex_count: batch.dark_disc_vertex_count,
         dynamic,
+        dark_dynamic,
     })
 }
 
@@ -1500,8 +1535,10 @@ pub(super) fn create_celestial_atlas_gpu(
 struct SkyVertexBatch {
     disc_vertices: Vec<SkyPositionVertex>,
     sunrise_vertices: Vec<SkyVertex>,
+    dark_disc_vertices: Vec<SkyPositionVertex>,
     disc_vertex_count: u32,
     sunrise_vertex_count: u32,
+    dark_disc_vertex_count: u32,
 }
 
 fn sky_vertex_batch(environment: SkyEnvironment) -> SkyVertexBatch {
@@ -1514,11 +1551,18 @@ fn sky_vertex_batch(environment: SkyEnvironment) -> SkyVertexBatch {
         environment.sunrise_sunset_color,
         environment.sun_angle_radians,
     );
+    let dark_disc_vertices = if environment.is_visible() && environment.dark_disc {
+        dark_sky_disc_vertices()
+    } else {
+        Vec::new()
+    };
     SkyVertexBatch {
         disc_vertex_count: disc_vertices.len() as u32,
         sunrise_vertex_count: sunrise_vertices.len() as u32,
+        dark_disc_vertex_count: dark_disc_vertices.len() as u32,
         disc_vertices,
         sunrise_vertices,
+        dark_disc_vertices,
     }
 }
 
@@ -1749,6 +1793,29 @@ fn sky_disc_vertices() -> Vec<SkyPositionVertex> {
     }
 
     let center = [0.0, SKY_DISC_Y, 0.0];
+    let mut vertices = Vec::with_capacity((ring.len() - 1) * 3);
+    for edge in ring.windows(2) {
+        vertices.push(SkyPositionVertex { position: center });
+        vertices.push(SkyPositionVertex { position: edge[0] });
+        vertices.push(SkyPositionVertex { position: edge[1] });
+    }
+    vertices
+}
+
+/// Vanilla `buildSkyDisc(-16.0F)`: `signum(yy) * 512.0F` mirrors the rim's x
+/// axis for the bottom disc; the +12 draw translate is baked into the y.
+fn dark_sky_disc_vertices() -> Vec<SkyPositionVertex> {
+    let mut ring = Vec::with_capacity(9);
+    for degrees in (-180..=180).step_by(45) {
+        let radians = (degrees as f32).to_radians();
+        ring.push([
+            -SKY_DISC_RADIUS * radians.cos(),
+            DARK_SKY_DISC_Y,
+            SKY_DISC_RADIUS * radians.sin(),
+        ]);
+    }
+
+    let center = [0.0, DARK_SKY_DISC_Y, 0.0];
     let mut vertices = Vec::with_capacity((ring.len() - 1) * 3);
     for edge in ring.windows(2) {
         vertices.push(SkyPositionVertex { position: center });
@@ -2013,6 +2080,7 @@ mod tests {
             moon_phase: SkyMoonPhase::WaxingGibbous,
             star_angle_radians: f32::NAN,
             star_brightness: -1.0,
+            dark_disc: false,
         }
         .sanitized();
 
@@ -2520,6 +2588,39 @@ mod tests {
         assert!((vertices[23].position[0] + SKY_DISC_RADIUS).abs() < 1e-4);
         assert_eq!(vertices[23].position[1], SKY_DISC_Y);
         assert!(vertices[23].position[2].abs() < 1e-4);
+    }
+
+    #[test]
+    fn dark_sky_disc_vertices_mirror_the_bottom_disc_with_the_baked_translate() {
+        let vertices = dark_sky_disc_vertices();
+
+        assert_eq!(vertices.len(), 24);
+        // buildSkyDisc(-16) plus the renderDarkDisc translate (0, 12, 0).
+        assert_eq!(DARK_SKY_DISC_Y, -4.0);
+        assert_eq!(vertices[0].position, [0.0, DARK_SKY_DISC_Y, 0.0]);
+        // signum(-16) mirrors the rim's x axis relative to the top disc.
+        assert!((vertices[1].position[0] - SKY_DISC_RADIUS).abs() < 1e-4);
+        assert_eq!(vertices[1].position[1], DARK_SKY_DISC_Y);
+        assert!(vertices[1].position[2].abs() < 1e-4);
+        assert!((vertices[23].position[0] - SKY_DISC_RADIUS).abs() < 1e-4);
+        assert_eq!(vertices[23].position[1], DARK_SKY_DISC_Y);
+        assert!(vertices[23].position[2].abs() < 1e-4);
+    }
+
+    #[test]
+    fn dark_disc_batch_follows_the_environment_gate() {
+        let hidden = sky_vertex_batch(SkyEnvironment::from_rgb([0.5, 0.6, 0.7]));
+        assert_eq!(hidden.dark_disc_vertex_count, 0);
+        assert!(hidden.dark_disc_vertices.is_empty());
+
+        let shown =
+            sky_vertex_batch(SkyEnvironment::from_rgb([0.5, 0.6, 0.7]).with_dark_disc(true));
+        assert_eq!(shown.dark_disc_vertex_count, 24);
+        assert_eq!(shown.dark_disc_vertices.len(), 24);
+
+        // A disabled sky never emits the dark disc even when gated on.
+        let disabled = sky_vertex_batch(SkyEnvironment::disabled().with_dark_disc(true));
+        assert_eq!(disabled.dark_disc_vertex_count, 0);
     }
 
     #[test]
