@@ -236,7 +236,12 @@ mod tests {
             }
         );
         assert_eq!(instances[0].position, [4.0, 4.0, 4.0]);
-        assert_eq!(instances[0].render_state.light_coords, 15 << 20);
+        // The conduit state's fixed emission 15 raises empty stored block
+        // light before it is packed with sky 15.
+        assert_eq!(
+            instances[0].render_state.light_coords,
+            (15 << 4) | (15 << 20)
+        );
     }
 
     #[test]

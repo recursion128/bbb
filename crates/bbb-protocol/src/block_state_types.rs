@@ -888,6 +888,9 @@ mod tests {
         let magma = vanilla_block_state_render_facts(state_id("minecraft:magma_block")).unwrap();
         assert_eq!(magma.light_emission(), 3);
         assert!(magma.emissive_rendering());
+        let conduit = vanilla_block_state_render_facts(state_id("minecraft:conduit")).unwrap();
+        assert_eq!(conduit.light_emission(), 15);
+        assert!(!conduit.emissive_rendering());
         let redstone_torch = |lit: &str| {
             report
                 .states
