@@ -2881,6 +2881,9 @@ pub(crate) fn advance_simulation(
     // block-entity ticker, so the hovering books advance on running ticks too
     // (reconciled every call so freshly loaded tables gain state).
     world.advance_enchanting_table_book_ticks(running_ticks);
+    // Vanilla `BeaconBlockEntity.tick` walks the beam ten blocks per tick and
+    // republishes its coloured sections when the scan reaches the surface.
+    world.advance_beacon_block_ticks(running_ticks);
     // Vanilla `ConduitBlockEntity.clientTick` is another client block-entity
     // ticker: it advances tickCount/activeRotation and refreshes the water +
     // prismarine frame every 40 game ticks.

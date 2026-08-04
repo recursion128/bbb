@@ -122,11 +122,13 @@ pub const VANILLA_DYE_COLOR_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_DYE_COLOR_VALUES,
     };
 
+/// Vanilla's `DyeColor` constructor stores `ARGB.opaque(textureDiffuseColor)`,
+/// so every `getTextureDiffuseColor()` result carries a full alpha channel.
 const fn project_dye_color_texture_diffuse_colors() -> [u32; VANILLA_DYE_COLOR_COUNT] {
     let mut output = [0; VANILLA_DYE_COLOR_COUNT];
     let mut index = 0;
     while index < VANILLA_DYE_COLOR_COUNT {
-        output[index] = VANILLA_DYE_COLORS[index].texture_diffuse_color;
+        output[index] = 0xFF00_0000 | VANILLA_DYE_COLORS[index].texture_diffuse_color;
         index += 1;
     }
     output
@@ -578,6 +580,7 @@ pub fn normalize_vanilla_dye_color_id(id: i32) -> i32 {
     VANILLA_DYE_COLOR_VALUE_TYPE.normalized_id(id)
 }
 
+/// Vanilla `DyeColor.getTextureDiffuseColor()`: the opaque ARGB dye colour.
 pub fn vanilla_dye_color_texture_diffuse_color(id: i32) -> u32 {
     let normalized = normalize_vanilla_dye_color_id(id);
     VANILLA_DYE_COLOR_TEXTURE_DIFFUSE_COLORS[usize::try_from(normalized).unwrap()]
@@ -636,15 +639,16 @@ mod tests {
         assert_eq!(vanilla_dye_color_name(14), "red");
         assert_eq!(vanilla_dye_color_name(16), "white");
         assert_eq!(normalize_vanilla_dye_color_id(-1), 0);
+        // `DyeColor` applies `ARGB.opaque` to the declared literal.
         assert_eq!(
             vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_WHITE_ID),
-            0xF9FFFE
+            0xFFF9_FFFE
         );
         assert_eq!(
             vanilla_dye_color_texture_diffuse_color(VANILLA_DYE_COLOR_RED_ID),
-            0xB02E26
+            0xFFB0_2E26
         );
-        assert_eq!(vanilla_dye_color_texture_diffuse_color(16), 0xF9FFFE);
+        assert_eq!(vanilla_dye_color_texture_diffuse_color(16), 0xFFF9_FFFE);
         assert_eq!(
             builtin_enum_component_value_name(VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, -1),
             Some("small")

@@ -41,6 +41,7 @@ pub struct StableBlockEntityRenderRevision {
 /// revision instead of rescanning every loaded section once per family/tick.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct ClientTickingBlockEntityPresence {
+    pub(crate) beacon: bool,
     pub(crate) enchanting_table: bool,
     pub(crate) conduit: bool,
     pub(crate) end_gateway: bool,
@@ -52,7 +53,8 @@ pub(crate) struct ClientTickingBlockEntityPresence {
 
 impl ClientTickingBlockEntityPresence {
     fn is_complete(self) -> bool {
-        self.enchanting_table
+        self.beacon
+            && self.enchanting_table
             && self.conduit
             && self.end_gateway
             && self.skull
@@ -63,6 +65,7 @@ impl ClientTickingBlockEntityPresence {
 
     fn record_block_name(&mut self, name: &str) {
         match name {
+            "minecraft:beacon" => self.beacon = true,
             "minecraft:enchanting_table" => self.enchanting_table = true,
             "minecraft:conduit" => self.conduit = true,
             "minecraft:end_gateway" => self.end_gateway = true,
@@ -181,6 +184,7 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) skull_blocks: Vec<crate::SkullBlockState>,
     #[serde(default)]
+    pub(crate) beacon_blocks: Vec<crate::BeaconBlockState>,
     pub(crate) conduit_blocks: Vec<crate::ConduitBlockState>,
     #[serde(default)]
     pub(crate) end_gateways: Vec<crate::EndGatewayBlockState>,
