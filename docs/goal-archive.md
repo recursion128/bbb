@@ -95,6 +95,6 @@
 - **2026-08-03（LevelRenderer partition/section/backend lifecycle）**：77 个 owner 拆为七条同质机制；
   29-owner section 与 9-owner backend/resize 以单一 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
 - **2026-08-03（LevelRenderer scene projection）**：15-owner scene 经单一 immutable frame projection、resource-generation material phase 与 fail-closed offscreen evidence 收口。
-- **2026-08-03（LevelRenderer frame/effect/diagnostics lifecycle）**：14-owner frame graph、4-owner weather/breaking lifetime 与 3-owner current-frame gizmo finalize 收口。
+- **2026-08-03（LevelRenderer frame/effect/diagnostics/light lifecycle）**：14-owner frame graph、4-owner weather/breaking lifetime、3-owner current-frame gizmo finalize 与 3-owner light query 收口。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

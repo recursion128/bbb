@@ -1000,11 +1000,44 @@ LEVEL_RENDERER_DIAGNOSTICS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LEVEL_RENDERER_LIGHT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-render-types/src/light_coords.rs#from_stored",
+                "crates/bbb-world/src/chunks/store.rs#sample_render_light",
+                "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state",
+            ),
+            (
+                "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
+                "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
+                "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+                "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers",
+            ),
+        ),
+        ("getLightCoords",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-render-types/src/light_coords.rs#packed",
+                "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state",
+            ),
+            (
+                "crates/bbb-render-types/src/light_coords.rs#component_max_pack_and_normalize_share_one_projection",
+                "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers",
+            ),
+        ),
+        ("packedBrightness",),
+    ),
+)
+
 LEVEL_RENDERER_OWNER_EVIDENCE = {
     "rendering-level-backend-lifecycle": LEVEL_RENDERER_BACKEND_OWNER_EVIDENCE,
     "rendering-level-diagnostics-gizmos": LEVEL_RENDERER_DIAGNOSTICS_OWNER_EVIDENCE,
     "rendering-level-effect-lifecycle": LEVEL_RENDERER_EFFECT_OWNER_EVIDENCE,
     "rendering-level-frame-graph": LEVEL_RENDERER_FRAME_OWNER_EVIDENCE,
+    "rendering-level-light-query": LEVEL_RENDERER_LIGHT_OWNER_EVIDENCE,
     "rendering-level-scene-projection": LEVEL_RENDERER_SCENE_OWNER_EVIDENCE,
     "rendering-level-section-lifecycle": LEVEL_RENDERER_SECTION_OWNER_EVIDENCE,
 }
@@ -1178,7 +1211,8 @@ MECHANISM_EVIDENCE = {
         "crates/bbb-renderer/src/debug_filled_boxes.rs",
     ),
     "rendering-level-light-query": (
-        "crates/bbb-world/src/chunks/light.rs",
+        "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
+        "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state",
         "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world",
     ),
     "resources-language-manager": ("crates/bbb-pack/src/language.rs",),

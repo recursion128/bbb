@@ -77,28 +77,13 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
 
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
-Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`, `rendering-level-frame-graph`, `rendering-level-effect-lifecycle`, `rendering-level-diagnostics-gizmos`, `rendering-level-light-query`
+Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surface`, `rendering-game-step-surface`
 
 - **The registered block-entity and remaining frame/HUD step surfaces are `active`.**
   Existing focused and pixel tests cover many branches, but do not yet provide
   one mechanically reachable evidence cell for every 27 block-entity
-  registration, 70 GUI owner, 46 game-renderer owner and the one open
-  LevelRenderer mechanism. Split only by semantic owner and preserve the
-  single frame-extract/submission path.
-  The generated inventory routes the 77 `LevelRenderer` methods into seven
-  total, mutually exclusive mechanisms: backend rebuild 9, section lifecycle
-  29, frame graph 14, scene projection 15, effect lifetime 4,
-  diagnostics/gizmos 3 and light query 3. The one remaining open
-  mechanism remains here until its own single-semantics slice supplies
-  consumer evidence.
-- **`rendering-level-light-query` is the current active engineering slice.**
-  BBB duplicates raw-light packing across twelve block-entity scene owners,
-  while terrain, painting, particle and weather callers bypass Vanilla's
-  emissive-rendering and state light-emission decision. Converge them on one
-  generated-fact-backed light-coordinate projection, preserve each caller's
-  exact missing-chunk fallback and remove the old production resolvers. The
-  contract and safe stops are in
-  `goal.md#active-工程合同levelrenderer-light-query`.
+  registration, 70 GUI owner and 46 game-renderer owner. Split only by semantic
+  owner and preserve the single frame-extract/submission path.
 - **Smithing result equipment preview asset projection is `missing`.**
   `bbb-native::apply_smithing_result_equipment` does not publish the
   generation-matched equipment asset id consumed by the textured equipment

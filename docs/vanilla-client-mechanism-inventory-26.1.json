@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "5b2d97e4b2432a89e96b1585de792d67f40e712652d9318345490e15ea9c74a3"
+      "sha256": "f7c8322016330870493d903520ca35fa535911cea3ffe8ac5f05e4fec1c21787"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -239,10 +239,12 @@
     },
     "rendering-level-light-query": {
       "bbb_evidence": [
-        "crates/bbb-world/src/chunks/light.rs",
+        "crates/bbb-render-types/src/light_coords.rs#VanillaLightCoords",
+        "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state",
         "crates/bbb-native/src/runtime/render_extract.rs#particle_light_for_world"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "rendering-level-scene-projection": {
       "bbb_evidence": [
@@ -25658,6 +25660,19 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getLastViewDistance()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-render-types/src/light_coords.rs#from_stored",
+          "crates/bbb-world/src/chunks/store.rs#sample_render_light",
+          "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state"
+        ],
+        "tests": [
+          "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
+          "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+          "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers"
+        ]
+      },
       "category": "render-light",
       "domain": "rendering",
       "kind": "method",
@@ -25672,6 +25687,19 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#getLightCoords(final BlockAndLightGetter level,final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-render-types/src/light_coords.rs#from_stored",
+          "crates/bbb-world/src/chunks/store.rs#sample_render_light",
+          "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state"
+        ],
+        "tests": [
+          "crates/bbb-render-types/src/light_coords.rs#state_override_order_matches_level_renderer",
+          "crates/bbb-world/src/chunks/tests.rs#samples_block_light_at_world_position_and_reports_unloaded",
+          "crates/bbb-renderer/src/terrain/mesh/tests.rs#cubic_face_offset_samples_neighbor_brightness_with_current_state",
+          "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers"
+        ]
+      },
       "category": "render-light",
       "domain": "rendering",
       "kind": "method",
@@ -26610,6 +26638,16 @@
       "vanilla_owner": "net.minecraft.client.renderer.LevelRenderer#update(final Camera camera)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-render-types/src/light_coords.rs#packed",
+          "crates/bbb-world/src/chunks/store.rs#sample_render_light_for_state"
+        ],
+        "tests": [
+          "crates/bbb-render-types/src/light_coords.rs#component_max_pack_and_normalize_share_one_projection",
+          "crates/bbb-native/src/runtime/tests.rs#level_renderer_light_consumers_cannot_restore_raw_pack_resolvers"
+        ]
+      },
       "category": "render-light",
       "domain": "rendering",
       "kind": "method",
@@ -40888,6 +40926,7 @@
       "rendering-level-diagnostics-gizmos",
       "rendering-level-effect-lifecycle",
       "rendering-level-frame-graph",
+      "rendering-level-light-query",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle"
     ],

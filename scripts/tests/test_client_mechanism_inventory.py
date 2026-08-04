@@ -404,6 +404,31 @@ public class Owner {
                     )
                 )
 
+    def test_light_owner_without_implementation_test_evidence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/renderer/LevelRenderer.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.renderer; class LevelRenderer { static int getLightCoords(Object level, Object pos) { return 0; } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with mock.patch.dict(
+                inventory.LEVEL_RENDERER_LIGHT_OWNER_EVIDENCE, {}, clear=True
+            ), self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "lacks BBB implementation/test evidence",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "render-light",
+                        "rendering",
+                        "rendering-level-light-query",
+                        relative,
+                    )
+                )
+
     def test_direct_field_return_is_a_support_accessor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

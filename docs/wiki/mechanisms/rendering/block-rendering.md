@@ -142,6 +142,28 @@ Vanilla 26.1 客户端源码没有 `persistForMillis` 或 `fadeOut` 的生产调
 不增加第二个通用 collector/shadow lifetime；debug subscription packet 的 2 MiB payload、65,536 collection
 value 上限和既有 world expiry 继续约束外部输入，renderer 不反向读取 packet、world 或 pack。
 
+### Level packed-light query
+
+Vanilla `getLightCoords(level, pos)` 先取得 `pos` 的 block state，再进入显式
+`getLightCoords(brightnessGetter, level, state, pos)`。后者先判断
+`state.emissiveRendering(level, pos)`，命中即返回 block/sky 均为 15；否则 brightness getter
+按 sky→block 顺序读取两个 light layer 并打包，最后仅把 block channel 提升到
+`state.getLightEmission()`。显式 overload 的 state 与亮度查询坐标不能合并：方块面偏移采样仍以
+邻坐标读取 raw brightness，却继续使用正在渲染的 state；fluid/AO 的相邻 state 查询则使用各自事实。
+
+BBB 从同一个 29,873-state runtime report 生成 `light_emission` 与 `emissive_rendering`，由
+`bbb-render-types::VanillaLightCoords` 唯一执行 clamp、state override、component max、pack 与 normalize。
+`bbb-world::sample_render_light_for_state` 只组合显式 state、`BlockPos` 和原始 light store；默认 query
+再从该位置取得 state。terrain snapshot 仅携带两个 fixed-state fact，native block-entity、painting、
+particle、weather 与 renderer terrain/fluid 都消费同一纯值 projection，不再各自打包或从 block name、
+material/model 猜测。
+
+Particle 在缺 chunk 时严格使用 block 0/sky 15；painting、sign 与 weather 保持各自既有缺失语义。
+gameplay、audio mood、vignette 和 light debug 仍读取 raw light，不被 render query 改义。resource-model
+element 的 `light_emission` 继续只作用于该 element，不能替代 state emission。state facts 随 protocol
+版本固定；terrain mesh 仍只接受 immutable snapshot，level/resource replacement 或 stale worker result
+不能部分改写上一 resident generation。
+
 ## BBB 实现映射
 
 `bbb-protocol/src/block_state_types.rs::VanillaBlockStateRenderFacts` 和 support facts 是
@@ -170,7 +192,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 | face culling 顺序 | `ModelBlockRenderer`, `Block.shouldRenderFace` | terrain mesh emitter | `equivalent` | shape/skip/full-neighbor tests |
 | 独立 occlusion facts | `BlockStateBase` | protocol → world → `TerrainCell` | `equivalent` | exact facts extraction test |
 | AO corner sampling | `BlockModelLighter` | mesh AO sampling | `equivalent` | AO/cardinal fixture tests |
-| block/sky/cardinal light | lighter + level shade | terrain vertex light | `equivalent` | full block/glowstone anchors |
+| packed block/sky query | `LevelRenderer.getLightCoords/BrightnessGetter` | generated facts → world explicit-state query → `VanillaLightCoords` | `equivalent` | generated 3-owner evidence、state/position/fallback/reverse-guard tests |
+| AO/cardinal/model-element light | lighter + level shade | terrain vertex light | `equivalent` | flat/AO/fluid、model emission、cardinal anchors |
 | layer routing | `SectionCompiler` material layer | terrain batches | `equivalent` | cutout/translucent tests + anchors |
 | translucent sorting | section sort state | renderer translucent queue | `equivalent` | static/flight/boundary anchors |
 | section compile/cull/fade lifecycle | `LevelRenderer`、`RenderSection`、`SectionOcclusionGraph` | native ordered section projection → renderer uniform | `equivalent` | generated 29-owner evidence、fade/threshold/generation/pixel/selected-shader tests |
@@ -185,6 +208,8 @@ tint catalog 仍随 resource generation 原子替换，prepare 失败保留上�
 
 - 不得从 `Opaque/Cutout/Translucent`、render shape 或 block name 推导独立 state facts。
 - 查询相邻坐标、opposite direction 与判断顺序必须与 Vanilla 一致。
+- packed-light 的 state、brightness query 坐标与 model-element emission 必须保持分离；生产 consumer
+  不得恢复 raw-light pack helper 或各自的 clamp/normalize resolver。
 - chunk 边缘需要跨 chunk 邻居；unloaded 不能伪装成 air 后永久缓存。
 - section fade、entity/block-entity/readiness gate 必须来自同一个 generation-matched
   projection；不得恢复 renderer 自动可见 bridge 或独立 binary-visible cache。
@@ -246,13 +271,19 @@ diagnostics 由 current-frame visible/total 测试、single collect/commit/recyc
 generation tests、empty-frame stale clear 以及 standard/always-on-top pass/depth tests 覆盖；generated
 inventory 为 3 个 owner 保存 fail-closed implementation/test cell。
 
+light query 由 runtime generator 的非法 emission/emissive 与 stale-output fixtures、protocol 的
+magma/conduit/redstone-torch/sculk state、world 的 explicit-state/query-pos/raw-light 分离、renderer 的
+flat offset/AO/fluid/state emission，以及 native block-entity max、painting、particle sky-only fallback、
+weather 和 stale mesh tests 覆盖。reverse guard 禁止 12 个私有 pack helper 和这些生产 caller 的 raw
+query 绕路恢复；generated inventory 为两个 overload 与 `packedBrightness` 共 3 owner 保存 fail-closed cell。
+
 FallingDust 另由 support-fact generator fixtures/stale check、protocol 全量 palette/代表 state
 断言和 native provider rejection、dust→dynamic→map、颜色完整性及 random-sequence tests 验证；
 reverse guard 禁止旧 handwritten resolver 恢复。
 
 ## 当前差异
 
-当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect/diagnostics lifecycle 均已通过；
+当前合同的已知回归矩阵与 LevelRenderer section/backend/frame/scene/effect/diagnostics/light lifecycle 均已通过；
 新 block state、pack model、section generation/visibility 或 renderer 优化仍需按机制复验，不能靠全图平均误差
 宣称等价。
 
