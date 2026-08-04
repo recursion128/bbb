@@ -455,6 +455,29 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel session-services
+
+- 目标与 owner：闭合 `ClientLevel` session-services 8 个 owner（sendPacketToServer、
+  recipeAccess、getBlockTicks、getFluidTicks、getScoreboard、enabledFeatures、
+  potionBrewing、fuelValues）；全部为 connection-scoped 服务委托或恒空实现，world 持
+  canonical 状态，禁止独立可替换缓存。
+- Vanilla 生命周期分界：跨/同维度 respawn 全部携带（connection 不变）；configuration
+  重入构造新 listener——scoreboard 是 fresh final field、recipes 待重下发（重置），而
+  enabledFeatures 经 CommonListenerCookie 携带、potionBrewing/fuelValues 由 registry 重建
+  （旧值保留至新值覆盖）；sendPacketToServer 只委托当前 connection；block/fluid ticks 恒
+  为 BlackholeTickAccess（客户端不模拟 scheduled tick，方块变化只来自服务器包）。
+- 验证型（零实现缺口）：bbb 已有 net `send_packet` 唯一出站、recipes+
+  `reset_recipes_for_new_listener`、`clear_client_level` 清 scoreboard、features/brewing/
+  fuel 携带、registry-dependent initializer 覆盖式重建；close 只补 evidence 不重写。
+- focused evidence：复合生命周期测试（respawn 携带全部五服务；listener 重置只清
+  scoreboard/recipes）、恒空 scheduled-tick 的 source guard；census 8-owner OwnerEvidence
+  注册 + scripts/tests 断言。
+- 非目标：不动 map-data（独立 route）、不改 net driver/command 队列结构、不实现
+  scheduled tick；发现其他缺口只登记既有 route。
+- acceptance/gate：focused tests、docs lint/fmt/diff、full gate 后刷新 fixture/live stamp；
+  matrix 翻 equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 8-owner evidence 完整且分界测试闭合的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
