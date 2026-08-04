@@ -448,6 +448,33 @@ public class Owner {
                 for owner in movement_reporting_owners
             )
         )
+        for mechanism_id, expected_count in (
+            ("player-local-client-status-options", 4),
+            ("interaction-item-use", 4),
+            ("interaction-entity-actions", 4),
+            ("interaction-container-actions", 4),
+            ("interaction-creative-actions", 2),
+        ):
+            batch_owners = [
+                owner
+                for owner in methods
+                if owner["mechanism_id"] == mechanism_id
+            ]
+            self.assertEqual(len(batch_owners), expected_count, mechanism_id)
+            self.assertEqual(
+                value["mechanisms"][mechanism_id]["owner_evidence_count"],
+                expected_count,
+                mechanism_id,
+            )
+            self.assertTrue(
+                all(
+                    set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                    and owner["bbb_evidence"]["implementation"]
+                    and owner["bbb_evidence"]["tests"]
+                    for owner in batch_owners
+                ),
+                mechanism_id,
+            )
         block_breaking_owners = [
             owner
             for owner in methods

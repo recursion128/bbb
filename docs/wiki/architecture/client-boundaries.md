@@ -202,6 +202,17 @@ sendIsSprintingIfNeeded 由 `maybe_queue_local_player_sprint_transition`
 `queue_player_abilities_command`（flying toggle 抑制重复发送）拥有。不得在
 其他消费点内联移动报文或第二条 sprint/abilities 命令路径。
 
+## Status-options 与 interaction 命令族 owner
+
+五条同族 route 共 18 个 owner 全部收敛于既有唯一链：client-status-options 由
+game event 链（`apply_game_event`/`set_game_type_from_game_event_param`，切
+spectator 清零垂直速度）与 entity event 的 reduced-debug-info 链拥有；item-use
+由 reserved use-item/use-item-on 命令与 ReleaseUseItem action（use-prediction
+先例）拥有；entity-actions 由 attack/interact/spectate 三条 queue 命令链拥有；
+container-actions 由 click/button/recipe/slot-state 四条 queue 命令链拥有
+（slot-state 与 click 原子合发）；creative-actions 由 creative
+`submit_action_inner` 提交计划拥有。不得为任一 interaction 命令建第二条入口。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

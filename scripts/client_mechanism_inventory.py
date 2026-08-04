@@ -3189,6 +3189,158 @@ LOCAL_PLAYER_MOVEMENT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_CLIENT_STATUS_OPTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#set_game_type_from_game_event_param",
+                "crates/bbb-world/src/level.rs#apply_game_event",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#game_events_update_local_gameplay_state",
+            ),
+        ),
+        ("onGameModeChanged", "setShowDeathScreen", "setDoLimitedCrafting"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#set_local_player_reduced_debug_info_from_entity_event",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#game_events_update_local_gameplay_state",
+            ),
+        ),
+        ("setReducedDebugInfo",),
+    ),
+)
+
+INTERACTION_ITEM_USE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_command",
+                "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_on_command",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#right_mouse_press_without_block_queues_use_item",
+                "crates/bbb-native/src/input/mouse.rs#right_mouse_bucket_prediction_uses_the_queued_use_item_sequence",
+            ),
+        ),
+        ("useItem", "useItemOn", "performUseItemOn"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#send_reserved_player_action_command",
+            ),
+            (
+                "crates/bbb-world/src/client/inventory/use_prediction.rs#trident_release_obeys_hold_threshold_and_keeps_throw_damage_server_owned",
+            ),
+        ),
+        ("releaseUsingItem",),
+    ),
+)
+
+INTERACTION_ENTITY_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_attack_entity_command",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity",
+            ),
+        ),
+        ("attack", "piercingAttack"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_interact_entity_command",
+            ),
+            (
+                "crates/bbb-native/src/input/commands.rs#queues_entity_attack_and_interact_commands",
+            ),
+        ),
+        ("interact",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_spectate_entity_command",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#spectator_left_mouse_press_with_piercing_weapon_queues_spectate_only",
+            ),
+        ),
+        ("spectate",),
+    ),
+)
+
+INTERACTION_CONTAINER_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_container_click_command",
+            ),
+            (
+                "crates/bbb-native/src/input/commands.rs#queues_container_click_command",
+            ),
+        ),
+        ("handleContainerInput",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_container_button_click_command",
+            ),
+            (
+                "crates/bbb-native/src/input/commands.rs#queues_container_button_click_command",
+            ),
+        ),
+        ("handleInventoryButtonClick",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_place_recipe_command",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#recipe_book_recipe_button_click_queues_place_recipe_command",
+            ),
+        ),
+        ("handlePlaceRecipe",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_container_slot_state_changed_command",
+            ),
+            (
+                "crates/bbb-native/src/input/commands.rs#queues_container_slot_state_changed_command",
+                "crates/bbb-native/src/input/commands.rs#queues_container_slot_state_and_click_atomically",
+            ),
+        ),
+        ("handleSlotStateChanged",),
+    ),
+)
+
+INTERACTION_CREATIVE_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/inventory/creative.rs#submit_action_inner",
+            ),
+            (
+                "crates/bbb-native/src/input/inventory/creative.rs#creative_drop_throttler_limits_decays_and_resets_for_a_new_level_owner",
+            ),
+        ),
+        ("handleCreativeModeItemAdd", "handleCreativeModeItemDrop"),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3363,6 +3515,11 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-session-respawn": LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE,
     "player-local-vitals-status": LOCAL_PLAYER_VITALS_STATUS_OWNER_EVIDENCE,
     "player-local-movement-reporting": LOCAL_PLAYER_MOVEMENT_REPORTING_OWNER_EVIDENCE,
+    "player-local-client-status-options": LOCAL_PLAYER_CLIENT_STATUS_OPTIONS_OWNER_EVIDENCE,
+    "interaction-item-use": INTERACTION_ITEM_USE_OWNER_EVIDENCE,
+    "interaction-entity-actions": INTERACTION_ENTITY_ACTIONS_OWNER_EVIDENCE,
+    "interaction-container-actions": INTERACTION_CONTAINER_ACTIONS_OWNER_EVIDENCE,
+    "interaction-creative-actions": INTERACTION_CREATIVE_ACTIONS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

@@ -73,24 +73,9 @@ real implementation evidence, but are not yet owner-complete decision→consumer
 evidence, so the census records each homogeneous route as `unverified` rather than
 preserving the two former broad `partial` claims.
 
-- **`player-local-client-status-options`** — world owns server flags and game type while
-  native owns death/debug presentation. Close after reduced-info, death-screen,
-  limited-crafting and spectator vertical-reset branches have decision-level evidence.
 - **`interaction-carried-slot-sync`** — world selected slot and native command baseline
   must be the only state. Close after change-only send, queue failure retry, controller
   tick order and generation reset are proved for both owners.
-- **`interaction-item-use`** — target/input queries feed one world item-use prediction
-  path and net projection. Close after spectator, border, feature, cooldown,
-  block-before-item, hand, local mutation and correction branches cover all four owners.
-- **`interaction-entity-actions`** — native targeting feeds world combat/interaction and
-  a single net action path. Close after carried sync, attack/interact/spectate/piercing,
-  local prediction, shift and range semantics cover all four owners.
-- **`interaction-container-actions`** — world owns menu revision/slots/hash state and
-  native owns input routing. Close after mismatched id, local click, changed-slot and
-  carried hash, recipe/button/slot-state ordering cover all four owners.
-- **`interaction-creative-actions`** — world creative plans and native UI/net projection
-  must preserve instabuild, feature gate, open-menu exclusion and drop throttling. Close
-  after both owners have atomic plan/apply and external creative-session evidence.
 - **`interaction-pick-actions`** — the native crosshair result and modifier route to one
   block/entity pick command owner. Close after the three owners prove dispatch,
   include-data and no-target behavior against an external server.
