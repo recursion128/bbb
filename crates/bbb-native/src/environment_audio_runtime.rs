@@ -26,7 +26,7 @@ const BUBBLE_COLUMN_WHIRLPOOL_INSIDE_SOUND: &str = "minecraft:block.bubble_colum
 /// Non-serializable owner of Vanilla LocalPlayer ambient-sound handler state.
 #[derive(Debug, Default)]
 pub(crate) struct EnvironmentAudioRuntime {
-    level_identity: Option<(u64, u64)>,
+    local_player_identity: Option<(u64, u64, usize)>,
     previous_loop_sound: Option<ClientSoundEventHolder>,
     loop_sounds: Vec<LoopSound>,
     underwater_loops: Vec<UnderwaterLoopSound>,
@@ -61,9 +61,17 @@ impl EnvironmentAudioRuntime {
         local_player_ticks: u32,
         audio: &mut dyn AudioEventSink,
     ) {
-        let level_identity = (connection_generation, world.client_level_generation());
-        if self.level_identity != Some(level_identity) {
-            self.level_identity = Some(level_identity);
+        // Every respawn constructs fresh LocalPlayer ambient handlers, even
+        // when Vanilla retains the same ClientLevel. `level_load.starts` is
+        // the canonical respawn/login edge; pairing it with connection and
+        // level identities keeps clear/reconnect values unambiguous.
+        let local_player_identity = (
+            connection_generation,
+            world.client_level_generation(),
+            world.level_load().starts,
+        );
+        if self.local_player_identity != Some(local_player_identity) {
+            self.local_player_identity = Some(local_player_identity);
             self.previous_loop_sound = None;
             self.loop_sounds.clear();
             self.underwater_loops.clear();
@@ -512,7 +520,7 @@ mod tests {
     use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
     use bbb_protocol::packets::{
         ChunkBiomeData, ChunkPos as ProtocolChunkPos, ChunksBiomes, CommonPlayerSpawnInfo,
-        PlayLogin,
+        PlayLogin, Respawn,
     };
     use bbb_world::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, ClientAmbientAddition,
@@ -1128,7 +1136,7 @@ mod tests {
     #[test]
     fn environment_audio_level_replacement_stops_old_loops_without_running_ticks() {
         let mut runtime = EnvironmentAudioRuntime::default();
-        runtime.level_identity = Some((1, 0));
+        runtime.local_player_identity = Some((1, 0, 0));
         runtime.previous_loop_sound = Some(direct_sound("example:old", None));
         runtime
             .loop_sounds
@@ -1144,6 +1152,41 @@ mod tests {
         assert!(runtime.underwater_loops.is_empty());
         assert_eq!(runtime.previous_loop_sound, None);
         assert_eq!(runtime.moodiness, 0.0);
+    }
+
+    #[test]
+    fn environment_audio_rebuilds_local_player_handlers_on_same_dimension_respawn() {
+        let mut world = world_with_biome_ambient_loops();
+        let mut runtime = EnvironmentAudioRuntime::default();
+        let mut audio = RecordingAudio::default();
+        runtime.advance_for_ticks(&mut world, 1, 0, &mut audio);
+        runtime.previous_loop_sound = Some(direct_sound("example:old", None));
+        runtime
+            .loop_sounds
+            .push(LoopSound::new(direct_sound("example:old", None), 7));
+        let level_generation = world.client_level_generation();
+
+        world.apply_respawn(&Respawn {
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "example:level".to_string(),
+                seed: 1,
+                game_type: 0,
+                previous_game_type: 0,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            data_to_keep: 0,
+        });
+        assert_eq!(world.client_level_generation(), level_generation);
+
+        runtime.advance_for_ticks(&mut world, 1, 0, &mut audio);
+        assert!(runtime.loop_sounds.is_empty());
+        assert_eq!(runtime.previous_loop_sound, None);
+        assert!(audio.loop_syncs.last().is_some_and(Vec::is_empty));
     }
 
     #[test]

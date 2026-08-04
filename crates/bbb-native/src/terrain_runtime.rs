@@ -210,7 +210,7 @@ pub(crate) struct TerrainUploadState {
     occlusion_worker: Option<TerrainOcclusionWorker>,
     frustum_visibility_key: Option<TerrainFrustumVisibilityKey>,
     renderer_sections: TerrainSectionFrameProjection,
-    reported_readiness: Option<(u64, bool)>,
+    reported_readiness: Option<(u64, usize, bool)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -340,14 +340,16 @@ impl TerrainUploadState {
         })
     }
 
-    /// Returns a command payload only when readiness changes or a new client
-    /// level generation becomes active.
+    /// Returns a command payload only when readiness changes or a new level
+    /// load becomes active. Same-dimension respawn keeps the ClientLevel but
+    /// starts a fresh Vanilla LevelLoadTracker.
     pub(crate) fn take_readiness_edge(
         &mut self,
         level_generation: u64,
+        level_load_start: usize,
         ready: bool,
-    ) -> Option<(u64, bool)> {
-        let next = (level_generation, ready);
+    ) -> Option<(u64, usize, bool)> {
+        let next = (level_generation, level_load_start, ready);
         if self.reported_readiness == Some(next) {
             return None;
         }
@@ -368,11 +370,12 @@ mod readiness_tests {
     #[test]
     fn readiness_reports_only_edges_and_new_level_generations() {
         let mut upload = TerrainUploadState::default();
-        assert_eq!(upload.take_readiness_edge(4, false), Some((4, false)));
-        assert_eq!(upload.take_readiness_edge(4, false), None);
-        assert_eq!(upload.take_readiness_edge(4, true), Some((4, true)));
-        assert_eq!(upload.take_readiness_edge(4, true), None);
-        assert_eq!(upload.take_readiness_edge(5, true), Some((5, true)));
+        assert_eq!(upload.take_readiness_edge(4, 1, false), Some((4, 1, false)));
+        assert_eq!(upload.take_readiness_edge(4, 1, false), None);
+        assert_eq!(upload.take_readiness_edge(4, 1, true), Some((4, 1, true)));
+        assert_eq!(upload.take_readiness_edge(4, 1, true), None);
+        assert_eq!(upload.take_readiness_edge(4, 2, true), Some((4, 2, true)));
+        assert_eq!(upload.take_readiness_edge(5, 1, true), Some((5, 1, true)));
     }
 }
 

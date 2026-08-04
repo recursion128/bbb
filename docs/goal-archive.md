@@ -95,6 +95,6 @@
 - **2026-08-03（LocalPlayer/game-mode census 与首批交互 closure）**：149 owner 拆为 23 条同质 route；
   block-breaking 与 prediction 统一到 level-bound handler、signed ack 和 atomic command barrier。
 - **2026-08-03（generated evidence/layout、ClientLevel census 与 entity lifecycle）**：五份 JSON 收敛；
-  121 owner 拆为 18 route，entity 17 owner 经唯一 store、生成式 push dispatch 与 live consumer 收口。
+  121 owner 拆为 18 route，entity 17 owner 与 level identity 3 owner 经唯一 store、generation guard 和 live consumer 收口。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

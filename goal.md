@@ -451,36 +451,9 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；机械 census 已把
 `ClientLevel` 121 个 owner 拆为 18 条同质 route，其中 prediction/accessor/no-op 已有闭合归属，
-其余 14 条与 `LocalPlayer`/`MultiPlayerGameMode` 未关闭 route 均由唯一账本排程。按 hardest-ready-first
+其余 13 条与 `LocalPlayer`/`MultiPlayerGameMode` 未关闭 route 均由唯一账本排程。按 hardest-ready-first
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
-
-#### Active contract：ClientLevel level identity lifecycle
-
-- 目标与 owner：闭合 Vanilla 26.1 `ClientLevel` constructor、`disconnect`、
-  `registerForCleaning` 三个 owner；`WorldStore::client_level_generation` 是 level identity 的唯一
-  canonical owner，native/renderer/audio/item consumer 只持 generation-tagged projection。
-- Vanilla 生命周期：login 构造新 level；仅跨维度 respawn 构造新 level，同维度 respawn 复用旧
-  level；configuration/terminal clear 先清 listener cache slot，再使 level/engines 不可达；level
-  disconnect 只委托当前 transport，不能另设 world-side socket owner。
-- cache/ordering：等价 `CacheSlot` 的 level-context projection 必须按 generation 重算或直接从当前
-  immutable owner 查询；新 generation 发布后旧 terrain/particle/audio/map/item projection 必须拒绝，
-  同维度 player respawn 不得伪造 level cache invalidation。
-- lifecycle/rollback：level generation 只在完整 login、dimension replacement 或 clear 边沿推进；
-  retained publication immutable，terminal teardown exactly once，失败/陈旧 native completion 不能恢复
-  已清 level。player identity/reset 归 `player-local-session-respawn`，本 slice 不新建 shadow generation。
-- API/删除目标：不扩宽跨 crate API；修正 unconditional respawn level-generation advance，迁移受影响
-  caller/test 到 exact identity；不得保留 compatibility counter、第二个 resolver 或 cache registry。
-- focused evidence：三个 generated owner 的 implementation/test cell；same-/cross-dimension respawn、login、
-  reconfiguration、transfer、terminal disconnect、retained publication、stale terrain/particle/audio/map/item
-  projection；reverse guard 锁定唯一 generation advance owner 与无独立 level cache registry。
-- 非目标：不实现 local-player respawn、clock/weather、map content、renderer/audio 行为或新 screen；发现
-  这些语义缺口只登记其既有 route，不混入本 slice。
-- acceptance/gate：`bbb-world`/native focused tests、inventory exact-output/source guard、现有 external live
-  respawn/reconfiguration/disconnect、docs lint/fmt/diff/workspace check；高风险提交后 full gate，并刷新
-  fixture/live playable stamp。
-- 安全停止点/blocker：只允许合同 full-gated 提交，或三个 owner evidence 完整、同维度不换 level identity、
-  stale consumer 拒绝且 focused/live/full gate 全通过的干净提交；内部测试失败不是 external blocker。
 
 ### P2：屏幕、HUD、字体与截图
 

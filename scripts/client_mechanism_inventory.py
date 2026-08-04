@@ -1729,8 +1729,57 @@ CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#apply_login",
+                "crates/bbb-world/src/level.rs#apply_respawn",
+                "crates/bbb-world/src/level.rs#clear_client_level",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#client_level_generation_follows_construct_replace_and_clear_identity_only",
+                "crates/bbb-world/src/level.rs#client_level_generation_production_source_has_one_mutator_and_exact_edges",
+                "crates/bbb-native/src/level_load_runtime.rs#same_dimension_respawn_restarts_load_timeout_without_replacing_level_identity",
+            ),
+        ),
+        ("ClientLevel",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/server_presentation.rs#end_connection_session",
+                "crates/bbb-native/src/runtime.rs#advance_simulation",
+            ),
+            (
+                "crates/bbb-world/src/client/server_presentation.rs#terminal_connection_session_drops_transfer_only_carry",
+                "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback",
+            ),
+        ),
+        ("disconnect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#client_level_generation",
+                "crates/bbb-native/src/terrain_runtime.rs#synchronize_terrain_level_generation",
+                "crates/bbb-native/src/particle_runtime/explosion.rs#track",
+                "crates/bbb-native/src/runtime/render_extract.rs#synchronize_map_texture_level",
+            ),
+            (
+                "crates/bbb-native/src/terrain_runtime.rs#level_generation_change_drops_old_residency_without_reusing_revision_ids",
+                "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_drops_pending_work_across_level_generations",
+                "crates/bbb-native/src/runtime/tests.rs#map_texture_cache_invalidates_only_on_level_generation_edge",
+                "crates/bbb-native/src/level_load_runtime.rs#respawn_local_consumers_cannot_restore_level_generation_as_their_only_identity",
+            ),
+        ),
+        ("registerForCleaning",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
+    "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

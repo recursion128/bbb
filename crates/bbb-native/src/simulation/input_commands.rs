@@ -75,7 +75,7 @@ pub(crate) struct SimulationInputRuntime {
     code_of_conduct_overlay: CodeOfConductOverlayState,
     net_disconnect_requested: bool,
     shutdown_requested: bool,
-    terrain_readiness: Option<(u64, bool)>,
+    terrain_readiness: Option<(u64, usize, bool)>,
     last_applied_sequence: u64,
 }
 
@@ -132,9 +132,15 @@ impl SimulationInputRuntime {
         self.surface_size
     }
 
-    pub(crate) fn player_section_ready(&self, level_generation: u64) -> bool {
+    pub(crate) fn player_section_ready(
+        &self,
+        level_generation: u64,
+        level_load_start: usize,
+    ) -> bool {
         self.terrain_readiness
-            .is_some_and(|(generation, ready)| generation == level_generation && ready)
+            .is_some_and(|(generation, load_start, ready)| {
+                generation == level_generation && load_start == level_load_start && ready
+            })
     }
 
     pub(crate) fn request_network_terminal_shutdown(
@@ -419,10 +425,14 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::TerrainReadiness {
                 level_generation,
+                level_load_start,
                 player_section_compiled_and_visible,
             } => {
-                self.terrain_readiness =
-                    Some((level_generation, player_section_compiled_and_visible));
+                self.terrain_readiness = Some((
+                    level_generation,
+                    level_load_start,
+                    player_section_compiled_and_visible,
+                ));
             }
             SimulationCommand::DebugProfilingLifecycle(event) => match event {
                 DebugProfilingLifecycle::Started => {
@@ -2826,13 +2836,14 @@ mod tests {
     #[test]
     fn terrain_readiness_is_scoped_to_the_published_level_generation() {
         let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
-        runtime.terrain_readiness = Some((7, true));
+        runtime.terrain_readiness = Some((7, 1, true));
 
-        assert!(runtime.player_section_ready(7));
-        assert!(!runtime.player_section_ready(8));
+        assert!(runtime.player_section_ready(7, 1));
+        assert!(!runtime.player_section_ready(7, 2));
+        assert!(!runtime.player_section_ready(8, 1));
 
-        runtime.terrain_readiness = Some((8, false));
-        assert!(!runtime.player_section_ready(8));
+        runtime.terrain_readiness = Some((8, 1, false));
+        assert!(!runtime.player_section_ready(8, 1));
     }
 
     #[test]

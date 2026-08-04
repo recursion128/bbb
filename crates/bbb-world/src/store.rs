@@ -94,7 +94,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) level_load: WorldLevelLoadState,
     /// Monotonic client-level identity used to reject level-bound async
-    /// responses after Login, Respawn, or disconnect transitions.
+    /// responses after Login, dimension-changing Respawn, or clear/terminal
+    /// transitions. Same-dimension Respawn retains Vanilla's ClientLevel.
     #[serde(default)]
     pub(crate) client_level_generation: u64,
     /// Session level membership from ClientboundLoginPacket. Vanilla exposes

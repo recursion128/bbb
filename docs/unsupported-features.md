@@ -58,10 +58,6 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-level-lifecycle` (3 owners).** Make `WorldStore` level identity follow
-  constructor/disconnect/cache-cleaning ownership: same-dimension respawn must retain
-  the level generation, while login, dimension replacement and clear/terminal teardown
-  invalidate every generation-tagged consumer exactly once and reject stale work.
 - **`world-client-clock-weather` (8 owners).** Verify game/day time and rain/thunder
   interpolation, tick order and dimension/session replacement without a native
   shadow clock.

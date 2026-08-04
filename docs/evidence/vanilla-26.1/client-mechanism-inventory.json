@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "dd832923b2297b7fb1b8f039ab3977c45ab963f0035457770084f2c88667d4ec"
+      "sha256": "cdf155310d84b4d456de18d1b02d3233cc1d72bec5cc4e706accdf8179af7f1f"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -662,7 +662,8 @@
       "bbb_evidence": [
         "crates/bbb-world/src/level.rs"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "world-client-map-data": {
       "bbb_evidence": [
@@ -17719,6 +17720,18 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl.State#State(final Component message,final Set <ClientHandshakePacketListenerImpl.State> fromStates)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#apply_login",
+          "crates/bbb-world/src/level.rs#apply_respawn",
+          "crates/bbb-world/src/level.rs#clear_client_level"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#client_level_generation_follows_construct_replace_and_clear_identity_only",
+          "crates/bbb-world/src/level.rs#client_level_generation_production_source_has_one_mutator_and_exact_edges",
+          "crates/bbb-native/src/level_load_runtime.rs#same_dimension_respawn_restarts_load_timeout_without_replacing_level_identity"
+        ]
+      },
       "category": "level-lifecycle",
       "domain": "world",
       "kind": "constructor",
@@ -17985,6 +17998,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#destroyBlockProgress(final int id,final BlockPos blockPos,final int progress)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/server_presentation.rs#end_connection_session",
+          "crates/bbb-native/src/runtime.rs#advance_simulation"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/server_presentation.rs#terminal_connection_session_drops_transfer_only_carry",
+          "crates/bbb-native/src/runtime/tests.rs#remote_disconnect_publishes_terminal_screen_before_input_without_exit_fallback"
+        ]
+      },
       "category": "level-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -18847,6 +18870,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#recipeAccess()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/level.rs#client_level_generation",
+          "crates/bbb-native/src/terrain_runtime.rs#synchronize_terrain_level_generation",
+          "crates/bbb-native/src/particle_runtime/explosion.rs#track",
+          "crates/bbb-native/src/runtime/render_extract.rs#synchronize_map_texture_level"
+        ],
+        "tests": [
+          "crates/bbb-native/src/terrain_runtime.rs#level_generation_change_drops_old_residency_without_reusing_revision_ids",
+          "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_drops_pending_work_across_level_generations",
+          "crates/bbb-native/src/runtime/tests.rs#map_texture_cache_invalidates_only_on_level_generation_edge",
+          "crates/bbb-native/src/level_load_runtime.rs#respawn_local_consumers_cannot_restore_level_generation_as_their_only_identity"
+        ]
+      },
       "category": "level-lifecycle",
       "domain": "world",
       "kind": "method",
@@ -41530,6 +41567,7 @@
       "rendering-level-light-query",
       "rendering-level-scene-projection",
       "rendering-level-section-lifecycle",
+      "world-client-level-lifecycle",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

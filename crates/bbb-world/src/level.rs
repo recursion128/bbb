@@ -385,13 +385,19 @@ impl WorldStore {
         self.counters.respawns_received += 1;
         self.clear_death_screen();
         self.close_game_rules_screen();
-        self.advance_client_level_generation();
-        self.reset_client_toasts_for_new_level();
-        self.requeue_active_tutorial_toast();
         let dimension_changed = self
             .level
             .as_ref()
             .is_some_and(|level| level.dimension != respawn.common_spawn_info.dimension);
+        if dimension_changed {
+            // Vanilla `ClientPacketListener.handleRespawn` constructs and
+            // publishes a fresh `ClientLevel` only when the dimension key
+            // changes. A same-dimension respawn replaces `LocalPlayer` while
+            // retaining the exact level context (including CacheSlot values).
+            self.advance_client_level_generation();
+        }
+        self.reset_client_toasts_for_new_level();
+        self.requeue_active_tutorial_toast();
         let closed_server_container_id = self.close_container_for_respawn();
         self.reset_creative_inventory_for_new_level();
         self.reset_local_player_for_respawn(
@@ -1609,7 +1615,7 @@ mod tests {
         assert_eq!(store.local_player().portal_cooldown, 6);
         assert!(store.last_debug_block_value().is_some());
         assert!(store.local_player().default_spawn.is_some());
-        assert_eq!(store.client_level_generation(), 1);
+        assert_eq!(store.client_level_generation(), 0);
         assert_eq!(store.local_prediction_sequence(), 12);
         assert_eq!(store.local_prediction_last_teleport_sequence(), Some(12));
         assert_eq!(store.local_block_predictions().len(), 1);
@@ -1668,7 +1674,7 @@ mod tests {
         let level = store.level_info().unwrap();
         assert_eq!(level.biome_zoom_seed, 98765);
         assert_eq!(store.local_player().portal_cooldown, 2);
-        assert_eq!(store.client_level_generation(), 2);
+        assert_eq!(store.client_level_generation(), 1);
         assert_eq!(store.available_levels(), &available_levels);
         assert_eq!(
             store.server_enforces_secure_chat(),
@@ -1688,6 +1694,87 @@ mod tests {
             store.gameplay().previous_game_type_name.as_deref(),
             Some("creative")
         );
+    }
+
+    #[test]
+    fn client_level_generation_follows_construct_replace_and_clear_identity_only() {
+        let mut store = WorldStore::new();
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        let login_generation = store.client_level_generation();
+        assert_eq!(login_generation, 1);
+        let retained_login = store.publication_snapshot();
+
+        store.apply_respawn(&respawn_packet(0));
+        assert_eq!(store.client_level_generation(), login_generation);
+        assert_eq!(retained_login.client_level_generation(), login_generation);
+        assert_eq!(
+            retained_login
+                .level_info()
+                .expect("retained login level")
+                .dimension
+                .as_str(),
+            "minecraft:overworld"
+        );
+
+        let mut changed_dimension = respawn_packet(0);
+        changed_dimension.common_spawn_info.dimension_type_id = 1;
+        changed_dimension.common_spawn_info.dimension = "minecraft:the_nether".to_string();
+        store.apply_respawn(&changed_dimension);
+        assert_eq!(
+            store.client_level_generation(),
+            login_generation.saturating_add(1)
+        );
+        assert_eq!(
+            retained_login.client_level_generation(),
+            login_generation,
+            "retained publications must not observe replacement"
+        );
+
+        store.clear_client_level();
+        assert_eq!(
+            store.client_level_generation(),
+            login_generation.saturating_add(2)
+        );
+        assert!(store.level_info().is_none());
+    }
+
+    #[test]
+    fn client_level_generation_production_source_has_one_mutator_and_exact_edges() {
+        let source = include_str!("level.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .expect("level production source");
+        assert_eq!(
+            source
+                .matches("self.advance_client_level_generation();")
+                .count(),
+            2,
+            "only dimension-changing respawn and clear may advance level identity"
+        );
+        assert_eq!(
+            source
+                .matches("client_level_generation.saturating_add(1)")
+                .count(),
+            1,
+            "level generation must have one canonical mutation owner"
+        );
+        let respawn = source
+            .split_once("pub fn apply_respawn(")
+            .expect("respawn owner")
+            .1
+            .split_once("pub fn apply_world_time(")
+            .expect("respawn owner end")
+            .0;
+        let dimension_check = respawn
+            .find("let dimension_changed =")
+            .expect("dimension identity decision");
+        let conditional = respawn
+            .find("if dimension_changed {")
+            .expect("conditional level replacement");
+        let advance = respawn
+            .find("self.advance_client_level_generation();")
+            .expect("level replacement generation edge");
+        assert!(dimension_check < conditional && conditional < advance);
     }
 
     #[test]

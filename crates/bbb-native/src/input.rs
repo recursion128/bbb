@@ -750,6 +750,7 @@ pub(crate) struct ClientInputState {
     sprint_start_requested: bool,
     last_sent_sprinting: bool,
     sprint_level_generation: u64,
+    sprint_level_load_start: usize,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
     spectator_gui: spectator_menu::SpectatorGuiInputState,

@@ -190,6 +190,7 @@ pub(crate) enum SimulationCommand {
     ResourceReloadAck(Box<crate::resource_reload::ResourceReloadAck>),
     TerrainReadiness {
         level_generation: u64,
+        level_load_start: usize,
         player_section_compiled_and_visible: bool,
     },
     DebugProfilingLifecycle(DebugProfilingLifecycle),
@@ -827,14 +828,17 @@ fn try_coalesce_tail(
         (
             SimulationCommand::TerrainReadiness {
                 level_generation,
+                level_load_start,
                 player_section_compiled_and_visible,
             },
             SimulationCommand::TerrainReadiness {
                 level_generation: incoming_generation,
+                level_load_start: incoming_load_start,
                 player_section_compiled_and_visible: incoming_ready,
             },
         ) => {
             *level_generation = *incoming_generation;
+            *level_load_start = *incoming_load_start;
             *player_section_compiled_and_visible = *incoming_ready;
             true
         }
@@ -1608,6 +1612,7 @@ mod tests {
             .requires_world_snapshot_rebuild());
         assert!(SimulationCommand::TerrainReadiness {
             level_generation: 1,
+            level_load_start: 1,
             player_section_compiled_and_visible: true,
         }
         .requires_world_snapshot_rebuild());

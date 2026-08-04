@@ -72,6 +72,24 @@ immutable native effect/renderer/audio projection。renderer、audio 和 diagnos
 读取 packet、pack 或另一个 consumer cache；level replacement 必须一次丢弃旧 generation 的
 transient projection，而保留/清除 canonical state 的判断只归对应 world lifecycle owner。
 
+### ClientLevel identity lifecycle owner
+
+`WorldStore::client_level_generation` 是三个 `ClientLevel` identity owner 的唯一对应状态。login 构造
+新 level，跨维度 respawn 才重建 level，同维度 respawn 只替换 `LocalPlayer`；configuration、transfer
+和 terminal clear 推进 generation 并清空 level-bound canonical state。远端 disconnect 由 typed outcome
+先结束 connection session，再发布断线 screen 并按 phase 停音；`ClientLevel.disconnect` 不产生第二个
+world-side transport owner。旧 immutable publication 保持原值，terrain/particle/map/remote-debug 等
+completion 或 cache 只接受当前 generation。
+
+Vanilla `registerForCleaning` 把 item-model registry-context `CacheSlot` 挂到 listener，clear 时统一失效。
+BBB 不保存以 `ClientLevel` 地址为 key 的可变 item cache：item/resource projection 从当前 frozen registry 与
+immutable resource generation 查询；真正 level-bound 的 native cache 统一以 world generation 判 stale。
+`LevelLoadTracker`、本地 ambient handler 和 sprint baseline 的 owner 与 level identity 不同：每次 respawn
+都会重建，所以它们复用 canonical `level_load.starts`，与 level generation 组成窄 projection；terrain
+readiness 也携带同一 load identity，不能用旧 level 的 ready edge 放行新 player load。source guard 锁定
+generation 只有一个 mutator、respawn advance 只在 dimension-change 分支，并禁止这些 local/load consumer
+恢复成只看 level generation 的旧路径。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

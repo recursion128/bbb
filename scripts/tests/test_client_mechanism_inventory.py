@@ -241,6 +241,26 @@ public class Owner {
             ),
         )
         self.assertNotIn("world-client-level-decisions", by_mechanism)
+        level_lifecycle_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-level-lifecycle"
+        ]
+        self.assertEqual(len(level_lifecycle_owners), 3)
+        self.assertEqual(
+            value["mechanisms"]["world-client-level-lifecycle"][
+                "owner_evidence_count"
+            ],
+            3,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in level_lifecycle_owners
+            )
+        )
         entity_lifecycle_owners = [
             owner
             for owner in methods

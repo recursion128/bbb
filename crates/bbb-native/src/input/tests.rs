@@ -27608,6 +27608,7 @@ fn sprint_key_camel_mount_focus_loss_queues_stop_sprinting() {
     assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
     input.last_sent_sprinting = true;
     input.sprint_level_generation = world.client_level_generation();
+    input.sprint_level_load_start = world.level_load().starts;
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
     advance_player_input_for_client_ticks(
@@ -28087,6 +28088,7 @@ fn focus_loss_stops_active_sprinting() {
     assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
     input.last_sent_sprinting = true;
     input.sprint_level_generation = world.client_level_generation();
+    input.sprint_level_load_start = world.level_load().starts;
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
     advance_player_input_for_client_ticks(

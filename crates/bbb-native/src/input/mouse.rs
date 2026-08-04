@@ -3702,6 +3702,7 @@ mod tests {
         assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
         input.last_sent_sprinting = true;
         input.sprint_level_generation = world.client_level_generation();
+        input.sprint_level_load_start = world.level_load().starts;
         world.advance_client_level_entity_ticks_with_observation(6);
         let mut counters = NetCounters::default();
 
@@ -3765,6 +3766,7 @@ mod tests {
         assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
         input.last_sent_sprinting = true;
         input.sprint_level_generation = world.client_level_generation();
+        input.sprint_level_load_start = world.level_load().starts;
         world.advance_client_level_entity_ticks_with_observation(6);
         let mut counters = NetCounters::default();
 

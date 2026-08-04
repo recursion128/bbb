@@ -2756,7 +2756,8 @@ pub(crate) fn advance_simulation(
         input.debug_profiler_chart_visible() || input.debug_profiling_recording();
     let mut profiling_sections = Vec::new();
     let level_services_started_at = profiling_enabled.then(Instant::now);
-    let player_section_ready = input_runtime.player_section_ready(world.client_level_generation());
+    let player_section_ready = input_runtime
+        .player_section_ready(world.client_level_generation(), world.level_load().starts);
     level_load_runtime.tick(now, world, net_commands, player_section_ready);
     hud_debug_network_sampler.advance_tick(
         input,
@@ -4840,15 +4841,17 @@ pub(crate) fn update_renderer_from_publication(
     );
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);
-    if let Some((level_generation, player_section_compiled_and_visible)) = terrain_upload
-        .take_readiness_edge(
+    if let Some((level_generation, level_load_start, player_section_compiled_and_visible)) =
+        terrain_upload.take_readiness_edge(
             publication.client_level_generation,
+            publication.world.level_load().starts,
             player_section_compiled_and_visible,
         )
     {
         mailbox.enqueue_or_report(
             crate::simulation::commands::SimulationCommand::TerrainReadiness {
                 level_generation,
+                level_load_start,
                 player_section_compiled_and_visible,
             },
             "terrain readiness",

@@ -194,10 +194,12 @@ pub(super) fn synchronize_local_player_sprint_generation(
     world: &WorldStore,
 ) {
     let generation = world.client_level_generation();
-    if input.sprint_level_generation == generation {
+    let load_start = world.level_load().starts;
+    if input.sprint_level_generation == generation && input.sprint_level_load_start == load_start {
         return;
     }
     input.sprint_level_generation = generation;
+    input.sprint_level_load_start = load_start;
     input.sprint_start_requested = false;
     input.clear_sprint_trigger();
     input.last_sent_sprinting = world.local_player_is_sprinting();
@@ -534,7 +536,7 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EntityMove, EquipmentSlot, EquipmentSlotUpdate,
         GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayTime,
-        PlayerAbilities, PlayerAbilitiesCommand, SetCamera, SetEquipment, SetPassengers,
+        PlayerAbilities, PlayerAbilitiesCommand, Respawn, SetCamera, SetEquipment, SetPassengers,
         SetPlayerInventory, Vec3d as ProtocolVec3d,
     };
     use bbb_world::ItemEquipmentSlot;
@@ -618,6 +620,7 @@ mod tests {
         assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
         input.last_sent_sprinting = true;
         input.sprint_level_generation = world.client_level_generation();
+        input.sprint_level_load_start = world.level_load().starts;
         let mut counters = NetCounters::default();
         let now = Instant::now();
 
@@ -670,6 +673,7 @@ mod tests {
         assert!(world.reconcile_local_player_sprinting(input.local_player_input(&world), true));
         input.last_sent_sprinting = true;
         input.sprint_level_generation = world.client_level_generation();
+        input.sprint_level_load_start = world.level_load().starts;
         let mut counters = NetCounters::default();
 
         advance_player_input_for_client_ticks(
@@ -744,6 +748,7 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_login(&protocol_play_login(99));
         input.sprint_level_generation = world.client_level_generation();
+        input.sprint_level_load_start = world.level_load().starts;
         input.sprint_start_requested = true;
         input.sprint_trigger_ticks = 5;
         input.last_sent_sprinting = true;
@@ -755,6 +760,32 @@ mod tests {
             input.sprint_level_generation,
             world.client_level_generation()
         );
+        assert!(!input.sprint_start_requested);
+        assert_eq!(input.sprint_trigger_ticks, 0);
+        assert_eq!(input.last_sent_sprinting, world.local_player_is_sprinting());
+    }
+
+    #[test]
+    fn same_dimension_respawn_resets_player_sprint_baseline_without_replacing_level() {
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let login = protocol_play_login(99);
+        world.apply_login(&login);
+        synchronize_local_player_sprint_generation(&mut input, &world);
+        input.sprint_start_requested = true;
+        input.sprint_trigger_ticks = 5;
+        input.last_sent_sprinting = true;
+        let level_generation = world.client_level_generation();
+
+        world.apply_respawn(&Respawn {
+            common_spawn_info: login.common_spawn_info,
+            data_to_keep: 0,
+        });
+        synchronize_local_player_sprint_generation(&mut input, &world);
+
+        assert_eq!(world.client_level_generation(), level_generation);
+        assert_eq!(input.sprint_level_generation, level_generation);
+        assert_eq!(input.sprint_level_load_start, world.level_load().starts);
         assert!(!input.sprint_start_requested);
         assert_eq!(input.sprint_trigger_ticks, 0);
         assert_eq!(input.last_sent_sprinting, world.local_player_is_sprinting());
