@@ -73,10 +73,6 @@ real implementation evidence, but are not yet owner-complete decision→consumer
 evidence, so the census records each homogeneous route as `unverified` rather than
 preserving the two former broad `partial` claims.
 
-- **`player-local-session-respawn`** — canonical input is player/session construction,
-  death tick and respawn input; current owners are world player generation plus native
-  death-screen commands. Risk is stale player state or an extra/missing respawn; close
-  with create/reset/death-removal/respawn ordering evidence and external-session respawn.
 - **`player-local-vitals-status`** — canonical owner is world local health/experience,
   currently consumed by HUD state. Close after health flash/no-op heal and experience
   display lifetime are mapped to focused state and presentation evidence.

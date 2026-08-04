@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "9233b4815b0a55e53c46c279b224d0a7ddfa06b411f560499f9ae8deb273c0bb"
+      "sha256": "992fa0a99d1c755fed6c2adbe123243ee0ff089614ed6436bad2e52ea3b4f299"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -284,7 +284,8 @@
         "crates/bbb-native/src/input/death_screen.rs",
         "crates/bbb-world/src/client/combat.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "player-local-vehicle-control": {
       "bbb_evidence": [
@@ -24299,6 +24300,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.chat.report.ReportingContext#setReportDraft(final @Nullable Report draftReport)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
+          "crates/bbb-world/src/level.rs#reset_local_player_for_respawn"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "player-lifecycle",
       "domain": "movement",
       "kind": "constructor",
@@ -25847,6 +25857,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#removeVehicle()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
+          "crates/bbb-world/src/level.rs#reset_local_player_for_respawn"
+        ],
+        "tests": [
+          "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state"
+        ]
+      },
       "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
@@ -25861,6 +25880,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#resetPos()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_perform_respawn_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/commands.rs#queues_perform_respawn_command",
+          "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once"
+        ]
+      },
       "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
@@ -26331,6 +26359,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#tick()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/animations.rs#advance_client_tick"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#entity_model_sources_project_death_animation_counter"
+        ]
+      },
       "category": "player-lifecycle",
       "domain": "movement",
       "kind": "method",
@@ -43138,6 +43174,7 @@
       "interaction-game-mode-lifecycle",
       "interaction-primary-action-routing",
       "interaction-game-mode-guards",
+      "player-local-session-respawn",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

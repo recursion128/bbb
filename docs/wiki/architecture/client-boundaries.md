@@ -175,6 +175,15 @@ survival/adventure HUD 门在 `update_renderer_from_publication` 提取链内联
 `local_player_server_controlled_inventory_vehicle_id` 唯一拥有（inventory E 键
 与 open-inventory 命令消费）。不得复制 game type 判定到其他消费点。
 
+## LocalPlayer session-respawn owner
+
+四个 session-respawn owner 收敛于三条链：构造器/resetPos 由
+`reset_local_player_for_login`/`reset_local_player_for_respawn`（keep-data
+分支）唯一重建；respawn 请求由 death screen 的 20 tick 解锁与
+`queue_perform_respawn_command` 单发拥有；tickDeath 由 entity 动画
+`advance_client_tick` 的 death 计数（synced health<=0 起递增，驱动倒地渲染）
+拥有。不得在 native 侧另存玩家会话状态或第二条 respawn 命令路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

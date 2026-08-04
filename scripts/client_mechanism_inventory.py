@@ -3076,6 +3076,44 @@ INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
+                "crates/bbb-world/src/level.rs#reset_local_player_for_respawn",
+            ),
+            (
+                "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state",
+            ),
+        ),
+        ("LocalPlayer", "resetPos"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_perform_respawn_command",
+            ),
+            (
+                "crates/bbb-native/src/input/commands.rs#queues_perform_respawn_command",
+                "crates/bbb-native/src/input/death_screen.rs#death_screen_buttons_unlock_after_twenty_ticks_and_respawn_once",
+            ),
+        ),
+        ("respawn",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/animations.rs#advance_client_tick",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/combat_state_and_mob_flag_projection.rs#entity_model_sources_project_death_animation_counter",
+            ),
+        ),
+        ("tickDeath",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3247,6 +3285,7 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-game-mode-lifecycle": INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-primary-action-routing": INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE,
     "interaction-game-mode-guards": INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE,
+    "player-local-session-respawn": LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
