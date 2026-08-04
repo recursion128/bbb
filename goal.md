@@ -451,28 +451,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
 census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 16 条 census route 由唯一账本
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 15 条 census route 由唯一账本
 排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
-
-#### Active contract：LocalPlayer vehicle-control
-
-- 目标与 owner：闭合 `player-local-vehicle-control` 7 个 owner（rideTick、
-  sendRidingJump、jumpableVehicle、vehicleCanSprint、startRiding、removeVehicle、
-  shouldRotateWithMinecart）。
-- 审计事实：ride tick（motion 清零序）、riding jump（saddle 门+charge 命令）、
-  sprintable/jumpable vehicle 判定、SetPassengers mount/dismount 链均已实现并有
-  focused tests；`shouldRotateWithMinecart` 唯一消费点在 experimental
-  `minecart_improvements` 移动路径（默认服务器不启用），bbb 已有 feature flag
-  判定链但未实现该实验乘客旋转——登记有界差异附重开判据。
-- focused evidence：census 7-owner OwnerEvidence + scripts/tests 断言块
-  （local-player 分区测试）。
-- 非目标：不实现 experimental minecart 移动/乘客旋转；不动 mount packet 语义；
-  发现其他 route 缺口只登记账本。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 7-owner evidence 完整的干净提交。
 
 ### P2：屏幕、HUD、字体与截图
 

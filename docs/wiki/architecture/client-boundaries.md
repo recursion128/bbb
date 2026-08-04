@@ -107,6 +107,20 @@ increment——vanilla survival 门恒真；creative 下普通容器 THROW 未�
 updateTutorialInventoryAction 的 vanilla hook 为空方法，owner 挂
 `apply_local_container_click_slot` 调用链。不得建第二条 drop 预测或 close 命令路径。
 
+## LocalPlayer vehicle-control owner
+
+七个 vehicle-control owner 各有唯一链：rideTick 由
+`prepare_scheduled_passengers_for_ride_tick`（乘客 motion 清零先于 client entity
+tick）拥有；sendRidingJump/jumpableVehicle 由
+`local_player_rideable_jumping_vehicle_id`（共享 canJump saddle 门）与
+`maybe_queue_riding_jump_command`（charge 释放）拥有；vehicleCanSprint 由
+`local_player_sprintable_vehicle_id`（sprint latch 的 mounted 分支消费）拥有；
+startRiding/removeVehicle 由 `apply_set_passengers`/`clear_local_player_mount`
+的 SetPassengers 权威链拥有；shouldRotateWithMinecart 由 `is_feature_enabled`
+的 `minecart_improvements` flag 判定拥有——实验乘客旋转（rotLerp offset）未实现，
+默认服务器该 flag 关闭不可达，实现 experimental minecart 移动时重开。不得在
+native 侧内联 mount/jump 判定或建第二条 passenger 权威路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

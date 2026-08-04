@@ -84,9 +84,6 @@ preserving the two former broad `partial` claims.
   world player into input, position/rotation/status, sprint and ability commands. Close
   after all four Vanilla owners have exact ordering/retry/generation evidence and live
   movement reporting.
-- **`player-local-vehicle-control`** — world vehicle authority and native movement own
-  mount input, passenger rotation, jump charge and vehicle reporting. Close after the
-  seven owners are tied to vehicle-type/order tests and a mounted external session.
 - **`player-local-permission-chat-state`** — world owns permission/chat capability state
   and native owns message/UI projection. Close after permission event transitions,
   filter refresh and system/overlay presentation have one current consumer chain.

@@ -2789,6 +2789,68 @@ LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/store.rs#prepare_scheduled_passengers_for_ride_tick",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#passenger_ride_tick_clears_motion_before_client_entity_tick",
+            ),
+        ),
+        ("rideTick",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/passengers.rs#local_player_rideable_jumping_vehicle_id",
+                "crates/bbb-native/src/input/movement.rs#maybe_queue_riding_jump_command",
+            ),
+            (
+                "crates/bbb-native/src/input/movement.rs#mounted_jumpable_vehicle_release_queues_riding_jump_command",
+                "crates/bbb-native/src/input/movement.rs#mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump",
+            ),
+        ),
+        ("sendRidingJump", "jumpableVehicle"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/passengers.rs#local_player_sprintable_vehicle_id",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_latch_uses_sprintable_vehicle_instead_of_food_when_mounted",
+                "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_latch_requires_controlling_sprintable_vehicle_passenger",
+            ),
+        ),
+        ("vehicleCanSprint",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+                "crates/bbb-world/src/entities/passengers.rs#clear_local_player_mount",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates",
+            ),
+        ),
+        ("startRiding", "removeVehicle"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/features.rs#is_feature_enabled",
+            ),
+            (
+                "crates/bbb-world/src/client/features.rs#update_enabled_features_replaces_known_feature_set_and_ignores_unknowns",
+            ),
+        ),
+        ("shouldRotateWithMinecart",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2954,6 +3016,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-world-edit-ui": LOCAL_PLAYER_WORLD_EDIT_UI_OWNER_EVIDENCE,
     "player-local-camera-targeting": LOCAL_PLAYER_CAMERA_TARGETING_OWNER_EVIDENCE,
     "player-local-inventory-actions": LOCAL_PLAYER_INVENTORY_ACTIONS_OWNER_EVIDENCE,
+    "player-local-vehicle-control": LOCAL_PLAYER_VEHICLE_CONTROL_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

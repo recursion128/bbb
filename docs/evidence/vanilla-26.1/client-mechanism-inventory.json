@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "a77999b9a03d23047626bcf2bf8ebea7fc3efe7b69e61507596ab5fc7154dd4c"
+      "sha256": "2f9d6d3b86319a1e64483174ada5b926a26670391c56dec8d6e56a89d235e72d"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -286,7 +286,8 @@
         "crates/bbb-native/src/input/movement.rs",
         "crates/bbb-world/src/entities/client_movement.rs"
       ],
-      "owner_count": 7
+      "owner_count": 7,
+      "owner_evidence_count": 7
     },
     "player-local-vitals-status": {
       "bbb_evidence": [
@@ -25114,6 +25115,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#itemUseSpeedMultiplier()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#local_player_rideable_jumping_vehicle_id",
+          "crates/bbb-native/src/input/movement.rs#maybe_queue_riding_jump_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#mounted_jumpable_vehicle_release_queues_riding_jump_command",
+          "crates/bbb-native/src/input/movement.rs#mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -25616,6 +25627,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#removeRecipeHighlight(final RecipeDisplayId recipe)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+          "crates/bbb-world/src/entities/passengers.rs#clear_local_player_mount"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -25658,6 +25678,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#respawn()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/store.rs#prepare_scheduled_passengers_for_ride_tick"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#passenger_ride_tick_clears_motion_before_client_entity_tick"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -25737,6 +25765,16 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendPosition()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#local_player_rideable_jumping_vehicle_id",
+          "crates/bbb-native/src/input/movement.rs#maybe_queue_riding_jump_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#mounted_jumpable_vehicle_release_queues_riding_jump_command",
+          "crates/bbb-native/src/input/movement.rs#mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -25849,6 +25887,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#setShowDeathScreen(final boolean show)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/features.rs#is_feature_enabled"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/features.rs#update_enabled_features_replaces_known_feature_set_and_ignores_unknowns"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -25929,6 +25975,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#shouldStopSwimSprinting()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#apply_set_passengers",
+          "crates/bbb-world/src/entities/passengers.rs#clear_local_player_mount"
+        ],
+        "tests": [
+          "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#tracks_entity_passenger_updates"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -26114,6 +26169,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#updateTutorialInventoryAction(final ItemStack itemCarried,final ItemStack itemInSlot,final ClickAction clickAction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/entities/passengers.rs#local_player_sprintable_vehicle_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_latch_uses_sprintable_vehicle_instead_of_food_when_mounted",
+          "crates/bbb-world/src/client/local_player_movement/tests.rs#local_player_sprint_latch_requires_controlling_sprintable_vehicle_passenger"
+        ]
+      },
       "category": "vehicle-control",
       "domain": "movement",
       "kind": "method",
@@ -42823,6 +42887,7 @@
       "player-local-world-edit-ui",
       "player-local-camera-targeting",
       "player-local-inventory-actions",
+      "player-local-vehicle-control",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

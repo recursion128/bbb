@@ -278,6 +278,26 @@ public class Owner {
                 for owner in inventory_actions_owners
             )
         )
+        vehicle_control_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-vehicle-control"
+        ]
+        self.assertEqual(len(vehicle_control_owners), 7)
+        self.assertEqual(
+            value["mechanisms"]["player-local-vehicle-control"][
+                "owner_evidence_count"
+            ],
+            7,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in vehicle_control_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods
