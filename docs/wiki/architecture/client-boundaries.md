@@ -156,6 +156,15 @@ sprint/pose/attribute modifiers，fresh 分支全量重建）拥有；canSwitchG
 由 F3+F4 switcher 的 `debug_game_mode_switcher_can_open` 开门判定拥有。native
 只投影 game type/abilities，不得另存副本。
 
+## Primary-action routing owner
+
+三个 primary-action owner（startAttack/continueAttack/startUseItem）收敛于
+mouse.rs 唯一路由链 `handle_mouse_input_at_partial_tick_with_effects_and_presentation`：
+左键按下经 `local_player_attack_is_blocked` 门后走 entity attack+swing 与
+miss-time sentinel；按住持续破坏受 using-item/piercing 抑制分支约束；右键经
+`start_use_item`（bucket 预测、instrument、equippable swap 优先级）。不得在
+key/HUD 层另建 attack/use 入口。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

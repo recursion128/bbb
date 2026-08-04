@@ -360,6 +360,14 @@ public class Owner {
                 for owner in game_mode_lifecycle_owners
             )
         )
+        # All three primary-action-routing owners live in Minecraft.java,
+        # outside this partition's source filter.
+        self.assertEqual(
+            value["mechanisms"]["interaction-primary-action-routing"][
+                "owner_evidence_count"
+            ],
+            3,
+        )
         block_breaking_owners = [
             owner
             for owner in methods

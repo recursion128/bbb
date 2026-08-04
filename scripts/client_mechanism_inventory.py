@@ -2989,6 +2989,46 @@ INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/mouse.rs#local_player_attack_is_blocked",
+                "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+                "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release",
+            ),
+        ),
+        ("startAttack",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#held_left_mouse_while_using_item_does_not_continue_or_abort_destroy",
+                "crates/bbb-native/src/input/mouse.rs#held_left_mouse_with_piercing_weapon_does_not_continue_or_abort_destroy",
+            ),
+        ),
+        ("continueAttack",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/mouse.rs#start_use_item",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#right_mouse_press_without_block_queues_use_item",
+                "crates/bbb-native/src/input/mouse.rs#right_mouse_bucket_prediction_uses_the_queued_use_item_sequence",
+            ),
+        ),
+        ("startUseItem",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3158,6 +3198,7 @@ METHOD_OWNER_EVIDENCE = {
     "player-local-item-use-state": LOCAL_PLAYER_ITEM_USE_STATE_OWNER_EVIDENCE,
     "player-local-permission-chat-state": LOCAL_PLAYER_PERMISSION_CHAT_STATE_OWNER_EVIDENCE,
     "interaction-game-mode-lifecycle": INTERACTION_GAME_MODE_LIFECYCLE_OWNER_EVIDENCE,
+    "interaction-primary-action-routing": INTERACTION_PRIMARY_ACTION_ROUTING_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

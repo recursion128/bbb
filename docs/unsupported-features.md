@@ -108,9 +108,6 @@ preserving the two former broad `partial` claims.
 - **`interaction-pick-actions`** — the native crosshair result and modifier route to one
   block/entity pick command owner. Close after the three owners prove dispatch,
   include-data and no-target behavior against an external server.
-- **`interaction-primary-action-routing`** — native mouse/key routing selects the precise
-  break, attack, use or spectator owner. Close after the three `Minecraft` entry owners
-  prove miss/hands-busy/item/target/hand priority and downstream presentation order.
 
 ## Render-step, HUD and block-entity presentation closure
 

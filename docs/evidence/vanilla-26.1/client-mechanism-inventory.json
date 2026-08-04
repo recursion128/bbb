@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "b12e3752187db09aa474b6e5b2bc6371df883c627ef46b552b02d4c93c34c4ee"
+      "sha256": "653e6a5a0bb3d3b363e8af0d952edfd789835fe72225c1188a865070d86eb4d3"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -170,7 +170,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "lifecycle-client-runtime": {
       "bbb_evidence": [
@@ -8553,6 +8554,15 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#constructProfiler(final boolean shouldCollectFrameProfile,final @Nullable SingleTickProfiler tickProfiler)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#held_left_mouse_while_using_item_does_not_continue_or_abort_destroy",
+          "crates/bbb-native/src/input/mouse.rs#held_left_mouse_with_piercing_weapon_does_not_continue_or_abort_destroy"
+        ]
+      },
       "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
@@ -10678,6 +10688,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#showOnlyReducedInfo()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#local_player_attack_is_blocked",
+          "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_on_entity_queues_attack_and_swing",
+          "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release"
+        ]
+      },
       "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
@@ -10692,6 +10712,15 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#startAttack()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#start_use_item"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#right_mouse_press_without_block_queues_use_item",
+          "crates/bbb-native/src/input/mouse.rs#right_mouse_bucket_prediction_uses_the_queued_use_item_sequence"
+        ]
+      },
       "category": "interaction-routing",
       "domain": "interaction",
       "kind": "method",
@@ -43066,6 +43095,7 @@
       "player-local-item-use-state",
       "player-local-permission-chat-state",
       "interaction-game-mode-lifecycle",
+      "interaction-primary-action-routing",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
