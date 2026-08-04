@@ -1402,6 +1402,25 @@ impl EntityStore {
             .map(|identity| identity.uuid)
     }
 
+    /// Player-type rows for the `ClientLevel` "All players" report detail:
+    /// protocol id, profile uuid, and current position in insertion order.
+    pub(crate) fn player_debug_rows(&self) -> Vec<(i32, Uuid, EntityVec3)> {
+        self.order
+            .iter()
+            .filter_map(|&id| {
+                let entity = self.by_protocol_id.get(&id).copied()?;
+                let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+                if identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+                    return None;
+                }
+                let uuid = identity.uuid;
+                drop(identity);
+                let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+                Some((id, uuid, transform.position))
+            })
+            .collect()
+    }
+
     pub(crate) fn player_rideable_jumping_cooldown(
         &self,
         id: i32,

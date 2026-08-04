@@ -455,31 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel diagnostics-report
-
-- 目标与 owner：闭合 `diagnostics-client-level-report` 4 个 owner（fillReportDetails、
-  gatherChunkSourceStats、toString、ClientLevelData.fillCrashReportCategory）；level 诊断
-  段落由 bbb-world 单一活值装配唯一拥有，HUD 与 crash report 共用。
-- Vanilla 语义：fillReportDetails 产出 "Affected level" 段（All players 计数+debugInfo、
-  Chunk stats=gatherChunkSourceStats、Level dimension、Level time game/day、经
-  LevelData.fillCrashReportCategory 的 Level spawn location，再加 Server brand/Server
-  type/Tracked entity count/Client weather Raining/thundering）；全部为 fill 时活值
-  supplier，非快照；gatherChunkSourceStats 格式 `Chunks[C] W: <chunk> E: <entity>`；
-  toString 恒 "ClientLevel"。
-- bbb 缺口与方案：crash report 现无 level 段。bbb-world 新增
-  `client_level_report_details()` 活值装配全部 detail；chunk-stats 行从 bbb-native
-  runtime 移入 bbb-world 成单一 owner（HUD 行与 report 共同消费）；crash_report 在
-  失败边界从当帧 render publication 的同代 world 附加 "Affected level" 段；level
-  identity 恒字符串入段。Server type 登记诚实差异：bbb 无 integrated server，恒
-  "Non-integrated multiplayer server"。
-- focused evidence：装配活值测试（含 respawn 换代后反映新 dimension，非旧代快照）、
-  crash report 段渲染测试、HUD 行共享 owner 测试；census 4-owner OwnerEvidence +
-  scripts/tests 断言。
-- 非目标：不做 F3 面板扩展、不加 profiler/watchdog；发现其他缺口只登记既有 route。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 4-owner evidence 完整的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

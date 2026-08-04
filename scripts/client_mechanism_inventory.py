@@ -2380,6 +2380,56 @@ CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/level_report.rs#client_level_report_details",
+                "crates/bbb-native/src/crash_report.rs#attach_level_details",
+            ),
+            (
+                "crates/bbb-world/src/client/level_report.rs#report_details_follow_the_current_world_generation",
+                "crates/bbb-native/src/crash_report.rs#level_details_render_as_the_affected_level_category",
+            ),
+        ),
+        ("fillReportDetails",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/level_report.rs#chunk_source_stats_line",
+            ),
+            (
+                "crates/bbb-world/src/client/level_report.rs#chunk_source_stats_line_matches_the_vanilla_shape",
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_chunk_source_stats_under_reduced_debug_info",
+            ),
+        ),
+        ("gatherChunkSourceStats",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/level_report.rs#client_level_identity",
+            ),
+            (
+                "crates/bbb-world/src/client/level_report.rs#client_level_identity_is_the_vanilla_to_string_constant",
+            ),
+        ),
+        ("toString",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/level_report.rs#level_spawn_location_detail",
+            ),
+            (
+                "crates/bbb-world/src/client/level_report.rs#report_details_assemble_live_values_in_vanilla_order",
+            ),
+        ),
+        ("fillCrashReportCategory",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2392,6 +2442,7 @@ METHOD_OWNER_EVIDENCE = {
     "rendering-client-biome-tint": CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE,
     "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
+    "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
@@ -2565,7 +2616,10 @@ MECHANISM_EVIDENCE = {
     ),
     "rendering-client-biome-tint": ("crates/bbb-native/src/biome_tint.rs",),
     "world-client-respawn-data": ("crates/bbb-world/src/level.rs",),
-    "diagnostics-client-level-report": ("crates/bbb-world/src/diagnostics.rs",),
+    "diagnostics-client-level-report": (
+        "crates/bbb-world/src/client/level_report.rs",
+        "crates/bbb-native/src/crash_report.rs",
+    ),
     "scope-client-level-noop-hooks": ("docs/unsupported-features.md",),
     "player-local-session-respawn": (
         "crates/bbb-native/src/input/death_screen.rs",

@@ -220,6 +220,20 @@ particles 档起始，always-show&&MINIMAL 有 1/10 升 DECREASED、DECREASED �
 MINIMAL（共享 random 链）。environment spawns、level-particles 包与 firework 路径全部
 经该 gate，不得另建第二条粒子准入路径或在调用点内联距离/降档判断。
 
+### ClientLevel diagnostics-report owner
+
+四个 diagnostics-report owner 收敛为 `bbb-world` 的单一活值装配：
+`client_level_report_details` 在调用时从当前 world 代产出 "Affected level" 全部九项
+detail（All players 计数+debugInfo、Chunk stats、Level dimension、Level time、Level spawn
+location、Server brand/Server type/Tracked entity count/Client weather，vanilla 顺序）；
+`chunk_source_stats_line` 是 `Chunks[C] W: … E: …` 行的唯一 owner，debug HUD 行与 report
+Chunk stats 共同消费；spawn location 由 `level_spawn_location_detail` 按
+CrashReportCategory.formatLocation 逐段转写（含 inclusive min/max build height）；level
+identity 恒 "ClientLevel"。crash report 在失败边界经 `attach_level_details` 从当帧
+publication 的同代 world 附加段落，首个非空捕获生效，无 level 时诚实省略该段。已记录
+差异：bbb 无 integrated server，Server type 恒 "Non-integrated multiplayer server"。不得
+另建第二条 report 装配路径或用陈旧快照填充段落。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

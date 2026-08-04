@@ -95,6 +95,6 @@
 - **2026-08-03（LocalPlayer/game-mode census 与首批交互 closure）**：149 owner 拆为 23 条同质 route；
   block-breaking 与 prediction 统一到 level-bound handler、signed ack 和 atomic command barrier。
 - **2026-08-03/04（generated evidence/layout、ClientLevel census 与 lifecycle closures）**：五份 JSON 收敛；
-  121 owner 拆 18 route；entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing 共 83 owner 经唯一 store/resolver/gate 与 pending/同态/marker/border-clamp/listener-carry guard 收口。
+  121 owner 拆 18 route；entity/identity/chunk-light/dirty-handoff/clock-weather/ambient-animation/respawn-data/session-services/biome-tint/sound-routing/particle-routing/diagnostics-report 共 87 owner 经唯一 store/resolver/gate/装配与 pending/同态/marker/border-clamp/listener-carry guard 收口。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "8d5df917caaa9f47041371fa2b0238c649b562ebf3854cd9f62ec372d1114084"
+      "sha256": "ca97d68a0af19be5a9a01ebbb44c010241e7eb90dd8d8da2f5440eaaadcd7a88"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -36,9 +36,11 @@
     },
     "diagnostics-client-level-report": {
       "bbb_evidence": [
-        "crates/bbb-world/src/diagnostics.rs"
+        "crates/bbb-world/src/client/level_report.rs",
+        "crates/bbb-native/src/crash_report.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "diagnostics-crash-runtime": {
       "bbb_evidence": [
@@ -18328,6 +18330,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#explode(final @Nullable Entity source,final @Nullable DamageSource damageSource,final @Nullable ExplosionDamageCalculator damageCalculator,final double x,final double y,final double z,final float r,final boolean fire,final Level.ExplosionInteraction interactionType,final ParticleOptions smallExplosionParticles,final ParticleOptions largeExplosionParticles,final WeightedList <ExplosionParticleInfo> secondaryParticles,final Holder <SoundEvent> explosionSound)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/level_report.rs#client_level_report_details",
+          "crates/bbb-native/src/crash_report.rs#attach_level_details"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/level_report.rs#report_details_follow_the_current_world_generation",
+          "crates/bbb-native/src/crash_report.rs#level_details_render_as_the_affected_level_category"
+        ]
+      },
       "category": "level-diagnostics",
       "domain": "diagnostics",
       "kind": "method",
@@ -18380,6 +18392,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#gameEvent(final Holder <GameEvent> gameEvent,final Vec3 pos,final GameEvent.Context context)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/level_report.rs#chunk_source_stats_line"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/level_report.rs#chunk_source_stats_line_matches_the_vanilla_shape",
+          "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_chunk_source_stats_under_reduced_debug_info"
+        ]
+      },
       "category": "level-diagnostics",
       "domain": "diagnostics",
       "kind": "method",
@@ -19816,6 +19837,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickTime()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/level_report.rs#client_level_identity"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/level_report.rs#client_level_identity_is_the_vanilla_to_string_constant"
+        ]
+      },
       "category": "level-diagnostics",
       "domain": "diagnostics",
       "kind": "method",
@@ -19936,6 +19965,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#ClientLevelData(final Difficulty difficulty,final boolean hardcore,final boolean isFlat)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/level_report.rs#level_spawn_location_detail"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/level_report.rs#report_details_assemble_live_values_in_vanilla_order"
+        ]
+      },
       "category": "level-diagnostics",
       "domain": "diagnostics",
       "kind": "method",
@@ -42173,6 +42210,7 @@
       "rendering-client-biome-tint",
       "audio-client-level-sound-routing",
       "rendering-client-particle-routing",
+      "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

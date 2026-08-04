@@ -111,6 +111,10 @@ pub(crate) struct RuntimeFailureSet {
     primary: RuntimeFailure,
     suppressed: Vec<RuntimeFailure>,
     dropped_suppressed: usize,
+    /// Vanilla `ClientLevel.fillReportDetails` equivalent: "Affected level"
+    /// key/value details captured live at the failure boundary. Empty when no
+    /// level was available when the failure was recorded.
+    level_details: Vec<(String, String)>,
 }
 
 impl RuntimeFailureSet {
@@ -119,6 +123,7 @@ impl RuntimeFailureSet {
             primary,
             suppressed: Vec::new(),
             dropped_suppressed: 0,
+            level_details: Vec::new(),
         }
     }
 
@@ -161,6 +166,20 @@ impl RuntimeFailureAccumulator {
         }
     }
 
+    /// Attaches the "Affected level" details produced by the current world
+    /// generation at the failure boundary. The first non-empty capture wins so
+    /// the report reflects the level state closest to the primary failure.
+    pub(crate) fn attach_level_details(&mut self, details: Vec<(String, String)>) {
+        if details.is_empty() {
+            return;
+        }
+        if let Some(failures) = &mut self.failures {
+            if failures.level_details.is_empty() {
+                failures.level_details = details;
+            }
+        }
+    }
+
     pub(crate) fn take(&mut self) -> Option<RuntimeFailureSet> {
         self.failures.take()
     }
@@ -198,6 +217,13 @@ impl CrashReport {
             retained_budget,
             saved_file: None,
         };
+        let level_details = report.failures.level_details.clone();
+        if !level_details.is_empty() {
+            let level_category = report.add_category("Affected level");
+            for (key, value) in &level_details {
+                report.add_category_detail(level_category, key, format_args!("{value}"));
+            }
+        }
         let uptime_category = report.add_category("Uptime");
         report.add_category_detail(
             uptime_category,
@@ -499,6 +525,7 @@ fn retain_failure_set(
         primary,
         suppressed,
         dropped_suppressed: failures.dropped_suppressed,
+        level_details: failures.level_details,
     }
 }
 
@@ -653,6 +680,47 @@ mod tests {
         assert!(formatted.len() <= 48);
         assert!(formatted.is_char_boundary(formatted.len()));
         assert!(formatted.contains("truncated"));
+    }
+
+    #[test]
+    fn level_details_render_as_the_affected_level_category() {
+        let mut failures = RuntimeFailureAccumulator::default();
+        failures.attach_level_details(vec![("Too early".to_string(), "dropped".to_string())]);
+        assert!(failures.take().is_none());
+
+        assert!(failures.record(failure("renderer frame", "boom", "gpu lost")));
+        failures.attach_level_details(Vec::new());
+        failures.attach_level_details(vec![
+            (
+                "Level dimension".to_string(),
+                "minecraft:overworld".to_string(),
+            ),
+            (
+                "Client weather".to_string(),
+                "Raining: false, thundering: false".to_string(),
+            ),
+        ]);
+        failures.attach_level_details(vec![(
+            "Level dimension".to_string(),
+            "stale second capture".to_string(),
+        )]);
+        let report = CrashReport::new(failures.take().unwrap(), Duration::from_secs(1));
+        let rendered = report.friendly_report_at(fixed_time());
+        assert!(rendered.contains("-- Affected level --"));
+        assert!(rendered.contains("\tLevel dimension: minecraft:overworld"));
+        assert!(rendered.contains("\tClient weather: Raining: false, thundering: false"));
+        assert!(!rendered.contains("stale second capture"));
+    }
+
+    #[test]
+    fn reports_without_level_details_have_no_affected_level_category() {
+        let report = CrashReport::new(
+            RuntimeFailureSet::new(failure("startup", "boom", "no level yet")),
+            Duration::from_secs(1),
+        );
+        assert!(!report
+            .friendly_report_at(fixed_time())
+            .contains("-- Affected level --"));
     }
 
     #[test]
@@ -898,7 +966,9 @@ mod tests {
                 "restored log-only fatal path: {forbidden}"
             );
         }
-        assert!(main.contains("record_runtime_failure(&event_failures"));
+        assert!(main.contains("record_runtime_failure("));
+        assert!(main.contains("&event_failures,"));
+        assert!(main.contains("Some(render_publication.world.as_ref())"));
         assert!(main.contains("simulation_thread.shutdown_and_join()"));
         assert!(main.contains("fatal_failures.borrow_mut().take()"));
         assert!(simulation.contains("JoinHandle<Result<(), RuntimeFailure>>"));

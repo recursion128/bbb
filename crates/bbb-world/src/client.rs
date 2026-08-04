@@ -15,6 +15,7 @@ mod features;
 mod game_rules;
 mod hud;
 mod inventory;
+mod level_report;
 mod local_player;
 mod local_player_collision;
 mod local_player_destroy;

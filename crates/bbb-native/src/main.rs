@@ -1043,7 +1043,11 @@ fn run_client(args: startup::Args) -> Result<()> {
         if matches!(&event, Event::LoopExiting) {
             set_cursor_capture(&window, &mut cursor_captured, false);
             if let Err(error) = simulation_thread.shutdown_and_join() {
-                record_runtime_failure(&event_failures, error);
+                record_runtime_failure(
+                    &event_failures,
+                    error,
+                    Some(render_publication.world.as_ref()),
+                );
             }
             if let Err(error) = network_runtime.shutdown_and_join(&runtime) {
                 record_runtime_failure(
@@ -1053,6 +1057,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                         "Network backend shutdown failed",
                         error,
                     ),
+                    Some(render_publication.world.as_ref()),
                 );
             }
             snapshot.rcu(|current| {
@@ -1121,6 +1126,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                                 "Fatal simulation render-effect sequence gap",
                                 error,
                             ),
+                            Some(render_publication.world.as_ref()),
                         );
                         target.exit();
                         return;
@@ -1164,7 +1170,11 @@ fn run_client(args: startup::Args) -> Result<()> {
         }
         if let Some(result) = simulation_thread.poll_finished() {
             if let Err(error) = result {
-                record_runtime_failure(&event_failures, error);
+                record_runtime_failure(
+                    &event_failures,
+                    error,
+                    Some(render_publication.world.as_ref()),
+                );
             }
             target.exit();
             return;
@@ -1212,6 +1222,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                                 "Failed to resize renderer resources",
                                 error,
                             ),
+                            Some(render_publication.world.as_ref()),
                         );
                         target.exit();
                         return;
@@ -1482,6 +1493,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                                 "Renderer frame failed",
                                 format_args!("{err:#}"),
                             ),
+                            Some(render_publication.world.as_ref()),
                         );
                         target.exit();
                         return;
@@ -1782,6 +1794,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         record_runtime_failure(
             &fatal_failures,
             RuntimeFailure::new("platform event loop", "Platform event loop failed", error),
+            None,
         );
     }
     if let Some(failures) = fatal_failures.borrow_mut().take() {
@@ -1794,9 +1807,18 @@ fn run_client(args: startup::Args) -> Result<()> {
 fn record_runtime_failure(
     failures: &Rc<RefCell<RuntimeFailureAccumulator>>,
     failure: RuntimeFailure,
+    world: Option<&WorldStore>,
 ) {
     tracing::error!(%failure, "fatal runtime failure");
-    failures.borrow_mut().record(failure);
+    let mut failures = failures.borrow_mut();
+    failures.record(failure);
+    if let Some(world) = world {
+        tracing::error!(
+            level = world.client_level_identity(),
+            "attaching level crash-report details"
+        );
+        failures.attach_level_details(world.client_level_report_details());
+    }
 }
 
 fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
