@@ -3152,6 +3152,43 @@ LOCAL_PLAYER_VITALS_STATUS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+LOCAL_PLAYER_MOVEMENT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/movement.rs#advance_player_input_for_client_ticks",
+            ),
+            (
+                "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+                "crates/bbb-native/src/input/movement.rs#move_command_position_reminder_is_not_reset_by_rotation_only_commands",
+            ),
+        ),
+        ("tick", "sendPosition"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/movement.rs#maybe_queue_local_player_sprint_transition",
+            ),
+            (
+                "crates/bbb-native/src/input/movement.rs#sprint_command_queue_failure_keeps_baseline_and_retries_next_tick",
+            ),
+        ),
+        ("sendIsSprintingIfNeeded",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_player_abilities_command",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#creative_flight_toggle_suppresses_same_jump_fall_flying_command",
+            ),
+        ),
+        ("onUpdateAbilities",),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3325,6 +3362,7 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-game-mode-guards": INTERACTION_GAME_MODE_GUARDS_OWNER_EVIDENCE,
     "player-local-session-respawn": LOCAL_PLAYER_SESSION_RESPAWN_OWNER_EVIDENCE,
     "player-local-vitals-status": LOCAL_PLAYER_VITALS_STATUS_OWNER_EVIDENCE,
+    "player-local-movement-reporting": LOCAL_PLAYER_MOVEMENT_REPORTING_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

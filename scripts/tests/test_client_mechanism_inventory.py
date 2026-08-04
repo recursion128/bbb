@@ -428,6 +428,26 @@ public class Owner {
                 for owner in vitals_status_owners
             )
         )
+        movement_reporting_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "player-local-movement-reporting"
+        ]
+        self.assertEqual(len(movement_reporting_owners), 4)
+        self.assertEqual(
+            value["mechanisms"]["player-local-movement-reporting"][
+                "owner_evidence_count"
+            ],
+            4,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in movement_reporting_owners
+            )
+        )
         block_breaking_owners = [
             owner
             for owner in methods

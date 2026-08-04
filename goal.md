@@ -451,25 +451,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
 census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 8 条 census route 由唯一账本
+`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 7 条 census route 由唯一账本
 排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
-
-#### Active contract：LocalPlayer movement-reporting
-
-- 目标与 owner：闭合 `player-local-movement-reporting` 4 个 owner（tick、
-  sendPosition、sendIsSprintingIfNeeded、onUpdateAbilities）。
-- 审计事实：per-tick 移动报文循环（position reminder 间隔、rotation-only 不
-  重置）、sprint start/stop 转换命令（失败重试保基线）、abilities 命令
-  （flying toggle 抑制重复）均已实现并有 focused tests——全部验证型，无缺口。
-- focused evidence：census 4-owner OwnerEvidence + scripts/tests 断言块
-  （local-player 分区测试）。
-- 非目标：不动 movement packet 语义（live gate 覆盖）；发现其他 route 缺口只
-  登记账本。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 4-owner evidence 完整的干净提交。
 
 ### P2：屏幕、HUD、字体与截图
 

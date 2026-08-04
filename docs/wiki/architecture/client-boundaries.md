@@ -192,6 +192,16 @@ setExperienceValues 由 `apply_player_experience` 唯一应用；experience disp
 start tick 由 contextual bar `hud_locator_bar_from_world`（locator/jump/
 experience 优先级）拥有。HUD 只读这些状态，不得另存 vitals 副本。
 
+## LocalPlayer movement-reporting owner
+
+四个 movement-reporting owner 收敛于三条命令链：tick/sendPosition 由
+`advance_player_input_for_client_ticks` 的 per-tick 移动报文循环拥有
+（position reminder 间隔、rotation-only 命令不重置 reminder）；
+sendIsSprintingIfNeeded 由 `maybe_queue_local_player_sprint_transition`
+（队列失败保基线、下 tick 重试）拥有；onUpdateAbilities 由
+`queue_player_abilities_command`（flying toggle 抑制重复发送）拥有。不得在
+其他消费点内联移动报文或第二条 sprint/abilities 命令路径。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

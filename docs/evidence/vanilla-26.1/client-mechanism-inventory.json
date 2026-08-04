@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "6ce1e299aa594ea7441b057be33ef0ddeada106a382f167a4f26798e6b02fe29"
+      "sha256": "3cf59f70bf99830289849f087cb039ee36b9974e4ef5297dc42b695f10a99f30"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -269,7 +269,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/input/movement.rs"
       ],
-      "owner_count": 4
+      "owner_count": 4,
+      "owner_evidence_count": 4
     },
     "player-local-permission-chat-state": {
       "bbb_evidence": [
@@ -25509,6 +25510,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#onSyncedDataUpdated(final EntityDataAccessor <?> accessor)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_player_abilities_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#creative_flight_toggle_suppresses_same_jump_fall_flying_command"
+        ]
+      },
       "category": "movement-report",
       "domain": "movement",
       "kind": "method",
@@ -25946,6 +25955,14 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#rideTick()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/movement.rs#maybe_queue_local_player_sprint_transition"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#sprint_command_queue_failure_keeps_baseline_and_retries_next_tick"
+        ]
+      },
       "category": "movement-report",
       "domain": "movement",
       "kind": "method",
@@ -26007,6 +26024,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#sendOverlayMessage(final Component message)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/movement.rs#advance_player_input_for_client_ticks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+          "crates/bbb-native/src/input/movement.rs#move_command_position_reminder_is_not_reset_by_rotation_only_commands"
+        ]
+      },
       "category": "movement-report",
       "domain": "movement",
       "kind": "method",
@@ -26382,6 +26408,15 @@
       "vanilla_owner": "net.minecraft.client.player.LocalPlayer#swing(final InteractionHand hand)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/movement.rs#advance_player_input_for_client_ticks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#move_command_forces_position_after_vanilla_reminder_interval",
+          "crates/bbb-native/src/input/movement.rs#move_command_position_reminder_is_not_reset_by_rotation_only_commands"
+        ]
+      },
       "category": "movement-report",
       "domain": "movement",
       "kind": "method",
@@ -43213,6 +43248,7 @@
       "interaction-game-mode-guards",
       "player-local-session-respawn",
       "player-local-vitals-status",
+      "player-local-movement-reporting",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

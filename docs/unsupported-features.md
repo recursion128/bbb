@@ -73,10 +73,6 @@ real implementation evidence, but are not yet owner-complete decision→consumer
 evidence, so the census records each homogeneous route as `unverified` rather than
 preserving the two former broad `partial` claims.
 
-- **`player-local-movement-reporting`** — native synchronized client ticks project the
-  world player into input, position/rotation/status, sprint and ability commands. Close
-  after all four Vanilla owners have exact ordering/retry/generation evidence and live
-  movement reporting.
 - **`player-local-client-status-options`** — world owns server flags and game type while
   native owns death/debug presentation. Close after reduced-info, death-screen,
   limited-crafting and spectator vertical-reset branches have decision-level evidence.
