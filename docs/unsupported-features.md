@@ -58,10 +58,6 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-level-events` (3 owners).** Verify the implemented dispatch
-  chain: the global gate (1023/1028/1038 camera-relative sounds), the
-  non-global levelEvent path (jukebox state, seeded sounds and the shared
-  particle random chain) and the deterministic explosion tracker handoff.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
   queries the renderer's off-screen policy once, updates the generation-local global
   membership and drops stale membership at the exact removal/replacement boundary.

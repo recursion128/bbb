@@ -279,6 +279,24 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        level_events_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-level-events"
+        ]
+        self.assertEqual(len(level_events_owners), 3)
+        self.assertEqual(
+            value["mechanisms"]["world-client-level-events"]["owner_evidence_count"],
+            3,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in level_events_owners
+            )
+        )
         map_data_owners = [
             owner
             for owner in methods

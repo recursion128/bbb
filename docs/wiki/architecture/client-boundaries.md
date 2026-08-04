@@ -220,6 +220,16 @@ particles 档起始，always-show&&MINIMAL 有 1/10 升 DECREASED、DECREASED �
 MINIMAL（共享 random 链）。environment spawns、level-particles 包与 firework 路径全部
 经该 gate，不得另建第二条粒子准入路径或在调用点内联距离/降档判断。
 
+### ClientLevel level-events owner
+
+三个 level-events owner 收敛为 packet apply 的唯一分派链：`global_level_event_sound` 按
+event.global 门控仅 1023/1028/1038（wither spawn/dragon death/end portal），在 camera
+方向 2.0 距离处生成 local sound（dragon death 音量 5）；非全局事件由
+`apply_level_event_with_effects` 唯一分派——jukebox 状态经 `apply_level_event` 记录、
+seeded 音效与粒子效果消耗同一 level-event random 链（sink-less 路径也推进同样的
+random 序列）；explosion 包典型化后经 `ClientExplosionTracker::track` 确定性入队
+（512 cap、按 level generation 清理）。不得绕过该分派链或另建第二条事件效果路径。
+
 ### ClientLevel map-data owner
 
 四个 map-data owner 收敛为 `WorldStore.maps` 唯一 store：`apply_map_item_data` 唯一拥有

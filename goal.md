@@ -455,25 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel level-events
-
-- 目标与 owner：闭合 `world-client-level-events` 3 个 owner（globalLevelEvent、
-  levelEvent、trackExplosionEffects）；事件效果由 packet apply 的唯一分派链拥有。
-- Vanilla 语义：isGlobalEvent→globalLevelEvent 仅 1023/1028/1038（wither spawn/dragon
-  death/end portal），camera 方向 2.0 距离处 playLocalSound（dragon death 音量 5）；
-  其余走 levelEvent→LevelEventHandler（jukebox/音效/粒子，共享 random 链）；
-  handleExplosion→trackExplosionEffects 交给 explosionTracker.track。
-- bbb 等价（零实现缺口，只补 evidence）：`global_level_event_sound` 按 event.global
-  门控三事件+camera 相对定位；`apply_level_event_with_effects` 唯一分派 jukebox 状态、
-  seeded 音效与粒子 random 链；explosion 包典型化后经 `ClientExplosionTracker::track`
-  确定性入队（512 cap、按代清理）。
-- focused evidence：global/camera、transient 记录、sink-less random 链、explosion
-  tracker 确定性测试注册进 census 3-owner OwnerEvidence + scripts/tests 断言。
-- 非目标：不动粒子/音频 runtime 语义（各自已闭）；发现其他缺口只登记既有 route。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
-  删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 3-owner evidence 完整的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

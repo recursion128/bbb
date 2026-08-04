@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "be51e581b5cc4b5e314692d43efebecefa941a6ade2ebc52b8b7e10cc9b9dec1"
+      "sha256": "f96478d1641e5e926f7dbca1e6af6a28d4bf35e6d8513a723108ac142060dc20"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -665,7 +665,8 @@
         "crates/bbb-world/src/play_apply.rs",
         "crates/bbb-native/src/runtime/events.rs"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "world-client-level-lifecycle": {
       "bbb_evidence": [
@@ -18886,6 +18887,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getWorldBorder()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/audio.rs#global_level_event_sound"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/audio.rs#global_level_event_sound_maps_vanilla_camera_relative_audio"
+        ]
+      },
       "category": "level-events",
       "domain": "effects",
       "kind": "method",
@@ -18967,6 +18976,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#isTickingEntity(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/play_apply.rs#apply_level_event_with_effects",
+          "crates/bbb-world/src/block_events.rs#apply_level_event"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#tracks_transient_block_and_level_events",
+          "crates/bbb-world/src/play_apply.rs#sink_less_level_event_advances_particle_randoms_like_online_dispatcher"
+        ]
+      },
       "category": "level-events",
       "domain": "effects",
       "kind": "method",
@@ -19898,6 +19917,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#toString()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/explosion.rs#track"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_is_deterministic_caps_at_512_and_clears_after_tick",
+          "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback"
+        ]
+      },
       "category": "level-events",
       "domain": "effects",
       "kind": "method",
@@ -42250,6 +42278,7 @@
       "audio-client-level-sound-routing",
       "rendering-client-particle-routing",
       "world-client-map-data",
+      "world-client-level-events",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

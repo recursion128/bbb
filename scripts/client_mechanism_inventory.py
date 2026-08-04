@@ -2380,6 +2380,45 @@ CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/audio.rs#global_level_event_sound",
+            ),
+            (
+                "crates/bbb-world/src/client/audio.rs#global_level_event_sound_maps_vanilla_camera_relative_audio",
+            ),
+        ),
+        ("globalLevelEvent",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/play_apply.rs#apply_level_event_with_effects",
+                "crates/bbb-world/src/block_events.rs#apply_level_event",
+            ),
+            (
+                "crates/bbb-world/src/block_events.rs#tracks_transient_block_and_level_events",
+                "crates/bbb-world/src/play_apply.rs#sink_less_level_event_advances_particle_randoms_like_online_dispatcher",
+            ),
+        ),
+        ("levelEvent",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/explosion.rs#track",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#explosion_tracker_is_deterministic_caps_at_512_and_clears_after_tick",
+                "crates/bbb-world/src/play_apply.rs#apply_play_packet_orders_typed_explosion_effects_before_knockback",
+            ),
+        ),
+        ("trackExplosionEffects",),
+    ),
+)
+
 CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -2483,6 +2522,7 @@ METHOD_OWNER_EVIDENCE = {
     "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
+    "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
