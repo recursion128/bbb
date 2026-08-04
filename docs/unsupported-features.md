@@ -84,12 +84,6 @@ Matrix routes: `rendering-block-entity-registration`, `rendering-hud-step-surfac
   one mechanically reachable evidence cell for every 27 block-entity
   registration, 70 GUI owner and 46 game-renderer owner. Split only by semantic
   owner and preserve the single frame-extract/submission path.
-- **Smithing result equipment preview asset projection is `missing`.**
-  `bbb-native::apply_smithing_result_equipment` does not publish the
-  generation-matched equipment asset id consumed by the textured equipment
-  renderer. Reopen as a behavior slice against Vanilla smithing preview
-  ownership; do not restore a legacy material projection to mask this missing
-  consumer path.
 
 ## Multiplayer screen surface closure
 

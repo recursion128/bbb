@@ -12778,9 +12778,11 @@ fn apply_smithing_result_equipment(
         return Vec::new();
     };
 
-    let equipment_asset_present = item_runtime.item_equipment_asset_id(item_id).is_some();
+    let equipment_asset = item_runtime.item_equipment_asset_id(item_id);
+    let equipment_asset_present = equipment_asset.is_some();
     match item_runtime.item_equipment_slot(item_id) {
         Some(ItemEquipmentSlot::Head) if equipment_asset_present => {
+            entity.render_state.head_equipment_asset = equipment_asset;
             entity.render_state.head_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.head_armor_foil = stack.has_foil();
@@ -12799,16 +12801,22 @@ fn apply_smithing_result_equipment(
             }
         }
         Some(ItemEquipmentSlot::Chest) => {
+            // The world entity path derives the wings layer from the same
+            // resolved chest asset; the renderer resolves each layer kind.
+            entity.render_state.chest_equipment_asset = equipment_asset;
+            entity.render_state.chest_wings_equipment_asset = equipment_asset;
             entity.render_state.chest_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.chest_armor_foil = equipment_asset_present && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Legs) => {
+            entity.render_state.legs_equipment_asset = equipment_asset;
             entity.render_state.legs_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.legs_armor_foil = equipment_asset_present && stack.has_foil();
         }
         Some(ItemEquipmentSlot::Feet) => {
+            entity.render_state.feet_equipment_asset = equipment_asset;
             entity.render_state.feet_armor_dye =
                 stack.component_patch.dyed_color.map(|dye| dye as u32);
             entity.render_state.feet_armor_foil = equipment_asset_present && stack.has_foil();

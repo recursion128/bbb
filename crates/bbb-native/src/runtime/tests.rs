@@ -24188,27 +24188,53 @@ fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
     );
     let helmet_preview = smithing_preview_for_result_stack(enchanted_helmet, &runtime);
     let helmet_state = &helmet_preview.entity.render_state;
-    assert_eq!(helmet_state.head_equipment_asset, None);
+    assert!(helmet_state.head_equipment_asset.is_some());
+    assert_eq!(
+        helmet_state.head_equipment_asset,
+        runtime.item_equipment_asset_id(HELMET_ID),
+        "the preview publishes the generation-matched equipment asset"
+    );
     assert_eq!(helmet_state.head_armor_dye, Some(0x12_34_56));
     assert!(helmet_state.head_armor_foil);
     assert_eq!(helmet_state.custom_head_skull, None);
 
     let chest_preview = smithing_preview_for_result_stack(item_stack(CHESTPLATE_ID, 1), &runtime);
     let chest_state = &chest_preview.entity.render_state;
-    assert_eq!(chest_state.chest_equipment_asset, None);
-    assert_eq!(chest_state.chest_wings_equipment_asset, None);
+    assert!(chest_state.chest_equipment_asset.is_some());
+    assert_eq!(
+        chest_state.chest_equipment_asset,
+        runtime.item_equipment_asset_id(CHESTPLATE_ID)
+    );
+    assert_eq!(
+        chest_state.chest_wings_equipment_asset,
+        runtime.item_equipment_asset_id(CHESTPLATE_ID)
+    );
 
     let legs_preview = smithing_preview_for_result_stack(item_stack(LEGGINGS_ID, 1), &runtime);
-    assert_eq!(legs_preview.entity.render_state.legs_equipment_asset, None);
+    assert_eq!(
+        legs_preview.entity.render_state.legs_equipment_asset,
+        runtime.item_equipment_asset_id(LEGGINGS_ID)
+    );
 
     let feet_preview = smithing_preview_for_result_stack(item_stack(BOOTS_ID, 1), &runtime);
-    assert_eq!(feet_preview.entity.render_state.feet_equipment_asset, None);
+    assert_eq!(
+        feet_preview.entity.render_state.feet_equipment_asset,
+        runtime.item_equipment_asset_id(BOOTS_ID)
+    );
 
     let elytra_preview = smithing_preview_for_result_stack(item_stack(ELYTRA_ID, 1), &runtime);
     let elytra_state = &elytra_preview.entity.render_state;
-    assert_eq!(elytra_state.chest_equipment_asset, None);
+    assert!(elytra_state.chest_wings_equipment_asset.is_some());
+    assert_eq!(
+        elytra_state.chest_wings_equipment_asset,
+        runtime.item_equipment_asset_id(ELYTRA_ID),
+        "the elytra preview reaches the wings layer through the same asset"
+    );
+    assert_eq!(
+        elytra_state.chest_equipment_asset,
+        runtime.item_equipment_asset_id(ELYTRA_ID)
+    );
     assert!(!elytra_state.chest_armor_foil);
-    assert_eq!(elytra_state.chest_wings_equipment_asset, None);
 
     let skull_preview =
         smithing_preview_for_result_stack(item_stack(SKELETON_SKULL_ID, 1), &runtime);
