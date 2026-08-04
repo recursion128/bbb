@@ -461,6 +461,31 @@ Gui/GameRenderer/LevelRenderer step、menu mapping 和多人可达 screen 降级
 active 工程。每项按注册面、frame order、state/input lifecycle 和真实/pixel evidence 收口；
 不得借此加入 title、singleplayer、Realms 或 options UI。
 
+#### Active contract：ui-pause-screen-surface
+
+- 目标与 owner：闭合 `ui-pause-screen-surface` 18 owner（17 PauseScreen.java +
+  `Minecraft#pauseGame`）。
+- 审计事实（验证型）：按钮网格/两页导航/custom-additions 三分支（单条、多条→
+  builtin CUSTOM_OPTIONS list、serverLinks→SERVER_LINKS）/feedback URL 与
+  side-series 门/链接确认（`open_chat_url`→confirmation owner）/背景门/布局 y
+  已实现且有测试；ShareToLan 是 singleplayer-only 分支（bbb 恒 player-reporting
+  分支正确）；`rendersNowPlayingToast` 因 `musicToast` 默认 `NEVER` 且 options UI
+  out-of-scope 恒 false——tick/extract 的 NowPlayingToast 分支不可达（证伪）。
+- 真缺口三处（产码）：① F3+Esc 误开 no-menu 变体——vanilla 外部 MP 下
+  `pauseGame` 因 `canGameReallyBePaused` 恒 false 恒开 `PauseScreen(true)`，
+  no-menu 仅单人真暂停可达：F3+Esc 改走 with-menu，no-menu 生产入口删除；
+  ② disconnect 未走 `draftReportHandled(quitToTitle=true)`——有草稿先弹
+  quittotitle Edit/Discard 确认（Edit→report 编辑屏、Discard→丢草稿+断开，
+  death screen DraftConfirmation 先例）；③ disconnect 按钮右上
+  `icon/draft_report` 15×15 sprite 未投影。
+- 非目标：不实现 NowPlayingToast/music toast；不动 options scope；不建
+  ShareToLan；不动 reporting 编辑屏本体。
+- acceptance/gate：focused tests（F3+Esc with-menu、draft 确认两分支、sprite
+  投影）、full gate、rebuild+fixture+live、matrix 翻 equivalent、账本删
+  PauseScreen bullet（Multiplayer screen surface closure 节随之关闭）、边界页
+  owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 evidence 完整的干净提交。
+
 ### P3：动态资源 presentation breadth
 
 状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、
