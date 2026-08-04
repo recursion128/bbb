@@ -449,27 +449,10 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 ### P2：非实体客户端行为 closeout
 
-状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；`ClientLevel`
-census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在各 matrix 行）。剩余
-`LocalPlayer`/`MultiPlayerGameMode`/`Minecraft` interaction 2 条 census route 由唯一账本
-排程，按 hardest-ready-first 逐项贯通 canonical state、runtime effect/counter、presentation
-和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
-evidence。
-
-#### Active contract：census 收尾两条 route
-
-- 目标与 owner：闭合 `interaction-carried-slot-sync`（ensureHasSentCarriedItem、
-  tick）与 `interaction-pick-actions`（pickBlockOrEntity、
-  handlePickItemFromBlock、handlePickItemFromEntity）共 5 个 owner——census
-  域最后两条，全部验证型。
-- 审计事实：held-slot 命令为 change-only 发送（world 基线不变则不发，即
-  ensureHasSentCarriedItem 语义）；中键 pick 经 crosshair 命中路由
-  block/entity pick 命令（include-data 修饰键）——各有 focused tests。
-- focused evidence：census 5-owner OwnerEvidence + scripts/tests 断言块。
-- 非目标：不动 held-slot/pick packet 语义；发现其他缺口只登记账本。
-- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
-  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
-- 安全停止点：只允许合同 full-gated 提交或 evidence 完整的干净提交。
+状态：`closed`。packet/registry/item/entity generated coverage 无 open row；`ClientLevel`
+census 18 条 route（121 owner）与 `LocalPlayer`/`MultiPlayerGameMode`/`Minecraft`
+interaction census 22 条 route（149 owner）已全部 `equivalent`，重开判据在各 matrix 行。
+新增 Vanilla owner、route 状态回退或矩阵行重开条件触发时重开本节。
 
 ### P2：屏幕、HUD、字体与截图
 

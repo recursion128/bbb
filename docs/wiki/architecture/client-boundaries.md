@@ -213,6 +213,16 @@ container-actions 由 click/button/recipe/slot-state 四条 queue 命令链拥�
 （slot-state 与 click 原子合发）；creative-actions 由 creative
 `submit_action_inner` 提交计划拥有。不得为任一 interaction 命令建第二条入口。
 
+## Carried-slot 与 pick-actions owner
+
+carried-slot-sync 两 owner 由 `select_hotbar_slot` 唯一拥有：world
+`set_local_selected_hotbar_slot` 基线不变则不发 held-slot 命令
+（ensureHasSentCarriedItem 的 change-only 语义），tick 侧无独立发送点。
+pick-actions 三 owner 由中键路由的
+`queue_pick_item_from_block_command`/`queue_pick_item_from_entity_command`
+唯一拥有（crosshair 命中分派 block/entity、include-data 由修饰键决定）。不得
+另建 held-slot 或 pick 命令入口。
+
 ## LocalPlayer 与 game-mode 决策 inventory 边界
 
 本地 26.1 `LocalPlayer` 的 104 个方法、`MultiPlayerGameMode` 的 39 个方法，以及

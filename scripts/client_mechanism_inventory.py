@@ -3341,6 +3341,41 @@ INTERACTION_CREATIVE_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+INTERACTION_CARRIED_SLOT_SYNC_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#select_hotbar_slot",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command",
+            ),
+        ),
+        ("ensureHasSentCarriedItem", "tick"),
+    ),
+)
+
+INTERACTION_PICK_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_block_command",
+                "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_entity_command",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+                "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+                "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data",
+            ),
+        ),
+        (
+            "pickBlockOrEntity",
+            "handlePickItemFromBlock",
+            "handlePickItemFromEntity",
+        ),
+    ),
+)
+
 CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
@@ -3520,6 +3555,8 @@ METHOD_OWNER_EVIDENCE = {
     "interaction-entity-actions": INTERACTION_ENTITY_ACTIONS_OWNER_EVIDENCE,
     "interaction-container-actions": INTERACTION_CONTAINER_ACTIONS_OWNER_EVIDENCE,
     "interaction-creative-actions": INTERACTION_CREATIVE_ACTIONS_OWNER_EVIDENCE,
+    "interaction-carried-slot-sync": INTERACTION_CARRIED_SLOT_SYNC_OWNER_EVIDENCE,
+    "interaction-pick-actions": INTERACTION_PICK_ACTIONS_OWNER_EVIDENCE,
     "diagnostics-client-level-report": CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,

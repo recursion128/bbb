@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "02724a98267eef031f4aecb30c81757b2faac7179c2f1209316ff013bce8cdb7"
+      "sha256": "ca887bcc3a51bf4bf676e345a5a313ff18198565e2517986eb5d91e0f9468497"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -104,7 +104,8 @@
         "crates/bbb-native/src/input/commands.rs",
         "crates/bbb-world/src/client/inventory.rs"
       ],
-      "owner_count": 2
+      "owner_count": 2,
+      "owner_evidence_count": 2
     },
     "interaction-container-actions": {
       "bbb_evidence": [
@@ -159,7 +160,8 @@
         "crates/bbb-native/src/input/commands.rs",
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 3
+      "owner_count": 3,
+      "owner_evidence_count": 3
     },
     "interaction-prediction-sequence": {
       "bbb_evidence": [
@@ -10305,6 +10307,17 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#pick(final float partialTicks)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_block_command",
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_entity_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+          "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data"
+        ]
+      },
       "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
@@ -23464,6 +23477,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#destroyBlock(final BlockPos pos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#select_hotbar_slot"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command"
+        ]
+      },
       "category": "carried-slot",
       "domain": "interaction",
       "kind": "method",
@@ -23616,6 +23637,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryButtonClick(final int containerId,final int buttonId)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_block_command",
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_entity_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+          "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data"
+        ]
+      },
       "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
@@ -23630,6 +23662,17 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#handlePickItemFromBlock(final BlockPos pos,final boolean includeData)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_block_command",
+          "crates/bbb-native/src/input/commands.rs#queue_pick_item_from_entity_command"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_block_queues_pick_block_with_data",
+          "crates/bbb-native/src/input/mouse.rs#control_middle_mouse_press_on_entity_queues_pick_entity_with_data",
+          "crates/bbb-native/src/input/mouse.rs#sprint_middle_mouse_press_does_not_include_pick_data"
+        ]
+      },
       "category": "pick-action",
       "domain": "interaction",
       "kind": "method",
@@ -24058,6 +24101,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#stopDestroyBlock()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/commands.rs#select_hotbar_slot"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command"
+        ]
+      },
       "category": "carried-slot",
       "domain": "interaction",
       "kind": "method",
@@ -43415,6 +43466,8 @@
       "interaction-entity-actions",
       "interaction-container-actions",
       "interaction-creative-actions",
+      "interaction-carried-slot-sync",
+      "interaction-pick-actions",
       "diagnostics-client-level-report",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",

@@ -475,6 +475,32 @@ public class Owner {
                 ),
                 mechanism_id,
             )
+        # pick-actions' third owner (`Minecraft#pickBlockOrEntity`) lives
+        # outside this partition's source filter.
+        for mechanism_id, partition_count, evidence_count in (
+            ("interaction-carried-slot-sync", 2, 2),
+            ("interaction-pick-actions", 2, 3),
+        ):
+            closing_owners = [
+                owner
+                for owner in methods
+                if owner["mechanism_id"] == mechanism_id
+            ]
+            self.assertEqual(len(closing_owners), partition_count, mechanism_id)
+            self.assertEqual(
+                value["mechanisms"][mechanism_id]["owner_evidence_count"],
+                evidence_count,
+                mechanism_id,
+            )
+            self.assertTrue(
+                all(
+                    set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                    and owner["bbb_evidence"]["implementation"]
+                    and owner["bbb_evidence"]["tests"]
+                    for owner in closing_owners
+                ),
+                mechanism_id,
+            )
         block_breaking_owners = [
             owner
             for owner in methods

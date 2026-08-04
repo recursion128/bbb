@@ -68,17 +68,10 @@ Matrix routes: `player-local-session-respawn`, `player-local-vitals-status`, `pl
 Goal route: `goal.md#p2非实体客户端行为-closeout`
 
 The generated inventory maps all 104 `LocalPlayer`, 39 `MultiPlayerGameMode` and six
-`Minecraft` interaction entry owners exactly once. The current BBB paths below are
-real implementation evidence, but are not yet owner-complete decision→consumer/live
-evidence, so the census records each homogeneous route as `unverified` rather than
-preserving the two former broad `partial` claims.
+`Minecraft` interaction entry owners exactly once. All 22 routes in this census are
+now `equivalent` with per-owner implementation/test evidence; reopen conditions live
+on each matrix row.
 
-- **`interaction-carried-slot-sync`** — world selected slot and native command baseline
-  must be the only state. Close after change-only send, queue failure retry, controller
-  tick order and generation reset are proved for both owners.
-- **`interaction-pick-actions`** — the native crosshair result and modifier route to one
-  block/entity pick command owner. Close after the three owners prove dispatch,
-  include-data and no-target behavior against an external server.
 
 ## Render-step, HUD and block-entity presentation closure
 
