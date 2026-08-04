@@ -500,6 +500,32 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
+#### Active contract：persistence-client-files
+
+- 目标与完成标准：闭合 158 owner（`Options` 145、`ServerList` 13），拆成同构
+  sub-route 并逐 owner 挂机械可达 evidence；`options.txt` 成为唯一 typed client
+  options owner；matrix 行翻 `equivalent`，账本删项。
+- 审计事实：仓内无任何 `options.txt` 读写，客户端选项全部由 71 个 clap arg
+  承载，无文件 round-trip、无未知 key 保留、无解析失败恢复；`server_list.rs`
+  已有 `servers.dat` 读写与 `_old` 备份原子替换，但无 list 变更 owner；145 个
+  `Options` owner 含成批只服务 options UI 的 label/slider 工厂，须以 vanilla
+  依据判 out-of-scope 而非静默计入。
+- 串行阶段：① 逐 method 路由表与 scope/role 判据（未分类 method fail-closed）；
+  ② `options.txt` 编解码（`processOptions` 行格式、逐字段 key/默认值/夹取、
+  `dataFix`、未知 key 保留、load/save round-trip）；③ 原子写与解析失败恢复，
+  与 `server_list.rs` 的 `safely_replace` 收敛为唯一原子替换 owner；④ CLI
+  precedence 与 consumer 收敛（arg 降级为 store override，消费点只读单一
+  store）；⑤ 派生决策 owner（effective render distance、final sound volume、
+  background color/opacity、model part、`buildPlayerInformation`、
+  `broadcastOptions`）；⑥ `ServerList` 列表变更与 hidden 语义；⑦ census close。
+- 非目标：不做 `OptionsScreen` 及其 widget/label，不做 Realms/singleplayer 字段
+  的 UI 消费，不新增第二套配置来源。
+- 每阶段 focused tests：文件 round-trip/损坏恢复 + 派生决策 + consumer 投影断言。
+- checkpoint：① 与 ⑦ 触及 generator 属高风险，各自单独一次完整 gate；②～⑥ 每
+  阶段一次干净提交，累计 4 个提交或跨 crate 里程碑时 gate；④ 改动启动路径后
+  必须实跑一次 live playable gate 并刷新 stamp；最终 HEAD 必须 full-gated。
+- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
+
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
