@@ -4393,7 +4393,7 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-native/src/runtime.rs#hud_debug_client_chunk_storage_slots",
+          "crates/bbb-world/src/client/level_report.rs#client_chunk_storage_slots",
           "crates/bbb-world/src/chunks/store.rs#prune_chunks_outside_view",
           "vanilla:net/minecraft/client/multiplayer/ClientChunkCache.java#updateViewRadius"
         ],
