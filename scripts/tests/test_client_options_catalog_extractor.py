@@ -213,6 +213,14 @@ class ClientOptionsCatalogGeneratorTests(unittest.TestCase):
         self.assertEqual(defaults["narrator"], "0")
         # `CloudStatus.FANCY` serializes as the legacy `true`.
         self.assertEqual(defaults["renderClouds"], '"true"')
+        # Only the `OptionInstance` overload goes through GSON, so the scalar
+        # overloads write their value bare.
+        self.assertEqual(defaults["lang"], "en_us")
+        self.assertEqual(defaults["lastServer"], "")
+        self.assertEqual(defaults["tutorialStep"], "movement")
+        self.assertEqual(defaults["soundDevice"], '""')
+        # `fov` stores 70 but its codec writes `(70 - 70.0) / 40.0`.
+        self.assertEqual(defaults["fov"], "0.0")
         # `renderClouds` is the one key that still reads the pre-1.20 boolean
         # through `Codec.withAlternative`.
         self.assertEqual(

@@ -22,6 +22,7 @@ mod camera_fov;
 mod camera_pose;
 mod cartography_preview;
 mod chest_scene;
+mod client_options;
 mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod component_text;

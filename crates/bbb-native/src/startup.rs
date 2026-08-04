@@ -19,7 +19,12 @@ use bbb_renderer::{
     VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{PlayerReportEnvironment, TutorialStep};
-use clap::{ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser, ValueEnum};
+
+use crate::client_options::{
+    args::{parse_stored_boolean, stored_fov_degrees, ClientOptionBinding, StoredOptions},
+    ClientOptionEncoding, ClientOptionHost, ClientOptions,
+};
 use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 use uuid::Uuid;
@@ -45,6 +50,10 @@ pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
 #[derive(Debug, Parser)]
 #[command(name = "bbb-native")]
 pub(crate) struct Args {
+    /// Vanilla `--gameDir`: the directory `options.txt` is read from and
+    /// written back to.
+    #[arg(long = "game-dir", value_name = "PATH", default_value = ".")]
+    pub(crate) game_dir: PathBuf,
     #[arg(long, default_value = "127.0.0.1:25565")]
     pub(crate) server: String,
     #[arg(long, default_value = "bbb-client")]
@@ -457,7 +466,207 @@ pub(crate) fn init_tracing() {
 }
 
 pub(crate) fn parse_args() -> Args {
-    Args::parse()
+    let matches = Args::command().get_matches();
+    let mut args = match Args::from_arg_matches(&matches) {
+        Ok(args) => args,
+        Err(error) => error.exit(),
+    };
+    apply_stored_client_options(&mut args, &matches);
+    args
+}
+
+/// Vanilla reads these values from `options.txt` alone, so the file is the
+/// base and only an argument the user actually typed overrides it. A missing
+/// or unreadable file leaves every clap default in place.
+fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
+    let path = args.game_dir.join("options.txt");
+    let host = ClientOptionHost {
+        locale_is_japanese: false,
+        platform_is_windows: cfg!(windows),
+    };
+    let options = match ClientOptions::load(&path, host) {
+        Ok(options) => options,
+        Err(error) => {
+            tracing::warn!(path = %path.display(), %error, "failed to load options.txt");
+            return;
+        }
+    };
+    bind_stored_client_options(args, StoredOptions::new(&options, matches));
+}
+
+/// Every startup argument that mirrors an `options.txt` key. The stored line is
+/// validated by the same parser the command line uses, so a bad line keeps the
+/// current value instead of injecting an out-of-range one.
+fn bind_stored_client_options(
+    args: &mut Args,
+    mut stored: StoredOptions<'_>,
+) -> Vec<ClientOptionBinding> {
+    macro_rules! flag {
+        ($id:literal, $key:literal, $field:ident) => {
+            stored.bind(
+                $id,
+                $key,
+                ClientOptionEncoding::Boolean,
+                &mut args.$field,
+                parse_stored_boolean,
+            )
+        };
+    }
+    macro_rules! parsed {
+        ($id:literal, $key:literal, $encoding:ident, $field:ident, $parse:expr) => {
+            stored.bind(
+                $id,
+                $key,
+                ClientOptionEncoding::$encoding,
+                &mut args.$field,
+                $parse,
+            )
+        };
+    }
+
+    flag!("client_auto_jump", "autoJump", client_auto_jump);
+    flag!("client_chat_colors", "chatColors", client_chat_colors);
+    flag!("client_chat_links", "chatLinks", client_chat_links);
+    flag!(
+        "client_chat_links_prompt",
+        "chatLinksPrompt",
+        client_chat_links_prompt
+    );
+    flag!(
+        "client_show_subtitles",
+        "showSubtitles",
+        client_show_subtitles
+    );
+    flag!(
+        "client_save_chat_drafts",
+        "saveChatDrafts",
+        client_save_chat_drafts
+    );
+    flag!(
+        "client_only_show_secure_chat",
+        "onlyShowSecureChat",
+        client_only_show_secure_chat
+    );
+    flag!(
+        "client_hide_matched_names",
+        "hideMatchedNames",
+        client_hide_matched_names
+    );
+    flag!(
+        "client_allow_server_listing",
+        "allowServerListing",
+        client_allow_server_listing
+    );
+    flag!(
+        "high_contrast_block_outline",
+        "highContrastBlockOutline",
+        high_contrast_block_outline
+    );
+    flag!("client_view_bobbing", "bobView", client_view_bobbing);
+    flag!(
+        "background_for_chat_only",
+        "backgroundForChatOnly",
+        background_for_chat_only
+    );
+    flag!("cutout_leaves", "cutoutLeaves", cutout_leaves);
+    flag!("entity_shadows", "entityShadows", entity_shadows);
+    flag!(
+        "hide_lightning_flash",
+        "hideLightningFlashes",
+        hide_lightning_flash
+    );
+    flag!(
+        "advanced_item_tooltips",
+        "advancedItemTooltips",
+        advanced_item_tooltips
+    );
+    flag!(
+        "improved_transparency",
+        "improvedTransparency",
+        improved_transparency
+    );
+    flag!("client_vsync", "enableVsync", client_vsync);
+
+    parsed!(
+        "render_distance_chunks",
+        "renderDistance",
+        Integer,
+        render_distance_chunks,
+        parse_render_distance
+    );
+    parsed!(
+        "cloud_range_chunks",
+        "cloudRange",
+        Integer,
+        cloud_range_chunks,
+        parse_cloud_range
+    );
+    parsed!(
+        "client_framerate_limit",
+        "maxFps",
+        Integer,
+        client_framerate_limit,
+        parse_client_framerate_limit
+    );
+    parsed!(
+        "menu_background_blurriness",
+        "menuBackgroundBlurriness",
+        Integer,
+        menu_background_blurriness,
+        parse_menu_background_blurriness
+    );
+    parsed!(
+        "client_chat_delay_seconds",
+        "chatDelay",
+        Double,
+        client_chat_delay_seconds,
+        parse_client_chat_delay
+    );
+    parsed!(
+        "text_background_opacity",
+        "textBackgroundOpacity",
+        Double,
+        text_background_opacity,
+        parse_text_background_opacity
+    );
+    parsed!(
+        "client_gamma",
+        "gamma",
+        Double,
+        client_gamma,
+        parse_client_gamma
+    );
+    parsed!(
+        "client_fov_effect_scale",
+        "fovEffectScale",
+        Double,
+        client_fov_effect_scale,
+        parse_client_fov_effect_scale
+    );
+    parsed!(
+        "damage_tilt_strength",
+        "damageTiltStrength",
+        Double,
+        damage_tilt_strength,
+        parse_damage_tilt_strength
+    );
+    parsed!(
+        "notification_display_time",
+        "notificationDisplayTime",
+        Double,
+        notification_display_time,
+        parse_notification_display_time
+    );
+    parsed!("client_fov", "fov", Double, client_fov, stored_fov_degrees);
+    parsed!(
+        "client_locale",
+        "lang",
+        Text,
+        client_locale,
+        |raw: &str| Ok(raw.to_owned())
+    );
+
+    stored.bound()
 }
 
 #[derive(Debug, Serialize)]
@@ -1741,5 +1950,58 @@ mod tests {
             vec!["vanilla", "startup/0", "startup/1"]
         );
         std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn stored_options_fill_arguments_the_user_did_not_type() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("renderDistance", "16");
+        options.set_raw_for_test("entityShadows", "false");
+        options.set_raw_for_test("lang", "zh_cn");
+        options.set_raw_for_test("fov", "1.0");
+        let mut args = Args::parse_from(["bbb-native"]);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert_eq!(args.render_distance_chunks, 16);
+        assert!(!args.entity_shadows);
+        assert_eq!(args.client_locale, "zh_cn");
+        // `fov` is stored scaled; 1.0 reads back as the 110-degree maximum.
+        assert_eq!(args.client_fov, 110);
+    }
+
+    #[test]
+    fn an_out_of_range_stored_line_keeps_the_argument_value() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("renderDistance", "9999");
+        let mut args = Args::parse_from(["bbb-native"]);
+        let default_distance = args.render_distance_chunks;
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        // The command line's own parser rejects it, so the value stands —
+        // `FieldAccess.process` keeps the current value the same way.
+        assert_eq!(args.render_distance_chunks, default_distance);
+    }
+
+    #[test]
+    fn every_binding_names_a_real_argument_and_a_catalogued_key() {
+        let mut args = Args::parse_from(["bbb-native"]);
+        let options = ClientOptions::defaults(ClientOptionHost::default());
+
+        let bindings =
+            bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert!(!bindings.is_empty());
+        let command = Args::command();
+        for binding in bindings {
+            assert!(
+                command
+                    .get_arguments()
+                    .any(|arg| arg.get_id() == binding.arg_id),
+                "no argument named {}",
+                binding.arg_id
+            );
+        }
     }
 }

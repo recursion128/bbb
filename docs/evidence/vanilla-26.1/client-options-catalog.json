@@ -82,7 +82,7 @@
       "field": "fov",
       "kind": "codec",
       "encoding": "double",
-      "default": "70"
+      "default": "0.0"
     },
     {
       "order": 10,
@@ -546,7 +546,7 @@
       "field": "lastMpIp",
       "kind": "string",
       "encoding": "string",
-      "default": "\"\""
+      "default": ""
     },
     {
       "order": 68,
@@ -554,7 +554,7 @@
       "field": "languageCode",
       "kind": "string",
       "encoding": "string",
-      "default": "\"en_us\""
+      "default": "en_us"
     },
     {
       "order": 69,
@@ -714,7 +714,7 @@
       "field": "tutorialStep",
       "kind": "tutorial-step",
       "encoding": "tutorial-step",
-      "default": "TutorialSteps.MOVEMENT"
+      "default": "movement"
     },
     {
       "order": 89,

@@ -100,6 +100,9 @@ class ClientOption:
     field: str
     kind: str
     encoding: str
+    #: The seven-argument constructor's explicit codec, when there is one. A
+    #: codec that `xmap`s stores a different value than it writes.
+    codec: str
     default: str
 
 
@@ -203,6 +206,13 @@ def _option_instance_default(source: JavaSource, field: JavaField, node) -> str:
     return source.text(_option_instance_arguments(source, field, node)[-1])
 
 
+def _option_instance_codec(source: JavaSource, field: JavaField, node) -> str:
+    if node.type == "method_invocation":
+        return ""
+    arguments = _option_instance_arguments(source, field, node)
+    return _collapse(source.text(arguments[4])) if len(arguments) == 6 else ""
+
+
 def _collapse(text: str) -> str:
     return " ".join(text.split())
 
@@ -280,15 +290,15 @@ def _enum_declaration(source: JavaSource, simple_name: str):
     )
 
 
-def _serialized_name_field(source: JavaSource, declaration) -> str:
-    """The field ``getSerializedName`` returns, so the on-disk name is read from
-    the constructor rather than guessed from the constant's argument order."""
+def _accessor_field(source: JavaSource, declaration, accessor: str) -> str:
+    """The field the on-disk accessor returns, so the value is read from the
+    constructor rather than guessed from the constant's argument order."""
 
     for node in descendants(declaration):
         if node.type != "method_declaration":
             continue
         name_node = node.child_by_field_name("name")
-        if name_node is None or source.text(name_node) != "getSerializedName":
+        if name_node is None or source.text(name_node) != accessor:
             continue
         body = node.child_by_field_name("body")
         if body is None or len(body.named_children) != 1:
@@ -301,7 +311,7 @@ def _serialized_name_field(source: JavaSource, declaration) -> str:
             return returned.removeprefix("this.")
         break
     raise ClientOptionsCatalogExtractionError(
-        "enum getSerializedName is not a direct field return"
+        f"enum {accessor} is not a direct field return"
     )
 
 
@@ -344,9 +354,10 @@ def resolve_enum_default(
 ) -> str:
     """Turn ``GraphicsPreset.FANCY`` into the text ``save`` writes for it.
 
-    ``LEGACY_CODEC`` is ``Codec.INT`` over the enum's ``id`` field and ``CODEC``
-    is ``StringRepresentable.fromEnum``, so both values live in the enum's own
-    constructor — never in a table copied alongside the option.
+    ``LEGACY_CODEC`` is ``Codec.INT`` over the enum's ``id`` field, ``CODEC`` is
+    ``StringRepresentable.fromEnum``, and ``tutorialStep`` writes through
+    ``TutorialSteps::getName`` — so every value lives in the enum's own
+    constructor, never in a table copied alongside the option.
     """
 
     qualifier, _, constant = java_default.rpartition(".")
@@ -356,7 +367,8 @@ def resolve_enum_default(
     if encoding == "enum-id":
         field_name = "id"
     else:
-        field_name = _serialized_name_field(source, declaration)
+        accessor = "getName" if encoding == "tutorial-step" else "getSerializedName"
+        field_name = _accessor_field(source, declaration, accessor)
     index = _constructor_parameter_index(source, declaration, field_name)
     return _enum_constant_argument(source, declaration, constant, index)
 
@@ -430,12 +442,14 @@ def client_option_entries(
                         f"reader/writer target {field_name} has no declared codec kind",
                     )
                 encoding = kind
+                codec = ""
                 default = _scalar_default(source, field, initializer(field))
             elif field.type_spelling.startswith("OptionInstance"):
                 kind = "codec"
                 encoding = _option_instance_encoding(
                     source, field, initializer(field)
                 )
+                codec = _option_instance_codec(source, field, initializer(field))
                 default = _option_instance_default(source, field, initializer(field))
             else:
                 kind = SCALAR_KINDS.get(field.type_spelling)
@@ -446,6 +460,7 @@ def client_option_entries(
                         f"process target {field_name} has unsupported type {field.type_spelling}",
                     )
                 encoding = kind
+                codec = ""
                 default = _scalar_default(source, field, initializer(field))
             options.append(
                 ClientOption(
@@ -454,6 +469,7 @@ def client_option_entries(
                     field=field_name,
                     kind=kind,
                     encoding=encoding,
+                    codec=codec,
                     default=COMPUTED_DEFAULTS.get(default, default),
                 )
             )
