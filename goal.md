@@ -455,6 +455,25 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel map-data
+
+- 目标与 owner：闭合 `world-client-map-data` 4 个 owner（getMapData、overrideMapData、
+  addMapData、getAllMapData）；map 数据由 `WorldStore.maps` 单一 store 唯一拥有。
+- Vanilla 语义：getMapData=get、overrideMapData=put（handleMapItemData 缺失时
+  createForClient(scale,locked)+applyToMap patch merge）；login 建全新空 mapData；仅
+  dimension-change respawn 经 getAllMapData→addMapData 把整表携带进新 level。
+- bbb 现状与缺口：apply_map_item_data 已转写 create-if-absent+bounds 校验 patch
+  merge+retained bytes，map_item 供 item frame 消费，respawn 保留已有测试；缺口=
+  `clear_client_level` 不清 maps/last_map_color_patch/maps_tracked/decorations
+  counter，login（重连/transfer）后旧代 map 泄漏。修复：login 边界清空四者，
+  respawn 携带语义不变。
+- focused evidence：login 清空测试（respawn 保留对照）+ 既有 patch/replacement/
+  consumer 测试注册进 census 4-owner OwnerEvidence + scripts/tests 断言。
+- 非目标：不动 map texture/decoration 渲染；发现其他缺口只登记既有 route。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
+  删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 4-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

@@ -58,8 +58,11 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-map-data` (4 owners).** Verify map get/set/free identity,
-  replacement and retained-byte lifetime through the canonical map store.
+- **`world-client-map-data` (4 owners).** Close the login-lifetime gap: the
+  canonical map store already owns create-if-absent, bounds-checked patch
+  merges with retained bytes and the dimension-respawn carry-over, but
+  `clear_client_level` keeps stale maps across login/transfer where vanilla
+  starts from an empty map table; only the respawn path may carry maps over.
 - **`world-client-level-events` (3 owners).** Verify global/level/explosion event
   ordering from packet apply through canonical mutation and presentation effects.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
