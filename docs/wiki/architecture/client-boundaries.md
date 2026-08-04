@@ -209,6 +209,17 @@ positioned local sound 携带 distance_delay 标志，私有 `playSound` 的延�
 `vanilla_distance_delay_ticks` 唯一实现（distSqr>100 → sqrt(dist)×0.5 tick 延迟入队，
 delayed queue 按剩余 tick 释放）。不得绕过该 seed 链或另建第二条声音提交路径。
 
+### ClientLevel particle-routing owner
+
+六个 particle-routing owner 收敛为 particle runtime 的单一准入 gate：四个 add 变体
+（addParticle×2/addAlwaysVisibleParticle×2）合成 override=type.overrideLimiter||packet flag
+与 always-show 标志，per-type override 由 generated particle catalog 携带；
+`should_spawn_level_particle` 按 override→无条件、距 camera >1024 sqr 丢弃、
+particleLevel==MINIMAL 拒绝的顺序唯一裁决准入；`calculate_particle_level` 从 options
+particles 档起始，always-show&&MINIMAL 有 1/10 升 DECREASED、DECREASED 有 1/3 降
+MINIMAL（共享 random 链）。environment spawns、level-particles 包与 firework 路径全部
+经该 gate，不得另建第二条粒子准入路径或在调用点内联距离/降档判断。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的

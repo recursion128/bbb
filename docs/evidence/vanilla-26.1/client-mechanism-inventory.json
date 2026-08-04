@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "07994239591ff71f385b8c6e0a47124ab5946c467a3c11d4465b43ebdcf49fcd"
+      "sha256": "8d5df917caaa9f47041371fa2b0238c649b562ebf3854cd9f62ec372d1114084"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -374,7 +374,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/particle_runtime.rs"
       ],
-      "owner_count": 6
+      "owner_count": 6,
+      "owner_evidence_count": 6
     },
     "rendering-entity-layer-registration": {
       "bbb_evidence": [
@@ -17754,6 +17755,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#ClientLevel(final ClientPacketListener connection,final ClientLevel.ClientLevelData levelData,final ResourceKey <Level> dimension,final Holder <DimensionType> dimensionType,final int serverChunkRadius,final int serverSimulationDistance,final LevelRenderer levelRenderer,final boolean isDebug,final long biomeZoomSeed,final int seaLevel)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles",
+          "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+          "crates/bbb-native/src/environment_animate_runtime.rs#bubble_column_animate_effects_preserve_vanilla_particles_and_random_order"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -17768,6 +17779,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final boolean overrideLimiter,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles",
+          "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+          "crates/bbb-native/src/environment_animate_runtime.rs#bubble_column_animate_effects_preserve_vanilla_particles_and_random_order"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -17893,6 +17914,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addMapData(final Map <MapId, MapItemSavedData> mapData)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles",
+          "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+          "crates/bbb-native/src/environment_animate_runtime.rs#bubble_column_animate_effects_preserve_vanilla_particles_and_random_order"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -17907,6 +17938,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShow,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles",
+          "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+          "crates/bbb-native/src/environment_animate_runtime.rs#bubble_column_animate_effects_preserve_vanilla_particles_and_random_order"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -17969,6 +18010,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#calculateBlockTint(final BlockPos pos,final ColorResolver colorResolver)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#calculate_particle_level"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#decreased_particle_status_uses_vanilla_next_int_three",
+          "crates/bbb-native/src/particle_runtime/tests.rs#minimal_particle_status_only_keeps_always_show_promoted_particles"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -18126,6 +18176,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#disconnect(final Component message)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_core.rs#should_spawn_level_particle"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_drop_non_override_spawns_beyond_vanilla_camera_distance",
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status"
+        ]
+      },
       "category": "particle-routing",
       "domain": "effects",
       "kind": "method",
@@ -42113,6 +42172,7 @@
       "world-client-session-services",
       "rendering-client-biome-tint",
       "audio-client-level-sound-routing",
+      "rendering-client-particle-routing",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

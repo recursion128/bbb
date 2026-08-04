@@ -65,11 +65,6 @@ consumer, fallback and applicable live evidence.
 - **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
   queries the renderer's off-screen policy once, updates the generation-local global
   membership and drops stale membership at the exact removal/replacement boundary.
-- **`rendering-client-particle-routing` (6 owners).** Verify the implemented
-  single admission gate: per-type catalog override limiter composed with packet
-  flags, the 1024-sqr camera distance drop, and the two-step random particle
-  level (always-show 1/10 promotion, decreased 1/3 demotion) shared by the
-  environment, level-particle and firework paths.
 - **`diagnostics-client-level-report` (4 owners).** Verify level/entity report
   sections, bounded counters and terminal diagnostics against the same world
   generation rather than a stale snapshot.

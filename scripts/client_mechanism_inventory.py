@@ -2340,6 +2340,46 @@ CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_core.rs#should_spawn_level_particle",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_drop_non_override_spawns_beyond_vanilla_camera_distance",
+                "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+            ),
+        ),
+        ("doAddParticle",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_core.rs#calculate_particle_level",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#decreased_particle_status_uses_vanilla_next_int_three",
+                "crates/bbb-native/src/particle_runtime/tests.rs#minimal_particle_status_only_keeps_always_show_promoted_particles",
+            ),
+        ),
+        ("calculateParticleLevel",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_core.rs#resolve_level_particles",
+                "crates/bbb-native/src/particle_runtime/environment.rs#environment_particle_batch",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#level_particles_override_limiter_bypasses_distance_and_particle_status",
+                "crates/bbb-native/src/environment_animate_runtime.rs#bubble_column_animate_effects_preserve_vanilla_particles_and_random_order",
+            ),
+        ),
+        ("addParticle", "addAlwaysVisibleParticle"),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -2351,6 +2391,7 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-session-services": CLIENT_LEVEL_SESSION_SERVICES_OWNER_EVIDENCE,
     "rendering-client-biome-tint": CLIENT_LEVEL_BIOME_TINT_OWNER_EVIDENCE,
     "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
+    "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
