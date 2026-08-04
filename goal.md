@@ -456,6 +456,21 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer session-respawn
+
+- 目标与 owner：闭合 `player-local-session-respawn` 4 个 owner（LocalPlayer
+  构造器、resetPos、respawn、tickDeath）。
+- 审计事实：login/respawn 玩家重建链（构造器/resetPos 语义）、respawn 请求
+  （death screen 20 tick 锁+PerformRespawn 命令单发）、死亡动画计数
+  （health<=0 起 deathTime 递增、倒地渲染）均已实现并有 focused tests——全部
+  验证型，无缺口。
+- focused evidence：census 4-owner OwnerEvidence + scripts/tests 断言块
+  （local-player 分区测试）。
+- 非目标：不动 respawn packet/death screen 语义；发现其他 route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 4-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
