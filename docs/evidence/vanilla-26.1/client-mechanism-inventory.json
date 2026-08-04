@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "c2326c59b22f32e5f5c46922a916f2204115b13f41836b683d0478762e349185"
+      "sha256": "3fbb46268e56a833f44298ddcdd963434c905a232918104cda5e6499bc605948"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -234,7 +234,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/server_list.rs"
       ],
-      "owner_count": 8
+      "owner_count": 8,
+      "owner_evidence_count": 8
     },
     "platform-window-lifecycle": {
       "bbb_evidence": [
@@ -24223,6 +24224,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.MultiPlayerGameMode#useItemOn(final LocalPlayer player,final InteractionHand hand,final BlockHitResult blockHit)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#ServerListPersistence"
+        ],
+        "tests": [
+          "crates/bbb-native/src/startup.rs#server_list_owner_requires_explicit_store_name_and_live_connection"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "constructor",
@@ -24237,6 +24246,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#ServerList(final Minecraft minecraft)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#entry_is_hidden",
+          "crates/bbb-native/src/server_list.rs#MAX_HIDDEN_SERVERS"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#a_created_entry_heads_the_hidden_block_and_trims_it_to_sixteen"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24251,6 +24269,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#add(final ServerData server,final boolean hidden)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#find_or_insert"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#an_entry_the_player_already_named_for_the_address_is_reused"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24265,6 +24291,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#get(final String ip)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#find_or_insert"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#an_entry_the_player_already_named_for_the_address_is_reused"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24279,6 +24313,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#get(final int index)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#ServerListFile",
+          "crates/bbb-native/src/server_list.rs#MAX_SERVER_LIST_FILE_BYTES"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#update_preserves_other_entries_unknown_fields_and_omitted_icon"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24321,6 +24364,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#replace(final int id,final ServerData data)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#safely_replace"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#update_preserves_other_entries_unknown_fields_and_omitted_icon"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24335,6 +24386,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#save()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#persist_current_server_data",
+          "crates/bbb-native/src/server_list.rs#save_server_icon"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#configured_owner_persists_valid_icon_in_vanilla_servers_dat_shape",
+          "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_data_event_persists_configured_vanilla_server_list_owner"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -24349,6 +24410,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ServerList#saveSingleServer(final ServerData data)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/server_list.rs#find_or_insert"
+        ],
+        "tests": [
+          "crates/bbb-native/src/server_list.rs#an_entry_the_player_already_named_for_the_address_is_reused"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
@@ -43742,6 +43811,7 @@
       "audio-client-level-sound-routing",
       "rendering-client-particle-routing",
       "world-client-map-data",
+      "persistence-server-list",
       "world-client-level-events",
       "rendering-client-block-entity-tracking",
       "player-local-input-movement",

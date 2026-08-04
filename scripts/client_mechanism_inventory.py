@@ -3658,6 +3658,81 @@ CLIENT_LEVEL_DIAGNOSTICS_REPORT_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+SERVER_LIST_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/server_list.rs#ServerListPersistence",),
+            (
+                "crates/bbb-native/src/startup.rs"
+                "#server_list_owner_requires_explicit_store_name_and_live_connection",
+            ),
+        ),
+        ("ServerList",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/server_list.rs#ServerListFile",
+                "crates/bbb-native/src/server_list.rs#MAX_SERVER_LIST_FILE_BYTES",
+            ),
+            (
+                "crates/bbb-native/src/server_list.rs"
+                "#update_preserves_other_entries_unknown_fields_and_omitted_icon",
+            ),
+        ),
+        ("load",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/server_list.rs#safely_replace",),
+            (
+                "crates/bbb-native/src/server_list.rs"
+                "#update_preserves_other_entries_unknown_fields_and_omitted_icon",
+            ),
+        ),
+        ("save",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/server_list.rs#persist_current_server_data",
+                "crates/bbb-native/src/server_list.rs#save_server_icon",
+            ),
+            (
+                "crates/bbb-native/src/server_list.rs"
+                "#configured_owner_persists_valid_icon_in_vanilla_servers_dat_shape",
+                "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs"
+                "#server_data_event_persists_configured_vanilla_server_list_owner",
+            ),
+        ),
+        ("saveSingleServer",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/server_list.rs#find_or_insert",),
+            (
+                "crates/bbb-native/src/server_list.rs"
+                "#an_entry_the_player_already_named_for_the_address_is_reused",
+            ),
+        ),
+        ("set", "get"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/server_list.rs#entry_is_hidden",
+                "crates/bbb-native/src/server_list.rs#MAX_HIDDEN_SERVERS",
+            ),
+            (
+                "crates/bbb-native/src/server_list.rs"
+                "#a_created_entry_heads_the_hidden_block_and_trims_it_to_sixteen",
+            ),
+        ),
+        ("add",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -3671,6 +3746,7 @@ METHOD_OWNER_EVIDENCE = {
     "audio-client-level-sound-routing": CLIENT_LEVEL_SOUND_ROUTING_OWNER_EVIDENCE,
     "rendering-client-particle-routing": CLIENT_LEVEL_PARTICLE_ROUTING_OWNER_EVIDENCE,
     "world-client-map-data": CLIENT_LEVEL_MAP_DATA_OWNER_EVIDENCE,
+    "persistence-server-list": SERVER_LIST_OWNER_EVIDENCE,
     "world-client-level-events": CLIENT_LEVEL_LEVEL_EVENTS_OWNER_EVIDENCE,
     "rendering-client-block-entity-tracking": CLIENT_LEVEL_BLOCK_ENTITY_TRACKING_OWNER_EVIDENCE,
     "player-local-input-movement": LOCAL_PLAYER_INPUT_MOVEMENT_OWNER_EVIDENCE,

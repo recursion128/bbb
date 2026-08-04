@@ -820,6 +820,26 @@ prepare/commit，再把 process owner 移入新 `NativeItemRuntime`；失败时�
 source guard 禁止恢复 URL-only skin cache、分离 cape/elytra resolver 或 generation-keyed CPU shadow
 cache。
 
+## Server list 与 client options 文件 owner
+
+`bbb-native::server_list` 是 `servers.dat` 的唯一 owner。它复刻 Vanilla 命令行进服的那条路径
+——`QuickPlay.joinMultiplayerWorld` 读列表、按**地址**（不看名字，先可见后隐藏）找条目、找不到
+就以 `selectServer.defaultName` 的位置新建一条 hidden 条目、写回；随后
+`ClientPacketListener.handleServerData` 走 `ServerList.saveSingleServer` 更新同一条。因此
+`--server-list-name` 只在新建时生效，新建条目挂 `hidden`、插在 hidden 段首并把 hidden 段裁到 16
+条，写回用 `Util.safeReplaceFile`（临时文件 + 一份 `_old` + 失败回滚），这是客户端唯一的原子替换
+点。`size`/`swap`/`replace`/`remove`/`unhide` 只服务多人服务器选择屏，不在范围内（见
+[ledger](../../unsupported-features.md)；`replace` 在 26.1 本身也无调用方）。BBB 把这个 owner 设
+成显式 opt-in：只有同时给了 `--server-list-store` 与 `--server-list-name` 才构造它，避免默认就动
+真实 game directory。
+
+`bbb-native::client_options` 是 `options.txt` 的唯一 owner，key/编码/默认值全部由
+`scripts/generate-client-options-catalog.py` 从 `Options.java` 派生。读取按 Vanilla 语义：只在
+第一个 `:` 切分、坏行跳过、缺文件用默认、未知 key 不回写；写入是直接截断重写（**没有**临时文件或
+备份——那是 `ServerList` 才有的）。CLI 参数是 override，只有用户真的在命令行打了才压过文件值。
+运行期唯一会改文件的是 Vanilla 同样会存盘的两个调试热键（F3+H `advancedItemTooltips`、F3+P
+`pauseOnLostFocus`），存盘之后按 `Options.save` 的收尾无条件补发一次 `ClientInformation`。
+
 ## Fatal failure 与 crash report
 
 `bbb-native::crash_report` 是 fatal diagnostics 的唯一 owner。startup `Result`、main panic、
