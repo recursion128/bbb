@@ -8,6 +8,7 @@ pub mod cat_variants;
 mod dye_colors;
 mod entity_textures;
 mod hud_glyphs;
+mod light_coords;
 mod map_backgrounds;
 mod map_decorations;
 pub mod player_skin;
@@ -42,6 +43,7 @@ pub use hud_glyphs::{
     HudStyledTextRun, HudTextStyle, HudUvRect, HUD_FONT_BASELINE, HUD_FONT_BOLD_EXTRA_THICKNESS,
     HUD_FONT_BOLD_OFFSET, HUD_FONT_SHADOW_OFFSET,
 };
+pub use light_coords::VanillaLightCoords;
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::{
     vanilla_map_decoration_type, vanilla_map_decoration_type_for_resource_id,

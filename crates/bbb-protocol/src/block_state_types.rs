@@ -20,7 +20,8 @@ use placement_defaults_26_1::{
     VANILLA_BLOCK_NOTE_INSTRUMENT_PALETTE, VANILLA_ITEM_DEFAULT_BLOCK_STATE_PROPERTIES,
 };
 use render_facts_26_1::{
-    VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES, VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS,
+    VANILLA_BLOCK_STATE_EMISSIVE_RENDERING_BITS, VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES,
+    VANILLA_BLOCK_STATE_LIGHT_EMISSION, VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS,
     VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS,
 };
 use support_facts_26_1::{
@@ -114,6 +115,8 @@ pub fn vanilla_block_state_static_collision_shape(id: i32) -> Option<VanillaBloc
 pub struct VanillaBlockStateRenderFacts {
     block_type_id: u16,
     behavior_bits: u16,
+    light_emission: u8,
+    emissive_rendering: bool,
     face_occlusion_shape_indices: [u8; 6],
 }
 
@@ -173,6 +176,20 @@ impl VanillaBlockStateRenderFacts {
         ((self.behavior_bits >> 11) & 0x0f) as u8
     }
 
+    /// Vanilla `BlockState.getLightEmission()` for this fixed 26.1 state.
+    pub const fn light_emission(self) -> u8 {
+        self.light_emission
+    }
+
+    /// Vanilla `BlockState.emissiveRendering(level, pos)` for this fixed state.
+    ///
+    /// The only 26.1 built-in predicates are magma's unconditional value and
+    /// the sculk-sensor phase predicate, so the runtime report preserves the
+    /// exact state result without reconstructing it from block names.
+    pub const fn emissive_rendering(self) -> bool {
+        self.emissive_rendering
+    }
+
     pub const fn face_occlusion_shape_index(self, direction: VanillaBlockSupportDirection) -> u8 {
         self.face_occlusion_shape_indices[direction.index() as usize]
     }
@@ -188,6 +205,10 @@ pub fn vanilla_block_state_render_facts(id: i32) -> Option<VanillaBlockStateRend
     Some(VanillaBlockStateRenderFacts {
         block_type_id: *VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS.get(id)?,
         behavior_bits: *VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS.get(id)?,
+        light_emission: *VANILLA_BLOCK_STATE_LIGHT_EMISSION.get(id)?,
+        emissive_rendering: VANILLA_BLOCK_STATE_EMISSIVE_RENDERING_BITS
+            .get(id / 64)
+            .is_some_and(|word| word & (1_u64 << (id % 64)) != 0),
         face_occlusion_shape_indices: *VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES.get(id)?,
     })
 }
@@ -812,6 +833,14 @@ mod tests {
             VANILLA_BLOCK_STATE_COUNT as usize
         );
         assert_eq!(
+            VANILLA_BLOCK_STATE_LIGHT_EMISSION.len(),
+            VANILLA_BLOCK_STATE_COUNT as usize
+        );
+        assert_eq!(
+            VANILLA_BLOCK_STATE_EMISSIVE_RENDERING_BITS.len(),
+            (VANILLA_BLOCK_STATE_COUNT as usize).div_ceil(64)
+        );
+        assert_eq!(
             VANILLA_BLOCK_STATE_FACE_OCCLUSION_SHAPE_INDICES.len(),
             VANILLA_BLOCK_STATE_COUNT as usize
         );
@@ -855,6 +884,54 @@ mod tests {
         );
         let water = vanilla_block_state_render_facts(state_id("minecraft:water")).unwrap();
         assert!(water.liquid_block());
+
+        let magma = vanilla_block_state_render_facts(state_id("minecraft:magma_block")).unwrap();
+        assert_eq!(magma.light_emission(), 3);
+        assert!(magma.emissive_rendering());
+        let redstone_torch = |lit: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| {
+                    state.name == "minecraft:redstone_torch"
+                        && state.properties.get("lit").map(String::as_str) == Some(lit)
+                })
+                .unwrap()
+                .id
+        };
+        assert_eq!(
+            vanilla_block_state_render_facts(redstone_torch("true"))
+                .unwrap()
+                .light_emission(),
+            7
+        );
+        assert_eq!(
+            vanilla_block_state_render_facts(redstone_torch("false"))
+                .unwrap()
+                .light_emission(),
+            0
+        );
+        let sculk_sensor = |phase: &str| {
+            report
+                .states
+                .iter()
+                .find(|state| {
+                    state.name == "minecraft:sculk_sensor"
+                        && state
+                            .properties
+                            .get("sculk_sensor_phase")
+                            .map(String::as_str)
+                            == Some(phase)
+                })
+                .unwrap()
+                .id
+        };
+        assert!(vanilla_block_state_render_facts(sculk_sensor("active"))
+            .unwrap()
+            .emissive_rendering());
+        assert!(!vanilla_block_state_render_facts(sculk_sensor("inactive"))
+            .unwrap()
+            .emissive_rendering());
 
         assert!(vanilla_block_state_render_facts(-1).is_none());
         assert!(vanilla_block_state_render_facts(VANILLA_BLOCK_STATE_COUNT).is_none());

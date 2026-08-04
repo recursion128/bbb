@@ -2649,7 +2649,7 @@ fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
     let missing = WorldStore::new();
     assert_eq!(
         particle_light_for_world(&missing, [0.5, 1.0, 0.5]),
-        [1.0, 1.0]
+        [0.0, 1.0]
     );
 
     let mut world = world_with_dimension(0, "minecraft:overworld");
@@ -2663,6 +2663,67 @@ fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
         particle_light_for_world(&world, [0.5, 1.25, 0.5]),
         [0.0, 9.0 / 15.0]
     );
+}
+
+#[test]
+fn level_renderer_light_consumers_cannot_restore_raw_pack_resolvers() {
+    let consumers = [
+        ("banner", include_str!("../banner_scene.rs")),
+        ("bed", include_str!("../bed_scene.rs")),
+        ("bell", include_str!("../bell_scene.rs")),
+        ("chest", include_str!("../chest_scene.rs")),
+        ("conduit", include_str!("../conduit_scene.rs")),
+        ("decorated_pot", include_str!("../decorated_pot_scene.rs")),
+        (
+            "enchanting_table",
+            include_str!("../enchanting_table_book_scene.rs"),
+        ),
+        ("lectern", include_str!("../lectern_book_scene.rs")),
+        ("painting", include_str!("../entity_scene/painting.rs")),
+        ("shulker_box", include_str!("../shulker_box_scene.rs")),
+        ("sign", include_str!("../sign_scene.rs")),
+        ("skull", include_str!("../skull_scene.rs")),
+        ("spawner", include_str!("../spawner_scene.rs")),
+        ("particle_weather", include_str!("render_extract.rs")),
+    ];
+    for (owner, source) in consumers {
+        assert!(
+            !source.contains(".sample_block_light("),
+            "{owner} must use WorldStore::sample_render_light"
+        );
+        assert!(
+            source.contains(".sample_render_light("),
+            "{owner} lost the canonical render-light query"
+        );
+    }
+
+    let obsolete_resolvers = [
+        "banner_light_coords",
+        "bed_light_coords",
+        "bell_light_coords",
+        "chest_light_coords",
+        "conduit_light_coords",
+        "decorated_pot_light_coords",
+        "book_light_coords",
+        "lectern_light_coords",
+        "shulker_box_light_coords",
+        "sign_light_coords",
+        "skull_light_coords",
+        "spawner_light_coords",
+    ];
+    for resolver in obsolete_resolvers {
+        assert!(
+            consumers
+                .iter()
+                .all(|(_, source)| !source.contains(resolver)),
+            "obsolete private resolver {resolver} returned"
+        );
+    }
+
+    let terrain = include_str!("../../../bbb-renderer/src/terrain/mesh/emitter.rs");
+    assert!(terrain.contains("VanillaLightCoords::from_stored("));
+    assert!(!terrain.contains("block.min(15) as f32 / 15.0"));
+    assert!(!terrain.contains("sky.min(15) as f32 / 15.0"));
 }
 
 #[test]
@@ -9347,7 +9408,15 @@ fn weather_precipitation_uses_cold_biome_for_snow_and_brightens_snow_light() {
         Some(WeatherPrecipitation::Snow)
     );
 
-    let column = snow_weather_column(0, 0, 1, 6, TerrainLight { block: 1, sky: 7 }, 96, 0.25);
+    let column = snow_weather_column(
+        0,
+        0,
+        1,
+        6,
+        VanillaLightCoords::from_stored(1, 7, 0, false),
+        96,
+        0.25,
+    );
     assert_eq!(column.light, [4.0 / 15.0, 9.0 / 15.0]);
     assert!(column.u_offset.is_finite());
     assert!(column.v_offset.is_finite());

@@ -48,9 +48,10 @@ pub(super) fn painting_model_instances(
                 segment_x,
                 segment_y,
             );
-            let light = world
-                .sample_block_light(probe)
-                .unwrap_or(bbb_world::TerrainLight::FULL_BRIGHT);
+            let light_coords = world
+                .sample_render_light(probe)
+                .unwrap_or(bbb_render_types::VanillaLightCoords::SKY_FULL_BLOCK_DARK)
+                .packed();
             instances.push(
                 EntityModelInstance::painting_tile(
                     source.entity_id,
@@ -63,11 +64,7 @@ pub(super) fn painting_model_instances(
                     front,
                     back,
                 )
-                .with_light_coords(entity_light_coords(
-                    source.entity_type_id,
-                    &source.data_values,
-                    light,
-                ))
+                .with_light_coords(light_coords)
                 .with_invisible(entity_invisible(&source.data_values))
                 .with_outline_color(outline_color),
             );

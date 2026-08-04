@@ -193,6 +193,12 @@ pub struct TerrainCell {
     pub texture_indices: [u32; 6],
     pub render_shape: TerrainRenderShape,
     pub ambient_occlusion: bool,
+    /// Fixed-state inputs to Vanilla `LevelRenderer.getLightCoords`. These do
+    /// not include resource-model element emission.
+    #[serde(default)]
+    pub state_light_emission: u8,
+    #[serde(default)]
+    pub emissive_rendering: bool,
     pub light: TerrainLight,
     pub tint: [TerrainTint; 6],
     pub face_transparency: [TerrainTransparency; 6],
@@ -271,13 +277,6 @@ pub struct TerrainLight {
 
 impl TerrainLight {
     pub const FULL_BRIGHT: Self = Self { sky: 15, block: 0 };
-
-    fn as_shader_light(self) -> [f32; 2] {
-        [
-            self.block.min(15) as f32 / 15.0,
-            self.sky.min(15) as f32 / 15.0,
-        ]
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -353,6 +352,8 @@ impl TerrainCell {
         texture_indices: [0; 6],
         render_shape: TerrainRenderShape::Cube,
         ambient_occlusion: true,
+        state_light_emission: 0,
+        emissive_rendering: false,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -386,6 +387,8 @@ impl TerrainCell {
             texture_indices: [texture_index; 6],
             render_shape: TerrainRenderShape::Cube,
             ambient_occlusion: true,
+            state_light_emission: 0,
+            emissive_rendering: false,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -421,6 +424,8 @@ impl TerrainCell {
             texture_indices: [texture_index; 6],
             render_shape,
             ambient_occlusion: true,
+            state_light_emission: 0,
+            emissive_rendering: false,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -430,6 +435,12 @@ impl TerrainCell {
 
     pub fn with_light(mut self, light: TerrainLight) -> Self {
         self.light = light;
+        self
+    }
+
+    pub fn with_state_light(mut self, light_emission: u8, emissive_rendering: bool) -> Self {
+        self.state_light_emission = light_emission.min(15);
+        self.emissive_rendering = emissive_rendering;
         self
     }
 

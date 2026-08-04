@@ -17,8 +17,14 @@ def bits(value):
     return str(int.from_bytes(struct.pack(">d", value), "big"))
 
 
-def fact_line(state_id, block_id, behavior, faces):
-    fields = [str(state_id), str(block_id), str(behavior)]
+def fact_line(state_id, block_id, behavior, faces, light_emission=0, emissive=False):
+    fields = [
+        str(state_id),
+        str(block_id),
+        str(behavior),
+        str(light_emission),
+        "1" if emissive else "0",
+    ]
     for rectangles in faces:
         fields.append(str(len(rectangles)))
         for rectangle in rectangles:
@@ -35,7 +41,14 @@ class GenerateBlockStateRenderFactsTests(unittest.TestCase):
             [
                 "version=26.1 count=2",
                 fact_line(0, 7, 0, [empty] * 6),
-                fact_line(1, 8, 5, [full, lower_half, full, empty, empty, full]),
+                fact_line(
+                    1,
+                    8,
+                    5,
+                    [full, lower_half, full, empty, empty, full],
+                    light_emission=12,
+                    emissive=True,
+                ),
             ]
         )
 
@@ -44,6 +57,8 @@ class GenerateBlockStateRenderFactsTests(unittest.TestCase):
 
         self.assertEqual(facts[0].block_type_id, 7)
         self.assertEqual(facts[1].behavior_bits, 5)
+        self.assertEqual(facts[1].light_emission, 12)
+        self.assertTrue(facts[1].emissive_rendering)
         self.assertEqual(len(palette), 3)
         self.assertEqual(state_indices[0], (0, 0, 0, 0, 0, 0))
         self.assertEqual(state_indices[1], (1, 2, 1, 0, 0, 1))
@@ -81,6 +96,8 @@ class GenerateBlockStateRenderFactsTests(unittest.TestCase):
 
         self.assertIn("VANILLA_BLOCK_STATE_RENDER_BLOCK_IDS", protocol)
         self.assertIn("VANILLA_BLOCK_STATE_RENDER_BEHAVIOR_BITS", protocol)
+        self.assertIn("VANILLA_BLOCK_STATE_LIGHT_EMISSION", protocol)
+        self.assertIn("VANILLA_BLOCK_STATE_EMISSIVE_RENDERING_BITS", protocol)
         self.assertIn("    [1, 1, 1, 1, 1, 1],", protocol)
         self.assertIn("VANILLA_FACE_OCCLUSION_MASKS", renderer)
         self.assertEqual(renderer.count("0xffffffffffffffff"), 4)
@@ -91,6 +108,21 @@ class GenerateBlockStateRenderFactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid runtime render fact at id 0"):
             GENERATOR.parse_facts(
                 "version=26.1 count=1\n" + fact_line(1, 0, 0, [[]] * 6),
+                1,
+            )
+
+    def test_parse_rejects_invalid_light_coordinate_state_facts(self):
+        with self.assertRaisesRegex(ValueError, "light emission outside"):
+            GENERATOR.parse_facts(
+                "version=26.1 count=1\n"
+                + fact_line(0, 0, 0, [[]] * 6, light_emission=16),
+                1,
+            )
+        invalid_emissive = fact_line(0, 0, 0, [[]] * 6).split("\t")
+        invalid_emissive[4] = "2"
+        with self.assertRaisesRegex(ValueError, "emissive rendering is not boolean"):
+            GENERATOR.parse_facts(
+                "version=26.1 count=1\n" + "\t".join(invalid_emissive),
                 1,
             )
         with self.assertRaisesRegex(ValueError, "trailing face shape fields"):

@@ -7,7 +7,7 @@
 //! consume custom `spawn_data.entity` state.
 
 use bbb_renderer::{EntityModelInstance, EntityModelKind, SpawnerDisplayRenderState};
-use bbb_world::{SpawnerDisplayEntitySourceState, TerrainLight, WorldStore};
+use bbb_world::{SpawnerDisplayEntitySourceState, WorldStore};
 
 use crate::{
     entity_scene::{
@@ -89,8 +89,8 @@ pub(crate) fn spawner_display_entity_submissions_from_world_at_partial_tick(
                     spin_degrees: source.spin_degrees,
                     scale: source.scale,
                 }));
-                if let Some(light) = world.sample_block_light(source.pos) {
-                    instance = instance.with_light_coords(spawner_light_coords(light));
+                if let Some(light) = world.sample_render_light(source.pos) {
+                    instance = instance.with_light_coords(light.packed());
                 }
                 Some(SpawnerDisplayEntitySubmission {
                     instance,
@@ -129,15 +129,10 @@ fn spawner_display_entity_instance(
         spin_degrees: source.spin_degrees,
         scale: source.scale,
     }));
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(spawner_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     Some(instance)
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)`.
-fn spawner_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]

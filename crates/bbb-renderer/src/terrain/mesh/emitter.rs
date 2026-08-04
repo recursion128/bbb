@@ -13,6 +13,7 @@ use super::{
     geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES},
     TerrainChunkLookup, TerrainMeshMode,
 };
+use bbb_render_types::VanillaLightCoords;
 
 pub(super) fn emit_face(
     mesh: &mut TerrainMesh,
@@ -60,6 +61,8 @@ pub(super) fn emit_cross(
     block_state_id: i32,
     material: TerrainMaterialClass,
     light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
     face_transparency: [TerrainTransparency; 6],
@@ -69,6 +72,7 @@ pub(super) fn emit_cross(
     mode: TerrainMeshMode,
     cardinal: TerrainCardinalLighting,
 ) {
+    let light = state_render_light(light, state_light_emission, emissive_rendering);
     for (face, normal, corners) in CROSS_FACES {
         let face_material = effective_face_material(material, face_transparency[face.index()]);
         if !mode.is_meshed(face_material) {
@@ -102,6 +106,8 @@ pub(super) fn emit_box(
     face_occlusion_shape_indices: [u8; 6],
     fluid: Option<TerrainFluid>,
     light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
     fluid_overlay_texture_index: Option<u32>,
@@ -256,6 +262,8 @@ pub(super) fn emit_box(
                 y,
                 z,
                 light,
+                state_light_emission,
+                emissive_rendering,
                 face_light_emission[face_index],
                 lookup,
             )
@@ -268,6 +276,8 @@ pub(super) fn emit_box(
                 z,
                 face_cubic,
                 light,
+                state_light_emission,
+                emissive_rendering,
                 face_light_emission[face_index],
                 lookup,
             )
@@ -463,6 +473,8 @@ pub(super) fn emit_quads(
     skip_rendering: TerrainSkipRendering,
     face_occlusion_shape_indices: [u8; 6],
     light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
     quads: &[TerrainQuad],
     atlas: &TerrainTextureAtlas,
     ambient_occlusion: bool,
@@ -514,11 +526,18 @@ pub(super) fn emit_quads(
                     z,
                     true,
                     light,
+                    state_light_emission,
+                    emissive_rendering,
                     quad.light_emission,
                     lookup,
                 )
             })
-            .unwrap_or([shader_light_with_emission(light, quad.light_emission); 4]);
+            .unwrap_or(
+                [shader_light_with_emission(
+                    state_render_light(light, state_light_emission, emissive_rendering),
+                    quad.light_emission,
+                ); 4],
+            );
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -670,9 +689,33 @@ fn quad_indices(corners: [[f32; 3]; 4], normal: [f32; 3], reverse_winding: bool)
 }
 
 fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 2] {
-    let mut shader_light = light.as_shader_light();
+    let mut shader_light = stored_light_coords(light).normalized();
     shader_light[0] = shader_light[0].max(light_emission.min(15) as f32 / 15.0);
     shader_light
+}
+
+fn state_render_light(
+    light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
+) -> TerrainLight {
+    terrain_light(VanillaLightCoords::from_stored(
+        light.block,
+        light.sky,
+        state_light_emission,
+        emissive_rendering,
+    ))
+}
+
+fn stored_light_coords(light: TerrainLight) -> VanillaLightCoords {
+    VanillaLightCoords::from_stored(light.block, light.sky, 0, false)
+}
+
+fn terrain_light(coords: VanillaLightCoords) -> TerrainLight {
+    TerrainLight {
+        block: coords.block(),
+        sky: coords.sky(),
+    }
 }
 
 fn fluid_face_vertex_lights(
@@ -681,16 +724,19 @@ fn fluid_face_vertex_lights(
     y: i32,
     z: i32,
     light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
     light_emission: u8,
     lookup: &TerrainChunkLookup<'_>,
 ) -> [[f32; 2]; 4] {
+    let light = state_render_light(light, state_light_emission, emissive_rendering);
     let neighbor = match face {
-        TerrainFace::Down => sample_light(x, y - 1, z, lookup),
+        TerrainFace::Down => sample_render_light(x, y - 1, z, lookup),
         TerrainFace::Up
         | TerrainFace::North
         | TerrainFace::South
         | TerrainFace::West
-        | TerrainFace::East => sample_light(x, y + 1, z, lookup),
+        | TerrainFace::East => sample_render_light(x, y + 1, z, lookup),
     }
     .unwrap_or(TerrainLight { sky: 0, block: 0 });
     [shader_light_with_emission(max_light(light, neighbor), light_emission); 4]
@@ -704,11 +750,16 @@ pub(super) fn face_vertex_lights(
     z: i32,
     face_cubic: bool,
     light: TerrainLight,
+    state_light_emission: u8,
+    emissive_rendering: bool,
     light_emission: u8,
     lookup: &TerrainChunkLookup<'_>,
 ) -> [[f32; 2]; 4] {
     if !enabled {
-        return [shader_light_with_emission(light, light_emission); 4];
+        return [shader_light_with_emission(
+            state_render_light(light, state_light_emission, emissive_rendering),
+            light_emission,
+        ); 4];
     }
 
     let normal = if face_cubic {
@@ -717,11 +768,13 @@ pub(super) fn face_vertex_lights(
         (0, 0, 0)
     };
     let base = (x + normal.0, y + normal.1, z + normal.2);
-    let center_light = if face_cubic {
-        sample_light(base.0, base.1, base.2, lookup).unwrap_or(light)
+    let center_raw_light = if face_cubic {
+        sample_raw_light(base.0, base.1, base.2, lookup).unwrap_or(light)
     } else {
         light
     };
+    let center_light =
+        state_render_light(center_raw_light, state_light_emission, emissive_rendering);
 
     std::array::from_fn(|corner| {
         let (side_a, side_b) = face_corner_sides(face, corner);
@@ -776,12 +829,34 @@ fn light_sample(
             z + blocker_offset.2,
         )
         .is_some_and(blocks_ambient_light_corner);
-    let light = lookup.cell(x, y, z).map_or(fallback, |cell| cell.light);
+    let light = lookup.cell(x, y, z).map_or(fallback, render_light_for_cell);
     (blocks_diagonal, light)
 }
 
-fn sample_light(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> Option<TerrainLight> {
+fn sample_raw_light(
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<TerrainLight> {
     lookup.cell(x, y, z).map(|cell| cell.light)
+}
+
+fn sample_render_light(
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<TerrainLight> {
+    lookup.cell(x, y, z).map(render_light_for_cell)
+}
+
+fn render_light_for_cell(cell: &TerrainCell) -> TerrainLight {
+    state_render_light(
+        cell.light,
+        cell.state_light_emission,
+        cell.emissive_rendering,
+    )
 }
 
 fn smooth_light_blend(
@@ -820,10 +895,7 @@ fn fill_zero_light_channels(light: &mut TerrainLight, center: TerrainLight) {
 }
 
 fn max_light(left: TerrainLight, right: TerrainLight) -> TerrainLight {
-    TerrainLight {
-        sky: left.sky.max(right.sky),
-        block: left.block.max(right.block),
-    }
+    terrain_light(stored_light_coords(left).max(stored_light_coords(right)))
 }
 
 pub(super) fn face_from_normal(normal: [f32; 3]) -> TerrainFace {

@@ -208,6 +208,13 @@ pub struct TerrainBlockCell {
     /// `FluidRenderer`'s water-overlay side material selection.
     #[serde(default)]
     pub fluid_overlay_neighbor: bool,
+    /// Exact state input to `LevelRenderer.getLightCoords`; distinct from a
+    /// resource model element's optional light emission.
+    #[serde(default)]
+    pub state_light_emission: u8,
+    /// Exact state result of `BlockState.emissiveRendering(level, pos)`.
+    #[serde(default)]
+    pub emissive_rendering: bool,
     pub fluid: Option<TerrainFluidState>,
     pub light: TerrainLight,
 }
@@ -1520,6 +1527,8 @@ mod tests {
             skip_rendering: TerrainSkipRendering::NONE,
             face_occlusion_shape_indices: [0; 6],
             fluid_overlay_neighbor: false,
+            state_light_emission: 0,
+            emissive_rendering: false,
             fluid,
             light: TerrainLight::FULL_BRIGHT,
         }

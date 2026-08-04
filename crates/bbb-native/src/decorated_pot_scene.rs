@@ -13,7 +13,7 @@
 use bbb_renderer::{DecoratedPotPattern, DecoratedPotWobble, EntityModelInstance};
 use bbb_world::{
     DecoratedPotFacing as WorldDecoratedPotFacing, DecoratedPotModelSourceState,
-    DecoratedPotWobbleStyleKind as WorldDecoratedPotWobbleStyleKind, TerrainLight, WorldStore,
+    DecoratedPotWobbleStyleKind as WorldDecoratedPotWobbleStyleKind, WorldStore,
 };
 
 /// Like chests/bells, pot instances are projected from block states, not the
@@ -70,8 +70,8 @@ fn decorated_pot_model_instance(
             progress: wobble.progress,
         }));
     }
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(decorated_pot_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -81,12 +81,6 @@ fn decorated_pot_model_instance(
 /// (SOUTH 180°, WEST 90°, NORTH 0°, EAST -90°).
 fn decorated_pot_facing_y_rot(facing: WorldDecoratedPotFacing) -> f32 {
     180.0 - facing.to_y_rot()
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the pot render state's `lightCoords`.
-fn decorated_pot_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -313,18 +307,6 @@ mod tests {
         assert_eq!(
             DecoratedPotPattern::for_sherd_item_resource_id("minecraft:diamond"),
             None
-        );
-    }
-
-    #[test]
-    fn packs_decorated_pot_light_coords_like_vanilla() {
-        assert_eq!(
-            decorated_pot_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            decorated_pot_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
         );
     }
 }

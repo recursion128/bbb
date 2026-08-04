@@ -129,8 +129,9 @@ fn fluid_faces_use_flat_vanilla_light_without_ambient_occlusion() {
         TerrainCell::with_shape(86, TerrainMaterialClass::Fluid, 0, fluid_box_shape(16))
             .with_light(TerrainLight { sky: 4, block: 2 })
             .with_ambient_occlusion(true);
-    cells[cell_index(1, 2, 2, 3)] =
-        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 1 });
+    cells[cell_index(1, 2, 2, 3)] = TerrainCell::EMPTY
+        .with_light(TerrainLight { sky: 15, block: 1 })
+        .with_state_light(12, false);
     cells[cell_index(1, 0, 2, 3)] =
         TerrainCell::EMPTY.with_light(TerrainLight { sky: 3, block: 10 });
     cells[cell_index(0, 2, 2, 3)] =
@@ -144,8 +145,8 @@ fn fluid_faces_use_flat_vanilla_light_without_ambient_occlusion() {
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     let mesh = &layers.translucent[0];
 
-    assert_face_light(mesh, 86, [0.0, 1.0, 0.0], [2.0 / 15.0, 1.0]);
-    assert_face_light(mesh, 86, [0.0, 0.0, -1.0], [2.0 / 15.0, 1.0]);
+    assert_face_light(mesh, 86, [0.0, 1.0, 0.0], [12.0 / 15.0, 1.0]);
+    assert_face_light(mesh, 86, [0.0, 0.0, -1.0], [12.0 / 15.0, 1.0]);
     assert_face_light(mesh, 86, [0.0, -1.0, 0.0], [10.0 / 15.0, 4.0 / 15.0]);
     assert!(face_vertices(mesh, 86, [0.0, 1.0, 0.0])
         .iter()
@@ -726,6 +727,8 @@ fn cross_layers_preserve_emissive_light() {
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
+        state_light_emission: 0,
+        emissive_rendering: false,
         light: TerrainLight { sky: 4, block: 2 },
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Crosses(vec![
@@ -1347,6 +1350,8 @@ fn multi_box_model_skips_absent_faces() {
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
+        state_light_emission: 0,
+        emissive_rendering: false,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Boxes(vec![
@@ -1430,6 +1435,8 @@ fn boxes_use_per_box_texture_and_tint() {
         fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
+        state_light_emission: 0,
+        emissive_rendering: false,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Boxes(vec![
@@ -1500,6 +1507,61 @@ fn mesh_vertices_carry_terrain_light() {
     let mesh = build_opaque_chunk_mesh(&snapshot);
 
     assert_eq!(mesh.vertices[0].light, [6.0 / 15.0, 9.0 / 15.0]);
+}
+
+#[test]
+fn mesh_vertices_apply_state_emission_and_emissive_rendering() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 9, block: 2 })
+        .with_state_light(7, false)
+        .with_ambient_occlusion(false);
+    cells[cell_index(3, 0, 2, 1)] = TerrainCell::with_texture(2, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 3, block: 1 })
+        .with_state_light(3, true)
+        .with_ambient_occlusion(false);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+
+    assert!(mesh
+        .vertices
+        .iter()
+        .filter(|vertex| vertex.block_state_id == 1)
+        .all(|vertex| vertex.light == [7.0 / 15.0, 9.0 / 15.0]));
+    assert!(mesh
+        .vertices
+        .iter()
+        .filter(|vertex| vertex.block_state_id == 2)
+        .all(|vertex| vertex.light == [1.0, 1.0]));
+}
+
+#[test]
+fn cubic_face_offset_samples_neighbor_brightness_with_current_state() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 2, block: 1 })
+        .with_state_light(3, true);
+    cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 9, block: 4 });
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+    let lookup = TerrainChunkLookup::with_target(&snapshot, []);
+
+    let lights = face_vertex_lights(
+        true,
+        TerrainFace::Up,
+        1,
+        0,
+        2,
+        true,
+        TerrainLight { sky: 2, block: 1 },
+        3,
+        true,
+        0,
+        &lookup,
+    );
+
+    assert_eq!(lights, [[1.0, 1.0]; 4]);
 }
 
 #[test]

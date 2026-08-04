@@ -11,7 +11,7 @@
 //! `EnchantTableRenderer.submit` `BookModel.State` derivation run here.
 
 use bbb_renderer::EntityModelInstance;
-use bbb_world::{EnchantingTableBookSourceState, TerrainLight, WorldStore};
+use bbb_world::{EnchantingTableBookSourceState, WorldStore};
 
 /// Like chests/bells/banners, book instances are projected from block states,
 /// not the entity list, so they carry a sentinel id no server entity can use.
@@ -67,8 +67,8 @@ fn enchanting_table_book_model_instance(
     .with_book_page_flip_1(page_flip_1)
     .with_book_page_flip_2(page_flip_2)
     .with_book_float_y(float_y);
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(book_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -94,12 +94,6 @@ fn wrap_radians(mut value: f32) -> f32 {
         value += 2.0 * PI;
     }
     value
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the book render state's `lightCoords`.
-fn book_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -188,8 +182,9 @@ mod tests {
         assert_eq!(book.render_state.body_rot, 0.0);
         // float_y = 0.1 + sin(0)*0.01 = 0.1.
         assert!((book.render_state.book_float_y - 0.1).abs() < 1e-6);
-        // Empty light data: sky falls back to 15, block to 0 -> pack(0, 15).
-        assert_eq!(book.render_state.light_coords, 15 << 20);
+        // Empty stored block light is raised to the enchanting table state's
+        // Vanilla emission 7 before packing with sky 15.
+        assert_eq!(book.render_state.light_coords, (7 << 4) | (15 << 20));
     }
 
     #[test]
@@ -247,17 +242,5 @@ mod tests {
         use std::f32::consts::PI;
         assert!((wrap_radians(1.5 * PI) - (-0.5 * PI)).abs() < 1e-5);
         assert!((wrap_radians(-1.5 * PI) - (0.5 * PI)).abs() < 1e-5);
-    }
-
-    #[test]
-    fn packs_book_light_coords_like_vanilla() {
-        assert_eq!(
-            book_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            book_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 }

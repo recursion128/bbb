@@ -13,7 +13,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     SkullBlockAttachment as WorldSkullBlockAttachment, SkullBlockKind, SkullModelSourceState,
-    SkullWallFacing, TerrainLight, WorldStore,
+    SkullWallFacing, WorldStore,
 };
 
 /// Block-entity model sentinel id; no vanilla network entity id is negative.
@@ -49,8 +49,8 @@ fn skull_model_instance(
         attachment,
     )
     .with_worn_head_animation_pos(source.animation_progress);
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(skull_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -107,11 +107,6 @@ fn skull_wall_facing(facing: SkullWallFacing) -> EntityAttachmentFace {
         SkullWallFacing::West => EntityAttachmentFace::West,
         SkullWallFacing::East => EntityAttachmentFace::East,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)`.
-fn skull_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]

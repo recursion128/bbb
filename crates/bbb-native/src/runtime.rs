@@ -31,6 +31,7 @@ use bbb_protocol::{
     },
     ComponentStyle, RichTextComponent, StyledTextRun, MC_VERSION,
 };
+use bbb_render_types::VanillaLightCoords;
 use bbb_renderer::{
     hud_air_supply_pop, hud_air_supply_visible, hud_command_block_editor_layout,
     hud_jigsaw_block_editor_layout, hud_minecart_command_block_editor_layout,
@@ -338,7 +339,6 @@ const VANILLA_RAIN_FOG_END_OFFSET: f32 = -256.0;
 const VANILLA_RAIN_FOG_SMOOTHING_PER_TICK: f32 = 0.2;
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
-const VANILLA_PARTICLE_MISSING_CHUNK_LIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
 const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
 const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
 const VANILLA_END_FLASH_MIN_DURATION_TICKS: i32 = 100;
@@ -18759,7 +18759,7 @@ fn rain_weather_column(
     z: i32,
     bottom_y: i32,
     top_y: i32,
-    light: TerrainLight,
+    light: VanillaLightCoords,
     ticks: i32,
     partial_tick: f32,
 ) -> WeatherColumn {
@@ -18785,7 +18785,7 @@ fn snow_weather_column(
     z: i32,
     bottom_y: i32,
     top_y: i32,
-    light: TerrainLight,
+    light: VanillaLightCoords,
     ticks: i32,
     partial_tick: f32,
 ) -> WeatherColumn {
@@ -18822,17 +18822,14 @@ fn weather_column_offset_seed(x: i32, z: i32) -> i32 {
         .wrapping_add(z.wrapping_mul(13_761))
 }
 
-fn weather_light_coords(light: TerrainLight) -> [f32; 2] {
-    [
-        light.block.min(15) as f32 / 15.0,
-        light.sky.min(15) as f32 / 15.0,
-    ]
+fn weather_light_coords(light: VanillaLightCoords) -> [f32; 2] {
+    light.normalized()
 }
 
-fn weather_snow_light_coords(light: TerrainLight) -> [f32; 2] {
+fn weather_snow_light_coords(light: VanillaLightCoords) -> [f32; 2] {
     [
-        ((u16::from(light.block.min(15)) * 3 + 15) / 4) as f32 / 15.0,
-        ((u16::from(light.sky.min(15)) * 3 + 15) / 4) as f32 / 15.0,
+        ((u16::from(light.block()) * 3 + 15) / 4) as f32 / 15.0,
+        ((u16::from(light.sky()) * 3 + 15) / 4) as f32 / 15.0,
     ]
 }
 

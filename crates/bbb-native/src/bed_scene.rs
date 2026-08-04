@@ -11,7 +11,7 @@
 use bbb_renderer::{BedModelPart, EntityDyeColor, EntityModelInstance};
 use bbb_world::{
     BedColorKind as WorldBedColorKind, BedModelSourceState, BedPartKind as WorldBedPartKind,
-    TerrainLight, WorldStore,
+    WorldStore,
 };
 
 /// Like chests/signs, bed instances are projected from block states, not the
@@ -43,20 +43,17 @@ fn bed_model_instance(source: &BedModelSourceState, world: &WorldStore) -> Entit
         bed_model_color(source.color),
         bed_model_part(source.part),
     );
-    let mut light = world.sample_block_light(source.pos);
+    let mut light = world.sample_render_light(source.pos);
     if let Some(partner_pos) = source.partner_pos {
         // Vanilla `BrightnessCombiner`: the bed's `extractRenderState` combine
         // renders both halves with `LightCoordsUtil.max(pack(first),
         // pack(second))`, i.e. the per-component max of the two samples.
-        if let (Some(own), Some(partner)) = (light, world.sample_block_light(partner_pos)) {
-            light = Some(TerrainLight {
-                sky: own.sky.max(partner.sky),
-                block: own.block.max(partner.block),
-            });
+        if let (Some(own), Some(partner)) = (light, world.sample_render_light(partner_pos)) {
+            light = Some(own.max(partner));
         }
     }
     if let Some(light) = light {
-        instance = instance.with_light_coords(bed_light_coords(light));
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -87,12 +84,6 @@ fn bed_model_part(part: WorldBedPartKind) -> BedModelPart {
         WorldBedPartKind::Head => BedModelPart::Head,
         WorldBedPartKind::Foot => BedModelPart::Foot,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the bed render state's `lightCoords`.
-fn bed_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -255,25 +246,6 @@ mod tests {
                 color: EntityDyeColor::Black,
                 part: BedModelPart::Foot,
             }
-        );
-    }
-
-    #[test]
-    fn packs_bed_light_coords_like_vanilla() {
-        assert_eq!(
-            bed_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            bed_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
-        assert_eq!(
-            bed_light_coords(TerrainLight {
-                sky: 200,
-                block: 200
-            }),
-            15 << 4 | 15 << 20
         );
     }
 }

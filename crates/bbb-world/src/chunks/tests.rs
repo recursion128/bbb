@@ -28,6 +28,7 @@ use bbb_protocol::packets::{
     SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
     SetChunkCacheRadius as ProtocolSetChunkCacheRadius, Vec3d as ProtocolVec3d,
 };
+use bbb_render_types::VanillaLightCoords;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
@@ -830,14 +831,61 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
         .unwrap();
 
     // Chunk (2, -3) local (2, 1, 3) maps to world block (34, 1, -45).
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
     assert_eq!(
-        store.sample_block_light(BlockPos {
-            x: 34,
-            y: 1,
-            z: -45,
-        }),
+        store.sample_block_light(pos),
         Some(TerrainLight { sky: 4, block: 13 })
     );
+
+    // The explicit-state overload uses the supplied state but keeps `pos` as
+    // the brightness-query coordinate. Lower the stored block channel so the
+    // lit redstone torch's emission is observable independently.
+    let mut sky = vec![0; LIGHT_ARRAY_BYTES];
+    let mut block = vec![0; LIGHT_ARRAY_BYTES];
+    set_light_nibble(&mut sky, index, 4);
+    set_light_nibble(&mut block, index, 2);
+    store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
+        })
+        .unwrap();
+    let lit_torch = crate::registries::vanilla_block_state_id(
+        "minecraft:redstone_torch",
+        &BTreeMap::from([("lit".to_string(), "true".to_string())]),
+    )
+    .unwrap();
+    assert_eq!(
+        store.sample_render_light_for_state(lit_torch, pos),
+        Some(VanillaLightCoords::from_stored(2, 4, 7, false))
+    );
+
+    // The default overload reads the state at `pos`; emissiveRendering wins
+    // over stored light while the raw gameplay/debug query remains unchanged.
+    let magma =
+        crate::registries::vanilla_block_state_id("minecraft:magma_block", &BTreeMap::new())
+            .unwrap();
+    assert!(store.set_block_state_id(pos, magma));
+    assert_eq!(
+        store.sample_render_light(pos),
+        Some(VanillaLightCoords::FULL_BRIGHT)
+    );
+    assert_eq!(
+        store.sample_block_light(pos),
+        Some(TerrainLight { sky: 4, block: 2 })
+    );
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    let cell = &terrain.cells[terrain_cell_index(2, 1, 3, 16)];
+    assert_eq!(cell.state_light_emission, 3);
+    assert!(cell.emissive_rendering);
+
     // Unloaded chunk and out-of-world height report no data so callers can apply
     // the entity full-bright fallback.
     assert_eq!(
@@ -854,6 +902,17 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
             y: 999,
             z: -45,
         }),
+        None
+    );
+    assert_eq!(
+        store.sample_render_light_for_state(
+            lit_torch,
+            BlockPos {
+                x: 9999,
+                y: 1,
+                z: 9999,
+            }
+        ),
         None
     );
 }

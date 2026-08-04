@@ -12,7 +12,7 @@
 //! source is purely the block state.
 
 use bbb_renderer::EntityModelInstance;
-use bbb_world::{LecternBookModelSourceState, TerrainLight, WorldStore};
+use bbb_world::{LecternBookModelSourceState, WorldStore};
 
 /// Like chests/bells/banners, book instances are projected from block states,
 /// not the entity list, so they carry a sentinel id no server entity can use.
@@ -57,16 +57,10 @@ fn lectern_book_model_instance(
     .with_book_open(LECTERN_BOOK_OPEN)
     .with_book_page_flip_1(LECTERN_BOOK_PAGE_FLIP_1)
     .with_book_page_flip_2(LECTERN_BOOK_PAGE_FLIP_2);
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(book_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the book render state's `lightCoords`.
-fn book_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -185,17 +179,5 @@ mod tests {
                 "facing {facing}"
             );
         }
-    }
-
-    #[test]
-    fn packs_book_light_coords_like_vanilla() {
-        assert_eq!(
-            book_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            book_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 }

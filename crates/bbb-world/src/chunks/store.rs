@@ -18,6 +18,7 @@ use bbb_protocol::{
         SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
     },
 };
+use bbb_render_types::VanillaLightCoords;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
@@ -677,6 +678,31 @@ impl WorldStore {
         self.sample_stored_light(pos)
     }
 
+    /// Samples Vanilla `LevelRenderer.getLightCoords(level, pos)` without
+    /// collapsing the result into a renderer-specific scalar.
+    pub fn sample_render_light(&self, pos: BlockPos) -> Option<VanillaLightCoords> {
+        let state_id = self.probe_block(pos)?.block_state_id;
+        self.sample_render_light_for_state(state_id, pos)
+    }
+
+    /// Samples the explicit-state overload used by `BlockModelLighter` and
+    /// brushable block entities. The state supplies emissive/emission facts;
+    /// `pos` remains the brightness-getter query coordinate.
+    pub fn sample_render_light_for_state(
+        &self,
+        state_id: i32,
+        pos: BlockPos,
+    ) -> Option<VanillaLightCoords> {
+        let stored = self.sample_block_light(pos)?;
+        let facts = vanilla_block_state_render_facts(state_id)?;
+        Some(VanillaLightCoords::from_stored(
+            stored.block,
+            stored.sky,
+            facts.light_emission(),
+            facts.emissive_rendering(),
+        ))
+    }
+
     /// Samples the light engine's one-section vertical padding used by debug
     /// queries. `LightDebugRenderer` can scan below/above the playable build
     /// height while the camera is near an edge; vanilla retains light data for
@@ -911,6 +937,10 @@ impl WorldStore {
                             .map_or([0; 6], |facts| facts.face_occlusion_shape_indices()),
                         fluid_overlay_neighbor: render_facts
                             .is_some_and(|facts| facts.fluid_water_overlay_neighbor()),
+                        state_light_emission: render_facts
+                            .map_or(0, |facts| facts.light_emission()),
+                        emissive_rendering: render_facts
+                            .is_some_and(|facts| facts.emissive_rendering()),
                         fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
                         block_name,
                         block_properties,

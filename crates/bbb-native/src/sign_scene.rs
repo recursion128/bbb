@@ -10,6 +10,7 @@
 //! the map-label `minecraft:font/default` atlas.
 
 use bbb_item_model::NativeItemRuntime;
+use bbb_render_types::VanillaLightCoords;
 use bbb_renderer::{
     bake_sign_text_surface, CameraPose, EntityModelInstance, HudFontGlyphMap, HudStyledTextRun,
     HudTextStyle, SignModelAttachment, SignModelWood, SignTextOutlineContext, SignTextSurface,
@@ -17,7 +18,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     BlockPos, SignModelAttachment as WorldSignModelAttachment, SignTextSideState,
-    SignWoodKind as WorldSignWoodKind, TerrainLight, WorldStore,
+    SignWoodKind as WorldSignWoodKind, WorldStore,
 };
 
 /// Like chests, sign instances are projected from block states, not the
@@ -56,7 +57,7 @@ pub(crate) fn sign_scene_from_world(
     for source in world.sign_model_source_states() {
         let attachment = sign_model_attachment(source.attachment);
         let body_rot = -source.angle_degrees;
-        let light = world.sample_block_light(source.pos);
+        let light = world.sample_render_light(source.pos);
         let mut instance = EntityModelInstance::sign(
             SIGN_BLOCK_MODEL_ENTITY_ID,
             [
@@ -69,7 +70,7 @@ pub(crate) fn sign_scene_from_world(
             attachment,
         );
         if let Some(light) = light {
-            instance = instance.with_light_coords(sign_light_coords(light));
+            instance = instance.with_light_coords(light.packed());
         }
         instances.push(instance);
         if let Some(glyphs) = glyphs {
@@ -102,7 +103,7 @@ fn bake_sign_text_face(
     body_rot: f32,
     front: bool,
     side: &SignTextSideState,
-    light: Option<TerrainLight>,
+    light: Option<VanillaLightCoords>,
     glyphs: &HudFontGlyphMap,
     should_filter_text: bool,
 ) -> Option<SignTextSurface> {
@@ -114,7 +115,9 @@ fn bake_sign_text_face(
     let text_light = if side.has_glowing_text {
         ITEM_MODEL_FULL_BRIGHT_LIGHT
     } else {
-        shader_light(light.unwrap_or(TerrainLight { sky: 15, block: 0 }))
+        light
+            .unwrap_or(VanillaLightCoords::SKY_FULL_BLOCK_DARK)
+            .normalized()
     };
     bake_sign_text_surface(
         [pos.x as f32, pos.y as f32, pos.z as f32],
@@ -174,21 +177,6 @@ pub(crate) fn sign_model_attachment(attachment: WorldSignModelAttachment) -> Sig
         WorldSignModelAttachment::HangingCeilingMiddle => SignModelAttachment::HangingCeilingMiddle,
         WorldSignModelAttachment::HangingWall => SignModelAttachment::HangingWall,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the sign render state's `lightCoords`.
-fn sign_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
-}
-
-/// Lightmap shader coords from a raw light sample (block/15, sky/15), the
-/// same mapping the item-frame map label path uses.
-fn shader_light(light: TerrainLight) -> [f32; 2] {
-    [
-        f32::from(light.block.min(15)) / 15.0,
-        f32::from(light.sky.min(15)) / 15.0,
-    ]
 }
 
 #[cfg(test)]
@@ -449,18 +437,6 @@ mod tests {
         let filtered = sign_scene_from_world(&world, Some(&runtime), true);
         assert_eq!(raw.text_surfaces[0].vertex_count(), 4);
         assert_eq!(filtered.text_surfaces[0].vertex_count(), 12);
-    }
-
-    #[test]
-    fn packs_sign_light_coords_like_vanilla() {
-        assert_eq!(
-            sign_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            sign_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 
     #[test]

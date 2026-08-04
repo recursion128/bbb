@@ -19,7 +19,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     BannerBlockForm as WorldBannerBlockForm, BannerDyeColorKind as WorldBannerDyeColorKind,
-    BannerModelSourceState, BannerPatternLayerState, TerrainLight, WorldStore,
+    BannerModelSourceState, BannerPatternLayerState, WorldStore,
 };
 
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
@@ -65,8 +65,8 @@ fn banner_model_instance(
         }),
     )
     .with_banner_flag_phase(source.phase);
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(banner_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -230,12 +230,6 @@ fn banner_layer_dye_color(name: &str) -> Option<EntityDyeColor> {
         "black" => Some(EntityDyeColor::Black),
         _ => None,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the banner render state's `lightCoords`.
-fn banner_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -627,17 +621,5 @@ mod tests {
         write_mutf8(&mut payload, translation_key);
         payload.push(0);
         payload
-    }
-
-    #[test]
-    fn packs_banner_light_coords_like_vanilla() {
-        assert_eq!(
-            banner_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            banner_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 }

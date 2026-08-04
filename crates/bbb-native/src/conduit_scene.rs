@@ -6,7 +6,7 @@
 //! source into those part-specific `EntityModelInstance`s.
 
 use bbb_renderer::{CameraPose, ConduitModelPart, EntityModelInstance};
-use bbb_world::{ConduitModelSourceState, TerrainLight, WorldStore};
+use bbb_world::{ConduitModelSourceState, WorldStore};
 
 /// Block-entity model sentinel id; no vanilla network entity id is negative.
 const CONDUIT_BLOCK_MODEL_ENTITY_ID: i32 = -1;
@@ -29,8 +29,8 @@ fn conduit_model_instances(
     camera_pose: Option<CameraPose>,
 ) -> Vec<EntityModelInstance> {
     let light = world
-        .sample_block_light(source.pos)
-        .map(conduit_light_coords);
+        .sample_render_light(source.pos)
+        .map(|light| light.packed());
     if !source.is_active {
         return vec![conduit_part_instance(
             source,
@@ -91,11 +91,6 @@ fn conduit_part_instance(
         instance = instance.with_light_coords(light);
     }
     instance
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)`.
-fn conduit_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]

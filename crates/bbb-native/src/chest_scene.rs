@@ -13,7 +13,7 @@
 use bbb_renderer::{ChestModelHalf, ChestModelTexture, EntityModelInstance};
 use bbb_world::{
     ChestModelFacing as WorldChestModelFacing, ChestModelHalf as WorldChestModelHalf,
-    ChestModelKind as WorldChestModelKind, ChestModelSourceState, TerrainLight, WorldStore,
+    ChestModelKind as WorldChestModelKind, ChestModelSourceState, WorldStore,
 };
 use chrono::{Datelike, Local};
 
@@ -85,20 +85,17 @@ fn chest_model_instance(
         chest_model_half(source.half),
     )
     .with_chest_openness(source.openness);
-    let mut light = world.sample_block_light(source.pos);
+    let mut light = world.sample_render_light(source.pos);
     if let Some(partner_pos) = source.partner_pos {
         // Vanilla `BrightnessCombiner`: a joined double chest renders both
         // halves with `LightCoordsUtil.max(pack(first), pack(second))`, i.e.
         // the per-component max of the two block-position samples.
-        if let (Some(own), Some(partner)) = (light, world.sample_block_light(partner_pos)) {
-            light = Some(TerrainLight {
-                sky: own.sky.max(partner.sky),
-                block: own.block.max(partner.block),
-            });
+        if let (Some(own), Some(partner)) = (light, world.sample_render_light(partner_pos)) {
+            light = Some(own.max(partner));
         }
     }
     if let Some(light) = light {
-        instance = instance.with_light_coords(chest_light_coords(light));
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -144,13 +141,6 @@ fn chest_model_half(half: WorldChestModelHalf) -> ChestModelHalf {
         WorldChestModelHalf::Left => ChestModelHalf::Left,
         WorldChestModelHalf::Right => ChestModelHalf::Right,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the chest render state's `lightCoords` with
-/// no renderer-specific block-light override.
-fn chest_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -437,25 +427,6 @@ mod tests {
         assert_eq!(
             chest_model_texture(WorldChestModelKind::Trapped, ORDINARY_CHEST_TEXTURES),
             ChestModelTexture::Trapped
-        );
-    }
-
-    #[test]
-    fn packs_chest_light_coords_like_vanilla() {
-        assert_eq!(
-            chest_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            chest_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
-        assert_eq!(
-            chest_light_coords(TerrainLight {
-                sky: 200,
-                block: 200
-            }),
-            15 << 4 | 15 << 20
         );
     }
 }

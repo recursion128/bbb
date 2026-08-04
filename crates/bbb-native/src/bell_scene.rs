@@ -12,8 +12,7 @@
 
 use bbb_renderer::{BellShakeDirection, EntityModelInstance};
 use bbb_world::{
-    BellModelSourceState, BellShakeDirectionKind as WorldBellShakeDirectionKind, TerrainLight,
-    WorldStore,
+    BellModelSourceState, BellShakeDirectionKind as WorldBellShakeDirectionKind, WorldStore,
 };
 
 /// Like chests/signs, bell instances are projected from block states, not
@@ -46,8 +45,8 @@ fn bell_model_instance(source: &BellModelSourceState, world: &WorldStore) -> Ent
     )
     .with_bell_ticks(source.ticks)
     .with_bell_shake_direction(source.shake_direction.map(bell_shake_direction));
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(bell_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -61,12 +60,6 @@ fn bell_shake_direction(direction: WorldBellShakeDirectionKind) -> BellShakeDire
         WorldBellShakeDirectionKind::East => BellShakeDirection::East,
         WorldBellShakeDirectionKind::West => BellShakeDirection::West,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the bell render state's `lightCoords`.
-fn bell_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -203,17 +196,5 @@ mod tests {
         assert_eq!(instances.len(), 1);
         assert_eq!(instances[0].render_state.bell_ticks, 0.0);
         assert_eq!(instances[0].render_state.bell_shake_direction, None);
-    }
-
-    #[test]
-    fn packs_bell_light_coords_like_vanilla() {
-        assert_eq!(
-            bell_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            bell_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 }

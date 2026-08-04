@@ -4,10 +4,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HalfTransparentBlock;
@@ -85,7 +87,11 @@ public final class BlockStateRenderFactsReport {
                 .append('\t')
                 .append(BuiltInRegistries.BLOCK.getId(block))
                 .append('\t')
-                .append(facts);
+                .append(facts)
+                .append('\t')
+                .append(state.getLightEmission())
+                .append('\t')
+                .append(state.emissiveRendering(EmptyBlockGetter.INSTANCE, BlockPos.ZERO) ? 1 : 0);
             for (Direction direction : DIRECTIONS) {
                 List<AABB> boxes = state.getFaceOcclusionShape(direction).toAabbs();
                 line.append('\t').append(boxes.size());

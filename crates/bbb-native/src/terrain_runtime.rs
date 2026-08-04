@@ -1891,6 +1891,8 @@ fn convert_terrain_snapshot(
                 texture_indices,
                 render_shape,
                 ambient_occlusion,
+                state_light_emission: cell.state_light_emission,
+                emissive_rendering: cell.emissive_rendering,
                 material: match cell.material {
                     bbb_world::TerrainMaterialClass::Empty => TerrainMaterialClass::Empty,
                     bbb_world::TerrainMaterialClass::Invisible => TerrainMaterialClass::Empty,

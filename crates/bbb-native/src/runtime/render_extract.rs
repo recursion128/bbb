@@ -1097,13 +1097,10 @@ pub(crate) fn lightmap_environment_attributes_for_world(world: &WorldStore) -> L
 }
 
 pub(crate) fn particle_light_for_world(world: &WorldStore, position: [f64; 3]) -> [f32; 2] {
-    let light = world
-        .sample_block_light(particle_light_block_pos(position))
-        .unwrap_or(VANILLA_PARTICLE_MISSING_CHUNK_LIGHT);
-    [
-        light.block.min(15) as f32 / 15.0,
-        light.sky.min(15) as f32 / 15.0,
-    ]
+    world
+        .sample_render_light(particle_light_block_pos(position))
+        .unwrap_or(VanillaLightCoords::MISSING_CHUNK_PARTICLE)
+        .normalized()
 }
 
 #[cfg(test)]
@@ -1581,20 +1578,20 @@ pub(crate) fn weather_render_state_for_world(
             }
 
             let light_sample_y = camera_block_y.max(terrain_height);
-            let raw_light = world
-                .sample_block_light(BlockPos {
+            let light = world
+                .sample_render_light(BlockPos {
                     x,
                     y: light_sample_y,
                     z,
                 })
-                .unwrap_or(VANILLA_PARTICLE_MISSING_CHUNK_LIGHT);
+                .unwrap_or(VanillaLightCoords::FULL_BRIGHT);
             match precipitation {
                 WeatherPrecipitation::Rain => rain_columns.push(rain_weather_column(
                     x,
                     z,
                     bottom_y,
                     top_y,
-                    raw_light,
+                    light,
                     ticks,
                     partial_tick,
                 )),
@@ -1603,7 +1600,7 @@ pub(crate) fn weather_render_state_for_world(
                     z,
                     bottom_y,
                     top_y,
-                    raw_light,
+                    light,
                     ticks,
                     partial_tick,
                 )),

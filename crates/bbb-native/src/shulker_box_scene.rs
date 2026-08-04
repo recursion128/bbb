@@ -12,7 +12,7 @@
 use bbb_renderer::{EntityAttachmentFace, EntityDyeColor, EntityModelInstance};
 use bbb_world::{
     ShulkerBoxColorKind as WorldShulkerBoxColorKind, ShulkerBoxFacing as WorldShulkerBoxFacing,
-    ShulkerBoxModelSourceState, TerrainLight, WorldStore,
+    ShulkerBoxModelSourceState, WorldStore,
 };
 
 /// Like chests/bells, shulker box instances are projected from block states,
@@ -50,8 +50,8 @@ fn shulker_box_model_instance(
         shulker_box_facing(source.facing),
     )
     .with_shulker_box_progress(source.progress);
-    if let Some(light) = world.sample_block_light(source.pos) {
-        instance = instance.with_light_coords(shulker_box_light_coords(light));
+    if let Some(light) = world.sample_render_light(source.pos) {
+        instance = instance.with_light_coords(light.packed());
     }
     instance
 }
@@ -86,13 +86,6 @@ fn shulker_box_facing(facing: WorldShulkerBoxFacing) -> EntityAttachmentFace {
         WorldShulkerBoxFacing::West => EntityAttachmentFace::West,
         WorldShulkerBoxFacing::East => EntityAttachmentFace::East,
     }
-}
-
-/// Vanilla `LightCoordsUtil.pack(block, sky)` (`block << 4 | sky << 20`) over
-/// the raw stored light sample — the shulker box render state's
-/// `lightCoords`.
-fn shulker_box_light_coords(light: TerrainLight) -> u32 {
-    u32::from(light.block.min(15)) << 4 | u32::from(light.sky.min(15)) << 20
 }
 
 #[cfg(test)]
@@ -222,17 +215,5 @@ mod tests {
             }
         );
         assert_eq!(resting.render_state.shulker_box_progress, 0.0);
-    }
-
-    #[test]
-    fn packs_shulker_box_light_coords_like_vanilla() {
-        assert_eq!(
-            shulker_box_light_coords(TerrainLight { sky: 15, block: 0 }),
-            15 << 20
-        );
-        assert_eq!(
-            shulker_box_light_coords(TerrainLight { sky: 7, block: 9 }),
-            9 << 4 | 7 << 20
-        );
     }
 }

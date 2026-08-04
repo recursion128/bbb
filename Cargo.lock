@@ -341,6 +341,7 @@ dependencies = [
  "bbb-net",
  "bbb-pack",
  "bbb-protocol",
+ "bbb-render-types",
  "bbb-renderer",
  "bbb-world",
  "chrono",
