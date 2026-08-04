@@ -6695,7 +6695,7 @@
             "crates/bbb-world/src/client/inventory/use_prediction.rs#predict_local_block_use",
             "crates/bbb-world/src/client/inventory/use_prediction/block_use_item_on.rs#predict_local_block_use_item_on",
             "crates/bbb-world/src/client/inventory/use_prediction/block_use_without_item.rs#predict_local_block_use_without_item",
-            "crates/bbb-world/src/client/local_player.rs#next_local_prediction_sequence",
+            "crates/bbb-world/src/block_events.rs#next_local_prediction_sequence",
             "vanilla:net/minecraft/client/multiplayer/MultiPlayerGameMode.java#performUseItemOn",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleUseItemOn"
           ],
