@@ -6672,7 +6672,7 @@
         "command_surface": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#start_use_item",
-            "crates/bbb-native/src/input/commands.rs#queue_use_item_on_command",
+            "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_on_command",
             "crates/bbb-net/src/driver/commands.rs#send_use_item_on"
           ],
           "gap": null,
@@ -6745,7 +6745,7 @@
         "command_surface": {
           "evidence": [
             "crates/bbb-native/src/input/mouse.rs#start_use_item",
-            "crates/bbb-native/src/input/commands.rs#queue_use_item_command",
+            "crates/bbb-native/src/input/commands.rs#send_reserved_use_item_command",
             "crates/bbb-net/src/driver/commands.rs#send_use_item"
           ],
           "gap": null,
