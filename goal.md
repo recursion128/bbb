@@ -455,6 +455,32 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
+#### Active contract：ClientLevel level-dirty handoff
+
+- 目标与 owner：闭合 `sendBlockUpdated`、`setBlocksDirty`、`setSectionDirtyWithNeighbors`、
+  `setSectionRangeDirty`、`destroyBlockProgress`、`onSectionBecomingNonEmpty` 六个 owner；
+  `WorldStore` 的 mark_terrain_* 家族是唯一失效 resolver，native occlusion graph 只经
+  section-update 派生，destroy progress 只经 world 侧单一合并查询。
+- Vanilla 决策序：`Level.setBlock` 双通知（`setBlocksDirty` 带 requiresRender 门 +
+  `sendBlockUpdated` 按 flag 2/4/8）；`LevelChunk.setBlockState` 同态返回 null ⇒ 无任何
+  标记/通知；block 变化 ±1 block 邻域→section 展开；standalone light ±1 section 立方；
+  chunk-load ±1 chunk 全高；destroy progress id-keyed upsert、≥10 移除、400 tick 过期、
+  本地与 packet 同 map 按 pos 取 max；空 section 翻非空 → occlusion 传播。
+- 缺口修复：`set_block_state_id` 同态早退 false（vanilla 同态 null，杜绝服务器重发同态
+  更新触发的伪 remesh）；piston 两处 abort-on-false 调用方预过滤同态写；prediction
+  create/sync 路径已有同态门，只补证据。
+- 等价论证（记入边界页）：flag-8 player priority ≙ mesh target distance-first 扫描（补
+  order focused test）；requiresRender 门 ≙ state-id-change 保守超集；
+  `onSectionBecomingNonEmpty` ≙ occlusion_section_updates 增量派生。
+- focused evidence：六 owner 的 implementation/test cell；same-state no-op 测试；player
+  邻近 chunk 先于远 chunk 调度的 order 测试；既有 neighborhood/light-cube/destroy 测试。
+- 非目标：level-events、particle routing、biome tint、requiresRender 的模型级比较
+  （纯性能优化非可观察行为）；发现缺口只登记对应既有 route。
+- acceptance/gate：world/native focused tests、inventory exact-output/source guard、docs
+  lint/fmt/diff/workspace check；高风险提交后 full gate，并刷新 fixture/live playable stamp。
+- 安全停止点/blocker：只允许合同 full-gated 提交，或六 owner evidence 完整、同态 no-op
+  与调度序证据落地且 focused/live/full gate 全通过的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
