@@ -456,6 +456,22 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer item-use-state
+
+- 目标与 owner：闭合 `player-local-item-use-state` 6 个 owner（startUsingItem、
+  stopUsingItem、getUsedItemHand、isSlowDueToUsingItem、itemUseSpeedMultiplier、
+  onSyncedDataUpdated）。
+- 审计事实：本地 use 状态（hand 记录/take drain）由 use-prediction 链拥有；
+  use 减速与乘子由 movement 输入归一链拥有（input-movement 已引用）；synced
+  LIVING_ENTITY_FLAGS（is_using/off_hand 掩码）由 entity store 投影链拥有——
+  全部验证型，无缺口。
+- focused evidence：census 6-owner OwnerEvidence + scripts/tests 断言块
+  （local-player 分区测试）。
+- 非目标：不动 use-prediction/packet 语义；发现其他 route 缺口只登记账本。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻
+  equivalent、账本删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 6-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
