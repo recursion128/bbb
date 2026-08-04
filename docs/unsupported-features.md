@@ -71,7 +71,9 @@ Matrix routes: `world-local-player-decisions`, `interaction-game-mode-decisions`
   block-breaking, use/attack/pick, carried-item, creative and spectator branch.
   Audit the 104 local-player and 39 game-mode owners against their actual
   command/state/presentation paths and close only after the applicable live
-  interaction cases pass.
+  interaction cases pass. The current partition census is bounded by
+  `goal.md#active-工程合同localplayergame-mode-decision-partition-census` and
+  changes evidence/routes only; implementation starts after its full gate.
 
 ## Render-step, HUD and block-entity presentation closure
 

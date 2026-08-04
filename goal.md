@@ -433,6 +433,28 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 状态：`maintenance`。本轮 census 的 repo-owned ready 候选已清零；新候选只有在机械审计登记真实
 重复 owner/path、删除目标、evidence 与 reopen condition 后才重开为 `active`，不得保留无界优化任务。
 
+### Active 工程合同：LocalPlayer/game-mode decision partition census
+
+目标：只读重审 `LocalPlayer` 104、`MultiPlayerGameMode` 39 与 `Minecraft` interaction 入口 6，
+把当前两个 broad `partial` 机制拆成可独立判定、实施和验收的同质 lifecycle/decision 机制；本 slice
+只修 inventory、matrix、ledger 与 canonical Wiki，不修改 production 行为。
+
+权威与 owner：本地 26.1 `LocalPlayer.java`、`MultiPlayerGameMode.java` 及 `Minecraft` 六个调用入口；
+复用 Tree-sitter `JavaMethod` inventory 和 source hash，exact method→mechanism route 只在
+`client_mechanism_inventory.py` 维护，生成 JSON 只存排序稳定 evidence。每个新机制必须有单一 Vanilla
+决策面、明确 BBB projection/evidence、状态与唯一 ledger route；support accessor 不得掩盖副作用。
+
+阶段：A 机械导出 149 owner 的 signature/call/field surface 并完整阅读 Vanilla；B 对照 BBB production
+call chain 与 tests，冻结 lifecycle、输入、ordering、fallback、packet/action 和 presentation 分组；C
+实现 fail-closed route map、重复/遗漏/stale fixture 与版本化 inventory；D 拆 matrix broad 行并把真实
+repo-owned gap 登记为单语义 ledger item；E 更新 movement/interaction Wiki、完整 review/提交/full gate。
+
+Focused：149 owner 总数与逐 source 计数；route 唯一、全覆盖和 unknown fail closed；overload 同组、
+副作用方法不得落 support；generated exact-output/source-hash stale；matrix↔ledger 双向 route；BBB
+symbol/test path 存在性。非目标：不实现 movement、prediction、interaction、packet、renderer/screen
+行为，不改变现有状态或 live 路径。generator 高风险，合同与最终各 full gate；安全停止点仅为干净
+full-gated census 提交，blocker 仅限本地 source 无法由现有 CST frontend 复现解析。
+
 ### P1：可玩 Session 端到端门禁
 
 状态：`maintenance`。fixture/live 命令、session lifecycle、基础交互与分层失败
