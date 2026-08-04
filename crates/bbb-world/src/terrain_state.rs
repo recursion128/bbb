@@ -46,6 +46,10 @@ pub use crate::chunks::{
 pub use crate::conduit_blocks::{
     is_conduit_block_name, ConduitBlockState, ConduitModelSourceState,
 };
+pub use crate::copper_golem_statue_blocks::{
+    copper_golem_statue_weather_state, CopperGolemStatueModelSourceState,
+    CopperGolemStatuePoseKind, CopperGolemStatueWeatherState,
+};
 pub use crate::decorated_pot_blocks::{
     is_decorated_pot_block_name, DecoratedPotFacing, DecoratedPotModelSourceState,
     DecoratedPotWobbleSource, DecoratedPotWobbleState, DecoratedPotWobbleStyleKind,

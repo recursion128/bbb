@@ -1,3 +1,5 @@
+use crate::item_models::SpecialItemCopperGolemPose;
+
 #[cfg(test)]
 use super::super::catalog::player_texture_ref;
 use super::super::temperature_animal_variants::{
@@ -77,6 +79,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EnderDragonEyes,
     EnderDragonBeam,
     BeaconBeam,
+    CopperGolemStatueBlock,
     EndGatewayBeam,
     EndermanBase,
     EndermanEyes,
@@ -1016,6 +1019,35 @@ pub(in crate::entity_models) fn beacon_beam_layer_passes() -> [EntityModelLayerP
             submit_sequence: 2,
         },
     ]
+}
+
+/// `CopperGolemStatueBlockRenderer.submit`: one `RenderTypes.entityCutout`
+/// model pass at the block's weathering texture. There is no emissive eyes
+/// layer — that belongs to the living golem's `LivingEntityEmissiveLayer`.
+pub(in crate::entity_models) fn copper_golem_statue_block_layer_passes(
+    pose: SpecialItemCopperGolemPose,
+    weathering: CopperGolemWeathering,
+) -> [EntityModelLayerPass; 1] {
+    [EntityModelLayerPass {
+        kind: EntityModelLayerKind::CopperGolemStatueBlock,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: copper_golem_statue_model_layer(pose),
+        texture: copper_golem_texture_ref(weathering),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+/// The `ModelLayers` entry each statue pose bakes.
+fn copper_golem_statue_model_layer(pose: SpecialItemCopperGolemPose) -> &'static str {
+    match pose {
+        SpecialItemCopperGolemPose::Standing => MODEL_LAYER_COPPER_GOLEM,
+        SpecialItemCopperGolemPose::Running => MODEL_LAYER_COPPER_GOLEM_RUNNING,
+        SpecialItemCopperGolemPose::Sitting => MODEL_LAYER_COPPER_GOLEM_SITTING,
+        SpecialItemCopperGolemPose::Star => MODEL_LAYER_COPPER_GOLEM_STAR,
+    }
 }
 
 pub(in crate::entity_models) fn copper_golem_textured_layer_passes(

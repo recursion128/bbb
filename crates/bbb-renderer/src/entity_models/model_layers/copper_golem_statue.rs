@@ -4,9 +4,38 @@ use crate::item_models::SpecialItemCopperGolemPose;
 
 use super::super::{
     geometry::{PartPose, PART_POSE_ZERO},
-    model::{ModelCube, ModelPart},
+    model::{EntityModel, ModelCube, ModelPart},
+    EntityModelInstance,
 };
 use super::copper_golem_tree;
+
+/// `CopperGolemStatueModel`, the block-entity form of the statue. Its
+/// `setupAnim(Unit.INSTANCE)` is already folded into the baked tree, so nothing
+/// is animated per frame.
+pub(in crate::entity_models) struct CopperGolemStatueModel {
+    root: ModelPart,
+}
+
+impl CopperGolemStatueModel {
+    pub(in crate::entity_models) fn new(pose: SpecialItemCopperGolemPose) -> Self {
+        Self {
+            root: copper_golem_statue_model(pose),
+        }
+    }
+}
+
+impl EntityModel for CopperGolemStatueModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
+
 fn statue_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2], deformation: f32) -> ModelCube {
     ModelCube::new(
         min.map(|coordinate| coordinate - deformation),

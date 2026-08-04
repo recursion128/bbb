@@ -15,6 +15,7 @@ mod command_blocks;
 mod commands;
 mod comparator_blocks;
 mod conduit_blocks;
+mod copper_golem_statue_blocks;
 mod counters;
 mod creative_inventory;
 mod decorated_pot_blocks;

@@ -5,6 +5,8 @@ use std::sync::Arc;
 use bbb_render_types::StandaloneTextureSampling;
 use glam::Mat4;
 
+use crate::item_models::SpecialItemCopperGolemPose;
+
 use super::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern,
     FrogModelVariant, PigModelVariant, VillagerModelProfession, VillagerModelType,
@@ -642,6 +644,15 @@ pub enum EntityModelKind {
     /// standard held-item and antenna block attachment use typed layers; custom-head presentation is
     /// owned separately from model animation.
     CopperGolem {
+        weathering: CopperGolemWeathering,
+    },
+    /// `CopperGolemStatueBlockRenderer`: the statue block entity submits one of
+    /// four baked pose layers through `CopperGolemStatueModel`, textured by the
+    /// block's own `WeatheringCopper.WeatherState`. Unlike the living golem it
+    /// has no emissive eyes layer and no animation beyond `setupAnim`'s fixed
+    /// root reset.
+    CopperGolemStatueBlock {
+        pose: SpecialItemCopperGolemPose,
         weathering: CopperGolemWeathering,
     },
     /// Iron golem (`IronGolemModel`, `IronGolemRenderer`). `crackiness` drives the vanilla

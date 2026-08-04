@@ -105,6 +105,12 @@ impl EntityModelKind {
             Self::Conduit { .. } => "conduit",
             Self::SkullBlock { .. } => "skull_block",
             Self::BeaconBeam => "beacon_beam",
+            Self::CopperGolemStatueBlock { pose, .. } => match pose {
+                SpecialItemCopperGolemPose::Standing => "copper_golem_statue_block_standing",
+                SpecialItemCopperGolemPose::Sitting => "copper_golem_statue_block_sitting",
+                SpecialItemCopperGolemPose::Running => "copper_golem_statue_block_running",
+                SpecialItemCopperGolemPose::Star => "copper_golem_statue_block_star",
+            },
             Self::EndPortalBlock {
                 kind: EndPortalModelKind::EndPortal,
                 ..

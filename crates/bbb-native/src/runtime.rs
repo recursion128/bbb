@@ -116,6 +116,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     component_text::{localized_component_runs, visit_localized_template, LocalizedTemplatePart},
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
+    copper_golem_statue_scene::copper_golem_statue_model_instances_from_world,
     crosshair::{
         block_selection_from_camera, crosshair_target_from_camera_at_partial_tick,
         debug_looking_at_block_hit_from_camera, debug_looking_at_fluid_hit_from_camera,
@@ -4347,6 +4348,7 @@ pub(crate) fn update_renderer_from_publication(
             entity_partial_tick,
         ));
     }
+    entity_instances.extend(copper_golem_statue_model_instances_from_world(world));
     entity_instances.extend(beacon_beam_model_instances_from_world_at_partial_tick(
         world,
         camera_pose,

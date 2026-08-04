@@ -118,6 +118,12 @@ pub(in crate::entity_models) const COPPER_GOLEM_LEG_POSE: PartPose = PartPose {
 };
 
 pub(in crate::entity_models) const MODEL_LAYER_COPPER_GOLEM: &str = "minecraft:copper_golem#main";
+pub(in crate::entity_models) const MODEL_LAYER_COPPER_GOLEM_RUNNING: &str =
+    "minecraft:copper_golem_running#main";
+pub(in crate::entity_models) const MODEL_LAYER_COPPER_GOLEM_SITTING: &str =
+    "minecraft:copper_golem_sitting#main";
+pub(in crate::entity_models) const MODEL_LAYER_COPPER_GOLEM_STAR: &str =
+    "minecraft:copper_golem_star#main";
 
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;

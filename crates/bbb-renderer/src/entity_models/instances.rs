@@ -4,6 +4,7 @@ use super::{
     CatModelVariant, ChickenModelVariant, CowModelVariant, DecoratedPotPattern, FrogModelVariant,
     PigModelVariant, SheepHeadEatPose, WolfModelVariant,
 };
+use crate::item_models::SpecialItemCopperGolemPose;
 use crate::terrain::TerrainUvRect;
 
 /// Vanilla `LightCoordsUtil.FULL_BRIGHT` (`block 15 | sky 15`): the
@@ -1794,6 +1795,23 @@ impl EntityModelInstance {
     /// One beacon beam section at the beacon block's min corner.
     pub fn beacon_beam(entity_id: i32, position: [f32; 3]) -> Self {
         Self::new(entity_id, EntityModelKind::BeaconBeam, position, 0.0)
+    }
+
+    /// A copper golem statue block-entity model at the statue block's min
+    /// corner, facing `body_rot` (`FACING.toYRot()`).
+    pub fn copper_golem_statue_block(
+        entity_id: i32,
+        position: [f32; 3],
+        facing_y_rot: f32,
+        pose: SpecialItemCopperGolemPose,
+        weathering: CopperGolemWeathering,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::CopperGolemStatueBlock { pose, weathering },
+            position,
+            facing_y_rot,
+        )
     }
 
     /// A conduit block-entity model part at the conduit block's min corner.

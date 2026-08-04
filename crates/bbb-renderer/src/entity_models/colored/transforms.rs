@@ -721,6 +721,19 @@ fn conduit_active_bob(anim_time: f32) -> f32 {
 /// `Axis.YP.rotation(state.activeRotation * PI / 180)`. Active conduits submit each part separately:
 /// the cage bobs and rotates around normalized `(0.5, 1, 0.5)`, the outer wind may rotate by phase,
 /// the inner wind is scaled/flipped, and the eye bobs while billboarded toward the camera.
+/// `CopperGolemStatueBlockRenderer.createModelTransformation`:
+/// `translation(0.5, 0, 0.5).rotate(Axis.YP.rotationDegrees(
+/// -facing.getOpposite().toYRot()))`. `body_rot` carries the block state's
+/// `FACING.toYRot()`, so the opposite is `+ 180`.
+pub(in crate::entity_models) fn copper_golem_statue_block_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    let opposite_y_rot = instance.render_state.body_rot + 180.0;
+    entity_root_position_transform(instance)
+        * Mat4::from_translation(Vec3::new(0.5, 0.0, 0.5))
+        * Mat4::from_rotation_y(-opposite_y_rot.to_radians())
+}
+
 pub(in crate::entity_models) fn conduit_model_root_transform(
     instance: EntityModelInstance,
     part: ConduitModelPart,

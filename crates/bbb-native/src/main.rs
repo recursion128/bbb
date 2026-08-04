@@ -26,6 +26,7 @@ mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod component_text;
 mod conduit_scene;
+mod copper_golem_statue_scene;
 mod crash_report;
 mod crosshair;
 mod debug_entries;

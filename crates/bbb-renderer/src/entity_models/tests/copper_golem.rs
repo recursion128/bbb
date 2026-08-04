@@ -1,6 +1,13 @@
 use super::*;
 
+use crate::entity_models::colored::copper_golem_statue_block_root_transform;
 use crate::entity_models::model::{EntityModel, ModelCube};
+use crate::entity_models::model_layers::{
+    MODEL_LAYER_COPPER_GOLEM_RUNNING, MODEL_LAYER_COPPER_GOLEM_SITTING,
+    MODEL_LAYER_COPPER_GOLEM_STAR,
+};
+use crate::entity_models::textured::copper_golem_statue_block_layer_passes;
+use crate::item_models::SpecialItemCopperGolemPose;
 
 const RAD: f32 = std::f32::consts::PI / 180.0;
 
@@ -1143,4 +1150,70 @@ fn copper_golem_textures_are_in_entity_model_atlas() {
     for texture in copper_golem_entity_texture_refs() {
         assert!(entity_model_texture_refs().contains(texture));
     }
+}
+
+#[test]
+fn copper_golem_statue_block_passes_drop_the_emissive_eyes_layer() {
+    for (pose, model_layer) in [
+        (
+            SpecialItemCopperGolemPose::Standing,
+            MODEL_LAYER_COPPER_GOLEM,
+        ),
+        (
+            SpecialItemCopperGolemPose::Running,
+            MODEL_LAYER_COPPER_GOLEM_RUNNING,
+        ),
+        (
+            SpecialItemCopperGolemPose::Sitting,
+            MODEL_LAYER_COPPER_GOLEM_SITTING,
+        ),
+        (
+            SpecialItemCopperGolemPose::Star,
+            MODEL_LAYER_COPPER_GOLEM_STAR,
+        ),
+    ] {
+        let passes = copper_golem_statue_block_layer_passes(pose, CopperGolemWeathering::Weathered);
+        // `CopperGolemStatueModel` is a plain `RenderTypes::entityCutout` model:
+        // one pass, no `LivingEntityEmissiveLayer`.
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::CopperGolemStatueBlock);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(passes[0].texture, COPPER_GOLEM_WEATHERED_TEXTURE_REF);
+    }
+}
+
+#[test]
+fn copper_golem_statue_block_root_transform_faces_away_from_the_block_facing() {
+    let instance = EntityModelInstance::copper_golem_statue_block(
+        -1,
+        [4.0, 5.0, 6.0],
+        // `Direction.NORTH.toYRot()`; the renderer rotates by the opposite.
+        180.0,
+        SpecialItemCopperGolemPose::Standing,
+        CopperGolemWeathering::Unaffected,
+    );
+
+    let transform = copper_golem_statue_block_root_transform(instance);
+    // `translate(0.5, 0, 0.5)` inside the block, then no net rotation for a
+    // north-facing statue (`-(180 + 180)` degrees).
+    let origin = transform.transform_point3(glam::Vec3::ZERO);
+    assert_close3(origin.to_array(), [4.5, 5.0, 6.5]);
+    let forward = transform.transform_vector3(glam::Vec3::Z);
+    assert_close3(forward.to_array(), [0.0, 0.0, 1.0]);
+
+    // Facing east (`toYRot() = 270`) turns the model a quarter turn.
+    let east = EntityModelInstance::copper_golem_statue_block(
+        -1,
+        [0.0; 3],
+        270.0,
+        SpecialItemCopperGolemPose::Standing,
+        CopperGolemWeathering::Unaffected,
+    );
+    let east_forward =
+        copper_golem_statue_block_root_transform(east).transform_vector3(glam::Vec3::Z);
+    assert_close3(east_forward.to_array(), [-1.0, 0.0, 0.0]);
 }
