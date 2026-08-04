@@ -19,7 +19,8 @@ mod vault;
 pub(crate) use banner_patterns::decode_banner_patterns;
 pub(crate) use client_effects::decode_conduit_destroy_target;
 pub(crate) use container_items::{
-    decode_campfire_block_entity_data, decode_shelf_block_entity_data,
+    decode_brushable_block_entity_data, decode_campfire_block_entity_data,
+    decode_shelf_block_entity_data,
 };
 pub use decode::decode_level_chunk_with_light;
 pub(crate) use decode::{
@@ -40,12 +41,12 @@ pub(crate) use spawner::decode_spawner_block_entity_data;
 pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{
     BannerPatternHolderState, BannerPatternLayerState, BannerPatternsState, BlockEntityRecord,
-    CampfireBlockEntityData, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary,
-    ShelfBlockEntityData, SignBlockEntityTextState, SignTextDyeColor, SignTextSideState,
-    SpawnerBlockEntityData, TrialSpawnerBlockEntityData, TrialSpawnerEntityNbtProjection,
-    TrialSpawnerEquipmentNbtProjection, VaultConnectionParticleState,
-    VaultConnectionParticleTargetState, VaultSharedDataState,
+    BrushableBlockEntityData, CampfireBlockEntityData, ChunkColumn, ChunkProbeSummaryState,
+    ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState, HeightmapData,
+    NbtPayloadSummary, ShelfBlockEntityData, SignBlockEntityTextState, SignTextDyeColor,
+    SignTextSideState, SpawnerBlockEntityData, TrialSpawnerBlockEntityData,
+    TrialSpawnerEntityNbtProjection, TrialSpawnerEquipmentNbtProjection,
+    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;
 pub(crate) use trial_spawner::decode_trial_spawner_block_entity_data;

@@ -95,6 +95,8 @@ pub struct BlockEntityRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shelf: Option<ShelfBlockEntityData>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub brushable: Option<BrushableBlockEntityData>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conduit_destroy_target: Option<Uuid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub decorated_pot_sherds: Option<DecoratedPotSherdsState>,
@@ -137,6 +139,7 @@ impl BlockEntityRecord {
             vault_shared_data: None,
             campfire: None,
             shelf: None,
+            brushable: None,
             conduit_destroy_target: None,
             decorated_pot_sherds: None,
             banner_patterns: None,
@@ -179,6 +182,16 @@ impl CampfireBlockEntityData {
 pub struct ShelfBlockEntityData {
     pub items: [Option<NbtSummaryValue>; 3],
     pub align_items_to_bottom: bool,
+}
+
+/// The `BrushableBlockEntity.getUpdateTag` fields read by
+/// `BrushableBlockRenderer`: the stack being dug out and the side the player
+/// brushed from.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BrushableBlockEntityData {
+    pub item: Option<NbtSummaryValue>,
+    /// `Direction.get3DDataValue()`: down=0, up=1, north=2, south=3, west=4, east=5.
+    pub hit_direction_3d: Option<u8>,
 }
 
 /// The two `TrialSpawnerStateData.getUpdateTag` fields consumed by the

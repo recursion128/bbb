@@ -11,13 +11,16 @@
 
 use bbb_protocol::{
     block_entity_types::{
-        VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID, VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_BRUSHABLE_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_CAMPFIRE_ID,
+        VANILLA_BLOCK_ENTITY_TYPE_SHELF_ID, VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
     },
     packets::ItemStackSummary as ProtocolItemStackSummary,
     NbtSummaryValue,
 };
 
-use crate::{block_name_is_shelf, chunks::BlockEntityRecord, BlockPos, WorldStore};
+use crate::{
+    block_name_is_brushable, block_name_is_shelf, chunks::BlockEntityRecord, BlockPos, WorldStore,
+};
 
 /// One `ShelfRenderer` render state: the block state's facing plus the occupied
 /// display slots and the block entity's bottom-alignment flag.
@@ -42,6 +45,33 @@ pub struct CampfireItemDisplaySourceState {
     pub facing_2d: u8,
     /// Occupied `CampfireBlockEntity.getItems()` slots in slot order.
     pub items: Vec<(u8, ProtocolItemStackSummary)>,
+}
+
+/// One `BrushableBlockRenderer` render state. Vanilla submits only when the
+/// block has been brushed at least once, the hit side is known and the buried
+/// stack is renderable, so this projection carries exactly those cases.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BrushableItemDisplaySourceState {
+    pub pos: BlockPos,
+    /// `Direction.get3DDataValue()` of `BrushableBlockEntity.getHitDirection()`.
+    pub hit_direction_3d: u8,
+    /// `BlockStateProperties.DUSTED` (1..=3 while the item is visible).
+    pub dust_progress: i32,
+    /// The brushable block's own state id; `BrushableBlockRenderer` samples the
+    /// light of the neighbour it was brushed from with this state.
+    pub block_state_id: i32,
+    pub item: ProtocolItemStackSummary,
+}
+
+/// One `VaultRenderer` render state: the ejected reward plus the client-ticked
+/// display spin.
+#[derive(Debug, Clone, PartialEq)]
+pub struct VaultItemDisplaySourceState {
+    pub pos: BlockPos,
+    pub item: ProtocolItemStackSummary,
+    /// `VaultClientData.previousSpin()` / `currentSpin()`.
+    pub previous_spin: f32,
+    pub current_spin: f32,
 }
 
 impl WorldStore {
@@ -119,6 +149,84 @@ impl WorldStore {
                 facing_2d,
                 align_items_to_bottom: shelf.align_items_to_bottom,
                 items,
+            });
+        }
+        states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
+        states
+    }
+
+    /// Projects every loaded brushable block whose buried item is visible into
+    /// its `BrushableBlockRenderer` inputs.
+    pub fn brushable_item_display_source_states(&self) -> Vec<BrushableItemDisplaySourceState> {
+        let mut states = Vec::new();
+        for (pos, record) in self.loaded_block_entity_records() {
+            if record.type_id != VANILLA_BLOCK_ENTITY_TYPE_BRUSHABLE_BLOCK_ID {
+                continue;
+            }
+            let Some(brushable) = record.brushable.as_ref() else {
+                continue;
+            };
+            let Some(hit_direction_3d) = brushable.hit_direction_3d else {
+                continue;
+            };
+            let Some(block) = self.probe_block(pos) else {
+                continue;
+            };
+            if !block
+                .block_name
+                .as_deref()
+                .is_some_and(block_name_is_brushable)
+            {
+                continue;
+            }
+            let dust_progress = block
+                .block_properties
+                .get("dusted")
+                .and_then(|value| value.parse::<i32>().ok())
+                .unwrap_or(0);
+            if dust_progress <= 0 {
+                continue;
+            }
+            let Some(item) = self.resolved_block_entity_item(brushable.item.as_ref()) else {
+                continue;
+            };
+            states.push(BrushableItemDisplaySourceState {
+                pos,
+                hit_direction_3d,
+                dust_progress,
+                block_state_id: block.block_state_id,
+                item,
+            });
+        }
+        states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));
+        states
+    }
+
+    /// Projects every loaded vault holding a display item into its
+    /// `VaultRenderer` inputs. Vanilla gates on
+    /// `VaultBlockEntity.Client.shouldDisplayActiveEffects`, which is exactly
+    /// `VaultSharedData.hasDisplayItem()`.
+    pub fn vault_item_display_source_states(&self) -> Vec<VaultItemDisplaySourceState> {
+        let mut states = Vec::new();
+        for (pos, record) in self.loaded_block_entity_records() {
+            if record.type_id != VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID {
+                continue;
+            }
+            let Some(shared) = record.vault_shared_data.as_ref() else {
+                continue;
+            };
+            let Some(item) = self.resolved_block_entity_item(shared.display_item.as_ref()) else {
+                continue;
+            };
+            let spin = self
+                .vault_block_states()
+                .iter()
+                .find(|state| state.pos == pos);
+            states.push(VaultItemDisplaySourceState {
+                pos,
+                item,
+                previous_spin: spin.map_or(0.0, |state| state.previous_spin),
+                current_spin: spin.map_or(0.0, |state| state.current_spin),
             });
         }
         states.sort_by_key(|state| (state.pos.y, state.pos.z, state.pos.x));

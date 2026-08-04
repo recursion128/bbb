@@ -13,7 +13,7 @@ use bbb_protocol::{
 
 use crate::{Result, WorldDecodeError};
 
-use super::state::{CampfireBlockEntityData, ShelfBlockEntityData};
+use super::state::{BrushableBlockEntityData, CampfireBlockEntityData, ShelfBlockEntityData};
 
 /// `CampfireBlockEntity` holds four cooking slots.
 const CAMPFIRE_SLOT_COUNT: usize = 4;
@@ -51,6 +51,29 @@ pub(crate) fn decode_shelf_block_entity_data(
             summary_field(&entries, "align_items_to_bottom"),
             Some(NbtSummaryValue::Byte(value)) if *value != 0
         ),
+    }))
+}
+
+/// Decodes `BrushableBlockEntity.getUpdateTag`: the dug-out stack plus the
+/// `Direction.LEGACY_ID_CODEC` (`get3DDataValue`) brushing side.
+pub(crate) fn decode_brushable_block_entity_data(
+    raw_nbt: &[u8],
+) -> Result<Option<BrushableBlockEntityData>> {
+    let Some(NbtSummaryValue::Compound(entries)) = summary_root(raw_nbt)? else {
+        return Ok(None);
+    };
+    let item = match summary_field(&entries, "item") {
+        Some(value @ NbtSummaryValue::Compound(item)) if summary_item_stack_is_nonempty(item) => {
+            Some(value.clone())
+        }
+        _ => None,
+    };
+    let hit_direction_3d = summary_i32(summary_field(&entries, "hit_direction"))
+        .and_then(|value| u8::try_from(value).ok())
+        .filter(|value| *value < 6);
+    Ok(Some(BrushableBlockEntityData {
+        item,
+        hit_direction_3d,
     }))
 }
 
@@ -187,6 +210,43 @@ mod tests {
             .expect("shelf data");
         assert!(!decoded.align_items_to_bottom);
         assert!(decoded.items.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn brushable_data_keeps_the_stack_and_the_three_dimensional_hit_direction() {
+        let mut nbt = Vec::new();
+        nbt.push(10);
+        write_tag_name(&mut nbt, 1, "hit_direction");
+        // `Direction.NORTH.get3DDataValue()`.
+        nbt.push(2);
+        write_tag_name(&mut nbt, 10, "item");
+        write_tag_name(&mut nbt, 8, "id");
+        write_string(&mut nbt, "minecraft:emerald");
+        write_tag_name(&mut nbt, 3, "count");
+        nbt.extend_from_slice(&1_i32.to_be_bytes());
+        nbt.push(0);
+        nbt.push(0);
+
+        let decoded = decode_brushable_block_entity_data(&nbt)
+            .unwrap()
+            .expect("brushable data");
+        assert_eq!(decoded.hit_direction_3d, Some(2));
+        assert!(decoded.item.is_some());
+    }
+
+    #[test]
+    fn brushable_blocks_without_a_dug_stack_keep_no_item() {
+        let mut nbt = Vec::new();
+        nbt.push(10);
+        write_tag_name(&mut nbt, 1, "hit_direction");
+        nbt.push(1);
+        nbt.push(0);
+
+        let decoded = decode_brushable_block_entity_data(&nbt)
+            .unwrap()
+            .expect("brushable data");
+        assert_eq!(decoded.hit_direction_3d, Some(1));
+        assert!(decoded.item.is_none());
     }
 
     fn write_item(out: &mut Vec<u8>, slot: i8, item_id: &str, count: i32) {

@@ -733,6 +733,10 @@ pub fn block_name_is_shelf(name: &str) -> bool {
     VANILLA_SHELF_BLOCKS.contains(&name)
 }
 
+pub fn block_name_is_brushable(name: &str) -> bool {
+    VANILLA_BRUSHABLE_BLOCKS.contains(&name)
+}
+
 pub fn block_name_is_shulker_box(name: &str) -> bool {
     VANILLA_SHULKER_BOX_BLOCKS.contains(&name)
 }

@@ -13,13 +13,17 @@ use bbb_renderer::{
     ItemModelDrawTarget, ItemModelMesh, ItemModelResidencyFrame, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{
-    BlockPos, CampfireItemDisplaySourceState, ShelfItemDisplaySourceState, WorldStore,
+    BlockPos, BrushableItemDisplaySourceState, CampfireItemDisplaySourceState,
+    ShelfItemDisplaySourceState, VaultItemDisplaySourceState, WorldStore,
 };
 use glam::{Mat4, Vec3};
 
 use bbb_item_model::NativeItemRuntime;
 
-use super::dropped::bake_item_stack_at_transform_with_light_and_overlay;
+use super::dropped::{
+    bake_item_stack_at_transform_with_light_and_overlay, cluster_transforms, item_cluster_seed,
+    rendered_amount,
+};
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 use crate::terrain_runtime::TerrainTextureState;
 
@@ -37,6 +41,15 @@ const SHELF_ALIGN_TO_BOTTOM_OFFSET: f32 = -0.25;
 /// The per-slot spacing and the shelf board's depth offset.
 const SHELF_SLOT_SPACING: f32 = 0.3125;
 const SHELF_SLOT_DEPTH: f32 = -0.25;
+/// `BrushableBlockRenderer.submit` lifts the dug item to the block's mid height
+/// before the per-side offset and the two fixed yaw rotations.
+const BRUSHABLE_ITEM_LIFT: f32 = 0.5;
+const BRUSHABLE_ITEM_SCALE: f32 = 0.5;
+const BRUSHABLE_BASE_Y_ROT: f32 = 75.0;
+const BRUSHABLE_EAST_WEST_Y_ROT: f32 = 90.0;
+const BRUSHABLE_EXTRA_Y_ROT: f32 = 11.0;
+/// `VaultRenderer.submit` spins the reward above the cage floor.
+const VAULT_ITEM_ORIGIN: Vec3 = Vec3::new(0.5, 0.4, 0.5);
 
 /// Bakes every block-entity renderer whose submission is an item stack.
 #[allow(clippy::too_many_arguments)]
@@ -50,6 +63,7 @@ pub(crate) fn block_entity_item_models(
     damage_type_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
     variant_textures: Option<&NativeEntityVariantTextureRuntime>,
+    partial_tick: f32,
 ) -> ItemModelResidencyFrame {
     let mut residency = ItemModelResidencyFrame::default();
     let Some(item_runtime) = item_runtime else {
@@ -97,12 +111,12 @@ pub(crate) fn block_entity_item_models(
                 variant_textures,
                 &mut item,
             );
-            let Some((min_y, max_y)) = residency_model_y_extents(&item, renderer) else {
+            let Some((min, max)) = residency_model_extents(&item, renderer) else {
                 continue;
             };
-            let mut offset_y = -min_y;
+            let mut offset_y = -min.y;
             if !source.align_items_to_bottom {
-                offset_y += -(max_y - min_y) / 2.0;
+                offset_y += -(max.y - min.y) / 2.0;
             }
             place_resident_item(
                 &mut item,
@@ -111,7 +125,160 @@ pub(crate) fn block_entity_item_models(
             residency.append(item);
         }
     }
+    for source in world.brushable_item_display_source_states() {
+        // `BrushableBlockRenderer.extractRenderState` samples the light of the
+        // neighbour the block was brushed from, with the brushable block's own
+        // state supplying the emissive facts.
+        let light_pos = relative_block_pos(source.pos, source.hit_direction_3d);
+        let coords = world
+            .sample_render_light_for_state(source.block_state_id, light_pos)
+            .map_or(0, |light| light.packed());
+        bake_block_entity_item(
+            &source.item,
+            brushable_item_transform(&source),
+            BlockModelDisplayContext::Fixed,
+            shader_light(coords),
+            world,
+            item_runtime,
+            terrain_textures,
+            trim_material_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            variant_textures,
+            &mut residency,
+        );
+    }
+    for source in world.vault_item_display_source_states() {
+        let light = block_entity_shader_light(world, source.pos);
+        // `ItemEntityRenderer.renderMultipleFromCount` copies the same model
+        // state, so the stack is baked once and posed per cluster copy.
+        let mut item = ItemModelResidencyFrame::default();
+        bake_block_entity_item(
+            &source.item,
+            Mat4::IDENTITY,
+            BlockModelDisplayContext::Ground,
+            light,
+            world,
+            item_runtime,
+            terrain_textures,
+            trim_material_keys,
+            enchantment_keys,
+            damage_type_keys,
+            attribute_keys,
+            variant_textures,
+            &mut item,
+        );
+        let Some((min, max)) = residency_model_extents(&item, renderer) else {
+            continue;
+        };
+        let base = vault_item_transform(&source, partial_tick);
+        for offset in cluster_transforms(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            rendered_amount(source.item.count),
+            item_cluster_seed(&source.item),
+            max.z - min.z,
+        ) {
+            let mut copy = item.clone();
+            place_resident_item(&mut copy, base * offset);
+            residency.append(copy);
+        }
+    }
     residency
+}
+
+/// `BrushableBlockRenderer.submit`: `T(0, 0.5, 0)`, the per-side dust
+/// translation, `Ry(75)`, the east/west `Ry(90)` plus the fixed `Ry(11)`, and
+/// the `0.5` item scale, all relative to the block's minimum corner.
+fn brushable_item_transform(source: &BrushableItemDisplaySourceState) -> Mat4 {
+    let east_west = matches!(source.hit_direction_3d, 4 | 5);
+    let y_rot = BRUSHABLE_BASE_Y_ROT
+        + if east_west {
+            BRUSHABLE_EAST_WEST_Y_ROT
+        } else {
+            0.0
+        }
+        + BRUSHABLE_EXTRA_Y_ROT;
+    Mat4::from_translation(Vec3::new(
+        source.pos.x as f32,
+        source.pos.y as f32,
+        source.pos.z as f32,
+    )) * Mat4::from_translation(Vec3::Y * BRUSHABLE_ITEM_LIFT)
+        * Mat4::from_translation(brushable_dust_translation(
+            source.hit_direction_3d,
+            source.dust_progress,
+        ))
+        * Mat4::from_rotation_y(y_rot.to_radians())
+        * Mat4::from_scale(Vec3::splat(BRUSHABLE_ITEM_SCALE))
+}
+
+/// `BrushableBlockRenderer.translations`: the dug item slides out of the
+/// brushed face by `dusted / 10 * 0.75`.
+fn brushable_dust_translation(hit_direction_3d: u8, dust_progress: i32) -> Vec3 {
+    let completion_offset = dust_progress as f32 / 10.0 * 0.75;
+    let mut translation = Vec3::new(0.5, 0.0, 0.5);
+    match hit_direction_3d {
+        // down
+        0 => translation.y = -0.23 - completion_offset,
+        // up
+        1 => translation.y = 0.25 + completion_offset,
+        // north
+        2 => translation.z = 0.25 - completion_offset,
+        // south
+        3 => translation.z = 0.73 + completion_offset,
+        // west
+        4 => translation.x = 0.25 - completion_offset,
+        // east
+        _ => translation.x = 0.73 + completion_offset,
+    }
+    translation
+}
+
+/// `VaultRenderer.submit`: `T(0.5, 0.4, 0.5)` then the interpolated display
+/// spin, relative to the block's minimum corner.
+fn vault_item_transform(source: &VaultItemDisplaySourceState, partial_tick: f32) -> Mat4 {
+    let spin = rot_lerp(partial_tick, source.previous_spin, source.current_spin);
+    Mat4::from_translation(Vec3::new(
+        source.pos.x as f32,
+        source.pos.y as f32,
+        source.pos.z as f32,
+    )) * Mat4::from_translation(VAULT_ITEM_ORIGIN)
+        * Mat4::from_rotation_y(spin.to_radians())
+}
+
+/// Vanilla `Mth.rotLerp`.
+fn rot_lerp(alpha: f32, from: f32, to: f32) -> f32 {
+    from + alpha * wrap_degrees(to - from)
+}
+
+/// Vanilla `Mth.wrapDegrees`.
+fn wrap_degrees(value: f32) -> f32 {
+    let wrapped = value % 360.0;
+    if wrapped >= 180.0 {
+        wrapped - 360.0
+    } else if wrapped < -180.0 {
+        wrapped + 360.0
+    } else {
+        wrapped
+    }
+}
+
+/// Vanilla `BlockPos.relative(Direction)` for a `get3DDataValue` index.
+fn relative_block_pos(pos: BlockPos, direction_3d: u8) -> BlockPos {
+    let (dx, dy, dz) = match direction_3d {
+        0 => (0, -1, 0),
+        1 => (0, 1, 0),
+        2 => (0, 0, -1),
+        3 => (0, 0, 1),
+        4 => (-1, 0, 0),
+        _ => (1, 0, 0),
+    };
+    BlockPos {
+        x: pos.x + dx,
+        y: pos.y + dy,
+        z: pos.z + dz,
+    }
 }
 
 /// `ShelfRenderer.submitItem` without the bounding-box seating step:
@@ -150,22 +317,22 @@ fn place_resident_item(frame: &mut ItemModelResidencyFrame, attach: Mat4) {
     }
 }
 
-/// `ItemStackRenderState.getModelBoundingBox()` reduced to its vertical span:
-/// every resident instance's source extents pushed through that instance's own
-/// transform, exactly like `visitExtents`.
-fn residency_model_y_extents(
+/// `ItemStackRenderState.getModelBoundingBox()`: every resident instance's
+/// source extents pushed through that instance's own transform, exactly like
+/// `visitExtents`.
+fn residency_model_extents(
     frame: &ItemModelResidencyFrame,
     renderer: Option<&bbb_renderer::Renderer>,
-) -> Option<(f32, f32)> {
-    let mut min_y = f32::INFINITY;
-    let mut max_y = f32::NEG_INFINITY;
+) -> Option<(Vec3, Vec3)> {
+    let mut box_min = Vec3::splat(f32::INFINITY);
+    let mut box_max = Vec3::splat(f32::NEG_INFINITY);
     let mut include = |transform: Mat4, min: Vec3, max: Vec3| {
         for x in [min.x, max.x] {
             for y in [min.y, max.y] {
                 for z in [min.z, max.z] {
                     let point = transform.transform_point3(Vec3::new(x, y, z));
-                    min_y = min_y.min(point.y);
-                    max_y = max_y.max(point.y);
+                    box_min = box_min.min(point);
+                    box_max = box_max.max(point);
                 }
             }
         }
@@ -194,7 +361,7 @@ fn residency_model_y_extents(
             Vec3::from_array(bounds.max),
         );
     }
-    (min_y.is_finite()).then_some((min_y, max_y))
+    box_min.is_finite().then_some((box_min, box_max))
 }
 
 /// `CampfireRenderer.submit`: `T(0.5, 0.44921875, 0.5)`, the slot's
@@ -228,9 +395,14 @@ fn horizontal_direction_y_rot(direction_2d: u8) -> f32 {
 /// `BlockEntityRenderState.extractBase` samples the light coords at the block
 /// entity's own position.
 fn block_entity_shader_light(world: &WorldStore, pos: BlockPos) -> [f32; 2] {
-    let coords = world
-        .sample_render_light(pos)
-        .map_or(0, |light| light.packed());
+    shader_light(
+        world
+            .sample_render_light(pos)
+            .map_or(0, |light| light.packed()),
+    )
+}
+
+fn shader_light(coords: u32) -> [f32; 2] {
     [
         ((coords >> 4) & 0xF) as f32 / 15.0,
         ((coords >> 20) & 0xF) as f32 / 15.0,
@@ -393,5 +565,51 @@ mod tests {
             "attach must stay the outermost left factor of every baked transform"
         );
         assert!(body.contains("attach * display_matrix"));
+    }
+
+    #[test]
+    fn brushable_items_slide_out_of_the_brushed_face_by_the_dust_stage() {
+        let pos = Vec3::new(2.0, 64.0, -3.0);
+        let source = |hit_direction_3d, dust_progress| BrushableItemDisplaySourceState {
+            pos: BlockPos { x: 2, y: 64, z: -3 },
+            hit_direction_3d,
+            dust_progress,
+            block_state_id: 0,
+            item: bbb_protocol::packets::ItemStackSummary::empty(),
+        };
+        let origin =
+            |dir, dust| brushable_item_transform(&source(dir, dust)).transform_point3(Vec3::ZERO);
+        // `translations` keeps the two unused axes centred and pushes the third
+        // by `dusted / 10 * 0.75` away from the brushed face.
+        assert!((origin(3, 1) - (pos + Vec3::new(0.5, 0.5, 0.73 + 0.075))).length() < 1e-5);
+        assert!((origin(2, 3) - (pos + Vec3::new(0.5, 0.5, 0.25 - 0.225))).length() < 1e-5);
+        assert!((origin(1, 2) - (pos + Vec3::new(0.5, 0.5 + 0.25 + 0.15, 0.5))).length() < 1e-5);
+        assert!((origin(0, 1) - (pos + Vec3::new(0.5, 0.5 - 0.23 - 0.075, 0.5))).length() < 1e-5);
+        assert!((origin(5, 1) - (pos + Vec3::new(0.73 + 0.075, 0.5, 0.5))).length() < 1e-5);
+
+        // East/west faces add the extra quarter turn on top of `75 + 11`.
+        let yaw = |dir| {
+            let axis = brushable_item_transform(&source(dir, 1)).transform_vector3(Vec3::X);
+            (-axis.z).atan2(axis.x).to_degrees()
+        };
+        assert!((yaw(5) - yaw(3) - BRUSHABLE_EAST_WEST_Y_ROT).abs() < 1e-3);
+    }
+
+    #[test]
+    fn vault_items_spin_above_the_cage_floor_from_the_ticked_client_data() {
+        let source = VaultItemDisplaySourceState {
+            pos: BlockPos { x: 2, y: 64, z: -3 },
+            item: bbb_protocol::packets::ItemStackSummary::empty(),
+            previous_spin: 170.0,
+            current_spin: -180.0,
+        };
+        let transform = vault_item_transform(&source, 0.5);
+        assert!(
+            (transform.transform_point3(Vec3::ZERO) - Vec3::new(2.5, 64.4, -2.5)).length() < 1e-5
+        );
+        // `Mth.rotLerp` crosses the wrap boundary instead of sweeping backwards.
+        let axis = transform.transform_vector3(Vec3::X);
+        let spin = (-axis.z).atan2(axis.x).to_degrees();
+        assert!((wrap_degrees(spin - 175.0)).abs() < 1e-3);
     }
 }

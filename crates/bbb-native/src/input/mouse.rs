@@ -7711,6 +7711,7 @@ mod tests {
                 vault_shared_data: None,
                 campfire: None,
                 shelf: None,
+                brushable: None,
                 conduit_destroy_target: None,
                 decorated_pot_sherds: None,
                 banner_patterns: None,

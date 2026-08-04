@@ -606,9 +606,7 @@ pub(crate) fn dropped_item_models(
             state.position.z as f32,
         ];
         let count = rendered_amount(stack.count);
-        // Vanilla `ItemClusterRenderState` seeds the jitter with `Item.getId + damageValue`; stackable
-        // items (the ones that show more than one copy) are undamaged, so the protocol id matches.
-        let seed = item_id as i64;
+        let seed = item_cluster_seed(stack);
 
         // The item's own retained GROUND display transform (custom ground rotation / scale / offset for
         // items that define one); falls back to the vanilla `block/block` or `item/generated` default.
@@ -1047,10 +1045,7 @@ pub(crate) fn ominous_item_spawner_models(
             state.position.z as f32,
         ];
         let count = rendered_amount(stack.count);
-        // Vanilla `ItemClusterRenderState.getSeedForItemStack`: item id plus damage. The currently
-        // retained stack summary keeps item id; damaged stack jitter is deferred with broader item
-        // component render-state parity.
-        let seed = item_id as i64;
+        let seed = item_cluster_seed(stack);
         let ground = |default_transform| {
             item_runtime
                 .item_display_transform_for_stack(stack, BlockModelDisplayContext::Ground)
@@ -1197,7 +1192,7 @@ pub(crate) fn item_pickup_particle_item_models(
         let effective_stack = world.effective_item_stack(&stack);
         let stack = effective_stack.as_ref();
         let count = rendered_amount(stack.count);
-        let seed = state.item.item_id as i64;
+        let seed = item_cluster_seed(stack);
         let ground = |default_transform| {
             item_runtime
                 .item_display_transform_for_stack(stack, BlockModelDisplayContext::Ground)
@@ -2874,6 +2869,12 @@ pub(super) fn bake_item_stack_at_transform_with_light_and_overlay(
 }
 
 /// Vanilla `ItemClusterRenderState.getRenderedAmount`: the number of copies rendered for a stack size.
+/// Vanilla `ItemClusterRenderState.getSeedForItemStack`: `Item.getId(item)`
+/// plus the stack's damage value.
+pub(super) fn item_cluster_seed(stack: &ItemStackSummary) -> i64 {
+    i64::from(stack.item_id.unwrap_or(0)) + i64::from(stack.component_patch.damage.unwrap_or(0))
+}
+
 pub(super) fn rendered_amount(stack_count: i32) -> usize {
     match stack_count {
         i32::MIN..=1 => 1,
@@ -2998,7 +2999,13 @@ fn generated_ground_model_bounds(ground_matrix: Mat4) -> (f32, f32) {
     (min_y, max_z - min_z)
 }
 
-fn cluster_transforms(base: Mat4, ground: Mat4, count: usize, seed: i64, depth: f32) -> Vec<Mat4> {
+pub(super) fn cluster_transforms(
+    base: Mat4,
+    ground: Mat4,
+    count: usize,
+    seed: i64,
+    depth: f32,
+) -> Vec<Mat4> {
     let mut transforms = Vec::with_capacity(count);
     let mut random = LegacyRandom::new(seed);
     if depth > FLAT_ITEM_DEPTH_THRESHOLD {

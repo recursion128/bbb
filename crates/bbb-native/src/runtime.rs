@@ -4454,6 +4454,7 @@ pub(crate) fn update_renderer_from_publication(
         damage_type_keys.as_deref(),
         attribute_keys.as_deref(),
         Some(entity_variant_textures),
+        entity_partial_tick,
     );
     let smithing_preview_item_models = smithing_entity_preview_item_models(
         world,

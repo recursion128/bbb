@@ -14,7 +14,8 @@ pub use crate::block_entity_client_effects::{
     VaultBlockState, VaultClientEffectSource,
 };
 pub use crate::block_entity_item_displays::{
-    CampfireItemDisplaySourceState, ShelfItemDisplaySourceState,
+    BrushableItemDisplaySourceState, CampfireItemDisplaySourceState, ShelfItemDisplaySourceState,
+    VaultItemDisplaySourceState,
 };
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
@@ -26,13 +27,14 @@ pub use crate::chest_lids::{
 };
 pub use crate::chunks::{
     decode_level_chunk_with_light, BannerPatternHolderState, BannerPatternLayerState,
-    BannerPatternsState, BlockEntityRecord, CampfireBlockEntityData, ChunkBiomeSampler,
-    ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData, NbtPayloadSummary,
-    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData, ShelfBlockEntityData,
-    SignBlockEntityTextState, SignTextDyeColor, SignTextSideState, TrialSpawnerBlockEntityData,
-    TrialSpawnerEntityNbtProjection, TrialSpawnerEquipmentNbtProjection,
-    VaultConnectionParticleState, VaultConnectionParticleTargetState, VaultSharedDataState,
+    BannerPatternsState, BlockEntityRecord, BrushableBlockEntityData, CampfireBlockEntityData,
+    ChunkBiomeSampler, ChunkColumn, ChunkHeightmapSampler, ChunkProbeSummaryState, ChunkSection,
+    ChunkState, ChunkViewState, DecoratedPotSherdsState, HeightmapData, LightData,
+    NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData,
+    ShelfBlockEntityData, SignBlockEntityTextState, SignTextDyeColor, SignTextSideState,
+    TrialSpawnerBlockEntityData, TrialSpawnerEntityNbtProjection,
+    TrialSpawnerEquipmentNbtProjection, VaultConnectionParticleState,
+    VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use crate::conduit_blocks::{
     is_conduit_block_name, ConduitBlockState, ConduitModelSourceState,
@@ -91,8 +93,8 @@ pub use crate::spawner_blocks::{
 pub use crate::terrain::{
     block_name_has_animate_tick, block_name_has_falling_dust_animate_tick,
     block_name_has_invisible_render_shape, block_name_is_air, block_name_is_amethyst_cluster,
-    block_name_is_anvil, block_name_is_bars_or_pane, block_name_is_bed, block_name_is_button,
-    block_name_is_campfire, block_name_is_candle, block_name_is_candle_cake,
+    block_name_is_anvil, block_name_is_bars_or_pane, block_name_is_bed, block_name_is_brushable,
+    block_name_is_button, block_name_is_campfire, block_name_is_candle, block_name_is_candle_cake,
     block_name_is_cauldron, block_name_is_chain, block_name_is_chest,
     block_name_is_copper_golem_statue, block_name_is_crop, block_name_is_dead_bush_ambient,
     block_name_is_door, block_name_is_dry_grass_ambient, block_name_is_fence,
