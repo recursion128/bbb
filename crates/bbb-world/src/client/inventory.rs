@@ -20,8 +20,9 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
 use bbb_protocol::item_types::{
-    vanilla_item_type, VanillaItemUseOverride, VANILLA_ITEM_BUCKET_ID, VANILLA_ITEM_COMPASS_ID,
-    VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_GLASS_BOTTLE_ID, VANILLA_ITEM_POTION_ID,
+    vanilla_item_type, VanillaItemUseOverride, VANILLA_ITEM_BARRIER_ID, VANILLA_ITEM_BUCKET_ID,
+    VANILLA_ITEM_COMPASS_ID, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_GLASS_BOTTLE_ID,
+    VANILLA_ITEM_LIGHT_ID, VANILLA_ITEM_POTION_ID,
 };
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
@@ -3454,6 +3455,22 @@ impl WorldStore {
     pub(crate) fn local_player_has_item_in_tag(&self, tag: &str) -> Option<bool> {
         self.inventory
             .local_player_has_item_in_tag(inventory_ctx!(self), tag)
+    }
+
+    /// Vanilla `ClientLevel.getMarkerParticleTarget`: only a creative player
+    /// holding barrier/light in the main hand yields a marker target block.
+    pub fn local_marker_particle_target_block(&self) -> Option<&'static str> {
+        if !self.local_player_is_creative() {
+            return None;
+        }
+        match self
+            .local_item_in_hand(InteractionHand::MainHand)?
+            .item_id?
+        {
+            VANILLA_ITEM_BARRIER_ID => Some("minecraft:barrier"),
+            VANILLA_ITEM_LIGHT_ID => Some("minecraft:light"),
+            _ => None,
+        }
     }
 
     /// Vanilla `Consumable.canConsume`: FOOD only gates an effective

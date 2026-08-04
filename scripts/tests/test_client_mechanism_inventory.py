@@ -279,6 +279,26 @@ public class Owner {
                 for owner in clock_weather_owners
             )
         )
+        ambient_animation_owners = [
+            owner
+            for owner in methods
+            if owner["mechanism_id"] == "world-client-ambient-animation"
+        ]
+        self.assertEqual(len(ambient_animation_owners), 9)
+        self.assertEqual(
+            value["mechanisms"]["world-client-ambient-animation"][
+                "owner_evidence_count"
+            ],
+            9,
+        )
+        self.assertTrue(
+            all(
+                set(owner["bbb_evidence"]) == {"implementation", "tests"}
+                and owner["bbb_evidence"]["implementation"]
+                and owner["bbb_evidence"]["tests"]
+                for owner in ambient_animation_owners
+            )
+        )
         dirty_handoff_owners = [
             owner
             for owner in methods

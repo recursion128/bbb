@@ -1992,12 +1992,92 @@ CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE = _owner_evidence(
     ),
 )
 
+CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/environment_animate_runtime.rs#tick",),
+            (
+                "crates/bbb-native/src/environment_animate_runtime.rs#animate_tick_runs_exactly_667_near_far_pairs",
+                "crates/bbb-native/src/environment_animate_runtime.rs#ambient_particles_observe_chunks_biomes_replacement_on_the_next_tick",
+                "crates/bbb-native/src/environment_animate_runtime.rs#environment_animate_ticks_after_movement_and_before_music_and_particle_intake",
+            ),
+        ),
+        ("animateTick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/environment_animate_runtime.rs#do_animate_tick",),
+            (
+                "crates/bbb-native/src/environment_animate_runtime.rs#environment_dispatches_end_rod_animate_effect",
+                "crates/bbb-native/src/environment_animate_runtime.rs#full_block_collision_suppresses_ambient_particles",
+                "crates/bbb-native/src/environment_animate_runtime.rs#marker_target_carries_the_sampled_state_and_ignores_non_matching_blocks",
+            ),
+        ),
+        ("doAnimateTick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/inventory.rs#local_marker_particle_target_block",),
+            (
+                "crates/bbb-world/src/client/inventory/tests.rs#marker_particle_target_requires_creative_and_main_hand_barrier_or_light",
+                "crates/bbb-native/src/environment_animate_runtime.rs#marker_target_spawns_centered_block_marker_even_for_a_full_collision_block",
+            ),
+        ),
+        ("getMarkerParticleTarget",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/environment_animate_runtime.rs#append_fluid_drip_particle",),
+            (
+                "crates/bbb-native/src/environment_animate_runtime.rs#fluid_drips_use_vanilla_collision_branches_tags_and_level_random_order",
+            ),
+        ),
+        ("trySpawnDripParticles", "spawnParticle", "spawnFluidParticle"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_block_events.rs#destroy_block_particle_batch",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#level_event_destroy_block_particles_use_block_particle_options",
+            ),
+        ),
+        ("addDestroyBlockEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_player_actions.rs#local_destroy_hit_particle_state",
+                "crates/bbb-native/src/particle_runtime/resolver_player_actions.rs#local_destroy_hit_particle_batch",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale",
+            ),
+        ),
+        ("addBreakingBlockEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/particle_runtime/resolver_firework.rs#firework_explosion_particle_batch",
+                "crates/bbb-native/src/particle_runtime/resolver_firework.rs#append_firework_explosion_sparks",
+            ),
+            (
+                "crates/bbb-native/src/particle_runtime/tests.rs#level_event_particles_map_vanilla_simple_side_effects",
+            ),
+        ),
+        ("createFireworks",),
+    ),
+)
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
     "rendering-client-level-dirty-handoff": CLIENT_LEVEL_DIRTY_HANDOFF_OWNER_EVIDENCE,
     "world-client-clock-weather": CLIENT_LEVEL_CLOCK_WEATHER_OWNER_EVIDENCE,
+    "world-client-ambient-animation": CLIENT_LEVEL_AMBIENT_ANIMATION_OWNER_EVIDENCE,
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,

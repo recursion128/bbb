@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "02754e740f6d95f5b06fa99a3abeb7ba0e5355eca8f1dffc74568665325d97da"
+      "sha256": "5a49159beff0b0834a81815e0f0e876a1751bc1dd2f5795ccec1653d02afa560"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -631,7 +631,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/environment_animate_runtime.rs"
       ],
-      "owner_count": 9
+      "owner_count": 9,
+      "owner_evidence_count": 9
     },
     "world-client-chunk-light-lifecycle": {
       "bbb_evidence": [
@@ -17777,6 +17778,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_player_actions.rs#local_destroy_hit_particle_state",
+          "crates/bbb-native/src/particle_runtime/resolver_player_actions.rs#local_destroy_hit_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#local_destroy_hit_particle_uses_vanilla_shape_face_power_and_scale"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -17791,6 +17801,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addBreakingBlockEffect(final BlockPos pos,final Direction direction)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_block_events.rs#destroy_block_particle_batch"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_event_destroy_block_particles_use_block_particle_options"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -17899,6 +17917,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#animate_tick_runs_exactly_667_near_far_pairs",
+          "crates/bbb-native/src/environment_animate_runtime.rs#ambient_particles_observe_chunks_biomes_replacement_on_the_next_tick",
+          "crates/bbb-native/src/environment_animate_runtime.rs#environment_animate_ticks_after_movement_and_before_music_and_particle_intake"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -17994,6 +18022,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#clockManager()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/particle_runtime/resolver_firework.rs#firework_explosion_particle_batch",
+          "crates/bbb-native/src/particle_runtime/resolver_firework.rs#append_firework_explosion_sparks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/particle_runtime/tests.rs#level_event_particles_map_vanilla_simple_side_effects"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -18071,6 +18108,16 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#doAddParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShowParticles,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#do_animate_tick"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#environment_dispatches_end_rod_animate_effect",
+          "crates/bbb-native/src/environment_animate_runtime.rs#full_block_collision_suppresses_ambient_particles",
+          "crates/bbb-native/src/environment_animate_runtime.rs#marker_target_carries_the_sampled_state_and_ignores_non_matching_blocks"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -18459,6 +18506,15 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getMapData(final MapId id)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/client/inventory.rs#local_marker_particle_target_block"
+        ],
+        "tests": [
+          "crates/bbb-world/src/client/inventory/tests.rs#marker_particle_target_requires_creative_and_main_hand_barrier_or_light",
+          "crates/bbb-native/src/environment_animate_runtime.rs#marker_target_spawns_centered_block_marker_even_for_a_full_collision_block"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -19281,6 +19337,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#shouldTickDeath(final Entity entity)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#append_fluid_drip_particle"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#fluid_drips_use_vanilla_collision_branches_tags_and_level_random_order"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -19295,6 +19359,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#spawnFluidParticle(final double x1,final double x2,final double z1,final double z2,final double y,final ParticleOptions dripParticle)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#append_fluid_drip_particle"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#fluid_drips_use_vanilla_collision_branches_tags_and_level_random_order"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -19508,6 +19580,14 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#trackExplosionEffects(final Vec3 center,final float radius,final int blockCount,final WeightedList <ExplosionParticleInfo> blockParticles)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#append_fluid_drip_particle"
+        ],
+        "tests": [
+          "crates/bbb-native/src/environment_animate_runtime.rs#fluid_drips_use_vanilla_collision_branches_tags_and_level_random_order"
+        ]
+      },
       "category": "ambient-animation",
       "domain": "effects",
       "kind": "method",
@@ -41759,6 +41839,7 @@
       "world-client-chunk-light-lifecycle",
       "rendering-client-level-dirty-handoff",
       "world-client-clock-weather",
+      "world-client-ambient-animation",
       "world-client-entity-lifecycle",
       "interaction-block-breaking",
       "interaction-prediction-sequence"

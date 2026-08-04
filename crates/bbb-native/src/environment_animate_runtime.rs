@@ -99,6 +99,7 @@ const PARTICLE_DRIPPING_OBSIDIAN_TEAR: &str = "minecraft:dripping_obsidian_tear"
 const PARTICLE_SMALL_FLAME: &str = "minecraft:small_flame";
 const PARTICLE_ELECTRIC_SPARK: &str = "minecraft:electric_spark";
 const PARTICLE_FALLING_DUST: &str = "minecraft:falling_dust";
+const PARTICLE_BLOCK_MARKER: &str = "minecraft:block_marker";
 const PARTICLE_MYCELIUM: &str = "minecraft:mycelium";
 const LIGHTNING_ROD_SPARK_CYCLE: i32 = 200;
 
@@ -246,6 +247,7 @@ impl EnvironmentAnimateRuntime {
             z: containing_block_coordinate(player.position.z),
         };
         let sky_darken = crate::runtime::entity_shadow_sky_darken(world);
+        let marker_target = world.local_marker_particle_target_block();
         let mut animate_random =
             LevelEventSoundRandomState::with_seed(self.animate_seed_random.next_long());
         let mut spawns = Vec::new();
@@ -255,6 +257,7 @@ impl EnvironmentAnimateRuntime {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 sky_darken,
+                marker_target,
                 &mut animate_random,
                 audio,
                 &mut spawns,
@@ -264,6 +267,7 @@ impl EnvironmentAnimateRuntime {
                 center,
                 FAR_SAMPLE_RADIUS,
                 sky_darken,
+                marker_target,
                 &mut animate_random,
                 audio,
                 &mut spawns,
@@ -278,6 +282,7 @@ impl EnvironmentAnimateRuntime {
         center: BlockPos,
         radius: i32,
         sky_darken: u8,
+        marker_target: Option<&str>,
         animate_random: &mut LevelEventSoundRandomState,
         audio: &mut Option<&mut dyn AudioEventSink>,
         spawns: &mut Vec<EnvironmentParticleSpawn>,
@@ -593,6 +598,10 @@ impl EnvironmentAnimateRuntime {
             if self.level_random.next_int_bound(10) == 0 {
                 append_fluid_drip_particle(world, pos, fluid.kind, &mut self.level_random, spawns);
             }
+        }
+
+        if marker_target == Some(block_name) {
+            append_block_marker_animate_effect(pos, block.block_state_id, spawns);
         }
 
         if world.sample_block_collision_shape_is_full_block(pos) != Some(false) {
@@ -2293,6 +2302,27 @@ fn append_end_gateway_animate_effects(
     }
 }
 
+/// Vanilla `ClientLevel.doAnimateTick` marker branch: a matching sampled block
+/// spawns one zero-velocity BLOCK_MARKER particle carrying the sampled state at
+/// the block center.
+fn append_block_marker_animate_effect(
+    pos: BlockPos,
+    block_state_id: i32,
+    spawns: &mut Vec<EnvironmentParticleSpawn>,
+) {
+    spawns.push(EnvironmentParticleSpawn {
+        particle: block_client_particle_options(PARTICLE_BLOCK_MARKER, block_state_id),
+        position: [
+            f64::from(pos.x) + 0.5,
+            f64::from(pos.y) + 0.5,
+            f64::from(pos.z) + 0.5,
+        ],
+        velocity: [0.0; 3],
+        always_show: false,
+        color_source: None,
+    });
+}
+
 fn append_falling_dust_animate_effect(
     world: &WorldStore,
     pos: BlockPos,
@@ -3566,6 +3596,7 @@ mod tests {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 0,
+                None,
                 &mut random,
                 &mut audio,
                 &mut spawns,
@@ -3607,6 +3638,7 @@ mod tests {
                     center,
                     NEAR_SAMPLE_RADIUS,
                     0,
+                    None,
                     &mut random,
                     &mut audio,
                     &mut spawns,
@@ -5395,6 +5427,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_random,
             &mut audio,
             &mut spawns,
@@ -5407,6 +5440,129 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn marker_target_spawns_centered_block_marker_even_for_a_full_collision_block() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let barrier_id = block_state_id("minecraft:barrier", &[("waterlogged", "false")]);
+        let mut world = world_with_ambient_particles();
+        set_block(&mut world, pos, barrier_id);
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(3);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            Some("minecraft:barrier"),
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        let [spawn] = spawns.as_slice() else {
+            panic!("matching barrier should emit exactly the marker particle");
+        };
+        assert_eq!(spawn.particle.resource_id, PARTICLE_BLOCK_MARKER);
+        assert_eq!(
+            spawn.particle.option,
+            bbb_world::ClientParticleOptionValue::Block {
+                block_state_id: barrier_id
+            }
+        );
+        assert_eq!(
+            spawn.position,
+            [
+                f64::from(pos.x) + 0.5,
+                f64::from(pos.y) + 0.5,
+                f64::from(pos.z) + 0.5,
+            ]
+        );
+        assert_eq!(spawn.velocity, [0.0; 3]);
+        assert!(!spawn.always_show);
+        assert!(spawn.color_source.is_none());
+    }
+
+    #[test]
+    fn marker_target_carries_the_sampled_state_and_ignores_non_matching_blocks() {
+        let center = BlockPos { x: 8, y: 32, z: 8 };
+        let mut sampled_level_random = LevelEventSoundRandomState::with_seed(0);
+        let pos = sample_animate_position(&mut sampled_level_random, center, NEAR_SAMPLE_RADIUS);
+        let lit_light_id = block_state_id(
+            "minecraft:light",
+            &[("level", "7"), ("waterlogged", "false")],
+        );
+        let mut world = world_with_ambient_particles();
+        set_block(&mut world, pos, lit_light_id);
+        let mut runtime = EnvironmentAnimateRuntime::default();
+        let mut animate_random = LevelEventSoundRandomState::with_seed(3);
+        let mut audio = None;
+        let mut spawns = Vec::new();
+
+        runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            Some("minecraft:light"),
+            &mut animate_random,
+            &mut audio,
+            &mut spawns,
+        );
+
+        let markers = spawns
+            .iter()
+            .filter(|spawn| spawn.particle.resource_id == PARTICLE_BLOCK_MARKER)
+            .collect::<Vec<_>>();
+        let [marker] = markers.as_slice() else {
+            panic!("matching light should emit exactly one marker particle");
+        };
+        assert_eq!(
+            marker.particle.option,
+            bbb_world::ClientParticleOptionValue::Block {
+                block_state_id: lit_light_id
+            }
+        );
+
+        let mut mismatch_runtime = EnvironmentAnimateRuntime::default();
+        let mut mismatch_random = LevelEventSoundRandomState::with_seed(3);
+        let mut mismatch_spawns = Vec::new();
+        mismatch_runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            Some("minecraft:barrier"),
+            &mut mismatch_random,
+            &mut audio,
+            &mut mismatch_spawns,
+        );
+        assert!(!mismatch_spawns
+            .iter()
+            .any(|spawn| spawn.particle.resource_id == PARTICLE_BLOCK_MARKER));
+
+        let mut disabled_runtime = EnvironmentAnimateRuntime::default();
+        let mut disabled_random = LevelEventSoundRandomState::with_seed(3);
+        let mut disabled_spawns = Vec::new();
+        disabled_runtime.do_animate_tick(
+            &mut world,
+            center,
+            NEAR_SAMPLE_RADIUS,
+            0,
+            None,
+            &mut disabled_random,
+            &mut audio,
+            &mut disabled_spawns,
+        );
+        assert!(!disabled_spawns
+            .iter()
+            .any(|spawn| spawn.particle.resource_id == PARTICLE_BLOCK_MARKER));
     }
 
     #[test]
@@ -5499,6 +5655,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_random,
             &mut audio,
             &mut spawns,
@@ -5935,6 +6092,7 @@ mod tests {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 0,
+                None,
                 &mut animate_random,
                 &mut audio,
                 &mut spawns,
@@ -6015,6 +6173,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut actual,
             &mut audio,
             &mut spawns,
@@ -6117,6 +6276,7 @@ mod tests {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 0,
+                None,
                 &mut actual,
                 &mut audio,
                 &mut spawns,
@@ -6317,6 +6477,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut actual,
             &mut audio,
             &mut spawns,
@@ -6464,6 +6625,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_random,
             &mut audio,
             &mut spawns,
@@ -6677,6 +6839,7 @@ mod tests {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 0,
+                None,
                 &mut animate_random,
                 &mut audio,
                 &mut spawns,
@@ -6894,6 +7057,7 @@ mod tests {
                 center,
                 NEAR_SAMPLE_RADIUS,
                 0,
+                None,
                 &mut animate_random,
                 &mut audio,
                 &mut spawns,
@@ -7060,6 +7224,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_random,
             &mut audio,
             &mut spawns,
@@ -7181,6 +7346,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_actual,
             &mut audio,
             &mut spawns,
@@ -7305,6 +7471,7 @@ mod tests {
             center,
             NEAR_SAMPLE_RADIUS,
             0,
+            None,
             &mut animate_actual,
             &mut audio,
             &mut spawns,

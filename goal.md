@@ -455,30 +455,6 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
 codec/state 字段或 physical BBB path 替代 consumer evidence。
 
-#### Active contract：ClientLevel ambient-animation
-
-- 目标与 owner：闭合 Vanilla 26.1 `ClientLevel` ambient-animation 9 个 owner（animateTick、
-  doAnimateTick、getMarkerParticleTarget、trySpawnDripParticles、spawnParticle、
-  spawnFluidParticle、addDestroyBlockEffect、addBreakingBlockEffect、createFireworks）；
-  native animate runtime 是唯一 exactly-once effect owner，world 只提供 canonical 决策输入。
-- Vanilla 决策序：animateTick 每 tick 先解析一次 marker target，再 667×(r=16,r=32) 采样；
-  doAnimateTick 按 block dispatch→fluid animate+1/10 drip→marker 比对→
-  !isCollisionShapeFullBlock 门内 ambient particles 顺序执行；drip 经 trySpawnDripParticles
-  的 sturdy-top/impermeable/bottom 分支落到 spawnParticle/spawnFluidParticle。
-- marker 缺口（唯一实现项）：creative + 主手 BARRIER/LIGHT → target block；采样方块与
-  target 同 block 时在 (x+0.5,y+0.5,z+0.5) 以零速度出携带采样 state 的 BLOCK_MARKER 粒子；
-  非 creative、空手或其他物品必须返回 None。决策放 world（getMainHandItem 等价
-  `local_item_in_hand`），native 每 animate tick 只消费一次解析结果。
-- 既有等价：destroy=level event 2001、breaking=local destroy hit particle、fireworks
-  resolver、fluid/drip/ambient 家族已实现——只补 evidence，不重写不加第二路径。
-- focused evidence：world 决策测试（creative×主手四态）、native marker branch 与顺序测试；
-  census 9-owner OwnerEvidence 注册 + scripts/tests 断言。
-- 非目标：不实现 mood/underwater ambience（属 sound-routing）、粒子渲染细节或新 UI；发现
-  其他语义缺口只登记既有 route。
-- acceptance/gate：focused tests、inventory exact-output、docs lint/fmt/diff、full gate 后
-  刷新 fixture/live stamp；matrix 翻 equivalent、账本删项、boundaries owner 节、archive 行修订。
-- 安全停止点：只允许合同 full-gated 提交或 9-owner evidence 完整且 marker 语义闭合的干净提交。
-
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、

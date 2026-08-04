@@ -58,13 +58,6 @@ once. Physical BBB paths below are locatable evidence only; each `unverified` ro
 must independently close its Vanilla decision order, canonical lifetime, runtime
 consumer, fallback and applicable live evidence.
 
-- **`world-client-ambient-animation` (9 owners).** Verify the implemented 667×2
-  animate sampling, block/fluid/drip/ambient dispatch order and destroy/breaking/
-  fireworks equivalences against vanilla, and implement the missing
-  getMarkerParticleTarget decision: creative main-hand barrier/light resolves once
-  per animate tick and spawns a zero-velocity BLOCK_MARKER particle carrying the
-  sampled state at matching block centers, after fluid drip and before the
-  full-block ambient gate.
 - **`world-client-session-services` (8 owners).** Verify registry, scoreboard,
   recipe, map and service references carry or reset at the exact level-generation
   boundary without independently replaceable caches.

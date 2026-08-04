@@ -1052,6 +1052,43 @@ fn hotbar_items_merge_player_inventory_and_inventory_menu_slots() {
 }
 
 #[test]
+fn marker_particle_target_requires_creative_and_main_hand_barrier_or_light() {
+    let mut store = WorldStore::new();
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(VANILLA_ITEM_BARRIER_ID, 1),
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 1,
+        item: item_stack(VANILLA_ITEM_LIGHT_ID, 1),
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 2,
+        item: item_stack(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID, 1),
+    });
+
+    assert_eq!(store.local_marker_particle_target_block(), None);
+
+    store.gameplay.game_type = bbb_protocol::game_types::VANILLA_GAME_TYPE_CREATIVE_ID;
+    assert_eq!(
+        store.local_marker_particle_target_block(),
+        Some("minecraft:barrier")
+    );
+
+    assert!(store.set_local_selected_hotbar_slot(1));
+    assert_eq!(
+        store.local_marker_particle_target_block(),
+        Some("minecraft:light")
+    );
+
+    assert!(store.set_local_selected_hotbar_slot(2));
+    assert_eq!(store.local_marker_particle_target_block(), None);
+
+    assert!(store.set_local_selected_hotbar_slot(3));
+    assert_eq!(store.local_marker_particle_target_block(), None);
+}
+
+#[test]
 fn container_zero_content_updates_inventory_menu_without_opening_local_screen() {
     let mut store = WorldStore::new();
 

@@ -139,6 +139,21 @@ vanilla `updateSkyBrightness` 与 `invalidateTickCache` 折叠为按需派生：
 srgbLerp(0.22) 与 SKY_LIGHT_FACTOR=1 layer、End flash 时钟）在 render extract/lightmap 侧有
 成对 focused tests；不得另建缓存式 attribute system 或第二个时间推进入口。
 
+### ClientLevel ambient-animation owner
+
+`environment_animate_runtime` 是九个 animate/ambient owner 的唯一 exactly-once effect 投影：
+`tick` 每 simulation tick 先从 world 解析一次 marker target，再做 667×(r=16,r=32) 采样对；
+`do_animate_tick` 保持 vanilla 顺序——block dispatch→fluid animate+1/10 drip→marker 比对→
+`!isCollisionShapeFullBlock` 门内 biome ambient particles。marker 决策
+（`local_marker_particle_target_block`：creative + 主手 BARRIER/LIGHT）归 world，native 只消费
+解析结果并在匹配方块中心以零速度出携带采样 state 的 BLOCK_MARKER 粒子，全碰撞方块（如
+barrier 本体）也出粒子，由 full-block 门前置位置锁定。
+
+fluid drip 三分支（sturdy-top 0.95 面、impermeable 抑制、bottom-shape −0.05 与 two-below
+递归）折叠在 `append_fluid_drip_particle`；destroy block effect 走 level event 2001 的
+`destroy_block_particle_batch`，breaking crack 走 `local_destroy_hit_particle_batch`，
+fireworks 走 firework resolver batch。不得为任一 owner 另建第二个采样循环或 effect 通道。
+
 ### ClientLevel entity lifecycle owner
 
 `bbb-world::WorldStore` 与其 private `EntityStore` 是 17 个 `ClientLevel` entity-lifecycle owner 的
