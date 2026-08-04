@@ -456,6 +456,27 @@ census 18 条 route 已全部 `equivalent`（121 owner 收口，重开判据在�
 和适用 live interaction；不得用已有 codec/state 字段或 physical BBB path 替代 consumer
 evidence。
 
+#### Active contract：LocalPlayer input-movement
+
+- 目标与 owner：闭合 `player-local-input-movement` 20 个 owner，按六组归属：
+  tick/输入链（aiStep、applyInput、modifyInput、modifyInputSpeedForSquareMovement、
+  isMoving）、move+auto-jump（move、canAutoJump、updateAutoJump）、sprint 链
+  （canStartSprinting、isSprintingPossible、shouldStopRunSprinting、
+  shouldStopSwimSprinting、canSpawnSprintParticle）、squish（suffocatesAt、
+  moveTowardsClosestSpace、distanceToUnitSquare）、姿态门（isShiftKeyDown、
+  isMovingSlowly、isSuppressingSlidingDownLadder）、碰撞（isHorizontalCollisionMinor）。
+- bbb 现状：`integrate_local_player_input_pose_with_world_effects` 是唯一 movement
+  tick owner；sprint/squish/unit-square/minor-collision/auto-jump 均已定位具名 fn；
+  live movement 全流程已由 playable gate 长期锁定。
+- close 主体：逐组把 vanilla 方法体与 bbb fn 语义核对（重点：should_stop_sprinting
+  是否完整覆盖 run/swim 两停跑；isMoving/isMovingSlowly/isShiftKeyDown 的输入门；
+  ladder sliding suppress），缺口小修或登记；census 分组注册 20-owner
+  OwnerEvidence + scripts/tests 断言。
+- 非目标：不重构 movement 模块、不建第二 physics resolver；vehicle/flight 属其他 route。
+- acceptance/gate：docs lint/fmt/diff、scripts 单测、full gate；matrix 翻 equivalent、账本
+  删项、boundaries owner 节、archive 行修订、合同删除。
+- 安全停止点：只允许合同 full-gated 提交或 20-owner evidence 完整的干净提交。
+
 ### P2：屏幕、HUD、字体与截图
 
 状态：`active`。字体/CJK 与既有 text shaping 保持 closed；census 将 block-entity registration、
