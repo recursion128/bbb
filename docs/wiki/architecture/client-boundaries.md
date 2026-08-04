@@ -59,6 +59,19 @@ live evidence 后才能标记 `equivalent`；未闭合项只由 `docs/unsupporte
 packet encode 存在、world 字段存在或某个单元测试都不能重新抬高整类状态，也不能恢复原先两个
 broad resolver/coverage claim。
 
+同一规则覆盖本地 26.1 `ClientLevel.java` 的 121 个 constructor/method owner（包含 nested
+`ClientLevelData` 与 `EntityCallbacks`）：显式表将其拆成 18 条同质 route，其中 prediction 4、
+直接 accessor 17、官方空 hook 5，其余 95 个 owner 分属 level lifecycle、clock/weather、
+chunk/light、entity、ambient animation、session service、map、level event、respawn data、
+block-entity tracking、terrain dirty、particle、biome tint、sound 与 diagnostics。未知 method 使生成
+fail closed；同名 overload 必须同 route；accessor 仍由 CST body 约束。生成输出中不再存在
+`world-client-level-decisions` broad 行，physical BBB path 也不推导 `equivalent` 状态。
+
+这些 route 固定跨边界方向：packet/resource/input → `bbb-world` canonical level generation →
+immutable native effect/renderer/audio projection。renderer、audio 和 diagnostics consumer 不得反向
+读取 packet、pack 或另一个 consumer cache；level replacement 必须一次丢弃旧 generation 的
+transient projection，而保留/清除 canonical state 的判断只归对应 world lifecycle owner。
+
 `interaction-block-breaking` 的六个 `MultiPlayerGameMode` owner 进一步要求逐 owner evidence。
 `bbb-world::LocalPlayerInteractionState` 是 target、face、selected-item signature、progress、stage 和
 delay 的唯一 canonical owner；native mouse 只按 Vanilla 的

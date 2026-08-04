@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "f5d8d8602b0dbe214beeda43292391f6fd40f8a0da9fc41b4a9617e50efcd3eb"
+      "sha256": "381ce732d50499cb519cddafd6682538b6683c869a7a632913a2e57b45064b91"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -19,12 +19,25 @@
     }
   ],
   "mechanisms": {
+    "audio-client-level-sound-routing": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/client/audio.rs",
+        "crates/bbb-native/src/environment_audio_runtime.rs"
+      ],
+      "owner_count": 6
+    },
     "audio-sound-manager-engine": {
       "bbb_evidence": [
         "crates/bbb-pack/src/sounds.rs",
         "crates/bbb-audio/src/runtime.rs"
       ],
       "owner_count": 67
+    },
+    "diagnostics-client-level-report": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/diagnostics.rs"
+      ],
+      "owner_count": 4
     },
     "diagnostics-crash-runtime": {
       "bbb_evidence": [
@@ -146,8 +159,8 @@
         "crates/bbb-native/src/input/commands.rs",
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 1,
-      "owner_evidence_count": 1
+      "owner_count": 5,
+      "owner_evidence_count": 5
     },
     "interaction-primary-action-routing": {
       "bbb_evidence": [
@@ -336,6 +349,30 @@
       ],
       "owner_count": 27
     },
+    "rendering-client-biome-tint": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/biome_tint.rs"
+      ],
+      "owner_count": 6
+    },
+    "rendering-client-block-entity-tracking": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/block_entity_visibility.rs"
+      ],
+      "owner_count": 1
+    },
+    "rendering-client-level-dirty-handoff": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/terrain_runtime.rs"
+      ],
+      "owner_count": 6
+    },
+    "rendering-client-particle-routing": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/particle_runtime.rs"
+      ],
+      "owner_count": 6
+    },
     "rendering-entity-layer-registration": {
       "bbb_evidence": [
         "docs/evidence/vanilla-26.1/entity-coverage.json"
@@ -475,6 +512,12 @@
       ],
       "owner_count": 26
     },
+    "scope-client-level-noop-hooks": {
+      "bbb_evidence": [
+        "docs/unsupported-features.md"
+      ],
+      "owner_count": 5
+    },
     "scope-options-ui": {
       "bbb_evidence": [
         "docs/unsupported-features.md"
@@ -497,7 +540,7 @@
       "bbb_evidence": [
         "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
       ],
-      "owner_count": 82
+      "owner_count": 99
     },
     "scope-telemetry-upload": {
       "bbb_evidence": [
@@ -583,11 +626,60 @@
       ],
       "owner_count": 3
     },
-    "world-client-level-decisions": {
+    "world-client-ambient-animation": {
       "bbb_evidence": [
-        "crates/bbb-world/src/lib.rs"
+        "crates/bbb-native/src/environment_animate_runtime.rs"
       ],
-      "owner_count": 121
+      "owner_count": 9
+    },
+    "world-client-chunk-light-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/chunks/store.rs"
+      ],
+      "owner_count": 5
+    },
+    "world-client-clock-weather": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/level.rs"
+      ],
+      "owner_count": 8
+    },
+    "world-client-entity-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/entities/store.rs"
+      ],
+      "owner_count": 17
+    },
+    "world-client-level-events": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/play_apply.rs",
+        "crates/bbb-native/src/runtime/events.rs"
+      ],
+      "owner_count": 3
+    },
+    "world-client-level-lifecycle": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/level.rs"
+      ],
+      "owner_count": 3
+    },
+    "world-client-map-data": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/maps.rs"
+      ],
+      "owner_count": 4
+    },
+    "world-client-respawn-data": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/level.rs"
+      ],
+      "owner_count": 9
+    },
+    "world-client-session-services": {
+      "bbb_evidence": [
+        "crates/bbb-world/src/registries.rs"
+      ],
+      "owner_count": 8
     }
   },
   "owners": [
@@ -17626,10 +17718,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientHandshakePacketListenerImpl.State#State(final Component message,final Set <ClientHandshakePacketListenerImpl.State> fromStates)"
     },
     {
-      "category": "world",
+      "category": "level-lifecycle",
       "domain": "world",
       "kind": "constructor",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#ClientLevel(final ClientPacketListener connection,final ClientLevel.ClientLevelData levelData,final ResourceKey <Level> dimension,final Holder <DimensionType> dimensionType,final int serverChunkRadius,final int serverSimulationDistance,final LevelRenderer levelRenderer,final boolean isDebug,final long biomeZoomSeed,final int seaLevel)",
       "role": "decision",
       "scope": "external-client",
@@ -17640,10 +17732,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#ClientLevel(final ClientPacketListener connection,final ClientLevel.ClientLevelData levelData,final ResourceKey <Level> dimension,final Holder <DimensionType> dimensionType,final int serverChunkRadius,final int serverSimulationDistance,final LevelRenderer levelRenderer,final boolean isDebug,final long biomeZoomSeed,final int seaLevel)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final boolean overrideLimiter,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
       "role": "decision",
       "scope": "external-client",
@@ -17654,10 +17746,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final boolean overrideLimiter,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
       "role": "decision",
       "scope": "external-client",
@@ -17668,10 +17760,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addAlwaysVisibleParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addBreakingBlockEffect(final BlockPos pos,final Direction direction)",
       "role": "decision",
       "scope": "external-client",
@@ -17682,10 +17774,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addBreakingBlockEffect(final BlockPos pos,final Direction direction)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addDestroyBlockEffect(final BlockPos pos,final BlockState blockState)",
       "role": "decision",
       "scope": "external-client",
@@ -17696,10 +17788,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addDestroyBlockEffect(final BlockPos pos,final BlockState blockState)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addEntity(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -17710,10 +17802,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addEntity(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addEnvironmentAttributeLayers(final EnvironmentAttributeSystem.Builder environmentAttributes)",
       "role": "decision",
       "scope": "external-client",
@@ -17724,10 +17816,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addEnvironmentAttributeLayers(final EnvironmentAttributeSystem.Builder environmentAttributes)"
     },
     {
-      "category": "world",
+      "category": "map-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-map-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addMapData(final Map <MapId, MapItemSavedData> mapData)",
       "role": "decision",
       "scope": "external-client",
@@ -17738,10 +17830,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addMapData(final Map <MapId, MapItemSavedData> mapData)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShow,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
       "role": "decision",
       "scope": "external-client",
@@ -17752,10 +17844,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShow,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
       "role": "decision",
       "scope": "external-client",
@@ -17766,10 +17858,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#addParticle(final ParticleOptions particle,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#animateTick(final int xt,final int yt,final int zt)",
       "role": "decision",
       "scope": "external-client",
@@ -17780,10 +17872,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#animateTick(final int xt,final int yt,final int zt)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#calculateBlockTint(final BlockPos pos,final ColorResolver colorResolver)",
       "role": "decision",
       "scope": "external-client",
@@ -17794,10 +17886,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#calculateBlockTint(final BlockPos pos,final ColorResolver colorResolver)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#calculateParticleLevel(final boolean alwaysShowParticles)",
       "role": "decision",
       "scope": "external-client",
@@ -17808,10 +17900,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#calculateParticleLevel(final boolean alwaysShowParticles)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#cardinalLighting()",
       "role": "decision",
       "scope": "external-client",
@@ -17822,10 +17914,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#cardinalLighting()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#clearTintCaches()",
       "role": "decision",
       "scope": "external-client",
@@ -17836,10 +17928,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#clearTintCaches()"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#clockManager()",
       "role": "decision",
       "scope": "external-client",
@@ -17850,10 +17942,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#clockManager()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#createFireworks(final double x,final double y,final double z,final double xd,final double yd,final double zd,final List <FireworkExplosion> explosions)",
       "role": "decision",
       "scope": "external-client",
@@ -17864,10 +17956,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#createFireworks(final double x,final double y,final double z,final double xd,final double yd,final double zd,final List <FireworkExplosion> explosions)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#destroyBlockProgress(final int id,final BlockPos blockPos,final int progress)",
       "role": "decision",
       "scope": "external-client",
@@ -17878,10 +17970,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#destroyBlockProgress(final int id,final BlockPos blockPos,final int progress)"
     },
     {
-      "category": "world",
+      "category": "level-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#disconnect(final Component message)",
       "role": "decision",
       "scope": "external-client",
@@ -17892,10 +17984,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#disconnect(final Component message)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "particle-routing",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-particle-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#doAddParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShowParticles,final double x,final double y,final double z,final double xd,final double yd,final double zd)",
       "role": "decision",
       "scope": "external-client",
@@ -17906,10 +17998,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#doAddParticle(final ParticleOptions particle,final boolean overrideLimiter,final boolean alwaysShowParticles,final double x,final double y,final double z,final double xd,final double yd,final double zd)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#doAnimateTick(final int xt,final int yt,final int zt,final int r,final RandomSource animateRandom,final @Nullable Block markerParticleTarget,final BlockPos.MutableBlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -17920,13 +18012,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#doAnimateTick(final int xt,final int yt,final int zt,final int r,final RandomSource animateRandom,final @Nullable Block markerParticleTarget,final BlockPos.MutableBlockPos pos)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#dragonParts()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 847,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -17934,10 +18026,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#dragonParts()"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#enabledFeatures()",
       "role": "decision",
       "scope": "external-client",
@@ -17948,13 +18040,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#enabledFeatures()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#endFlashState()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 272,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -17962,10 +18054,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#endFlashState()"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#entitiesForRendering()",
       "role": "decision",
       "scope": "external-client",
@@ -17976,13 +18068,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#entitiesForRendering()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#environmentAttributes()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 677,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -17990,10 +18082,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#environmentAttributes()"
     },
     {
-      "category": "world",
+      "category": "client-noop",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-client-level-noop-hooks",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#explode(final @Nullable Entity source,final @Nullable DamageSource damageSource,final @Nullable ExplosionDamageCalculator damageCalculator,final double x,final double y,final double z,final float r,final boolean fire,final Level.ExplosionInteraction interactionType,final ParticleOptions smallExplosionParticles,final ParticleOptions largeExplosionParticles,final WeightedList <ExplosionParticleInfo> secondaryParticles,final Holder <SoundEvent> explosionSound)",
       "role": "decision",
       "scope": "external-client",
@@ -18004,10 +18096,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#explode(final @Nullable Entity source,final @Nullable DamageSource damageSource,final @Nullable ExplosionDamageCalculator damageCalculator,final double x,final double y,final double z,final float r,final boolean fire,final Level.ExplosionInteraction interactionType,final ParticleOptions smallExplosionParticles,final ParticleOptions largeExplosionParticles,final WeightedList <ExplosionParticleInfo> secondaryParticles,final Holder <SoundEvent> explosionSound)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-diagnostics",
+      "domain": "diagnostics",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "diagnostics-client-level-report",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#fillReportDetails(final CrashReport report)",
       "role": "decision",
       "scope": "external-client",
@@ -18018,10 +18110,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#fillReportDetails(final CrashReport report)"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#fuelValues()",
       "role": "decision",
       "scope": "external-client",
@@ -18032,10 +18124,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#fuelValues()"
     },
     {
-      "category": "world",
+      "category": "client-noop",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-client-level-noop-hooks",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#gameEvent(final Holder <GameEvent> gameEvent,final Vec3 pos,final GameEvent.Context context)",
       "role": "decision",
       "scope": "external-client",
@@ -18046,10 +18138,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#gameEvent(final Holder <GameEvent> gameEvent,final Vec3 pos,final GameEvent.Context context)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-diagnostics",
+      "domain": "diagnostics",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "diagnostics-client-level-report",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#gatherChunkSourceStats()",
       "role": "decision",
       "scope": "external-client",
@@ -18060,10 +18152,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#gatherChunkSourceStats()"
     },
     {
-      "category": "world",
+      "category": "map-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-map-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getAllMapData()",
       "role": "decision",
       "scope": "external-client",
@@ -18074,13 +18166,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getAllMapData()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getBlockStatePredictionHandler()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 198,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18088,10 +18180,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getBlockStatePredictionHandler()"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getBlockTicks()",
       "role": "decision",
       "scope": "external-client",
@@ -18102,10 +18194,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getBlockTicks()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getBlockTint(final BlockPos pos,final ColorResolver resolver)",
       "role": "decision",
       "scope": "external-client",
@@ -18116,13 +18208,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getBlockTint(final BlockPos pos,final ColorResolver resolver)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getChunkSource()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 692,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18130,10 +18222,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getChunkSource()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getClientLeafTintColor(final BlockPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -18144,10 +18236,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getClientLeafTintColor(final BlockPos pos)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getEntities()",
       "role": "decision",
       "scope": "external-client",
@@ -18158,10 +18250,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntities()"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getEntity(final int id)",
       "role": "decision",
       "scope": "external-client",
@@ -18172,10 +18264,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntity(final int id)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getEntityCount()",
       "role": "decision",
       "scope": "external-client",
@@ -18186,10 +18278,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getEntityCount()"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getFluidTicks()",
       "role": "decision",
       "scope": "external-client",
@@ -18200,13 +18292,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getFluidTicks()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getGloballyRenderedBlockEntities()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 177,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18214,13 +18306,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getGloballyRenderedBlockEntities()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getLevelData()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 915,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18228,10 +18320,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getLevelData()"
     },
     {
-      "category": "world",
+      "category": "map-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-map-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getMapData(final MapId id)",
       "role": "decision",
       "scope": "external-client",
@@ -18242,10 +18334,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getMapData(final MapId id)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getMarkerParticleTarget()",
       "role": "decision",
       "scope": "external-client",
@@ -18256,10 +18348,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getMarkerParticleTarget()"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getPushableEntities(final Entity pusher,final AABB boundingBox)",
       "role": "decision",
       "scope": "external-client",
@@ -18270,10 +18362,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getPushableEntities(final Entity pusher,final AABB boundingBox)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getRespawnData()",
       "role": "decision",
       "scope": "external-client",
@@ -18284,10 +18376,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getRespawnData()"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getScoreboard()",
       "role": "decision",
       "scope": "external-client",
@@ -18298,13 +18390,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getScoreboard()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getSeaLevel()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1055,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18312,13 +18404,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getSeaLevel()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getServerSimulationDistance()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1018,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18326,10 +18418,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getServerSimulationDistance()"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getSkyFlashTime()",
       "role": "decision",
       "scope": "external-client",
@@ -18340,10 +18432,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getSkyFlashTime()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "biome-tint",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-biome-tint",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getUncachedNoiseBiome(final int quartX,final int quartY,final int quartZ)",
       "role": "decision",
       "scope": "external-client",
@@ -18354,13 +18446,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getUncachedNoiseBiome(final int quartX,final int quartY,final int quartZ)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#getWorldBorder()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 658,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18368,10 +18460,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#getWorldBorder()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-events",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-events",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#globalLevelEvent(final int type,final BlockPos pos,final int data)",
       "role": "decision",
       "scope": "external-client",
@@ -18382,10 +18474,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#globalLevelEvent(final int type,final BlockPos pos,final int data)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/block_events.rs#apply_block_changed_ack",
+          "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions"
+        ],
+        "tests": [
+          "crates/bbb-world/src/block_events.rs#prediction_sequence_uses_java_signed_wrap_and_ack_order",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back"
+        ]
+      },
+      "category": "block-prediction",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "interaction-prediction-sequence",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#handleBlockChangedAck(final int sequence)",
       "role": "decision",
       "scope": "external-client",
@@ -18396,13 +18498,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#handleBlockChangedAck(final int sequence)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#hasChunk(final int chunkX,final int chunkZ)",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 399,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18410,10 +18512,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#hasChunk(final int chunkX,final int chunkZ)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#isTickingEntity(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -18424,10 +18526,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#isTickingEntity(final Entity entity)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-events",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-events",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#levelEvent(final @Nullable Entity source,final int type,final BlockPos pos,final int data)",
       "role": "decision",
       "scope": "external-client",
@@ -18438,10 +18540,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#levelEvent(final @Nullable Entity source,final int type,final BlockPos pos,final int data)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "block-entity-render-tracking",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-block-entity-tracking",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#onBlockEntityAdded(final BlockEntity blockEntity)",
       "role": "decision",
       "scope": "external-client",
@@ -18452,10 +18554,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onBlockEntityAdded(final BlockEntity blockEntity)"
     },
     {
-      "category": "world",
+      "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-chunk-light-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#onChunkLoaded(final ChunkPos pos)",
       "role": "decision",
       "scope": "external-client",
@@ -18466,10 +18568,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onChunkLoaded(final ChunkPos pos)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#onSectionBecomingNonEmpty(final long sectionNode)",
       "role": "decision",
       "scope": "external-client",
@@ -18480,10 +18582,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#onSectionBecomingNonEmpty(final long sectionNode)"
     },
     {
-      "category": "world",
+      "category": "map-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-map-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#overrideMapData(final MapId id,final MapItemSavedData data)",
       "role": "decision",
       "scope": "external-client",
@@ -18494,10 +18596,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#overrideMapData(final MapId id,final MapItemSavedData data)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final Entity sourceEntity,final SoundEvent sound,final SoundSource source,final float volume,final float pitch)",
       "role": "decision",
       "scope": "external-client",
@@ -18508,10 +18610,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final Entity sourceEntity,final SoundEvent sound,final SoundSource source,final float volume,final float pitch)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final double x,final double y,final double z,final SoundEvent sound,final SoundSource source,final float volume,final float pitch,final boolean distanceDelay)",
       "role": "decision",
       "scope": "external-client",
@@ -18522,10 +18624,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playLocalSound(final double x,final double y,final double z,final SoundEvent sound,final SoundSource source,final float volume,final float pitch,final boolean distanceDelay)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playPlayerSound(final SoundEvent sound,final SoundSource source,final float volume,final float pitch)",
       "role": "decision",
       "scope": "external-client",
@@ -18536,10 +18638,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playPlayerSound(final SoundEvent sound,final SoundSource source,final float volume,final float pitch)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final Entity sourceEntity,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)",
       "role": "decision",
       "scope": "external-client",
@@ -18550,10 +18652,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final Entity sourceEntity,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final double x,final double y,final double z,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)",
       "role": "decision",
       "scope": "external-client",
@@ -18564,10 +18666,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playSeededSound(final @Nullable Entity except,final double x,final double y,final double z,final Holder <SoundEvent> sound,final SoundSource source,final float volume,final float pitch,final long seed)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "sound-routing",
+      "domain": "audio",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "audio-client-level-sound-routing",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#playSound(final double x,final double y,final double z,final SoundEvent sound,final SoundSource source,final float volume,final float pitch,final boolean distanceDelay,final long seed)",
       "role": "decision",
       "scope": "external-client",
@@ -18578,13 +18680,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#playSound(final double x,final double y,final double z,final SoundEvent sound,final SoundSource source,final float volume,final float pitch,final boolean distanceDelay,final long seed)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#players()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 842,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18592,10 +18694,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#players()"
     },
     {
-      "category": "world",
+      "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-chunk-light-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#pollLightUpdates()",
       "role": "decision",
       "scope": "external-client",
@@ -18606,10 +18708,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#pollLightUpdates()"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#potionBrewing()",
       "role": "decision",
       "scope": "external-client",
@@ -18620,10 +18722,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#potionBrewing()"
     },
     {
-      "category": "world",
+      "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-chunk-light-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#queueLightUpdate(final Runnable update)",
       "role": "decision",
       "scope": "external-client",
@@ -18634,10 +18736,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#queueLightUpdate(final Runnable update)"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#recipeAccess()",
       "role": "decision",
       "scope": "external-client",
@@ -18648,10 +18750,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#recipeAccess()"
     },
     {
-      "category": "world",
+      "category": "level-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#registerForCleaning(final CacheSlot <ClientLevel, ?> slot)",
       "role": "decision",
       "scope": "external-client",
@@ -18662,10 +18764,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#registerForCleaning(final CacheSlot <ClientLevel, ?> slot)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#removeEntity(final int id,final Entity.RemovalReason reason)",
       "role": "decision",
       "scope": "external-client",
@@ -18676,10 +18778,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#removeEntity(final int id,final Entity.RemovalReason reason)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#sendBlockUpdated(final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)",
       "role": "decision",
       "scope": "external-client",
@@ -18690,10 +18792,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#sendBlockUpdated(final BlockPos pos,final BlockState old,final BlockState current,@Block.UpdateFlags final int updateFlags)"
     },
     {
-      "category": "world",
+      "category": "session-services",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-session-services",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#sendPacketToServer(final Packet <?> packet)",
       "role": "decision",
       "scope": "external-client",
@@ -18704,10 +18806,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#sendPacketToServer(final Packet <?> packet)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#predict_local_block_state",
+          "crates/bbb-world/src/chunks/store.rs#predict_local_block_states"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+          "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_keeps_prediction_and_item_unchanged"
+        ]
+      },
+      "category": "block-prediction",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "interaction-prediction-sequence",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setBlock(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlags,final int updateLimit)",
       "role": "decision",
       "scope": "external-client",
@@ -18718,10 +18830,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setBlock(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlags,final int updateLimit)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setBlocksDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)",
       "role": "decision",
       "scope": "external-client",
@@ -18732,10 +18844,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setBlocksDirty(final BlockPos pos,final BlockState oldState,final BlockState newState)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setRespawnData(final LevelData.RespawnData respawnData)",
       "role": "decision",
       "scope": "external-client",
@@ -18746,10 +18858,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setRespawnData(final LevelData.RespawnData respawnData)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setSectionDirtyWithNeighbors(final int chunkX,final int chunkY,final int chunkZ)",
       "role": "decision",
       "scope": "external-client",
@@ -18760,10 +18872,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSectionDirtyWithNeighbors(final int chunkX,final int chunkY,final int chunkZ)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "render-dirty-handoff",
+      "domain": "rendering",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "rendering-client-level-dirty-handoff",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)",
       "role": "decision",
       "scope": "external-client",
@@ -18774,10 +18886,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSectionRangeDirty(final int minSectionX,final int minSectionY,final int minSectionZ,final int maxSectionX,final int maxSectionY,final int maxSectionZ)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setServerSimulationDistance(final int serverSimulationDistance)",
       "role": "decision",
       "scope": "external-client",
@@ -18788,10 +18900,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setServerSimulationDistance(final int serverSimulationDistance)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back"
+        ]
+      },
+      "category": "block-prediction",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "interaction-prediction-sequence",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setServerVerifiedBlockState(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlag)",
       "role": "decision",
       "scope": "external-client",
@@ -18802,10 +18924,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setServerVerifiedBlockState(final BlockPos pos,final BlockState blockState,@Block.UpdateFlags final int updateFlag)"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setSkyFlashTime(final int skyFlashTime)",
       "role": "decision",
       "scope": "external-client",
@@ -18816,10 +18938,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setSkyFlashTime(final int skyFlashTime)"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#setTimeFromServer(final long gameTime)",
       "role": "decision",
       "scope": "external-client",
@@ -18830,10 +18952,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#setTimeFromServer(final long gameTime)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#shouldTickDeath(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -18844,10 +18966,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#shouldTickDeath(final Entity entity)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#spawnFluidParticle(final double x1,final double x2,final double z1,final double z2,final double y,final ParticleOptions dripParticle)",
       "role": "decision",
       "scope": "external-client",
@@ -18858,10 +18980,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#spawnFluidParticle(final double x1,final double x2,final double z1,final double z2,final double y,final ParticleOptions dripParticle)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#spawnParticle(final BlockPos pos,final ParticleOptions dripParticle,final VoxelShape dripShape,final double height)",
       "role": "decision",
       "scope": "external-client",
@@ -18872,10 +18994,20 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#spawnParticle(final BlockPos pos,final ParticleOptions dripParticle,final VoxelShape dripShape,final double height)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+          "crates/bbb-world/src/chunks/store.rs#set_block_state_id"
+        ],
+        "tests": [
+          "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+          "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back"
+        ]
+      },
+      "category": "block-prediction",
+      "domain": "interaction",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "interaction-prediction-sequence",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#syncBlockState(final BlockPos pos,final BlockState state,final @Nullable Vec3 playerPos)",
       "role": "decision",
       "scope": "external-client",
@@ -18886,10 +19018,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#syncBlockState(final BlockPos pos,final BlockState state,final @Nullable Vec3 playerPos)"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tick(final BooleanSupplier haveTime)",
       "role": "decision",
       "scope": "external-client",
@@ -18900,10 +19032,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tick(final BooleanSupplier haveTime)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tickEntities()",
       "role": "decision",
       "scope": "external-client",
@@ -18914,10 +19046,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickEntities()"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tickNonPassenger(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -18928,10 +19060,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickNonPassenger(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tickPassenger(final Entity vehicle,final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -18942,13 +19074,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickPassenger(final Entity vehicle,final Entity entity)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tickRateManager()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 668,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -18956,10 +19088,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickRateManager()"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#tickTime()",
       "role": "decision",
       "scope": "external-client",
@@ -18970,10 +19102,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#tickTime()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-diagnostics",
+      "domain": "diagnostics",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "diagnostics-client-level-report",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#toString()",
       "role": "decision",
       "scope": "external-client",
@@ -18984,10 +19116,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#toString()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-events",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-level-events",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#trackExplosionEffects(final Vec3 center,final float radius,final int blockCount,final WeightedList <ExplosionParticleInfo> blockParticles)",
       "role": "decision",
       "scope": "external-client",
@@ -18998,10 +19130,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#trackExplosionEffects(final Vec3 center,final float radius,final int blockCount,final WeightedList <ExplosionParticleInfo> blockParticles)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "ambient-animation",
+      "domain": "effects",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-ambient-animation",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#trySpawnDripParticles(final BlockPos pos,final BlockState state,final ParticleOptions dripParticle,final boolean isTopSolid)",
       "role": "decision",
       "scope": "external-client",
@@ -19012,10 +19144,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#trySpawnDripParticles(final BlockPos pos,final BlockState state,final ParticleOptions dripParticle,final boolean isTopSolid)"
     },
     {
-      "category": "world",
+      "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-chunk-light-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#unload(final LevelChunk levelChunk)",
       "role": "decision",
       "scope": "external-client",
@@ -19026,10 +19158,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#unload(final LevelChunk levelChunk)"
     },
     {
-      "category": "world",
+      "category": "chunk-light-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-chunk-light-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel#update()",
       "role": "decision",
       "scope": "external-client",
@@ -19040,10 +19172,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel#update()"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "constructor",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#ClientLevelData(final Difficulty difficulty,final boolean hardcore,final boolean isFlat)",
       "role": "decision",
       "scope": "external-client",
@@ -19054,10 +19186,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#ClientLevelData(final Difficulty difficulty,final boolean hardcore,final boolean isFlat)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "level-diagnostics",
+      "domain": "diagnostics",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "diagnostics-client-level-report",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#fillCrashReportCategory(final CrashReportCategory category,final LevelHeightAccessor levelHeightAccessor)",
       "role": "decision",
       "scope": "external-client",
@@ -19068,13 +19200,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#fillCrashReportCategory(final CrashReportCategory category,final LevelHeightAccessor levelHeightAccessor)"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getDifficulty()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1114,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -19082,13 +19214,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getDifficulty()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getGameTime()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1095,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -19096,10 +19228,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getGameTime()"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getHorizonHeight(final LevelHeightAccessor level)",
       "role": "decision",
       "scope": "external-client",
@@ -19110,10 +19242,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getHorizonHeight(final LevelHeightAccessor level)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getRespawnData()",
       "role": "decision",
       "scope": "external-client",
@@ -19124,13 +19256,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#getRespawnData()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#isDifficultyLocked()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1119,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -19138,13 +19270,13 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#isDifficultyLocked()"
     },
     {
-      "category": "world",
-      "domain": "world",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#isHardcore()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 1109,
         "path": "net/minecraft/client/multiplayer/ClientLevel.java"
@@ -19152,10 +19284,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#isHardcore()"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficulty(final Difficulty difficulty)",
       "role": "decision",
       "scope": "external-client",
@@ -19166,10 +19298,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficulty(final Difficulty difficulty)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficultyLocked(final boolean locked)",
       "role": "decision",
       "scope": "external-client",
@@ -19180,10 +19312,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setDifficultyLocked(final boolean locked)"
     },
     {
-      "category": "world",
+      "category": "clock-weather",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-clock-weather",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setGameTime(final long time)",
       "role": "decision",
       "scope": "external-client",
@@ -19194,10 +19326,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setGameTime(final long time)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setSpawn(final LevelData.RespawnData respawnData)",
       "role": "decision",
       "scope": "external-client",
@@ -19208,10 +19340,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#setSpawn(final LevelData.RespawnData respawnData)"
     },
     {
-      "category": "world",
+      "category": "respawn-data",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-respawn-data",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#voidDarknessOnsetRange()",
       "role": "decision",
       "scope": "external-client",
@@ -19222,10 +19354,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.ClientLevelData#voidDarknessOnsetRange()"
     },
     {
-      "category": "world",
+      "category": "client-noop",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-client-level-noop-hooks",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onCreated(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19236,10 +19368,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onCreated(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "client-noop",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-client-level-noop-hooks",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onDestroyed(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19250,10 +19382,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onDestroyed(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "client-noop",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "scope-client-level-noop-hooks",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onSectionChange(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19264,10 +19396,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onSectionChange(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingEnd(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19278,10 +19410,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingEnd(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingStart(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19292,10 +19424,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTickingStart(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTrackingEnd(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -19306,10 +19438,10 @@
       "vanilla_owner": "net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTrackingEnd(final Entity entity)"
     },
     {
-      "category": "world",
+      "category": "entity-lifecycle",
       "domain": "world",
       "kind": "method",
-      "mechanism_id": "world-client-level-decisions",
+      "mechanism_id": "world-client-entity-lifecycle",
       "owner_id": "method:net.minecraft.client.multiplayer.ClientLevel.EntityCallbacks#onTrackingStart(final Entity entity)",
       "role": "decision",
       "scope": "external-client",
@@ -41148,6 +41280,7 @@
   ],
   "schema_version": 1,
   "selection_contract": {
+    "client_level_method_partition": "explicit homogeneous routes plus CST-derived direct-return support owners; unclassified methods fail closed",
     "java_frontend": "scripts/vanilla_java_source.py",
     "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
     "minecraft_method_partition": "explicit decision/out-of-scope routes plus CST-derived direct-return support owners; unclassified methods fail closed",
@@ -42608,16 +42741,24 @@
   "summary": {
     "by_category": {
       "accessibility": 19,
+      "ambient-animation": 9,
       "audio": 2,
+      "biome-tint": 6,
       "block-breaking": 6,
+      "block-entity-render-tracking": 1,
       "block-entity-renderer": 27,
+      "block-prediction": 4,
       "built-in-registry": 95,
       "carried-slot": 2,
+      "chunk-light-lifecycle": 5,
+      "client-noop": 5,
+      "clock-weather": 8,
       "container-action": 4,
       "creative-action": 2,
       "diagnostics": 38,
       "entity-action": 4,
       "entity-layer": 90,
+      "entity-lifecycle": 17,
       "entity-renderer": 155,
       "entity-type": 157,
       "game-mode": 12,
@@ -42626,15 +42767,20 @@
       "interaction-routing": 3,
       "inventory-action": 9,
       "item-use": 10,
+      "level-diagnostics": 4,
+      "level-events": 3,
+      "level-lifecycle": 3,
       "lifecycle": 24,
       "listener-contract": 155,
       "local-effect": 8,
+      "map-data": 4,
       "menu-screen": 25,
       "movement": 20,
       "movement-report": 4,
       "out-of-scope": 207,
       "packet-table": 256,
       "particle-provider": 117,
+      "particle-routing": 6,
       "persistence": 158,
       "pick-action": 3,
       "platform": 67,
@@ -42644,6 +42790,7 @@
       "protocol-handler": 269,
       "reload-listener": 20,
       "render-diagnostics": 3,
+      "render-dirty-handoff": 6,
       "render-effect": 4,
       "render-lifecycle": 9,
       "render-light": 3,
@@ -42652,26 +42799,29 @@
       "render-step": 139,
       "resource-consumer": 105,
       "resources": 82,
+      "respawn-data": 9,
       "screen-open": 9,
       "security": 30,
       "serverbound-call-site": 67,
+      "session-services": 8,
+      "sound-routing": 6,
       "startup": 21,
-      "support-accessor": 82,
+      "support-accessor": 99,
       "synchronized-registry": 28,
       "targeting": 9,
       "text": 2,
       "ui": 71,
-      "vehicle-control": 7,
-      "world": 121
+      "vehicle-control": 7
     },
     "by_domain": {
       "accessibility": 19,
-      "audio": 75,
-      "diagnostics": 38,
+      "audio": 81,
+      "diagnostics": 42,
+      "effects": 18,
       "entities": 402,
       "identity": 25,
       "input": 87,
-      "interaction": 65,
+      "interaction": 69,
       "language": 7,
       "lifecycle": 24,
       "movement": 39,
@@ -42681,21 +42831,21 @@
       "protocol": 747,
       "realms": 100,
       "registries": 123,
-      "rendering": 275,
+      "rendering": 288,
       "resources": 102,
       "security": 30,
       "singleplayer": 50,
       "startup": 19,
-      "support": 82,
+      "support": 99,
       "telemetry": 17,
       "text": 35,
       "ui": 206,
-      "world": 121
+      "world": 59
     },
     "by_role": {
-      "decision": 1446,
+      "decision": 1429,
       "out-of-scope": 207,
-      "support-non-decision": 82
+      "support-non-decision": 99
     },
     "mapped_owner_count": 2927,
     "owner_count": 2927,

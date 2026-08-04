@@ -45,19 +45,57 @@ Matrix route: `coverage-external-client-census`
 
 <!-- architecture-candidates:start -->
 <!-- architecture-candidates:end -->
-## ClientLevel world and effect decision surface
+## ClientLevel world and effect decision surfaces
 
 Owner: `bbb-world` + `bbb-native` + `bbb-renderer` + `bbb-audio`
 
-Matrix route: `world-client-level-decisions`
+Matrix routes: `world-client-level-lifecycle`, `world-client-clock-weather`, `world-client-chunk-light-lifecycle`, `world-client-entity-lifecycle`, `world-client-ambient-animation`, `world-client-session-services`, `world-client-map-data`, `world-client-level-events`, `world-client-respawn-data`, `rendering-client-block-entity-tracking`, `rendering-client-level-dirty-handoff`, `rendering-client-particle-routing`, `rendering-client-biome-tint`, `audio-client-level-sound-routing`, `diagnostics-client-level-report`
 
-- **The source-derived `ClientLevel` decision surface is `active`.** Packet,
-  entity and registry coverage closes many inputs, but the census cannot infer
-  complete chunk/global/map/time/weather/border/block-entity/effect/audio and
-  dimension-lifecycle consumers from canonical state alone. Split the 121
-  generated owners by homogeneous lifecycle, preserve one world source of
-  truth, and require state→runtime→presentation evidence for every in-scope
-  family.
+Goal route: `goal.md#p2非实体客户端行为-closeout`
+
+The generated census maps all 121 `ClientLevel` constructor/method owners exactly
+once. Physical BBB paths below are locatable evidence only; each `unverified` route
+must independently close its Vanilla decision order, canonical lifetime, runtime
+consumer, fallback and applicable live evidence.
+
+- **`world-client-level-lifecycle` (3 owners).** Verify construct/tick/disconnect
+  generation ordering, terminal teardown and stale-level rejection in the single
+  `WorldStore` lifecycle owner.
+- **`world-client-clock-weather` (8 owners).** Verify game/day time and rain/thunder
+  interpolation, tick order and dimension/session replacement without a native
+  shadow clock.
+- **`world-client-chunk-light-lifecycle` (5 owners).** Verify chunk replace/drop,
+  light-source enablement and renderer invalidation ordering with bounded retained
+  chunk state.
+- **`world-client-entity-lifecycle` (17 owners).** Verify add/remove/tick/passenger,
+  multipart lookup and callback ordering through the one canonical entity store.
+- **`world-client-ambient-animation` (9 owners).** Verify block animation and
+  ambient/mood event selection from world state through exactly-once native effects.
+- **`world-client-session-services` (8 owners).** Verify registry, scoreboard,
+  recipe, map and service references carry or reset at the exact level-generation
+  boundary without independently replaceable caches.
+- **`world-client-map-data` (4 owners).** Verify map get/set/free identity,
+  replacement and retained-byte lifetime through the canonical map store.
+- **`world-client-level-events` (3 owners).** Verify global/level/explosion event
+  ordering from packet apply through canonical mutation and presentation effects.
+- **`world-client-respawn-data` (9 owners).** Verify difficulty, spawn, hardcore,
+  flat/debug flags and immutable level-data projection across respawn/replacement.
+- **`rendering-client-block-entity-tracking` (1 owner).** Verify block-entity add
+  queries the renderer's off-screen policy once, updates the generation-local global
+  membership and drops stale membership at the exact removal/replacement boundary.
+- **`rendering-client-level-dirty-handoff` (6 owners).** Verify block/range dirty
+  coordinates, section expansion and ordered terrain-generation handoff without a
+  second resolver.
+- **`rendering-client-particle-routing` (6 owners).** Verify force, distance,
+  always-visible and source ordering through the bounded particle projection.
+- **`rendering-client-biome-tint` (6 owners).** Verify biome sampling, tint cache
+  invalidation, shade and generation replacement without renderer-side world reads.
+- **`audio-client-level-sound-routing` (6 owners).** Verify local/entity/delayed/
+  seeded sound decisions, listener-relative behavior and generation-safe lazy audio
+  submission through the single audio event path.
+- **`diagnostics-client-level-report` (4 owners).** Verify level/entity report
+  sections, bounded counters and terminal diagnostics against the same world
+  generation rather than a stale snapshot.
 
 ## Local-player and multiplayer game-mode decisions
 
@@ -445,13 +483,19 @@ Matrix routes: `scope-telemetry-upload`, `protocol-framing-no-world-state`
 
 ## Source inventory support owners
 
-Matrix route: `scope-support-accessors`
+Matrix routes: `scope-support-accessors`, `scope-client-level-noop-hooks`
 
-- **Direct `Minecraft` accessors are not independent mechanisms.** The shared
-  Tree-sitter inventory classifies only single-return field, parameter or
-  constant bodies as `support-non-decision`; every branch, allocation, call or
-  mutation must have an explicit mechanism route. Reopen when the CST body of
-  any of the 64 classified owners gains a decision or side effect.
+- **Direct accessors are not independent mechanisms.** The shared Tree-sitter
+  inventory classifies only single-return field, parameter or constant bodies in
+  `Minecraft`, `LocalPlayer`, `MultiPlayerGameMode` and `ClientLevel` as
+  `support-non-decision`; every branch, allocation, call or mutation must have an
+  explicit mechanism route. Reopen when the CST body of any of the 99 classified
+  owners gains a decision or side effect.
+- **Empty `ClientLevel` client hooks have no BBB consumer.** Vanilla
+  `gameEvent`, `explode` and `EntityCallbacks.onCreated/onDestroyed/onSectionChange`
+  have empty bodies and do not mutate client state or emit an effect. Reopen when
+  any source body gains a statement or the enclosing lifecycle starts invoking a
+  distinct client decision owner.
 
 ## Target-version item-model surface
 

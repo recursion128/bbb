@@ -94,7 +94,7 @@
   diagnostics/light 以 generation projection、原子 prepare/apply 与 fail-closed evidence 收口。
 - **2026-08-03（LocalPlayer/game-mode census 与首批交互 closure）**：149 owner 拆为 23 条同质 route；
   block-breaking 与 prediction 统一到 level-bound handler、signed ack 和 atomic command barrier。
-- **2026-08-03（generated evidence layout convergence）**：五份 26.1 coverage/inventory JSON 收敛到
-  `docs/evidence/vanilla-26.1/` 封闭集合，并以 exact-member、root/legacy reverse guard 防漂移。
+- **2026-08-03（generated evidence/layout 与 ClientLevel census）**：五份 JSON 收敛为 exact-member
+  evidence 集；`ClientLevel` 121 owner 以 fail-closed 表拆为 18 条同质 route，broad residual 清零。
 
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

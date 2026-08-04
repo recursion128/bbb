@@ -199,6 +199,152 @@ public class Owner {
             )
         )
 
+    def test_client_level_partition_is_total_and_homogeneous(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"]
+            == "net/minecraft/client/multiplayer/ClientLevel.java"
+            and owner["kind"] in {"method", "constructor"}
+        ]
+        by_mechanism = Counter(owner["mechanism_id"] for owner in methods)
+
+        self.assertEqual(len(methods), 121)
+        self.assertEqual(
+            by_mechanism,
+            Counter(
+                {
+                    "audio-client-level-sound-routing": 6,
+                    "diagnostics-client-level-report": 4,
+                    "interaction-prediction-sequence": 4,
+                    "rendering-client-biome-tint": 6,
+                    "rendering-client-block-entity-tracking": 1,
+                    "rendering-client-level-dirty-handoff": 6,
+                    "rendering-client-particle-routing": 6,
+                    "scope-client-level-noop-hooks": 5,
+                    "scope-support-accessors": 17,
+                    "world-client-ambient-animation": 9,
+                    "world-client-chunk-light-lifecycle": 5,
+                    "world-client-clock-weather": 8,
+                    "world-client-entity-lifecycle": 17,
+                    "world-client-level-events": 3,
+                    "world-client-level-lifecycle": 3,
+                    "world-client-map-data": 4,
+                    "world-client-respawn-data": 9,
+                    "world-client-session-services": 8,
+                }
+            ),
+        )
+        self.assertNotIn("world-client-level-decisions", by_mechanism)
+        self.assertEqual(
+            value["selection_contract"]["client_level_method_partition"],
+            "explicit homogeneous routes plus CST-derived direct-return support owners; unclassified methods fail closed",
+        )
+
+    def test_client_level_unknown_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/ClientLevel.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client.multiplayer; class ClientLevel { void unclassifiedDecision() {} }\n",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "ClientLevel method lacks a homogeneous route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "world", "world", "world-client-level-decisions", relative
+                    )
+                )
+
+    def test_client_level_overloads_share_one_explicit_route(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/ClientLevel.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.multiplayer;
+class ClientLevel {
+  void addParticle(int value) {}
+  void addParticle(String value) {}
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            builder.add_method_surface(
+                inventory.MethodSurface(
+                    "world", "world", "world-client-level-decisions", relative
+                )
+            )
+
+        self.assertEqual(len(builder.owners), 2)
+        self.assertEqual(
+            {owner["mechanism_id"] for owner in builder.owners},
+            {"rendering-client-particle-routing"},
+        )
+
+    def test_client_level_support_route_rejects_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/ClientLevel.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.multiplayer;
+class ClientLevel {
+  Object getWorldBorder() { mutate(); return border; }
+  void mutate() {}
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "ClientLevel support route is not a direct accessor",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "world", "world", "world-client-level-decisions", relative
+                    )
+                )
+
+    def test_client_level_noop_route_rejects_new_statement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/multiplayer/ClientLevel.java"
+            self.write_source(
+                root,
+                relative,
+                """\
+package net.minecraft.client.multiplayer;
+class ClientLevel {
+  void gameEvent() { recordEvent(); }
+}
+""",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "ClientLevel no-op route is not source-empty",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "world", "world", "world-client-level-decisions", relative
+                    )
+                )
+
     def test_block_breaking_owner_without_implementation_test_evidence_fails_closed(
         self,
     ) -> None:

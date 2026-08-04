@@ -449,34 +449,11 @@ docs lint fixtures 维护。新增或移动 Vanilla owner、BBB evidence、状�
 
 ### P2：非实体客户端行为 closeout
 
-状态：`active`。packet/registry/item/entity generated coverage 仍无 open row，但 census 已将
-`ClientLevel` broad 判断与 `LocalPlayer`/`MultiPlayerGameMode` 的 23 条同质决策 route 登记为
-决策级 active 工程。按账本逐项贯通 canonical state、runtime effect/counter、presentation 和
-适用 live interaction；不得用已有 codec/state 字段替代 consumer evidence。
-
-#### Active contract：ClientLevel decision-surface census
-
-- 目标：只把本地 Vanilla 26.1 `ClientLevel.java` 的 121 个 constructor/method owner 从 broad
-  `world-client-level-decisions` 拆为可独立判定、验收和排程的同质机制；census 不修改 production behavior。
-- 权威与粒度：以共享 Tree-sitter method surface、完整本地源码及 nested `ClientLevelData`/
-  `EntityCallbacks` 为输入；按 prediction、level tick/time/weather、chunk/light/render invalidation、entity、
-  block entity、sound、particle/animate、level/explosion event、map、environment/tint、respawn/data、
-  session-service projection、diagnostics、client no-op hook 与直接 accessor 生命周期分类。
-- 唯一 evidence owner：`scripts/client_mechanism_inventory.py` 的显式 `CLIENT_LEVEL_METHOD_ROUTES`；
-  unknown method 必须 fail closed，overload 同名同 route，直接 accessor 仅在 CST 证明为单一
-  field/parameter/constant return 时进入 `scope-support-accessors`。
-- Phase A：逐 method 记录 Vanilla 决策输入、side effect/lifetime 与现有 BBB owner，冻结 route 集合；
-  不更新 production 实现或把 physical state 存在误写为 consumer equivalent。
-- Phase B：生成稳定 inventory，加入 121-owner total、逐 route count、unknown/duplicate、overload、
-  accessor mutation、broad-route residual 与 stale-output fixtures。
-- Phase C：把 broad matrix/ledger 行替换为同质 rows/items；已有闭环只能凭当前 decision+consumer evidence
-  保持/取得 `equivalent`，其余如实标记 `partial`/`unverified` 并双向路由唯一 ledger。
-- 非目标：不修复 census 发现的 world/audio/particle/renderer 行为，不改 packet、resource、screen 或
-  renderer pipeline；不增加第二份 Markdown inventory 或手写 Java parser。
-- 验收与 gate：相关 Python fixtures、exact-output/source-hash check、docs lint、fmt、diff check、
-  非测试 workspace check、完整 diff review；合同提交与 census 完成提交均 full-gate，行为不变不刷新 playable。
-- 安全停止点：只允许 broad inventory 完整存在的合同提交，或 121 owner 全部映射、unmapped/broad residual
-  为 0 且 full-gated 的干净提交；内部分类/fixture 失败不是 external blocker。
+状态：`active`。packet/registry/item/entity generated coverage 仍无 open row；机械 census 已把
+`ClientLevel` 121 个 owner 拆为 18 条同质 route，其中 prediction/accessor/no-op 已有闭合归属，
+其余 15 条与 `LocalPlayer`/`MultiPlayerGameMode` 未关闭 route 均由唯一账本排程。按 hardest-ready-first
+逐项贯通 canonical state、runtime effect/counter、presentation 和适用 live interaction；不得用已有
+codec/state 字段或 physical BBB path 替代 consumer evidence。
 
 ### P2：屏幕、HUD、字体与截图
 

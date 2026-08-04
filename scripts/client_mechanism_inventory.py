@@ -576,6 +576,239 @@ MULTIPLAYER_GAME_MODE_METHOD_ROUTES = _method_routes(
 )
 
 
+CLIENT_LEVEL_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("level-lifecycle", "world", "world-client-level-lifecycle"),
+        ("ClientLevel", "disconnect", "registerForCleaning"),
+    ),
+    (
+        MethodRoute(
+            "block-prediction",
+            "interaction",
+            "interaction-prediction-sequence",
+        ),
+        (
+            "handleBlockChangedAck",
+            "setServerVerifiedBlockState",
+            "syncBlockState",
+            "setBlock",
+        ),
+    ),
+    (
+        MethodRoute(
+            "block-entity-render-tracking",
+            "rendering",
+            "rendering-client-block-entity-tracking",
+        ),
+        ("onBlockEntityAdded",),
+    ),
+    (
+        MethodRoute("clock-weather", "world", "world-client-clock-weather"),
+        (
+            "addEnvironmentAttributeLayers",
+            "tick",
+            "tickTime",
+            "setTimeFromServer",
+            "clockManager",
+            "getSkyFlashTime",
+            "setSkyFlashTime",
+            "setGameTime",
+        ),
+    ),
+    (
+        MethodRoute(
+            "chunk-light-lifecycle",
+            "world",
+            "world-client-chunk-light-lifecycle",
+        ),
+        (
+            "queueLightUpdate",
+            "pollLightUpdates",
+            "update",
+            "unload",
+            "onChunkLoaded",
+        ),
+    ),
+    (
+        MethodRoute(
+            "render-dirty-handoff",
+            "rendering",
+            "rendering-client-level-dirty-handoff",
+        ),
+        (
+            "onSectionBecomingNonEmpty",
+            "sendBlockUpdated",
+            "setBlocksDirty",
+            "setSectionDirtyWithNeighbors",
+            "setSectionRangeDirty",
+            "destroyBlockProgress",
+        ),
+    ),
+    (
+        MethodRoute("entity-lifecycle", "world", "world-client-entity-lifecycle"),
+        (
+            "entitiesForRendering",
+            "tickEntities",
+            "isTickingEntity",
+            "shouldTickDeath",
+            "tickNonPassenger",
+            "tickPassenger",
+            "getEntityCount",
+            "addEntity",
+            "removeEntity",
+            "getPushableEntities",
+            "getEntity",
+            "getEntities",
+            "setServerSimulationDistance",
+            "onTickingStart",
+            "onTickingEnd",
+            "onTrackingStart",
+            "onTrackingEnd",
+        ),
+    ),
+    (
+        MethodRoute(
+            "ambient-animation",
+            "effects",
+            "world-client-ambient-animation",
+        ),
+        (
+            "animateTick",
+            "getMarkerParticleTarget",
+            "doAnimateTick",
+            "trySpawnDripParticles",
+            "spawnParticle",
+            "spawnFluidParticle",
+            "createFireworks",
+            "addDestroyBlockEffect",
+            "addBreakingBlockEffect",
+        ),
+    ),
+    (
+        MethodRoute(
+            "particle-routing",
+            "effects",
+            "rendering-client-particle-routing",
+        ),
+        (
+            "addParticle",
+            "addAlwaysVisibleParticle",
+            "doAddParticle",
+            "calculateParticleLevel",
+        ),
+    ),
+    (
+        MethodRoute(
+            "sound-routing",
+            "audio",
+            "audio-client-level-sound-routing",
+        ),
+        (
+            "playSeededSound",
+            "playLocalSound",
+            "playPlayerSound",
+            "playSound",
+        ),
+    ),
+    (
+        MethodRoute(
+            "session-services",
+            "world",
+            "world-client-session-services",
+        ),
+        (
+            "sendPacketToServer",
+            "recipeAccess",
+            "getBlockTicks",
+            "getFluidTicks",
+            "getScoreboard",
+            "enabledFeatures",
+            "potionBrewing",
+            "fuelValues",
+        ),
+    ),
+    (
+        MethodRoute("map-data", "world", "world-client-map-data"),
+        ("getMapData", "overrideMapData", "getAllMapData", "addMapData"),
+    ),
+    (
+        MethodRoute("level-events", "effects", "world-client-level-events"),
+        ("globalLevelEvent", "levelEvent", "trackExplosionEffects"),
+    ),
+    (
+        MethodRoute(
+            "biome-tint",
+            "rendering",
+            "rendering-client-biome-tint",
+        ),
+        (
+            "clearTintCaches",
+            "getUncachedNoiseBiome",
+            "cardinalLighting",
+            "getBlockTint",
+            "calculateBlockTint",
+            "getClientLeafTintColor",
+        ),
+    ),
+    (
+        MethodRoute("respawn-data", "world", "world-client-respawn-data"),
+        (
+            "setRespawnData",
+            "getRespawnData",
+            "ClientLevelData",
+            "setSpawn",
+            "setDifficulty",
+            "setDifficultyLocked",
+            "getHorizonHeight",
+            "voidDarknessOnsetRange",
+        ),
+    ),
+    (
+        MethodRoute(
+            "level-diagnostics",
+            "diagnostics",
+            "diagnostics-client-level-report",
+        ),
+        (
+            "fillReportDetails",
+            "fillCrashReportCategory",
+            "gatherChunkSourceStats",
+            "toString",
+        ),
+    ),
+    (
+        MethodRoute(
+            "client-noop",
+            "world",
+            "scope-client-level-noop-hooks",
+        ),
+        ("gameEvent", "explode", "onCreated", "onDestroyed", "onSectionChange"),
+    ),
+    (
+        DIRECT_SUPPORT_ROUTE,
+        (
+            "getGloballyRenderedBlockEntities",
+            "getBlockStatePredictionHandler",
+            "endFlashState",
+            "hasChunk",
+            "getWorldBorder",
+            "tickRateManager",
+            "environmentAttributes",
+            "getChunkSource",
+            "players",
+            "dragonParts",
+            "getLevelData",
+            "getServerSimulationDistance",
+            "getSeaLevel",
+            "getGameTime",
+            "isHardcore",
+            "getDifficulty",
+            "isDifficultyLocked",
+        ),
+    ),
+)
+
+
 LEVEL_RENDERER_METHOD_ROUTES = _method_routes(
     (
         MethodRoute(
@@ -1375,6 +1608,45 @@ INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE = _owner_evidence(
         ),
         ("startPrediction",),
     ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/block_events.rs#apply_block_changed_ack",
+                "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+            ),
+            (
+                "crates/bbb-world/src/block_events.rs#prediction_sequence_uses_java_signed_wrap_and_ack_order",
+                "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back",
+            ),
+        ),
+        ("handleBlockChangedAck",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#sync_ended_local_block_predictions",
+                "crates/bbb-world/src/chunks/store.rs#set_block_state_id",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+                "crates/bbb-world/src/chunks/tests.rs#teleport_prevents_older_prediction_rejection_from_moving_player_back",
+            ),
+        ),
+        ("setServerVerifiedBlockState", "syncBlockState"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/chunks/store.rs#predict_local_block_state",
+                "crates/bbb-world/src/chunks/store.rs#predict_local_block_states",
+            ),
+            (
+                "crates/bbb-world/src/chunks/tests.rs#one_prediction_sequence_tracks_each_changed_position",
+                "crates/bbb-native/src/input/mouse.rs#unavailable_block_use_command_keeps_prediction_and_item_unchanged",
+            ),
+        ),
+        ("setBlock",),
+    ),
 )
 
 METHOD_OWNER_EVIDENCE = {
@@ -1523,7 +1795,36 @@ MECHANISM_EVIDENCE = {
     "registries-synchronized-data": (
         "docs/evidence/vanilla-26.1/registry-holder-consumer-coverage.json",
     ),
-    "world-client-level-decisions": ("crates/bbb-world/src/lib.rs",),
+    "world-client-level-lifecycle": ("crates/bbb-world/src/level.rs",),
+    "rendering-client-block-entity-tracking": (
+        "crates/bbb-native/src/block_entity_visibility.rs",
+    ),
+    "world-client-clock-weather": ("crates/bbb-world/src/level.rs",),
+    "world-client-chunk-light-lifecycle": ("crates/bbb-world/src/chunks/store.rs",),
+    "rendering-client-level-dirty-handoff": (
+        "crates/bbb-native/src/terrain_runtime.rs",
+    ),
+    "world-client-entity-lifecycle": ("crates/bbb-world/src/entities/store.rs",),
+    "world-client-ambient-animation": (
+        "crates/bbb-native/src/environment_animate_runtime.rs",
+    ),
+    "rendering-client-particle-routing": (
+        "crates/bbb-native/src/particle_runtime.rs",
+    ),
+    "audio-client-level-sound-routing": (
+        "crates/bbb-world/src/client/audio.rs",
+        "crates/bbb-native/src/environment_audio_runtime.rs",
+    ),
+    "world-client-session-services": ("crates/bbb-world/src/registries.rs",),
+    "world-client-map-data": ("crates/bbb-world/src/maps.rs",),
+    "world-client-level-events": (
+        "crates/bbb-world/src/play_apply.rs",
+        "crates/bbb-native/src/runtime/events.rs",
+    ),
+    "rendering-client-biome-tint": ("crates/bbb-native/src/biome_tint.rs",),
+    "world-client-respawn-data": ("crates/bbb-world/src/level.rs",),
+    "diagnostics-client-level-report": ("crates/bbb-world/src/diagnostics.rs",),
+    "scope-client-level-noop-hooks": ("docs/unsupported-features.md",),
     "player-local-session-respawn": (
         "crates/bbb-native/src/input/death_screen.rs",
         "crates/bbb-world/src/client/combat.rs",
@@ -1810,6 +2111,9 @@ class InventoryBuilder:
         ):
             exact_routes = MULTIPLAYER_GAME_MODE_METHOD_ROUTES
             owner_name = "MultiPlayerGameMode"
+        elif spec.source_path == "net/minecraft/client/multiplayer/ClientLevel.java":
+            exact_routes = CLIENT_LEVEL_METHOD_ROUTES
+            owner_name = "ClientLevel"
         if exact_routes is not None:
             route = exact_routes.get(method.name)
             signature = InventoryBuilder.method_signature(method)
@@ -1822,6 +2126,13 @@ class InventoryBuilder:
             ):
                 raise ClientMechanismInventoryError(
                     f"{owner_name} support route is not a direct accessor: {signature}"
+                )
+            if (
+                route.mechanism_id == "scope-client-level-noop-hooks"
+                and not InventoryBuilder.is_empty_method_body(method)
+            ):
+                raise ClientMechanismInventoryError(
+                    f"ClientLevel no-op route is not source-empty: {signature}"
                 )
             return route
         if spec.source_path == "net/minecraft/client/renderer/LevelRenderer.java":
@@ -1864,6 +2175,11 @@ class InventoryBuilder:
         # mutation, allocation, or downstream call. Source hashes and this CST
         # predicate make any later body change fail the checked inventory.
         return bool(source.text(expression).strip())
+
+    @staticmethod
+    def is_empty_method_body(method: JavaMethod) -> bool:
+        body = method.node.child_by_field_name("body")
+        return body is not None and not body.named_children
 
     def add_listener_contracts(self) -> None:
         for path in LISTENER_PATHS:
@@ -2141,6 +2457,7 @@ class InventoryBuilder:
             "owners": self.owners,
             "schema_version": 1,
             "selection_contract": {
+                "client_level_method_partition": "explicit homogeneous routes plus CST-derived direct-return support owners; unclassified methods fail closed",
                 "java_frontend": "scripts/vanilla_java_source.py",
                 "level_renderer_method_partition": "explicit homogeneous routes; unclassified methods fail closed",
                 "owner_evidence_mechanisms": list(OWNER_EVIDENCE_MECHANISMS),
