@@ -8,7 +8,10 @@ use std::{
 use bbb_control::{CodeOfConductControlRequest, ControlWriteRequest, InputControlRequest};
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
-use bbb_protocol::{packets::CustomClickAction, ComponentClickEvent};
+use bbb_protocol::{
+    packets::{ClientInformation, CustomClickAction},
+    ComponentClickEvent,
+};
 use bbb_renderer::{
     HudBookHitTarget, HudBookMode, HudChatHitTarget, HudChatHitTargetKind, HudDeathScreenHitTarget,
     HudDisconnectedScreenHitTarget, HudFontGlyphMap, HudGameEventHitTarget, HudPauseDraftButton,
@@ -77,6 +80,10 @@ pub(crate) struct SimulationInputRuntime {
     shutdown_requested: bool,
     terrain_readiness: Option<(u64, usize, bool)>,
     last_applied_sequence: u64,
+    /// What `Options.buildPlayerInformation` would return. Nothing this client
+    /// changes at runtime feeds it, so `broadcastOptions` re-sends the values
+    /// the session was configured with.
+    client_information: ClientInformation,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -101,7 +108,11 @@ enum SimulationCommandProfileKind {
 }
 
 impl SimulationInputRuntime {
-    pub(crate) fn new(surface_size: PhysicalSize<u32>, cursor_captured: bool) -> Self {
+    pub(crate) fn new(
+        surface_size: PhysicalSize<u32>,
+        cursor_captured: bool,
+        client_information: ClientInformation,
+    ) -> Self {
         Self {
             surface_size,
             cursor_position: None,
@@ -112,6 +123,7 @@ impl SimulationInputRuntime {
             shutdown_requested: false,
             terrain_readiness: None,
             last_applied_sequence: 0,
+            client_information,
         }
     }
 
@@ -1155,6 +1167,11 @@ impl SimulationInputRuntime {
             context.platform.submit(PlatformEffect::SaveClientOptions {
                 writes: client_option_writes,
             });
+            crate::input::queue_broadcast_client_information_command(
+                context.net_counters,
+                context.net_commands,
+                &self.client_information,
+            );
         }
         let profiling_toggle_requests = context.input.take_debug_profiling_toggle_requests();
         if !profiling_toggle_requests.is_empty() {
@@ -2870,7 +2887,11 @@ mod tests {
 
     #[test]
     fn terrain_readiness_is_scoped_to_the_published_level_generation() {
-        let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         runtime.terrain_readiness = Some((7, 1, true));
 
         assert!(runtime.player_section_ready(7, 1));
@@ -2920,7 +2941,11 @@ mod tests {
 
     #[test]
     fn network_terminal_shutdown_is_idempotent_and_requests_disconnect() {
-        let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let (tx, mut rx) = mpsc::channel(2);
         let effects = crate::simulation::effects::RenderEffectCollector::new(
             1,

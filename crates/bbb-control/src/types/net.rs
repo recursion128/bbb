@@ -135,6 +135,9 @@ pub struct NetCounters {
     pub perform_respawn_commands_queued: usize,
     #[serde(default)]
     pub request_stats_commands_queued: usize,
+    /// `Options.broadcastOptions` resends after a `save`.
+    #[serde(default)]
+    pub broadcast_client_information_commands_queued: usize,
     #[serde(default)]
     pub request_game_rule_values_commands_queued: usize,
     #[serde(default)]

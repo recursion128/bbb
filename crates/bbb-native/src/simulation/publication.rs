@@ -278,6 +278,7 @@ mod tests {
         runtime::{HudDebugNetworkSampler, HudDebugTpsSampler},
         simulation::input_commands::SimulationInputRuntime,
     };
+    use bbb_protocol::packets::ClientInformation;
     use winit::{
         dpi::PhysicalSize,
         event::ElementState,
@@ -336,7 +337,11 @@ mod tests {
         let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
@@ -383,7 +388,11 @@ mod tests {
                 bug_report_link: None,
             },
         );
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
@@ -440,7 +449,11 @@ mod tests {
             "draft 中",
         );
         assert!(client_input.open_chat_restrictions_screen());
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
         let network = HudDebugNetworkSampler::default();
@@ -485,7 +498,11 @@ mod tests {
         let mut world = WorldStore::new();
         world.set_local_player_pose(bbb_world::LocalPlayerPoseState::default());
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
@@ -520,7 +537,11 @@ mod tests {
         let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
@@ -591,7 +612,11 @@ mod tests {
         let control = test_control_state();
         let mut world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let mut audio = AudioCounters::default();
@@ -647,7 +672,11 @@ mod tests {
         let control = test_control_state();
         let mut world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();
@@ -723,7 +752,11 @@ mod tests {
         let control = test_control_state();
         let world = WorldStore::new();
         let client_input = ClientInputState::default();
-        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let input_runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
         let net = NetCounters::default();
         let renderer = RendererCounters::default();
         let audio = AudioCounters::default();

@@ -249,6 +249,26 @@ pub(crate) async fn send_ping_request(conn: &mut RawConnection, time: i64) -> Re
     conn.send_packet(id, &payload).await
 }
 
+/// `ClientCommonPacketListenerImpl.broadcastClientInformation` from the play
+/// phase.
+pub(crate) async fn send_play_client_information(
+    conn: &mut RawConnection,
+    information: &packets::ClientInformation,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_client_information(information)?;
+    conn.send_packet(id, &payload).await
+}
+
+/// The same broadcast while the connection is still in configuration, where the
+/// packet keeps its configuration-phase id.
+pub(crate) async fn send_configuration_client_information(
+    conn: &mut RawConnection,
+    information: &packets::ClientInformation,
+) -> Result<()> {
+    let (id, payload) = packets::encode_client_information(information)?;
+    conn.send_packet(id, &payload).await
+}
+
 pub(crate) async fn send_block_entity_tag_query(
     conn: &mut RawConnection,
     packet: BlockEntityTagQuery,

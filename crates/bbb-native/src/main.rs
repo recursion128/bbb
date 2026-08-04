@@ -907,6 +907,9 @@ fn run_client(args: startup::Args) -> Result<()> {
     let mut entity_variant_textures = NativeEntityVariantTextureRuntime::new(pack_roots.clone());
     let mut entity_render_extraction = EntityRenderExtractionScratch::default();
     let mut non_entity_render_extraction = runtime::NonEntityRenderExtractionScratch::default();
+    // `Options.broadcastOptions` resends this after every save, so keep the
+    // configured player information around for the session.
+    let startup_client_information = startup::client_information_from_args(&args)?;
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -975,8 +978,11 @@ fn run_client(args: startup::Args) -> Result<()> {
             }
         }
     }
-    let simulation_input_runtime =
-        simulation::input_commands::SimulationInputRuntime::new(window.inner_size(), false);
+    let simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
+        window.inner_size(),
+        false,
+        startup_client_information,
+    );
     let mut renderer_counters = control_renderer_counters(renderer.counters());
     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
     let publisher = SimulationPublisher::new(

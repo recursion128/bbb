@@ -17,11 +17,12 @@ pub(crate) use commands::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
     send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
-    send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_custom_click_action,
-    send_custom_payload, send_debug_subscription_request, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_jigsaw_generate, send_lock_difficulty, send_paddle_boat,
-    send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_command_suggestion_request, send_configuration_client_information,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_custom_click_action, send_custom_payload,
+    send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
+    send_jigsaw_generate, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe, send_play_client_information,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
@@ -213,6 +214,9 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::PingRequest(time)) => {
                         send_ping_request(conn, time).await?;
                     }
+                    Some(NetCommand::BroadcastClientInformation(information)) => {
+                        send_play_client_information(conn, &information).await?;
+                    }
                     Some(NetCommand::BlockEntityTagQuery(packet)) => {
                         send_block_entity_tag_query(conn, packet).await?;
                     }
@@ -376,6 +380,9 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PickItemFromEntity(_)) => {}
                     Some(NetCommand::PaddleBoat(_)) => {}
                     Some(NetCommand::PingRequest(_)) => {}
+                    Some(NetCommand::BroadcastClientInformation(information)) => {
+                        send_configuration_client_information(conn, &information).await?;
+                    }
                     Some(NetCommand::BlockEntityTagQuery(_)) => {}
                     Some(NetCommand::EntityTagQuery(_)) => {}
                     Some(NetCommand::ChangeDifficulty(_)) => {}

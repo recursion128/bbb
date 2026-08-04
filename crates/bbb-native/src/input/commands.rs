@@ -110,6 +110,23 @@ pub(crate) fn queue_perform_respawn_command(
     }
 }
 
+/// `Options.broadcastOptions`: `Options.save` ends by sending the current
+/// player information back, outside the block that catches a failed write.
+pub(crate) fn queue_broadcast_client_information_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    information: &bbb_protocol::packets::ClientInformation,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::BroadcastClientInformation(information.clone()))
+            .is_ok()
+        {
+            counters.broadcast_client_information_commands_queued += 1;
+        }
+    }
+}
+
 pub(crate) fn queue_request_stats_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,

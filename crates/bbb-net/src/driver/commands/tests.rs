@@ -2,11 +2,12 @@ use super::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
     send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
-    send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_custom_payload,
-    send_debug_subscription_request, send_edit_book, send_entity_tag_query, send_interact_entity,
-    send_jigsaw_generate, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
-    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_command_suggestion_request, send_configuration_client_information,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_custom_payload, send_debug_subscription_request,
+    send_edit_book, send_entity_tag_query, send_interact_entity, send_jigsaw_generate,
+    send_lock_difficulty, send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity,
+    send_ping_request, send_place_recipe, send_play_client_information,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
@@ -1438,6 +1439,51 @@ async fn send_ping_request_encodes_play_ping_request_packet() {
     send_ping_request(&mut conn, 123_456_789).await.unwrap();
 
     server.await.unwrap();
+}
+
+#[tokio::test]
+async fn broadcast_client_information_keeps_each_phase_own_packet_id() {
+    // `broadcastClientInformation` lives on the common listener, so the same
+    // payload goes out under whichever phase's id is current.
+    let information = bbb_protocol::packets::ClientInformation {
+        language: "zh_cn".to_string(),
+        view_distance: 12,
+        ..Default::default()
+    };
+    for (play, expected_id) in [
+        (true, ids::play::SERVERBOUND_CLIENT_INFORMATION),
+        (false, ids::configuration::SERVERBOUND_CLIENT_INFORMATION),
+    ] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut conn = RawConnection::from_stream(stream, None);
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .expect("client information should be sent")
+                .unwrap();
+            assert_eq!(packet_id, expected_id);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_string(16).unwrap(), "zh_cn");
+            assert_eq!(decoder.read_u8().unwrap(), 12);
+        });
+        let mut conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+
+        if play {
+            send_play_client_information(&mut conn, &information)
+                .await
+                .unwrap();
+        } else {
+            send_configuration_client_information(&mut conn, &information)
+                .await
+                .unwrap();
+        }
+
+        server.await.unwrap();
+    }
 }
 
 #[tokio::test]

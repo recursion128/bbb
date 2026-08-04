@@ -1,15 +1,15 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook,
-    EntityTagQuery, InteractEntity, InteractionHand, JigsawGenerate, LockDifficultyCommand,
-    PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
-    SetCommandMinecart, SetCreativeModeSlot, SetGameRule, SetJigsawBlock, SetStructureBlock,
-    SetTestBlock, SignUpdate, SpectateEntity, TeleportToEntity, TestInstanceBlockAction, UseItem,
-    UseItemOn, Vec3d,
+    ChatAcknowledgement, ClientCommandAction, ClientInformation, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    CustomClickAction, EditBook, EntityTagQuery, InteractEntity, InteractionHand, JigsawGenerate,
+    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ServerboundCustomPayload, SetBeacon, SetCommandBlock, SetCommandMinecart, SetCreativeModeSlot,
+    SetGameRule, SetJigsawBlock, SetStructureBlock, SetTestBlock, SignUpdate, SpectateEntity,
+    TeleportToEntity, TestInstanceBlockAction, UseItem, UseItemOn, Vec3d,
 };
 use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
@@ -293,6 +293,10 @@ pub enum NetCommand {
         action: ResourcePackResponseAction,
     },
     AcceptCodeOfConduct,
+    /// `Options.broadcastOptions`, which `Options.save` runs unconditionally
+    /// after writing the file: the current player information goes back out on
+    /// whichever phase the connection is in.
+    BroadcastClientInformation(ClientInformation),
     Disconnect,
 }
 
