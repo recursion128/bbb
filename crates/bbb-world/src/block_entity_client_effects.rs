@@ -12,7 +12,9 @@ use bbb_protocol::block_entity_types::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    entities::vanilla_living_entity_type, BlockPos, VaultConnectionParticleState, WorldStore,
+    block_entity_item_displays::horizontal_facing_2d_data_value,
+    entities::vanilla_living_entity_type, BlockPos, CampfireBlockEntityData,
+    VaultConnectionParticleState, VaultSharedDataState, WorldStore,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -213,11 +215,15 @@ impl WorldStore {
                         ) && block.block_properties.get("lit").map(String::as_str)
                             == Some("true") =>
                     {
-                        let data = record.campfire.unwrap_or_default();
+                        let occupied_slots = record
+                            .campfire
+                            .as_ref()
+                            .map(CampfireBlockEntityData::occupied_slots)
+                            .unwrap_or_default();
                         let Some(facing_2d) = block
                             .block_properties
                             .get("facing")
-                            .and_then(|facing| campfire_facing_2d(facing))
+                            .and_then(|facing| horizontal_facing_2d_data_value(facing))
                         else {
                             continue;
                         };
@@ -230,7 +236,7 @@ impl WorldStore {
                                     .get("signal_fire")
                                     .map(String::as_str)
                                     == Some("true"),
-                                occupied_slots: data.occupied_slots,
+                                occupied_slots,
                             },
                         ));
                     }
@@ -269,7 +275,7 @@ impl WorldStore {
                                 ominous: block.block_properties.get("ominous").map(String::as_str)
                                     == Some("true"),
                                 has_display_item: shared
-                                    .is_some_and(|shared| shared.has_display_item),
+                                    .is_some_and(VaultSharedDataState::has_display_item),
                                 previous_spin: spin.previous_spin,
                                 current_spin: spin.current_spin,
                                 connection_particles: self.vault_connection_particle_state(pos),
@@ -323,16 +329,6 @@ impl WorldStore {
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
         })
-    }
-}
-
-fn campfire_facing_2d(facing: &str) -> Option<u8> {
-    match facing {
-        "south" => Some(0),
-        "west" => Some(1),
-        "north" => Some(2),
-        "east" => Some(3),
-        _ => None,
     }
 }
 

@@ -62,6 +62,7 @@ use bbb_item_model::{ItemModelUseContext, NativeItemRuntime, ResolvedItemModelLa
 #[cfg(test)]
 use bbb_protocol::entity_types::*;
 
+mod block_entity;
 mod display;
 mod dropped;
 mod first_person;
@@ -76,6 +77,7 @@ use dropped::*;
 use first_person::*;
 use transforms::*;
 
+pub(crate) use block_entity::block_entity_item_models;
 pub(crate) use display::display_entity_item_models;
 #[cfg(test)]
 pub(crate) use dropped::held_item_models;

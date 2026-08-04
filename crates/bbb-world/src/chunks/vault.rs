@@ -1,54 +1,62 @@
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use uuid::Uuid;
 
 use crate::Result;
 
 use super::{
-    client_effects::nbt_item_stack_is_nonempty,
-    nbt::{decode_nbt_root, find_entry, NbtValue},
+    client_effects::{summary_field, summary_item_stack_is_nonempty, summary_root},
     state::VaultSharedDataState,
 };
 
 const VANILLA_VAULT_DEFAULT_CONNECTED_PARTICLES_RANGE: f64 = 4.5;
 
 pub(crate) fn decode_vault_shared_data(raw_nbt: &[u8]) -> Result<Option<VaultSharedDataState>> {
-    let Some(root) = decode_nbt_root(raw_nbt)? else {
+    let Some(NbtSummaryValue::Compound(entries)) = summary_root(raw_nbt)? else {
         return Ok(None);
     };
-    let NbtValue::Compound(entries) = root else {
-        return Ok(None);
-    };
-    let Some(NbtValue::Compound(shared_data)) = find_entry(&entries, "shared_data") else {
+    let Some(NbtSummaryValue::Compound(shared_data)) = summary_field(&entries, "shared_data")
+    else {
         return Ok(None);
     };
 
-    let has_display_item = decode_display_item_presence(shared_data);
+    let display_item = decode_display_item(shared_data);
     let connected_players = decode_connected_players(shared_data);
-    let connected_particles_range = match find_entry(shared_data, "connected_particles_range") {
-        Some(NbtValue::Double(value)) if value.is_finite() => *value,
+    let connected_particles_range = match summary_field(shared_data, "connected_particles_range") {
+        Some(NbtSummaryValue::Double(bits)) => {
+            let value = f64::from_bits(*bits);
+            if value.is_finite() {
+                value
+            } else {
+                VANILLA_VAULT_DEFAULT_CONNECTED_PARTICLES_RANGE
+            }
+        }
         _ => VANILLA_VAULT_DEFAULT_CONNECTED_PARTICLES_RANGE,
     };
     Ok(Some(VaultSharedDataState {
-        has_display_item,
+        display_item,
         connected_players,
         connected_particles_range,
     }))
 }
 
-fn decode_display_item_presence(entries: &[(String, NbtValue)]) -> bool {
-    let Some(NbtValue::Compound(display_item)) = find_entry(entries, "display_item") else {
-        return false;
+/// `VaultSharedData.CODEC` stores the ejected reward under `display_item`;
+/// `hasDisplayItem` is exactly "that stack is non-empty".
+fn decode_display_item(entries: &[NbtSummaryEntry]) -> Option<NbtSummaryValue> {
+    let value = summary_field(entries, "display_item")?;
+    let NbtSummaryValue::Compound(display_item) = value else {
+        return None;
     };
-    nbt_item_stack_is_nonempty(display_item)
+    summary_item_stack_is_nonempty(display_item).then(|| value.clone())
 }
 
-fn decode_connected_players(entries: &[(String, NbtValue)]) -> Vec<Uuid> {
-    let Some(NbtValue::List(players)) = find_entry(entries, "connected_players") else {
+fn decode_connected_players(entries: &[NbtSummaryEntry]) -> Vec<Uuid> {
+    let Some(NbtSummaryValue::List(players)) = summary_field(entries, "connected_players") else {
         return Vec::new();
     };
     players
         .iter()
         .filter_map(|player| match player {
-            NbtValue::IntArray(values) => uuid_from_int_array(values),
+            NbtSummaryValue::IntArray(values) => uuid_from_int_array(values),
             _ => None,
         })
         .collect()

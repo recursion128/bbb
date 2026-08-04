@@ -190,8 +190,8 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models_with_map_cache,
     item_models::{
-        display_entity_item_models, dropped_item_models, entity_block_models,
-        first_person_item_models_with_map_cache, first_person_player_arms,
+        block_entity_item_models, display_entity_item_models, dropped_item_models,
+        entity_block_models, first_person_item_models_with_map_cache, first_person_player_arms,
         held_item_models_with_variant_textures, item_pickup_particle_item_models,
         ominous_item_spawner_models, smithing_entity_preview_item_models, world_attribute_keys,
         world_banner_pattern_tooltip_context, world_damage_type_keys, world_enchantment_keys,
@@ -4444,6 +4444,16 @@ pub(crate) fn update_renderer_from_publication(
         terrain_textures,
         entity_partial_tick,
     );
+    let block_entity_item_models = block_entity_item_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
+        attribute_keys.as_deref(),
+        Some(entity_variant_textures),
+    );
     let smithing_preview_item_models = smithing_entity_preview_item_models(
         world,
         item_runtime,
@@ -4464,6 +4474,7 @@ pub(crate) fn update_renderer_from_publication(
     item_model_residency.append(item_frame_models.residency);
     item_model_residency.append(entity_block_models);
     item_model_residency.append(smithing_preview_item_models);
+    item_model_residency.append(block_entity_item_models);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(ominous_item_spawner_models.block_meshes);
     block_item_meshes.extend(held_item_models.block_meshes);

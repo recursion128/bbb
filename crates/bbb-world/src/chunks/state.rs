@@ -152,12 +152,22 @@ impl BlockEntityRecord {
     }
 }
 
-/// Vanilla `CampfireBlockEntity.particleTick` only inspects whether each of
-/// the four cooking slots is empty. The full registry-coupled `ItemStack`
-/// remains outside this narrow client-effect projection.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// The four `CampfireBlockEntity.getItems()` cooking slots exactly as
+/// `getUpdateTag` sends them (`ContainerHelper.saveAllItems`). The persistent
+/// `ItemStack` NBT stays unresolved here; `CampfireRenderer` resolves it
+/// against the session registries, and `particleTick` only asks whether a slot
+/// is occupied.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CampfireBlockEntityData {
-    pub occupied_slots: [bool; 4],
+    pub items: [Option<NbtSummaryValue>; 4],
+}
+
+impl CampfireBlockEntityData {
+    /// Vanilla `CampfireBlockEntity.particleTick` inspects only whether each
+    /// cooking slot holds a non-empty stack.
+    pub fn occupied_slots(&self) -> [bool; 4] {
+        std::array::from_fn(|slot| self.items[slot].is_some())
+    }
 }
 
 /// The two `TrialSpawnerStateData.getUpdateTag` fields consumed by the
@@ -415,10 +425,20 @@ impl SignTextDyeColor {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VaultSharedDataState {
+    /// The persistent `VaultSharedData.displayItem` stack NBT, retained only
+    /// when it is a renderable non-empty stack; `VaultRenderer` resolves it
+    /// against the session registries.
     #[serde(default)]
-    pub has_display_item: bool,
+    pub display_item: Option<NbtSummaryValue>,
     pub connected_players: Vec<Uuid>,
     pub connected_particles_range: f64,
+}
+
+impl VaultSharedDataState {
+    /// Vanilla `VaultSharedData.hasDisplayItem`.
+    pub fn has_display_item(&self) -> bool {
+        self.display_item.is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

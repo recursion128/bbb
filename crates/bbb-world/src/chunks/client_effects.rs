@@ -1,8 +1,11 @@
 use uuid::Uuid;
 
-use bbb_protocol::item_types::vanilla_item_type_for_resource_id;
+use bbb_protocol::{
+    decode_nbt_summary, item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry,
+    NbtSummaryValue,
+};
 
-use crate::Result;
+use crate::{Result, WorldDecodeError};
 
 use super::{
     nbt::{decode_nbt_root, find_entry, NbtValue},
@@ -11,49 +14,75 @@ use super::{
 
 const CAMPFIRE_SLOT_COUNT: usize = 4;
 
+/// Decodes the four cooking slots written by `CampfireBlockEntity.getUpdateTag`
+/// through `ContainerHelper.saveAllItems`: a slot keeps its persistent
+/// `ItemStack` NBT so `CampfireRenderer` can resolve it, and stays empty when
+/// the entry is not a renderable stack.
 pub(crate) fn decode_campfire_block_entity_data(
     raw_nbt: &[u8],
 ) -> Result<Option<CampfireBlockEntityData>> {
-    let Some(root) = decode_nbt_root(raw_nbt)? else {
+    let Some(NbtSummaryValue::Compound(entries)) = summary_root(raw_nbt)? else {
         return Ok(None);
     };
-    let NbtValue::Compound(entries) = root else {
-        return Ok(None);
-    };
-    let Some(NbtValue::List(items)) = find_entry(&entries, "Items") else {
+    let Some(NbtSummaryValue::List(items)) = summary_field(&entries, "Items") else {
         return Ok(None);
     };
 
-    let mut occupied_slots = [false; CAMPFIRE_SLOT_COUNT];
+    let mut slots: [Option<NbtSummaryValue>; CAMPFIRE_SLOT_COUNT] = Default::default();
     for item in items {
-        let NbtValue::Compound(item) = item else {
+        let NbtSummaryValue::Compound(item_entries) = item else {
             continue;
         };
-        let Some(slot) = nbt_i32(find_entry(item, "Slot"))
+        let Some(slot) = summary_i32(summary_field(item_entries, "Slot"))
             .and_then(|slot| usize::try_from(slot).ok())
             .filter(|slot| *slot < CAMPFIRE_SLOT_COUNT)
         else {
             continue;
         };
-        if nbt_item_stack_is_nonempty(item) {
-            occupied_slots[slot] = true;
+        if summary_item_stack_is_nonempty(item_entries) {
+            slots[slot] = Some(item.clone());
         }
     }
 
-    Ok(Some(CampfireBlockEntityData { occupied_slots }))
+    Ok(Some(CampfireBlockEntityData { items: slots }))
 }
 
-pub(super) fn nbt_item_stack_is_nonempty(entries: &[(String, NbtValue)]) -> bool {
-    let Some(NbtValue::String(item_id)) = find_entry(entries, "id") else {
+pub(super) fn summary_root(raw_nbt: &[u8]) -> Result<Option<NbtSummaryValue>> {
+    decode_nbt_summary(raw_nbt).map_err(|error| WorldDecodeError::Protocol(error).into())
+}
+
+pub(super) fn summary_field<'a>(
+    entries: &'a [NbtSummaryEntry],
+    name: &str,
+) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
+/// Vanilla treats a slot as filled when it holds a registered, non-air stack
+/// with a legal count; `ItemStack.CODEC` rejects everything else.
+pub(super) fn summary_item_stack_is_nonempty(entries: &[NbtSummaryEntry]) -> bool {
+    let Some(NbtSummaryValue::String(item_id)) = summary_field(entries, "id") else {
         return false;
     };
-    let count = match find_entry(entries, "count") {
-        Some(value) => nbt_i32(Some(value)),
+    let count = match summary_field(entries, "count") {
+        Some(value) => summary_i32(Some(value)),
         None => Some(1),
     };
     item_id != "minecraft:air"
         && vanilla_item_type_for_resource_id(item_id).is_some()
         && count.is_some_and(|count| (1..=99).contains(&count))
+}
+
+fn summary_i32(value: Option<&NbtSummaryValue>) -> Option<i32> {
+    match value? {
+        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value),
+        _ => None,
+    }
 }
 
 pub(crate) fn decode_conduit_destroy_target(raw_nbt: &[u8]) -> Result<Option<Uuid>> {
@@ -78,15 +107,6 @@ fn uuid_from_int_array(values: &[i32]) -> Option<Uuid> {
     Some(Uuid::from_u128((u128::from(high) << 64) | u128::from(low)))
 }
 
-fn nbt_i32(value: Option<&NbtValue>) -> Option<i32> {
-    match value? {
-        NbtValue::Byte(value) => Some(i32::from(*value)),
-        NbtValue::Short(value) => Some(i32::from(*value)),
-        NbtValue::Int(value) => Some(*value),
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,12 +124,19 @@ mod tests {
         write_item(&mut nbt, 8, "minecraft:beef", 1);
         nbt.push(0);
 
+        let decoded = decode_campfire_block_entity_data(&nbt)
+            .unwrap()
+            .expect("campfire data");
+        assert_eq!(decoded.occupied_slots(), [true, false, false, false]);
+        // The occupied slot keeps its persistent stack NBT for the renderer.
+        let NbtSummaryValue::Compound(stack) = decoded.items[0].as_ref().expect("cod stack") else {
+            panic!("cooked slot keeps a compound stack");
+        };
         assert_eq!(
-            decode_campfire_block_entity_data(&nbt).unwrap(),
-            Some(CampfireBlockEntityData {
-                occupied_slots: [true, false, false, false],
-            })
+            summary_field(stack, "id"),
+            Some(&NbtSummaryValue::String("minecraft:cod".to_string()))
         );
+        assert!(decoded.items[1..].iter().all(Option::is_none));
     }
 
     #[test]

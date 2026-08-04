@@ -13,6 +13,7 @@ pub use crate::block_entity_client_effects::{
     ConduitDestroyTargetState, TrialSpawnerClientEffectSource, TrialSpawnerClientState,
     VaultBlockState, VaultClientEffectSource,
 };
+pub use crate::block_entity_item_displays::CampfireItemDisplaySourceState;
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
     LocalBlockPredictionState,
