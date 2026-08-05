@@ -6,7 +6,15 @@ import json
 import math
 from dataclasses import dataclass
 
-from vanilla_java_source import JavaExpression, JavaField, JavaMethod, JavaSource
+from collections.abc import Sequence
+
+from vanilla_java_source import (
+    JavaExpression,
+    JavaField,
+    JavaMethod,
+    JavaSource,
+    resolve_class_hierarchy,
+)
 
 
 class CoreRegistryExtractionError(ValueError):
@@ -43,6 +51,7 @@ class BlockEntityTypeEntry:
     constant_name: str
     resource_id: str
     only_op_can_set_nbt: bool
+    provides_menu: bool
 
 
 @dataclass(frozen=True)
@@ -527,8 +536,49 @@ def entity_type_entries(
     return entries
 
 
+MENU_PROVIDER_INTERFACE = "MenuProvider"
+
+
+def _block_entity_class_name(source: JavaSource, field: JavaField) -> str:
+    spelling = field.type_spelling.replace(" ", "")
+    if not spelling.startswith("BlockEntityType<") or not spelling.endswith(">"):
+        _fail(source, field.initializer, f"unparsable block entity type {field.type_spelling}")
+    return spelling[len("BlockEntityType<") : -1].split(".")[-1]
+
+
+def block_entity_menu_provider_classes(
+    block_entity_class_sources: Sequence[JavaSource],
+) -> frozenset[str]:
+    types = [item for source in block_entity_class_sources for item in source.types]
+    resolve_class_hierarchy(types)
+    by_simple_name: dict[str, list] = {}
+    for item in types:
+        by_simple_name.setdefault(item.simple_name, []).append(item)
+
+    def declares_menu_provider(simple_name: str) -> bool:
+        seen: set[str] = set()
+        pending = [simple_name]
+        while pending:
+            current = pending.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            for item in by_simple_name.get(current, ()):
+                for spelling in item.interface_spellings:
+                    if spelling.split(".")[-1].split("<")[0] == MENU_PROVIDER_INTERFACE:
+                        return True
+                if item.superclass_spelling is not None:
+                    pending.append(item.superclass_spelling.split(".")[-1].split("<")[0])
+        return False
+
+    return frozenset(name for name in by_simple_name if declares_menu_provider(name))
+
+
 def block_entity_type_entries(
-    source: JavaSource, expected_count: int = 49
+    source: JavaSource,
+    menu_provider_classes: frozenset[str],
+    expected_count: int = 49,
+    expected_menu_provider_count: int = 14,
 ) -> list[BlockEntityTypeEntry]:
     op_only_constants = _constant_set_members(source, "OP_ONLY_CUSTOM_DATA")
     entries: list[BlockEntityTypeEntry] = []
@@ -541,7 +591,14 @@ def block_entity_type_entries(
                 field.name,
                 _string_literal(source, arguments[0]),
                 field.name in op_only_constants,
+                _block_entity_class_name(source, field) in menu_provider_classes,
             )
+        )
+    menu_providers = sum(entry.provides_menu for entry in entries)
+    if menu_providers != expected_menu_provider_count:
+        raise CoreRegistryExtractionError(
+            f"expected {expected_menu_provider_count} menu-provider block entity types, "
+            f"extracted {menu_providers}"
         )
     if len(entries) != expected_count:
         raise CoreRegistryExtractionError(

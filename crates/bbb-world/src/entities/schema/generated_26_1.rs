@@ -13648,6 +13648,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13717,6 +13718,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13811,6 +13813,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13880,6 +13883,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -13981,6 +13985,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14074,6 +14079,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14143,6 +14149,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14239,6 +14246,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14308,6 +14316,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14377,6 +14386,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14469,6 +14479,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14564,6 +14575,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14633,6 +14645,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14702,6 +14715,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14795,6 +14809,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14864,6 +14879,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -14957,6 +14973,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15050,6 +15067,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15123,6 +15141,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15219,6 +15238,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15319,6 +15339,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15417,6 +15438,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15510,6 +15532,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15579,6 +15602,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15648,6 +15672,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15719,6 +15744,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15818,6 +15844,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -15910,6 +15937,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16012,6 +16040,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16083,6 +16112,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16180,6 +16210,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16277,6 +16308,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16370,6 +16402,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16439,6 +16472,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16508,6 +16542,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16601,6 +16636,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16697,6 +16733,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16770,6 +16807,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16872,6 +16910,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -16947,6 +16986,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17048,6 +17088,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17141,6 +17182,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17236,6 +17278,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17330,6 +17373,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17405,6 +17449,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17474,6 +17519,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17567,6 +17613,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: true,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17636,6 +17683,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17709,6 +17757,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17778,6 +17827,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17847,6 +17897,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17916,6 +17967,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -17989,6 +18041,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18060,6 +18113,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18154,6 +18208,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18248,6 +18303,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18319,6 +18375,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18412,6 +18469,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18518,6 +18576,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18611,6 +18670,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18680,6 +18740,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18774,6 +18835,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18876,6 +18938,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -18977,6 +19040,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19073,6 +19137,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19146,6 +19211,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19250,6 +19316,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19344,6 +19411,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19439,6 +19507,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19508,6 +19577,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19606,6 +19676,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19675,6 +19746,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19744,6 +19816,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19813,6 +19886,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19882,6 +19956,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -19951,6 +20026,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20022,6 +20098,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20091,6 +20168,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20187,6 +20265,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20256,6 +20335,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20357,6 +20437,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20426,6 +20507,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20495,6 +20577,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20586,6 +20669,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20655,6 +20739,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20726,6 +20811,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20823,6 +20909,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -20919,6 +21006,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21031,6 +21119,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21100,6 +21189,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21169,6 +21259,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21263,6 +21354,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21332,6 +21424,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21401,6 +21494,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21470,6 +21564,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21539,6 +21634,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21633,6 +21729,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21726,6 +21823,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21821,6 +21919,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -21914,6 +22013,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22011,6 +22111,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22104,6 +22205,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22201,6 +22303,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22294,6 +22397,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22390,6 +22494,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22463,6 +22568,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22536,6 +22642,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22630,6 +22737,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22724,6 +22832,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22820,6 +22929,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -22912,6 +23022,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23005,6 +23116,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23101,6 +23213,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23170,6 +23283,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23265,6 +23379,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23358,6 +23473,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23458,6 +23574,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23559,6 +23676,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23632,6 +23750,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23727,6 +23846,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23802,6 +23922,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23896,6 +24017,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -23969,6 +24091,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24038,6 +24161,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24131,6 +24255,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24200,6 +24325,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24269,6 +24395,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: true,
+        is_menu_provider: true,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24361,6 +24488,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24454,6 +24582,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24549,6 +24678,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24642,6 +24772,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24711,6 +24842,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24780,6 +24912,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24851,6 +24984,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -24947,6 +25081,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25016,6 +25151,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25112,6 +25248,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25213,6 +25350,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25306,6 +25444,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25398,6 +25537,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25493,6 +25633,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: true,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25589,6 +25730,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25685,6 +25827,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25758,6 +25901,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25851,6 +25995,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -25945,6 +26090,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26042,6 +26188,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26113,6 +26260,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26211,6 +26359,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26307,6 +26456,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26401,6 +26551,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26503,6 +26654,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26613,6 +26765,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: true,
         has_custom_inventory_screen: true,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26711,6 +26864,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26809,6 +26963,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26916,6 +27071,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
     VanillaEntityTypeMetadataCatalogEntry {
@@ -26985,6 +27141,7 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
         illager_arm_pose_uses_celebrating: false,
         is_player_rideable_jumping: false,
         has_custom_inventory_screen: false,
+        is_menu_provider: false,
         diagnostic: None,
     },
 ];

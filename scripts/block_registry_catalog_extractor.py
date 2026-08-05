@@ -394,6 +394,22 @@ def extract_block_use_without_item_override_owners(
     )
 
 
+def extract_block_menu_provider_owners(
+    declarations: Sequence[dict],
+    block_class_sources: Sequence[JavaSource],
+) -> dict[str, str | None]:
+    """Resolve each block to the class owning its `getMenuProvider` override."""
+
+    return _extract_block_method_override_owners(
+        declarations,
+        block_class_sources,
+        "getMenuProvider",
+        "MenuProvider",
+        ("BlockState", "Level", "BlockPos"),
+        "net.minecraft.world.level.block.state.BlockBehaviour",
+    )
+
+
 def extract_block_analog_output_owners(
     declarations: Sequence[dict],
     block_class_sources: Sequence[JavaSource],

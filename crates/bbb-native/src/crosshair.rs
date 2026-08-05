@@ -54,11 +54,7 @@ pub(crate) fn block_selection_from_camera(
     pose: Option<CameraPose>,
 ) -> Option<BlockSelectionProjection> {
     let hit = crosshair_block_hit_from_camera(world, pose)?;
-    // Vanilla `GameRenderer.shouldRenderBlockOutline` narrows spectator block
-    // hits to states with a live `MenuProvider`. bbb's ordinary block-selection
-    // owner is not that provider projection, so it must not leak into spectator
-    // rendering.
-    if world.local_player_is_spectator() {
+    if world.local_player_is_spectator() && !world.block_provides_menu(hit.pos) {
         return None;
     }
     if !world.world_border().contains_block_pos(hit.pos) {
@@ -78,6 +74,17 @@ pub(crate) fn block_selection_from_camera(
         pos: hit.pos,
         boxes: outline.boxes,
     })
+}
+
+pub(crate) fn can_render_crosshair_for_spectator(
+    world: &WorldStore,
+    target: Option<CrosshairTarget>,
+) -> bool {
+    match target {
+        Some(CrosshairTarget::Entity(hit)) => world.entity_provides_menu(hit.entity_id),
+        Some(CrosshairTarget::Block(hit)) => world.block_provides_menu(hit.pos),
+        None => false,
+    }
 }
 
 fn crosshair_block_hit_from_camera(
@@ -2012,7 +2019,7 @@ mod tests {
     }
 
     #[test]
-    fn spectator_mode_does_not_leak_the_ordinary_block_selection_outline() {
+    fn spectator_mode_only_outlines_and_crosshairs_menu_provider_blocks() {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
             height: 16,
@@ -2028,11 +2035,67 @@ mod tests {
             event_id: 3,
             param: 3.0,
         });
+        let pose = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
 
-        assert_eq!(
-            block_selection_from_camera(&world, Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0))),
-            None
+        assert_eq!(block_selection_from_camera(&world, pose), None);
+        assert!(!can_render_crosshair_for_spectator(
+            &world,
+            crosshair_target_from_camera_at_partial_tick(&world, pose, 0.0),
+        ));
+
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_state_id: bbb_world::vanilla_block_state_id(
+                    "minecraft:crafting_table",
+                    &std::collections::BTreeMap::new(),
+                )
+                .unwrap(),
+            })
         );
+
+        assert!(block_selection_from_camera(&world, pose).is_some());
+        assert!(can_render_crosshair_for_spectator(
+            &world,
+            crosshair_target_from_camera_at_partial_tick(&world, pose, 0.0),
+        ));
+    }
+
+    #[test]
+    fn spectator_crosshair_follows_the_hit_entity_menu_provider() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        world.apply_game_event(GameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+        let pose = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
+
+        world.apply_add_entity(protocol_add_entity(
+            71,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            [0.0, 1.0, 2.0],
+        ));
+        assert!(!can_render_crosshair_for_spectator(
+            &world,
+            crosshair_target_from_camera_at_partial_tick(&world, pose, 0.0),
+        ));
+
+        world.apply_remove_entities(bbb_protocol::packets::RemoveEntities {
+            entity_ids: vec![71],
+        });
+        world.apply_add_entity(protocol_add_entity(
+            72,
+            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+            [0.0, 1.0, 2.0],
+        ));
+        assert!(can_render_crosshair_for_spectator(
+            &world,
+            crosshair_target_from_camera_at_partial_tick(&world, pose, 0.0),
+        ));
     }
 
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {

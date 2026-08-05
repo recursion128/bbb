@@ -9,6 +9,7 @@ pub struct BlockEntityTypeCatalogEntry {
     pub constant_name: &'static str,
     pub resource_id: &'static str,
     pub only_op_can_set_nbt: bool,
+    pub provides_menu: bool,
 }
 
 pub const VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID: i32 = 0;
@@ -67,294 +68,343 @@ pub const VANILLA_BLOCK_ENTITY_TYPES: &[BlockEntityTypeCatalogEntry] = &[
         constant_name: "FURNACE",
         resource_id: "minecraft:furnace",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 1,
         constant_name: "CHEST",
         resource_id: "minecraft:chest",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 2,
         constant_name: "TRAPPED_CHEST",
         resource_id: "minecraft:trapped_chest",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 3,
         constant_name: "ENDER_CHEST",
         resource_id: "minecraft:ender_chest",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 4,
         constant_name: "JUKEBOX",
         resource_id: "minecraft:jukebox",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 5,
         constant_name: "DISPENSER",
         resource_id: "minecraft:dispenser",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 6,
         constant_name: "DROPPER",
         resource_id: "minecraft:dropper",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 7,
         constant_name: "SIGN",
         resource_id: "minecraft:sign",
         only_op_can_set_nbt: true,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 8,
         constant_name: "HANGING_SIGN",
         resource_id: "minecraft:hanging_sign",
         only_op_can_set_nbt: true,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 9,
         constant_name: "MOB_SPAWNER",
         resource_id: "minecraft:mob_spawner",
         only_op_can_set_nbt: true,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 10,
         constant_name: "CREAKING_HEART",
         resource_id: "minecraft:creaking_heart",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 11,
         constant_name: "PISTON",
         resource_id: "minecraft:piston",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 12,
         constant_name: "BREWING_STAND",
         resource_id: "minecraft:brewing_stand",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 13,
         constant_name: "ENCHANTING_TABLE",
         resource_id: "minecraft:enchanting_table",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 14,
         constant_name: "END_PORTAL",
         resource_id: "minecraft:end_portal",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 15,
         constant_name: "BEACON",
         resource_id: "minecraft:beacon",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 16,
         constant_name: "SKULL",
         resource_id: "minecraft:skull",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 17,
         constant_name: "DAYLIGHT_DETECTOR",
         resource_id: "minecraft:daylight_detector",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 18,
         constant_name: "HOPPER",
         resource_id: "minecraft:hopper",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 19,
         constant_name: "COMPARATOR",
         resource_id: "minecraft:comparator",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 20,
         constant_name: "BANNER",
         resource_id: "minecraft:banner",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 21,
         constant_name: "STRUCTURE_BLOCK",
         resource_id: "minecraft:structure_block",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 22,
         constant_name: "END_GATEWAY",
         resource_id: "minecraft:end_gateway",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 23,
         constant_name: "COMMAND_BLOCK",
         resource_id: "minecraft:command_block",
         only_op_can_set_nbt: true,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 24,
         constant_name: "SHULKER_BOX",
         resource_id: "minecraft:shulker_box",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 25,
         constant_name: "BED",
         resource_id: "minecraft:bed",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 26,
         constant_name: "CONDUIT",
         resource_id: "minecraft:conduit",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 27,
         constant_name: "BARREL",
         resource_id: "minecraft:barrel",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 28,
         constant_name: "SMOKER",
         resource_id: "minecraft:smoker",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 29,
         constant_name: "BLAST_FURNACE",
         resource_id: "minecraft:blast_furnace",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 30,
         constant_name: "LECTERN",
         resource_id: "minecraft:lectern",
         only_op_can_set_nbt: true,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 31,
         constant_name: "BELL",
         resource_id: "minecraft:bell",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 32,
         constant_name: "JIGSAW",
         resource_id: "minecraft:jigsaw",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 33,
         constant_name: "CAMPFIRE",
         resource_id: "minecraft:campfire",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 34,
         constant_name: "BEEHIVE",
         resource_id: "minecraft:beehive",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 35,
         constant_name: "SCULK_SENSOR",
         resource_id: "minecraft:sculk_sensor",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 36,
         constant_name: "CALIBRATED_SCULK_SENSOR",
         resource_id: "minecraft:calibrated_sculk_sensor",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 37,
         constant_name: "SCULK_CATALYST",
         resource_id: "minecraft:sculk_catalyst",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 38,
         constant_name: "SCULK_SHRIEKER",
         resource_id: "minecraft:sculk_shrieker",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 39,
         constant_name: "CHISELED_BOOKSHELF",
         resource_id: "minecraft:chiseled_bookshelf",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 40,
         constant_name: "SHELF",
         resource_id: "minecraft:shelf",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 41,
         constant_name: "BRUSHABLE_BLOCK",
         resource_id: "minecraft:brushable_block",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 42,
         constant_name: "DECORATED_POT",
         resource_id: "minecraft:decorated_pot",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 43,
         constant_name: "CRAFTER",
         resource_id: "minecraft:crafter",
         only_op_can_set_nbt: false,
+        provides_menu: true,
     },
     BlockEntityTypeCatalogEntry {
         id: 44,
         constant_name: "TRIAL_SPAWNER",
         resource_id: "minecraft:trial_spawner",
         only_op_can_set_nbt: true,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 45,
         constant_name: "VAULT",
         resource_id: "minecraft:vault",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 46,
         constant_name: "TEST_BLOCK",
         resource_id: "minecraft:test_block",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 47,
         constant_name: "TEST_INSTANCE_BLOCK",
         resource_id: "minecraft:test_instance_block",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
     BlockEntityTypeCatalogEntry {
         id: 48,
         constant_name: "COPPER_GOLEM_STATUE",
         resource_id: "minecraft:copper_golem_statue",
         only_op_can_set_nbt: false,
+        provides_menu: false,
     },
 ];
 
@@ -390,6 +440,12 @@ pub fn vanilla_block_entity_type_only_op_can_set_nbt(type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+pub fn vanilla_block_entity_type_provides_menu(type_id: i32) -> bool {
+    vanilla_block_entity_type(type_id)
+        .map(|entry| entry.provides_menu)
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, fs, path::Path};
@@ -414,6 +470,35 @@ mod tests {
                 .count(),
             6
         );
+    }
+
+    #[test]
+    fn menu_provider_block_entity_types_come_from_generated_metadata() {
+        assert_eq!(
+            VANILLA_BLOCK_ENTITY_TYPES
+                .iter()
+                .filter(|entry| entry.provides_menu)
+                .count(),
+            14
+        );
+        for type_id in [
+            VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_TRAPPED_CHEST_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_BARREL_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_HOPPER_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_LECTERN_ID,
+            VANILLA_BLOCK_ENTITY_TYPE_CRAFTER_ID,
+        ] {
+            assert!(vanilla_block_entity_type_provides_menu(type_id));
+        }
+        assert!(!vanilla_block_entity_type_provides_menu(
+            VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID
+        ));
+        assert!(!vanilla_block_entity_type_provides_menu(
+            VANILLA_BLOCK_ENTITY_TYPE_BELL_ID
+        ));
+        assert!(!vanilla_block_entity_type_provides_menu(-1));
     }
 
     #[test]

@@ -919,6 +919,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub illager_arm_pose_uses_celebrating: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
+    pub is_menu_provider: bool,
     pub diagnostic: Option<&'static str>,
 }
 
@@ -5050,6 +5051,13 @@ pub fn vanilla_entity_metadata_type_has_custom_inventory_screen(entity_type_id: 
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.has_custom_inventory_screen)
+        .unwrap_or(false)
+}
+
+pub fn vanilla_entity_metadata_type_is_menu_provider(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_menu_provider)
         .unwrap_or(false)
 }
 

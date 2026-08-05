@@ -115,6 +115,7 @@ pub(crate) use schema::vanilla_entity_metadata_mob_interact_owner;
 pub(crate) use schema::vanilla_entity_metadata_type_accepts_local_attack_hurt;
 pub(crate) use schema::vanilla_entity_metadata_type_is_living;
 pub use schema::vanilla_entity_metadata_type_is_llama;
+pub(crate) use schema::vanilla_entity_metadata_type_is_menu_provider;
 pub(crate) use schema::vanilla_entity_metadata_type_is_projectile;
 pub(crate) use schema::vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler;
 pub use schema::VanillaAbstractBoatMetadataAccessors;

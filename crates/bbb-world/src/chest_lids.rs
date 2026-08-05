@@ -79,7 +79,7 @@ pub enum ChestModelFacing {
 }
 
 impl ChestModelFacing {
-    fn parse(value: &str) -> Option<Self> {
+    pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "north" => Some(Self::North),
             "south" => Some(Self::South),
@@ -342,9 +342,10 @@ impl WorldStore {
     /// Vanilla `ChestBlock.getConnectedBlockPos` + the `DoubleBlockCombiner`
     /// pairing check: a `left` half connects toward `facing.getClockWise()`, a
     /// `right` half toward `facing.getCounterClockWise()`, and the pairing
-    /// only holds when the neighbour is the same block with the opposite
-    /// `type`. Returns `None` for singles and broken pairings.
-    fn joined_chest_partner_pos(
+    /// only holds when the neighbour is the same block with the same `facing`
+    /// and the opposite `type`. Returns `None` for singles and broken
+    /// pairings.
+    pub(crate) fn joined_chest_partner_pos(
         &self,
         pos: BlockPos,
         block_name: &str,
@@ -364,6 +365,14 @@ impl WorldStore {
         };
         let partner = self.probe_block(partner_pos)?;
         if partner.block_name.as_deref() != Some(block_name) {
+            return None;
+        }
+        if partner
+            .block_properties
+            .get("facing")
+            .and_then(|value| ChestModelFacing::parse(value))
+            != Some(facing)
+        {
             return None;
         }
         let expected_partner_type = match half {

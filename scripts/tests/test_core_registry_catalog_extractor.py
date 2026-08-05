@@ -13,6 +13,7 @@ from core_registry_catalog_extractor import (  # noqa: E402
     CoreRegistryExtractionError,
     animal_variant_component_registry_entries,
     animal_variant_texture_registry_entries,
+    block_entity_menu_provider_classes,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -24,6 +25,29 @@ from core_registry_catalog_extractor import (  # noqa: E402
     vec3_constant,
 )
 from vanilla_java_source import parse_source  # noqa: E402
+
+
+class BlockEntityMenuProviderTests(unittest.TestCase):
+    def test_menu_provider_membership_closes_over_the_superclass_chain(self) -> None:
+        source = parse_source(
+            "fixture/BlockEntities.java",
+            b"""
+package fixture;
+public abstract class BaseContainerBlockEntity extends BlockEntity implements Container, MenuProvider {
+}
+public class FurnaceBlockEntity extends BaseContainerBlockEntity {
+}
+public class SignBlockEntity extends BlockEntity {
+}
+public class LecternBlockEntity extends BlockEntity implements Clearable, net.minecraft.world.MenuProvider {
+}
+""",
+        )
+        classes = block_entity_menu_provider_classes([source])
+        self.assertIn("BaseContainerBlockEntity", classes)
+        self.assertIn("FurnaceBlockEntity", classes)
+        self.assertIn("LecternBlockEntity", classes)
+        self.assertNotIn("SignBlockEntity", classes)
 
 
 class CoreRegistryCatalogExtractorTests(unittest.TestCase):
@@ -385,12 +409,22 @@ public class ParticleTypes {
 }
 """,
         )
-        self.assertEqual(
-            block_entity_type_entries(block_source, expected_count=1)[0].resource_id,
-            "minecraft:one",
+        block_entities = block_entity_type_entries(
+            block_source,
+            frozenset({"One"}),
+            expected_count=1,
+            expected_menu_provider_count=1,
         )
-        self.assertTrue(
-            block_entity_type_entries(block_source, expected_count=1)[0].only_op_can_set_nbt
+        self.assertEqual(block_entities[0].resource_id, "minecraft:one")
+        self.assertTrue(block_entities[0].only_op_can_set_nbt)
+        self.assertTrue(block_entities[0].provides_menu)
+        self.assertFalse(
+            block_entity_type_entries(
+                block_source,
+                frozenset(),
+                expected_count=1,
+                expected_menu_provider_count=0,
+            )[0].provides_menu
         )
         self.assertEqual(
             data_component_predicate_type_entries(predicate_source, expected_count=1)[

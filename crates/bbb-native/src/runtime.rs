@@ -119,10 +119,10 @@ use crate::{
     conduit_scene::conduit_model_instances_from_world_at_partial_tick,
     copper_golem_statue_scene::copper_golem_statue_model_instances_from_world,
     crosshair::{
-        block_selection_from_camera, crosshair_target_from_camera_at_partial_tick,
-        debug_looking_at_block_hit_from_camera, debug_looking_at_fluid_hit_from_camera,
-        debug_targeted_entity_from_camera_at_partial_tick, BlockSelectionProjection,
-        CrosshairTarget,
+        block_selection_from_camera, can_render_crosshair_for_spectator,
+        crosshair_target_from_camera_at_partial_tick, debug_looking_at_block_hit_from_camera,
+        debug_looking_at_fluid_hit_from_camera, debug_targeted_entity_from_camera_at_partial_tick,
+        BlockSelectionProjection, CrosshairTarget,
     },
     debug_entries::DebugScreenEntryId,
     decorated_pot_scene::decorated_pot_model_instances_from_world_at_partial_tick,
@@ -4240,24 +4240,23 @@ pub(crate) fn update_renderer_from_publication(
     // displays from the same culled entity generation immediately after each
     // entity renderer extracts its model state. Camera distance/crosshair and
     // `Options.hideGui` are frame/input facts, so native resolves them here.
-    let targeted_entity_id = match crosshair_target_from_camera_at_partial_tick(
+    let crosshair_target = crosshair_target_from_camera_at_partial_tick(
         world,
         camera_entity_pose,
         entity_partial_tick,
-    ) {
+    );
+    let targeted_entity_id = match crosshair_target {
         Some(CrosshairTarget::Entity(hit)) => Some(hit.entity_id),
         _ => None,
     };
+    let crosshair_allowed_for_game_mode = !world.local_player_is_spectator()
+        || can_render_crosshair_for_spectator(world, crosshair_target);
     let hud_crosshair_attack_indicator = hud_crosshair_attack_indicator(
-        input.camera_type().is_first_person() && !world.local_player_is_spectator(),
+        input.camera_type().is_first_person() && crosshair_allowed_for_game_mode,
         world.local_player_crosshair_attack_indicator_state(targeted_entity_id),
     );
-    // Vanilla `Gui.extractCrosshair` hides the ordinary first-person crosshair
-    // for spectators unless the current hit is an interactive MenuProvider.
-    // The controlled replay has no such target, so its normal build crosshair
-    // must remain hidden just like the selection outline.
     let hud_crosshair_visible =
-        input.camera_type().is_first_person() && !world.local_player_is_spectator();
+        input.camera_type().is_first_person() && crosshair_allowed_for_game_mode;
     let entity_name_tag_surfaces = entity_name_tag_surfaces(
         visible_entity_name_tag_render_sources(entity_render_extraction),
         &entity_instances,

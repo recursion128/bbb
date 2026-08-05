@@ -5230,6 +5230,7 @@ def render(result: ExtractionResult) -> str:
                 f"        illager_arm_pose_uses_celebrating: {str(class_illager_arm_pose_uses_celebrating(result, class_map, item.runtime_class, illager_celebrating_cache)).lower() if item.runtime_class is not None else 'false'},",
                 f"        is_player_rideable_jumping: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.PlayerRideableJumping')).lower()},",
                 f"        has_custom_inventory_screen: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.HasCustomInventoryScreen')).lower()},",
+                f"        is_menu_provider: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.vehicle.ContainerEntity')).lower()},",
                 f"        diagnostic: {option_string(item.diagnostic)},",
                 "    },",
             ]

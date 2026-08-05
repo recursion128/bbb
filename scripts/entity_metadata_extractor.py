@@ -939,6 +939,23 @@ def extract_attribute_suppliers(
     return output
 
 
+MENU_PROVIDER_ENTITY_INTERFACE = "net.minecraft.world.entity.vehicle.ContainerEntity"
+
+
+def _validate_menu_provider_owners(classes: list) -> None:
+    owners = {
+        item.fqcn
+        for item in classes
+        for spelling in item.interface_spellings
+        if spelling.split(".")[-1].split("<")[0] == "MenuProvider"
+    }
+    if owners != {MENU_PROVIDER_ENTITY_INTERFACE}:
+        raise ExtractionError(
+            "expected ContainerEntity to be the only entity-side MenuProvider, "
+            f"found {sorted(owners)}"
+        )
+
+
 def extract(source_root: Path) -> ExtractionResult:
     entity_root = source_root / ENTITY_TREE
     if not entity_root.is_dir():
@@ -968,6 +985,7 @@ def extract(source_root: Path) -> ExtractionResult:
         for item in sources[relative].types
     ]
     resolve_class_hierarchy(classes)
+    _validate_menu_provider_owners(classes)
     known_types = {item.fqcn: item for item in classes}
 
     accessors = [

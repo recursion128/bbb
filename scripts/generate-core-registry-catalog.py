@@ -25,6 +25,7 @@ from core_registry_catalog_extractor import (
     RegistryEntry,
     animal_variant_component_registry_entries,
     animal_variant_texture_registry_entries,
+    block_entity_menu_provider_classes,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -65,6 +66,10 @@ AVATAR_SOURCE = Path("net/minecraft/world/entity/Avatar.java")
 ENTITY_TYPE_TAGS_DIRECTORY = Path("data/minecraft/tags/entity_type")
 BLOCK_ENTITY_TYPES_SOURCE = Path(
     "net/minecraft/world/level/block/entity/BlockEntityType.java"
+)
+BLOCK_ENTITY_CLASS_DIRECTORIES = (
+    Path("net/minecraft/world/level/block/entity"),
+    Path("net/minecraft/world/level/block/piston"),
 )
 DATA_COMPONENT_PREDICATE_TYPES_SOURCE = Path(
     "net/minecraft/core/component/predicates/DataComponentPredicates.java"
@@ -911,6 +916,7 @@ def render_block_entity_types(entries: list[BlockEntityTypeEntry]) -> str:
         "    pub constant_name: &'static str,",
         "    pub resource_id: &'static str,",
         "    pub only_op_can_set_nbt: bool,",
+        "    pub provides_menu: bool,",
         "}",
         "",
     ]
@@ -927,6 +933,7 @@ def render_block_entity_types(entries: list[BlockEntityTypeEntry]) -> str:
                 f"        constant_name: {rust_string(entry.constant_name)},",
                 f"        resource_id: {rust_string(entry.resource_id)},",
                 f"        only_op_can_set_nbt: {str(entry.only_op_can_set_nbt).lower()},",
+                f"        provides_menu: {str(entry.provides_menu).lower()},",
                 "    },",
             )
         )
@@ -968,6 +975,12 @@ def render_block_entity_types(entries: list[BlockEntityTypeEntry]) -> str:
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_block_entity_type_provides_menu(type_id: i32) -> bool {",
+            "    vanilla_block_entity_type(type_id)",
+            "        .map(|entry| entry.provides_menu)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "#[cfg(test)]",
             "mod tests {",
             "    use std::{collections::HashSet, fs, path::Path};",
@@ -986,6 +999,25 @@ def render_block_entity_types(entries: list[BlockEntityTypeEntry]) -> str:
             "            assert!(entry.resource_id.starts_with(\"minecraft:\"));",
             "        }",
             "        assert_eq!(VANILLA_BLOCK_ENTITY_TYPES.iter().filter(|entry| entry.only_op_can_set_nbt).count(), 6);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn menu_provider_block_entity_types_come_from_generated_metadata() {",
+            "        assert_eq!(VANILLA_BLOCK_ENTITY_TYPES.iter().filter(|entry| entry.provides_menu).count(), 14);",
+            "        for type_id in [",
+            "            VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_CHEST_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_TRAPPED_CHEST_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_BARREL_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_HOPPER_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_LECTERN_ID,",
+            "            VANILLA_BLOCK_ENTITY_TYPE_CRAFTER_ID,",
+            "        ] {",
+            "            assert!(vanilla_block_entity_type_provides_menu(type_id));",
+            "        }",
+            "        assert!(!vanilla_block_entity_type_provides_menu(VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID));",
+            "        assert!(!vanilla_block_entity_type_provides_menu(VANILLA_BLOCK_ENTITY_TYPE_BELL_ID));",
+            "        assert!(!vanilla_block_entity_type_provides_menu(-1));",
             "    }",
             "",
             "    #[test]",
@@ -2118,6 +2150,12 @@ def generated_files(
             f"entity type tags reference unknown registry entries: {sorted(unknown_tag_values)}"
         )
     block_entity_types_source = parse(BLOCK_ENTITY_TYPES_SOURCE)
+    block_entity_class_sources = [
+        parse(directory / path.name)
+        for directory in BLOCK_ENTITY_CLASS_DIRECTORIES
+        for path in sorted((source_root / directory).glob("*.java"))
+    ]
+    menu_provider_classes = block_entity_menu_provider_classes(block_entity_class_sources)
     predicate_types_source = parse(DATA_COMPONENT_PREDICATE_TYPES_SOURCE)
     component_types_source = parse(DATA_COMPONENT_TYPES_SOURCE)
     registries_source = parse(REGISTRIES_SOURCE)
@@ -2158,7 +2196,9 @@ def generated_files(
         ),
         block_entity_types_output: format_rust(
             render_block_entity_types(
-                block_entity_type_entries(block_entity_types_source)
+                block_entity_type_entries(
+                    block_entity_types_source, menu_provider_classes
+                )
             )
         ),
         data_component_types_output: format_rust(

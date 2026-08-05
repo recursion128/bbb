@@ -15,6 +15,7 @@ use super::{
     LocalInteractionSuccess, LocalTargetUsePrediction,
 };
 use crate::{
+    chest_blocks::ChestCombineResult,
     chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
     BlockPos, BlockProbe, ItemFrameFacing, WorldStore,
 };
@@ -459,60 +460,21 @@ impl WorldStore {
     }
 
     fn chest_container_signal(&self, pos: BlockPos, block: &BlockProbe) -> Option<i32> {
-        if self.chest_is_blocked(pos)? {
-            return Some(0);
-        }
-        let own = if let Some(raw_nbt) = self.block_entity_raw_nbt_at(pos) {
-            self.container_slots(raw_nbt, 27)?
-        } else {
-            vec![None; 27]
+        let own_slots = |pos| match self.block_entity_raw_nbt_at(pos) {
+            Some(raw_nbt) => self.container_slots(raw_nbt, 27),
+            None => Some(vec![None; 27]),
         };
-        match block.block_properties.get("type").map(String::as_str) {
-            Some("single") => Some(container_signal(&own)),
-            Some("left" | "right") => {
-                let facing = direction_property(&block.block_properties, "facing")?;
-                let partner_direction =
-                    if block.block_properties.get("type").map(String::as_str) == Some("left") {
-                        clockwise(facing)?
-                    } else {
-                        opposite(clockwise(facing)?)
-                    };
-                let partner_pos = relative(pos, partner_direction);
-                let partner = self.probe_block(partner_pos)?;
-                let expected_partner_type =
-                    if block.block_properties.get("type").map(String::as_str) == Some("left") {
-                        "right"
-                    } else {
-                        "left"
-                    };
-                if partner.block_name.as_deref() != block.block_name.as_deref()
-                    || partner.block_properties.get("facing")
-                        != block.block_properties.get("facing")
-                    || partner.block_properties.get("type").map(String::as_str)
-                        != Some(expected_partner_type)
-                    || self.chest_is_blocked(partner_pos)?
-                {
-                    return Some(0);
-                }
-                let partner_slots = if let Some(raw_nbt) = self.block_entity_raw_nbt_at(partner_pos)
-                {
-                    self.container_slots(raw_nbt, 27)?
-                } else {
-                    vec![None; 27]
-                };
-                let slots = own.into_iter().chain(partner_slots).collect::<Vec<_>>();
+        match self.chest_combine(pos, block, false)? {
+            ChestCombineResult::None => Some(0),
+            ChestCombineResult::Single => Some(container_signal(&own_slots(pos)?)),
+            ChestCombineResult::Double(partner_pos) => {
+                let slots = own_slots(pos)?
+                    .into_iter()
+                    .chain(own_slots(partner_pos)?)
+                    .collect::<Vec<_>>();
                 Some(container_signal(&slots))
             }
-            _ => None,
         }
-    }
-
-    fn chest_is_blocked(&self, pos: BlockPos) -> Option<bool> {
-        let above = self.probe_block(relative(pos, Direction::Up))?;
-        Some(
-            self.redstone_conductor(&above)?
-                || self.entities.sitting_cat_intersects_chest_top(pos)?,
-        )
     }
 
     fn crafter_signal(&self, pos: BlockPos) -> Option<i32> {
