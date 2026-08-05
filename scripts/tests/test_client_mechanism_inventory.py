@@ -1558,6 +1558,106 @@ class LocalPlayer {
         )
         self.assertNotIn("rendering-hud-step-surface", value["mechanisms"])
 
+    def test_native_input_and_window_partition_is_total_and_homogeneous(self) -> None:
+        generated = (
+            inventory.REPO_ROOT
+            / "docs/evidence/vanilla-26.1/client-mechanism-inventory.json"
+        )
+        value = json.loads(generated.read_text(encoding="utf-8"))
+        sources = {
+            "net/minecraft/client/KeyboardHandler.java": 22,
+            "net/minecraft/client/MouseHandler.java": 25,
+            "net/minecraft/client/KeyMapping.java": 34,
+            "net/minecraft/client/GameNarrator.java": 16,
+            "com/mojang/blaze3d/platform/ClipboardManager.java": 3,
+            "com/mojang/blaze3d/platform/Window.java": 60,
+        }
+        methods = [
+            owner
+            for owner in value["owners"]
+            if owner["source"]["path"] in sources
+            and owner["mechanism_id"] != "protocol-serverbound-call-sites"
+        ]
+        self.assertEqual(
+            Counter(owner["source"]["path"] for owner in methods), Counter(sources)
+        )
+        self.assertEqual(
+            Counter(owner["mechanism_id"] for owner in methods),
+            Counter(
+                {
+                    "input-keyboard-routing": 7,
+                    "input-debug-key-actions": 13,
+                    "input-mouse-routing": 19,
+                    "input-key-mapping": 30,
+                    "ui-accessibility-surface": 16,
+                    "ui-clipboard-surface": 5,
+                    "platform-window-lifecycle": 16,
+                    "platform-window-display-mode": 10,
+                    "platform-window-surface-state": 13,
+                    "platform-window-chrome": 4,
+                    # Six `MouseHandler` position/button reads, four `KeyMapping`
+                    # name/category/default/down reads and 17 `Window` geometry
+                    # and flag reads.
+                    "scope-support-accessors": 27,
+                }
+            ),
+        )
+        self.assertTrue(
+            all(
+                owner["role"] == "support-non-decision"
+                for owner in methods
+                if owner["mechanism_id"] == "scope-support-accessors"
+            )
+        )
+
+    def test_unclassified_window_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "com/mojang/blaze3d/platform/Window.java"
+            self.write_source(
+                root,
+                relative,
+                "package com.mojang.blaze3d.platform;"
+                " class Window { void setOpacity(float value) { this.opacity = value; } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "Window method lacks a decision/support route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "platform",
+                        "platform",
+                        "platform-window-lifecycle",
+                        relative,
+                    )
+                )
+
+    def test_unclassified_keyboard_handler_method_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative = "net/minecraft/client/KeyboardHandler.java"
+            self.write_source(
+                root,
+                relative,
+                "package net.minecraft.client;"
+                " class KeyboardHandler { void onGamepad(int button) { this.route(button); } }",
+            )
+            builder = inventory.InventoryBuilder(root)
+            with self.assertRaisesRegex(
+                inventory.ClientMechanismInventoryError,
+                "KeyboardHandler method lacks a homogeneous route",
+            ):
+                builder.add_method_surface(
+                    inventory.MethodSurface(
+                        "input",
+                        "input",
+                        "input-keyboard-routing",
+                        relative,
+                    )
+                )
+
     def test_unclassified_gui_method_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

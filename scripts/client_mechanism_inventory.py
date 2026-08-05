@@ -194,16 +194,16 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
         ("pick",),
     ),
     (
-        MethodRoute("platform", "platform", "platform-window-lifecycle"),
-        (
-            "updateTitle",
-            "createTitle",
-            "onFullscreenError",
-            "pauseIfInactive",
-            "resizeGui",
-            "cursorEntered",
-            "isWindowActive",
-        ),
+        MethodRoute("platform", "platform", "platform-window-chrome"),
+        ("updateTitle", "createTitle"),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-display-mode"),
+        ("onFullscreenError",),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-surface-state"),
+        ("pauseIfInactive", "resizeGui", "cursorEntered", "isWindowActive"),
     ),
     (
         MethodRoute("ui", "ui", "ui-chat-screen-surface"),
@@ -548,6 +548,122 @@ GUI_METHOD_ROUTES = _method_routes(
             "extractSavingIndicator",
             "tickAutosaveIndicator",
         ),
+    ),
+)
+
+
+# `KeyboardHandler` mixes the raw GLFW key/char/preedit routing with the F3
+# debug-key action surface and the clipboard bridge, so it is split by the state
+# each owner decides. Nothing here is a direct field return, so every method must
+# be named and a new Vanilla owner fails the build instead of landing silently.
+KEYBOARD_HANDLER_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("input", "input", "input-keyboard-routing"),
+        (
+            "KeyboardHandler",
+            "setup",
+            "keyPress",
+            "charTyped",
+            "preeditCallback",
+            "submitPreeditEvent",
+            "resubmitLastPreeditEvent",
+        ),
+    ),
+    (
+        MethodRoute("input", "input", "input-debug-key-actions"),
+        (
+            "handleDebugKeys",
+            "handleChunkDebugKeys",
+            "tick",
+            "copyRecreateCommand",
+            "copyCreateBlockCommand",
+            "copyCreateEntityCommand",
+            "debugFeedback",
+            "debugFeedbackComponent",
+            "debugFeedbackEnabledStatus",
+            "debugFeedbackTranslated",
+            "debugWarningComponent",
+            "decorateDebugComponent",
+            "showDebugChat",
+        ),
+    ),
+    (
+        MethodRoute("input", "accessibility", "ui-clipboard-surface"),
+        ("getClipboard", "setClipboard"),
+    ),
+)
+
+
+# `ClipboardManager` is the platform half of the same clipboard bridge.
+CLIPBOARD_MANAGER_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("accessibility", "accessibility", "ui-clipboard-surface"),
+        ("getClipboard", "setClipboard", "pushClipboard"),
+    ),
+)
+
+
+# `Window` owns creation, display mode, surface state and window chrome in one
+# class, so it is split by the state each owner decides. The 17 direct field
+# returns fall through to `DIRECT_SUPPORT_ROUTE`.
+WINDOW_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("platform", "platform", "platform-window-lifecycle"),
+        (
+            "Window",
+            "createWindow",
+            "createGlfwWindow",
+            "allowedWindowMinSize",
+            "close",
+            "shouldClose",
+            "setWindowCloseCallback",
+            "bootCrash",
+            "checkGlfwError",
+            "defaultErrorCallback",
+            "setBootErrorCallback",
+            "setDefaultErrorCallback",
+            "setErrorSection",
+            "WindowInitFailed",
+            "getPlatform",
+            "findBestMonitor",
+        ),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-display-mode"),
+        (
+            "setMode",
+            "toggleFullScreen",
+            "setWindowed",
+            "updateFullscreen",
+            "updateFullscreenIfChanged",
+            "changeFullscreenVideoMode",
+            "setPreferredFullscreenVideoMode",
+            "updateVsync",
+            "updateRawMouseInput",
+            "getRefreshRate",
+        ),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-surface-state"),
+        (
+            "onResize",
+            "onFramebufferResize",
+            "refreshFramebufferSize",
+            "resetIsResized",
+            "setWidth",
+            "setHeight",
+            "calculateScale",
+            "setGuiScale",
+            "getAppropriateLineWidth",
+            "onMove",
+            "onIconify",
+            "onFocus",
+            "onEnter",
+        ),
+    ),
+    (
+        MethodRoute("platform", "platform", "platform-window-chrome"),
+        ("setTitle", "setIcon", "selectCursor", "setAllowCursorChanges"),
     ),
 )
 
@@ -5203,9 +5319,14 @@ MECHANISM_EVIDENCE = {
     "ui-font-manager": ("crates/bbb-item-model/src/font.rs",),
     "audio-sound-manager-engine": ("crates/bbb-pack/src/sounds.rs", "crates/bbb-audio/src/runtime.rs"),
     "input-keyboard-routing": ("crates/bbb-native/src/input.rs",),
+    "input-debug-key-actions": ("crates/bbb-native/src/input.rs",),
     "input-mouse-routing": ("crates/bbb-native/src/input/mouse.rs",),
     "input-key-mapping": ("crates/bbb-native/src/input.rs",),
     "platform-window-lifecycle": ("crates/bbb-native/src/platform.rs",),
+    "platform-window-display-mode": ("crates/bbb-native/src/main.rs",),
+    "platform-window-surface-state": ("crates/bbb-native/src/main.rs",),
+    "platform-window-chrome": ("crates/bbb-native/src/window_icon.rs",),
+    "ui-clipboard-surface": ("crates/bbb-native/src/input/text_edit.rs",),
     "protocol-serverbound-call-sites": (
         "crates/bbb-net/src/event_stream.rs",
         "docs/evidence/vanilla-26.1/packet-coverage.json",
@@ -5419,6 +5540,39 @@ class InventoryBuilder:
             raise ClientMechanismInventoryError(
                 f"Gui method lacks a decision/support route: {signature}"
             )
+        if spec.source_path == "net/minecraft/client/KeyboardHandler.java":
+            route = KEYBOARD_HANDLER_METHOD_ROUTES.get(method.name)
+            if route is None:
+                signature = InventoryBuilder.method_signature(method)
+                raise ClientMechanismInventoryError(
+                    f"KeyboardHandler method lacks a homogeneous route: {signature}"
+                )
+            return route
+        if spec.source_path == "com/mojang/blaze3d/platform/ClipboardManager.java":
+            route = CLIPBOARD_MANAGER_METHOD_ROUTES.get(method.name)
+            if route is None:
+                signature = InventoryBuilder.method_signature(method)
+                raise ClientMechanismInventoryError(
+                    f"ClipboardManager method lacks a homogeneous route: {signature}"
+                )
+            return route
+        if spec.source_path == "com/mojang/blaze3d/platform/Window.java":
+            route = WINDOW_METHOD_ROUTES.get(method.name)
+            if route is not None:
+                return route
+            if InventoryBuilder.is_direct_support_accessor(source, method):
+                return DIRECT_SUPPORT_ROUTE
+            signature = InventoryBuilder.method_signature(method)
+            raise ClientMechanismInventoryError(
+                f"Window method lacks a decision/support route: {signature}"
+            )
+        if spec.source_path in {
+            "net/minecraft/client/MouseHandler.java",
+            "net/minecraft/client/KeyMapping.java",
+        }:
+            if InventoryBuilder.is_direct_support_accessor(source, method):
+                return DIRECT_SUPPORT_ROUTE
+            return MethodRoute(spec.category, spec.domain, spec.mechanism_id)
         if spec.source_path == "net/minecraft/client/multiplayer/ServerList.java":
             route = SERVER_LIST_METHOD_ROUTES.get(method.name)
             if route is None:

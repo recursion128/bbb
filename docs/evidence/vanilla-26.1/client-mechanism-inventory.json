@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "6b1c9e21fd4b77833e7900d5a9a5c3a19d78ce442d2d3f104a04dc7aeae696ff"
+      "sha256": "1ae0f78c707c43b636409ea563b5d0085a752b8a7ded4d2985a84267a238c7e4"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -108,23 +108,29 @@
       ],
       "owner_count": 8
     },
+    "input-debug-key-actions": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input.rs"
+      ],
+      "owner_count": 13
+    },
     "input-key-mapping": {
       "bbb_evidence": [
         "crates/bbb-native/src/input.rs"
       ],
-      "owner_count": 34
+      "owner_count": 30
     },
     "input-keyboard-routing": {
       "bbb_evidence": [
         "crates/bbb-native/src/input.rs"
       ],
-      "owner_count": 27
+      "owner_count": 12
     },
     "input-mouse-routing": {
       "bbb_evidence": [
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 25
+      "owner_count": 19
     },
     "interaction-block-breaking": {
       "bbb_evidence": [
@@ -281,11 +287,29 @@
       "owner_count": 8,
       "owner_evidence_count": 8
     },
+    "platform-window-chrome": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/window_icon.rs"
+      ],
+      "owner_count": 6
+    },
+    "platform-window-display-mode": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/main.rs"
+      ],
+      "owner_count": 11
+    },
     "platform-window-lifecycle": {
       "bbb_evidence": [
         "crates/bbb-native/src/platform.rs"
       ],
-      "owner_count": 67
+      "owner_count": 16
+    },
+    "platform-window-surface-state": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/main.rs"
+      ],
+      "owner_count": 17
     },
     "player-local-camera-targeting": {
       "bbb_evidence": [
@@ -632,7 +656,7 @@
       "bbb_evidence": [
         "scripts/client_mechanism_inventory.py#is_direct_support_accessor"
       ],
-      "owner_count": 200
+      "owner_count": 227
     },
     "scope-telemetry-upload": {
       "bbb_evidence": [
@@ -669,7 +693,7 @@
       "bbb_evidence": [
         "crates/bbb-native/src/narrator_runtime.rs"
       ],
-      "owner_count": 20
+      "owner_count": 17
     },
     "ui-chat-screen-surface": {
       "bbb_evidence": [
@@ -677,6 +701,12 @@
         "crates/bbb-native/src/runtime/render_extract.rs"
       ],
       "owner_count": 26
+    },
+    "ui-clipboard-surface": {
+      "bbb_evidence": [
+        "crates/bbb-native/src/input/text_edit.rs"
+      ],
+      "owner_count": 5
     },
     "ui-death-screen-surface": {
       "bbb_evidence": [
@@ -4845,7 +4875,7 @@
       "category": "accessibility",
       "domain": "accessibility",
       "kind": "method",
-      "mechanism_id": "ui-accessibility-surface",
+      "mechanism_id": "ui-clipboard-surface",
       "owner_id": "method:com.mojang.blaze3d.platform.ClipboardManager#getClipboard(final Window window,final GLFWErrorCallbackI errorCallback)",
       "role": "decision",
       "scope": "external-client",
@@ -4859,7 +4889,7 @@
       "category": "accessibility",
       "domain": "accessibility",
       "kind": "method",
-      "mechanism_id": "ui-accessibility-surface",
+      "mechanism_id": "ui-clipboard-surface",
       "owner_id": "method:com.mojang.blaze3d.platform.ClipboardManager#pushClipboard(final Window window,final ByteBuffer buffer,final byte [] data)",
       "role": "decision",
       "scope": "external-client",
@@ -4873,7 +4903,7 @@
       "category": "accessibility",
       "domain": "accessibility",
       "kind": "method",
-      "mechanism_id": "ui-accessibility-surface",
+      "mechanism_id": "ui-clipboard-surface",
       "owner_id": "method:com.mojang.blaze3d.platform.ClipboardManager#setClipboard(final Window window,final String clipboard)",
       "role": "decision",
       "scope": "external-client",
@@ -4912,13 +4942,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#allowedWindowMinSize(final int size)"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#backend()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 547,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -4943,7 +4973,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#calculateScale(final int maxScale,final boolean enforceUnicode)",
       "role": "decision",
       "scope": "external-client",
@@ -4957,7 +4987,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#changeFullscreenVideoMode()",
       "role": "decision",
       "scope": "external-client",
@@ -5055,7 +5085,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getAppropriateLineWidth()",
       "role": "decision",
       "scope": "external-client",
@@ -5066,13 +5096,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getAppropriateLineWidth()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getGuiScale()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 500,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5080,13 +5110,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getGuiScale()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getGuiScaledHeight()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 488,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5094,13 +5124,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getGuiScaledHeight()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getGuiScaledWidth()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 484,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5108,13 +5138,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getGuiScaledWidth()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getHeight()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 464,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5136,13 +5166,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getPlatform()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getPreferredFullscreenVideoMode()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 330,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5153,7 +5183,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getRefreshRate()",
       "role": "decision",
       "scope": "external-client",
@@ -5164,13 +5194,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getRefreshRate()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getScreenHeight()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 480,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5178,13 +5208,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getScreenHeight()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getScreenWidth()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 476,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5192,13 +5222,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getScreenWidth()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getWidth()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 460,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5206,13 +5236,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getWidth()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getX()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 492,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5220,13 +5250,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getX()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#getY()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 496,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5234,13 +5264,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#getY()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#handle()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 444,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5248,13 +5278,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#handle()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#isFocused()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 456,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5262,13 +5292,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#isFocused()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#isFullscreen()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 448,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5276,13 +5306,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#isFullscreen()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#isIconified()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 452,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5290,13 +5320,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#isIconified()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#isMinimized()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 527,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5304,13 +5334,13 @@
       "vanilla_owner": "com.mojang.blaze3d.platform.Window#isMinimized()"
     },
     {
-      "category": "platform",
-      "domain": "platform",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#isResized()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 519,
         "path": "com/mojang/blaze3d/platform/Window.java"
@@ -5321,7 +5351,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onEnter(final long handle,final boolean entered)",
       "role": "decision",
       "scope": "external-client",
@@ -5335,7 +5365,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onFocus(final long handle,final boolean focused)",
       "role": "decision",
       "scope": "external-client",
@@ -5349,7 +5379,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onFramebufferResize(final long handle,final int newWidth,final int newHeight)",
       "role": "decision",
       "scope": "external-client",
@@ -5363,7 +5393,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onIconify(final long handle,final boolean iconified)",
       "role": "decision",
       "scope": "external-client",
@@ -5377,7 +5407,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onMove(final long handle,final int x,final int y)",
       "role": "decision",
       "scope": "external-client",
@@ -5391,7 +5421,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#onResize(final long handle,final int newWidth,final int newHeight)",
       "role": "decision",
       "scope": "external-client",
@@ -5405,7 +5435,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#refreshFramebufferSize()",
       "role": "decision",
       "scope": "external-client",
@@ -5419,7 +5449,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#resetIsResized()",
       "role": "decision",
       "scope": "external-client",
@@ -5433,7 +5463,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#selectCursor(final CursorType cursor)",
       "role": "decision",
       "scope": "external-client",
@@ -5447,7 +5477,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setAllowCursorChanges(final boolean value)",
       "role": "decision",
       "scope": "external-client",
@@ -5503,7 +5533,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setGuiScale(final int guiScale)",
       "role": "decision",
       "scope": "external-client",
@@ -5517,7 +5547,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setHeight(final int height)",
       "role": "decision",
       "scope": "external-client",
@@ -5531,7 +5561,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setIcon(final PackResources resources,final IconSet iconSet)",
       "role": "decision",
       "scope": "external-client",
@@ -5545,7 +5575,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setMode()",
       "role": "decision",
       "scope": "external-client",
@@ -5559,7 +5589,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setPreferredFullscreenVideoMode(final Optional <VideoMode> preferredFullscreenVideoMode)",
       "role": "decision",
       "scope": "external-client",
@@ -5573,7 +5603,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setTitle(final String title)",
       "role": "decision",
       "scope": "external-client",
@@ -5587,7 +5617,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setWidth(final int width)",
       "role": "decision",
       "scope": "external-client",
@@ -5615,7 +5645,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#setWindowed(final int width,final int height)",
       "role": "decision",
       "scope": "external-client",
@@ -5643,7 +5673,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#toggleFullScreen()",
       "role": "decision",
       "scope": "external-client",
@@ -5657,7 +5687,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#updateFullscreen(final boolean enableVsync)",
       "role": "decision",
       "scope": "external-client",
@@ -5671,7 +5701,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#updateFullscreenIfChanged()",
       "role": "decision",
       "scope": "external-client",
@@ -5685,7 +5715,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#updateRawMouseInput(final boolean value)",
       "role": "decision",
       "scope": "external-client",
@@ -5699,7 +5729,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:com.mojang.blaze3d.platform.Window#updateVsync(final boolean enableVsync)",
       "role": "decision",
       "scope": "external-client",
@@ -7684,13 +7714,13 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#get(final String name)"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-key-mapping",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.KeyMapping#getCategory()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 109,
         "path": "net/minecraft/client/KeyMapping.java"
@@ -7698,13 +7728,13 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#getCategory()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-key-mapping",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.KeyMapping#getDefaultKey()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 135,
         "path": "net/minecraft/client/KeyMapping.java"
@@ -7712,13 +7742,13 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#getDefaultKey()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-key-mapping",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.KeyMapping#getName()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 131,
         "path": "net/minecraft/client/KeyMapping.java"
@@ -7754,13 +7784,13 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#isDefault()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-key-mapping",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.KeyMapping#isDown()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 105,
         "path": "net/minecraft/client/KeyMapping.java"
@@ -8065,7 +8095,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#copyCreateBlockCommand(final BlockState state,final BlockPos blockPos,final @Nullable CompoundTag entityTag)",
       "role": "decision",
       "scope": "external-client",
@@ -8079,7 +8109,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#copyCreateEntityCommand(final Identifier id,final Vec3 pos,final @Nullable CompoundTag entityTag)",
       "role": "decision",
       "scope": "external-client",
@@ -8093,7 +8123,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#copyRecreateCommand(final boolean addNbt,final boolean pullFromServer)",
       "role": "decision",
       "scope": "external-client",
@@ -8107,7 +8137,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#debugFeedback(final String message)",
       "role": "decision",
       "scope": "external-client",
@@ -8121,7 +8151,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#debugFeedbackComponent(final Component component)",
       "role": "decision",
       "scope": "external-client",
@@ -8135,7 +8165,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#debugFeedbackEnabledStatus(final String prefix,final boolean isEnabled)",
       "role": "decision",
       "scope": "external-client",
@@ -8149,7 +8179,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#debugFeedbackTranslated(final String pattern,final Object ... args)",
       "role": "decision",
       "scope": "external-client",
@@ -8163,7 +8193,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#debugWarningComponent(final Component component)",
       "role": "decision",
       "scope": "external-client",
@@ -8177,7 +8207,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#decorateDebugComponent(final ChatFormatting formatting,final Component component)",
       "role": "decision",
       "scope": "external-client",
@@ -8189,9 +8219,9 @@
     },
     {
       "category": "input",
-      "domain": "input",
+      "domain": "accessibility",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "ui-clipboard-surface",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#getClipboard()",
       "role": "decision",
       "scope": "external-client",
@@ -8205,7 +8235,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#handleChunkDebugKeys(final KeyEvent event)",
       "role": "decision",
       "scope": "external-client",
@@ -8219,7 +8249,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#handleDebugKeys(final KeyEvent event)",
       "role": "decision",
       "scope": "external-client",
@@ -8273,9 +8303,9 @@
     },
     {
       "category": "input",
-      "domain": "input",
+      "domain": "accessibility",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "ui-clipboard-surface",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#setClipboard(final String clipboard)",
       "role": "decision",
       "scope": "external-client",
@@ -8303,7 +8333,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#showDebugChat(final Component message)",
       "role": "decision",
       "scope": "external-client",
@@ -8331,7 +8361,7 @@
       "category": "input",
       "domain": "input",
       "kind": "method",
-      "mechanism_id": "input-keyboard-routing",
+      "mechanism_id": "input-debug-key-actions",
       "owner_id": "method:net.minecraft.client.KeyboardHandler#tick()",
       "role": "decision",
       "scope": "external-client",
@@ -8692,7 +8722,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:net.minecraft.client.Minecraft#createTitle()",
       "role": "decision",
       "scope": "external-client",
@@ -8734,7 +8764,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:net.minecraft.client.Minecraft#cursorEntered()",
       "role": "decision",
       "scope": "external-client",
@@ -10226,7 +10256,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:net.minecraft.client.Minecraft#isWindowActive()",
       "role": "decision",
       "scope": "external-client",
@@ -10254,7 +10284,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-display-mode",
       "owner_id": "method:net.minecraft.client.Minecraft#onFullscreenError(final int error,final long description)",
       "role": "decision",
       "scope": "external-client",
@@ -10352,7 +10382,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:net.minecraft.client.Minecraft#pauseIfInactive()",
       "role": "decision",
       "scope": "external-client",
@@ -10542,7 +10572,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-surface-state",
       "owner_id": "method:net.minecraft.client.Minecraft#resizeGui()",
       "role": "decision",
       "scope": "external-client",
@@ -11007,7 +11037,7 @@
       "category": "platform",
       "domain": "platform",
       "kind": "method",
-      "mechanism_id": "platform-window-lifecycle",
+      "mechanism_id": "platform-window-chrome",
       "owner_id": "method:net.minecraft.client.Minecraft#updateTitle()",
       "role": "decision",
       "scope": "external-client",
@@ -11200,13 +11230,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#handleAccumulatedMovement()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#isLeftPressed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 382,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -11214,13 +11244,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#isLeftPressed()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#isMiddlePressed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 386,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -11228,13 +11258,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#isMiddlePressed()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#isMouseGrabbed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 406,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -11242,13 +11272,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#isMouseGrabbed()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#isRightPressed()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 390,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -11382,13 +11412,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#turnPlayer(final double mousea)"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#xpos()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 394,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -11396,13 +11426,13 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#xpos()"
     },
     {
-      "category": "input",
-      "domain": "input",
+      "category": "support-accessor",
+      "domain": "support",
       "kind": "method",
-      "mechanism_id": "input-mouse-routing",
+      "mechanism_id": "scope-support-accessors",
       "owner_id": "method:net.minecraft.client.MouseHandler#ypos()",
-      "role": "decision",
-      "scope": "external-client",
+      "role": "support-non-decision",
+      "scope": "out-of-scope",
       "source": {
         "line": 398,
         "path": "net/minecraft/client/MouseHandler.java"
@@ -46238,7 +46268,7 @@
       "entity-type": 157,
       "game-mode": 12,
       "identity": 17,
-      "input": 87,
+      "input": 77,
       "interaction-routing": 3,
       "inventory-action": 9,
       "item-use": 10,
@@ -46258,7 +46288,7 @@
       "particle-routing": 6,
       "persistence": 46,
       "pick-action": 3,
-      "platform": 67,
+      "platform": 50,
       "player-lifecycle": 4,
       "player-state": 14,
       "prediction": 1,
@@ -46281,7 +46311,7 @@
       "session-services": 8,
       "sound-routing": 6,
       "startup": 21,
-      "support-accessor": 200,
+      "support-accessor": 227,
       "synchronized-registry": 28,
       "targeting": 9,
       "text": 2,
@@ -46289,20 +46319,20 @@
       "vehicle-control": 7
     },
     "by_domain": {
-      "accessibility": 19,
+      "accessibility": 21,
       "audio": 81,
       "diagnostics": 42,
       "effects": 18,
       "entities": 402,
       "identity": 25,
-      "input": 87,
+      "input": 75,
       "interaction": 69,
       "language": 7,
       "lifecycle": 24,
       "movement": 39,
       "options": 27,
       "persistence": 46,
-      "platform": 67,
+      "platform": 50,
       "protocol": 747,
       "realms": 100,
       "registries": 123,
@@ -46311,16 +46341,16 @@
       "security": 30,
       "singleplayer": 50,
       "startup": 19,
-      "support": 200,
+      "support": 227,
       "telemetry": 17,
       "text": 35,
       "ui": 204,
       "world": 59
     },
     "by_role": {
-      "decision": 1310,
+      "decision": 1283,
       "out-of-scope": 225,
-      "support-non-decision": 200
+      "support-non-decision": 227
     },
     "mapped_owner_count": 2927,
     "owner_count": 2927,

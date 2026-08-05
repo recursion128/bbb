@@ -101,11 +101,15 @@ reopen condition on the matrix row.
 
 Owner: `bbb-native` + `bbb-renderer` + `bbb-control`
 
-Matrix routes: `input-keyboard-routing`, `input-mouse-routing`, `input-key-mapping`, `ui-accessibility-surface`, `platform-window-lifecycle`
+Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse-routing`, `input-key-mapping`, `ui-accessibility-surface`, `ui-clipboard-surface`, `platform-window-lifecycle`, `platform-window-display-mode`, `platform-window-surface-state`, `platform-window-chrome`
 
 - **Keyboard, mouse, key-mapping, narrator/clipboard/IME and window semantic
-  parity is `active`.** Unit tests and the Wayland live gate do not close every
-  focus/grab/repeat/text/scroll/fullscreen/DPI/resize/icon/accessibility branch.
+  parity is `active`.** The 173 owners are split into ten homogeneous routes —
+  27 of them are direct field reads that fall through to the support-accessor
+  route, and any unclassified `KeyboardHandler`, `ClipboardManager` or `Window`
+  method fails the inventory build. Unit tests and the Wayland live gate do not
+  yet close every focus/grab/repeat/text/scroll/fullscreen/DPI/resize/icon/
+  accessibility branch, and no route carries per-owner evidence yet.
   Implement all repo-owned semantic gaps and keep the separately recorded
   X11/interactive-seat and macOS/Windows runner limitations external; absence
   of those runners must not hide an internally testable mechanism.
