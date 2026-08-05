@@ -12,11 +12,13 @@ pub(crate) struct BoundKey {
 }
 
 impl BoundKey {
+    #[cfg(test)]
     pub(crate) fn is_unbound(self) -> bool {
         self.key_type == VanillaKeyType::Keysym && self.value == -1
     }
 }
 
+#[cfg(test)]
 pub(crate) fn vanilla_key_mapping(name: &str) -> Option<&'static VanillaKeyMapping> {
     VANILLA_KEY_MAPPINGS
         .iter()
@@ -34,6 +36,22 @@ pub(crate) fn named_key(name: &str) -> Option<BoundKey> {
             key_type: key.key_type,
             value: key.value,
         })
+}
+
+/// Every binding whose stored key differs from the mapping's own default.
+pub(crate) fn rebound_keys(options: &ClientOptions) -> Vec<(&'static str, BoundKey)> {
+    VANILLA_KEY_MAPPINGS
+        .iter()
+        .filter_map(|mapping| {
+            let bound = bound_key(options, mapping);
+            (bound
+                != BoundKey {
+                    key_type: mapping.default_type,
+                    value: mapping.default_value,
+                })
+            .then_some((mapping.name, bound))
+        })
+        .collect()
 }
 
 pub(crate) fn bound_key(options: &ClientOptions, mapping: &VanillaKeyMapping) -> BoundKey {
