@@ -588,6 +588,7 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
         }
     };
     args.client_key_bindings = KeyBindings::from_options(&options);
+    crate::client_options::key_bindings::install_bound_key_display_keys(&options);
     bind_stored_client_options(args, StoredOptions::new(&options, matches));
 }
 

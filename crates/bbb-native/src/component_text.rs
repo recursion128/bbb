@@ -141,7 +141,13 @@ fn append_primary_component_runs(
         return;
     }
     if let Some(NbtSummaryValue::String(key)) = find_entry(entries, "keybind") {
-        let text = localized_or_fallback(item_runtime, key, key);
+        // `KeyMapping.createNameSupplier`: a registered mapping resolves to its
+        // currently bound key's display name; an unknown id falls back to the
+        // translatable id itself.
+        let text = match crate::client_options::key_bindings::bound_key_display_key(key) {
+            Some(bound) => localized_or_fallback(item_runtime, bound, bound),
+            None => localized_or_fallback(item_runtime, key, key),
+        };
         push_styled_run(out, &text, style);
         return;
     }
@@ -246,6 +252,49 @@ mod tests {
                 LocalizedTemplatePart::Literal("q"),
             ]
         );
+    }
+
+    #[test]
+    fn keybind_component_resolves_the_currently_bound_key_with_id_fallback() {
+        let options = crate::client_options::ClientOptions::defaults(
+            crate::client_options::ClientOptionHost::default(),
+        );
+        crate::client_options::key_bindings::install_bound_key_display_keys(&options);
+
+        let jump = RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "keybind".to_string(),
+                value: NbtSummaryValue::String("key.jump".to_string()),
+            },
+        ]))
+        .unwrap();
+        let runs = localized_component_runs(&jump, &ComponentStyle::default(), None);
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].text, "key.keyboard.space");
+
+        let unknown = RichTextComponent::try_from_component_nbt(NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "keybind".to_string(),
+                value: NbtSummaryValue::String("key.not.registered".to_string()),
+            },
+        ]))
+        .unwrap();
+        let runs = localized_component_runs(&unknown, &ComponentStyle::default(), None);
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].text, "key.not.registered");
+    }
+
+    #[test]
+    fn bound_key_display_keys_follow_rebinds_and_defaults() {
+        let mut options = crate::client_options::ClientOptions::defaults(
+            crate::client_options::ClientOptionHost::default(),
+        );
+        options.set_dynamic_raw_for_test("key_key.forward", "key.keyboard.up");
+        let table = crate::client_options::key_bindings::bound_key_display_keys(&options);
+        assert_eq!(table.get("key.forward"), Some(&"key.keyboard.up"));
+        assert_eq!(table.get("key.jump"), Some(&"key.keyboard.space"));
+        assert_eq!(table.get("key.attack"), Some(&"key.mouse.left"));
+        assert_eq!(table.get("key.smoothCamera"), Some(&"key.keyboard.unknown"));
     }
 
     #[test]

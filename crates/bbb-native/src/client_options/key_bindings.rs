@@ -1,3 +1,11 @@
+//! Resolved key bindings from the generated `KeyMapping` catalog.
+//!
+//! The catalog carries `category` and `sort_order` as data, but the vanilla
+//! consumers of `KeyMapping.compareTo`, `same`, `Category.label` and the
+//! `Category` sort registry are all key-binds-screen concerns — conflict
+//! highlighting and list ordering in an options UI this client declares a
+//! non-goal — so no runtime consumer exists for them here.
+
 use super::key_mappings_26_1::{
     VanillaKeyMapping, VanillaKeyType, VANILLA_KEYSYM_KEY_CODES, VANILLA_KEY_MAPPINGS,
     VANILLA_MOUSE_BUTTONS, VANILLA_NAMED_KEYS,
@@ -106,6 +114,42 @@ pub(crate) fn named_key(name: &str) -> Option<BoundKey> {
 }
 
 /// Every binding whose stored key differs from the mapping's own default.
+/// `KeyMapping.createNameSupplier`: a keybind component for a registered
+/// mapping shows the mapping's *currently bound* key, not the mapping's own
+/// name. Bindings resolve once from `options.txt` at startup (there is no
+/// key-binds screen), so the id→bound-key-name table is process-immutable.
+/// The display text is the bound key's `key.keyboard.*`/`key.mouse.*`
+/// language entry — vanilla's non-printable fallback path; the
+/// `glfwGetKeyName` layout query has no winit equivalent.
+static BOUND_KEY_DISPLAY_KEYS: std::sync::OnceLock<
+    std::collections::HashMap<&'static str, &'static str>,
+> = std::sync::OnceLock::new();
+
+pub(crate) fn install_bound_key_display_keys(options: &ClientOptions) {
+    let _ = BOUND_KEY_DISPLAY_KEYS.set(bound_key_display_keys(options));
+}
+
+pub(crate) fn bound_key_display_key(mapping_name: &str) -> Option<&'static str> {
+    BOUND_KEY_DISPLAY_KEYS.get()?.get(mapping_name).copied()
+}
+
+pub(crate) fn bound_key_display_keys(
+    options: &ClientOptions,
+) -> std::collections::HashMap<&'static str, &'static str> {
+    VANILLA_KEY_MAPPINGS
+        .iter()
+        .map(|mapping| {
+            let bound = bound_key(options, mapping);
+            let name = VANILLA_NAMED_KEYS
+                .iter()
+                .find(|named| named.key_type == bound.key_type && named.value == bound.value)
+                .map(|named| named.name)
+                .unwrap_or("key.keyboard.unknown");
+            (mapping.name, name)
+        })
+        .collect()
+}
+
 pub(crate) fn rebound_keys(options: &ClientOptions) -> Vec<(&'static str, BoundKey)> {
     VANILLA_KEY_MAPPINGS
         .iter()
@@ -228,6 +272,27 @@ mod tests {
             BoundInput::Mouse(MouseButton::Middle)
         );
         assert_eq!(bindings.input("key.back"), BoundInput::Key(KeyCode::KeyS));
+    }
+
+    #[test]
+    fn rebound_keys_lists_only_bindings_that_left_their_default() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        assert!(rebound_keys(&options).is_empty());
+
+        options.set_dynamic_raw_for_test("key_key.forward", "key.keyboard.up");
+        options.set_dynamic_raw_for_test("key_key.jump", "key.keyboard.space");
+        options.set_dynamic_raw_for_test("key_key.sneak", "key.keyboard.bogus");
+        let rebound = rebound_keys(&options);
+        assert_eq!(
+            rebound,
+            vec![(
+                "key.forward",
+                BoundKey {
+                    key_type: VanillaKeyType::Keysym,
+                    value: 265,
+                }
+            )]
+        );
     }
 
     #[test]
