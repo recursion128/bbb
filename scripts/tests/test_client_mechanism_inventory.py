@@ -67,9 +67,11 @@ public class Owner {
         self.assertEqual(profile_keys.mechanism_id, "identity-profile-key-lifecycle")
         self.assertEqual(skins.mechanism_id, "identity-skin-presentation")
         self.assertNotEqual(profile_keys.mechanism_id, skins.mechanism_id)
-        self.assertIn(
-            "crates/bbb-net/src/chat_session/runtime.rs",
+        # Online mode is a declared non-goal: the profile-key lifecycle owns no
+        # implementation and resolves to the ledger's not-needed decision.
+        self.assertEqual(
             inventory.MECHANISM_EVIDENCE[profile_keys.mechanism_id],
+            ("docs/unsupported-features.md",),
         )
         self.assertEqual(
             inventory.MECHANISM_EVIDENCE[skins.mechanism_id],

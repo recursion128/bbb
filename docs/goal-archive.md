@@ -92,4 +92,13 @@
   焦点移交（`lastPreeditEvent` 常存 + gain/lose 双向 handoff，`clear_pressed` 不再越权清
   composition，失效由 dialog revision/sign signature 护栏承担）。四 route 回到 `equivalent`。
 
+- **2026-08-05（online-mode removal）**：用户裁决 online 模式为非目标，整体移除已实现但永不可
+  验收的在线面：RSA/AES-CFB8 加密登录与 sessionserver join、profile-key 拉取与
+  `ChatSessionUpdate`/本地签名链（`chat_session/runtime.rs` 整文件）、bearer-token Services
+  block-list/abuse-report REST client（`user_api.rs`）、`--profile-id`/`--access-token` 凭据参数、
+  `PlaySessionSecurity` 事件与 tab-list heads 加密位。服务端发起加密握手改为可归因失败；出站
+  聊天/命令保持 vanilla「无 key pair」语义；入站签名验证与 last-seen ack 不变。packet coverage
+  五条目改判 not-applicable、`identity-profile-key-lifecycle` 行转 `not-needed`、账本 deferred #1
+  改 `not-needed`（deferred 6→5）。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

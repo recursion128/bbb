@@ -49,28 +49,16 @@ Configuration/Play 在先行 packet audio 后提交恰好一次 unfiltered stop-
 resource apply。phase 决策只属于 simulation；audio backend 不缓存 connection/session 状态，下一份
 空 tickable projection 会清除旧 generation 的 entity-bound identity。
 
-## 认证 profile key 与 play-local 签名链
+## Offline-only 签名边界
 
-Vanilla `ConnectScreen.startConnecting` 在 TCP 建连前调用
-`Minecraft.prepareForMultiplayer`，后者把 `AccountProfileKeyPairManager.prepareKeyPair`
-串入同一 future chain。manager 独占 credential、pending fetch、accepted key 和一小时 refresh
-下限；`ClientPacketListener` 只在 encrypted Play Login 再请求 prepare，并独占当前
-`LocalChatSession` 与 advancing message chain。tick 仅在已有 local chat session 且 accepted
-key 到期刷新；新 key 才重建 session/encoder 并先发 `ChatSessionUpdate`，同 key 保留链。
-
-BBB 对应的唯一 manager 是 `bbb-net::chat_session::runtime::ProfileKeyManager`。它在
-`run_event_stream` 等待 Services public keys 和 TCP 前启动一个 5 秒、128 KiB 上限的请求；
-RSA-2048、canonical DER、signature 和 timestamp 校验仍由唯一私有 certificate resolver
-负责。Play Login 只把 immutable accepted key 投影为 play-local session；reconfiguration 和
-Transfer 清除 session/encoder，不中止 pending fetch，也不丢 manager key。仅当前 encrypted
-Play 可以提交 `ChatSessionUpdate`；offline/no-token 不启动 HTTP，失败保留 accepted key，
-没有 key 时继续 unsigned。manager drop 才 abort pending task，release 路径不创建
-`profilekeys` 私钥缓存。
-
-本地 bounded HTTP/TCP fixtures 覆盖 prepare、refresh、changed/unchanged key、failure
-rollback、phase reset 和 update-before-message；真实 offline live session 另验证 no-token
-路径不访问 Services。真实 Mojang Services + encrypted online-mode server 验收需要外部授权
-凭据 runner，当前状态与重启条件由唯一 gap ledger 维护。
+Online 模式是明确的非目标（2026-08-05 用户裁决）：客户端不持有 profile key pair、不做
+encrypted login/session join、不发 `ChatSessionUpdate`。Vanilla 的
+`AccountProfileKeyPairManager`/play-local 签名链对应面按 scope 决策移除，出站聊天与
+signable command 参数保持 vanilla「无 key pair」语义（`ChatMessage.signature` 恒 None、
+`ArgumentSignatures` 恒空），last-seen ack 管线照常。入站方向不变：远端玩家的
+`InitializeChat` session 仍用 Services 公钥集验证（`services_profile_keys` 为无凭据 GET）。
+服务端发起 encryption 握手时连接以可归因错误失败（`login.rs#reject_encryption_request`）。
+恢复条件与当时被移除的实现清单由唯一 gap ledger 维护。
 
 ## BBB 实现映射
 
@@ -89,7 +77,7 @@ rollback、phase reset 和 update-before-message；真实 offline live session �
 | transient side effects | listener → renderer/audio/UI | `PlayApplyEffects` | `equivalent` | recording-effects tests |
 | simulation publication | tick/render boundary | `SimulationCore`, publication | `equivalent` | snapshot integration tests |
 | renderer extraction | `LevelRenderer`/render states | `RendererFrame` | `equivalent` | native renderer-frame tests |
-| profile-key manager / play session | `AccountProfileKeyPairManager` / `ClientPacketListener` | `bbb-net::chat_session::runtime` | `deferred-external` | bounded HTTP/TCP fixtures；真实凭据见 ledger |
+| profile-key manager / play session | `AccountProfileKeyPairManager` / `ClientPacketListener` | offline-only：无 profile-key surface，出站恒 unsigned | `not-needed` | ledger（online 模式非目标）；入站验证见 chat 机制页 |
 
 ## 结构性不变量
 

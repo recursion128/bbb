@@ -7015,7 +7015,6 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
             (
                 "crates/bbb-world/src/client/social.rs#player_social_services_block_list_unions_configured_and_excludes_local_and_nil",
                 "crates/bbb-world/src/client/chat.rs#player_visibility_and_blocking_suppress_display_but_process_valid_signature",
-                "crates/bbb-net/src/user_api.rs#user_api_rejects_invalid_or_excessive_block_list_json",
             ),
         ),
         ("isBlocked",),
@@ -7049,10 +7048,10 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
         OwnerEvidence(
             (
                 "docs/wiki/architecture/offline-runtime.md#`UserApiService.OFFLINE`、",
-                "docs/unsupported-features.md#Authenticated profile-key Services acceptance is `deferred`.",
+                "docs/unsupported-features.md#Online mode (authenticated Services and encrypted transport) is",
             ),
             (
-                "crates/bbb-net/src/types/connection.rs#authenticated_options_keep_session_credentials_runtime_only_and_redacted",
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_offline_play_and_disconnect_stay_inactive",
             ),
         ),
         ("isNameBanned",),
@@ -7078,7 +7077,6 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
             ),
             (
                 "crates/bbb-net/src/types/connection.rs#offline_connection_options_delegate_login_username_validation",
-                "crates/bbb-net/src/types/connection.rs#authenticated_options_keep_session_credentials_runtime_only_and_redacted",
             ),
         ),
         ("multiplayerBan", "userProperties"),
@@ -7242,11 +7240,10 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
-                "crates/bbb-native/src/startup.rs#pub(crate) fn player_report_environment_from_args(args: &Args) -> Option<PlayerReportEnvironment> {",
-                "crates/bbb-native/src/main.rs#world.set_player_report_environment(startup::player_report_environment_from_args(&args));",
+                "docs/unsupported-features.md#Online mode (authenticated Services and encrypted transport) is",
+                "crates/bbb-world/src/client/reporting.rs#pub fn set_player_report_environment(",
             ),
             (
-                "crates/bbb-native/src/startup.rs#player_reporting_environment_requires_authenticated_startup_credentials",
                 "crates/bbb-world/src/client/reporting.rs#player_reporting_environment_change_invalidates_screen_and_previous_screen_state",
                 "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
             ),
@@ -7270,13 +7267,12 @@ SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
             (
-                "crates/bbb-net/src/user_api.rs#pub async fn submit_abuse_report(",
+                "docs/unsupported-features.md#Online mode (authenticated Services and encrypted transport) is",
                 "crates/bbb-native/src/services_block_list_runtime.rs#pub(crate) fn synchronize_player_report_submissions(",
             ),
             (
                 "crates/bbb-native/src/services_block_list_runtime.rs#player_reporting_submission_runs_async_and_applies_only_matching_attempt",
-                "crates/bbb-net/src/user_api.rs#abuse_report_conversion_projects_world_builder_with_iso_instants_and_null_signature",
-                "crates/bbb-native/src/startup.rs#services_block_list_startup_client_requires_authenticated_nonempty_credentials",
+                "crates/bbb-native/src/services_block_list_runtime.rs#player_reporting_submission_cancel_aborts_task_and_rejects_late_completion",
             ),
         ),
         ("sender",),
@@ -8039,11 +8035,7 @@ MECHANISM_EVIDENCE = {
     "persistence-options-apply": ("crates/bbb-native/src/client_options.rs",),
     "persistence-options-unconsumed": ("docs/unsupported-features.md",),
     "persistence-server-list": ("crates/bbb-native/src/server_list.rs",),
-    "identity-profile-key-lifecycle": (
-        "crates/bbb-net/src/chat_session.rs",
-        "crates/bbb-net/src/chat_session/runtime.rs",
-        "crates/bbb-net/src/event_stream.rs",
-    ),
+    "identity-profile-key-lifecycle": ("docs/unsupported-features.md",),
     "identity-skin-presentation": ("crates/bbb-item-model/src/skin_runtime.rs",),
     "security-secure-chat-reporting": ("crates/bbb-native/src/input/reporting.rs",),
     "diagnostics-crash-runtime": (

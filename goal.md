@@ -496,7 +496,8 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 状态：`closed`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻
-`equivalent`，authenticated Services 端到端仍按账本 deferred）。2026-08-05 用户重开的
+`equivalent`；online 模式经用户裁决为非目标，加密登录/签名会话/Services 凭据面已整体移除
+并按账本 `not-needed`）。2026-08-05 用户重开的
 两项输入面已落地关闭：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交（见
 archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded

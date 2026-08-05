@@ -135,26 +135,34 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
 `identity-profile-key-lifecycle`, `identity-skin-presentation`,
 `security-secure-chat-reporting`
 
-- **Authenticated profile-key Services acceptance is `deferred`.** This runner has
-  no authorized profile UUID/access token pair, and the repository has no
-  credential-safe online-mode acceptance fixture, so the real
-  `api.minecraftservices.com/player/certificates` response followed by encrypted
-  Login, `ChatSessionUpdate`, signed message, reconfiguration and Transfer remains
-  externally unverified. Reopen when an account owner provisions an ephemeral
-  legal credential pair and controlled Vanilla 26.1 online-mode server runner that
-  redacts process/log material and can assert that complete sequence.
-The `security-secure-chat-reporting` route is closed: the 30 security owners
+- **Online mode (authenticated Services and encrypted transport) is
+  `not-needed`.** User scope decision 2026-08-05: this client is offline-only.
+  The formerly implemented online surface — RSA/AES-CFB8 encrypted login with
+  the sessionserver join, the `player/certificates` profile-key fetch, the
+  local signed-message chain with `ChatSessionUpdate`, the bearer-token
+  Services block-list/abuse-report REST client, and the
+  `--profile-id`/`--access-token` startup credentials — was removed rather
+  than left as permanently unverifiable dead code. A server that opens the
+  vanilla encryption handshake now fails the connection with an attributable
+  "online-mode servers are unsupported" error before any cipher could be
+  negotiated. Remote players' signed chat and announced sessions are still
+  decoded and validated with the public Services key set, and signable command
+  arguments keep the vanilla signed-command packet shape with an empty
+  signature list — matching a vanilla client that has no key pair. Reopen only
+  if the offline-only scope decision itself is reversed; restoring the online
+  surface means reimplementing encrypted login, session join, and the
+  profile-key lifecycle from vanilla source.
+The `security-secure-chat-reporting` route stays closed: the 30 security owners
 (`Minecraft` chat abilities 9, `PlayerSocialManager` 12, `ReportingContext` 9)
 each carry a mechanically reachable implementation/test evidence cell and the
 matrix row is `equivalent`. The offline service boundary follows vanilla's
 `UserApiService.OFFLINE_PROPERTIES` semantics — empty flags and ban scopes, so
 profile-flag chat restrictions, the Services block list, and the abuse-report
-sender only activate when startup credentials are supplied and stay inert
-offline exactly like vanilla's auth-failure fallback. The census fixed one
+sender stay inert exactly like vanilla's auth-failure fallback; with online
+mode out of scope no activation path exists at all. The census fixed one
 divergence in place: matched-name system-chat suppression now resolves through
 the social discovered-names map (vanilla `guessChatUUID`), not the live tab
-list. Launcher token acquisition remains outside the client, and the live
-authenticated end-to-end sequence stays under the `deferred` bullet above.
+list.
 
 ## Runtime performance parity and stable frame tails
 
