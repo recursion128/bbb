@@ -657,7 +657,10 @@ mod tests {
 
     #[test]
     fn render_and_event_loop_cannot_read_the_live_simulation_owner() {
-        let main = include_str!("main.rs");
+        let main = include_str!("main.rs")
+            .split_once("\nmod tests {")
+            .expect("main production/test boundary")
+            .0;
         assert_eq!(main.matches("update_renderer_from_publication(").count(), 1);
         assert!(main.contains(
             "latest_publication.effect_sequence <= render_effect_consumer.last_sequence()"
