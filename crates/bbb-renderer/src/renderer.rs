@@ -349,6 +349,27 @@ pub enum TerrainTextureFiltering {
     None,
     /// Vanilla's four-tap rotated-grid super-sampling shader path.
     Rgss,
+    /// Vanilla's `TextureFilteringMethod.ANISOTROPIC`: the same nearest-looking
+    /// shader path, with sampler anisotropy and matching atlas padding.
+    Anisotropic,
+}
+
+/// Vanilla `Options.effectiveMaxAnisotropy` is `min(1 << maxAnisotropyBit,
+/// device max)`; `LevelRenderer` passes it to the chunk-layer sampler only
+/// under `TextureFilteringMethod.ANISOTROPIC`, else 1. wgpu has no queryable
+/// device maximum, so the bit range 1..=3 (2x/4x/8x) is clamped to wgpu's
+/// 16x sampler ceiling and the backend clamps to hardware support.
+pub(crate) fn effective_terrain_max_anisotropy(
+    filtering: TerrainTextureFiltering,
+    max_anisotropy_bit: u32,
+) -> u16 {
+    if filtering != TerrainTextureFiltering::Anisotropic {
+        return 1;
+    }
+    1_u32
+        .checked_shl(max_anisotropy_bit)
+        .unwrap_or(u32::from(u16::MAX))
+        .min(16) as u16
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -449,6 +470,7 @@ pub struct Renderer {
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) core_shader_generation: Option<u64>,
     pub(super) terrain_texture_filtering: TerrainTextureFiltering,
+    pub(super) terrain_max_anisotropy_bit: u32,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) debug_filled_box_pipeline: wgpu::RenderPipeline,
     pub(super) debug_text_pipeline: wgpu::RenderPipeline,
@@ -2239,6 +2261,9 @@ impl Renderer {
             terrain_translucent_pipeline,
             core_shader_generation: None,
             terrain_texture_filtering,
+            // Vanilla `maxAnisotropyBit` default (`IntRange(1, 3)`, 2 → 4x);
+            // consumed by the terrain sampler only under `Anisotropic`.
+            terrain_max_anisotropy_bit: 2,
             block_destroy_pipeline,
             debug_filled_box_pipeline,
             debug_text_pipeline,
@@ -3812,14 +3837,30 @@ impl Renderer {
         self.upload_terrain_texture_atlas_mips(width, height, &[rgba])
     }
 
+    /// Vanilla `Options.maxAnisotropyBit` invalidates the chunk-layer sampler
+    /// via `LevelRenderer::resetSampler`; bbb options are startup-only, so the
+    /// bit must be set before the real atlas upload recreates the sampler.
+    pub fn set_terrain_max_anisotropy_bit(&mut self, max_anisotropy_bit: u32) {
+        self.terrain_max_anisotropy_bit = max_anisotropy_bit;
+    }
+
     pub fn upload_terrain_texture_atlas_mips(
         &mut self,
         width: u32,
         height: u32,
         mip_rgba: &[&[u8]],
     ) -> Result<()> {
-        let terrain_atlas =
-            create_terrain_atlas_mips_gpu(&self.device, &self.queue, width, height, mip_rgba)?;
+        let terrain_atlas = create_terrain_atlas_mips_gpu(
+            &self.device,
+            &self.queue,
+            width,
+            height,
+            mip_rgba,
+            effective_terrain_max_anisotropy(
+                self.terrain_texture_filtering,
+                self.terrain_max_anisotropy_bit,
+            ),
+        )?;
         let terrain_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,

@@ -315,6 +315,15 @@ pub(crate) struct Args {
     pub(crate) client_vsync: bool,
     #[arg(long = "terrain-texture-filtering", value_enum, default_value = "none")]
     pub(crate) terrain_texture_filtering: TerrainTextureFilteringArg,
+    /// Vanilla `maxAnisotropyBit` is `OptionInstance.IntRange(1, 3)` with
+    /// default 2 (2^bit anisotropy); only consumed under `anisotropic`
+    /// terrain texture filtering.
+    #[arg(
+        long = "client-max-anisotropy-bit",
+        default_value_t = 2,
+        value_parser = clap::value_parser!(u32).range(1..=3)
+    )]
+    pub(crate) client_max_anisotropy_bit: u32,
     #[arg(
         long = "text-background-opacity",
         default_value_t = VANILLA_DEFAULT_TEXT_BACKGROUND_OPACITY,
@@ -541,6 +550,7 @@ pub(crate) enum ClientAttackIndicatorArg {
 pub(crate) enum TerrainTextureFilteringArg {
     None,
     Rgss,
+    Anisotropic,
 }
 
 impl From<TerrainTextureFilteringArg> for TerrainTextureFiltering {
@@ -548,8 +558,23 @@ impl From<TerrainTextureFilteringArg> for TerrainTextureFiltering {
         match value {
             TerrainTextureFilteringArg::None => Self::None,
             TerrainTextureFilteringArg::Rgss => Self::Rgss,
+            TerrainTextureFilteringArg::Anisotropic => Self::Anisotropic,
         }
     }
+}
+
+/// Vanilla `Stitcher` pads sprites by `1 << mipLevel << clamp(anisotropyBit -
+/// 1, 0, 4)` and `SpriteLoader` passes bit 0 unless `textureFiltering ==
+/// ANISOTROPIC`; the atlas packer multiplies its base padding by `1 <<
+/// mipLevel`, so the base is the anisotropy factor alone.
+pub(crate) fn terrain_atlas_base_padding(
+    filtering: TerrainTextureFilteringArg,
+    max_anisotropy_bit: u32,
+) -> u32 {
+    if filtering != TerrainTextureFilteringArg::Anisotropic {
+        return 1;
+    }
+    1 << max_anisotropy_bit.saturating_sub(1).min(4)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -877,6 +902,20 @@ fn bind_stored_client_options(
         EnumNameOrBoolean,
         render_clouds,
         parse_stored_render_clouds
+    );
+    parsed!(
+        "terrain_texture_filtering",
+        "textureFiltering",
+        EnumId,
+        terrain_texture_filtering,
+        parse_stored_terrain_texture_filtering
+    );
+    parsed!(
+        "client_max_anisotropy_bit",
+        "maxAnisotropyBit",
+        Integer,
+        client_max_anisotropy_bit,
+        parse_client_max_anisotropy_bit
     );
     parsed!(
         "client_framerate_limit",
@@ -1405,6 +1444,37 @@ fn parse_cloud_range(value: &str) -> std::result::Result<u32, String> {
 /// `options.txt` shape also stored bare booleans, which
 /// `EnumNameOrBoolean` still loads. The friendly names stay accepted for
 /// the command line.
+fn parse_stored_terrain_texture_filtering(
+    value: &str,
+) -> std::result::Result<TerrainTextureFilteringArg, String> {
+    // Vanilla `TextureFilteringMethod.LEGACY_CODEC` reads the stored int via
+    // `ByIdMap.continuous(..., OutOfBoundsStrategy.WRAP)`, so out-of-range ids
+    // wrap modulo the three variants instead of failing.
+    let id = value
+        .trim_matches('"')
+        .parse::<i64>()
+        .map_err(|_| format!("texture filtering must be an integer id, got {value}"))?;
+    Ok(match id.rem_euclid(3) {
+        0 => TerrainTextureFilteringArg::None,
+        1 => TerrainTextureFilteringArg::Rgss,
+        _ => TerrainTextureFilteringArg::Anisotropic,
+    })
+}
+
+fn parse_client_max_anisotropy_bit(value: &str) -> std::result::Result<u32, String> {
+    // Vanilla `maxAnisotropyBit` is `Codec.intRange(1, 3)` via
+    // `OptionInstance.IntRange`; out-of-range stored values fail codec
+    // validation and keep the default.
+    let bit = value
+        .parse::<u32>()
+        .map_err(|_| format!("max anisotropy bit must be an integer: {value}"))?;
+    if (1..=3).contains(&bit) {
+        Ok(bit)
+    } else {
+        Err(format!("max anisotropy bit must be 1, 2 or 3, got {bit}"))
+    }
+}
+
 fn parse_stored_render_clouds(value: &str) -> std::result::Result<RenderCloudsArg, String> {
     match value.trim_matches('"') {
         "true" | "fancy" => Ok(RenderCloudsArg::Fancy),
@@ -1969,6 +2039,92 @@ mod tests {
         assert_eq!(
             TerrainTextureFiltering::from(rgss.terrain_texture_filtering),
             TerrainTextureFiltering::Rgss
+        );
+
+        let anisotropic =
+            Args::try_parse_from(["bbb-native", "--terrain-texture-filtering", "anisotropic"])
+                .unwrap();
+        assert_eq!(
+            TerrainTextureFiltering::from(anisotropic.terrain_texture_filtering),
+            TerrainTextureFiltering::Anisotropic
+        );
+    }
+
+    #[test]
+    fn max_anisotropy_bit_matches_the_vanilla_int_range() {
+        // Vanilla `maxAnisotropyBit` is `OptionInstance.IntRange(1, 3)` with
+        // default 2.
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.client_max_anisotropy_bit, 2);
+        let three =
+            Args::try_parse_from(["bbb-native", "--client-max-anisotropy-bit", "3"]).unwrap();
+        assert_eq!(three.client_max_anisotropy_bit, 3);
+        assert!(Args::try_parse_from(["bbb-native", "--client-max-anisotropy-bit", "0"]).is_err());
+        assert!(Args::try_parse_from(["bbb-native", "--client-max-anisotropy-bit", "4"]).is_err());
+
+        // Stored `maxAnisotropyBit` outside the codec range fails validation
+        // and keeps the default, like vanilla's `OptionInstance` read.
+        assert_eq!(parse_client_max_anisotropy_bit("1"), Ok(1));
+        assert!(parse_client_max_anisotropy_bit("0").is_err());
+        assert!(parse_client_max_anisotropy_bit("4").is_err());
+        assert!(parse_client_max_anisotropy_bit("x").is_err());
+    }
+
+    #[test]
+    fn stored_texture_filtering_wraps_ids_like_the_vanilla_legacy_codec() {
+        // `TextureFilteringMethod.LEGACY_CODEC` resolves ids through
+        // `ByIdMap.continuous(..., OutOfBoundsStrategy.WRAP)` (floorMod).
+        assert_eq!(
+            parse_stored_terrain_texture_filtering("0"),
+            Ok(TerrainTextureFilteringArg::None)
+        );
+        assert_eq!(
+            parse_stored_terrain_texture_filtering("1"),
+            Ok(TerrainTextureFilteringArg::Rgss)
+        );
+        assert_eq!(
+            parse_stored_terrain_texture_filtering("2"),
+            Ok(TerrainTextureFilteringArg::Anisotropic)
+        );
+        assert_eq!(
+            parse_stored_terrain_texture_filtering("3"),
+            Ok(TerrainTextureFilteringArg::None)
+        );
+        assert_eq!(
+            parse_stored_terrain_texture_filtering("-1"),
+            Ok(TerrainTextureFilteringArg::Anisotropic)
+        );
+        assert!(parse_stored_terrain_texture_filtering("fancy").is_err());
+    }
+
+    #[test]
+    fn terrain_atlas_base_padding_matches_the_vanilla_stitcher_formula() {
+        // Vanilla `Stitcher`: padding = `1 << mipLevel << clamp(bit - 1, 0,
+        // 4)` with bit 0 outside `ANISOTROPIC`; the packer multiplies the
+        // base by `1 << mipLevel`, so the base is the anisotropy factor.
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::None, 3),
+            1
+        );
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::Rgss, 3),
+            1
+        );
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::Anisotropic, 1),
+            1
+        );
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::Anisotropic, 2),
+            2
+        );
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::Anisotropic, 3),
+            4
+        );
+        assert_eq!(
+            terrain_atlas_base_padding(TerrainTextureFilteringArg::Anisotropic, 9),
+            16
         );
     }
 

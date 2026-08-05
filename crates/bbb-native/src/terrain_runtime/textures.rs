@@ -47,6 +47,11 @@ pub(crate) struct TerrainTextureState {
     /// Vanilla `Options.ao` (smooth lighting): `ModelBlockRenderer` is built
     /// with the option and gates every model's ambient occlusion on it.
     smooth_lighting: bool,
+    /// Vanilla `Stitcher` pads sprites by `1 << mipLevel << clamp(bit - 1, 0,
+    /// 4)`; the packer multiplies this base by `1 << mipLevel`, so the base is
+    /// `1 << clamp(bit - 1, 0, 4)` under `ANISOTROPIC` filtering and 1
+    /// otherwise (`SpriteLoader` passes bit 0 for the other modes).
+    atlas_base_padding: u32,
     block_item_default_quads: RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
     block_item_property_quads: RefCell<
         HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
@@ -86,6 +91,7 @@ impl Default for TerrainTextureState {
             fallback_index: 0,
             cutout_leaves: true,
             smooth_lighting: true,
+            atlas_base_padding: 1,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
@@ -244,6 +250,7 @@ impl TerrainTextureState {
             fallback_index,
             cutout_leaves: true,
             smooth_lighting: true,
+            atlas_base_padding: 1,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
@@ -264,6 +271,15 @@ impl TerrainTextureState {
 
     pub(crate) fn smooth_lighting(&self) -> bool {
         self.smooth_lighting
+    }
+
+    pub(crate) fn with_atlas_base_padding(mut self, atlas_base_padding: u32) -> Self {
+        self.atlas_base_padding = atlas_base_padding;
+        self
+    }
+
+    pub(crate) fn atlas_base_padding(&self) -> u32 {
+        self.atlas_base_padding
     }
 
     pub(crate) fn cutout_leaves(&self) -> bool {
@@ -1885,15 +1901,23 @@ pub(crate) fn load_terrain_textures(
     roots: Option<&PackRoots>,
     cutout_leaves: bool,
     smooth_lighting: bool,
+    atlas_base_padding: u32,
 ) -> TerrainTextureState {
     let Some(roots) = roots else {
         tracing::warn!("falling back to default terrain texture atlas without pack roots");
         renderer.set_terrain_particle_sprite_uvs(Vec::new());
         return TerrainTextureState::default()
             .with_cutout_leaves(cutout_leaves)
-            .with_smooth_lighting(smooth_lighting);
+            .with_smooth_lighting(smooth_lighting)
+            .with_atlas_base_padding(atlas_base_padding);
     };
-    match try_load_terrain_textures(renderer, roots, cutout_leaves, smooth_lighting) {
+    match try_load_terrain_textures(
+        renderer,
+        roots,
+        cutout_leaves,
+        smooth_lighting,
+        atlas_base_padding,
+    ) {
         Ok(textures) => textures,
         Err(err) => {
             tracing::warn!(?err, "falling back to default terrain texture atlas");
@@ -1901,6 +1925,7 @@ pub(crate) fn load_terrain_textures(
             TerrainTextureState::default()
                 .with_cutout_leaves(cutout_leaves)
                 .with_smooth_lighting(smooth_lighting)
+                .with_atlas_base_padding(atlas_base_padding)
         }
     }
 }
@@ -1910,6 +1935,7 @@ pub(crate) fn try_load_terrain_textures(
     roots: &PackRoots,
     cutout_leaves: bool,
     smooth_lighting: bool,
+    atlas_base_padding: u32,
 ) -> Result<TerrainTextureState> {
     let images = roots.load_block_texture_images()?;
     let block_models = roots.load_block_model_catalog()?;
@@ -1927,7 +1953,7 @@ pub(crate) fn try_load_terrain_textures(
             None
         }
     };
-    let packer = AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, 1)?;
+    let packer = AtlasPacker::new(VANILLA_26_1_BLOCK_ATLAS_WIDTH, atlas_base_padding)?;
     let atlas = packer.stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)?;
     let animation_plan = atlas
         .layout

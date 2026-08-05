@@ -107,20 +107,6 @@ the single frame-extract/submission path stays the structural invariant.
   `SharedConstants.DEBUG_ACTIVE_TEXT_AREAS`, a dev-build `debugFlag` that is
   false whenever `DEBUG_ENABLED` is off, so no production 26.1 client renders the
   glyph-area markers. Reopen if the flag ever ships enabled.
-- **Vanilla terrain texture filtering (`textureFiltering` +
-  `maxAnisotropyBit`) is `active`** (user-reopened 2026-08-05). Vanilla 26.1
-  samples the terrain atlas through a LINEAR/LINEAR sampler whose
-  `maxAnisotropy` is `effectiveMaxAnisotropy()` (`min(1 << bit, device max)`)
-  only when `textureFiltering == ANISOTROPIC`, else 1; the blocky look comes
-  from the shader (`terrain.fsh` `sampleNearest` texel-center snap with
-  screen-size-aware edge AA via `textureGrad`), and `RGSS` adds a 4-tap
-  rotated-grid path (`UseRgss`) with manual mip selection. `Stitcher` pads
-  sprites by `1 << mipLevel << clamp(anisotropyBit - 1, 0, 4)`;
-  `maxAnisotropyBit` is `IntRange(1, 3)` default 2 and only consumed under
-  `ANISOTROPIC`. Done when bbb's terrain path reproduces the three filtering
-  modes with those exact constants (sampler, shader ports, atlas padding,
-  options wire). Owner: `bbb-renderer` terrain sampler/shader + `bbb-native`
-  atlas build/options + `bbb-pack` stitching.
 - **Toasts and the F3 overlay above a full-screen screen are `active`**
   (user-reopened 2026-08-05). `GameRenderer.render` extracts `ToastManager`
   and `Gui.extractDebugOverlay` after the screen, so vanilla draws both over

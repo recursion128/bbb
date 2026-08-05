@@ -430,7 +430,7 @@ pub(super) fn create_terrain_atlas_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<TerrainAtlasGpu> {
-    create_terrain_atlas_mips_gpu(device, queue, width, height, &[rgba])
+    create_terrain_atlas_mips_gpu(device, queue, width, height, &[rgba], 1)
 }
 
 pub(super) fn create_terrain_atlas_mips_gpu(
@@ -439,6 +439,7 @@ pub(super) fn create_terrain_atlas_mips_gpu(
     width: u32,
     height: u32,
     mip_rgba: &[&[u8]],
+    max_anisotropy: u16,
 ) -> Result<TerrainAtlasGpu> {
     let mip_dimensions = validate_terrain_atlas_mips(width, height, mip_rgba)?;
     let mip_level_count = mip_rgba.len() as u32;
@@ -478,6 +479,10 @@ pub(super) fn create_terrain_atlas_mips_gpu(
         mag_filter: TERRAIN_ATLAS_MAG_FILTER,
         min_filter: TERRAIN_ATLAS_MIN_FILTER,
         mipmap_filter: TERRAIN_ATLAS_MIPMAP_FILTER,
+        // Vanilla passes `effectiveMaxAnisotropy()` only under
+        // `TextureFilteringMethod.ANISOTROPIC`, else 1 (`LevelRenderer`
+        // chunk-layer sampler creation).
+        anisotropy_clamp: max_anisotropy,
         ..Default::default()
     });
     Ok(TerrainAtlasGpu {
@@ -971,7 +976,10 @@ fn terrain_shader(
         format!("    if texel.a < {threshold} {{\n        discard;\n    }}")
     });
     let terrain_sample = match texture_filtering {
-        crate::renderer::TerrainTextureFiltering::None => {
+        // Vanilla `terrain.fsh` has no anisotropic branch: `UseRgss == 0`
+        // takes `sampleNearest` and the anisotropy lives in the sampler.
+        crate::renderer::TerrainTextureFiltering::None
+        | crate::renderer::TerrainTextureFiltering::Anisotropic => {
             "    let texel = sample_terrain_nearest(input.uv, vec2<f32>(1.0) / atlas_size);"
         }
         crate::renderer::TerrainTextureFiltering::Rgss => {
@@ -1105,6 +1113,45 @@ mod tests {
         assert!(!TERRAIN_SHADER.contains("ambient_occlusion"));
         assert!(!TERRAIN_SHADER.contains("input.shade"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));
+    }
+
+    #[test]
+    fn anisotropic_filtering_keeps_the_nearest_shader_and_scales_the_sampler() {
+        // Vanilla `terrain.fsh` has no anisotropic branch (`UseRgss == 0`
+        // takes `sampleNearest`); the mode only changes the sampler.
+        let anisotropic =
+            terrain_shader(None, crate::renderer::TerrainTextureFiltering::Anisotropic);
+        assert!(anisotropic
+            .contains("let texel = sample_terrain_nearest(input.uv, vec2<f32>(1.0) / atlas_size)"));
+        assert!(!anisotropic.contains("let texel = sample_terrain_rgss"));
+
+        // Vanilla `effectiveMaxAnisotropy()` = `min(1 << bit, device max)`,
+        // consumed only under `ANISOTROPIC` (else the sampler gets 1).
+        use crate::renderer::{effective_terrain_max_anisotropy, TerrainTextureFiltering};
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::Anisotropic, 1),
+            2
+        );
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::Anisotropic, 2),
+            4
+        );
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::Anisotropic, 3),
+            8
+        );
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::Anisotropic, 9),
+            16
+        );
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::None, 3),
+            1
+        );
+        assert_eq!(
+            effective_terrain_max_anisotropy(TerrainTextureFiltering::Rgss, 3),
+            1
+        );
     }
 
     #[test]

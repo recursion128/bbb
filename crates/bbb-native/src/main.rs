@@ -974,6 +974,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     )?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
+    renderer.set_terrain_max_anisotropy_bit(args.client_max_anisotropy_bit);
     renderer.set_cloud_status(
         args.render_clouds != startup::RenderCloudsArg::Off,
         match args.render_clouds {
@@ -1006,6 +1007,10 @@ fn run_client(args: startup::Args) -> Result<()> {
         pack_roots.as_ref(),
         args.cutout_leaves,
         args.client_smooth_lighting,
+        startup::terrain_atlas_base_padding(
+            args.terrain_texture_filtering,
+            args.client_max_anisotropy_bit,
+        ),
     );
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);

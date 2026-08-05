@@ -258,6 +258,7 @@ fn apply_native_resource_reload(
 
     let cutout_leaves = terrain_textures.cutout_leaves();
     let smooth_lighting = terrain_textures.smooth_lighting();
+    let atlas_base_padding = terrain_textures.atlas_base_padding();
     let shader_resources = prepared.post_effects.renderer_projection();
     let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_shader_resource_reload(&shader_resources, false, |renderer| {
@@ -267,6 +268,7 @@ fn apply_native_resource_reload(
                 &prepared.roots,
                 cutout_leaves,
                 smooth_lighting,
+                atlas_base_padding,
             )
             .context("upload terrain resources during resource reload")?;
             try_load_hud_textures(renderer, &prepared.roots)
