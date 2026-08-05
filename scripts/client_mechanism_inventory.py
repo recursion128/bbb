@@ -4983,9 +4983,467 @@ INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+INPUT_MOUSE_ROUTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#MouseSensitivity",
+                "crates/bbb-native/src/input.rs#scroll_accumulated_x",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve",
+                "crates/bbb-native/src/input/tests.rs#the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options",
+            ),
+        ),
+        ("MouseHandler",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::MouseInput",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_mouse_button",
+                "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation",
+            ),
+            (
+                "crates/bbb-native/src/input/mouse.rs#left_mouse_press_queues_main_hand_swing",
+                "crates/bbb-native/src/input/mouse.rs#right_mouse_press_without_block_queues_use_item",
+                "crates/bbb-native/src/input/mouse.rs#sign_editor_mouse_press_does_not_queue_gameplay_input",
+            ),
+        ),
+        ("onButton",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/mouse.rs#InputQuirks.SIMULATE_RIGHT_CLICK_WITH_LONG_LEFT_CLICK",
+            ),
+            ("crates/bbb-native/src/input/mouse.rs#left_mouse_press_queues_main_hand_swing",),
+        ),
+        ("simulateRightClick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/mouse.rs#fillMousePositionDetails",),
+            (
+                "crates/bbb-native/src/crash_report.rs#friendly_report_has_vanilla_sections_and_bounded_accounting",
+            ),
+        ),
+        ("fillMousePositionDetails",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn scale_scroll_delta",
+                "crates/bbb-native/src/input/mouse.rs#pub(crate) fn handle_mouse_wheel",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options",
+                "crates/bbb-native/src/input/mouse.rs#mouse_wheel_selects_hotbar_slot_updates_world_and_queues_command",
+                "crates/bbb-native/src/input/mouse.rs#spectator_mouse_wheel_adjusts_local_flying_speed_without_hotbar_command",
+            ),
+        ),
+        ("onScroll",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#WindowEvent::DroppedFile",),
+            (
+                "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence",
+            ),
+        ),
+        ("onDrop",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn enqueue_simulation_window_event",
+                "crates/bbb-native/src/main.rs#DeviceEvent::MouseMotion",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#cursor_events_cache_physical_and_reproject_at_the_gui_boundary",
+                "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
+            ),
+        ),
+        ("setup",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::CursorMoved",
+                "crates/bbb-native/src/window_surface.rs#fn on_cursor_moved",
+                "crates/bbb-native/src/input/mouse.rs#pub(crate) fn handle_mouse_motion",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
+                "crates/bbb-native/src/runtime/control_requests.rs#pump_control_input_requests_replays_keys_through_the_real_key_handler",
+            ),
+        ),
+        ("onMove",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/movement.rs#pub(crate) fn advance_player_input_for_client_ticks",),
+            (
+                "crates/bbb-native/src/input/movement.rs#client_tick_catch_up_preserves_each_tutorial_movement_sample",
+                "crates/bbb-native/src/input/movement.rs#mounted_mouse_motion_updates_look_and_queues_riding_rotation",
+            ),
+        ),
+        ("handleAccumulatedMovement",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#pub(crate) fn mouse_turn_delta",),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve",
+                "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta",
+            ),
+        ),
+        ("turnPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/window_surface.rs#pub(crate) fn project_cursor_to_gui",),
+            (
+                "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
+                "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
+            ),
+        ),
+        ("getScaledXPos", "getScaledYPos"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#mouseHandler.setIgnoreFirstMove",
+                "crates/bbb-native/src/window_surface.rs#fn on_cursor_left",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
+            ),
+        ),
+        ("setIgnoreFirstMove",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn set_cursor_capture",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn request_cursor_capture",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
+                "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release",
+            ),
+        ),
+        ("grabMouse",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#pub(crate) fn runtime_wants_cursor",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn simulation_wants_cursor",
+            ),
+            ("crates/bbb-native/src/main.rs#runtime_wants_cursor_for_advancements_screen",),
+        ),
+        ("releaseMouse",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#WindowEvent::CursorEntered",),
+            (
+                "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
+            ),
+        ),
+        ("cursorEntered",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input/mouse.rs#SharedConstants.DEBUG_CURSOR_POS",),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_release_toggles_debug_overlay_without_gameplay_command",
+            ),
+        ),
+        ("drawDebugMouseInfo",),
+    ),
+)
+
+
+INPUT_KEY_MAPPING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_KEY_MAPPINGS",
+                "crates/bbb-native/src/client_options/key_bindings.rs#impl Default for KeyBindings",
+            ),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+                "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report",
+            ),
+        ),
+        ("KeyMapping", "registerMapping"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#let just_pressed = pressed && !input.pressed_keys.contains(&code);",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#toggle_gui_key_flips_hide_gui_once_per_press_edge",
+                "crates/bbb-native/src/input/tests.rs#camera_perspective_f5_consumes_one_cycle_per_press_edge",
+            ),
+        ),
+        ("click", "consumeClick"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn set_key_down",
+                "crates/bbb-native/src/input.rs#fn set_mouse_button_down",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_tracks_default_key_and_mouse_state",
+            ),
+        ),
+        ("set",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn binding_down",),
+            (
+                "crates/bbb-native/src/input/tests.rs#a_rebound_jump_key_moves_both_the_action_and_the_key_it_left",
+            ),
+        ),
+        ("forAllKeyMappings",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#KeyMapping.setAll",
+                "crates/bbb-native/src/input.rs#pub(crate) fn handle_focus_change",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+            ),
+        ),
+        ("setAll",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#pub(crate) fn release_active_input",
+                "crates/bbb-native/src/input.rs#fn clear_pressed",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+                "crates/bbb-native/src/input/tests.rs#focus_loss_aborts_destroying_block",
+            ),
+        ),
+        ("releaseAll",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn restore_toggle_states_on_screen_closed",),
+            (
+                "crates/bbb-native/src/input/tests.rs#closing_a_screen_restores_a_keyboard_bound_toggle_it_released",
+            ),
+        ),
+        ("restoreToggleStatesOnScreenClosed",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn reset_toggle_keys",
+                "crates/bbb-native/src/input.rs#fn sync_respawn_toggle_reset",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#a_queued_respawn_resets_every_toggle_key_like_local_player_respawn",
+            ),
+        ),
+        ("resetToggleKeys",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn from_options",
+                "crates/bbb-native/src/input.rs#pub(crate) fn set_key_bindings",
+            ),
+            ("crates/bbb-native/src/client_options/key_bindings.rs#a_rebound_key_moves_the_resolved_input",),
+        ),
+        ("resetMapping",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn clear_pressed",
+                "crates/bbb-native/src/input.rs#sneak_released_by_screen_when_down",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+            ),
+        ),
+        ("release",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn restores_toggle_on_screen_closed",
+                "crates/bbb-native/src/main.rs#KeyMapping.setAll",
+            ),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report",
+            ),
+        ),
+        ("shouldSetOnIngameFocus",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn bound_key",
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn named_key",
+            ),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#a_stored_binding_overrides_the_default_and_a_bad_name_does_not",
+            ),
+        ),
+        ("setKey",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#KeyMapping.compareTo",
+                "crates/bbb-native/src/client_options/key_mappings_26_1.rs#sort_order",
+            ),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+            ),
+        ),
+        ("compareTo",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#fn install_bound_key_display_keys",
+                "crates/bbb-native/src/component_text.rs#KeyMapping.createNameSupplier",
+            ),
+            (
+                "crates/bbb-native/src/component_text.rs#keybind_component_resolves_the_currently_bound_key_with_id_fallback",
+                "crates/bbb-native/src/component_text.rs#bound_key_display_keys_follow_rebinds_and_defaults",
+            ),
+        ),
+        ("createNameSupplier",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options/key_bindings.rs#Category.label",),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report",
+            ),
+        ),
+        ("same", "label"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn is_unbound",
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) enum BoundInput",
+            ),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report",
+                "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_accepts_vanilla_default_unbound_keymappings",
+            ),
+        ),
+        ("isUnbound",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#pub(crate) fn binding_matches",),
+            (
+                "crates/bbb-native/src/input/tests.rs#a_rebound_jump_key_moves_both_the_action_and_the_key_it_left",
+            ),
+        ),
+        ("matches",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn binding_down",
+                "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_MOUSE_BUTTONS",
+            ),
+            ("crates/bbb-native/src/client_options/key_bindings.rs#a_rebound_key_moves_the_resolved_input",),
+        ),
+        ("matchesMouse",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options/key_bindings.rs#fn bound_key_display_keys",),
+            (
+                "crates/bbb-native/src/component_text.rs#bound_key_display_keys_follow_rebinds_and_defaults",
+            ),
+        ),
+        ("getTranslatedKeyMessage",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn rebound_keys",),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#rebound_keys_lists_only_bindings_that_left_their_default",
+            ),
+        ),
+        ("isDefault",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_NAMED_KEYS",
+                "crates/bbb-native/src/client_options.rs#CLIENT_OPTION_PREFIXES",
+            ),
+            (
+                "crates/bbb-native/src/client_options.rs#save_round_trips_and_drops_keys_this_client_does_not_know",
+                "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+            ),
+        ),
+        ("saveString",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn toggled_down",
+                "crates/bbb-native/src/input.rs#pub(crate) fn set_toggle_key_options",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#toggle_crouch_flips_sneak_on_press_and_survives_the_release",
+            ),
+        ),
+        ("setDown",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn input",
+                "crates/bbb-item-model/src/item_runtime.rs#pub fn keybind_down",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_accepts_vanilla_default_unbound_keymappings",
+                "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down",
+            ),
+        ),
+        ("get",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options/key_mappings_26_1.rs#category",),
+            (
+                "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+            ),
+        ),
+        ("register",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
+    "input-mouse-routing": INPUT_MOUSE_ROUTING_OWNER_EVIDENCE,
+    "input-key-mapping": INPUT_KEY_MAPPING_OWNER_EVIDENCE,
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,

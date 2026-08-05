@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "421ad239bbb84e084692dbfb1afc488e66c68e73fa8f0575969d4e1b999c1756"
+      "sha256": "88249eb095064a542feb5f5928dff8f938d4e5c1f86ea6713cf921c269c845d1"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -119,7 +119,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/input.rs"
       ],
-      "owner_count": 30
+      "owner_count": 30,
+      "owner_evidence_count": 30
     },
     "input-keyboard-routing": {
       "bbb_evidence": [
@@ -132,7 +133,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/input/mouse.rs"
       ],
-      "owner_count": 19
+      "owner_count": 19,
+      "owner_evidence_count": 19
     },
     "interaction-block-breaking": {
       "bbb_evidence": [
@@ -7590,6 +7592,16 @@
       "vanilla_owner": "net.minecraft.client.GameNarrator.NarratorInitException#NarratorInitException(final String message)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_KEY_MAPPINGS",
+          "crates/bbb-native/src/client_options/key_bindings.rs#impl Default for KeyBindings"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "constructor",
@@ -7604,6 +7616,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#KeyMapping(final String name,final InputConstants.Type type,final int value,final KeyMapping.Category category)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_KEY_MAPPINGS",
+          "crates/bbb-native/src/client_options/key_bindings.rs#impl Default for KeyBindings"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "constructor",
@@ -7618,6 +7640,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#KeyMapping(final String name,final InputConstants.Type type,final int value,final KeyMapping.Category category,final int order)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_KEY_MAPPINGS",
+          "crates/bbb-native/src/client_options/key_bindings.rs#impl Default for KeyBindings"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "constructor",
@@ -7632,6 +7664,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#KeyMapping(final String name,final int keysym,final KeyMapping.Category category)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#let just_pressed = pressed && !input.pressed_keys.contains(&code);"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#toggle_gui_key_flips_hide_gui_once_per_press_edge",
+          "crates/bbb-native/src/input/tests.rs#camera_perspective_f5_consumes_one_cycle_per_press_edge"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7646,6 +7687,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#click(final InputConstants.Key key)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#KeyMapping.compareTo",
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#sort_order"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7660,6 +7710,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#compareTo(final KeyMapping o)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#let just_pressed = pressed && !input.pressed_keys.contains(&code);"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#toggle_gui_key_flips_hide_gui_once_per_press_edge",
+          "crates/bbb-native/src/input/tests.rs#camera_perspective_f5_consumes_one_cycle_per_press_edge"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7674,6 +7733,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#consumeClick()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#fn install_bound_key_display_keys",
+          "crates/bbb-native/src/component_text.rs#KeyMapping.createNameSupplier"
+        ],
+        "tests": [
+          "crates/bbb-native/src/component_text.rs#keybind_component_resolves_the_currently_bound_key_with_id_fallback",
+          "crates/bbb-native/src/component_text.rs#bound_key_display_keys_follow_rebinds_and_defaults"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7688,6 +7757,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#createNameSupplier(final String key)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn binding_down"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#a_rebound_jump_key_moves_both_the_action_and_the_key_it_left"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7702,6 +7779,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#forAllKeyMappings(final InputConstants.Key key,final Consumer <KeyMapping> operation)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn input",
+          "crates/bbb-item-model/src/item_runtime.rs#pub fn keybind_down"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_accepts_vanilla_default_unbound_keymappings",
+          "crates/bbb-native/src/runtime/tests.rs#hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7758,6 +7845,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#getName()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#fn bound_key_display_keys"
+        ],
+        "tests": [
+          "crates/bbb-native/src/component_text.rs#bound_key_display_keys_follow_rebinds_and_defaults"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7772,6 +7867,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#getTranslatedKeyMessage()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn rebound_keys"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#rebound_keys_lists_only_bindings_that_left_their_default"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7800,6 +7903,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#isDown()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn is_unbound",
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) enum BoundInput"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report",
+          "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_accepts_vanilla_default_unbound_keymappings"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7814,6 +7927,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#isUnbound()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#pub(crate) fn binding_matches"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#a_rebound_jump_key_moves_both_the_action_and_the_key_it_left"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7828,6 +7949,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#matches(final KeyEvent event)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn binding_down",
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_MOUSE_BUTTONS"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#a_rebound_key_moves_the_resolved_input"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7842,6 +7972,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#matchesMouse(final MouseButtonEvent event)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_KEY_MAPPINGS",
+          "crates/bbb-native/src/client_options/key_bindings.rs#impl Default for KeyBindings"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key",
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7856,6 +7996,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#registerMapping(final InputConstants.Key key)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn clear_pressed",
+          "crates/bbb-native/src/input.rs#sneak_released_by_screen_when_down"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7870,6 +8019,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#release()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#pub(crate) fn release_active_input",
+          "crates/bbb-native/src/input.rs#fn clear_pressed"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+          "crates/bbb-native/src/input/tests.rs#focus_loss_aborts_destroying_block"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7884,6 +8043,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#releaseAll()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn from_options",
+          "crates/bbb-native/src/input.rs#pub(crate) fn set_key_bindings"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#a_rebound_key_moves_the_resolved_input"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7898,6 +8066,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#resetMapping()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn reset_toggle_keys",
+          "crates/bbb-native/src/input.rs#fn sync_respawn_toggle_reset"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#a_queued_respawn_resets_every_toggle_key_like_local_player_respawn"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7912,6 +8089,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#resetToggleKeys()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn restore_toggle_states_on_screen_closed"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#closing_a_screen_restores_a_keyboard_bound_toggle_it_released"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7926,6 +8111,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#restoreToggleStatesOnScreenClosed()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#Category.label"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7940,6 +8133,16 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#same(final KeyMapping that)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#VANILLA_NAMED_KEYS",
+          "crates/bbb-native/src/client_options.rs#CLIENT_OPTION_PREFIXES"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options.rs#save_round_trips_and_drops_keys_this_client_does_not_know",
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7954,6 +8157,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#saveString()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn set_key_down",
+          "crates/bbb-native/src/input.rs#fn set_mouse_button_down"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#item_model_keybind_context_tracks_default_key_and_mouse_state"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7968,6 +8180,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#set(final InputConstants.Key key,final boolean state)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#KeyMapping.setAll",
+          "crates/bbb-native/src/input.rs#pub(crate) fn handle_focus_change"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7982,6 +8203,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#setAll()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn toggled_down",
+          "crates/bbb-native/src/input.rs#pub(crate) fn set_toggle_key_options"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#toggle_crouch_flips_sneak_on_press_and_survives_the_release"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -7996,6 +8226,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#setDown(final boolean down)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn bound_key",
+          "crates/bbb-native/src/client_options/key_bindings.rs#pub(crate) fn named_key"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#a_stored_binding_overrides_the_default_and_a_bad_name_does_not"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -8010,6 +8249,15 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#setKey(final InputConstants.Key key)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn restores_toggle_on_screen_closed",
+          "crates/bbb-native/src/main.rs#KeyMapping.setAll"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -8024,6 +8272,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping#shouldSetOnIngameFocus()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#Category.label"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#every_binding_resolves_to_a_key_the_window_can_report"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -8038,6 +8294,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping.Category#label()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#category"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -8052,6 +8316,14 @@
       "vanilla_owner": "net.minecraft.client.KeyMapping.Category#register(final Identifier id)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/client_options/key_mappings_26_1.rs#category"
+        ],
+        "tests": [
+          "crates/bbb-native/src/client_options/key_bindings.rs#the_catalog_covers_every_binding_default_with_a_named_key"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11323,6 +11595,16 @@
       "vanilla_owner": "net.minecraft.client.Minecraft#wrapRunnable(final Runnable runnable)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#MouseSensitivity",
+          "crates/bbb-native/src/input.rs#scroll_accumulated_x"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve",
+          "crates/bbb-native/src/input/tests.rs#the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "constructor",
@@ -11337,6 +11619,14 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#MouseHandler(final Minecraft minecraft)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#WindowEvent::CursorEntered"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11351,6 +11641,14 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#cursorEntered()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#SharedConstants.DEBUG_CURSOR_POS"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#f3_release_toggles_debug_overlay_without_gameplay_command"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11365,6 +11663,14 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#drawDebugMouseInfo(final Font font,final GuiGraphicsExtractor graphics)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#fillMousePositionDetails"
+        ],
+        "tests": [
+          "crates/bbb-native/src/crash_report.rs#friendly_report_has_vanilla_sections_and_bounded_accounting"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11379,6 +11685,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#fillMousePositionDetails(final CrashReportCategory category,final Window window)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/window_surface.rs#pub(crate) fn project_cursor_to_gui"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
+          "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11393,6 +11708,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#getScaledXPos(final Window window)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/window_surface.rs#pub(crate) fn project_cursor_to_gui"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
+          "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11407,6 +11731,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#getScaledXPos(final Window window,final double x)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/window_surface.rs#pub(crate) fn project_cursor_to_gui"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
+          "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11421,6 +11754,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#getScaledYPos(final Window window)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/window_surface.rs#pub(crate) fn project_cursor_to_gui"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_projection_uses_the_vanilla_ratio_not_integer_division",
+          "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11435,6 +11777,16 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#getScaledYPos(final Window window,final double y)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#fn set_cursor_capture",
+          "crates/bbb-native/src/simulation/input_commands.rs#fn request_cursor_capture"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
+          "crates/bbb-native/src/input/mouse.rs#local_attack_miss_time_uses_screen_sentinel_and_clears_on_release"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11449,6 +11801,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#grabMouse()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/movement.rs#pub(crate) fn advance_player_input_for_client_ticks"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/movement.rs#client_tick_catch_up_preserves_each_tutorial_movement_sample",
+          "crates/bbb-native/src/input/movement.rs#mounted_mouse_motion_updates_look_and_queues_riding_rotation"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11519,6 +11880,18 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#isRightPressed()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#WindowEvent::MouseInput",
+          "crates/bbb-native/src/simulation/input_commands.rs#fn apply_mouse_button",
+          "crates/bbb-native/src/input/mouse.rs#handle_mouse_input_at_partial_tick_with_effects_and_presentation"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_queues_main_hand_swing",
+          "crates/bbb-native/src/input/mouse.rs#right_mouse_press_without_block_queues_use_item",
+          "crates/bbb-native/src/input/mouse.rs#sign_editor_mouse_press_does_not_queue_gameplay_input"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11533,6 +11906,14 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#onButton(final long handle,final MouseButtonInfo rawButtonInfo,@MouseButtonInfo.Action final int action)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#WindowEvent::DroppedFile"
+        ],
+        "tests": [
+          "crates/bbb-native/src/simulation/commands.rs#commands_from_winit_and_control_share_one_monotonic_sequence"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11547,6 +11928,17 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#onDrop(final long handle,final List <Path> files,final int failedCount)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#WindowEvent::CursorMoved",
+          "crates/bbb-native/src/window_surface.rs#fn on_cursor_moved",
+          "crates/bbb-native/src/input/mouse.rs#pub(crate) fn handle_mouse_motion"
+        ],
+        "tests": [
+          "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
+          "crates/bbb-native/src/runtime/control_requests.rs#pump_control_input_requests_replays_keys_through_the_real_key_handler"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11561,6 +11953,17 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#onMove(final long handle,final double xpos,final double ypos)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#fn scale_scroll_delta",
+          "crates/bbb-native/src/input/mouse.rs#pub(crate) fn handle_mouse_wheel"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options",
+          "crates/bbb-native/src/input/mouse.rs#mouse_wheel_selects_hotbar_slot_updates_world_and_queues_command",
+          "crates/bbb-native/src/input/mouse.rs#spectator_mouse_wheel_adjusts_local_flying_speed_without_hotbar_command"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11575,6 +11978,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#onScroll(final long handle,final double xoffset,final double yoffset)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#pub(crate) fn runtime_wants_cursor",
+          "crates/bbb-native/src/simulation/input_commands.rs#fn simulation_wants_cursor"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#runtime_wants_cursor_for_advancements_screen"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11589,6 +12001,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#releaseMouse()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#mouseHandler.setIgnoreFirstMove",
+          "crates/bbb-native/src/window_surface.rs#fn on_cursor_left"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11603,6 +12024,16 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#setIgnoreFirstMove()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/main.rs#fn enqueue_simulation_window_event",
+          "crates/bbb-native/src/main.rs#DeviceEvent::MouseMotion"
+        ],
+        "tests": [
+          "crates/bbb-native/src/main.rs#cursor_events_cache_physical_and_reproject_at_the_gui_boundary",
+          "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11617,6 +12048,14 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#setup(final Window window)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input/mouse.rs#InputQuirks.SIMULATE_RIGHT_CLICK_WITH_LONG_LEFT_CLICK"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/mouse.rs#left_mouse_press_queues_main_hand_swing"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -11631,6 +12070,15 @@
       "vanilla_owner": "net.minecraft.client.MouseHandler#simulateRightClick(final MouseButtonInfo info,final boolean pressed)"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-native/src/input.rs#pub(crate) fn mouse_turn_delta"
+        ],
+        "tests": [
+          "crates/bbb-native/src/input/tests.rs#the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve",
+          "crates/bbb-native/src/input/movement.rs#local_input_projection_includes_focus_keys_and_mouse_delta"
+        ]
+      },
       "category": "input",
       "domain": "input",
       "kind": "method",
@@ -44978,6 +45426,8 @@
     "owner_evidence_mechanisms": [
       "input-keyboard-routing",
       "input-debug-key-actions",
+      "input-mouse-routing",
+      "input-key-mapping",
       "rendering-level-backend-lifecycle",
       "rendering-level-diagnostics-gizmos",
       "rendering-level-effect-lifecycle",
