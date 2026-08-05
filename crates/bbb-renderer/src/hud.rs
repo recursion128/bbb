@@ -6996,8 +6996,7 @@ impl Renderer {
     }
 
     fn hud_has_ingame_ui_screen(&self) -> bool {
-        self.hud_chat_restrictions_screen.is_some()
-            || self.hud_inventory_screen.is_some()
+        self.hud_inventory_screen.is_some()
             || self.hud_sign_editor_screen.is_some()
             || self.hud_command_block_editor_screen.is_some()
             || self.hud_structure_block_editor_screen.is_some()
@@ -7008,10 +7007,11 @@ impl Renderer {
     }
 
     fn hud_sound_subtitle_placement(&self) -> Option<HudSoundSubtitlePlacement> {
-        if self.hide_gui && !self.hud_has_ingame_ui_screen() {
-            return None;
+        let in_game_ui = self.hud_has_ingame_ui_screen();
+        if self.hide_gui {
+            return in_game_ui.then_some(HudSoundSubtitlePlacement::Deferred);
         }
-        Some(if self.hud_has_any_screen() {
+        Some(if self.hud_has_any_screen() && !in_game_ui {
             HudSoundSubtitlePlacement::BeforeScreen
         } else {
             HudSoundSubtitlePlacement::Deferred
@@ -22735,6 +22735,22 @@ mod tests {
         assert_eq!(renderer.hud_sound_subtitle_placement(), None);
 
         renderer.hud_chat_context.focused = false;
+        renderer.hud_chat_restrictions_screen = Some(HudChatRestrictionsScreen {
+            generation: 1,
+            title: String::new(),
+            reason: HudStyledTextRun::plain(String::new()),
+            permissions: Vec::new(),
+            done: String::new(),
+            cursor_position: None,
+        });
+        assert_eq!(renderer.hud_sound_subtitle_placement(), None);
+        renderer.set_hide_gui(false);
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::BeforeScreen)
+        );
+        renderer.hud_chat_restrictions_screen = None;
+
         renderer.hud_sign_editor_screen = Some(HudSignEditorScreen {
             kind: HudSignEditorKind::Standing {
                 wood: SignModelWood::Oak,
@@ -22754,7 +22770,12 @@ mod tests {
         });
         assert_eq!(
             renderer.hud_sound_subtitle_placement(),
-            Some(HudSoundSubtitlePlacement::BeforeScreen)
+            Some(HudSoundSubtitlePlacement::Deferred)
+        );
+        renderer.set_hide_gui(true);
+        assert_eq!(
+            renderer.hud_sound_subtitle_placement(),
+            Some(HudSoundSubtitlePlacement::Deferred)
         );
     }
 
