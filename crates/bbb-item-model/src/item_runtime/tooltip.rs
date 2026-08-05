@@ -152,6 +152,14 @@ impl TooltipTextArg {
     }
 }
 
+/// `ItemStack.getHoverName` flattened plus the `getStyledHoverName` draw runs
+/// (rarity colour, italic for a custom name).
+#[derive(Debug, Clone, PartialEq)]
+pub struct NativeItemHoverName {
+    pub text: String,
+    pub runs: Vec<HudComponentTextRun>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeItemTooltipLine {
     pub text: String,
@@ -3946,6 +3954,27 @@ impl NativeItemRuntime {
             &self.language,
             self.item_resource_id(item_id)?,
         ))
+    }
+
+    pub fn styled_hover_name(&self, stack: &ItemStackSummary) -> Option<NativeItemHoverName> {
+        if item_stack_is_empty(stack) {
+            return None;
+        }
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let rarity = item_rarity_for_stack(&stack.component_patch);
+        let (name_runs, name_is_custom) = hover_name_source_runs(&self.language, item_id, stack);
+        let name_wrapper = ComponentStyle {
+            italic: name_is_custom.then_some(true),
+            color: Some(item_rarity_color(rarity)),
+            ..ComponentStyle::default()
+        };
+        Some(NativeItemHoverName {
+            text: hover_name_for_stack(&self.language, item_id, stack),
+            runs: name_runs
+                .iter()
+                .map(|run| hud_run_from_component(run, &name_wrapper))
+                .collect(),
+        })
     }
 
     pub fn tooltip_lines_for_stack(

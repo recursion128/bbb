@@ -99,7 +99,9 @@ pub use profiles::{NativeDynamicPlayerSkinDownload, NativeDynamicPlayerTextureDo
 use tables::*;
 #[cfg(test)]
 use tooltip::*;
-pub use tooltip::{NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions};
+pub use tooltip::{
+    NativeItemHoverName, NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions,
+};
 
 const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
 

@@ -697,8 +697,17 @@ pub(crate) struct HudRenderRuntime {
     vignette: vignette::VignetteRuntime,
     scope_scale: f32,
     player_health: HudPlayerHealthPresentation,
+    selected_item_name: HudSelectedItemNamePresentation,
     last_bubble_pop_sound_played: i32,
     smithing_screen: smithing_screen::SmithingScreenRuntime,
+}
+
+#[derive(Debug, Default)]
+struct HudSelectedItemNamePresentation {
+    highlight_ticks: i32,
+    last_item_id: Option<i32>,
+    last_hover_name: Option<String>,
+    last_runs: Vec<bbb_renderer::HudComponentTextRun>,
 }
 
 #[derive(Debug, Default)]
@@ -900,6 +909,45 @@ impl HudRenderRuntime {
             );
         }
         -self.panorama_spin_degrees
+    }
+
+    fn selected_item_name_frame(
+        &mut self,
+        ticks: u32,
+        raised: bool,
+        selected: Option<bbb_item_model::NativeItemHoverName>,
+        selected_item_id: Option<i32>,
+        notification_display_time: f32,
+    ) -> Option<bbb_renderer::HudSelectedItemName> {
+        let state = &mut self.selected_item_name;
+        for _ in 0..ticks {
+            match &selected {
+                None => state.highlight_ticks = 0,
+                Some(hover) => {
+                    if state.last_item_id != selected_item_id
+                        || state.last_hover_name.as_deref() != Some(hover.text.as_str())
+                    {
+                        state.highlight_ticks =
+                            (40.0 * f64::from(notification_display_time)) as i32;
+                    } else if state.highlight_ticks > 0 {
+                        state.highlight_ticks -= 1;
+                    }
+                }
+            }
+            state.last_item_id = selected_item_id;
+            state.last_hover_name = selected.as_ref().map(|hover| hover.text.clone());
+            state.last_runs = selected
+                .as_ref()
+                .map(|hover| hover.runs.clone())
+                .unwrap_or_default();
+        }
+        (state.highlight_ticks > 0 && !state.last_runs.is_empty()).then(|| {
+            bbb_renderer::HudSelectedItemName {
+                runs: state.last_runs.clone(),
+                highlight_ticks: state.highlight_ticks,
+                raised,
+            }
+        })
     }
 
     fn player_health_frame(
@@ -3260,6 +3308,7 @@ pub(crate) fn update_renderer_from_publication(
         damage_tilt_strength,
         view_bobbing,
         vignette,
+        notification_display_time,
         entity_shadows,
         high_contrast_block_outline,
         improved_transparency,
@@ -3498,6 +3547,19 @@ pub(crate) fn update_renderer_from_publication(
     // render extraction, after input publication.
     let hud_hotbar_mode = hud_hotbar_mode_from_world(input, world, item_runtime, render_started_at);
     let hud_selected_slot = local_player.selected_hotbar_slot;
+    let selected_hotbar_item = world
+        .local_player_id()
+        .map(|_| world.inventory().hotbar_items()[usize::from(hud_selected_slot.min(8))].clone());
+    let hud_selected_item_name = selected_hotbar_item.and_then(|stack| {
+        let hover = item_runtime.and_then(|items| items.styled_hover_name(&stack));
+        hud_render_runtime.selected_item_name_frame(
+            advanced_ticks,
+            !game_mode_can_hurt_player,
+            hover,
+            stack.item_id,
+            notification_display_time,
+        )
+    });
     // Vanilla `Gui.extractOverlayMessage` / `extractTitle` read the post-tick
     // countdowns with the frame partial tick; the renderer resolves fade
     // alpha per frame from these projected timers.
@@ -4782,6 +4844,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_experience_level,
             hud_hotbar_mode,
             hud_selected_slot,
+            hud_selected_item_name,
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,
             hud_inventory_screen,

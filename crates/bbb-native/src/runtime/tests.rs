@@ -2402,6 +2402,48 @@ fn hud_spectator_projection_preserves_ordinary_and_hidden_hotbar_modes() {
 }
 
 #[test]
+fn the_selected_item_name_timer_restarts_on_a_new_item_and_counts_down_to_zero() {
+    fn hover(text: &str) -> bbb_item_model::NativeItemHoverName {
+        bbb_item_model::NativeItemHoverName {
+            text: text.to_string(),
+            runs: vec![bbb_renderer::HudComponentTextRun::plain(text)],
+        }
+    }
+
+    let mut runtime = HudRenderRuntime::default();
+    let first = runtime
+        .selected_item_name_frame(1, false, Some(hover("Diamond Sword")), Some(7), 1.0)
+        .expect("a new selected item opens the highlight window");
+    assert_eq!(first.highlight_ticks, 40);
+    assert!(!first.raised);
+    assert_eq!(first.runs[0].visual.text, "Diamond Sword");
+
+    let ticked = runtime
+        .selected_item_name_frame(10, false, Some(hover("Diamond Sword")), Some(7), 1.0)
+        .expect("the same stack keeps counting down");
+    assert_eq!(ticked.highlight_ticks, 30);
+
+    let renamed = runtime
+        .selected_item_name_frame(1, true, Some(hover("Excalibur")), Some(7), 1.0)
+        .expect("a changed hover name restarts the window even for the same item");
+    assert_eq!(renamed.highlight_ticks, 40);
+    assert!(renamed.raised);
+
+    let swapped = runtime
+        .selected_item_name_frame(1, false, Some(hover("Excalibur")), Some(8), 0.5)
+        .expect("a changed item id restarts with the configured display time");
+    assert_eq!(swapped.highlight_ticks, 20);
+
+    assert!(runtime
+        .selected_item_name_frame(1, false, None, None, 1.0)
+        .is_none());
+
+    assert!(runtime
+        .selected_item_name_frame(41, false, Some(hover("Excalibur")), Some(8), 1.0)
+        .is_none());
+}
+
+#[test]
 fn a_non_player_camera_entity_hides_the_ordinary_item_hotbar() {
     let mut world = WorldStore::new();
     let input = ClientInputState::new(true);

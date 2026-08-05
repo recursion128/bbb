@@ -16,8 +16,9 @@ pub use item_runtime::{
     ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasSpriteUv, ItemAtlasUvRect, ItemModelCompassContext,
     ItemModelCompassTarget, ItemModelKeybindContext, ItemModelLeafTransformation,
     ItemModelTimeContext, ItemModelUseContext, NativeDynamicPlayerSkinDownload,
-    NativeDynamicPlayerTextureDownload, NativeItemMapTooltipData, NativeItemRuntime,
-    NativeItemTooltipLine, NativeItemTooltipOptions, ResolvedItemModel, ResolvedItemModelLayer,
+    NativeDynamicPlayerTextureDownload, NativeItemHoverName, NativeItemMapTooltipData,
+    NativeItemRuntime, NativeItemTooltipLine, NativeItemTooltipOptions, ResolvedItemModel,
+    ResolvedItemModelLayer,
 };
 pub use skin_runtime::{
     default_player_skin_cache_dir, DynamicPlayerTextureKind, DynamicTextureCacheObservation,

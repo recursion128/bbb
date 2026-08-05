@@ -65,6 +65,10 @@ const HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP: u32 = 2;
 /// guiHeight - 68)` (Gui.java:321), text at `(-width / 2, -4)` (:330).
 const HUD_OVERLAY_MESSAGE_BOTTOM_OFFSET: i32 = 68;
 const HUD_OVERLAY_MESSAGE_TEXT_Y: i32 = -4;
+/// Vanilla `Gui.extractSelectedItemName` (Gui.java:1090-1101): `guiHeight - 59`,
+/// pushed down 14 more when `gameMode.canHurtPlayer()` is false.
+const HUD_SELECTED_ITEM_NAME_BOTTOM_OFFSET: i32 = 59;
+const HUD_SELECTED_ITEM_NAME_NO_HEALTH_OFFSET: i32 = 14;
 /// Vanilla `Gui.extractTitle` pose: `translate(guiWidth / 2, guiHeight / 2)`
 /// (Gui.java:357), title `scale(4, 4)` at `(-width / 2, -10)` (:359-362),
 /// subtitle `scale(2, 2)` at `(-width / 2, 5)` (:366-368).
@@ -854,6 +858,22 @@ pub(super) fn hud_overlay_message_text_origin(
         (center_x - text_width as i32 / 2) as f32,
         (base_y + HUD_OVERLAY_MESSAGE_TEXT_Y) as f32,
     )
+}
+
+pub(super) fn hud_selected_item_name_origin(
+    surface_size: PhysicalSize<u32>,
+    text_width: u32,
+    raised: bool,
+) -> (f32, f32) {
+    let gui_width = surface_size.width.max(1) as i32;
+    let gui_height = surface_size.height.max(1) as i32;
+    let y = gui_height - HUD_SELECTED_ITEM_NAME_BOTTOM_OFFSET
+        + if raised {
+            HUD_SELECTED_ITEM_NAME_NO_HEALTH_OFFSET
+        } else {
+            0
+        };
+    (((gui_width - text_width as i32) / 2) as f32, y as f32)
 }
 
 /// Pen origin of the 4x-scaled title line: vanilla `Gui.extractTitle`

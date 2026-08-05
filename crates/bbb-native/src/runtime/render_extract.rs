@@ -2876,6 +2876,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_tutorial_toasts: Vec<HudTutorialToast>,
     pub(crate) hud_debug_options_screen: Option<HudDebugOptionsScreen>,
     pub(crate) hud_action_bar_text: Option<HudActionBarText>,
+    pub(crate) hud_selected_item_name: Option<bbb_renderer::HudSelectedItemName>,
     pub(crate) hud_title_text: Option<HudTitleText>,
     pub(crate) hud_scoreboard_sidebar: RendererFrameUpdate<Option<HudScoreboardSidebar>>,
     pub(crate) hud_player_list: RendererFrameUpdate<Option<HudPlayerList>>,
@@ -3365,6 +3366,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_tutorial_toasts(frame.hud_tutorial_toasts);
     renderer.set_hud_debug_options_screen(frame.hud_debug_options_screen);
     renderer.set_hud_action_bar_text(frame.hud_action_bar_text);
+    renderer.set_hud_selected_item_name(frame.hud_selected_item_name);
     renderer.set_hud_title_text(frame.hud_title_text);
     if let RendererFrameUpdate::Replace(sidebar) = frame.hud_scoreboard_sidebar {
         renderer.set_hud_scoreboard_sidebar(sidebar);

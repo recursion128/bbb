@@ -95,14 +95,14 @@ use self::layout::{
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
     hud_locator_arrow_rect, hud_locator_marker_rect, hud_overlay_message_text_origin,
     hud_player_heart_instances, hud_quad_vertices, hud_rect_intersection_uv_span,
-    hud_spyglass_scope_layout, hud_styled_quad_vertices, hud_subtitle_text_origin,
-    hud_title_text_origin, hud_vehicle_heart_fill, hud_vehicle_max_hearts,
-    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    nine_slice_segments, tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon,
-    HudIconFill, HudRect, HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW,
-    HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE,
-    HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE,
-    HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_selected_item_name_origin, hud_spyglass_scope_layout, hud_styled_quad_vertices,
+    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
+    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
+    inventory_slot_item_hud_rect, nine_slice_segments, tiled_sprite_segments,
+    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
+    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
+    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 pub use self::player_list::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
@@ -619,6 +619,17 @@ pub(crate) struct HudGuiSprite {
 pub(crate) struct HudTooltipStyleSprites {
     pub(crate) background: HudGuiSprite,
     pub(crate) frame: HudGuiSprite,
+}
+
+/// One frame's `Gui.extractSelectedItemName` state (Gui.java:1090-1108): the
+/// styled hover-name runs of `lastToolHighlight`, the post-tick
+/// `toolHighlightTimer`, and whether `gameMode.canHurtPlayer()` is false (which
+/// pushes the line 14 pixels down over the missing health row).
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudSelectedItemName {
+    pub runs: Vec<HudComponentTextRun>,
+    pub highlight_ticks: i32,
+    pub raised: bool,
 }
 
 /// One frame's action-bar overlay message state (vanilla
@@ -6211,6 +6222,11 @@ impl Renderer {
         self.hud_action_bar_text = action_bar.filter(|state| state.partial_tick.is_finite());
     }
 
+    pub fn set_hud_selected_item_name(&mut self, name: Option<HudSelectedItemName>) {
+        self.hud_selected_item_name =
+            name.filter(|state| state.highlight_ticks > 0 && !state.runs.is_empty());
+    }
+
     pub fn set_hud_title_text(&mut self, title: Option<HudTitleText>) {
         self.hud_title_text = title.filter(|state| state.partial_tick.is_finite());
     }
@@ -7443,6 +7459,14 @@ impl Renderer {
                 );
             }
             let mut screen_text_draws = Vec::new();
+            if let Some(selected_item_name) = &self.hud_selected_item_name {
+                screen_text_draws.extend(hud_selected_item_name_draw(
+                    selected_item_name,
+                    &self.hud_font_book,
+                    surface_size,
+                    text_backdrop_opacity,
+                ));
+            }
             if let Some(action_bar) = &self.hud_action_bar_text {
                 screen_text_draws.extend(hud_action_bar_text_draw(
                     action_bar,
@@ -16776,6 +16800,33 @@ fn push_hud_chat<'a>(
             );
         }
     }
+}
+
+/// Resolves the held-item name line, mirroring `Gui.extractSelectedItemName`
+/// (Gui.java:1090-1108): drawn while `toolHighlightTimer > 0` at
+/// `((guiWidth - width) / 2, guiHeight - 59)` (plus 14 without a health row),
+/// white at `min(toolHighlightTimer * 256 / 10, 255)` and skipped at alpha 0.
+fn hud_selected_item_name_draw<'a>(
+    state: &'a HudSelectedItemName,
+    fonts: &HudFontGlyphBook,
+    surface_size: PhysicalSize<u32>,
+    backdrop_opacity: f32,
+) -> Option<HudComponentScreenTextDraw<'a>> {
+    if state.highlight_ticks <= 0 {
+        return None;
+    }
+    let alpha = ((state.highlight_ticks as f32 * 256.0 / 10.0) as i32).min(255);
+    if alpha <= 0 {
+        return None;
+    }
+    let width = hud_component_runs_width(&state.runs, fonts).unwrap_or(0);
+    Some(HudComponentScreenTextDraw {
+        runs: &state.runs,
+        origin: hud_selected_item_name_origin(surface_size, width, state.raised),
+        scale: 1.0,
+        tint: [1.0, 1.0, 1.0, alpha as f32 / 255.0],
+        backdrop_opacity,
+    })
 }
 
 /// Resolves the action-bar overlay message into a centered draw, mirroring
@@ -26753,6 +26804,49 @@ mod tests {
             hud_overlay_message_rainbow_rgb(60.0),
             [0.0, 153.0 / 255.0, 45.0 / 255.0]
         );
+    }
+
+    #[test]
+    fn selected_item_name_draw_centers_above_the_hotbar_and_drops_without_hearts() {
+        let fonts = HudFontGlyphBook::from(styled_test_glyphs());
+        let surface = PhysicalSize::new(320, 240);
+        let state = HudSelectedItemName {
+            runs: vec![HudComponentTextRun::plain("ab")],
+            highlight_ticks: 40,
+            raised: false,
+        };
+        let draw = hud_selected_item_name_draw(&state, &fonts, surface, 0.0).expect("visible");
+        assert_eq!(draw.origin, (154.0, 181.0));
+        assert_eq!(draw.scale, 1.0);
+        assert_eq!(draw.tint, [1.0, 1.0, 1.0, 1.0]);
+
+        let raised = HudSelectedItemName {
+            raised: true,
+            ..state.clone()
+        };
+        assert_eq!(
+            hud_selected_item_name_draw(&raised, &fonts, surface, 0.0)
+                .expect("visible")
+                .origin,
+            (154.0, 195.0)
+        );
+
+        let fading = HudSelectedItemName {
+            highlight_ticks: 5,
+            ..state.clone()
+        };
+        assert_eq!(
+            hud_selected_item_name_draw(&fading, &fonts, surface, 0.0)
+                .expect("visible")
+                .tint[3],
+            128.0 / 255.0
+        );
+
+        let expired = HudSelectedItemName {
+            highlight_ticks: 0,
+            ..state
+        };
+        assert!(hud_selected_item_name_draw(&expired, &fonts, surface, 0.0).is_none());
     }
 
     #[test]

@@ -120,6 +120,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) damage_tilt_strength: f32,
     pub(crate) view_bobbing: bool,
     pub(crate) vignette: bool,
+    pub(crate) notification_display_time: f32,
     pub(crate) entity_shadows: bool,
     pub(crate) high_contrast_block_outline: bool,
     pub(crate) improved_transparency: bool,
