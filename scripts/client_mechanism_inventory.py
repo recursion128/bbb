@@ -6956,7 +6956,381 @@ RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+
+SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "docs/unsupported-features.md#scope-multiplayer-server-list",
+                "docs/unsupported-features.md#The CLI-direct client has no title screen.",
+            ),
+            (
+                "crates/bbb-native/src/server_list.rs#an_entry_the_player_already_named_for_the_address_is_reused",
+                "crates/bbb-native/src/server_list.rs#a_created_entry_heads_the_hidden_block_and_trims_it_to_sixteen",
+            ),
+        ),
+        ("allowsMultiplayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/chat/presentation.rs#pub(super) fn can_receive_player_messages(&self) -> bool {",
+                "crates/bbb-native/src/input.rs#fn chat_messages_allowed(world: &WorldStore) -> bool {",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#chat_visibility_permissions_gate_messages_commands_and_message_arguments",
+                "crates/bbb-native/src/runtime/tests.rs#restrictions_projection_uses_the_canonical_chat_visibility_permissions",
+                "crates/bbb-world/src/client/chat.rs#system_visibility_and_matched_hidden_name_follow_chat_options",
+            ),
+        ),
+        ("computeChatAbilities",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn social_should_hide_message_from(&self, profile_id: Uuid) -> bool {",
+                "crates/bbb-world/src/client/social.rs#pub fn social_player_is_blocked(&self, profile_id: Uuid) -> bool {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_services_block_list_unions_configured_and_excludes_local_and_nil",
+                "crates/bbb-world/src/client/chat.rs#player_visibility_and_blocking_suppress_display_but_process_valid_signature",
+                "crates/bbb-net/src/user_api.rs#user_api_rejects_invalid_or_excessive_block_list_json",
+            ),
+        ),
+        ("isBlocked",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#if profile_id.is_nil() || Some(profile_id) == self.local_player_profile_id() {",
+                "crates/bbb-world/src/client/reporting.rs#if target.is_nil() || Some(target) == self.local_player_profile_id() {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_services_block_list_unions_configured_and_excludes_local_and_nil",
+            ),
+        ),
+        ("isLocalOrUnknownPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#pub fn local_player_profile_id(&self) -> Option<Uuid> {",
+                "crates/bbb-native/src/main.rs#world.set_local_player_profile_id(profile_id);",
+            ),
+            (
+                "crates/bbb-protocol/src/codec.rs#offline_uuid_matches_java_name_uuid_shape",
+                "crates/bbb-world/src/client/social.rs#player_social_services_block_list_unions_configured_and_excludes_local_and_nil",
+            ),
+        ),
+        ("isLocalPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/wiki/architecture/offline-runtime.md#`UserApiService.OFFLINE`、",
+                "docs/unsupported-features.md#Authenticated profile-key Services acceptance is `deferred`.",
+            ),
+            (
+                "crates/bbb-net/src/types/connection.rs#authenticated_options_keep_session_credentials_runtime_only_and_redacted",
+            ),
+        ),
+        ("isNameBanned",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#text_filtering_enabled: args.client_text_filtering,",
+                "crates/bbb-protocol/src/packets/connection.rs#out.write_bool(information.text_filtering_enabled);",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#args_build_client_information_from_startup_options",
+                "crates/bbb-native/src/runtime/book_screen.rs#rich_book_projection_preserves_style_interaction_and_filtered_page",
+            ),
+        ),
+        ("isTextFilteringEnabled",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/wiki/architecture/offline-runtime.md#UserApiService.OFFLINE_PROPERTIES",
+                "crates/bbb-net/src/types/connection.rs#pub fn offline(address: impl Into<String>, username: impl Into<String>) -> Result<Self> {",
+            ),
+            (
+                "crates/bbb-net/src/types/connection.rs#offline_connection_options_delegate_login_username_validation",
+                "crates/bbb-net/src/types/connection.rs#authenticated_options_keep_session_credentials_runtime_only_and_redacted",
+            ),
+        ),
+        ("multiplayerBan", "userProperties"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub struct PlayerSocialState {",
+                "crates/bbb-world/src/store.rs#pub(crate) player_social: PlayerSocialState,",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_discovery_hidden_blocked_and_sorting_share_chat_owner",
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_offline_play_and_disconnect_stay_inactive",
+            ),
+        ),
+        ("PlayerSocialManager",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn hide_social_player(&mut self, profile_id: Uuid) -> bool {",
+                "crates/bbb-native/src/input.rs#if input.binding_matches(\"key.socialInteractions\", code) {",
+            ),
+            (
+                "crates/bbb-native/src/input/social.rs#social_interactions_default_p_key_opens_and_closes_away_from_search",
+                "crates/bbb-native/src/runtime/tests.rs#hud_social_interactions_projection_tracks_faces_removed_status_links_and_narration",
+            ),
+        ),
+        ("hidePlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn show_social_player(&mut self, profile_id: Uuid) -> bool {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_discovery_hidden_blocked_and_sorting_share_chat_owner",
+                "crates/bbb-native/src/input/social.rs#social_interactions_search_mouse_actions_links_and_pause_return_are_generation_safe",
+            ),
+        ),
+        ("showPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#self.social_player_is_hidden(profile_id) || self.social_player_is_blocked(profile_id)",
+                "crates/bbb-world/src/client/chat.rs#.is_some_and(|sender| self.social_should_hide_message_from(sender));",
+            ),
+            (
+                "crates/bbb-world/src/client/chat.rs#player_visibility_and_blocking_suppress_display_but_process_valid_signature",
+                "crates/bbb-world/src/client/chat.rs#system_visibility_and_matched_hidden_name_follow_chat_options",
+            ),
+        ),
+        ("shouldHideMessageFrom",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn social_player_is_hidden(&self, profile_id: Uuid) -> bool {",
+                "crates/bbb-world/src/client/chat/presentation.rs#pub hidden_players: Vec<Uuid>,",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_discovery_hidden_blocked_and_sorting_share_chat_owner",
+                "crates/bbb-world/src/client/chat.rs#reset_chat_preserves_startup_presentation_options",
+            ),
+        ),
+        ("isHidden",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/services_block_list_runtime.rs#fn begin_online_mode(&mut self, world: &mut WorldStore, now_epoch_seconds: i64) {",
+                "crates/bbb-world/src/client/social.rs#pub fn begin_services_block_list_session(&mut self, generation: u64) {",
+            ),
+            (
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_success_and_strict_cooldown_apply_through_mailbox",
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_transfer_reconnect_rejects_stale_completion",
+            ),
+        ),
+        ("startOnlineMode",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/services_block_list_runtime.rs#fn stop_online_mode(&mut self, world: &mut WorldStore) {",
+                "crates/bbb-world/src/client/social.rs#pub fn stop_services_block_list_session(&mut self, generation: u64) {",
+            ),
+            (
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_play_reconfiguration_invalidates_pending_generation",
+                "crates/bbb-native/src/services_block_list_runtime.rs#services_block_list_offline_play_and_disconnect_stay_inactive",
+                "crates/bbb-world/src/client/social.rs#player_social_services_block_list_rejects_stale_or_inactive_replacement",
+            ),
+        ),
+        ("stopOnlineMode",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn social_players(&self, page: SocialInteractionsPage) -> Vec<SocialPlayerState> {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_discovery_hidden_blocked_and_sorting_share_chat_owner",
+                "crates/bbb-world/src/client/social.rs#player_info_remove_preserves_seen_and_recent_social_rows_as_removed",
+            ),
+        ),
+        ("getHiddenPlayers",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub fn social_discovered_uuid(&self, name: &str) -> Option<Uuid> {",
+                "crates/bbb-world/src/client/chat.rs#fn system_chat_matches_hidden_player(&self, content: &str) -> bool {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_social_discovery_hidden_blocked_and_sorting_share_chat_owner",
+                "crates/bbb-world/src/client/chat.rs#system_visibility_and_matched_hidden_name_follow_chat_options",
+            ),
+        ),
+        ("getDiscoveredUUID",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/social.rs#pub(crate) fn record_social_player_profile(&mut self, profile: &ProtocolGameProfile) {",
+                "crates/bbb-world/src/client/player_info.rs#self.record_social_player_profile(profile);",
+            ),
+            (
+                "crates/bbb-world/src/client/player_info.rs#player_info_adds_player_with_profile_and_fields",
+                "crates/bbb-native/src/input/social.rs#player_info_remove_marks_retained_social_row_and_readd_restores_it",
+            ),
+        ),
+        ("addPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/player_info.rs#pub fn apply_player_info_remove(&mut self, packet: ProtocolPlayerInfoRemove) -> usize {",
+                "crates/bbb-native/src/input/social.rs#fn synchronize_rows(&mut self, world: &WorldStore) {",
+            ),
+            (
+                "crates/bbb-world/src/client/social.rs#player_info_remove_preserves_seen_and_recent_social_rows_as_removed",
+                "crates/bbb-native/src/input/social.rs#player_info_remove_marks_retained_social_row_and_readd_restores_it",
+                "crates/bbb-world/src/client/player_info.rs#player_info_remove_clears_entry_and_listed_tracking",
+            ),
+        ),
+        ("removePlayer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/reporting.rs#pub struct PlayerReportingState {",
+                "crates/bbb-world/src/client/chat/presentation.rs#pub(super) const MAX_CHAT_REPORT_EVENTS: usize = 1_024;",
+            ),
+            (
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_reasons_match_vanilla_type_exclusions",
+                "crates/bbb-world/src/client/chat.rs#publication_snapshot_isolates_chat_delivery_queue_and_reporting",
+            ),
+        ),
+        ("ReportingContext",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#pub(crate) fn player_report_environment_from_args(args: &Args) -> Option<PlayerReportEnvironment> {",
+                "crates/bbb-native/src/main.rs#world.set_player_report_environment(startup::player_report_environment_from_args(&args));",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#player_reporting_environment_requires_authenticated_startup_credentials",
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_environment_change_invalidates_screen_and_previous_screen_state",
+                "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
+            ),
+        ),
+        ("create",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input/pause_screen.rs#fn discard_pause_draft_and_disconnect(&mut self, world: &mut WorldStore) {",
+                "crates/bbb-native/src/input/reporting.rs#pub(super) fn open_player_reporting_draft_from_pause(",
+            ),
+            (
+                "crates/bbb-native/src/input/pause_screen.rs#disconnect_with_draft_asks_before_disconnecting_and_discard_drops_the_draft",
+                "crates/bbb-native/src/input/pause_screen.rs#disconnect_without_draft_requests_disconnect_directly",
+                "crates/bbb-native/src/input/death_screen.rs#draft_discard_escape_continues_normal_and_hardcore_exit_paths",
+            ),
+        ),
+        ("draftReportHandled",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-net/src/user_api.rs#pub async fn submit_abuse_report(",
+                "crates/bbb-native/src/services_block_list_runtime.rs#pub(crate) fn synchronize_player_report_submissions(",
+            ),
+            (
+                "crates/bbb-native/src/services_block_list_runtime.rs#player_reporting_submission_runs_async_and_applies_only_matching_attempt",
+                "crates/bbb-net/src/user_api.rs#abuse_report_conversion_projects_world_builder_with_iso_instants_and_null_signature",
+                "crates/bbb-native/src/startup.rs#services_block_list_startup_client_requires_authenticated_nonempty_credentials",
+            ),
+        ),
+        ("sender",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/chat/presentation.rs#pub(super) fn push(&mut self, mut event: ChatReportEventState) {",
+                "crates/bbb-world/src/client/reporting/evidence.rs#pub(super) fn build_chat_evidence(",
+            ),
+            (
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_chat_builder_collects_chain_and_last_seen_oldest_first",
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_accepts_exact_evidence_limit_and_rejects_stale_selection",
+                "crates/bbb-world/src/client/chat.rs#delayed_player_chat_defers_display_reporting_and_last_seen_until_acceptance",
+            ),
+        ),
+        ("chatLog",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/reporting.rs#pub fn set_player_report_environment(",
+                "crates/bbb-world/src/client/reporting.rs#if self.player_reporting.environment == environment {",
+            ),
+            (
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_environment_change_invalidates_screen_and_previous_screen_state",
+            ),
+        ),
+        ("matches",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/reporting.rs#fn start_player_report_draft(",
+                "crates/bbb-world/src/client/reporting.rs#pub fn discard_player_report_draft(&mut self, report_id: Uuid) -> bool {",
+            ),
+            (
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_skin_username_copy_discard_reset_and_publication_isolate",
+                "crates/bbb-world/src/client/reporting.rs#player_reporting_rejects_offline_local_zero_and_wrong_report_mutations",
+                "crates/bbb-native/src/input/reporting/tests.rs#player_reporting_chooser_editor_comment_limit_and_draft_closeout_are_generation_safe",
+            ),
+        ),
+        ("setReportDraft",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#has_draft_report: world.player_reporting().draft.is_some(),",
+                "crates/bbb-renderer/src/hud.rs#pub has_draft_report: bool,",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_pause_screen_projects_draft_report_icon_and_quit_confirmation",
+                "crates/bbb-native/src/runtime/tests.rs#hud_death_screen_projection_and_narration_track_main_draft_and_quit_focus",
+            ),
+        ),
+        ("hasDraftReport",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#.is_some_and(|draft| draft.common().reported_profile_id == player.profile.uuid),",
+                "crates/bbb-renderer/src/hud/social.rs#pub has_report_draft: bool,",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#player_reporting_projection_exposes_generation_rows_and_username_editor_controls",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_social_interactions_draws_shared_rows_faces_scroll_empty_and_link_surfaces",
+            ),
+        ),
+        ("hasDraftReportFor",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
+    "security-secure-chat-reporting": SECURITY_SECURE_CHAT_REPORTING_OWNER_EVIDENCE,
     "rendering-frame-order": RENDERING_FRAME_ORDER_OWNER_EVIDENCE,
     "rendering-extract-surface": RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE,
     "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
