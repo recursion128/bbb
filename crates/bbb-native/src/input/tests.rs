@@ -17722,6 +17722,11 @@ fn f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay() {
         "[Debug]: F3 + C is held down. This will crash the game unless released."
     );
     assert_eq!(messages[1].content, "[Debug]: Crashing in 8...");
+    let first_prefix = &messages[0].styled_content[0];
+    let countdown_prefix = &messages[1].styled_content[0];
+    assert_eq!(first_prefix.style.color, Some(0xFFFF55));
+    assert_eq!(countdown_prefix.style.color, Some(0xFF5555));
+    assert_eq!(countdown_prefix.style.bold, Some(true));
 
     handle_key_input(
         &mut input,
@@ -27969,6 +27974,104 @@ fn toggle_crouch_flips_sneak_on_press_and_survives_the_release() {
         NetCommand::PlayerInput(PlayerInput::default())
     );
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn closing_a_screen_restores_a_keyboard_bound_toggle_it_released() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+    let now = Instant::now();
+    input.set_toggle_key_options(true, false, false, false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    assert!(input.item_model_keybind_context().sneak);
+
+    assert!(world.open_stats_screen());
+    crate::input::release_active_input(&mut input, &mut world, &mut counters, &net_commands);
+    crate::input::movement::advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        now,
+        0,
+    );
+    assert!(!input.item_model_keybind_context().sneak);
+
+    world.close_stats_screen();
+    crate::input::movement::advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        now,
+        0,
+    );
+    assert!(input.item_model_keybind_context().sneak);
+}
+
+#[test]
+fn a_queued_respawn_resets_every_toggle_key_like_local_player_respawn() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    input.set_toggle_key_options(true, true, false, false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    assert!(input.item_model_keybind_context().sneak);
+    assert!(input.item_model_keybind_context().sprint);
+
+    input.sync_respawn_toggle_reset(&counters);
+    assert!(input.item_model_keybind_context().sneak);
+
+    crate::input::queue_perform_respawn_command(&mut counters, &commands);
+    input.sync_respawn_toggle_reset(&counters);
+    assert!(!input.item_model_keybind_context().sneak);
+    assert!(!input.item_model_keybind_context().sprint);
+
+    while rx.try_recv().is_ok() {}
 }
 
 #[test]

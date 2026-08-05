@@ -460,6 +460,9 @@ impl WorldStore {
         );
     }
 
+    /// `KeyboardHandler.showDebugChat`: `addClientSystemMessage` plus
+    /// `GameNarrator.saySystemQueued`, so the narration is gated on the
+    /// system-only statuses rather than the chat-or-system pair.
     pub fn push_styled_client_system_chat_message(&mut self, styled_content: Vec<StyledTextRun>) {
         let content = styled_chat_summary_text(&styled_content);
         self.push_system_chat_message_state(
@@ -469,7 +472,7 @@ impl WorldStore {
             styled_content,
             None,
             0,
-            ChatNarrationKind::SystemChat,
+            ChatNarrationKind::System,
         );
     }
 

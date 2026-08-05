@@ -339,6 +339,9 @@ const RECENT_CHAT_LIMIT: usize = 100;
 pub(crate) const DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH: &str = "screenshots/debug";
 pub(crate) const DEBUG_PROFILING_RESULTS_RELATIVE_DIR: &str = "debug/profiling";
 const VANILLA_DEBUG_FEEDBACK_COLOR: u32 = 0xFFFF55;
+/// `ChatFormatting.RED`, the prefix colour `KeyboardHandler.debugWarningComponent`
+/// passes to `decorateDebugComponent` for the manual-crash countdown.
+const VANILLA_DEBUG_WARNING_COLOR: u32 = 0xFF5555;
 const DEBUG_OPTIONS_HEADER_HEIGHT: i32 = 61;
 const DEBUG_OPTIONS_FOOTER_HEIGHT: i32 = 33;
 const DEBUG_OPTIONS_ROW_WIDTH: i32 = 350;
@@ -757,6 +760,7 @@ pub(crate) struct ClientInputState {
     toggle_sprint: bool,
     toggle_attack: bool,
     toggle_use: bool,
+    last_seen_perform_respawn_commands: usize,
     sneak_released_by_screen_when_down: bool,
     sprint_released_by_screen_when_down: bool,
     attack_released_by_screen_when_down: bool,
@@ -1600,6 +1604,28 @@ impl ClientInputState {
         self.sneak_released_by_screen_when_down = false;
         self.sprint_released_by_screen_when_down = false;
         self.attack_released_by_screen_when_down = false;
+    }
+
+    /// `KeyMapping.resetToggleKeys`: `LocalPlayer.respawn` drops the down
+    /// state of every `ToggleKeyMapping` (`reset()` is a plain
+    /// `setDown(false)`), so a toggled sneak/sprint/attack/use never survives
+    /// into the respawned player.
+    fn reset_toggle_keys(&mut self) {
+        self.sneak = false;
+        self.sprint_key_down = false;
+        self.mouse_left_down = false;
+        self.mouse_right_down = false;
+    }
+
+    /// Every `PerformRespawn` producer (death/game-event screen, direct key,
+    /// control request, immediate-respawn combat kill) funnels through
+    /// `queue_perform_respawn_command`, so the queued-command counter is the
+    /// one observation point for vanilla's respawn-time toggle reset.
+    pub(crate) fn sync_respawn_toggle_reset(&mut self, counters: &NetCounters) {
+        if counters.perform_respawn_commands_queued > self.last_seen_perform_respawn_commands {
+            self.reset_toggle_keys();
+        }
+        self.last_seen_perform_respawn_commands = counters.perform_respawn_commands_queued;
     }
 
     fn note_key_input_type(&mut self, world: &WorldStore, code: KeyCode) {
@@ -5432,6 +5458,14 @@ impl ClientInputState {
         };
         let elapsed = now.saturating_duration_since(started_at);
         if elapsed > DEBUG_CRASH_TIME {
+            // `KeyboardHandler.tick` first checks `hasControlDown()` and calls
+            // `Blaze3D.youJustLostTheGame()` — a deliberate native death that
+            // never reaches the crash-report path. `abort` is the closest
+            // process-level equivalent; the plain hold still panics into the
+            // guarded crash report below.
+            if self.control_down() {
+                std::process::abort();
+            }
             panic!("Manually triggered debug crash");
         }
 
@@ -5448,7 +5482,7 @@ impl ClientInputState {
         } else {
             let remaining = DEBUG_CRASH_TIME.saturating_sub(elapsed);
             let remaining_seconds = remaining.as_secs() + u64::from(remaining.subsec_nanos() > 0);
-            push_debug_feedback_chat_message(
+            push_debug_warning_chat_message(
                 Some(world),
                 &format!("Crashing in {remaining_seconds}..."),
             );
@@ -6289,13 +6323,34 @@ fn push_debug_feedback_chat_runs(world: Option<&mut WorldStore>, body_runs: Vec<
     }
 }
 
+/// `KeyboardHandler.debugWarningComponent`: the same decorated line as debug
+/// feedback with a `ChatFormatting.RED` prefix instead of yellow.
+fn push_debug_warning_chat_message(world: Option<&mut WorldStore>, message: &str) {
+    if let Some(world) = world {
+        world.push_styled_client_system_chat_message(decorated_debug_styled_runs(
+            VANILLA_DEBUG_WARNING_COLOR,
+            vec![StyledTextRun {
+                text: message.to_string(),
+                style: ComponentStyle::default(),
+            }],
+        ));
+    }
+}
+
 fn debug_feedback_styled_runs(body_runs: Vec<StyledTextRun>) -> Vec<StyledTextRun> {
+    decorated_debug_styled_runs(VANILLA_DEBUG_FEEDBACK_COLOR, body_runs)
+}
+
+fn decorated_debug_styled_runs(
+    prefix_color: u32,
+    body_runs: Vec<StyledTextRun>,
+) -> Vec<StyledTextRun> {
     let mut runs = vec![
         StyledTextRun {
             text: "[Debug]:".to_string(),
             style: ComponentStyle {
                 bold: Some(true),
-                color: Some(VANILLA_DEBUG_FEEDBACK_COLOR),
+                color: Some(prefix_color),
                 ..ComponentStyle::default()
             },
         },
@@ -12217,6 +12272,14 @@ pub(crate) fn handle_key_input(
     );
 }
 
+/// The `KeyboardHandler.keyPress` decision chain. Four vanilla sub-decisions
+/// have no repo consumer and are intentionally absent: the
+/// `FramerateLimitTracker.onInputReceived` power-saver nudge (no framerate
+/// limit tracker exists), the `KeyBindsScreen.lastKeySelection` 20 ms rebind
+/// guard (key-binds UI is a non-goal), the `DEBUG_PANORAMA_SCREENSHOT` Ctrl
+/// branch (dev-only `SharedConstants` flag, false in shipped clients), and the
+/// `ReportedException` Key/Scancode/Mods crash category (screen handlers are
+/// not individually wrapped; panics reach the one guarded crash report).
 pub(crate) fn handle_key_input_with_item_runtime(
     input: &mut ClientInputState,
     counters: &mut NetCounters,

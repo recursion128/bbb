@@ -268,6 +268,9 @@ impl SimulationInputRuntime {
         // window never spuriously opens the pause screen. The 500 ms delay is
         // strict (`> 500L`) and an already-open screen suppresses reopening.
         context.input.pause_if_inactive(context.now, context.world);
+        context
+            .input
+            .sync_respawn_toggle_reset(context.net_counters);
         let queued_effects = RefCell::new(Vec::new());
         let mut clipboard = SimulationClipboard {
             read: None,
