@@ -456,10 +456,12 @@ interaction census 22 条 route（149 owner）已全部 `equivalent`，重开判
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`active`。字体/CJK 与既有 text shaping 保持 closed；block-entity registration 27 owner、
-多人可达 screen 五 route 与 `Gui` 72 owner 的五条 `hud-*` route 已 `equivalent` 关闭（见
-archive）。剩余只有 `GameRenderer` step surface，按 frame order、state/input lifecycle 和
-真实/pixel evidence 收口；不得借此加入 title、singleplayer、Realms 或 options UI。
+状态：`closed`。字体/CJK 与 text shaping、block-entity registration 27 owner、多人可达
+screen 五 route、`Gui` 72 owner 五条 `hud-*` route 与 `GameRenderer` step surface 四条
+route（frame-order/extract-surface/level-pass/effects-screenshot，52 decision owner 全挂
+implementation/test evidence，`getMinecraft` 归 direct support）均 `equivalent` 关闭
+（见 archive 与 matrix 行重开判据）。新增 Vanilla owner、route 状态回退或矩阵行重开
+条件触发时重开本节。
 
 ### P3：动态资源 presentation breadth
 

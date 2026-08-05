@@ -78,17 +78,35 @@ on each matrix row.
 Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 
 Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selection`,
-`hud-overlay-effects`, `hud-text-and-lists`, `rendering-game-step-surface`
+`hud-overlay-effects`, `hud-text-and-lists`, `rendering-frame-order`,
+`rendering-extract-surface`, `rendering-level-pass`, `rendering-effects-screenshot`
 
 The five `hud-*` routes are closed: `Gui`'s 72 owners split into seven direct
 support accessors plus 65 decision owners, each carrying a mechanically reachable
 implementation/test evidence cell, and every route is now `equivalent` with its own
-reopen condition on the matrix row.
+reopen condition on the matrix row. The four game-renderer routes are closed the
+same way: `Minecraft.renderFrame` plus the `GameRenderer` members split into
+`rendering-frame-order` (10), `rendering-extract-surface` (11),
+`rendering-level-pass` (14) and `rendering-effects-screenshot` (17) — 52 decision
+owners with evidence cells plus the `getMinecraft` direct support accessor — while
+the single frame-extract/submission path stays the structural invariant.
 
-- **The game-renderer step surface is `active`.** `rendering-game-step-surface`
-  still lacks one mechanically reachable evidence cell per `GameRenderer` owner.
-  Split only by semantic owner and preserve the single frame-extract/submission
-  path.
+- The auto world-icon screenshot pair
+  (`tryTakeScreenshotIfNeeded`/`takeAutoScreenshot`) is `not-needed`: both gate on
+  `Minecraft.isLocalServer()` and the integrated server's
+  `getWorldScreenshotFile()`, so a multiplayer-only external client never reaches
+  the 1000 ms retry latch, the rendered-sections readiness gate, or the 64x64
+  world-icon write. Manual F2 screenshots keep their own owners. Reopen if bbb
+  grows an integrated-server surface.
+- `setRenderBlockOutline` is `not-needed`: its only vanilla callers disable and
+  restore the outline around `Minecraft.grabHugeScreenshot`'s 4096-wide panoramic
+  capture, and bbb has no panoramic/huge-screenshot mode (the same absence keeps
+  the live `LevelFrameRoute` panoramic flag hard-false). Reopen with any panoramic
+  capture surface.
+- `renderActiveTextDebug` is `not-needed`: vanilla only calls it under
+  `SharedConstants.DEBUG_ACTIVE_TEXT_AREAS`, a dev-build `debugFlag` that is
+  false whenever `DEBUG_ENABLED` is off, so no production 26.1 client renders the
+  glyph-area markers. Reopen if the flag ever ships enabled.
 - **Anisotropic terrain filtering (`maxAnisotropyBit`) is `deferred`.** Vanilla
   feeds `Options.maxAnisotropyBit` through `SpriteLoader`/`Stitcher` into the
   block-atlas sampler (2^bit anisotropy with matching sprite padding). BBB's
