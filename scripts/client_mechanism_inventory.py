@@ -222,15 +222,23 @@ MINECRAFT_METHOD_ROUTES = _method_routes(
         ("pauseGame",),
     ),
     (
-        MethodRoute("render-step", "rendering", "rendering-game-step-surface"),
+        MethodRoute("render-step", "rendering", "rendering-frame-order"),
+        ("renderFrame",),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-extract-surface"),
         (
-            "renderFrame",
             "renderNames",
             "useShaderTransparency",
+            "getEntityModels",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-level-pass"),
+        (
             "getCameraEntity",
             "setCameraEntity",
             "shouldEntityAppearGlowing",
-            "getEntityModels",
         ),
     ),
     (
@@ -556,6 +564,75 @@ GUI_METHOD_ROUTES = _method_routes(
 # debug-key action surface and the clipboard bridge, so it is split by the state
 # each owner decides. Nothing here is a direct field return, so every method must
 # be named and a new Vanilla owner fails the build instead of landing silently.
+GAME_RENDERER_METHOD_ROUTES = _method_routes(
+    (
+        MethodRoute("render-step", "rendering", "rendering-frame-order"),
+        (
+            "GameRenderer",
+            "close",
+            "tick",
+            "update",
+            "extract",
+            "render",
+            "resize",
+            "resetData",
+            "setLevel",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-extract-surface"),
+        (
+            "extractWindow",
+            "extractOptions",
+            "extractCamera",
+            "extractGui",
+            "renderActiveTextDebug",
+            "getGameRenderState",
+            "getSubmitNodeStorage",
+            "getFeatureRenderDispatcher",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-level-pass"),
+        (
+            "renderLevel",
+            "renderItemInHand",
+            "bobHurt",
+            "bobView",
+            "shouldRenderBlockOutline",
+            "setRenderBlockOutline",
+            "getNightVisionScale",
+            "getBossOverlayWorldDarkening",
+            "projectPointToScreen",
+            "projectHorizonToScreen",
+            "getMainCamera",
+        ),
+    ),
+    (
+        MethodRoute("render-step", "rendering", "rendering-effects-screenshot"),
+        (
+            "checkEntityPostEffect",
+            "setPostEffect",
+            "clearPostEffect",
+            "togglePostEffect",
+            "currentPostEffect",
+            "processBlurEffect",
+            "displayItemActivation",
+            "tryTakeScreenshotIfNeeded",
+            "takeAutoScreenshot",
+            "preloadUiShader",
+            "lightmap",
+            "levelLightmap",
+            "overlayTexture",
+            "getGlobalSettingsUniform",
+            "getLighting",
+            "getPanorama",
+            "registerPanoramaTextures",
+        ),
+    ),
+)
+
+
 KEYBOARD_HANDLER_METHOD_ROUTES = _method_routes(
     (
         MethodRoute("input", "input", "input-keyboard-routing"),
@@ -6186,7 +6263,704 @@ PLATFORM_WINDOW_CHROME_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+
+RENDERING_FRAME_ORDER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::RedrawRequested => {",
+                "crates/bbb-native/src/startup.rs#pub(crate) fn effective_framerate_limit",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#redraw_arm_orders_update_render_and_framerate_resample_like_render_frame",
+                "crates/bbb-native/src/startup.rs#effective_framerate_limit_matches_the_vanilla_tracker",
+                "crates/bbb-native/src/startup.rs#client_framerate_limit_accepts_the_vanilla_codec_range",
+            ),
+        ),
+        ("renderFrame",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#let camera_pose = render_camera_pose_from_world_at_partial_tick(",
+                "crates/bbb-native/src/runtime.rs#terrain_upload.refresh_frame_visibility(terrain_visibility_context);",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#terrain_visibility_wiring_commits_only_through_renderer_frame",
+                "crates/bbb-native/src/runtime/tests.rs#camera_fov_frame_wiring_routes_one_snapshot_to_each_projection_owner",
+            ),
+        ),
+        ("update",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#pub(crate) fn update_renderer_from_publication",
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn apply_renderer_frame",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#level_diagnostics_have_one_current_frame_collection_and_finalize_path",
+                "crates/bbb-native/src/runtime/tests.rs#renderer_frame_sky_flash_environment_extracts_after_client_level_tick",
+                "crates/bbb-native/src/simulation.rs#render_and_event_loop_cannot_read_the_live_simulation_owner",
+            ),
+        ),
+        ("extract",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()>",
+                "crates/bbb-renderer/src/render.rs#fn finish_frame(",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#render_steps_are_defined_in_frame_execution_order",
+                "crates/bbb-renderer/src/render.rs#render_calls_exactly_one_step_per_frame_steps_entry",
+                "crates/bbb-renderer/src/render.rs#transparency_combine_and_gui_stay_internal_until_vanilla_final_present_blit",
+            ),
+        ),
+        ("render",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#camera_spinning_ticks.advance_for_world(advanced_ticks, world);",
+                "crates/bbb-native/src/runtime.rs#world.advance_item_activation_ticks(running_ticks);",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#camera_spinning_effect_ticks_and_interpolates_nausea_like_vanilla",
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_projects_boss_overlay_world_darkening",
+                "crates/bbb-world/src/client/screen_effects.rs#item_activation_ticks_count_down_and_clear_at_zero",
+            ),
+        ),
+        ("tick",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()>",
+                "crates/bbb-native/src/main.rs#WindowEvent::Resized(size) => {",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#production_resize_has_one_prepare_apply_path",
+                "crates/bbb-renderer/src/renderer.rs#zero_size_resize_skips_prepare_and_preserves_backend_owners",
+                "crates/bbb-native/src/main.rs#resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
+            ),
+        ),
+        ("resize",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub struct Renderer {",
+                "crates/bbb-native/src/main.rs#simulation_thread.shutdown_and_join()",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#renderer_backend_gpu_owners_share_one_struct_raii_lifetime",
+                "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
+            ),
+        ),
+        ("close",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub async fn new_with_vsync_and_terrain_filtering",
+                "crates/bbb-renderer/src/renderer.rs#pub(super) fn with_gpu",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#renderer_backend_gpu_owners_share_one_struct_raii_lifetime",
+                "crates/bbb-renderer/src/renderer.rs#choose_format_requires_vanilla_rgba8_numeric_surface_behavior",
+            ),
+        ),
+        ("GameRenderer",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#pub fn clear_client_level",
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn synchronize_map_texture_level",
+            ),
+            (
+                "crates/bbb-world/src/client/screen_effects.rs#clear_client_level_resets_the_item_activation",
+                "crates/bbb-world/src/client/local_player.rs#clear_client_level_resets_the_camera_to_the_local_player",
+                "crates/bbb-native/src/runtime/tests.rs#map_texture_cache_invalidates_only_on_level_generation_edge",
+            ),
+        ),
+        ("resetData",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/level.rs#pub fn apply_respawn",
+                "crates/bbb-native/src/runtime.rs#fn dimension_lightmap_environment",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_uses_vanilla_dimension_attributes",
+                "crates/bbb-world/src/level.rs#client_level_generation_production_source_has_one_mutator_and_exact_edges",
+                "crates/bbb-world/src/level.rs#spawn_info_uses_builtin_cardinal_lighting_when_dimension_type_registry_is_missing",
+            ),
+        ),
+        ("setLevel",),
+    ),
+)
+
+
+RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#fn set_surface_size",
+                "crates/bbb-native/src/runtime.rs#let physical_surface_size = publication.input_runtime.surface_size;",
+            ),
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#surface_resize_recomputes_gui_scale_and_projection",
+                "crates/bbb-native/src/simulation/input_commands.rs#zero_size_resize_marks_minimized_and_keeps_last_usable_surface",
+                "crates/bbb-renderer/src/renderer.rs#gui_surface_size_stays_logical_while_surface_size_stays_physical",
+            ),
+        ),
+        ("extractWindow",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#fn bind_stored_client_options",
+                "crates/bbb-renderer/src/renderer.rs#pub fn set_glint_settings",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#every_binding_names_a_real_argument_and_a_catalogued_key",
+                "crates/bbb-native/src/startup.rs#stored_options_fill_arguments_the_user_did_not_type",
+                "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
+            ),
+        ),
+        ("extractOptions",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/camera_pose.rs#pub(crate) fn render_camera_pose_from_world_at_partial_tick",
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn fog_environment_for_world_at_camera",
+            ),
+            (
+                "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints",
+                "crates/bbb-native/src/camera_pose.rs#camera_eye_height_is_applied_before_detached_camera_offset",
+                "crates/bbb-native/src/runtime/tests.rs#camera_fluid_sample_is_shared_by_same_frame_fog_and_fov_consumers",
+            ),
+        ),
+        ("extractCamera",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#let hud_debug_overlay = hud_debug_overlay_with_profiler_chart(",
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn apply_renderer_frame",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#renderer_frame_hud_extracts_after_input_and_use_item_tick",
+                "crates/bbb-native/src/runtime/tests.rs#hud_text_timers_tick_before_projection_like_gui_tick",
+                "crates/bbb-native/src/runtime/tests.rs#hide_gui_frame_policy_precedes_residency_and_keeps_toasts_independent",
+            ),
+        ),
+        ("extractGui",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/unsupported-features.md#`renderActiveTextDebug` is `not-needed`",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#args_accept_sharedconstants_debug_flag_startup_options",
+            ),
+        ),
+        ("renderActiveTextDebug",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) struct RendererFrame",
+                "crates/bbb-native/src/runtime.rs#pub(crate) fn update_renderer_from_publication",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#level_diagnostics_have_one_current_frame_collection_and_finalize_path",
+                "crates/bbb-native/src/runtime/tests.rs#hide_gui_frame_policy_precedes_residency_and_keeps_toasts_independent",
+            ),
+        ),
+        ("getGameRenderState",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/render_extract.rs#pub(crate) fn apply_renderer_frame",
+                "crates/bbb-renderer/src/entity_models/textured.rs#struct EntityModelRenderSubmission",
+            ),
+            (
+                "crates/bbb-renderer/src/entity_models/tests/allay.rs#translucent_draw_plan_sorts_order_then_camera_distance_then_insertion",
+                "crates/bbb-renderer/src/entity_models/tests.rs#texture_backed_blended_model_uploads_sort_by_order_then_camera_distance",
+            ),
+        ),
+        ("getSubmitNodeStorage",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#fn entity_translucent_feature_pass",
+                "crates/bbb-renderer/src/render.rs#fn ordered_custom_and_text_feature_pass",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#render_calls_exactly_one_step_per_frame_steps_entry",
+                "crates/bbb-renderer/src/render.rs#entity_translucent_features_draw_after_depth_copies_and_before_translucent_terrain",
+            ),
+        ),
+        ("getFeatureRenderDispatcher",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/entity_models.rs#mod model_layers;",
+                "crates/bbb-renderer/src/entity_models/textured.rs#fn entity_model_textured_meshes_with_equipment_for_camera",
+            ),
+            (
+                "crates/bbb-renderer/src/entity_models/tests.rs#equipment_layer_pass_records_vanilla_model_layer_metadata",
+                "crates/bbb-renderer/src/entity_models/tests.rs#textured_layer_render_type_names_match_vanilla_render_types",
+            ),
+        ),
+        ("getEntityModels",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub fn for_options",
+                "crates/bbb-renderer/src/render.rs#self.level_frame_route.uses_improved_transparency()",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#level_frame_route_matches_vanilla_option_and_panoramic_suppression",
+                "crates/bbb-renderer/src/render.rs#level_frame_route_is_the_only_feature_target_and_combine_decision_owner",
+                "crates/bbb-native/src/runtime/tests.rs#startup_transparency_option_has_one_native_to_renderer_projection",
+            ),
+        ),
+        ("useShaderTransparency",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/entity_name_tags.rs#fn entity_name_tag_is_visible",
+                "crates/bbb-native/src/runtime.rs#let entity_name_tag_surfaces = entity_name_tag_surfaces(",
+            ),
+            (
+                "crates/bbb-native/src/entity_name_tags.rs#entity_name_visibility_applies_vanilla_distance_camera_and_team_order",
+                "crates/bbb-world/src/entities/tests/name_tag_projection.rs#entity_name_tag_living_visibility_preserves_team_early_returns_and_vehicle_facts",
+            ),
+        ),
+        ("renderNames",),
+    ),
+)
+
+
+RENDERING_LEVEL_PASS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()>",
+                "crates/bbb-native/src/runtime.rs#pub(crate) fn update_renderer_from_publication",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#render_steps_are_defined_in_frame_execution_order",
+                "crates/bbb-renderer/src/render.rs#first_person_item_pass_runs_after_world_composite_and_before_hud",
+            ),
+        ),
+        ("renderLevel",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/item_models/first_person.rs#fn append_first_person_hand_item_models",
+                "crates/bbb-renderer/src/render.rs#fn first_person_item_pass(",
+            ),
+            (
+                "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_bake_ordinary_local_hand_stack",
+                "crates/bbb-renderer/src/render.rs#camera_fov_first_person_pass_uses_hud3d_camera_bindings",
+                "crates/bbb-renderer/src/render.rs#hide_gui_exits_first_person_pass_before_collecting_geometry",
+            ),
+        ),
+        ("renderItemInHand",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/camera.rs#fn camera_hurt_transform",
+                "crates/bbb-native/src/camera_pose.rs#fn camera_hurt_effect_from_world",
+            ),
+            (
+                "crates/bbb-renderer/src/camera.rs#camera_hurt_transform_matches_vanilla_bob_hurt_order",
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_applies_hurt_after_projection_without_changing_view",
+                "crates/bbb-native/src/runtime/tests.rs#camera_hurt_effect_follows_the_active_living_camera_entity",
+            ),
+        ),
+        ("bobHurt",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/camera.rs#fn camera_view_bob_transform",
+                "crates/bbb-native/src/camera_pose.rs#fn camera_view_bob_effect_from_world",
+            ),
+            (
+                "crates/bbb-renderer/src/camera.rs#camera_view_bob_transform_matches_vanilla_translate_and_rotation_order",
+                "crates/bbb-renderer/src/camera.rs#camera_view_bob_uniform_applies_between_hurt_and_spinning_to_world_and_hud",
+                "crates/bbb-native/src/runtime/tests.rs#camera_view_bob_effect_follows_active_player_and_startup_gate",
+            ),
+        ),
+        ("bobView",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/crosshair.rs#pub(crate) fn block_selection_from_camera",
+                "crates/bbb-native/src/runtime.rs#let block_selection = (!input.hide_gui())",
+            ),
+            (
+                "crates/bbb-native/src/crosshair.rs#a_non_player_camera_entity_suppresses_the_block_outline",
+                "crates/bbb-native/src/crosshair.rs#spectator_mode_only_outlines_and_crosshairs_menu_provider_blocks",
+                "crates/bbb-native/src/crosshair.rs#adventure_mode_outline_requires_matching_selected_item_predicate",
+            ),
+        ),
+        ("shouldRenderBlockOutline",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/unsupported-features.md#`setRenderBlockOutline` is `not-needed`",
+            ),
+            (
+                "crates/bbb-native/src/crosshair.rs#a_non_player_camera_entity_suppresses_the_block_outline",
+            ),
+        ),
+        ("setRenderBlockOutline",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#fn vanilla_night_vision_scale",
+                "crates/bbb-native/src/runtime.rs#const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_environment_projects_local_player_night_vision",
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_advances_night_vision_duration_before_sampling",
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_prefers_night_vision_over_conduit_water_vision",
+            ),
+        ),
+        ("getNightVisionScale",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#fn boss_overlay_world_darkening",
+                "crates/bbb-native/src/runtime.rs#fn tick_boss_overlay_world_darkening",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#lightmap_tick_state_projects_boss_overlay_world_darkening",
+            ),
+        ),
+        ("getBossOverlayWorldDarkening",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#fn point_pitch_direction",
+            ),
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#waypoint_locator_projects_all_renderable_data_forms_far_first",
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#waypoint_locator_uses_exact_visibility_and_pitch_boundaries",
+            ),
+        ),
+        ("projectPointToScreen",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#fn horizon_pitch_direction",
+            ),
+            (
+                "crates/bbb-native/src/runtime/waypoint_locator.rs#waypoint_locator_uses_exact_visibility_and_pitch_boundaries",
+            ),
+        ),
+        ("projectHorizonToScreen",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/camera_pose.rs#pub(crate) fn render_camera_pose_from_world_at_partial_tick",
+                "crates/bbb-renderer/src/renderer.rs#pub fn set_camera_pose",
+            ),
+            (
+                "crates/bbb-native/src/camera_pose.rs#render_camera_uses_local_player_tick_endpoints",
+                "crates/bbb-native/src/camera_pose.rs#camera_perspective_detached_pose_matches_back_and_mirrored_front_offsets",
+            ),
+        ),
+        ("getMainCamera",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#pub fn camera_entity_id",
+            ),
+            (
+                "crates/bbb-world/src/client/hud_camera_player.rs#the_camera_player_defaults_to_the_local_player_until_set_camera_retargets_it",
+                "crates/bbb-world/src/client/local_player.rs#the_hud_camera_player_only_resolves_for_the_local_player_or_a_player_entity",
+            ),
+        ),
+        ("getCameraEntity",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#pub fn apply_set_camera",
+                "crates/bbb-native/src/camera_pose.rs#pub(crate) fn current_post_effect_id_from_world",
+            ),
+            (
+                "crates/bbb-world/src/client/local_player.rs#camera_updates_only_for_local_or_known_entities",
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_post_effect_tracks_vanilla_camera_entity_families",
+            ),
+        ),
+        ("setCameraEntity",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities.rs#fn entity_outline_color",
+                "crates/bbb-world/src/client/local_player.rs#pub fn set_spectator_outlines_key_down",
+            ),
+            (
+                "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#spectator_outline_key_glows_every_player_for_a_spectating_local_player",
+                "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_glowing_shared_flag",
+                "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#entity_model_sources_project_team_outline_color",
+            ),
+        ),
+        ("shouldEntityAppearGlowing",),
+    ),
+)
+
+
+RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_camera_post_effect_id",
+                "crates/bbb-native/src/camera_pose.rs#pub(crate) fn current_post_effect_id_from_world",
+            ),
+            (
+                "crates/bbb-world/src/entities/schema.rs#generated_camera_post_effects_follow_game_renderer_class_patterns",
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_post_effect_tracks_vanilla_camera_entity_families",
+                "crates/bbb-native/src/input/tests.rs#camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle",
+            ),
+        ),
+        ("checkEntityPostEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#pub(crate) fn synchronize_camera_post_effect",
+                "crates/bbb-renderer/src/renderer.rs#pub fn set_camera_post_effect",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#camera_post_effect_setter_commits_selection_and_active_state_together",
+                "crates/bbb-native/src/runtime/tests.rs#camera_post_effect_frame_commits_the_same_selection_and_active_state_used_by_hud",
+            ),
+        ),
+        ("setPostEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn cycle_camera_type",
+                "crates/bbb-renderer/src/renderer.rs#pub(super) camera_post_effect: CameraPostEffectGpu,",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#camera_perspective_cycles_and_applies_only_first_person_post_effect_boundaries",
+                "crates/bbb-renderer/src/offscreen.rs#camera_post_effect_inactive_and_unknown_ids_leave_the_frame_untouched",
+            ),
+        ),
+        ("clearPostEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn toggle_camera_post_effect",
+                "crates/bbb-native/src/input.rs#key.toggleSpectatorShaderEffects",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#camera_post_effect_selection_and_f4_edges_preserve_vanilla_active_lifecycle",
+                "crates/bbb-native/src/input/tests.rs#camera_post_effect_f3_f4_chord_preserves_active_state",
+            ),
+        ),
+        ("togglePostEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#pub(crate) fn camera_post_effect_id",
+                "crates/bbb-renderer/src/renderer.rs#pub fn current_post_effect_id",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_suppresses_post_effect_without_current_effect",
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_post_effect_is_filtered_by_reduced_debug_info",
+            ),
+        ),
+        ("currentPostEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/render.rs#fn screen_blur_passes",
+                "crates/bbb-renderer/src/screen_blur.rs#pub(super) fn sanitize_menu_background_blurriness",
+            ),
+            (
+                "crates/bbb-renderer/src/screen_blur.rs#menu_blur_radius_matches_vanilla_option_range",
+                "crates/bbb-renderer/src/hud.rs#dialog_screen_box_blur_softens_prior_hud_but_keeps_screen_fill_sharp",
+                "crates/bbb-renderer/src/post_effect_graph/tests.rs#selected_generation_drives_live_menu_blur_graph_and_pass_count",
+            ),
+        ),
+        ("processBlurEffect",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/screen_effects.rs#pub(crate) fn display_local_player_item_activation",
+                "crates/bbb-native/src/item_models/first_person.rs#fn append_item_activation_item_model",
+            ),
+            (
+                "crates/bbb-world/src/client/screen_effects.rs#totem_event_for_the_local_player_starts_the_item_activation",
+                "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_the_item_activation_totem_pop",
+                "crates/bbb-native/src/item_models/tests.rs#item_activation_view_transform_matches_the_vanilla_pose_stack",
+            ),
+        ),
+        ("displayItemActivation",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/unsupported-features.md#The auto world-icon screenshot pair",
+            ),
+            (
+                "crates/bbb-native/src/screenshot.rs#the_first_free_screenshot_name_follows_the_vanilla_suffix_sequence",
+            ),
+        ),
+        ("tryTakeScreenshotIfNeeded", "takeAutoScreenshot"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout, None)?;",
+                "crates/bbb-renderer/src/resource_reload.rs#impl GuiCorePipelines",
+            ),
+            (
+                "crates/bbb-renderer/src/core_shaders.rs#selected_sky_and_position_tex_color_families_preload_and_filter_rolls_back",
+                "crates/bbb-renderer/src/resource_reload.rs#every_renderer_pipeline_owner_has_one_shader_reload_classification",
+            ),
+        ),
+        ("preloadUiShader",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/lightmap.rs#pub(super) fn create_lightmap_gpu",
+                "crates/bbb-renderer/src/renderer.rs#pub(super) lightmap: LightmapGpu,",
+            ),
+            (
+                "crates/bbb-renderer/src/lightmap.rs#lightmap_gpu_matches_vanilla_formula",
+                "crates/bbb-renderer/src/lightmap.rs#lightmap_texture_shape_matches_vanilla",
+                "crates/bbb-renderer/src/renderer.rs#lightmap_dirty_state_tracks_tick_owned_environment_changes",
+            ),
+        ),
+        ("lightmap",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/lightmap.rs#pub(super) fn create_lightmap_sample_bind_group_layout",
+                "crates/bbb-renderer/src/item_models.rs#pub const ITEM_MODEL_FULL_BRIGHT_LIGHT",
+            ),
+            (
+                "crates/bbb-renderer/src/lightmap.rs#lightmap_pass_is_consumed_once_per_environment_change",
+                "crates/bbb-renderer/src/item_models.rs#baking_a_quad_emits_two_triangles_normalized_to_the_unit_cube",
+            ),
+        ),
+        ("levelLightmap",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/entity_models/geometry.rs#pub(super) fn fill_entity_model_overlay",
+                "crates/bbb-renderer/src/item_models.rs#pub const ITEM_MODEL_NO_OVERLAY",
+            ),
+            (
+                "crates/bbb-renderer/src/entity_models/tests.rs#entity_shaders_apply_vanilla_overlay_texture_mix",
+                "crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs#entity_model_sources_project_hurt_overlay_for_ten_ticks",
+            ),
+        ),
+        ("overlayTexture",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/camera.rs#pub(crate) fn with_glint_texture_time",
+                "crates/bbb-renderer/src/camera.rs#pub(crate) fn with_viewport_size",
+            ),
+            (
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_stores_vanilla_glint_offsets",
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_stores_viewport_size_for_line_widths",
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_stores_vanilla_shader_game_time",
+            ),
+        ),
+        ("getGlobalSettingsUniform",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/camera.rs#fn lighting_entry_directions",
+                "crates/bbb-renderer/src/camera.rs#pub(crate) fn with_lighting_entry",
+            ),
+            (
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_diffuse_lighting_entries_match_vanilla_directions",
+                "crates/bbb-renderer/src/camera.rs#camera_uniform_uses_nether_level_lighting_from_environment",
+            ),
+        ),
+        ("getLighting",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#fn panorama_rotation_degrees",
+                "crates/bbb-renderer/src/panorama.rs#fn panorama_uniform",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#panorama_rotation_scales_with_the_scroll_speed_option",
+                "crates/bbb-native/src/runtime/tests.rs#panorama_spin_uses_realtime_ticks_only_while_visible_and_vanilla_wrap",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+            ),
+        ),
+        ("getPanorama",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn load_panorama",
+                "crates/bbb-native/src/hud_assets.rs#pub(crate) fn upload_panorama",
+            ),
+            (
+                "crates/bbb-pack/src/panorama.rs#loads_real_index_30_panorama_through_the_default_pack",
+                "crates/bbb-renderer/src/offscreen.rs#offscreen_disconnected_panorama_draws_front_face_before_overlay_blur_and_rolls_back",
+            ),
+        ),
+        ("registerPanoramaTextures",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
+    "rendering-frame-order": RENDERING_FRAME_ORDER_OWNER_EVIDENCE,
+    "rendering-extract-surface": RENDERING_EXTRACT_SURFACE_OWNER_EVIDENCE,
+    "rendering-level-pass": RENDERING_LEVEL_PASS_OWNER_EVIDENCE,
+    "rendering-effects-screenshot": RENDERING_EFFECTS_SCREENSHOT_OWNER_EVIDENCE,
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
     "input-mouse-routing": INPUT_MOUSE_ROUTING_OWNER_EVIDENCE,
@@ -6533,7 +7307,7 @@ METHOD_SURFACES = (
     MethodSurface("movement", "movement", "player-local-input-movement", "net/minecraft/client/player/LocalPlayer.java"),
     MethodSurface("interaction", "interaction", "interaction-primary-action-routing", "net/minecraft/client/multiplayer/MultiPlayerGameMode.java"),
     MethodSurface("render-step", "ui", "hud-frame-extract-order", "net/minecraft/client/gui/Gui.java"),
-    MethodSurface("render-step", "rendering", "rendering-game-step-surface", "net/minecraft/client/renderer/GameRenderer.java"),
+    MethodSurface("render-step", "rendering", "rendering-frame-order", "net/minecraft/client/renderer/GameRenderer.java"),
     MethodSurface("render-step", "rendering", "rendering-level-frame-graph", "net/minecraft/client/renderer/LevelRenderer.java"),
     MethodSurface("resource-consumer", "language", "resources-language-manager", "net/minecraft/client/resources/language/LanguageManager.java"),
     MethodSurface("resource-consumer", "text", "ui-font-manager", "net/minecraft/client/gui/font/FontManager.java"),
@@ -6783,7 +7557,22 @@ MECHANISM_EVIDENCE = {
     "hud-hotbar-selection": ("crates/bbb-native/src/runtime.rs",),
     "hud-overlay-effects": ("crates/bbb-native/src/runtime.rs",),
     "hud-text-and-lists": ("crates/bbb-native/src/runtime.rs",),
-    "rendering-game-step-surface": ("crates/bbb-renderer/src/lib.rs",),
+    "rendering-frame-order": (
+        "crates/bbb-renderer/src/render.rs#FRAME_STEPS",
+        "crates/bbb-native/src/runtime.rs",
+    ),
+    "rendering-extract-surface": (
+        "crates/bbb-native/src/runtime/render_extract.rs",
+        "crates/bbb-native/src/runtime.rs",
+    ),
+    "rendering-level-pass": (
+        "crates/bbb-renderer/src/render.rs",
+        "crates/bbb-native/src/item_models/first_person.rs",
+    ),
+    "rendering-effects-screenshot": (
+        "crates/bbb-renderer/src/camera_post_effect.rs",
+        "crates/bbb-native/src/screen_effects.rs",
+    ),
     "rendering-level-backend-lifecycle": (
         "crates/bbb-renderer/src/resource_reload.rs",
         "crates/bbb-native/src/resource_reload.rs",
@@ -7037,6 +7826,16 @@ class InventoryBuilder:
             signature = InventoryBuilder.method_signature(method)
             raise ClientMechanismInventoryError(
                 f"Gui method lacks a decision/support route: {signature}"
+            )
+        if spec.source_path == "net/minecraft/client/renderer/GameRenderer.java":
+            route = GAME_RENDERER_METHOD_ROUTES.get(method.name)
+            if route is not None:
+                return route
+            if InventoryBuilder.is_direct_support_accessor(source, method):
+                return DIRECT_SUPPORT_ROUTE
+            signature = InventoryBuilder.method_signature(method)
+            raise ClientMechanismInventoryError(
+                f"GameRenderer method lacks a decision/support route: {signature}"
             )
         if spec.source_path == "net/minecraft/client/KeyboardHandler.java":
             route = KEYBOARD_HANDLER_METHOD_ROUTES.get(method.name)
