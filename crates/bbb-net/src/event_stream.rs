@@ -19,13 +19,9 @@ use bbb_protocol::{
 use tokio::{sync::mpsc, time::timeout};
 
 use crate::{
-    chat_session::ChatSessionRuntime,
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
-    driver::{
-        read_packet_or_drive_connection_with_chat_session, send_chat_acknowledgement,
-        ConnectionDrive,
-    },
+    driver::{read_packet_or_drive_connection, send_chat_acknowledgement, ConnectionDrive},
     login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
     types::{
@@ -74,11 +70,6 @@ async fn run_event_stream_inner(
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
 ) -> Result<()> {
-    let mut chat_sessions = ChatSessionRuntime::new(
-        options.profile_id,
-        options.session_credentials.clone(),
-        options.timeout,
-    );
     #[cfg(not(test))]
     let services_public_keys =
         match crate::services_profile_keys::fetch_services_public_keys(options.timeout).await {
@@ -133,13 +124,12 @@ async fn run_event_stream_inner(
 
     let mut play_bundle = PlayPacketBundleAssembler::default();
     loop {
-        let drive = read_packet_or_drive_connection_with_chat_session(
+        let drive = read_packet_or_drive_connection(
             &mut stream.conn,
             stream.state,
             &mut stream.commands,
             &mut stream.player_position_state,
             stream.pending_teleports > 0,
-            &mut chat_sessions,
         )
         .await?;
         let (packet_id, payload) = match drive {
@@ -151,7 +141,6 @@ async fn run_event_stream_inner(
             ConnectionDrive::AcknowledgeConfiguration {
                 pending_chat_acknowledgement,
             } => {
-                chat_sessions.reset_play_session();
                 if let Some(command) = pending_chat_acknowledgement {
                     send_chat_acknowledgement(&mut stream.conn, command).await?;
                 }
@@ -179,13 +168,7 @@ async fn run_event_stream_inner(
         let transfer = match packet_state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
-                stream
-                    .handle_login_packet(
-                        packet,
-                        options.session_credentials.as_ref(),
-                        options.timeout,
-                    )
-                    .await?;
+                stream.handle_login_packet(packet).await?;
                 None
             }
             ConnectionState::Configuration => {
@@ -203,15 +186,6 @@ async fn run_event_stream_inner(
                 let mut transfer = None;
                 if let Some(batch) = play_bundle.push(packet)? {
                     for packet in batch {
-                        match &packet {
-                            packets::PlayClientbound::Login(_) => {
-                                chat_sessions.begin_play_session(stream.conn.encryption_enabled())
-                            }
-                            packets::PlayClientbound::StartConfiguration => {
-                                chat_sessions.reset_play_session();
-                            }
-                            _ => {}
-                        }
                         if transfer.is_some() {
                             if let Some(next) =
                                 stream.handle_transfer_closing_play_packet(packet).await?
@@ -236,7 +210,6 @@ async fn run_event_stream_inner(
         };
 
         if let Some(transfer) = transfer {
-            chat_sessions.reset_play_session();
             let transfer = stream
                 .drain_transfer_closing_packets(packet_state, transfer)
                 .await?;
@@ -436,29 +409,16 @@ mod tests {
     }
 
     #[test]
-    fn chat_session_runtime_is_wired_to_listener_and_transport_boundaries() {
+    fn the_event_stream_keeps_no_chat_session_or_cipher_state() {
+        // Online mode is a declared non-goal: no profile-key runtime, no
+        // session credentials, and no transport cipher may reappear on the
+        // listener/transport boundary.
         let source = include_str!("event_stream.rs");
         let production = source.split("#[cfg(test)]\nmod tests").next().unwrap();
-        assert!(production.contains("options.session_credentials.clone()"));
-        assert!(production.contains("packets::PlayClientbound::Login(_) =>"));
-        assert!(production.contains("begin_play_session(stream.conn.encryption_enabled())"));
-        assert!(production.contains("PlayClientbound::StartConfiguration =>"));
-        assert!(
-            production
-                .matches("chat_sessions.reset_play_session();")
-                .count()
-                >= 3
-        );
-        assert!(!production.contains("chat_sessions.reset();"));
-        assert!(production.contains("read_packet_or_drive_connection_with_chat_session"));
-
-        let prepare = production
-            .find("let mut chat_sessions = ChatSessionRuntime::new")
-            .unwrap();
-        let services = production.find("fetch_services_public_keys").unwrap();
-        let connect = production.find("RawConnection::connect").unwrap();
-        assert!(prepare < services);
-        assert!(prepare < connect);
+        assert!(!production.contains("session_credentials"));
+        assert!(!production.contains("ChatSessionRuntime"));
+        assert!(!production.contains("enable_encryption"));
+        assert!(production.contains("read_packet_or_drive_connection"));
     }
 
     fn entity_air_supply_data(air_supply: i32) -> packets::EntityDataValue {
@@ -502,11 +462,7 @@ mod tests {
         };
 
         stream
-            .handle_login_packet(
-                LoginClientbound::CustomQuery { transaction_id: 42 },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::CustomQuery { transaction_id: 42 })
             .await
             .unwrap();
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
@@ -520,11 +476,7 @@ mod tests {
         assert!(decoder.is_empty());
 
         stream
-            .handle_login_packet(
-                LoginClientbound::SetCompression { threshold: -1 },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::SetCompression { threshold: -1 })
             .await
             .unwrap();
         assert_eq!(stream.conn.compression_threshold, None);
@@ -534,11 +486,7 @@ mod tests {
         ));
 
         stream
-            .handle_login_packet(
-                LoginClientbound::SetCompression { threshold: 16 },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::SetCompression { threshold: 16 })
             .await
             .unwrap();
         assert_eq!(stream.conn.compression_threshold, Some(16));
@@ -549,17 +497,13 @@ mod tests {
         server.set_compression_threshold(16);
 
         stream
-            .handle_login_packet(
-                LoginClientbound::LoginFinished {
-                    profile: GameProfile {
-                        uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
-                        name: "bbb-client".to_string(),
-                        properties: Vec::new(),
-                    },
+            .handle_login_packet(LoginClientbound::LoginFinished {
+                profile: GameProfile {
+                    uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+                    name: "bbb-client".to_string(),
+                    properties: Vec::new(),
                 },
-                None,
-                Duration::from_secs(1),
-            )
+            })
             .await
             .unwrap();
 
@@ -614,14 +558,10 @@ mod tests {
         ));
 
         let error = stream
-            .handle_login_packet(
-                LoginClientbound::Unknown {
-                    packet_id: 0x7d,
-                    len: 0,
-                },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::Unknown {
+                packet_id: 0x7d,
+                len: 0,
+            })
             .await
             .unwrap_err();
         assert!(error
@@ -1212,14 +1152,10 @@ mod tests {
         };
 
         stream
-            .handle_login_packet(
-                LoginClientbound::Unknown {
-                    packet_id: 0x7d,
-                    len: 5,
-                },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::Unknown {
+                packet_id: 0x7d,
+                len: 5,
+            })
             .await
             .unwrap();
 
@@ -1517,23 +1453,6 @@ mod tests {
             .handle_play_packet(PlayClientbound::Login(login.clone()))
             .await
             .unwrap();
-        assert!(matches!(
-            events_rx.recv().await,
-            Some(NetEvent::PlaySessionSecurity { encrypted: false })
-        ));
-        assert!(matches!(
-            events_rx.recv().await,
-            Some(NetEvent::Play(PlayClientbound::Login(update))) if update == login
-        ));
-        stream.conn.enable_encryption([0x5A; 16]).unwrap();
-        stream
-            .handle_play_packet(PlayClientbound::Login(login.clone()))
-            .await
-            .unwrap();
-        assert!(matches!(
-            events_rx.recv().await,
-            Some(NetEvent::PlaySessionSecurity { encrypted: true })
-        ));
         assert!(matches!(
             events_rx.recv().await,
             Some(NetEvent::Play(PlayClientbound::Login(update))) if update == login

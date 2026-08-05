@@ -1,21 +1,14 @@
-use std::time::Duration;
-
 use anyhow::{ensure, Result};
 use bbb_protocol::packets::{self, LoginClientbound};
 
 use crate::{
     event_stream::{emit, remote_disconnect_error, EventStreamContext},
-    login::handle_encryption_request,
-    types::{ConnectionState, NetEvent, SessionCredentials},
+    login::ensure_offline_login,
+    types::{ConnectionState, NetEvent},
 };
 
 impl EventStreamContext {
-    pub(super) async fn handle_login_packet(
-        &mut self,
-        packet: LoginClientbound,
-        credentials: Option<&SessionCredentials>,
-        authentication_timeout: Duration,
-    ) -> Result<()> {
+    pub(super) async fn handle_login_packet(&mut self, packet: LoginClientbound) -> Result<()> {
         ensure!(
             self.state == ConnectionState::Login,
             "received login packet while connection state is {:?}",
@@ -27,14 +20,8 @@ impl EventStreamContext {
                 styled_reason,
                 ..
             } => return Err(remote_disconnect_error("login", reason, styled_reason)),
-            LoginClientbound::EncryptionRequest(request) => {
-                handle_encryption_request(
-                    &mut self.conn,
-                    &request,
-                    credentials,
-                    authentication_timeout,
-                )
-                .await?;
+            LoginClientbound::EncryptionRequest(_) => {
+                return Err(ensure_offline_login(&self.conn).unwrap_err());
             }
             LoginClientbound::SetCompression { threshold } => {
                 self.conn.set_compression_threshold(threshold);

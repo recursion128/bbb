@@ -2655,7 +2655,6 @@ pub(crate) fn advance_simulation(
     first_person_hand_presentation: &mut FirstPersonHandPresentation,
     world: &mut WorldStore,
     net_counters: &mut NetCounters,
-    play_session_encrypted: &mut bool,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
     camera_eye_height_ticks: &mut CameraEyeHeightTickState,
@@ -2696,7 +2695,6 @@ pub(crate) fn advance_simulation(
             rx,
             world,
             net_counters,
-            play_session_encrypted,
             net_commands,
             audio_events_for_drain,
             particle_events_for_drain,
@@ -3640,7 +3638,11 @@ pub(crate) fn update_renderer_from_publication(
             resource_generation,
             resources_loaded,
             visible: hud_player_list_visible,
-            show_heads: publication.play_session_encrypted,
+            // Vanilla `PlayerTabOverlay` shows player heads only on a local
+            // server or an encrypted connection; this offline-only client is
+            // always plaintext, matching a vanilla client on an offline
+            // server.
+            show_heads: false,
         },
         || {
             hud_player_list_from_world(
@@ -3648,7 +3650,7 @@ pub(crate) fn update_renderer_from_publication(
                 world,
                 item_runtime,
                 publication.client_tick_index,
-                publication.play_session_encrypted,
+                false,
             )
         },
     );

@@ -1,4 +1,4 @@
-use std::{fmt, net::ToSocketAddrs, sync::Arc, time::Duration};
+use std::{net::ToSocketAddrs, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Result};
 use bbb_pack::KnownPacksManager;
@@ -16,8 +16,6 @@ pub struct ConnectionOptions {
     pub port: u16,
     pub username: String,
     pub profile_id: Uuid,
-    #[serde(skip)]
-    pub(crate) session_credentials: Option<SessionCredentials>,
     pub timeout: Duration,
     #[serde(default)]
     pub accepted_code_of_conduct_hash: Option<i32>,
@@ -44,7 +42,6 @@ impl ConnectionOptions {
             port,
             username,
             profile_id,
-            session_credentials: None,
             timeout: Duration::from_secs(20),
             accepted_code_of_conduct_hash: None,
             probe_after_first_chunk_packets: 0,
@@ -52,25 +49,6 @@ impl ConnectionOptions {
             server_resource_pack_policy: ServerResourcePackPolicy::Decline,
             known_packs_manager: None,
         })
-    }
-
-    pub fn authenticated(
-        address: impl Into<String>,
-        username: impl Into<String>,
-        profile_id: Uuid,
-        access_token: impl Into<String>,
-    ) -> Result<Self> {
-        let mut options = Self::offline(address, username)?;
-        options.profile_id = profile_id;
-        options.session_credentials = Some(SessionCredentials {
-            profile_id,
-            access_token: access_token.into(),
-        });
-        Ok(options)
-    }
-
-    pub fn is_authenticated(&self) -> bool {
-        self.session_credentials.is_some()
     }
 }
 
@@ -80,22 +58,6 @@ pub enum ServerResourcePackPolicy {
     Accept,
     #[default]
     Decline,
-}
-
-#[derive(Clone)]
-pub(crate) struct SessionCredentials {
-    pub(crate) profile_id: Uuid,
-    pub(crate) access_token: String,
-}
-
-impl fmt::Debug for SessionCredentials {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("SessionCredentials")
-            .field("profile_id", &self.profile_id)
-            .field("access_token", &"<redacted>")
-            .finish()
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,28 +110,5 @@ mod tests {
         assert!(
             ConnectionOptions::offline(format!("{oversized_host}:25565"), "valid_name").is_err()
         );
-    }
-
-    #[test]
-    fn authenticated_options_keep_session_credentials_runtime_only_and_redacted() {
-        let profile_id = uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
-        let options = ConnectionOptions::authenticated(
-            "localhost:25565",
-            "valid_name",
-            profile_id,
-            "sensitive-access-token",
-        )
-        .unwrap();
-
-        assert!(options.is_authenticated());
-        assert_eq!(options.profile_id, profile_id);
-        let debug = format!("{options:?}");
-        assert!(debug.contains("<redacted>"));
-        assert!(!debug.contains("sensitive-access-token"));
-        let serialized = serde_json::to_string(&options).unwrap();
-        assert!(!serialized.contains("sensitive-access-token"));
-
-        let restored: ConnectionOptions = serde_json::from_str(&serialized).unwrap();
-        assert!(!restored.is_authenticated());
     }
 }

@@ -39,7 +39,6 @@ pub(crate) struct SimulationPublication {
     pub(crate) tick_anchor: Instant,
     pub(crate) frozen: bool,
     pub(crate) running: bool,
-    pub(crate) play_session_encrypted: bool,
     pub(crate) code_of_conduct_accepted: bool,
     pub(crate) terrain_revision: u64,
     pub(crate) client_level_generation: u64,
@@ -96,7 +95,6 @@ pub(crate) struct SimulationPublicationInput<'a> {
     pub(crate) tick_residual: f32,
     pub(crate) tick_anchor: Instant,
     pub(crate) running: bool,
-    pub(crate) play_session_encrypted: bool,
     pub(crate) code_of_conduct_accepted: bool,
     pub(crate) net_counters: &'a NetCounters,
     pub(crate) renderer_counters: &'a RendererCounters,
@@ -213,7 +211,6 @@ fn build_publication(
         tick_residual: input.tick_residual,
         tick_anchor: input.tick_anchor,
         running: input.running,
-        play_session_encrypted: input.play_session_encrypted,
         code_of_conduct_accepted: input.code_of_conduct_accepted,
         net_counters: input.net_counters.clone(),
         renderer_counters: input.renderer_counters.clone(),
@@ -320,7 +317,6 @@ mod tests {
             tick_residual: 0.25,
             tick_anchor: now,
             running: true,
-            play_session_encrypted: false,
             code_of_conduct_accepted: false,
             net_counters: net,
             renderer_counters: renderer,
@@ -348,7 +344,7 @@ mod tests {
         let network = HudDebugNetworkSampler::default();
         let tps = HudDebugTpsSampler::default();
         let now = Instant::now();
-        let mut initial = input(
+        let initial = input(
             &world,
             &client_input,
             &input_runtime,
@@ -359,7 +355,6 @@ mod tests {
             &tps,
             now,
         );
-        initial.play_session_encrypted = true;
         let publisher = SimulationPublisher::new(
             initial,
             Arc::clone(&control.snapshot),
@@ -372,7 +367,6 @@ mod tests {
         assert_eq!(render.generation, control_world.generation);
         assert_eq!(render.generation, control_snapshot.generation);
         assert!(Arc::ptr_eq(&render.world, &control_world.world));
-        assert!(render.play_session_encrypted);
     }
 
     #[test]

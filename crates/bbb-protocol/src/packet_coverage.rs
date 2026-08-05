@@ -3037,7 +3037,11 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_chat_session_update_closes_local_key_lifecycle() {
+    fn play_serverbound_chat_session_update_is_never_sent_by_the_offline_client() {
+        // Online mode is a declared non-goal: with no profile key pair the
+        // client never sends the packet — exactly like a vanilla client whose
+        // key preparation failed — while remote sessions announced through
+        // player-info are still decoded and validated.
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3056,13 +3060,15 @@ mod tests {
 
         assert_eq!(
             complete,
-            BTreeSet::from([
-                "ack_response",
-                "command_surface",
-                "encoder",
-                "state_guard",
-                "tests"
-            ])
+            BTreeSet::from(["ack_response", "encoder", "tests"])
+        );
+        assert_eq!(
+            entry.coverage["command_surface"].status,
+            PacketCoverageStatus::NotApplicable
+        );
+        assert_eq!(
+            entry.coverage["state_guard"].status,
+            PacketCoverageStatus::NotApplicable
         );
         assert_eq!(
             entry.coverage["ack_response"].status,

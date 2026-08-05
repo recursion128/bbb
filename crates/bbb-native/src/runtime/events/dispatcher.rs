@@ -103,13 +103,11 @@ pub(in crate::runtime) fn drain_net_events_with_server_list(
     counters: &mut NetCounters,
     server_list: &mut ServerListPersistence,
 ) -> usize {
-    let mut play_session_encrypted = false;
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
     drain_net_events_with_sinks_and_debug(
         rx,
         world,
         counters,
-        &mut play_session_encrypted,
         &None,
         None,
         None,
@@ -138,12 +136,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let particle_target = particle_target.map(|renderer| renderer as &mut dyn ParticleBatchSink);
-    let mut play_session_encrypted = false;
     drain_net_events_with_sinks_and_debug(
         rx,
         world,
         counters,
-        &mut play_session_encrypted,
         net_commands,
         audio_events,
         particle_events,
@@ -163,7 +159,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
-    play_session_encrypted: &mut bool,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     mut audio_events: Option<&mut dyn AudioEventSink>,
     mut particle_events: Option<&mut dyn ParticleEventSink>,
@@ -184,7 +179,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             Err(mpsc::error::TryRecvError::Empty) => break,
             Err(mpsc::error::TryRecvError::Disconnected) => {
                 counters.connected = false;
-                *play_session_encrypted = false;
                 if let Some(services_block_lists) = services_block_lists.as_deref_mut() {
                     services_block_lists.observe_net_event(
                         &NetEvent::Disconnected { reason: None },
@@ -326,9 +320,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             } => {
                 world.replace_services_public_keys(profile_property_keys, player_certificate_keys);
             }
-            NetEvent::PlaySessionSecurity { encrypted } => {
-                *play_session_encrypted = encrypted;
-            }
             NetEvent::CookieRequest {
                 key,
                 response_payload_present,
@@ -397,13 +388,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 }
             }
             NetEvent::Connected => {
-                *play_session_encrypted = false;
                 let keep_resource_packs = world.last_transfer().is_some();
                 world.begin_connection_session(keep_resource_packs);
             }
-            NetEvent::Disconnected { .. } => {
-                *play_session_encrypted = false;
-            }
+            NetEvent::Disconnected { .. } => {}
             NetEvent::StateChanged { .. }
             | NetEvent::CompressionSet { .. }
             | NetEvent::PacketSeen { .. }
@@ -1795,89 +1783,6 @@ mod terminal_tests {
     }
 
     #[test]
-    fn play_session_security_tracks_event_and_connection_lifecycle() {
-        let (tx, mut rx) = mpsc::channel(8);
-        tx.try_send(NetEvent::Connected).unwrap();
-        tx.try_send(NetEvent::PlaySessionSecurity { encrypted: true })
-            .unwrap();
-        let mut world = WorldStore::new();
-        let mut counters = NetCounters::default();
-        let mut play_session_encrypted = false;
-        let mut random = LevelEventSoundRandomState::with_seed(0);
-
-        let drained = drain_net_events_with_sinks_and_debug(
-            &mut rx,
-            &mut world,
-            &mut counters,
-            &mut play_session_encrypted,
-            &None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            &mut random,
-            None,
-            None,
-            0,
-        );
-        assert_eq!(drained, 2);
-        assert!(play_session_encrypted);
-
-        tx.try_send(NetEvent::Disconnected { reason: None })
-            .unwrap();
-        assert_eq!(
-            drain_net_events_with_sinks_and_debug(
-                &mut rx,
-                &mut world,
-                &mut counters,
-                &mut play_session_encrypted,
-                &None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                &mut random,
-                None,
-                None,
-                0,
-            ),
-            1
-        );
-        assert!(!play_session_encrypted);
-
-        play_session_encrypted = true;
-        drop(tx);
-        assert_eq!(
-            drain_net_events_with_sinks_and_debug(
-                &mut rx,
-                &mut world,
-                &mut counters,
-                &mut play_session_encrypted,
-                &None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                &mut random,
-                None,
-                None,
-                0,
-            ),
-            0
-        );
-        assert!(!play_session_encrypted);
-    }
-
-    #[test]
     fn remote_disconnect_outcome_observes_reason_in_fifo_order() {
         let (tx, mut rx) = mpsc::channel(4);
         tx.try_send(NetEvent::Connected).unwrap();
@@ -1888,7 +1793,6 @@ mod terminal_tests {
         .unwrap();
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
-        let mut play_session_encrypted = true;
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut remote_disconnect = None;
 
@@ -1896,7 +1800,6 @@ mod terminal_tests {
             &mut rx,
             &mut world,
             &mut counters,
-            &mut play_session_encrypted,
             &None,
             None,
             None,
@@ -1914,6 +1817,5 @@ mod terminal_tests {
         assert_eq!(drained, 2);
         assert_eq!(remote_disconnect, Some(reason));
         assert!(!counters.connected);
-        assert!(!play_session_encrypted);
     }
 }

@@ -13,9 +13,3 @@ pub use crate::types::{
     UseItemOnCommand, VehicleMoveCommand, MAX_DISCONNECT_REASON_RETAINED_BYTES,
     MAX_DISCONNECT_REASON_RUNS,
 };
-pub use crate::user_api::{
-    AbuseReport, AbuseReportClientInfo, AbuseReportEvidence, AbuseReportMessage,
-    AbuseReportRealmInfo, AbuseReportRequest, AbuseReportType, MinecraftUserApiClient,
-    MinecraftUserApiError, MinecraftUserApiErrorKind, ReportByteBuffer, ReportedEntity,
-    ThirdPartyServerInfo, UserApiBlockList,
-};

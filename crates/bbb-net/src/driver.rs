@@ -4,8 +4,7 @@ use tokio::{sync::mpsc, time::Interval};
 
 use crate::{
     chat_session::{
-        prepare_outbound_chat_command, prepare_outbound_chat_message, ChatSessionAction,
-        ChatSessionRuntime, PreparedChatCommand,
+        prepare_outbound_chat_command, prepare_outbound_chat_message, PreparedChatCommand,
     },
     connection::RawConnection,
     types::{AcceptTeleportCommand, ConnectionState, NetCommand},
@@ -16,7 +15,7 @@ mod commands;
 pub(crate) use commands::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
-    send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
+    send_chat_command_signed, send_chat_message, send_client_command,
     send_command_suggestion_request, send_configuration_client_information,
     send_container_button_click, send_container_click, send_container_close,
     send_container_slot_state_changed, send_custom_click_action, send_custom_payload,
@@ -71,34 +70,12 @@ pub(crate) enum ConnectionDrive {
     Disconnect,
 }
 
-#[cfg(test)]
 pub(crate) async fn read_packet_or_drive_connection(
     conn: &mut RawConnection,
     state: ConnectionState,
     commands: &mut mpsc::Receiver<NetCommand>,
     player_position_state: &mut PlayerPositionState,
     teleport_pending: bool,
-) -> Result<ConnectionDrive> {
-    let mut chat_sessions =
-        ChatSessionRuntime::new(uuid::Uuid::nil(), None, std::time::Duration::from_secs(1));
-    read_packet_or_drive_connection_with_chat_session(
-        conn,
-        state,
-        commands,
-        player_position_state,
-        teleport_pending,
-        &mut chat_sessions,
-    )
-    .await
-}
-
-pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
-    conn: &mut RawConnection,
-    state: ConnectionState,
-    commands: &mut mpsc::Receiver<NetCommand>,
-    player_position_state: &mut PlayerPositionState,
-    teleport_pending: bool,
-    chat_sessions: &mut ChatSessionRuntime,
 ) -> Result<ConnectionDrive> {
     if !matches!(state, ConnectionState::Play) {
         return read_packet_or_disconnect_command(conn, state, commands).await;
@@ -153,10 +130,7 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                         send_chat_acknowledgement(conn, command).await?;
                     }
                     Some(NetCommand::ChatCommand(command)) => {
-                        match prepare_outbound_chat_command(
-                            command,
-                            chat_sessions.active_session_mut(),
-                        )? {
+                        match prepare_outbound_chat_command(command)? {
                             PreparedChatCommand::Unsigned(packet) => {
                                 send_chat_command(conn, packet).await?;
                             }
@@ -166,10 +140,7 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                         }
                     }
                     Some(NetCommand::ChatMessage(message)) => {
-                        let packet = prepare_outbound_chat_message(
-                            message,
-                            chat_sessions.active_session_mut(),
-                        )?;
+                        let packet = prepare_outbound_chat_message(message)?;
                         send_chat_message(conn, packet).await?;
                     }
                     Some(NetCommand::CustomPayload(packet)) => {
@@ -324,14 +295,6 @@ pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
                     Some(NetCommand::AcceptCodeOfConduct) => {}
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);
-                    }
-                }
-            }
-            action = chat_sessions.next_action() => {
-                match action {
-                    ChatSessionAction::Install(session) => {
-                        send_chat_session_update(conn, session.session_update()).await?;
-                        chat_sessions.install(session);
                     }
                 }
             }

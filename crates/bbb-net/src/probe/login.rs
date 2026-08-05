@@ -1,21 +1,10 @@
-use std::time::Duration;
-
 use anyhow::{bail, ensure, Result};
 use bbb_protocol::packets::{self, LoginClientbound};
 
-use crate::{
-    login::handle_encryption_request,
-    probe::ProbeContext,
-    types::{ConnectionState, SessionCredentials},
-};
+use crate::{login::ensure_offline_login, probe::ProbeContext, types::ConnectionState};
 
 impl ProbeContext {
-    pub(super) async fn handle_login_packet(
-        &mut self,
-        packet: LoginClientbound,
-        credentials: Option<&SessionCredentials>,
-        authentication_timeout: Duration,
-    ) -> Result<()> {
+    pub(super) async fn handle_login_packet(&mut self, packet: LoginClientbound) -> Result<()> {
         ensure!(
             self.state == ConnectionState::Login,
             "received login packet while connection state is {:?}",
@@ -25,14 +14,8 @@ impl ProbeContext {
             LoginClientbound::Disconnect { reason, .. } => {
                 bail!("login disconnected: {reason}")
             }
-            LoginClientbound::EncryptionRequest(request) => {
-                handle_encryption_request(
-                    &mut self.conn,
-                    &request,
-                    credentials,
-                    authentication_timeout,
-                )
-                .await?;
+            LoginClientbound::EncryptionRequest(_) => {
+                return Err(ensure_offline_login(&self.conn).unwrap_err());
             }
             LoginClientbound::SetCompression { threshold } => {
                 self.conn.set_compression_threshold(threshold);
@@ -96,13 +79,9 @@ mod tests {
         let mut probe = ProbeContext::new(client);
 
         probe
-            .handle_login_packet(
-                LoginClientbound::CookieRequest(CookieRequest {
-                    key: "bbb:missing".to_string(),
-                }),
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::CookieRequest(CookieRequest {
+                key: "bbb:missing".to_string(),
+            }))
             .await
             .unwrap();
 
@@ -128,34 +107,43 @@ mod tests {
         let mut probe = ProbeContext::new(client);
 
         let error = probe
-            .handle_login_packet(
-                LoginClientbound::Disconnect {
-                    reason: "bye".to_string(),
-                    styled_reason: Vec::new(),
-                    raw_reason: r#"{"text":"bye"}"#.to_string(),
-                },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::Disconnect {
+                reason: "bye".to_string(),
+                styled_reason: Vec::new(),
+                raw_reason: r#"{"text":"bye"}"#.to_string(),
+            })
             .await
             .unwrap_err();
         assert!(error.to_string().contains("login disconnected"));
         assert_eq!(probe.state, ConnectionState::Login);
 
         let error = probe
-            .handle_login_packet(
-                LoginClientbound::EncryptionRequest(bbb_protocol::packets::EncryptionRequest {
+            .handle_login_packet(LoginClientbound::EncryptionRequest(
+                bbb_protocol::packets::EncryptionRequest {
                     server_id: String::new(),
                     public_key: vec![1, 2, 3],
                     challenge: vec![4, 5, 6],
                     should_authenticate: true,
-                }),
-                None,
-                Duration::from_secs(1),
-            )
+                },
+            ))
             .await
             .unwrap_err();
         assert!(error.to_string().contains("before sending login hello"));
+        assert_eq!(probe.state, ConnectionState::Login);
+
+        probe.conn.mark_login_hello_sent().unwrap();
+        let error = probe
+            .handle_login_packet(LoginClientbound::EncryptionRequest(
+                bbb_protocol::packets::EncryptionRequest {
+                    server_id: String::new(),
+                    public_key: vec![1, 2, 3],
+                    challenge: vec![4, 5, 6],
+                    should_authenticate: true,
+                },
+            ))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("offline-only"));
         assert_eq!(probe.state, ConnectionState::Login);
     }
 
@@ -194,17 +182,13 @@ mod tests {
         assert!(probe.world.local_player().interaction.using_item);
 
         probe
-            .handle_login_packet(
-                LoginClientbound::LoginFinished {
-                    profile: GameProfile {
-                        uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
-                        name: "bbb-client".to_string(),
-                        properties: Vec::new(),
-                    },
+            .handle_login_packet(LoginClientbound::LoginFinished {
+                profile: GameProfile {
+                    uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+                    name: "bbb-client".to_string(),
+                    properties: Vec::new(),
                 },
-                None,
-                Duration::from_secs(1),
-            )
+            })
             .await
             .unwrap();
 
@@ -257,14 +241,10 @@ mod tests {
         probe.state = ConnectionState::Login;
 
         probe
-            .handle_login_packet(
-                LoginClientbound::Unknown {
-                    packet_id: 0x7d,
-                    len: 5,
-                },
-                None,
-                Duration::from_secs(1),
-            )
+            .handle_login_packet(LoginClientbound::Unknown {
+                packet_id: 0x7d,
+                len: 5,
+            })
             .await
             .unwrap();
 

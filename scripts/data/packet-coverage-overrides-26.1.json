@@ -83,24 +83,24 @@
     },
     "play/serverbound/SERVERBOUND_CHAT_COMMAND_SIGNED": {
       "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSignedChatCommand", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#performSignedChatCommand"], "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production", "status": "not-applicable"},
-      "command_surface": {"evidence": ["crates/bbb-world/src/commands.rs#command_requires_signed_arguments", "crates/bbb-native/src/input/commands.rs#queue_chat_command", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "crates/bbb-net/src/driver/commands.rs#send_chat_command_signed", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendCommand"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-world/src/commands.rs#command_requires_signed_arguments", "crates/bbb-native/src/input/commands.rs#queue_chat_command", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection", "crates/bbb-net/src/driver/commands.rs#send_chat_command_signed", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendCommand"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_chat_command_signed", "crates/bbb-protocol/src/packets/serverbound.rs#encode_argument_signatures", "crates/bbb-protocol/src/packets/serverbound.rs#encode_last_seen_messages_update", "vanilla:net/minecraft/network/protocol/game/ServerboundChatCommandSignedPacket.java#STREAM_CODEC", "vanilla:net/minecraft/commands/arguments/ArgumentSignatures.java#write"], "status": "complete"},
-      "state_guard": {"evidence": ["crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_command", "crates/bbb-net/src/chat_session/runtime.rs#active_session_mut", "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat", "crates/bbb-world/src/commands.rs#signable_arguments", "vanilla:net/minecraft/commands/arguments/ArgumentSignatures.java#signCommand", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#collectSignedArguments"], "status": "complete"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_command_packet_with_empty_argument_signatures", "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_command_argument_signatures", "crates/bbb-net/src/chat_session.rs#outbound_requests_sign_content_and_command_arguments_in_wire_order", "crates/bbb-net/src/chat_session/runtime.rs#driver_sends_session_update_before_first_signed_message", "crates/bbb-net/src/driver/commands/tests.rs#send_chat_command_signed_encodes_signed_chat_command_packet", "crates/bbb-native/src/input/commands.rs#queues_signed_chat_command_for_signable_message_argument", "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_signed_chat_command_for_signable_argument", "crates/bbb-native/src/input/tests.rs#command_entry_with_signable_message_argument_submits_signed_command"], "status": "complete"}
+      "state_guard": {"evidence": ["crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_command", "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat", "crates/bbb-world/src/commands.rs#signable_arguments", "vanilla:net/minecraft/commands/arguments/ArgumentSignatures.java#signCommand", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#collectSignedArguments"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_command_packet_with_empty_argument_signatures", "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_command_argument_signatures", "crates/bbb-net/src/chat_session.rs#outbound_requests_are_unsigned_without_a_session", "crates/bbb-net/src/driver/commands/tests.rs#send_chat_command_signed_encodes_signed_chat_command_packet", "crates/bbb-native/src/input/commands.rs#queues_signed_chat_command_for_signable_message_argument", "crates/bbb-native/src/runtime/control_requests.rs#pump_control_net_requests_queues_signed_chat_command_for_signable_argument", "crates/bbb-native/src/input/tests.rs#command_entry_with_signable_message_argument_submits_signed_command"], "status": "complete"}
     },
     "play/serverbound/SERVERBOUND_CHAT": {
       "ack_response": {"evidence": ["crates/bbb-protocol/src/packets/chat.rs#decode_player_chat", "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat", "crates/bbb-world/src/client/chat.rs#remote_session_validates_signature_link_order_and_vanilla_timestamp_behavior", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#broadcastChatMessage"], "status": "complete"},
-      "command_surface": {"evidence": ["crates/bbb-native/src/input.rs#submit_chat_entry", "crates/bbb-native/src/input/commands.rs#queue_chat_message_command", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "crates/bbb-net/src/driver/commands.rs#send_chat_message", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input.rs#submit_chat_entry", "crates/bbb-native/src/input/commands.rs#queue_chat_message_command", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection", "crates/bbb-net/src/driver/commands.rs#send_chat_message", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_chat_message", "crates/bbb-protocol/src/packets/serverbound.rs#encode_last_seen_messages_update", "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_message_packet", "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_chat_message_signature_length", "vanilla:net/minecraft/network/protocol/game/ServerboundChatPacket.java#STREAM_CODEC"], "status": "complete"},
-      "state_guard": {"evidence": ["crates/bbb-native/src/input.rs#normalize_chat_message", "crates/bbb-native/src/input.rs#chat_messages_allowed", "crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_message", "crates/bbb-net/src/chat_session/runtime.rs#active_session_mut", "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#getSignedMessage"], "status": "complete"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_unsigned_chat_message_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_message_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_chat_message_last_seen_update_bitset_little_endian", "crates/bbb-net/src/chat_session.rs#outbound_requests_sign_content_and_command_arguments_in_wire_order", "crates/bbb-net/src/chat_session/runtime.rs#driver_sends_session_update_before_first_signed_message", "crates/bbb-net/src/driver/commands/tests.rs#send_chat_message_encodes_unsigned_chat_packet", "crates/bbb-native/src/input/commands.rs#queues_unsigned_chat_message", "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message", "crates/bbb-native/src/input/tests.rs#chat_key_submits_message_with_pending_last_seen_update", "crates/bbb-native/src/input/tests.rs#chat_visibility_permissions_gate_messages_commands_and_message_arguments"], "status": "complete"}
+      "state_guard": {"evidence": ["crates/bbb-native/src/input.rs#normalize_chat_message", "crates/bbb-native/src/input.rs#chat_messages_allowed", "crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_message", "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#getSignedMessage"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_unsigned_chat_message_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_signed_chat_message_packet", "crates/bbb-protocol/src/packets/tests.rs#encodes_chat_message_last_seen_update_bitset_little_endian", "crates/bbb-net/src/chat_session.rs#outbound_requests_are_unsigned_without_a_session", "crates/bbb-net/src/driver/commands/tests.rs#send_chat_message_encodes_unsigned_chat_packet", "crates/bbb-native/src/input/commands.rs#queues_unsigned_chat_message", "crates/bbb-native/src/input/tests.rs#chat_key_opens_chat_entry_and_submits_unsigned_message", "crates/bbb-native/src/input/tests.rs#chat_key_submits_message_with_pending_last_seen_update", "crates/bbb-native/src/input/tests.rs#chat_visibility_permissions_gate_messages_commands_and_message_arguments"], "status": "complete"}
     },
     "play/serverbound/SERVERBOUND_CHAT_SESSION_UPDATE": {
       "ack_response": {"evidence": ["crates/bbb-protocol/src/packets/player_info.rs#decode_optional_player_info_chat_session", "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session", "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#resetPlayerChatState"], "status": "complete"},
-      "command_surface": {"evidence": ["crates/bbb-net/src/chat_session/runtime.rs#next_action", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "crates/bbb-net/src/driver/commands.rs#send_chat_session_update", "crates/bbb-net/src/event_stream.rs#run_event_stream", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setKeyPair"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-net/src/chat_session.rs#Online mode is a declared non-goal", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setKeyPair"], "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport", "status": "not-applicable"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_chat_session_update", "crates/bbb-protocol/src/packets/tests.rs#encodes_chat_session_update_packet", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_public_key", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_key_signature", "vanilla:net/minecraft/network/protocol/game/ServerboundChatSessionUpdatePacket.java#STREAM_CODEC", "vanilla:net/minecraft/network/chat/RemoteChatSession.java#write", "vanilla:net/minecraft/world/entity/player/ProfilePublicKey.java#write"], "status": "complete"},
-      "state_guard": {"evidence": ["crates/bbb-net/src/chat_session/runtime.rs#begin_play_session", "crates/bbb-net/src/chat_session/runtime.rs#reset_play_session", "crates/bbb-net/src/chat_session/runtime.rs#schedule_refresh_check", "crates/bbb-protocol/src/packets/serverbound.rs#encode_play_chat_session_update", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#prepareKeyPair", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#setKeyPair", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleChatSessionUpdate"], "status": "complete"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_chat_session_update_packet", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_public_key", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_key_signature", "crates/bbb-net/src/chat_session/runtime.rs#driver_sends_session_update_before_first_signed_message", "crates/bbb-net/src/chat_session/runtime.rs#pending_profile_fetch_does_not_block_packet_reads", "crates/bbb-net/src/chat_session/runtime.rs#preparation_starts_before_play_and_offline_mode_never_fetches", "crates/bbb-net/src/chat_session/runtime.rs#refresh_waits_for_minimum_interval_and_replaces_changed_key", "crates/bbb-net/src/chat_session/runtime.rs#reset_preserves_pending_prepare_for_the_next_play_session", "crates/bbb-net/src/driver/commands/tests.rs#send_chat_session_update_encodes_profile_key_packet", "crates/bbb-net/src/event_stream.rs#chat_session_runtime_is_wired_to_listener_and_transport_boundaries"], "status": "complete"}
+      "state_guard": {"evidence": ["crates/bbb-net/src/chat_session.rs#Online mode is a declared non-goal", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#prepareKeyPair", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleChatSessionUpdate"], "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport", "status": "not-applicable"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_chat_session_update_packet", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_public_key", "crates/bbb-protocol/src/packets/tests.rs#rejects_oversized_chat_session_key_signature", "crates/bbb-net/src/event_stream.rs#the_event_stream_keeps_no_chat_session_or_cipher_state"], "status": "complete"}
     },
     "play/serverbound/SERVERBOUND_CLIENT_COMMAND": {
       "ack_response": {"evidence": ["crates/bbb-world/src/level.rs#apply_respawn", "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks", "crates/bbb-world/src/client/stats.rs#apply_award_stats", "crates/bbb-world/src/client/stats.rs#award_stats_only_completes_an_open_stats_screen_request", "crates/bbb-world/src/client/game_rules.rs#apply_game_rule_values", "crates/bbb-world/src/client/game_rules.rs#game_rules_screen_requires_permission_and_consumes_only_first_response", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientCommand"], "status": "complete"},
@@ -209,7 +209,7 @@
     },
     "play/serverbound/SERVERBOUND_JIGSAW_GENERATE": {
       "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleJigsawGenerate"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
-      "command_surface": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block", "crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendGenerate"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block", "crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendGenerate"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encode_play_jigsaw_generate", "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_jigsaw_generate_extremes_without_narrowing", "vanilla:net/minecraft/network/protocol/game/ServerboundJigsawGeneratePacket.java#STREAM_CODEC"], "status": "complete"},
       "state_guard": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#controls_enabled", "crates/bbb-world/src/jigsaw_blocks.rs#try_open_jigsaw_block_editor", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#updateValidity", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleJigsawGenerate"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-native/src/input/tests.rs#jigsaw_generate_uses_exact_slider_toggle_joint_and_set_first_order", "crates/bbb-net/src/driver.rs#drive_connection_sends_jigsaw_set_before_generate_in_play", "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_jigsaw_generate_extremes_without_narrowing"], "status": "complete"}
@@ -595,7 +595,7 @@
     },
     "play/serverbound/SERVERBOUND_SET_JIGSAW_BLOCK": {
       "ack_response": {"evidence": ["crates/bbb-world/src/chunks/store.rs#apply_block_entity_data", "crates/bbb-world/src/jigsaw_blocks.rs#refresh_jigsaw_block_editor_from_authoritative_data", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetJigsawBlock"], "status": "complete"},
-      "command_surface": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block", "crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendToServer"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#submit_jigsaw_block", "crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendToServer"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encode_play_set_jigsaw_block", "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_set_jigsaw_wire_order_resources_joint_and_priorities", "vanilla:net/minecraft/network/protocol/game/ServerboundSetJigsawBlockPacket.java#STREAM_CODEC"], "status": "complete"},
       "state_guard": {"evidence": ["crates/bbb-native/src/input/jigsaw_block.rs#controls_enabled", "crates/bbb-world/src/jigsaw_blocks.rs#try_open_jigsaw_block_editor", "vanilla:net/minecraft/client/gui/screens/inventory/JigsawBlockEditScreen.java#sendToServer", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetJigsawBlock"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-native/src/input/tests.rs#jigsaw_block_editor_preloads_and_done_sends_exact_set_once", "crates/bbb-native/src/input/tests.rs#jigsaw_editor_validation_limits_cancel_escape_and_screen_replacement_are_local", "crates/bbb-net/src/driver/commands/tests.rs#send_jigsaw_editor_packets_encode_set_before_generate", "crates/bbb-protocol/src/packets/jigsaw_blocks.rs#encodes_set_jigsaw_wire_order_resources_joint_and_priorities"], "status": "complete"}
@@ -609,7 +609,7 @@
     },
     "play/serverbound/SERVERBOUND_SET_TEST_BLOCK": {
       "ack_response": {"evidence": ["crates/bbb-world/src/chunks/store.rs#apply_block_entity_data", "crates/bbb-world/src/test_blocks.rs#test_block_data_at", "crates/bbb-world/src/test_blocks.rs#editor_requires_permission_and_keeps_copy_while_world_tracks_authoritative_data", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetTestBlock"], "status": "complete"},
-      "command_surface": {"evidence": ["crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-native/src/input/test_block.rs#sync_test_block_editor", "crates/bbb-native/src/input/test_block.rs#handle_test_block_editor_mouse_input", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection_with_chat_session", "vanilla:net/minecraft/client/player/LocalPlayer.java#openTestBlock", "vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#onDone"], "status": "complete"},
+      "command_surface": {"evidence": ["crates/bbb-native/src/input/mouse.rs#start_use_item", "crates/bbb-native/src/input/test_block.rs#sync_test_block_editor", "crates/bbb-native/src/input/test_block.rs#handle_test_block_editor_mouse_input", "crates/bbb-net/src/driver.rs#read_packet_or_drive_connection", "vanilla:net/minecraft/client/player/LocalPlayer.java#openTestBlock", "vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#onDone"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/test_blocks.rs#encode_play_set_test_block", "crates/bbb-protocol/src/packets/test_blocks.rs#encodes_set_test_block_wire_order_position_and_all_mode_ids", "crates/bbb-net/src/driver/commands.rs#send_set_test_block", "vanilla:net/minecraft/network/protocol/game/ServerboundSetTestBlockPacket.java#STREAM_CODEC"], "status": "complete"},
       "state_guard": {"evidence": ["crates/bbb-world/src/test_blocks.rs#try_open_test_block_editor", "crates/bbb-native/src/input/test_block.rs#handle_test_block_editor_text", "crates/bbb-native/src/input/test_block.rs#next_mode", "crates/bbb-native/src/input/tests.rs#test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once", "vanilla:net/minecraft/client/gui/screens/inventory/TestBlockEditScreen.java#updateMode", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleSetTestBlock"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/test_blocks.rs#set_test_block_enforces_editor_utf16_boundary", "crates/bbb-net/src/driver/commands/tests.rs#send_set_test_block_encodes_editor_packet", "crates/bbb-world/src/test_blocks.rs#decodes_modes_defaults_and_malformed_fields", "crates/bbb-native/src/input/tests.rs#test_block_editor_preserves_hidden_message_cycles_modes_and_done_sends_once", "crates/bbb-native/src/input/tests.rs#test_block_editor_right_click_cancel_and_escape_never_send_editor_packet", "crates/bbb-renderer/src/hud.rs#test_block_editor_layout_matches_vanilla_absolute_geometry"], "status": "complete"}
@@ -5886,10 +5886,10 @@
     "login/clientbound/CLIENTBOUND_HELLO": {
       "canonical_apply": {
         "evidence": [
-          "crates/bbb-net/src/login.rs#handle_encryption_request",
+          "crates/bbb-net/src/login.rs#reject_encryption_request",
           "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#handleHello"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport",
         "status": "not-applicable"
       },
       "decode": {
@@ -5909,18 +5909,18 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-net/src/login.rs#handle_encryption_request",
-          "crates/bbb-net/src/connection.rs#enable_encryption",
+          "crates/bbb-net/src/login.rs#ensure_offline_login",
+          "crates/bbb-net/src/event_stream/login.rs#LoginClientbound::EncryptionRequest",
           "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#setEncryption"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport",
+        "status": "not-applicable"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/login.rs#encryption_preparation_matches_vanilla_rsa_inputs_and_hash_order",
-          "crates/bbb-net/src/login.rs#session_join_posts_undashed_profile_and_requires_no_content",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
-          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials"
+          "crates/bbb-net/src/login.rs#login_hello_is_sent_once_and_encryption_requests_are_rejected",
+          "crates/bbb-net/src/login.rs#encryption_request_before_hello_stays_a_protocol_order_error",
+          "crates/bbb-net/src/probe/login.rs#probe_login_disconnect_and_early_encryption_fail_without_advancing_state"
         ],
         "status": "complete"
       }
@@ -6114,7 +6114,7 @@
         "evidence": [
           "crates/bbb-net/src/login.rs#send_login_hello",
           "crates/bbb-net/src/event_stream/login.rs#handle_login_packet",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
+          "crates/bbb-net/src/login.rs#login_hello_is_sent_once_and_encryption_requests_are_rejected",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleHello"
         ],
         "status": "complete"
@@ -6139,7 +6139,7 @@
           "crates/bbb-protocol/src/packets/connection.rs#validate_login_username",
           "crates/bbb-net/src/types/connection.rs#offline_connection_options_delegate_login_username_validation",
           "crates/bbb-net/src/login.rs#send_login_hello",
-          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
+          "crates/bbb-net/src/login.rs#encryption_request_before_hello_stays_a_protocol_order_error",
           "vanilla:net/minecraft/util/StringUtil.java#isValidPlayerName",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleHello"
         ],
@@ -6148,7 +6148,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#encodes_login_hello",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream"
+          "crates/bbb-net/src/login.rs#login_hello_is_sent_once_and_encryption_requests_are_rejected"
         ],
         "status": "complete"
       }
@@ -6157,18 +6157,18 @@
       "ack_response": {
         "evidence": [
           "crates/bbb-net/src/event_stream/login.rs#LoginClientbound::EncryptionRequest",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleKey"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport",
+        "status": "not-applicable"
       },
       "command_surface": {
         "evidence": [
-          "crates/bbb-net/src/event_stream/login.rs#LoginClientbound::EncryptionRequest",
-          "crates/bbb-net/src/login.rs#handle_encryption_request",
+          "crates/bbb-net/src/login.rs#reject_encryption_request",
           "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#handleHello"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport",
+        "status": "not-applicable"
       },
       "encoder": {
         "evidence": [
@@ -6181,19 +6181,16 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
-          "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#setEncryption",
-          "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleKey"
+          "crates/bbb-net/src/login.rs#ensure_offline_login",
+          "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#setEncryption"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#online-mode-authenticated-services-and-encrypted-transport",
+        "status": "not-applicable"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/login.rs#encryption_preparation_matches_vanilla_rsa_inputs_and_hash_order",
-          "crates/bbb-net/src/login.rs#session_join_posts_undashed_profile_and_requires_no_content",
-          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
-          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_login_key_encrypted_arrays_in_wire_order",
+          "crates/bbb-net/src/login.rs#login_hello_is_sent_once_and_encryption_requests_are_rejected",
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
         ],
         "status": "complete"

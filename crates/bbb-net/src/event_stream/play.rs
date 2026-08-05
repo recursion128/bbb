@@ -25,13 +25,6 @@ impl EventStreamContext {
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::Login(login) => {
-                emit(
-                    &self.events,
-                    NetEvent::PlaySessionSecurity {
-                        encrypted: self.conn.encryption_enabled(),
-                    },
-                )
-                .await?;
                 emit(&self.events, NetEvent::Play(PlayClientbound::Login(login))).await?;
             }
             PlayClientbound::KeepAlive { id } => {

@@ -1,11 +1,8 @@
-use std::{
-    convert::Infallible, fmt, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc, thread,
-    time::Duration,
-};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread, time::Duration};
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
-use bbb_net::{ConnectionOptions, MinecraftUserApiClient, ServerResourcePackPolicy};
+use bbb_net::{ConnectionOptions, ServerResourcePackPolicy};
 use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -18,7 +15,7 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_CLOUD_RANGE_CHUNKS,
     VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
-use bbb_world::{PlayerReportEnvironment, TutorialStep};
+use bbb_world::TutorialStep;
 use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser, ValueEnum};
 
 use crate::client_options::{
@@ -60,10 +57,6 @@ pub(crate) struct Args {
     pub(crate) server: String,
     #[arg(long, default_value = "bbb-client")]
     pub(crate) username: String,
-    #[arg(long, value_name = "UUID", requires = "access_token")]
-    pub(crate) profile_id: Option<Uuid>,
-    #[arg(long, value_name = "TOKEN", requires = "profile_id")]
-    pub(crate) access_token: Option<StartupAccessToken>,
     #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
     pub(crate) status_server: Option<String>,
     #[arg(long)]
@@ -429,23 +422,6 @@ pub(crate) struct Args {
         action = ArgAction::Append
     )]
     pub(crate) remote_debug_renderers: Vec<RemoteDebugRenderer>,
-}
-
-#[derive(Clone)]
-pub(crate) struct StartupAccessToken(String);
-
-impl fmt::Debug for StartupAccessToken {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("<redacted>")
-    }
-}
-
-impl FromStr for StartupAccessToken {
-    type Err = Infallible;
-
-    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
-        Ok(Self(value.to_string()))
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -1132,77 +1108,9 @@ pub(crate) fn start_network_if_requested(
 }
 
 fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
-    ensure!(
-        args.profile_id.is_some() == args.access_token.is_some(),
-        "profile id and access token must be supplied together"
-    );
-    let mut options = match (args.profile_id, args.access_token.as_ref()) {
-        (Some(profile_id), Some(access_token)) => ConnectionOptions::authenticated(
-            &args.server,
-            &args.username,
-            profile_id,
-            access_token.0.clone(),
-        ),
-        (None, None) => ConnectionOptions::offline(&args.server, &args.username),
-        _ => unreachable!("paired session credential presence was checked"),
-    }?;
+    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
     options.server_resource_pack_policy = args.server_resource_pack_policy.into();
     Ok(options)
-}
-
-pub(crate) fn services_block_list_client_from_args(
-    args: &Args,
-) -> Result<Option<MinecraftUserApiClient>> {
-    ensure!(
-        args.profile_id.is_some() == args.access_token.is_some(),
-        "profile id and access token must be supplied together"
-    );
-    args.access_token
-        .as_ref()
-        .map(|access_token| {
-            MinecraftUserApiClient::authenticated(access_token.0.clone(), Duration::from_secs(5))
-                .map_err(Into::into)
-        })
-        .transpose()
-}
-
-pub(crate) fn report_locale_from_client_locale(locale: &str) -> String {
-    locale
-        .split(['-', '_'])
-        .enumerate()
-        .map(|(index, part)| {
-            if index == 0 {
-                part.to_ascii_lowercase()
-            } else if part.len() == 2 && part.bytes().all(|byte| byte.is_ascii_alphabetic()) {
-                part.to_ascii_uppercase()
-            } else if part.len() == 4 && part.bytes().all(|byte| byte.is_ascii_alphabetic()) {
-                let mut chars = part.chars();
-                chars
-                    .next()
-                    .map(|first| {
-                        format!(
-                            "{}{}",
-                            first.to_ascii_uppercase(),
-                            chars.as_str().to_ascii_lowercase()
-                        )
-                    })
-                    .unwrap_or_default()
-            } else {
-                part.to_ascii_lowercase()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("-")
-}
-
-pub(crate) fn player_report_environment_from_args(args: &Args) -> Option<PlayerReportEnvironment> {
-    args.profile_id.map(|_| {
-        PlayerReportEnvironment::third_party(
-            format!("{} (modded)", bbb_protocol::MC_VERSION),
-            report_locale_from_client_locale(&args.client_locale),
-            args.server.clone(),
-        )
-    })
 }
 
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
@@ -1710,100 +1618,6 @@ mod tests {
             Some(PathBuf::from("/tmp/servers.dat"))
         );
         assert_eq!(args.server_list_name.as_deref(), Some("Native Server"));
-    }
-
-    #[test]
-    fn session_credentials_are_paired_redacted_and_build_authenticated_options() {
-        let profile_id = "12345678-1234-5678-90ab-cdef12345678";
-        assert!(Args::try_parse_from(["bbb-native", "--profile-id", profile_id]).is_err());
-        assert!(Args::try_parse_from(["bbb-native", "--access-token", "secret"]).is_err());
-
-        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
-        assert!(!connection_options_from_args(&offline)
-            .unwrap()
-            .is_authenticated());
-
-        let authenticated = Args::try_parse_from([
-            "bbb-native",
-            "--profile-id",
-            profile_id,
-            "--access-token",
-            "sensitive-access-token",
-        ])
-        .unwrap();
-        let debug = format!("{authenticated:?}");
-        assert!(debug.contains("<redacted>"));
-        assert!(!debug.contains("sensitive-access-token"));
-        let options = connection_options_from_args(&authenticated).unwrap();
-        assert!(options.is_authenticated());
-        assert_eq!(options.profile_id, Uuid::parse_str(profile_id).unwrap());
-    }
-
-    #[test]
-    fn services_block_list_startup_client_requires_authenticated_nonempty_credentials() {
-        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
-        assert!(services_block_list_client_from_args(&offline)
-            .unwrap()
-            .is_none());
-
-        let authenticated = Args::try_parse_from([
-            "bbb-native",
-            "--profile-id",
-            "12345678-1234-5678-90ab-cdef12345678",
-            "--access-token",
-            "sensitive-access-token",
-        ])
-        .unwrap();
-        let client = services_block_list_client_from_args(&authenticated)
-            .unwrap()
-            .unwrap();
-        let debug = format!("{client:?}");
-        assert!(debug.contains("<redacted>"));
-        assert!(!debug.contains("sensitive-access-token"));
-
-        let empty = Args::try_parse_from([
-            "bbb-native",
-            "--profile-id",
-            "12345678-1234-5678-90ab-cdef12345678",
-            "--access-token",
-            "",
-        ])
-        .unwrap();
-        assert!(services_block_list_client_from_args(&empty).is_err());
-    }
-
-    #[test]
-    fn player_reporting_locale_uses_bcp47_style_startup_language_tag() {
-        assert_eq!(report_locale_from_client_locale("en_us"), "en-US");
-        assert_eq!(report_locale_from_client_locale("zh_hans_cn"), "zh-Hans-CN");
-        assert_eq!(report_locale_from_client_locale("pt-BR"), "pt-BR");
-    }
-
-    #[test]
-    fn player_reporting_environment_requires_authenticated_startup_credentials() {
-        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
-        assert_eq!(player_report_environment_from_args(&offline), None);
-
-        let authenticated = Args::try_parse_from([
-            "bbb-native",
-            "--server",
-            "example.org:25565",
-            "--client-locale",
-            "zh_hans_cn",
-            "--profile-id",
-            "12345678-1234-5678-90ab-cdef12345678",
-            "--access-token",
-            "sensitive-access-token",
-        ])
-        .unwrap();
-        assert_eq!(
-            player_report_environment_from_args(&authenticated),
-            Some(PlayerReportEnvironment::third_party(
-                format!("{} (modded)", bbb_protocol::MC_VERSION),
-                "zh-Hans-CN",
-                "example.org:25565",
-            ))
-        );
     }
 
     #[test]

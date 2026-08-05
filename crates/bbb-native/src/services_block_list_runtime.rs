@@ -2,13 +2,10 @@
 
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
-use bbb_net::{
-    AbuseReportRequest, MinecraftUserApiClient, MinecraftUserApiErrorKind, NetEvent,
-    UserApiBlockList,
-};
+use bbb_net::NetEvent;
 use bbb_protocol::packets::PlayClientbound;
 use bbb_world::{BuiltPlayerReport, WorldStore};
-use tokio::{runtime::Handle, sync::Mutex, task::AbortHandle};
+use tokio::{runtime::Handle, task::AbortHandle};
 use uuid::Uuid;
 
 use crate::simulation::commands::{SimulationCommand, SimulationMailbox};
@@ -25,63 +22,27 @@ trait ServicesBlockListSource: Send + Sync {
         let _ = report;
         Box::pin(async {
             Err(PlayerReportSubmissionFailure {
-                kind: MinecraftUserApiErrorKind::ServiceUnavailable,
+                kind: ServicesBlockListErrorKind::ServiceUnavailable,
                 status: None,
             })
         })
     }
 }
 
-struct MinecraftServicesBlockListSource {
-    client: Mutex<MinecraftUserApiClient>,
-}
-
-impl ServicesBlockListSource for MinecraftServicesBlockListSource {
-    fn refresh(&self, now_epoch_seconds: i64) -> BlockListRefreshFuture<'_> {
-        Box::pin(async move {
-            let mut client = self.client.lock().await;
-            let result = client.refresh_block_list(now_epoch_seconds).await;
-            let next_refresh_epoch_seconds = client.next_block_list_refresh_epoch_seconds();
-            let result = match result {
-                Ok(_) => Ok(client
-                    .cached_block_list()
-                    .map(UserApiBlockList::blocked_profiles)
-                    .unwrap_or_default()
-                    .to_vec()),
-                Err(error) => Err(ServicesBlockListFailure {
-                    kind: error.kind(),
-                    status: error.status(),
-                }),
-            };
-            ServicesBlockListRefresh {
-                result,
-                next_refresh_epoch_seconds,
-            }
-        })
-    }
-
-    fn submit_player_report(&self, report: BuiltPlayerReport) -> PlayerReportSubmissionFuture<'_> {
-        Box::pin(async move {
-            let request = AbuseReportRequest::try_from(report).map_err(|error| {
-                PlayerReportSubmissionFailure {
-                    kind: error.kind(),
-                    status: error.status(),
-                }
-            })?;
-            let client = self.client.lock().await;
-            client.submit_abuse_report(&request).await.map_err(|error| {
-                PlayerReportSubmissionFailure {
-                    kind: error.kind(),
-                    status: error.status(),
-                }
-            })
-        })
-    }
+/// Failure categories for the Services block-list/report pipeline. Online mode
+/// is a declared non-goal, so no Services transport exists and every
+/// production failure is `ServiceUnavailable`; `Http` exists for tests that
+/// exercise the UI failure paths.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ServicesBlockListErrorKind {
+    ServiceUnavailable,
+    #[cfg(test)]
+    Http,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ServicesBlockListFailure {
-    pub(crate) kind: MinecraftUserApiErrorKind,
+    pub(crate) kind: ServicesBlockListErrorKind,
     pub(crate) status: Option<u16>,
 }
 
@@ -100,7 +61,7 @@ struct ServicesBlockListRefresh {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct PlayerReportSubmissionFailure {
-    pub(crate) kind: MinecraftUserApiErrorKind,
+    pub(crate) kind: ServicesBlockListErrorKind,
     pub(crate) status: Option<u16>,
 }
 
@@ -149,20 +110,11 @@ impl fmt::Debug for ServicesBlockListRuntime {
 }
 
 impl ServicesBlockListRuntime {
-    pub(crate) fn new(
-        handle: Handle,
-        mailbox: SimulationMailbox,
-        client: Option<MinecraftUserApiClient>,
-    ) -> Self {
-        let source = client.map(|client| {
-            Arc::new(MinecraftServicesBlockListSource {
-                client: Mutex::new(client),
-            }) as Arc<dyn ServicesBlockListSource>
-        });
+    pub(crate) fn new(handle: Handle, mailbox: SimulationMailbox) -> Self {
         Self {
             handle,
             mailbox,
-            source,
+            source: None,
             generation: 0,
             online: false,
             pending_generation: None,
@@ -432,6 +384,7 @@ mod tests {
     };
     use bbb_renderer::{HudPlayerReportingFocus, HudPlayerReportingHitTarget};
     use bbb_world::{PlayerReportEnvironment, PlayerReportSubmissionStatus};
+    use tokio::sync::Mutex;
     use winit::event::{ElementState, MouseButton};
 
     use super::*;
@@ -588,7 +541,7 @@ mod tests {
         let blocked = Uuid::from_u128(11);
         let configured = Uuid::from_u128(16);
         let failure = ServicesBlockListFailure {
-            kind: MinecraftUserApiErrorKind::Http,
+            kind: ServicesBlockListErrorKind::Http,
             status: Some(503),
         };
         let source = Arc::new(FakeSource::new([
@@ -703,7 +656,7 @@ mod tests {
     #[tokio::test]
     async fn services_block_list_offline_play_and_disconnect_stay_inactive() {
         let mailbox = SimulationMailbox::default();
-        let mut runtime = ServicesBlockListRuntime::new(Handle::current(), mailbox.clone(), None);
+        let mut runtime = ServicesBlockListRuntime::new(Handle::current(), mailbox.clone());
         let mut world = WorldStore::new();
 
         runtime.observe_net_event(
@@ -724,7 +677,7 @@ mod tests {
     #[tokio::test]
     async fn player_reporting_submission_runs_async_and_applies_only_matching_attempt() {
         let failure = PlayerReportSubmissionFailure {
-            kind: MinecraftUserApiErrorKind::Http,
+            kind: ServicesBlockListErrorKind::Http,
             status: Some(503),
         };
         let source = Arc::new(FakeSubmissionSource {

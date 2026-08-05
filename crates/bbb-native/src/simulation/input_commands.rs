@@ -3262,8 +3262,7 @@ mod tests {
             "window-surface-focus-test",
             Uuid::nil(),
         );
-        let mut services_block_lists =
-            ServicesBlockListRuntime::new(Handle::current(), mailbox, None);
+        let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;
         let mut item_runtime = None;
         let mut terrain_textures = TerrainTextureState::default();
@@ -3381,8 +3380,7 @@ mod tests {
             "ime-preedit-handoff-test",
             Uuid::nil(),
         );
-        let mut services_block_lists =
-            ServicesBlockListRuntime::new(Handle::current(), mailbox, None);
+        let mut services_block_lists = ServicesBlockListRuntime::new(Handle::current(), mailbox);
         let mut particle_runtime = None;
         let mut item_runtime = None;
         let mut terrain_textures = TerrainTextureState::default();

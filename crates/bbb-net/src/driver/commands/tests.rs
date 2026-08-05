@@ -1,7 +1,7 @@
 use super::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
-    send_chat_command_signed, send_chat_message, send_chat_session_update, send_client_command,
+    send_chat_command_signed, send_chat_message, send_client_command,
     send_command_suggestion_request, send_configuration_client_information,
     send_container_button_click, send_container_click, send_container_close,
     send_container_slot_state_changed, send_custom_payload, send_debug_subscription_request,
@@ -31,12 +31,12 @@ use bbb_protocol::{
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
         ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage,
-        ChatSessionUpdate, ClientCommandAction, CommandBlockMode, CommandSuggestionRequest,
-        ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
-        ContainerSlotStateChanged, DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery,
-        GameType, HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity,
-        InteractionHand, ItemStackSummary, JigsawGenerate, JigsawJoint, LockDifficultyCommand,
-        PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        ClientCommandAction, CommandBlockMode, CommandSuggestionRequest, ContainerButtonClick,
+        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+        DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery, GameType,
+        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
+        ItemStackSummary, JigsawGenerate, JigsawJoint, LockDifficultyCommand, PaddleBoat,
+        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
         PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
         RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
         SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCommandBlock,
@@ -618,53 +618,6 @@ async fn send_chat_message_encodes_unsigned_chat_packet() {
     send_chat_message(
         &mut conn,
         ChatMessage::unsigned("hello", 1_717_986_918_300, 0x0102_0304_0506_0708),
-    )
-    .await
-    .unwrap();
-
-    server.await.unwrap();
-}
-
-#[tokio::test]
-async fn send_chat_session_update_encodes_profile_key_packet() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    let session_id = Uuid::from_u128(0x12345678_90ab_cdef_1020_304050607080);
-    let server = tokio::spawn(async move {
-        let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection::from_stream(stream, None);
-        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
-            .await
-            .expect("chat session update should be sent")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_SESSION_UPDATE);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_uuid().unwrap(), session_id);
-        assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
-        assert_eq!(decoder.read_var_i32().unwrap(), 3);
-        assert_eq!(
-            decoder.read_exact(3, "profile public key").unwrap(),
-            &[1, 2, 3]
-        );
-        assert_eq!(decoder.read_var_i32().unwrap(), 4);
-        assert_eq!(
-            decoder.read_exact(4, "key signature").unwrap(),
-            &[4, 5, 6, 7]
-        );
-        assert!(decoder.is_empty());
-    });
-    let mut conn = RawConnection::connect(&addr.to_string(), None)
-        .await
-        .unwrap();
-
-    send_chat_session_update(
-        &mut conn,
-        ChatSessionUpdate {
-            session_id,
-            expires_at_epoch_millis: 1_717_986_918_300,
-            public_key: vec![1, 2, 3],
-            key_signature: vec![4, 5, 6, 7],
-        },
     )
     .await
     .unwrap();

@@ -150,9 +150,8 @@ use sound_subtitle_runtime::SoundSubtitleRuntime;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, effective_framerate_limit,
     init_tracing, load_known_packs_manager, load_pack_roots, parse_args,
-    run_build_info_if_requested, run_probe_if_requested, run_status_if_requested,
-    services_block_list_client_from_args, spawn_frame_tick, start_control_api,
-    start_network_if_requested,
+    run_build_info_if_requested, run_probe_if_requested, run_status_if_requested, spawn_frame_tick,
+    start_control_api, start_network_if_requested,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 use win_screen_resources::WinScreenResources;
@@ -633,16 +632,12 @@ fn run_client(args: startup::Args) -> Result<()> {
     );
     let snapshot = control.snapshot.clone();
     let published_world = control.world.clone();
-    let services_block_lists = ServicesBlockListRuntime::new(
-        runtime.handle().clone(),
-        simulation_mailbox.clone(),
-        services_block_list_client_from_args(&args)?,
-    );
+    let services_block_lists =
+        ServicesBlockListRuntime::new(runtime.handle().clone(), simulation_mailbox.clone());
     let mut world = WorldStore::new();
     world.set_local_player_auto_jump_enabled(args.client_auto_jump);
     world.set_tutorial_step(args.tutorial_step.into());
     world.set_social_server_label(args.server.clone());
-    world.set_player_report_environment(startup::player_report_environment_from_args(&args));
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     world.set_chat_presentation_config(ChatPresentationConfig {
         visibility: ChatVisibilityState::from(bbb_protocol::packets::ClientChatVisibility::from(
@@ -698,9 +693,7 @@ fn run_client(args: startup::Args) -> Result<()> {
         &simulation_mailbox,
     )?;
     let (net_events, net_commands) = network_runtime.take_channels();
-    let profile_id = args
-        .profile_id
-        .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
+    let profile_id = bbb_protocol::codec::offline_player_uuid(&args.username);
     world.set_local_player_profile_id(profile_id);
     let server_resource_pack_runtime = ServerResourcePackRuntime::new(
         runtime.handle().clone(),
@@ -1182,7 +1175,6 @@ fn run_client(args: startup::Args) -> Result<()> {
             tick_residual: client_animation_ticks.entity_partial_tick(),
             tick_anchor: Instant::now(),
             running: true,
-            play_session_encrypted: false,
             code_of_conduct_accepted: false,
             net_counters: &net_counters,
             renderer_counters: &renderer_counters,
@@ -1208,7 +1200,6 @@ fn run_client(args: startup::Args) -> Result<()> {
         first_person_hand_presentation: Default::default(),
         world,
         net_counters,
-        play_session_encrypted: false,
         client_animation_ticks,
         camera_fov_ticks,
         camera_eye_height_ticks,

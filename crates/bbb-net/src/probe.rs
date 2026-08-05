@@ -182,13 +182,7 @@ async fn run_probe_inner(options: ConnectionOptions) -> Result<ProbeReport> {
         match probe.state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
-                probe
-                    .handle_login_packet(
-                        packet,
-                        options.session_credentials.as_ref(),
-                        options.timeout,
-                    )
-                    .await?;
+                probe.handle_login_packet(packet).await?;
                 packet_first_chunks.push(None);
             }
             ConnectionState::Configuration => {
