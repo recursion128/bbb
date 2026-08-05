@@ -974,6 +974,13 @@ fn run_client(args: startup::Args) -> Result<()> {
     )?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
     renderer.set_glint_settings(args.client_glint_speed, args.client_glint_strength as f32);
+    renderer.set_cloud_status(
+        args.render_clouds != startup::RenderCloudsArg::Off,
+        match args.render_clouds {
+            startup::RenderCloudsArg::Fast => bbb_renderer::CloudShape::Flat,
+            _ => bbb_renderer::CloudShape::Fancy,
+        },
+    );
     renderer.set_menu_background_blurriness(args.menu_background_blurriness);
     renderer.set_hud_text_background_options(
         args.text_background_opacity,

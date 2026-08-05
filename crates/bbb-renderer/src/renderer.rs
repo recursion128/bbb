@@ -624,6 +624,9 @@ pub struct Renderer {
     pub(super) cloud_environment: CloudEnvironment,
     pub(super) cloud_frame: CloudFrame,
     pub(super) cloud_shape: CloudShape,
+    /// Vanilla `CloudStatus.OFF` (`renderClouds: "false"`): `LevelRenderer`
+    /// skips the cloud pass entirely.
+    pub(super) clouds_enabled: bool,
     pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) end_sky_mesh: EndSkyGpu,
     pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
@@ -2439,6 +2442,7 @@ impl Renderer {
             cloud_environment: CloudEnvironment::default(),
             cloud_frame: CloudFrame::default(),
             cloud_shape: CloudShape::default(),
+            clouds_enabled: true,
             sky_disc: None,
             end_sky_mesh,
             end_sky_texture: None,
@@ -4426,6 +4430,13 @@ impl Renderer {
         } else {
             self.write_cloud_uniform();
         }
+    }
+
+    /// Vanilla `Options.cloudStatus`: `OFF` skips the cloud pass, `FAST`
+    /// builds the flat mesh, `FANCY` the boxed one.
+    pub fn set_cloud_status(&mut self, enabled: bool, shape: CloudShape) {
+        self.clouds_enabled = enabled;
+        self.set_cloud_shape(shape);
     }
 
     pub fn set_cloud_shape(&mut self, shape: CloudShape) {

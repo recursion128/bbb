@@ -2617,6 +2617,9 @@ impl Renderer {
     }
 
     fn clouds_pass(&self, encoder: &mut wgpu::CommandEncoder, stats: &mut FrameDrawStats) {
+        if !self.clouds_enabled {
+            return;
+        }
         if let Some(clouds) = &self.clouds {
             if self.fog_environment.cloud_end > 0.0 {
                 let improved = self.level_frame_route.uses_improved_transparency();
@@ -6573,6 +6576,23 @@ mod tests {
                 && map_source.contains("&self.gui_item_camera_buffer"),
             "GUI map pages and layers must use the GUI orthographic camera"
         );
+    }
+
+    #[test]
+    fn clouds_off_exits_the_pass_before_any_encoding() {
+        // Vanilla `CloudStatus.OFF` skips `LevelRenderer` cloud rendering
+        // entirely; the gate must precede the render-pass begin.
+        let source = include_str!("render.rs");
+        let pass = source.find("fn clouds_pass(").expect("clouds pass");
+        let gate = source[pass..]
+            .find("if !self.clouds_enabled")
+            .map(|index| pass + index)
+            .expect("clouds-off gate");
+        let begin = source[pass..]
+            .find("begin_render_pass")
+            .map(|index| pass + index)
+            .expect("clouds pass encoder");
+        assert!(pass < gate && gate < begin);
     }
 
     #[test]

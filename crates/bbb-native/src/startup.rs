@@ -294,6 +294,12 @@ pub(crate) struct Args {
     )]
     pub(crate) cloud_range_chunks: u32,
     #[arg(
+        long = "render-clouds",
+        default_value = "fancy",
+        value_parser = parse_stored_render_clouds
+    )]
+    pub(crate) render_clouds: RenderCloudsArg,
+    #[arg(
         long = "client-framerate-limit",
         default_value_t = VANILLA_UNLIMITED_FRAMERATE_LIMIT,
         value_parser = parse_client_framerate_limit
@@ -467,6 +473,15 @@ impl From<ClientNarratorArg> for NarratorStatus {
             ClientNarratorArg::System => Self::System,
         }
     }
+}
+
+/// Vanilla `CloudStatus` (`renderClouds`), legacy-encoded as `"true"`
+/// (fancy), `"fast"`, and `"false"` (off); default fancy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum RenderCloudsArg {
+    Off,
+    Fast,
+    Fancy,
 }
 
 /// Vanilla `InactivityFpsLimit` (`inactivityFpsLimit`), default `AFK`.
@@ -848,6 +863,13 @@ fn bind_stored_client_options(
         Integer,
         cloud_range_chunks,
         parse_cloud_range
+    );
+    parsed!(
+        "render_clouds",
+        "renderClouds",
+        EnumNameOrBoolean,
+        render_clouds,
+        parse_stored_render_clouds
     );
     parsed!(
         "client_framerate_limit",
@@ -1369,6 +1391,21 @@ fn parse_cloud_range(value: &str) -> std::result::Result<u32, String> {
         Err(format!(
             "cloud range must be between {VANILLA_MIN_CLOUD_RANGE_CHUNKS} and {VANILLA_MAX_CLOUD_RANGE_CHUNKS} chunks"
         ))
+    }
+}
+
+/// `CloudStatus.CODEC` reads the legacy serialized names; the pre-enum
+/// `options.txt` shape also stored bare booleans, which
+/// `EnumNameOrBoolean` still loads. The friendly names stay accepted for
+/// the command line.
+fn parse_stored_render_clouds(value: &str) -> std::result::Result<RenderCloudsArg, String> {
+    match value.trim_matches('"') {
+        "true" | "fancy" => Ok(RenderCloudsArg::Fancy),
+        "fast" => Ok(RenderCloudsArg::Fast),
+        "false" | "off" => Ok(RenderCloudsArg::Off),
+        other => Err(format!(
+            "render clouds must be true, fast, false, fancy or off, got {other}"
+        )),
     }
 }
 
@@ -2042,6 +2079,30 @@ mod tests {
             effective_framerate_limit(base, minimized, true, 0, true, false),
             10
         );
+    }
+
+    #[test]
+    fn stored_render_clouds_reads_legacy_names_and_booleans() {
+        // `CloudStatus` legacy names: "true" fancy, "fast", "false" off; the
+        // EnumNameOrBoolean shape also loads bare booleans.
+        assert_eq!(
+            parse_stored_render_clouds("\"true\""),
+            Ok(RenderCloudsArg::Fancy)
+        );
+        assert_eq!(
+            parse_stored_render_clouds("true"),
+            Ok(RenderCloudsArg::Fancy)
+        );
+        assert_eq!(
+            parse_stored_render_clouds("\"fast\""),
+            Ok(RenderCloudsArg::Fast)
+        );
+        assert_eq!(
+            parse_stored_render_clouds("false"),
+            Ok(RenderCloudsArg::Off)
+        );
+        assert_eq!(parse_stored_render_clouds("off"), Ok(RenderCloudsArg::Off));
+        assert!(parse_stored_render_clouds("\"sometimes\"").is_err());
     }
 
     #[test]
