@@ -1,6 +1,8 @@
-use super::dropped::bake_item_stack_at_transform;
 #[cfg(test)]
 use super::dropped::resident_item_test_meshes;
+use super::dropped::{
+    bake_item_stack_at_transform, bake_item_stack_at_transform_with_light_and_overlay,
+};
 use super::*;
 
 /// Vanilla `BrushItem.USE_DURATION`. The first-person BRUSH swipe uses the
@@ -88,6 +90,7 @@ pub(crate) fn first_person_item_models(
         &mut map_textures,
         camera_pose,
         partial_ticks,
+        1.0,
     )
 }
 
@@ -100,21 +103,78 @@ pub(crate) fn first_person_item_models_with_map_cache(
     map_texture_cache: &mut MapTextureExtractionCache,
     camera_pose: Option<CameraPose>,
     partial_ticks: f32,
+    aspect_ratio: f32,
 ) -> FirstPersonItemModels {
     let mut models = FirstPersonItemModels::empty();
     let (Some(item_runtime), Some(camera_pose)) = (item_runtime, camera_pose) else {
         return models;
     };
+    append_first_person_hand_item_models(
+        world,
+        hand_presentation,
+        item_runtime,
+        terrain_textures,
+        variant_textures,
+        map_texture_cache,
+        camera_pose,
+        partial_ticks,
+        &mut models,
+    );
+    append_item_activation_item_model(
+        world,
+        item_runtime,
+        terrain_textures,
+        variant_textures,
+        camera_pose,
+        partial_ticks,
+        aspect_ratio,
+        &mut models,
+    );
+    #[cfg(test)]
+    {
+        let test_meshes = resident_item_test_meshes(&models.residency);
+        models.block_meshes.extend(test_meshes.block);
+        models
+            .block_translucent_meshes
+            .extend(test_meshes.block_translucent);
+        models.block_glint_meshes.extend(test_meshes.block_glint);
+        models
+            .block_glint_translucent_meshes
+            .extend(test_meshes.block_glint_translucent);
+        models.flat_meshes.extend(test_meshes.flat);
+        models
+            .flat_translucent_meshes
+            .extend(test_meshes.flat_translucent);
+        models.flat_glint_meshes.extend(test_meshes.flat_glint);
+        models
+            .flat_glint_translucent_meshes
+            .extend(test_meshes.flat_glint_translucent);
+    }
+    models
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_first_person_hand_item_models(
+    world: &WorldStore,
+    hand_presentation: &FirstPersonHandPresentation,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    map_texture_cache: &mut MapTextureExtractionCache,
+    camera_pose: CameraPose,
+    partial_ticks: f32,
+    models: &mut FirstPersonItemModels,
+) {
     // Vanilla `renderItemInHand`: no hands while the camera entity sleeps
     // (`cameraState.entityRenderState.isSleeping`).
     if !world.local_player().camera.follows_player
         || world.local_player_is_spectator()
         || world.local_player_is_sleeping()
     {
-        return models;
+        return;
     }
     if world.local_player_is_scoping() {
-        return models;
+        return;
     }
 
     let main_stack = hand_presentation.visible_stack(InteractionHand::MainHand);
@@ -146,7 +206,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
         if !stack.is_some_and(|stack| {
             first_person_stack_supported_use_animation(world, stack, item_runtime).is_some()
         }) {
-            return models;
+            return;
         }
     }
     if [main_stack, off_stack]
@@ -154,7 +214,7 @@ pub(crate) fn first_person_item_models_with_map_cache(
         .flatten()
         .any(|stack| !supported_first_person_item_stack(stack, item_runtime))
     {
-        return models;
+        return;
     }
 
     let enchantment_keys = world_enchantment_keys(world);
@@ -444,27 +504,107 @@ pub(crate) fn first_person_item_models_with_map_cache(
     if !models.map_decoration_surfaces.is_empty() {
         models.map_decoration_textures = item_runtime.map_decoration_textures().to_vec();
     }
-    #[cfg(test)]
-    {
-        let test_meshes = resident_item_test_meshes(&models.residency);
-        models.block_meshes.extend(test_meshes.block);
-        models
-            .block_translucent_meshes
-            .extend(test_meshes.block_translucent);
-        models.block_glint_meshes.extend(test_meshes.block_glint);
-        models
-            .block_glint_translucent_meshes
-            .extend(test_meshes.block_glint_translucent);
-        models.flat_meshes.extend(test_meshes.flat);
-        models
-            .flat_translucent_meshes
-            .extend(test_meshes.flat_translucent);
-        models.flat_glint_meshes.extend(test_meshes.flat_glint);
-        models
-            .flat_glint_translucent_meshes
-            .extend(test_meshes.flat_glint_translucent);
+}
+
+/// Vanilla `ScreenEffectRenderer.renderItemActivationAnimation`: the totem
+/// pops in view space under the hud projection with `ItemDisplayContext.FIXED`
+/// and full-bright light, regardless of camera mode, sleeping, or spectator —
+/// its only gate is `hideGui`, which the shared first-person pass applies.
+#[allow(clippy::too_many_arguments)]
+fn append_item_activation_item_model(
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    variant_textures: Option<&crate::entity_variant_textures::NativeEntityVariantTextureRuntime>,
+    camera_pose: CameraPose,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+    models: &mut FirstPersonItemModels,
+) {
+    let Some(state) = world.item_activation() else {
+        return;
+    };
+    if state.ticks_remaining == 0 {
+        return;
     }
-    models
+    let attach = first_person_camera_world_transform(camera_pose)
+        * item_activation_view_transform(
+            state.ticks_remaining,
+            state.off_x,
+            state.off_y,
+            partial_ticks,
+            aspect_ratio,
+        );
+    let enchantment_keys = world_enchantment_keys(world);
+    let damage_type_keys = world_damage_type_keys(world);
+    let trim_material_keys = world_trim_material_keys(world);
+    let attribute_keys = world_attribute_keys(world);
+    // Vanilla `updateForTopItem(itemState, item, FIXED, level, null, 0)`
+    // resolves the model with no owning entity or hand.
+    bake_item_stack_at_transform_with_light_and_overlay(
+        &state.item,
+        world,
+        attach,
+        BlockModelDisplayContext::Fixed,
+        false,
+        None,
+        None,
+        None,
+        None,
+        false,
+        0.0,
+        enchantment_keys.as_deref(),
+        damage_type_keys.as_deref(),
+        trim_material_keys.as_deref(),
+        attribute_keys.as_deref(),
+        world.level_info().map(|level| level.dimension.as_str()),
+        BlockModelDisplayTransform::default(),
+        BlockModelDisplayTransform::default(),
+        item_runtime,
+        terrain_textures,
+        variant_textures,
+        &mut models.block_meshes,
+        &mut models.block_translucent_meshes,
+        &mut models.block_glint_meshes,
+        &mut models.block_glint_translucent_meshes,
+        &mut models.flat_meshes,
+        &mut models.flat_translucent_meshes,
+        &mut models.flat_glint_meshes,
+        &mut models.flat_glint_translucent_meshes,
+        &mut models.residency,
+        ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        ITEM_MODEL_NO_OVERLAY,
+        ItemModelDrawTarget::FirstPerson,
+    );
+}
+
+/// The vanilla item-activation pose-stack transform: the smoothed scale
+/// polynomial drives translation `(offX*0.3*aspect*|sin(2πs)|,
+/// offY*0.3*|sin(2πs)|, -10+9sin(πs))`, a uniform 0.8 scale,
+/// `rotY(900°*|sin(πs)|)` and `rotX/Z(6°*cos(8*scale))`.
+pub(super) fn item_activation_view_transform(
+    ticks_remaining: u32,
+    off_x: f32,
+    off_y: f32,
+    partial_ticks: f32,
+    aspect_ratio: f32,
+) -> Mat4 {
+    let length = bbb_world::VANILLA_ITEM_ACTIVATION_ANIMATION_LENGTH_TICKS as f32;
+    let tick = length - ticks_remaining as f32;
+    let scale = (tick + partial_ticks) / length;
+    let ts = scale * scale;
+    let tc = scale * ts;
+    let smooth_scale = 10.25 * tc * ts - 24.95 * ts * ts + 25.5 * tc - 13.8 * ts + 4.0 * scale;
+    let pi_scale = smooth_scale * std::f32::consts::PI;
+    let wobble = (pi_scale * 2.0).sin().abs();
+    Mat4::from_translation(Vec3::new(
+        off_x * 0.3 * aspect_ratio * wobble,
+        off_y * 0.3 * wobble,
+        -10.0 + 9.0 * pi_scale.sin(),
+    )) * Mat4::from_scale(Vec3::splat(0.8))
+        * Mat4::from_rotation_y((900.0 * pi_scale.sin().abs()).to_radians())
+        * Mat4::from_rotation_x((6.0 * (scale * 8.0).cos()).to_radians())
+        * Mat4::from_rotation_z((6.0 * (scale * 8.0).cos()).to_radians())
 }
 
 pub(crate) fn first_person_player_arms(

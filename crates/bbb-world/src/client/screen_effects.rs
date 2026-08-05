@@ -387,20 +387,20 @@ mod tests {
         // `DataComponents.DEATH_PROTECTION` and clones the first match.
         let mut world = world_with_local_player(42);
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary::default();
-        patch
-            .added_type_ids
-            .push(bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID);
+        patch.added_type_ids.push(
+            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        );
         let charm = bbb_protocol::packets::ItemStackSummary {
             item_id: Some(1),
             count: 1,
             component_patch: patch,
         };
-        assert!(world.apply_set_player_inventory(
-            bbb_protocol::packets::SetPlayerInventory {
+        assert!(
+            world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
                 slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
                 item: charm.clone(),
-            }
-        ));
+            })
+        );
 
         totem_event(&mut world, 42);
         let state = world.item_activation().expect("item activation");

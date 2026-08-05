@@ -2914,6 +2914,10 @@ pub(crate) fn advance_simulation(
         item_runtime.as_ref(),
     );
     world.advance_block_destruction_render_ticks(running_ticks);
+    // Vanilla `GameRenderer.tick` runs `ScreenEffectRenderer.tick` (the
+    // item-activation countdown) inside the `tickRateManager().runsNormally()`
+    // branch, so the totem animation freezes with the level.
+    world.advance_item_activation_ticks(running_ticks);
     level_profile_duration = level_profile_duration
         .saturating_add(optional_profile_elapsed(level_environment_started_at));
     push_simulation_profile_duration(
@@ -4583,6 +4587,8 @@ pub(crate) fn update_renderer_from_publication(
         gui_surface_size.height,
         map_texture_cache,
     );
+    // Vanilla `renderItemActivationAnimation` spreads the totem's horizontal
+    // offset by the framebuffer aspect (`windowRenderState.width / height`).
     let first_person_item_models = first_person_item_models_with_map_cache(
         world,
         &publication.first_person_hand_presentation,
@@ -4592,6 +4598,7 @@ pub(crate) fn update_renderer_from_publication(
         map_texture_cache,
         first_person_camera_pose,
         entity_partial_tick,
+        physical_surface_size.width as f32 / (physical_surface_size.height.max(1)) as f32,
     );
     // Vanilla `GameRenderer.renderItemInHand` samples the local player's visible arm state,
     // held stacks, frame light, and partial-tick attack swing during the first-person hand pass,

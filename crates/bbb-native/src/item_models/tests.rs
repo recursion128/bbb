@@ -1901,6 +1901,111 @@ fn first_person_item_models_apply_local_player_whack_swing() {
 }
 
 #[test]
+fn first_person_item_models_render_the_item_activation_totem_pop() {
+    let root = unique_item_model_temp_dir("first-person-item-activation");
+    write_flat_item_runtime_fixture(&root, &["hand_item"]);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let camera = Some(CameraPose {
+        position: [0.0, 64.0, 0.0],
+        y_rot: 0.0,
+        x_rot: 0.0,
+        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    });
+    let terrain = TerrainTextureState::default();
+    let mut world = world_with_level_dimension("minecraft:overworld");
+    world.apply_add_entity(protocol_add_entity(
+        1,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let mut patch = DataComponentPatchSummary::default();
+    patch
+        .added_type_ids
+        .push(bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID);
+    world.apply_set_player_inventory(SetPlayerInventory {
+        slot: 0,
+        item: ItemStackSummary {
+            item_id: item_runtime.item_protocol_id("minecraft:hand_item"),
+            count: 1,
+            component_patch: patch,
+        },
+    });
+
+    let before = first_person_item_models(&world, Some(&item_runtime), &terrain, camera, 0.0);
+    assert_eq!(
+        before.flat_meshes.len(),
+        1,
+        "only the held stack renders before the totem event"
+    );
+
+    let mut random = bbb_world::LevelEventSoundRandomState::with_seed(0);
+    assert!(world
+        .apply_play_packet(
+            bbb_protocol::packets::PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 1,
+                event_id: 35,
+            }),
+            &mut random,
+            &mut bbb_world::NoPlayApplyEffects,
+        )
+        .is_none());
+    let with_totem = first_person_item_models(&world, Some(&item_runtime), &terrain, camera, 0.0);
+    assert_eq!(
+        with_totem.flat_meshes.len(),
+        2,
+        "the activated stack pops beside the held stack"
+    );
+
+    // Vanilla gates `renderItemActivationAnimation` only on hideGui: a
+    // sleeping camera player suppresses the hands but keeps the pop.
+    let accessors = bbb_world::vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 1,
+        values: vec![EntityDataValue {
+            data_id: accessors.pose_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+            value: EntityDataValueKind::Pose(
+                bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID
+            ),
+        }],
+    }));
+    let sleeping = first_person_item_models(&world, Some(&item_runtime), &terrain, camera, 0.0);
+    assert_eq!(
+        sleeping.flat_meshes.len(),
+        1,
+        "the sleeping gate hides the hands, not the item activation"
+    );
+
+    // `ScreenEffectRenderer.tick` nulls the item at zero and the pop stops.
+    world.advance_item_activation_ticks(40);
+    let expired = first_person_item_models(&world, Some(&item_runtime), &terrain, camera, 0.0);
+    assert!(expired.flat_meshes.is_empty());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn item_activation_view_transform_matches_the_vanilla_pose_stack() {
+    // tick 10 of 40, partial 0.5, offX 1, offY -1, aspect 2: probe points
+    // computed independently from the vanilla formula
+    // (translate(offX*0.3*aspect*|sin(2πs)|, offY*0.3*|sin(2πs)|, -10+9sin(πs))
+    // * scale(0.8) * rotY(900|sin(πs)|°) * rotX(6cos(8*scale)°)
+    // * rotZ(6cos(8*scale)°)).
+    let transform = item_activation_view_transform(30, 1.0, -1.0, 0.5, 2.0);
+    let origin = transform.transform_point3(Vec3::ZERO);
+    let forward = transform.transform_point3(Vec3::Z);
+    assert!(
+        origin.abs_diff_eq(Vec3::new(0.168_676, -0.084_338, -1.091_203), 1.0e-4),
+        "{origin:?}"
+    );
+    assert!(
+        forward.abs_diff_eq(Vec3::new(0.295_306, -0.042_064, -1.879_986), 1.0e-4),
+        "{forward:?}"
+    );
+}
+
+#[test]
 fn first_person_item_models_skip_unsupported_using_and_missing_map_data() {
     let root = unique_item_model_temp_dir("first-person-special-skip");
     write_flat_item_runtime_fixture(&root, &["hand_item", "filled_map"]);
@@ -2067,6 +2172,7 @@ fn first_person_item_models_render_two_handed_filled_map_surface() {
         None,
         &mut map_texture_cache,
         Some(pose),
+        1.0,
         1.0,
     );
     assert_eq!(
