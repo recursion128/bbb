@@ -11,6 +11,8 @@ const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
 const HUD_HOTBAR_SLOT_SPACING: f32 = 20.0;
 const HUD_HOTBAR_ITEM_SIZE: u32 = 16;
+const HUD_HOTBAR_OFFHAND_WIDTH: u32 = 29;
+const HUD_HOTBAR_ATTACK_INDICATOR_SIZE: u32 = 18;
 const HUD_EXPERIENCE_BAR_WIDTH: u32 = 182;
 const HUD_EXPERIENCE_BAR_HEIGHT: u32 = 5;
 const HUD_EXPERIENCE_MARGIN_BOTTOM: f32 = 24.0;
@@ -421,6 +423,109 @@ pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize)
         y: hotbar.y + 3.0,
         width: HUD_HOTBAR_ITEM_SIZE,
         height: HUD_HOTBAR_ITEM_SIZE,
+    }
+}
+
+/// Vanilla `Gui.extractItemHotbar` offhand background (Gui.java:562-568): the
+/// `hud/hotbar_offhand_left` sprite sits at `screenCenter - 91 - 29`, the right
+/// one at `screenCenter + 91`, both one pixel above the hotbar strip at
+/// `guiHeight - 23` and both 29x24.
+pub(super) fn hotbar_offhand_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    on_left: bool,
+    width: u32,
+    height: u32,
+) -> HudRect {
+    let hotbar = hotbar_hud_rect(surface_size, HUD_HOTBAR_WIDTH, HUD_HOTBAR_HEIGHT);
+    HudRect {
+        x: if on_left {
+            hotbar.x - HUD_HOTBAR_OFFHAND_WIDTH as f32
+        } else {
+            hotbar.x + HUD_HOTBAR_WIDTH as f32
+        },
+        y: hotbar.y - 1.0,
+        width,
+        height,
+    }
+}
+
+/// Vanilla `Gui.extractItemHotbar` offhand slot (Gui.java:577-583): the item
+/// draws at `screenCenter - 91 - 26` / `screenCenter + 91 + 10`, sharing the
+/// hotbar slots' `guiHeight - 16 - 3` baseline.
+pub(super) fn hotbar_offhand_item_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    on_left: bool,
+) -> HudRect {
+    let hotbar = hotbar_hud_rect(surface_size, HUD_HOTBAR_WIDTH, HUD_HOTBAR_HEIGHT);
+    HudRect {
+        x: if on_left {
+            hotbar.x - 26.0
+        } else {
+            hotbar.x + HUD_HOTBAR_WIDTH as f32 + 10.0
+        },
+        y: hotbar.y + 3.0,
+        width: HUD_HOTBAR_ITEM_SIZE,
+        height: HUD_HOTBAR_ITEM_SIZE,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudHotbarAttackIndicatorLayout {
+    pub(super) background: HudRect,
+    pub(super) progress: HudRect,
+    pub(super) progress_uv: HudUvRect,
+}
+
+/// Vanilla `Gui.extractItemHotbar`'s hotbar attack indicator progress bar
+/// (Gui.java:596-599): `(int)(scale * 19)` pixels of the 18x18 progress sprite
+/// fill upward from the bottom edge, so both the source and the destination
+/// start at `18 - progress`.
+pub(super) fn hud_hotbar_attack_indicator_layout(
+    surface_size: PhysicalSize<u32>,
+    strength_scale: f32,
+    main_arm_left: bool,
+) -> HudHotbarAttackIndicatorLayout {
+    let background = hotbar_attack_indicator_hud_rect(surface_size, main_arm_left);
+    let strength_scale = if strength_scale.is_finite() {
+        strength_scale.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let filled = ((strength_scale * 19.0) as u32).min(HUD_HOTBAR_ATTACK_INDICATOR_SIZE);
+    let empty = HUD_HOTBAR_ATTACK_INDICATOR_SIZE - filled;
+    HudHotbarAttackIndicatorLayout {
+        background,
+        progress: HudRect {
+            x: background.x,
+            y: background.y + empty as f32,
+            width: HUD_HOTBAR_ATTACK_INDICATOR_SIZE,
+            height: filled,
+        },
+        progress_uv: HudUvRect {
+            min: [0.0, empty as f32 / HUD_HOTBAR_ATTACK_INDICATOR_SIZE as f32],
+            max: [1.0, 1.0],
+        },
+    }
+}
+
+/// Vanilla `Gui.extractItemHotbar` hotbar attack indicator
+/// (Gui.java:586-600): drawn only for `AttackIndicatorStatus.HOTBAR` while the
+/// attack strength is still charging, outside the hotbar on the main-arm side
+/// at `guiHeight - 20`, 18x18.
+fn hotbar_attack_indicator_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    main_arm_left: bool,
+) -> HudRect {
+    let hotbar = hotbar_hud_rect(surface_size, HUD_HOTBAR_WIDTH, HUD_HOTBAR_HEIGHT);
+    HudRect {
+        x: if main_arm_left {
+            hotbar.x - 22.0
+        } else {
+            hotbar.x + HUD_HOTBAR_WIDTH as f32 + 6.0
+        },
+        y: hotbar.y + 2.0,
+        width: HUD_HOTBAR_ATTACK_INDICATOR_SIZE,
+        height: HUD_HOTBAR_ATTACK_INDICATOR_SIZE,
     }
 }
 
@@ -1567,6 +1672,57 @@ pub(super) fn hud_inventory_tooltip_sprite_segments(
 mod tests {
     use super::super::{HudAsciiGlyph, HudTextStyle};
     use super::*;
+
+    #[test]
+    fn offhand_slot_layout_mirrors_vanilla_hotbar_offsets_on_both_sides() {
+        let size = PhysicalSize::new(320, 240);
+        let hotbar = hotbar_hud_rect(size, 182, 22);
+        assert_eq!(hud_rect_bounds(hotbar), (69.0, 218.0, 251.0, 240.0));
+
+        let left = hotbar_offhand_hud_rect(size, true, 29, 24);
+        assert_eq!(hud_rect_bounds(left), (40.0, 217.0, 69.0, 241.0));
+        let right = hotbar_offhand_hud_rect(size, false, 29, 24);
+        assert_eq!(hud_rect_bounds(right), (251.0, 217.0, 280.0, 241.0));
+
+        let left_item = hotbar_offhand_item_hud_rect(size, true);
+        assert_eq!(hud_rect_bounds(left_item), (43.0, 221.0, 59.0, 237.0));
+        let right_item = hotbar_offhand_item_hud_rect(size, false);
+        assert_eq!(hud_rect_bounds(right_item), (261.0, 221.0, 277.0, 237.0));
+    }
+
+    #[test]
+    fn hotbar_attack_indicator_layout_fills_upward_on_the_main_arm_side() {
+        let size = PhysicalSize::new(320, 240);
+        let right_handed = hud_hotbar_attack_indicator_layout(size, 0.5, false);
+        assert_eq!(
+            hud_rect_bounds(right_handed.background),
+            (257.0, 220.0, 275.0, 238.0)
+        );
+        assert_eq!(
+            hud_rect_bounds(right_handed.progress),
+            (257.0, 229.0, 275.0, 238.0)
+        );
+        assert_eq!(
+            right_handed.progress_uv,
+            HudUvRect {
+                min: [0.0, 0.5],
+                max: [1.0, 1.0],
+            }
+        );
+
+        let left_handed = hud_hotbar_attack_indicator_layout(size, 0.5, true);
+        assert_eq!(
+            hud_rect_bounds(left_handed.background),
+            (47.0, 220.0, 65.0, 238.0)
+        );
+
+        let empty = hud_hotbar_attack_indicator_layout(size, 0.0, false);
+        assert_eq!(empty.progress.height, 0);
+        assert_eq!(empty.progress_uv.min[1], 1.0);
+        let nearly_full = hud_hotbar_attack_indicator_layout(size, 0.999, false);
+        assert_eq!(nearly_full.progress.height, 18);
+        assert_eq!(nearly_full.progress_uv.min[1], 0.0);
+    }
 
     #[test]
     fn crosshair_attack_indicator_layout_matches_vanilla_pixels_and_progress_crop() {

@@ -572,6 +572,17 @@ impl InventoryState {
 
         items
     }
+
+    /// The `Inventory` offhand stack `Gui.extractItemHotbar` reads
+    /// (`Player.getOffhandItem()`), in the same shape as a hotbar slot.
+    pub fn offhand_item_state(&self) -> HotbarItemState {
+        self.local_offhand_slot()
+            .map(|(item, local_selected_bundle_item_index)| HotbarItemState {
+                item: item.clone(),
+                local_selected_bundle_item_index,
+            })
+            .unwrap_or_default()
+    }
 }
 
 impl InventoryState {
@@ -2809,16 +2820,23 @@ impl InventoryState {
     }
 
     fn local_offhand_item(&self) -> Option<&ProtocolItemStackSummary> {
-        if let Some(item) = self.player_slots.iter().find_map(|slot| {
-            (slot.slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT).then_some(&slot.item)
-        }) {
-            return Some(item);
+        self.local_offhand_slot().map(|(item, _)| item)
+    }
+
+    fn local_offhand_slot(&self) -> Option<(&ProtocolItemStackSummary, i32)> {
+        if let Some(slot) = self
+            .player_slots
+            .iter()
+            .find(|slot| slot.slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT)
+        {
+            return Some((&slot.item, slot.local_selected_bundle_item_index));
         }
 
         self.inventory_menu
             .slots
             .iter()
-            .find_map(|slot| (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item))
+            .find(|slot| slot.slot == INVENTORY_MENU_OFFHAND_SLOT)
+            .map(|slot| (&slot.item, slot.local_selected_bundle_item_index))
     }
 
     pub(crate) fn local_player_has_freeze_immune_wearable(&self, ctx: InventoryCtx<'_>) -> bool {

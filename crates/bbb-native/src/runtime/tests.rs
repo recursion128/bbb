@@ -28833,3 +28833,127 @@ fn the_render_distance_consumers_see_is_clamped_by_the_server_radius() {
     assert_eq!(effective_render_distance(16, world.chunk_cache_radius()), 8);
     assert_eq!(effective_render_distance(4, world.chunk_cache_radius()), 4);
 }
+
+#[test]
+fn offhand_hotbar_slot_follows_the_stack_and_the_opposite_main_arm() {
+    let mut world = WorldStore::new();
+    assert_eq!(hud_offhand_slot_side(&world), None);
+
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
+    assert_eq!(hud_offhand_slot_side(&world), Some(true));
+
+    world.apply_login(&PlayLogin {
+        player_id: 7,
+        ..offhand_test_login()
+    });
+    world.apply_add_entity(bbb_protocol::packets::AddEntity {
+        id: 7,
+        uuid: uuid::Uuid::from_u128(7),
+        entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        delta_movement: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
+    assert_eq!(hud_offhand_slot_side(&world), Some(true));
+
+    assert!(
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 7,
+            values: vec![test_humanoid_arm_data(
+                bbb_world::VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+                bbb_world::VANILLA_HUMANOID_ARM_LEFT_ID,
+            )],
+        })
+    );
+    assert_eq!(hud_offhand_slot_side(&world), Some(false));
+
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+    assert_eq!(hud_offhand_slot_side(&world), None);
+}
+
+#[test]
+fn the_hotbar_attack_indicator_only_charges_for_the_hotbar_option() {
+    let charging = Some(bbb_world::LocalPlayerCrosshairAttackIndicatorState {
+        strength_scale: 0.25,
+        full: false,
+    });
+    assert_eq!(
+        hud_hotbar_attack_indicator(true, charging, false),
+        HudHotbarAttackIndicator::Progress {
+            strength_scale: 0.25,
+            main_arm_left: false,
+        }
+    );
+    assert_eq!(
+        hud_hotbar_attack_indicator(true, charging, true),
+        HudHotbarAttackIndicator::Progress {
+            strength_scale: 0.25,
+            main_arm_left: true,
+        }
+    );
+    assert_eq!(
+        hud_hotbar_attack_indicator(false, charging, false),
+        HudHotbarAttackIndicator::None
+    );
+
+    let full = Some(bbb_world::LocalPlayerCrosshairAttackIndicatorState {
+        strength_scale: 1.0,
+        full: true,
+    });
+    assert_eq!(
+        hud_hotbar_attack_indicator(true, full, false),
+        HudHotbarAttackIndicator::None
+    );
+    assert_eq!(
+        hud_hotbar_attack_indicator(true, None, false),
+        HudHotbarAttackIndicator::None
+    );
+}
+
+fn offhand_test_login() -> PlayLogin {
+    PlayLogin {
+        player_id: 7,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    }
+}

@@ -206,6 +206,12 @@ pub(crate) struct Args {
     pub(crate) client_reduced_debug_info: bool,
     #[arg(long = "client-vignette", default_value_t = true, action = ArgAction::Set)]
     pub(crate) client_vignette: bool,
+    #[arg(
+        long = "client-attack-indicator",
+        value_enum,
+        default_value = "crosshair"
+    )]
+    pub(crate) client_attack_indicator: ClientAttackIndicatorArg,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
@@ -403,6 +409,15 @@ pub(crate) enum ClientParticleStatusArg {
     Minimal,
 }
 
+/// Vanilla `AttackIndicatorStatus` (`AttackIndicatorStatus.java:8-11`), stored
+/// in `options.txt` by its `id`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ClientAttackIndicatorArg {
+    Off,
+    Crosshair,
+    Hotbar,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum TerrainTextureFilteringArg {
     None,
@@ -452,6 +467,16 @@ impl From<ServerResourcePackPolicyArg> for ServerResourcePackPolicy {
         match value {
             ServerResourcePackPolicyArg::Accept => Self::Accept,
             ServerResourcePackPolicyArg::Decline => Self::Decline,
+        }
+    }
+}
+
+impl From<ClientAttackIndicatorArg> for crate::simulation::AttackIndicatorOption {
+    fn from(value: ClientAttackIndicatorArg) -> Self {
+        match value {
+            ClientAttackIndicatorArg::Off => Self::Off,
+            ClientAttackIndicatorArg::Crosshair => Self::Crosshair,
+            ClientAttackIndicatorArg::Hotbar => Self::Hotbar,
         }
     }
 }
@@ -539,6 +564,13 @@ fn bind_stored_client_options(
         client_reduced_debug_info
     );
     flag!("client_vignette", "vignette", client_vignette);
+    parsed!(
+        "client_attack_indicator",
+        "attackIndicator",
+        EnumId,
+        client_attack_indicator,
+        parse_stored_attack_indicator
+    );
     flag!("client_chat_colors", "chatColors", client_chat_colors);
     flag!("client_chat_links", "chatLinks", client_chat_links);
     flag!(
@@ -985,6 +1017,17 @@ fn parse_damage_tilt_strength(value: &str) -> std::result::Result<f32, String> {
         return Err("damage tilt strength must be between 0.0 and 1.0".to_string());
     }
     Ok(strength)
+}
+
+fn parse_stored_attack_indicator(
+    value: &str,
+) -> std::result::Result<ClientAttackIndicatorArg, String> {
+    match value {
+        "0" => Ok(ClientAttackIndicatorArg::Off),
+        "1" => Ok(ClientAttackIndicatorArg::Crosshair),
+        "2" => Ok(ClientAttackIndicatorArg::Hotbar),
+        other => Err(format!("attack indicator must be 0, 1 or 2, got {other}")),
+    }
 }
 
 fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
@@ -2041,6 +2084,35 @@ mod tests {
         bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
 
         assert!(!args.client_vignette);
+    }
+
+    #[test]
+    fn the_stored_attack_indicator_option_reads_back_the_vanilla_enum_ids() {
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert_eq!(
+            args.client_attack_indicator,
+            ClientAttackIndicatorArg::Crosshair
+        );
+
+        for (stored, expected) in [
+            ("0", ClientAttackIndicatorArg::Off),
+            ("2", ClientAttackIndicatorArg::Hotbar),
+            ("1", ClientAttackIndicatorArg::Crosshair),
+        ] {
+            let mut options = ClientOptions::defaults(ClientOptionHost::default());
+            options.set_raw_for_test("attackIndicator", stored);
+            let mut args = Args::parse_from(["bbb-native"]);
+            bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+            assert_eq!(args.client_attack_indicator, expected);
+        }
+
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("attackIndicator", "9");
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+        assert_eq!(
+            args.client_attack_indicator,
+            ClientAttackIndicatorArg::Crosshair
+        );
     }
 
     #[test]

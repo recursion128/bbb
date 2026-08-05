@@ -165,6 +165,30 @@ pub(crate) fn try_load_hud_textures(
         hotbar_selection.height,
         &hotbar_selection.rgba,
     )?;
+    let hotbar_offhand_left = hud_sprite(&sprites, "hud/hotbar_offhand_left")?;
+    renderer.upload_hud_hotbar_offhand_left(
+        hotbar_offhand_left.width,
+        hotbar_offhand_left.height,
+        &hotbar_offhand_left.rgba,
+    )?;
+    let hotbar_offhand_right = hud_sprite(&sprites, "hud/hotbar_offhand_right")?;
+    renderer.upload_hud_hotbar_offhand_right(
+        hotbar_offhand_right.width,
+        hotbar_offhand_right.height,
+        &hotbar_offhand_right.rgba,
+    )?;
+    let hotbar_attack_background = hud_sprite(&sprites, "hud/hotbar_attack_indicator_background")?;
+    renderer.upload_hud_hotbar_attack_indicator_background(
+        hotbar_attack_background.width,
+        hotbar_attack_background.height,
+        &hotbar_attack_background.rgba,
+    )?;
+    let hotbar_attack_progress = hud_sprite(&sprites, "hud/hotbar_attack_indicator_progress")?;
+    renderer.upload_hud_hotbar_attack_indicator_progress(
+        hotbar_attack_progress.width,
+        hotbar_attack_progress.height,
+        &hotbar_attack_progress.rgba,
+    )?;
     let spectator_close = hud_sprite(&sprites, "spectator/close")?;
     renderer.upload_hud_spectator_close(
         spectator_close.width,

@@ -18,21 +18,22 @@ use bbb_renderer::{
     HudCrosshairAttackIndicator, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,
     HudDeathMainScreen, HudDeathQuitConfirmationScreen, HudDeathScreen, HudDebugOptionsScreen,
     HudDebugOverlay, HudDisconnectedScreen, HudFoodEffect, HudGameEventScreen, HudGameRulesScreen,
-    HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen, HudMapPreviewSurface,
-    HudMobEffect, HudPauseScreen, HudPlayerHealth, HudPlayerList, HudPlayerListEntry,
-    HudPlayerListScore, HudPlayerReportingControl, HudPlayerReportingControlKind,
-    HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
-    HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast, HudScoreboardSidebar,
-    HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
-    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
-    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
-    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
-    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
-    SelectionOutline, SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
+    HudHotbarAttackIndicator, HudHotbarMode, HudInventoryScreen, HudJigsawBlockEditorScreen,
+    HudMapPreviewSurface, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPlayerHealth,
+    HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
+    HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
+    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast,
+    HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay,
+    HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
+    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
+    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
+    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudTutorialToast,
+    HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
+    SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -2853,6 +2854,9 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_selected_slot: u8,
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: RendererFrameUpdate<Vec<Option<HudBlockItemModel>>>,
+    pub(crate) hud_offhand_slot: Option<HudOffhandSlot>,
+    pub(crate) hud_offhand_block_item_model: Option<HudBlockItemModel>,
+    pub(crate) hud_hotbar_attack_indicator: HudHotbarAttackIndicator,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
     pub(crate) hud_book_screen: Option<HudBookScreen>,
     pub(crate) hud_screen_blur: bool,
@@ -3340,6 +3344,9 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_hotbar_mode(frame.hud_hotbar_mode);
     renderer.set_hud_selected_slot(frame.hud_selected_slot);
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
+    renderer.set_hud_offhand_slot(frame.hud_offhand_slot);
+    renderer.set_hud_offhand_block_item_model(frame.hud_offhand_block_item_model);
+    renderer.set_hud_hotbar_attack_indicator(frame.hud_hotbar_attack_indicator);
     if let RendererFrameUpdate::Replace(models) = frame.hud_hotbar_block_item_models {
         renderer.set_hud_hotbar_block_item_models(models);
     }

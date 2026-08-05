@@ -1403,6 +1403,10 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_crosshair_attack_indicator_progress);
         $take_owner!(hud_hotbar);
         $take_owner!(hud_hotbar_selection);
+        $take_owner!(hud_hotbar_offhand_left);
+        $take_owner!(hud_hotbar_offhand_right);
+        $take_owner!(hud_hotbar_attack_indicator_background);
+        $take_owner!(hud_hotbar_attack_indicator_progress);
         $take_owner!(hud_spectator_close);
         $take_owner!(hud_spectator_scroll_left);
         $take_owner!(hud_spectator_scroll_right);

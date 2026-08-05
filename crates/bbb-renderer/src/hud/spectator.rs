@@ -11,10 +11,12 @@ use crate::entity_models::EntityModelTextureImage;
 use crate::Renderer;
 
 use super::{
-    absolute_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect, hotbar_selection_hud_rect,
-    hud_font_runs_width, push_hud_draw, push_hud_draw_with_uv_and_tint, push_hud_item_icon,
-    push_hud_screen_text_draw, HudDrawCommand, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun,
-    HudUvRect, HudVertex, HUD_HOTBAR_SLOTS,
+    absolute_hud_rect, hotbar_hud_rect, hotbar_item_hud_rect, hotbar_offhand_hud_rect,
+    hotbar_offhand_item_hud_rect, hotbar_selection_hud_rect, hud_font_runs_width,
+    hud_hotbar_attack_indicator_layout, push_hud_draw, push_hud_draw_with_uv,
+    push_hud_draw_with_uv_and_tint, push_hud_item_icon, push_hud_screen_text_draw, HudDrawCommand,
+    HudHotbarAttackIndicator, HudScreenTextDraw, HudSpriteGpu, HudStyledTextRun, HudUvRect,
+    HudVertex, HUD_HOTBAR_SLOTS,
 };
 
 const SPECTATOR_ICON_SIZE: u32 = 16;
@@ -166,6 +168,27 @@ impl Renderer {
                 ),
             );
         }
+        if let Some(offhand) = &self.hud_offhand_slot {
+            let sprite = if offhand.on_left {
+                self.hud_hotbar_offhand_left.as_ref()
+            } else {
+                self.hud_hotbar_offhand_right.as_ref()
+            };
+            if let Some(sprite) = sprite {
+                push_hud_draw(
+                    vertices,
+                    commands,
+                    sprite,
+                    surface_size,
+                    hotbar_offhand_hud_rect(
+                        surface_size,
+                        offhand.on_left,
+                        sprite.width,
+                        sprite.height,
+                    ),
+                );
+            }
+        }
         if let Some(atlas) = &self.hud_item_atlas {
             for (slot, icon) in self.hud_hotbar_item_icons.iter().enumerate() {
                 let Some(icon) = icon else {
@@ -202,6 +225,68 @@ impl Renderer {
                         icon,
                         false,
                         true,
+                    );
+                }
+            }
+            if let Some(offhand) = &self.hud_offhand_slot {
+                let item_rect = hotbar_offhand_item_hud_rect(surface_size, offhand.on_left);
+                let renders_as_3d_block = self.hud_offhand_block_item_model.is_some();
+                push_hud_item_icon(
+                    vertices,
+                    commands,
+                    atlas,
+                    &self.hud_white_pixel,
+                    self.hud_digit_atlas.as_ref(),
+                    &self.hud_digit_glyphs,
+                    surface_size,
+                    item_rect,
+                    &offhand.icon,
+                    !renders_as_3d_block,
+                    !renders_as_3d_block,
+                );
+                if renders_as_3d_block {
+                    push_hud_item_icon(
+                        vertices,
+                        post_gui_item_commands,
+                        atlas,
+                        &self.hud_white_pixel,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        &offhand.icon,
+                        false,
+                        true,
+                    );
+                }
+            }
+        }
+        if let HudHotbarAttackIndicator::Progress {
+            strength_scale,
+            main_arm_left,
+        } = self.hud_hotbar_attack_indicator
+        {
+            if let (Some(background), Some(progress)) = (
+                &self.hud_hotbar_attack_indicator_background,
+                &self.hud_hotbar_attack_indicator_progress,
+            ) {
+                let layout =
+                    hud_hotbar_attack_indicator_layout(surface_size, strength_scale, main_arm_left);
+                push_hud_draw(
+                    vertices,
+                    commands,
+                    background,
+                    surface_size,
+                    layout.background,
+                );
+                if layout.progress.height > 0 {
+                    push_hud_draw_with_uv(
+                        vertices,
+                        commands,
+                        progress,
+                        surface_size,
+                        layout.progress,
+                        layout.progress_uv,
                     );
                 }
             }

@@ -84,12 +84,13 @@ use self::layout::hud_rect_bounds;
 use self::layout::{
     absolute_hud_rect, air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
     experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, hotbar_hud_rect,
-    hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_air_bubble_icons,
-    hud_air_bubble_pop as air_bubble_pop, hud_air_bubble_wobble_offsets, hud_air_bubbles_visible,
-    hud_armor_fill, hud_boss_bar_fill_uv, hud_boss_bar_name_origin, hud_boss_bar_progress_width,
-    hud_boss_bar_rows, hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
+    hotbar_item_hud_rect, hotbar_offhand_hud_rect, hotbar_offhand_item_hud_rect,
+    hotbar_selection_hud_rect, hud_air_bubble_icons, hud_air_bubble_pop as air_bubble_pop,
+    hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
+    hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
+    hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
     hud_experience_level_text_origin, hud_food_fill, hud_food_jitter_offsets,
-    hud_health_row_geometry, hud_inventory_text_label_origin,
+    hud_health_row_geometry, hud_hotbar_attack_indicator_layout, hud_inventory_text_label_origin,
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
@@ -1342,6 +1343,28 @@ pub enum HudCrosshairAttackIndicator {
     Progress {
         strength_scale: f32,
     },
+}
+
+/// Vanilla `AttackIndicatorStatus.HOTBAR` presentation
+/// (`Gui.extractItemHotbar`, Gui.java:586-600): the indicator is drawn beside
+/// the hotbar only while the attack strength is still charging, so unlike the
+/// crosshair variant it has no full-strength frame.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum HudHotbarAttackIndicator {
+    #[default]
+    None,
+    Progress {
+        strength_scale: f32,
+        main_arm_left: bool,
+    },
+}
+
+/// Vanilla `Gui.extractItemHotbar`'s offhand slot: drawn only when the offhand
+/// stack is non-empty, on the side opposite `Player.getMainArm()`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudOffhandSlot {
+    pub on_left: bool,
+    pub icon: HudItemIcon,
 }
 
 /// Vanilla `FpsDebugChart` sample stream: frame durations in nanoseconds,
@@ -3542,6 +3565,48 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_hotbar_selection = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_hotbar_offhand_left(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_hotbar_offhand_left = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_hotbar_offhand_right(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_hotbar_offhand_right = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_hotbar_attack_indicator_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_hotbar_attack_indicator_background =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_hotbar_attack_indicator_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_hotbar_attack_indicator_progress =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -6053,6 +6118,33 @@ impl Renderer {
         self.hud_hotbar_item_icons = icons.map(|icon| icon.and_then(sanitize_hud_item_icon));
     }
 
+    pub fn set_hud_offhand_slot(&mut self, slot: Option<HudOffhandSlot>) {
+        self.hud_offhand_slot = slot.and_then(|slot| {
+            sanitize_hud_item_icon(slot.icon).map(|icon| HudOffhandSlot {
+                on_left: slot.on_left,
+                icon,
+            })
+        });
+    }
+
+    pub fn set_hud_offhand_block_item_model(&mut self, model: Option<HudBlockItemModel>) {
+        self.hud_offhand_block_item_model = model;
+    }
+
+    pub fn set_hud_hotbar_attack_indicator(&mut self, indicator: HudHotbarAttackIndicator) {
+        self.hud_hotbar_attack_indicator = match indicator {
+            HudHotbarAttackIndicator::Progress {
+                strength_scale,
+                main_arm_left,
+            } if strength_scale.is_finite() => HudHotbarAttackIndicator::Progress {
+                strength_scale: strength_scale.clamp(0.0, 1.0),
+                main_arm_left,
+            },
+            HudHotbarAttackIndicator::Progress { .. } => HudHotbarAttackIndicator::None,
+            HudHotbarAttackIndicator::None => HudHotbarAttackIndicator::None,
+        };
+    }
+
     pub fn set_hud_inventory_screen(&mut self, screen: Option<HudInventoryScreen>) {
         self.hud_inventory_screen = screen.map(sanitize_hud_inventory_screen);
     }
@@ -6633,6 +6725,15 @@ impl Renderer {
                         gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
                     append_model(model, placement, None);
                 }
+            }
+            if let (Some(offhand), Some(model)) =
+                (&self.hud_offhand_slot, &self.hud_offhand_block_item_model)
+            {
+                let placement = gui_item_slot_placement(hotbar_offhand_item_hud_rect(
+                    surface_size,
+                    offhand.on_left,
+                ));
+                append_model(model, placement, None);
             }
         }
         if stratum != HudScreenStratum::BeforeBlur {
@@ -22800,6 +22901,66 @@ mod tests {
             HudCrosshairAttackIndicator::None
         );
         assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
+    }
+
+    #[test]
+    fn the_offhand_slot_and_hotbar_attack_indicator_draw_only_when_projected() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_hotbar(182, 22, &[255, 255, 255, 255].repeat(182 * 22))
+            .expect("hotbar");
+        renderer
+            .upload_hud_hotbar_offhand_left(29, 24, &[255, 0, 0, 255].repeat(29 * 24))
+            .expect("offhand left");
+        renderer
+            .upload_hud_hotbar_offhand_right(29, 24, &[0, 255, 0, 255].repeat(29 * 24))
+            .expect("offhand right");
+        renderer
+            .upload_hud_hotbar_attack_indicator_background(18, 18, &[0; 4].repeat(18 * 18))
+            .expect("indicator background");
+        renderer
+            .upload_hud_hotbar_attack_indicator_progress(18, 18, &[0; 4].repeat(18 * 18))
+            .expect("indicator progress");
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Ordinary);
+
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
+
+        renderer.set_hud_offhand_slot(Some(HudOffhandSlot {
+            on_left: true,
+            icon: HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            }),
+        }));
+        assert!(renderer.hud_offhand_slot.is_some());
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 2);
+
+        renderer.set_hud_hotbar_attack_indicator(HudHotbarAttackIndicator::Progress {
+            strength_scale: 0.5,
+            main_arm_left: false,
+        });
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 4);
+
+        renderer.set_hud_hotbar_attack_indicator(HudHotbarAttackIndicator::Progress {
+            strength_scale: 0.0,
+            main_arm_left: false,
+        });
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 3);
+
+        renderer.set_hud_hotbar_attack_indicator(HudHotbarAttackIndicator::Progress {
+            strength_scale: f32::NAN,
+            main_arm_left: false,
+        });
+        assert_eq!(
+            renderer.hud_hotbar_attack_indicator,
+            HudHotbarAttackIndicator::None
+        );
+
+        renderer.set_hud_offhand_slot(None);
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Hidden);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 0);
     }
 
     #[test]

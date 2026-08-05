@@ -51,30 +51,31 @@ use bbb_renderer::{
     HudDebugTpsChart, HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen,
     HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
     HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect,
-    HudGameEventButton, HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind, HudHotbarMode,
-    HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryFillLayer, HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem,
-    HudInventoryItemScissor, HudInventoryMapPreview, HudInventoryScreen, HudInventoryScrollingText,
-    HudInventorySlot, HudInventoryTextBackground, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen,
-    HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect, HudPauseScreen, HudPauseScreenTooltip,
-    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer,
-    HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
-    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
-    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
-    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
-    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
-    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting,
-    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudGameEventButton, HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind,
+    HudHotbarAttackIndicator, HudHotbarMode, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
+    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryMapPreview,
+    HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
+    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
+    HudOffhandSlot, HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudPlayerList,
+    HudPlayerReportingFocus, HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind,
+    HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
+    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
+    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
+    ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -225,7 +226,8 @@ use crate::{
         sign_model_attachment, sign_model_wood, sign_scene_from_world, sign_text_outline_context,
     },
     simulation::{
-        effects::ParticleBatchSink, publication::SimulationPublication, SimulationRenderContext,
+        effects::ParticleBatchSink, publication::SimulationPublication, AttackIndicatorOption,
+        SimulationRenderContext,
     },
     skull_scene::skull_model_instances_from_world_at_partial_tick,
     spawner_scene::spawner_display_entity_submissions_from_world_at_partial_tick,
@@ -3308,6 +3310,7 @@ pub(crate) fn update_renderer_from_publication(
         damage_tilt_strength,
         view_bobbing,
         vignette,
+        attack_indicator,
         notification_display_time,
         entity_shadows,
         high_contrast_block_outline,
@@ -3665,6 +3668,29 @@ pub(crate) fn update_renderer_from_publication(
     } else {
         std::array::from_fn(|_| None)
     };
+    let hud_offhand_slot = ordinary_hotbar
+        .then(|| {
+            hud_offhand_slot(
+                world,
+                item_runtime,
+                entity_partial_tick,
+                input.shift_down(),
+                item_model_keybind_context,
+            )
+        })
+        .flatten();
+    let hud_offhand_block_item_model = hud_offhand_slot
+        .is_some()
+        .then(|| {
+            hud_offhand_block_item_model(
+                world,
+                item_runtime,
+                terrain_textures,
+                input.shift_down(),
+                item_model_keybind_context,
+            )
+        })
+        .flatten();
     // Vanilla `Gui.extractSlot` resolves the GUI item model after applying
     // the partial-tick pop pose (Gui.java:1117-1139). Keep that pose in the
     // frame-local icon projection above; only retain the static 3D block-item
@@ -4251,9 +4277,18 @@ pub(crate) fn update_renderer_from_publication(
     };
     let crosshair_allowed_for_game_mode = !world.local_player_is_spectator()
         || can_render_crosshair_for_spectator(world, crosshair_target);
+    let attack_indicator_state =
+        world.local_player_crosshair_attack_indicator_state(targeted_entity_id);
     let hud_crosshair_attack_indicator = hud_crosshair_attack_indicator(
-        input.camera_type().is_first_person() && crosshair_allowed_for_game_mode,
-        world.local_player_crosshair_attack_indicator_state(targeted_entity_id),
+        input.camera_type().is_first_person()
+            && crosshair_allowed_for_game_mode
+            && attack_indicator == AttackIndicatorOption::Crosshair,
+        attack_indicator_state,
+    );
+    let hud_hotbar_attack_indicator = hud_hotbar_attack_indicator(
+        attack_indicator == AttackIndicatorOption::Hotbar,
+        attack_indicator_state,
+        world.local_player_main_arm_left().unwrap_or(false),
     );
     let hud_crosshair_visible =
         input.camera_type().is_first_person() && crosshair_allowed_for_game_mode;
@@ -4845,6 +4880,9 @@ pub(crate) fn update_renderer_from_publication(
             hud_selected_slot,
             hud_selected_item_name,
             hud_hotbar_item_icons,
+            hud_offhand_slot,
+            hud_offhand_block_item_model,
+            hud_hotbar_attack_indicator,
             hud_hotbar_block_item_models,
             hud_inventory_screen,
             hud_book_screen,
@@ -5740,6 +5778,66 @@ fn hud_block_geometry_layers(
 /// The hotbar's 3D block items (vanilla inventory item rendering): for each slot holding a block item,
 /// its [`block_item_3d_model`], so the renderer draws it as a 3D icon instead of the flat 2D sprite.
 /// `None` for empty slots and flat items (which keep the 2D sprite drawn by the HUD layer).
+/// Vanilla `Gui.extractItemHotbar` (Gui.java:548-583): the offhand background
+/// and slot are drawn only for a non-empty offhand stack, on the side opposite
+/// `Player.getMainArm()`, and the slot seeds continue after the nine hotbar
+/// slots.
+fn hud_offhand_slot_side(world: &WorldStore) -> Option<bool> {
+    (world.inventory().offhand_item_state().item.count > 0)
+        .then(|| !world.local_player_main_arm_left().unwrap_or(false))
+}
+
+fn hud_offhand_slot(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    partial_tick: f32,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+) -> Option<HudOffhandSlot> {
+    let on_left = hud_offhand_slot_side(world)?;
+    let offhand = world.inventory().offhand_item_state();
+    let icon = hud_item_icon_for_stack(
+        world,
+        item_runtime,
+        &offhand.item,
+        offhand.local_selected_bundle_item_index(),
+        false,
+        false,
+        false,
+        false,
+        shift_down,
+        keybind_context,
+        i32::try_from(HUD_HOTBAR_SLOTS + 1).unwrap_or(0),
+        partial_tick,
+    )?;
+    Some(HudOffhandSlot { on_left, icon })
+}
+
+fn hud_offhand_block_item_model(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+) -> Option<HudBlockItemModel> {
+    hud_offhand_slot_side(world)?;
+    let offhand = world.inventory().offhand_item_state();
+    block_item_3d_model(
+        world,
+        &offhand.item,
+        item_runtime,
+        terrain_textures,
+        offhand.local_selected_bundle_item_index(),
+        false,
+        false,
+        false,
+        false,
+        shift_down,
+        keybind_context,
+        i32::try_from(HUD_HOTBAR_SLOTS + 1).unwrap_or(0),
+    )
+}
+
 fn hotbar_block_item_models(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -9455,6 +9553,23 @@ fn hud_crosshair_attack_indicator(
             strength_scale: state.strength_scale,
         },
         _ => HudCrosshairAttackIndicator::None,
+    }
+}
+
+fn hud_hotbar_attack_indicator(
+    visible: bool,
+    state: Option<LocalPlayerCrosshairAttackIndicatorState>,
+    main_arm_left: bool,
+) -> HudHotbarAttackIndicator {
+    if !visible {
+        return HudHotbarAttackIndicator::None;
+    }
+    match state {
+        Some(state) if state.strength_scale < 1.0 => HudHotbarAttackIndicator::Progress {
+            strength_scale: state.strength_scale,
+            main_arm_left,
+        },
+        _ => HudHotbarAttackIndicator::None,
     }
 }
 
