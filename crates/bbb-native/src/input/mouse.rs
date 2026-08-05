@@ -1,3 +1,15 @@
+//! Captured-mouse gameplay routing — the `MouseHandler` decision surface.
+//!
+//! Three vanilla `MouseHandler` owners intentionally have no equivalent here:
+//! `simulateRightClick` is gated on
+//! `InputQuirks.SIMULATE_RIGHT_CLICK_WITH_LONG_LEFT_CLICK`, the macOS
+//! Ctrl+left-click quirk, false on this client's declared Linux platform;
+//! `fillMousePositionDetails` only decorates the `ReportedException` crash
+//! categories vanilla wraps around per-screen mouse/render handlers, and BBB
+//! routes panics to the one guarded crash report instead of wrapping each
+//! handler; `drawDebugMouseInfo` is gated on `SharedConstants.DEBUG_CURSOR_POS`,
+//! a dev-only constant that is false in every shipped vanilla client.
+
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{

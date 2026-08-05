@@ -2103,6 +2103,16 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
         // not implement locking. Neither mode is a raw-motion switch — winit's
         // raw `DeviceEvent::MouseMotion` is always delivered (see the startup
         // `rawMouseInput` warning).
+        //
+        // Three GLFW-era `grabMouse`/`releaseMouse` steps are structurally
+        // unnecessary here: the `setCursorPosition(width/2, height/2)` warp
+        // (Wayland cannot warp the pointer and `Locked` pins it in place),
+        // `mouseHandler.setIgnoreFirstMove` (turn deltas are relative device
+        // motion, so a re-grab cannot inject an absolute jump — the same
+        // reason `cursorEntered`'s only vanilla consumer has no equivalent),
+        // and `KeyMapping.setAll`'s `isKeyDown` re-poll (`pressed_keys`
+        // tracks every raw edge whether or not a screen consumed it, so key
+        // state never desyncs and there is nothing to re-poll).
         match window
             .set_cursor_grab(CursorGrabMode::Locked)
             .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined))
@@ -2223,6 +2233,14 @@ fn update_window_title(window: &Window, connected: bool, current: &mut Option<St
     }
 }
 
+/// Translates winit window events into `SimulationCommand`s — the
+/// `KeyboardHandler.setup`/`MouseHandler.setup` GLFW-callback equivalent.
+/// Two vanilla callbacks are deliberately absent: `WindowEvent::DroppedFile`
+/// (`MouseHandler.onDrop`'s only `Screen.onFilesDrop` consumer is the
+/// pack-selection screen, an options-UI non-goal, and its failure toast only
+/// reports failed GLFW path decodes) and `WindowEvent::CursorEntered`
+/// (`cursorEntered`'s only consumer is `setIgnoreFirstMove`, which relative
+/// turn deltas make structurally unnecessary — see `set_cursor_capture`).
 fn enqueue_simulation_window_event(
     event: &WindowEvent,
     mailbox: &SimulationMailbox,
