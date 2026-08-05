@@ -129,6 +129,14 @@ pub(crate) struct Args {
     pub(crate) client_discrete_mouse_scroll: bool,
     #[arg(long = "client-mouse-wheel-sensitivity", default_value_t = 1.0)]
     pub(crate) client_mouse_wheel_sensitivity: f64,
+    #[arg(long = "client-toggle-crouch", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_toggle_crouch: bool,
+    #[arg(long = "client-toggle-sprint", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_toggle_sprint: bool,
+    #[arg(long = "client-toggle-attack", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_toggle_attack: bool,
+    #[arg(long = "client-toggle-use", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_toggle_use: bool,
     /// Resolved from every `key_<name>` line at once, so it has no flag of its
     /// own the way the single-valued options above do.
     #[arg(skip)]
@@ -705,6 +713,10 @@ fn bind_stored_client_options(
         "discrete_mouse_scroll",
         client_discrete_mouse_scroll
     );
+    flag!("client_toggle_crouch", "toggleCrouch", client_toggle_crouch);
+    flag!("client_toggle_sprint", "toggleSprint", client_toggle_sprint);
+    flag!("client_toggle_attack", "toggleAttack", client_toggle_attack);
+    flag!("client_toggle_use", "toggleUse", client_toggle_use);
     parsed!(
         "client_mouse_wheel_sensitivity",
         "mouseWheelSensitivity",

@@ -27770,6 +27770,47 @@ fn sprint_key_without_local_player_id_only_queues_input() {
 }
 
 #[test]
+fn toggle_crouch_flips_sneak_on_press_and_survives_the_release() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    input.set_toggle_key_options(true, false, false, false);
+
+    let mut press = |input: &mut ClientInputState, state| {
+        handle_key_input(
+            input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::ShiftLeft),
+            state,
+        );
+    };
+
+    press(&mut input, ElementState::Pressed);
+    assert!(input.item_model_keybind_context().sneak);
+    press(&mut input, ElementState::Released);
+    assert!(input.item_model_keybind_context().sneak);
+    press(&mut input, ElementState::Pressed);
+    assert!(!input.item_model_keybind_context().sneak);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            shift: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn a_rebound_jump_key_moves_both_the_action_and_the_key_it_left() {
     let (tx, mut rx) = mpsc::channel(6);
     let commands = Some(tx);

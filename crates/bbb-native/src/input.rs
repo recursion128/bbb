@@ -739,6 +739,13 @@ pub(crate) struct ClientInputState {
     narrator_hotkey_enabled: bool,
     narrator_available: bool,
     key_bindings: KeyBindings,
+    toggle_crouch: bool,
+    toggle_sprint: bool,
+    toggle_attack: bool,
+    toggle_use: bool,
+    sneak_released_by_screen_when_down: bool,
+    sprint_released_by_screen_when_down: bool,
+    attack_released_by_screen_when_down: bool,
     narrator_status_requests: Vec<NarratorStatusRequest>,
     fullscreen: bool,
     fullscreen_requests: Vec<bool>,
@@ -1347,6 +1354,39 @@ impl ClientInputState {
         self.key_bindings = bindings;
     }
 
+    pub(crate) fn set_toggle_key_options(
+        &mut self,
+        crouch: bool,
+        sprint: bool,
+        attack: bool,
+        use_item: bool,
+    ) {
+        self.toggle_crouch = crouch;
+        self.toggle_sprint = sprint;
+        self.toggle_attack = attack;
+        self.toggle_use = use_item;
+    }
+
+    /// `ToggleKeyMapping.setDown`: while the matching option is on, only a
+    /// press reaches the state and it flips instead of following the key.
+    fn toggled_down(&self, needs_toggle: bool, held: bool, pressed: bool, down: bool) -> bool {
+        if needs_toggle {
+            if pressed {
+                !held
+            } else {
+                held
+            }
+        } else {
+            down
+        }
+    }
+
+    /// `ToggleKeyMapping.shouldRestoreStateOnScreenClosed`, which only ever
+    /// restores a keyboard-bound toggle that a screen released while it was on.
+    fn restores_toggle_on_screen_closed(&self, name: &str, needs_toggle: bool, flag: bool) -> bool {
+        needs_toggle && flag && matches!(self.key_bindings.input(name), BoundInput::Key(_))
+    }
+
     pub(crate) fn key_bindings(&self) -> &KeyBindings {
         &self.key_bindings
     }
@@ -1511,7 +1551,37 @@ impl ClientInputState {
         if open && !self.last_input_type_screen_was_open {
             self.last_input_type = LastInputType::None;
         }
+        if !open && self.last_input_type_screen_was_open {
+            self.restore_toggle_states_on_screen_closed();
+        }
         self.last_input_type_screen_was_open = open;
+    }
+
+    fn restore_toggle_states_on_screen_closed(&mut self) {
+        if self.restores_toggle_on_screen_closed(
+            "key.sneak",
+            self.toggle_crouch,
+            self.sneak_released_by_screen_when_down,
+        ) {
+            self.sneak = true;
+        }
+        if self.restores_toggle_on_screen_closed(
+            "key.sprint",
+            self.toggle_sprint,
+            self.sprint_released_by_screen_when_down,
+        ) {
+            self.sprint_key_down = true;
+        }
+        if self.restores_toggle_on_screen_closed(
+            "key.attack",
+            self.toggle_attack,
+            self.attack_released_by_screen_when_down,
+        ) {
+            self.mouse_left_down = true;
+        }
+        self.sneak_released_by_screen_when_down = false;
+        self.sprint_released_by_screen_when_down = false;
+        self.attack_released_by_screen_when_down = false;
     }
 
     fn note_key_input_type(&mut self, world: &WorldStore, code: KeyCode) {
@@ -1913,6 +1983,9 @@ impl ClientInputState {
     }
 
     fn clear_pressed(&mut self) {
+        self.sneak_released_by_screen_when_down |= self.toggle_crouch && self.sneak;
+        self.sprint_released_by_screen_when_down |= self.toggle_sprint && self.sprint_key_down;
+        self.attack_released_by_screen_when_down |= self.toggle_attack && self.mouse_left_down;
         self.forward = false;
         self.backward = false;
         self.left = false;
@@ -2086,8 +2159,14 @@ impl ClientInputState {
 
     fn set_mouse_button_down(&mut self, button: MouseButton, pressed: bool) {
         match button {
-            MouseButton::Left => self.mouse_left_down = pressed,
-            MouseButton::Right => self.mouse_right_down = pressed,
+            MouseButton::Left => {
+                self.mouse_left_down =
+                    self.toggled_down(self.toggle_attack, self.mouse_left_down, pressed, pressed)
+            }
+            MouseButton::Right => {
+                self.mouse_right_down =
+                    self.toggled_down(self.toggle_use, self.mouse_right_down, pressed, pressed)
+            }
             MouseButton::Middle => self.mouse_middle_down = pressed,
             _ => {}
         }
@@ -2100,8 +2179,8 @@ impl ClientInputState {
             backward: self.binding_down("key.back"),
             right: self.binding_down("key.right"),
             jump: self.binding_down("key.jump"),
-            sneak: self.binding_down("key.sneak"),
-            sprint: self.binding_down("key.sprint"),
+            sneak: self.sneak,
+            sprint: self.sprint_key_down,
             attack: self.binding_down("key.attack"),
             use_item: self.binding_down("key.use"),
             pick_item: self.binding_down("key.pickItem"),
@@ -12427,18 +12506,20 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.jump = pressed;
         true
     } else if matches_binding("key.sneak", KeyCode::ShiftRight) {
-        input.sneak = if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
+        let down = if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
             input.shift_down()
         } else {
             pressed
         };
+        input.sneak = input.toggled_down(input.toggle_crouch, input.sneak, pressed, down);
         if input.sneak {
             input.clear_sprint_trigger();
         }
         true
     } else if matches_binding("key.sprint", KeyCode::ControlRight) {
-        input.sprint_key_down = pressed;
-        if pressed {
+        input.sprint_key_down =
+            input.toggled_down(input.toggle_sprint, input.sprint_key_down, pressed, pressed);
+        if input.sprint_key_down {
             input.clear_sprint_trigger();
         }
         true

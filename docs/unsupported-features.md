@@ -122,8 +122,12 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   for their binding by name. The F3 combinations still compare against
   hard-coded `KeyCode`s, matching how Vanilla routes them through
   `handleDebugKeys` rather than the mapping array; startup logs a warning naming
-  any binding a rebind still cannot move. This stays inside the `active` route
-  above and closes with it.
+  any binding a rebind still cannot move. The four `ToggleKeyMapping` bindings
+  follow `toggleCrouch`/`toggleSprint`/`toggleAttack`/`toggleUse`: while the
+  option is on a press flips the state and the release is ignored, a screen that
+  takes the toggle down remembers it, and closing the screen restores a
+  keyboard-bound one. This stays inside the `active` route above and closes with
+  it.
 - **Handing an in-flight IME composition to a newly focused field is
   `deferred`.** `Minecraft.onTextInputFocusChange` calls
   `KeyboardHandler.resubmitLastPreeditEvent` on the gaining element and
