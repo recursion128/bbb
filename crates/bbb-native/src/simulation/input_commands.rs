@@ -1173,6 +1173,11 @@ impl SimulationInputRuntime {
                 &self.client_information,
             );
         }
+        for fullscreen in context.input.take_fullscreen_requests() {
+            context
+                .platform
+                .submit(PlatformEffect::SetFullscreen(fullscreen));
+        }
         let narrator_status_requests = context.input.take_narrator_status_requests();
         if !narrator_status_requests.is_empty() {
             context

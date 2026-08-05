@@ -484,6 +484,11 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 };
                 narrator_runtime::submit_chat_narration(narrator, kind, &text);
             }
+            PlatformEffect::SetFullscreen(fullscreen) => {
+                self.window.set_fullscreen(
+                    fullscreen.then(|| winit::window::Fullscreen::Borderless(None)),
+                );
+            }
             PlatformEffect::NarratorStatusChanged { requests } => {
                 for request in requests {
                     if let Some(narrator) = self.narrator.as_deref_mut() {
@@ -817,6 +822,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     input.set_narrator_status(NarratorStatus::from(args.client_narrator));
     input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
     input.set_narrator_available(narrator_runtime.is_some());
+    input.set_fullscreen(args.client_fullscreen);
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );

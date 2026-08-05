@@ -116,6 +116,8 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_narrator_hotkey: bool,
+    #[arg(long = "client-fullscreen", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_fullscreen: bool,
     #[arg(
         long = "client-show-subtitles",
         default_value_t = false,
@@ -664,6 +666,7 @@ fn bind_stored_client_options(
         improved_transparency
     );
     flag!("client_vsync", "enableVsync", client_vsync);
+    flag!("client_fullscreen", "fullscreen", client_fullscreen);
 
     parsed!(
         "render_distance_chunks",

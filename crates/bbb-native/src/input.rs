@@ -709,6 +709,8 @@ pub(crate) struct ClientInputState {
     narrator_hotkey_enabled: bool,
     narrator_available: bool,
     narrator_status_requests: Vec<NarratorStatusRequest>,
+    fullscreen: bool,
+    fullscreen_requests: Vec<bool>,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1306,6 +1308,23 @@ impl ClientInputState {
 
     pub(crate) fn take_narrator_status_requests(&mut self) -> Vec<NarratorStatusRequest> {
         std::mem::take(&mut self.narrator_status_requests)
+    }
+
+    pub(crate) fn set_fullscreen(&mut self, fullscreen: bool) {
+        self.fullscreen = fullscreen;
+    }
+
+    pub(crate) fn take_fullscreen_requests(&mut self) -> Vec<bool> {
+        std::mem::take(&mut self.fullscreen_requests)
+    }
+
+    fn toggle_fullscreen(&mut self) {
+        self.fullscreen = !self.fullscreen;
+        self.fullscreen_requests.push(self.fullscreen);
+        self.debug_client_option_writes.push(ClientOptionWrite {
+            key: "fullscreen",
+            value: ClientOptionValue::Boolean(self.fullscreen),
+        });
     }
 
     fn debug_options_screen_search_is_focused(&self) -> bool {
@@ -11950,6 +11969,11 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
     if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
         input.set_control_key(code, pressed);
+    }
+
+    if pressed && code == KeyCode::F11 {
+        input.toggle_fullscreen();
+        return;
     }
 
     if pressed && code == KeyCode::KeyB {

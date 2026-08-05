@@ -30145,3 +30145,53 @@ fn the_narrator_hotkey_stays_out_of_text_entry_and_unavailable_narrators() {
     );
     assert!(without_control.take_narrator_status_requests().is_empty());
 }
+
+#[test]
+fn the_fullscreen_key_toggles_the_window_and_saves_the_option() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::F11,
+    );
+    assert_eq!(input.take_fullscreen_requests(), vec![true]);
+    assert_eq!(
+        input.take_debug_client_option_writes(),
+        vec![crate::client_options::ClientOptionWrite {
+            key: "fullscreen",
+            value: crate::client_options::ClientOptionValue::Boolean(true),
+        }]
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::F11),
+        ElementState::Released,
+    );
+    assert!(input.take_fullscreen_requests().is_empty());
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::F11,
+    );
+    assert_eq!(input.take_fullscreen_requests(), vec![false]);
+    assert_eq!(
+        input.take_debug_client_option_writes(),
+        vec![crate::client_options::ClientOptionWrite {
+            key: "fullscreen",
+            value: crate::client_options::ClientOptionValue::Boolean(false),
+        }]
+    );
+}
