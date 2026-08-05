@@ -261,6 +261,22 @@ else
   echo "docs lint: menu-screen catalog exact-output check skipped (Vanilla tree or repo generator absent)"
 fi
 
+key_mapping_generator="$repo_root/scripts/generate-key-mapping-catalog.py"
+key_mapping_output="$repo_root/docs/evidence/vanilla-26.1/key-mapping-catalog.json"
+key_mapping_rust_output="$repo_root/crates/bbb-native/src/client_options/key_mappings_26_1.rs"
+if [ -d "$vanilla_source_root" ] && [ -f "$key_mapping_generator" ]; then
+  if ! "$repo_root/scripts/vanilla-source-tools.sh" \
+    "$key_mapping_generator" \
+    --source-root "$vanilla_source_root" \
+    --output "$key_mapping_output" \
+    --rust-output "$key_mapping_rust_output" \
+    --check; then
+    failed=1
+  fi
+else
+  echo "docs lint: key-mapping catalog exact-output check skipped (Vanilla tree or repo generator absent)"
+fi
+
 if ! python3 "$script_dir/docs_wiki_lint.py" --repo-root "$repo_root"; then
   failed=1
 fi

@@ -1,0 +1,1258 @@
+{
+  "generated_by": "scripts/generate-key-mapping-catalog.py",
+  "vanilla_version": "26.1",
+  "source_files": [
+    "com/mojang/blaze3d/platform/InputConstants.java",
+    "net/minecraft/client/Options.java"
+  ],
+  "line_format": "key_<binding name>:<named key>, written by Options.save",
+  "named_keys": [
+    {
+      "name": "key.keyboard.unknown",
+      "type": "KEYSYM",
+      "value": -1
+    },
+    {
+      "name": "key.mouse.left",
+      "type": "MOUSE",
+      "value": 0
+    },
+    {
+      "name": "key.mouse.right",
+      "type": "MOUSE",
+      "value": 1
+    },
+    {
+      "name": "key.mouse.middle",
+      "type": "MOUSE",
+      "value": 2
+    },
+    {
+      "name": "key.mouse.4",
+      "type": "MOUSE",
+      "value": 3
+    },
+    {
+      "name": "key.mouse.5",
+      "type": "MOUSE",
+      "value": 4
+    },
+    {
+      "name": "key.mouse.6",
+      "type": "MOUSE",
+      "value": 5
+    },
+    {
+      "name": "key.mouse.7",
+      "type": "MOUSE",
+      "value": 6
+    },
+    {
+      "name": "key.mouse.8",
+      "type": "MOUSE",
+      "value": 7
+    },
+    {
+      "name": "key.keyboard.0",
+      "type": "KEYSYM",
+      "value": 48
+    },
+    {
+      "name": "key.keyboard.1",
+      "type": "KEYSYM",
+      "value": 49
+    },
+    {
+      "name": "key.keyboard.2",
+      "type": "KEYSYM",
+      "value": 50
+    },
+    {
+      "name": "key.keyboard.3",
+      "type": "KEYSYM",
+      "value": 51
+    },
+    {
+      "name": "key.keyboard.4",
+      "type": "KEYSYM",
+      "value": 52
+    },
+    {
+      "name": "key.keyboard.5",
+      "type": "KEYSYM",
+      "value": 53
+    },
+    {
+      "name": "key.keyboard.6",
+      "type": "KEYSYM",
+      "value": 54
+    },
+    {
+      "name": "key.keyboard.7",
+      "type": "KEYSYM",
+      "value": 55
+    },
+    {
+      "name": "key.keyboard.8",
+      "type": "KEYSYM",
+      "value": 56
+    },
+    {
+      "name": "key.keyboard.9",
+      "type": "KEYSYM",
+      "value": 57
+    },
+    {
+      "name": "key.keyboard.a",
+      "type": "KEYSYM",
+      "value": 65
+    },
+    {
+      "name": "key.keyboard.b",
+      "type": "KEYSYM",
+      "value": 66
+    },
+    {
+      "name": "key.keyboard.c",
+      "type": "KEYSYM",
+      "value": 67
+    },
+    {
+      "name": "key.keyboard.d",
+      "type": "KEYSYM",
+      "value": 68
+    },
+    {
+      "name": "key.keyboard.e",
+      "type": "KEYSYM",
+      "value": 69
+    },
+    {
+      "name": "key.keyboard.f",
+      "type": "KEYSYM",
+      "value": 70
+    },
+    {
+      "name": "key.keyboard.g",
+      "type": "KEYSYM",
+      "value": 71
+    },
+    {
+      "name": "key.keyboard.h",
+      "type": "KEYSYM",
+      "value": 72
+    },
+    {
+      "name": "key.keyboard.i",
+      "type": "KEYSYM",
+      "value": 73
+    },
+    {
+      "name": "key.keyboard.j",
+      "type": "KEYSYM",
+      "value": 74
+    },
+    {
+      "name": "key.keyboard.k",
+      "type": "KEYSYM",
+      "value": 75
+    },
+    {
+      "name": "key.keyboard.l",
+      "type": "KEYSYM",
+      "value": 76
+    },
+    {
+      "name": "key.keyboard.m",
+      "type": "KEYSYM",
+      "value": 77
+    },
+    {
+      "name": "key.keyboard.n",
+      "type": "KEYSYM",
+      "value": 78
+    },
+    {
+      "name": "key.keyboard.o",
+      "type": "KEYSYM",
+      "value": 79
+    },
+    {
+      "name": "key.keyboard.p",
+      "type": "KEYSYM",
+      "value": 80
+    },
+    {
+      "name": "key.keyboard.q",
+      "type": "KEYSYM",
+      "value": 81
+    },
+    {
+      "name": "key.keyboard.r",
+      "type": "KEYSYM",
+      "value": 82
+    },
+    {
+      "name": "key.keyboard.s",
+      "type": "KEYSYM",
+      "value": 83
+    },
+    {
+      "name": "key.keyboard.t",
+      "type": "KEYSYM",
+      "value": 84
+    },
+    {
+      "name": "key.keyboard.u",
+      "type": "KEYSYM",
+      "value": 85
+    },
+    {
+      "name": "key.keyboard.v",
+      "type": "KEYSYM",
+      "value": 86
+    },
+    {
+      "name": "key.keyboard.w",
+      "type": "KEYSYM",
+      "value": 87
+    },
+    {
+      "name": "key.keyboard.x",
+      "type": "KEYSYM",
+      "value": 88
+    },
+    {
+      "name": "key.keyboard.y",
+      "type": "KEYSYM",
+      "value": 89
+    },
+    {
+      "name": "key.keyboard.z",
+      "type": "KEYSYM",
+      "value": 90
+    },
+    {
+      "name": "key.keyboard.f1",
+      "type": "KEYSYM",
+      "value": 290
+    },
+    {
+      "name": "key.keyboard.f2",
+      "type": "KEYSYM",
+      "value": 291
+    },
+    {
+      "name": "key.keyboard.f3",
+      "type": "KEYSYM",
+      "value": 292
+    },
+    {
+      "name": "key.keyboard.f4",
+      "type": "KEYSYM",
+      "value": 293
+    },
+    {
+      "name": "key.keyboard.f5",
+      "type": "KEYSYM",
+      "value": 294
+    },
+    {
+      "name": "key.keyboard.f6",
+      "type": "KEYSYM",
+      "value": 295
+    },
+    {
+      "name": "key.keyboard.f7",
+      "type": "KEYSYM",
+      "value": 296
+    },
+    {
+      "name": "key.keyboard.f8",
+      "type": "KEYSYM",
+      "value": 297
+    },
+    {
+      "name": "key.keyboard.f9",
+      "type": "KEYSYM",
+      "value": 298
+    },
+    {
+      "name": "key.keyboard.f10",
+      "type": "KEYSYM",
+      "value": 299
+    },
+    {
+      "name": "key.keyboard.f11",
+      "type": "KEYSYM",
+      "value": 300
+    },
+    {
+      "name": "key.keyboard.f12",
+      "type": "KEYSYM",
+      "value": 301
+    },
+    {
+      "name": "key.keyboard.f13",
+      "type": "KEYSYM",
+      "value": 302
+    },
+    {
+      "name": "key.keyboard.f14",
+      "type": "KEYSYM",
+      "value": 303
+    },
+    {
+      "name": "key.keyboard.f15",
+      "type": "KEYSYM",
+      "value": 304
+    },
+    {
+      "name": "key.keyboard.f16",
+      "type": "KEYSYM",
+      "value": 305
+    },
+    {
+      "name": "key.keyboard.f17",
+      "type": "KEYSYM",
+      "value": 306
+    },
+    {
+      "name": "key.keyboard.f18",
+      "type": "KEYSYM",
+      "value": 307
+    },
+    {
+      "name": "key.keyboard.f19",
+      "type": "KEYSYM",
+      "value": 308
+    },
+    {
+      "name": "key.keyboard.f20",
+      "type": "KEYSYM",
+      "value": 309
+    },
+    {
+      "name": "key.keyboard.f21",
+      "type": "KEYSYM",
+      "value": 310
+    },
+    {
+      "name": "key.keyboard.f22",
+      "type": "KEYSYM",
+      "value": 311
+    },
+    {
+      "name": "key.keyboard.f23",
+      "type": "KEYSYM",
+      "value": 312
+    },
+    {
+      "name": "key.keyboard.f24",
+      "type": "KEYSYM",
+      "value": 313
+    },
+    {
+      "name": "key.keyboard.f25",
+      "type": "KEYSYM",
+      "value": 314
+    },
+    {
+      "name": "key.keyboard.num.lock",
+      "type": "KEYSYM",
+      "value": 282
+    },
+    {
+      "name": "key.keyboard.keypad.0",
+      "type": "KEYSYM",
+      "value": 320
+    },
+    {
+      "name": "key.keyboard.keypad.1",
+      "type": "KEYSYM",
+      "value": 321
+    },
+    {
+      "name": "key.keyboard.keypad.2",
+      "type": "KEYSYM",
+      "value": 322
+    },
+    {
+      "name": "key.keyboard.keypad.3",
+      "type": "KEYSYM",
+      "value": 323
+    },
+    {
+      "name": "key.keyboard.keypad.4",
+      "type": "KEYSYM",
+      "value": 324
+    },
+    {
+      "name": "key.keyboard.keypad.5",
+      "type": "KEYSYM",
+      "value": 325
+    },
+    {
+      "name": "key.keyboard.keypad.6",
+      "type": "KEYSYM",
+      "value": 326
+    },
+    {
+      "name": "key.keyboard.keypad.7",
+      "type": "KEYSYM",
+      "value": 327
+    },
+    {
+      "name": "key.keyboard.keypad.8",
+      "type": "KEYSYM",
+      "value": 328
+    },
+    {
+      "name": "key.keyboard.keypad.9",
+      "type": "KEYSYM",
+      "value": 329
+    },
+    {
+      "name": "key.keyboard.keypad.add",
+      "type": "KEYSYM",
+      "value": 334
+    },
+    {
+      "name": "key.keyboard.keypad.decimal",
+      "type": "KEYSYM",
+      "value": 330
+    },
+    {
+      "name": "key.keyboard.keypad.enter",
+      "type": "KEYSYM",
+      "value": 335
+    },
+    {
+      "name": "key.keyboard.keypad.equal",
+      "type": "KEYSYM",
+      "value": 336
+    },
+    {
+      "name": "key.keyboard.keypad.multiply",
+      "type": "KEYSYM",
+      "value": 332
+    },
+    {
+      "name": "key.keyboard.keypad.divide",
+      "type": "KEYSYM",
+      "value": 331
+    },
+    {
+      "name": "key.keyboard.keypad.subtract",
+      "type": "KEYSYM",
+      "value": 333
+    },
+    {
+      "name": "key.keyboard.down",
+      "type": "KEYSYM",
+      "value": 264
+    },
+    {
+      "name": "key.keyboard.left",
+      "type": "KEYSYM",
+      "value": 263
+    },
+    {
+      "name": "key.keyboard.right",
+      "type": "KEYSYM",
+      "value": 262
+    },
+    {
+      "name": "key.keyboard.up",
+      "type": "KEYSYM",
+      "value": 265
+    },
+    {
+      "name": "key.keyboard.apostrophe",
+      "type": "KEYSYM",
+      "value": 39
+    },
+    {
+      "name": "key.keyboard.backslash",
+      "type": "KEYSYM",
+      "value": 92
+    },
+    {
+      "name": "key.keyboard.comma",
+      "type": "KEYSYM",
+      "value": 44
+    },
+    {
+      "name": "key.keyboard.equal",
+      "type": "KEYSYM",
+      "value": 61
+    },
+    {
+      "name": "key.keyboard.grave.accent",
+      "type": "KEYSYM",
+      "value": 96
+    },
+    {
+      "name": "key.keyboard.left.bracket",
+      "type": "KEYSYM",
+      "value": 91
+    },
+    {
+      "name": "key.keyboard.minus",
+      "type": "KEYSYM",
+      "value": 45
+    },
+    {
+      "name": "key.keyboard.period",
+      "type": "KEYSYM",
+      "value": 46
+    },
+    {
+      "name": "key.keyboard.right.bracket",
+      "type": "KEYSYM",
+      "value": 93
+    },
+    {
+      "name": "key.keyboard.semicolon",
+      "type": "KEYSYM",
+      "value": 59
+    },
+    {
+      "name": "key.keyboard.slash",
+      "type": "KEYSYM",
+      "value": 47
+    },
+    {
+      "name": "key.keyboard.space",
+      "type": "KEYSYM",
+      "value": 32
+    },
+    {
+      "name": "key.keyboard.tab",
+      "type": "KEYSYM",
+      "value": 258
+    },
+    {
+      "name": "key.keyboard.left.alt",
+      "type": "KEYSYM",
+      "value": 342
+    },
+    {
+      "name": "key.keyboard.left.control",
+      "type": "KEYSYM",
+      "value": 341
+    },
+    {
+      "name": "key.keyboard.left.shift",
+      "type": "KEYSYM",
+      "value": 340
+    },
+    {
+      "name": "key.keyboard.left.win",
+      "type": "KEYSYM",
+      "value": 343
+    },
+    {
+      "name": "key.keyboard.right.alt",
+      "type": "KEYSYM",
+      "value": 346
+    },
+    {
+      "name": "key.keyboard.right.control",
+      "type": "KEYSYM",
+      "value": 345
+    },
+    {
+      "name": "key.keyboard.right.shift",
+      "type": "KEYSYM",
+      "value": 344
+    },
+    {
+      "name": "key.keyboard.right.win",
+      "type": "KEYSYM",
+      "value": 347
+    },
+    {
+      "name": "key.keyboard.enter",
+      "type": "KEYSYM",
+      "value": 257
+    },
+    {
+      "name": "key.keyboard.escape",
+      "type": "KEYSYM",
+      "value": 256
+    },
+    {
+      "name": "key.keyboard.backspace",
+      "type": "KEYSYM",
+      "value": 259
+    },
+    {
+      "name": "key.keyboard.delete",
+      "type": "KEYSYM",
+      "value": 261
+    },
+    {
+      "name": "key.keyboard.end",
+      "type": "KEYSYM",
+      "value": 269
+    },
+    {
+      "name": "key.keyboard.home",
+      "type": "KEYSYM",
+      "value": 268
+    },
+    {
+      "name": "key.keyboard.insert",
+      "type": "KEYSYM",
+      "value": 260
+    },
+    {
+      "name": "key.keyboard.page.down",
+      "type": "KEYSYM",
+      "value": 267
+    },
+    {
+      "name": "key.keyboard.page.up",
+      "type": "KEYSYM",
+      "value": 266
+    },
+    {
+      "name": "key.keyboard.caps.lock",
+      "type": "KEYSYM",
+      "value": 280
+    },
+    {
+      "name": "key.keyboard.pause",
+      "type": "KEYSYM",
+      "value": 284
+    },
+    {
+      "name": "key.keyboard.scroll.lock",
+      "type": "KEYSYM",
+      "value": 281
+    },
+    {
+      "name": "key.keyboard.menu",
+      "type": "KEYSYM",
+      "value": 348
+    },
+    {
+      "name": "key.keyboard.print.screen",
+      "type": "KEYSYM",
+      "value": 283
+    },
+    {
+      "name": "key.keyboard.world.1",
+      "type": "KEYSYM",
+      "value": 161
+    },
+    {
+      "name": "key.keyboard.world.2",
+      "type": "KEYSYM",
+      "value": 162
+    }
+  ],
+  "key_mappings": [
+    {
+      "order": 0,
+      "field": "keyUp",
+      "name": "key.forward",
+      "default_type": "KEYSYM",
+      "default_value": 87,
+      "category": "movement",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 1,
+      "field": "keyLeft",
+      "name": "key.left",
+      "default_type": "KEYSYM",
+      "default_value": 65,
+      "category": "movement",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 2,
+      "field": "keyDown",
+      "name": "key.back",
+      "default_type": "KEYSYM",
+      "default_value": 83,
+      "category": "movement",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 3,
+      "field": "keyRight",
+      "name": "key.right",
+      "default_type": "KEYSYM",
+      "default_value": 68,
+      "category": "movement",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 4,
+      "field": "keyJump",
+      "name": "key.jump",
+      "default_type": "KEYSYM",
+      "default_value": 32,
+      "category": "movement",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 5,
+      "field": "keyShift",
+      "name": "key.sneak",
+      "default_type": "KEYSYM",
+      "default_value": 340,
+      "category": "movement",
+      "toggle": true,
+      "sort_order": 0
+    },
+    {
+      "order": 6,
+      "field": "keySprint",
+      "name": "key.sprint",
+      "default_type": "KEYSYM",
+      "default_value": 341,
+      "category": "movement",
+      "toggle": true,
+      "sort_order": 0
+    },
+    {
+      "order": 7,
+      "field": "keyInventory",
+      "name": "key.inventory",
+      "default_type": "KEYSYM",
+      "default_value": 69,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 8,
+      "field": "keySwapOffhand",
+      "name": "key.swapOffhand",
+      "default_type": "KEYSYM",
+      "default_value": 70,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 9,
+      "field": "keyDrop",
+      "name": "key.drop",
+      "default_type": "KEYSYM",
+      "default_value": 81,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 10,
+      "field": "keyUse",
+      "name": "key.use",
+      "default_type": "MOUSE",
+      "default_value": 1,
+      "category": "gameplay",
+      "toggle": true,
+      "sort_order": 0
+    },
+    {
+      "order": 11,
+      "field": "keyAttack",
+      "name": "key.attack",
+      "default_type": "MOUSE",
+      "default_value": 0,
+      "category": "gameplay",
+      "toggle": true,
+      "sort_order": 0
+    },
+    {
+      "order": 12,
+      "field": "keyPickItem",
+      "name": "key.pickItem",
+      "default_type": "MOUSE",
+      "default_value": 2,
+      "category": "gameplay",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 13,
+      "field": "keyChat",
+      "name": "key.chat",
+      "default_type": "KEYSYM",
+      "default_value": 84,
+      "category": "multiplayer",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 14,
+      "field": "keyPlayerList",
+      "name": "key.playerlist",
+      "default_type": "KEYSYM",
+      "default_value": 258,
+      "category": "multiplayer",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 15,
+      "field": "keyCommand",
+      "name": "key.command",
+      "default_type": "KEYSYM",
+      "default_value": 47,
+      "category": "multiplayer",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 16,
+      "field": "keySocialInteractions",
+      "name": "key.socialInteractions",
+      "default_type": "KEYSYM",
+      "default_value": 80,
+      "category": "multiplayer",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 17,
+      "field": "keyScreenshot",
+      "name": "key.screenshot",
+      "default_type": "KEYSYM",
+      "default_value": 291,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 18,
+      "field": "keyTogglePerspective",
+      "name": "key.togglePerspective",
+      "default_type": "KEYSYM",
+      "default_value": 294,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 19,
+      "field": "keySmoothCamera",
+      "name": "key.smoothCamera",
+      "default_type": "KEYSYM",
+      "default_value": -1,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 20,
+      "field": "keyFullscreen",
+      "name": "key.fullscreen",
+      "default_type": "KEYSYM",
+      "default_value": 300,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 21,
+      "field": "keyAdvancements",
+      "name": "key.advancements",
+      "default_type": "KEYSYM",
+      "default_value": 76,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 22,
+      "field": "keyQuickActions",
+      "name": "key.quickActions",
+      "default_type": "KEYSYM",
+      "default_value": 71,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 23,
+      "field": "keyToggleGui",
+      "name": "key.toggleGui",
+      "default_type": "KEYSYM",
+      "default_value": 290,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 24,
+      "field": "keyToggleSpectatorShaderEffects",
+      "name": "key.toggleSpectatorShaderEffects",
+      "default_type": "KEYSYM",
+      "default_value": 293,
+      "category": "misc",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 25,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.1",
+      "default_type": "KEYSYM",
+      "default_value": 49,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 26,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.2",
+      "default_type": "KEYSYM",
+      "default_value": 50,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 27,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.3",
+      "default_type": "KEYSYM",
+      "default_value": 51,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 28,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.4",
+      "default_type": "KEYSYM",
+      "default_value": 52,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 29,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.5",
+      "default_type": "KEYSYM",
+      "default_value": 53,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 30,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.6",
+      "default_type": "KEYSYM",
+      "default_value": 54,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 31,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.7",
+      "default_type": "KEYSYM",
+      "default_value": 55,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 32,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.8",
+      "default_type": "KEYSYM",
+      "default_value": 56,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 33,
+      "field": "keyHotbarSlots",
+      "name": "key.hotbar.9",
+      "default_type": "KEYSYM",
+      "default_value": 57,
+      "category": "inventory",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 34,
+      "field": "keySaveHotbarActivator",
+      "name": "key.saveToolbarActivator",
+      "default_type": "KEYSYM",
+      "default_value": 67,
+      "category": "creative",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 35,
+      "field": "keyLoadHotbarActivator",
+      "name": "key.loadToolbarActivator",
+      "default_type": "KEYSYM",
+      "default_value": 88,
+      "category": "creative",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 36,
+      "field": "keySpectatorOutlines",
+      "name": "key.spectatorOutlines",
+      "default_type": "KEYSYM",
+      "default_value": -1,
+      "category": "spectator",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 37,
+      "field": "keySpectatorHotbar",
+      "name": "key.spectatorHotbar",
+      "default_type": "MOUSE",
+      "default_value": 2,
+      "category": "spectator",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 38,
+      "field": "keyDebugOverlay",
+      "name": "key.debug.overlay",
+      "default_type": "KEYSYM",
+      "default_value": 292,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": -2
+    },
+    {
+      "order": 39,
+      "field": "keyDebugModifier",
+      "name": "key.debug.modifier",
+      "default_type": "KEYSYM",
+      "default_value": 292,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": -1
+    },
+    {
+      "order": 40,
+      "field": "keyDebugCrash",
+      "name": "key.debug.crash",
+      "default_type": "KEYSYM",
+      "default_value": 67,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 41,
+      "field": "keyDebugReloadChunk",
+      "name": "key.debug.reloadChunk",
+      "default_type": "KEYSYM",
+      "default_value": 65,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 42,
+      "field": "keyDebugShowHitboxes",
+      "name": "key.debug.showHitboxes",
+      "default_type": "KEYSYM",
+      "default_value": 66,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 43,
+      "field": "keyDebugClearChat",
+      "name": "key.debug.clearChat",
+      "default_type": "KEYSYM",
+      "default_value": 68,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 44,
+      "field": "keyDebugShowChunkBorders",
+      "name": "key.debug.showChunkBorders",
+      "default_type": "KEYSYM",
+      "default_value": 71,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 45,
+      "field": "keyDebugShowAdvancedTooltips",
+      "name": "key.debug.showAdvancedTooltips",
+      "default_type": "KEYSYM",
+      "default_value": 72,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 46,
+      "field": "keyDebugCopyRecreateCommand",
+      "name": "key.debug.copyRecreateCommand",
+      "default_type": "KEYSYM",
+      "default_value": 73,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 47,
+      "field": "keyDebugSpectate",
+      "name": "key.debug.spectate",
+      "default_type": "KEYSYM",
+      "default_value": 78,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 48,
+      "field": "keyDebugSwitchGameMode",
+      "name": "key.debug.switchGameMode",
+      "default_type": "KEYSYM",
+      "default_value": 293,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 49,
+      "field": "keyDebugDebugOptions",
+      "name": "key.debug.debugOptions",
+      "default_type": "KEYSYM",
+      "default_value": 295,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 50,
+      "field": "keyDebugFocusPause",
+      "name": "key.debug.focusPause",
+      "default_type": "KEYSYM",
+      "default_value": 80,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 51,
+      "field": "keyDebugDumpDynamicTextures",
+      "name": "key.debug.dumpDynamicTextures",
+      "default_type": "KEYSYM",
+      "default_value": 83,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 52,
+      "field": "keyDebugReloadResourcePacks",
+      "name": "key.debug.reloadResourcePacks",
+      "default_type": "KEYSYM",
+      "default_value": 84,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 53,
+      "field": "keyDebugProfiling",
+      "name": "key.debug.profiling",
+      "default_type": "KEYSYM",
+      "default_value": 76,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 54,
+      "field": "keyDebugCopyLocation",
+      "name": "key.debug.copyLocation",
+      "default_type": "KEYSYM",
+      "default_value": 67,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 55,
+      "field": "keyDebugDumpVersion",
+      "name": "key.debug.dumpVersion",
+      "default_type": "KEYSYM",
+      "default_value": 86,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 0
+    },
+    {
+      "order": 56,
+      "field": "keyDebugPofilingChart",
+      "name": "key.debug.profilingChart",
+      "default_type": "KEYSYM",
+      "default_value": 49,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 1
+    },
+    {
+      "order": 57,
+      "field": "keyDebugFpsCharts",
+      "name": "key.debug.fpsCharts",
+      "default_type": "KEYSYM",
+      "default_value": 50,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 2
+    },
+    {
+      "order": 58,
+      "field": "keyDebugNetworkCharts",
+      "name": "key.debug.networkCharts",
+      "default_type": "KEYSYM",
+      "default_value": 51,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 3
+    },
+    {
+      "order": 59,
+      "field": "keyDebugLightmapTexture",
+      "name": "key.debug.lightmapTexture",
+      "default_type": "KEYSYM",
+      "default_value": 52,
+      "category": "debug",
+      "toggle": false,
+      "sort_order": 4
+    }
+  ]
+}

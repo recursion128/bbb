@@ -14,6 +14,8 @@
 pub(crate) mod args;
 mod catalog_26_1;
 pub(crate) mod derived;
+pub(crate) mod key_bindings;
+mod key_mappings_26_1;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -40,11 +42,9 @@ pub(crate) struct ClientOptionHost {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ClientOptions {
     values: BTreeMap<&'static str, String>,
-    /// Lines under `key_`, `soundCategory_` and `modelPart_`. BBB has no
-    /// `KeyMapping` catalog to rewrite them from, so they are carried through
-    /// verbatim rather than dropped — the same bytes Vanilla would write when
-    /// nothing changes them, instead of silently discarding a shared game
-    /// directory's bindings.
+    /// Lines under `key_`, `soundCategory_` and `modelPart_`, carried through
+    /// verbatim so a shared game directory keeps the bytes Vanilla wrote. The
+    /// `key_` half is read back through `key_bindings`.
     dynamic: BTreeMap<String, String>,
 }
 
@@ -137,6 +137,15 @@ impl ClientOptions {
     /// The text currently on the line for `key`, if the catalog has one.
     pub(crate) fn raw(&self, key: &str) -> Option<&str> {
         self.values.get(key).map(String::as_str)
+    }
+
+    pub(crate) fn dynamic_raw(&self, key: &str) -> Option<&str> {
+        self.dynamic.get(key).map(String::as_str)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_dynamic_raw_for_test(&mut self, key: &str, value: &str) {
+        self.dynamic.insert(key.to_owned(), value.to_owned());
     }
 
     #[cfg(test)]

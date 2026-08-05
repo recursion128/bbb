@@ -206,6 +206,7 @@ Matrix routes: `fixture-not-needed`
             "client-options-catalog.json",
             "entity-coverage.json",
             "item-component-coverage.json",
+            "key-mapping-catalog.json",
             "packet-coverage.json",
             "registry-holder-consumer-coverage.json",
         ):
