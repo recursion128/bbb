@@ -5671,6 +5671,521 @@ UI_CLIPBOARD_SURFACE_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+PLATFORM_WINDOW_LIFECYCLE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#build_window",
+                "crates/bbb-native/src/main.rs#native platform window created",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+                "crates/bbb-native/src/window_icon.rs#production_source_has_one_ordered_startup_call_and_no_icon_path_resolver",
+            ),
+        ),
+        ("Window",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#fn build_window",
+                "crates/bbb-native/src/startup.rs#create native window",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+            ),
+        ),
+        ("createGlfwWindow", "createWindow"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_icon.rs#platform_identity",
+                "crates/bbb-native/src/window_icon.rs#NativeWindowBackend",
+            ),
+            ("crates/bbb-native/src/window_icon.rs#platform_identity_matches_glfw_platform_names",),
+        ),
+        ("getPlatform",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::CloseRequested",
+                "crates/bbb-native/src/simulation/input_commands.rs#request_network_terminal_shutdown",
+            ),
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#network_terminal_shutdown_is_idempotent_and_requests_disconnect",
+                "crates/bbb-native/src/main.rs#window_title_follows_the_published_connection_state_and_diffs_applications",
+            ),
+        ),
+        ("shouldClose", "setWindowCloseCallback"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/startup.rs#checkGlfwError",),
+            (
+                "crates/bbb-native/src/crash_report.rs#guarded_error_and_panic_become_typed_failures_but_success_stays_clean",
+            ),
+        ),
+        (
+            "checkGlfwError",
+            "defaultErrorCallback",
+            "setBootErrorCallback",
+            "setDefaultErrorCallback",
+        ),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#crash_reports.guard",
+                "crates/bbb-native/src/crash_report.rs#exit_after_failure",
+            ),
+            (
+                "crates/bbb-native/src/crash_report.rs#guarded_error_and_panic_become_typed_failures_but_success_stays_clean",
+                "crates/bbb-native/src/crash_report.rs#process_failure_writes_report_exits_nonzero_and_next_process_recovers",
+            ),
+        ),
+        ("bootCrash",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/crash_report.rs#RuntimeFailure",
+                "crates/bbb-native/src/crash_report.rs#phase: String",
+            ),
+            (
+                "crates/bbb-native/src/crash_report.rs#friendly_report_has_vanilla_sections_and_bounded_accounting",
+            ),
+        ),
+        ("setErrorSection",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#Event::LoopExiting",
+                "crates/bbb-native/src/simulation/thread.rs#shutdown_and_join",
+            ),
+            (
+                "crates/bbb-native/src/network_runtime.rs#production_shutdown_has_one_owner_and_frozen_order",
+            ),
+        ),
+        ("close",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#window.current_monitor()",
+                "crates/bbb-native/src/window_surface.rs#find_exact_video_mode",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
+            ),
+        ),
+        ("findBestMonitor",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/window_surface.rs#allowed_window_min_size",),
+            (
+                "crates/bbb-native/src/window_surface.rs#allowed_window_min_size_clamps_both_dimensions_to_one",
+                "crates/bbb-native/src/startup.rs#window_config_clamps_dimensions_to_minimum_nonzero",
+            ),
+        ),
+        ("allowedWindowMinSize",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#create native window",
+                "crates/bbb-native/src/crash_report.rs#exit_after_failure",
+            ),
+            (
+                "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
+            ),
+        ),
+        ("WindowInitFailed",),
+    ),
+)
+
+
+PLATFORM_WINDOW_DISPLAY_MODE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#set_vsync_enabled",
+                "crates/bbb-native/src/main.rs#self.renderer.set_vsync_enabled(self.vsync_enabled)",
+            ),
+            (
+                "crates/bbb-renderer/src/renderer.rs#set_vsync_enabled_renegotiates_present_mode_without_touching_targets",
+                "crates/bbb-renderer/src/renderer.rs#set_vsync_enabled_survives_zero_size_without_reconfigure",
+                "crates/bbb-native/src/startup.rs#args_accept_vanilla_default_vsync_toggle",
+            ),
+        ),
+        ("updateVsync",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn take_fullscreen_requests",
+                "crates/bbb-native/src/simulation/input_commands.rs#PlatformEffect::SetFullscreen(fullscreen)",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_fullscreen_key_toggles_the_window_and_saves_the_option",
+                "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",
+            ),
+        ),
+        ("updateFullscreenIfChanged",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#parse_client_fullscreen_resolution",
+                "crates/bbb-native/src/client_options/args.rs#bind_fullscreen_resolution",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#a_typed_fullscreen_resolution_wins_over_the_stored_line",
+                "crates/bbb-native/src/startup.rs#an_invalid_stored_fullscreen_resolution_keeps_the_current_value",
+            ),
+        ),
+        ("setPreferredFullscreenVideoMode",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#Window.changeFullscreenVideoMode",),
+            ("crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",),
+        ),
+        ("changeFullscreenVideoMode",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn set_window_fullscreen",
+                "crates/bbb-native/src/window_surface.rs#fn fullscreen_choice",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",
+                "crates/bbb-native/src/window_surface.rs#fullscreen_choice_selects_exclusive_only_with_exact_mode_and_backend_support",
+                "crates/bbb-native/src/window_surface.rs#video_mode_facts_exact_match_includes_refresh_and_total_bits",
+            ),
+        ),
+        ("setMode",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn toggle_fullscreen",
+                "crates/bbb-native/src/input.rs#binding_matches(\"key.fullscreen\", code)",
+            ),
+            ("crates/bbb-native/src/input/tests.rs#the_fullscreen_key_toggles_the_window_and_saves_the_option",),
+        ),
+        ("toggleFullScreen",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn set_window_fullscreen",
+                "crates/bbb-native/src/main.rs#Windowed restoration is winit-owned",
+            ),
+            ("crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",),
+        ),
+        ("setWindowed",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#apply_startup_fullscreen",
+                "crates/bbb-native/src/simulation/input_commands.rs#PlatformEffect::SetFullscreen(fullscreen)",
+            ),
+            ("crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",),
+        ),
+        ("updateFullscreen",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#rawMouseInput=false has no effect on the winit backend",
+                "crates/bbb-native/src/startup.rs#client_raw_mouse_input",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
+                "crates/bbb-native/src/main.rs#cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input",
+            ),
+        ),
+        ("updateRawMouseInput",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_surface.rs#refresh_rate_hz",
+                "crates/bbb-native/src/main.rs#monitor_refresh_rate_hz",
+            ),
+            ("crates/bbb-native/src/window_surface.rs#refresh_rate_hz_rounds_millihertz_to_glfw_hertz",),
+        ),
+        ("getRefreshRate",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#`Minecraft.onFullscreenError` has no runtime trigger on this backend",
+                "crates/bbb-renderer/src/renderer.rs#failure, so `Minecraft.onFullscreenError` has no trigger on this",
+            ),
+            ("crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",),
+        ),
+        ("onFullscreenError",),
+    ),
+)
+
+
+PLATFORM_WINDOW_SURFACE_STATE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#Windowed restoration is winit-owned",),
+            ("crates/bbb-native/src/main.rs#fullscreen_transitions_share_one_deterministic_mode_policy",),
+        ),
+        ("onMove",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::Resized(size)",
+                "crates/bbb-native/src/simulation/input_commands.rs#set_surface_size",
+                "crates/bbb-renderer/src/renderer.rs#resize_with_prepare_check",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",
+                "crates/bbb-native/src/simulation/input_commands.rs#zero_size_resize_marks_minimized_and_keeps_last_usable_surface",
+                "crates/bbb-renderer/src/renderer.rs#gui_surface_size_stays_logical_while_surface_size_stays_physical",
+            ),
+        ),
+        ("onFramebufferResize",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#window.inner_size()",
+                "crates/bbb-native/src/simulation/input_commands.rs#SimulationInputRuntime",
+            ),
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#surface_resize_recomputes_gui_scale_and_projection",
+            ),
+        ),
+        ("refreshFramebufferSize",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#physical_surface_size",),
+            ("crates/bbb-renderer/src/renderer.rs#gui_surface_size_stays_logical_while_surface_size_stays_physical",),
+        ),
+        ("onResize",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#WindowEvent::Focused(focused)",
+                "crates/bbb-native/src/input.rs#pub(crate) fn handle_focus_change",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_focus",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+                "crates/bbb-native/src/simulation/input_commands.rs#focus_regained_in_the_same_step_prevents_the_pause_screen",
+            ),
+        ),
+        ("onFocus",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#WindowEvent::CursorEntered",),
+            (
+                "crates/bbb-native/src/window_surface.rs#cursor_cache_stays_physical_and_reprojects_after_gui_projection_changes",
+            ),
+        ),
+        ("onEnter", "cursorEntered"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/simulation/input_commands.rs#pub(crate) minimized: bool",),
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#zero_size_resize_marks_minimized_and_keeps_last_usable_surface",
+            ),
+        ),
+        ("onIconify",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_surface.rs#calculate_gui_scale",
+                "crates/bbb-native/src/simulation/input_commands.rs#project_gui_scale",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#calculate_gui_scale_matches_vanilla_progression",
+                "crates/bbb-native/src/window_surface.rs#calculate_gui_scale_enforce_unicode_rounds_odd_scale_up",
+                "crates/bbb-native/src/simulation/input_commands.rs#manual_gui_scale_cap_and_unicode_rounding_flow_into_projection",
+            ),
+        ),
+        ("calculateScale",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_surface.rs#gui_scaled_size",
+                "crates/bbb-renderer/src/renderer.rs#set_gui_surface_size",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#gui_scaled_size_uses_ceiling_division",
+                "crates/bbb-renderer/src/renderer.rs#set_gui_surface_size_refreshes_dependent_camera_state_and_no_ops_when_unchanged",
+            ),
+        ),
+        ("setGuiScale",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#apply_resize",
+                "crates/bbb-renderer/src/renderer.rs#physical_surface_size",
+            ),
+            ("crates/bbb-renderer/src/renderer.rs#gui_surface_size_stays_logical_while_surface_size_stays_physical",),
+        ),
+        ("setWidth", "setHeight"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#Window.resetIsResized",
+                "crates/bbb-renderer/src/counters.rs#surface_resizes",
+            ),
+            ("crates/bbb-native/src/main.rs#resize_arm_publishes_logical_gui_size_before_queuing_surface_resized",),
+        ),
+        ("resetIsResized",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_surface.rs#appropriate_line_width",
+                "crates/bbb-native/src/runtime.rs#crate::window_surface::appropriate_line_width",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#appropriate_line_width_scales_from_1920_and_never_drops_below_2_5",
+                "crates/bbb-native/src/runtime/tests.rs#block_selection_projection_uses_current_material_catalog_surface_width_and_style",
+            ),
+        ),
+        ("getAppropriateLineWidth",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#pub(crate) fn handle_focus_change",
+                "crates/bbb-native/src/main.rs#ClientInputState::new(window.has_focus())",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#unfocused_movement_key_does_not_queue_player_input",
+                "crates/bbb-native/src/input/tests.rs#focus_loss_clears_pressed_input_and_queues_release",
+            ),
+        ),
+        ("isWindowActive",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn pause_if_inactive",
+                "crates/bbb-native/src/simulation/input_commands.rs#context.input.pause_if_inactive(context.now, context.world)",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#pause_if_inactive_opens_pause_screen_after_500ms_without_a_screen",
+                "crates/bbb-native/src/input/tests.rs#pause_if_inactive_respects_chat_entry_as_an_open_screen",
+                "crates/bbb-native/src/simulation/input_commands.rs#pause_if_inactive_is_evaluated_after_focus_changed_commands_in_the_step",
+            ),
+        ),
+        ("pauseIfInactive",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn resize_gui_surface",
+                "crates/bbb-native/src/simulation/input_commands.rs#set_gui_scale_options",
+            ),
+            (
+                "crates/bbb-native/src/main.rs#resize_gui_surface_projects_1280x720_at_scale_three_to_427x240",
+                "crates/bbb-native/src/simulation/input_commands.rs#surface_resize_recomputes_gui_scale_and_projection",
+            ),
+        ),
+        ("resizeGui",),
+    ),
+)
+
+
+PLATFORM_WINDOW_CHROME_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_icon.rs#install_startup_window_icon",
+                "crates/bbb-native/src/window_icon.rs#prepare_standard_icons",
+            ),
+            (
+                "crates/bbb-native/src/window_icon.rs#platform_target_preserves_vanilla_family_and_wayland_skip",
+                "crates/bbb-native/src/window_icon.rs#standard_catalog_converts_all_five_icons_before_platform_selection",
+                "crates/bbb-native/src/window_icon.rs#production_source_has_one_ordered_startup_call_and_no_icon_path_resolver",
+            ),
+        ),
+        ("setIcon",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn update_window_title",
+                "crates/bbb-native/src/main.rs#window.set_title(&next)",
+            ),
+            ("crates/bbb-native/src/main.rs#window_title_follows_the_published_connection_state_and_diffs_applications",),
+        ),
+        ("setTitle",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/startup.rs#client_allow_cursor_changes",
+                "crates/bbb-native/src/client_options/catalog_26_1.rs#allowCursorChanges",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#the_stored_window_family_options_feed_the_window_owner",
+                "crates/bbb-native/src/main.rs#cursor_icon_changes_flow_through_select_cursor_gating",
+            ),
+        ),
+        ("setAllowCursorChanges",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/window_surface.rs#fn select_cursor",
+                "crates/bbb-native/src/main.rs#fn apply_window_cursor_icon",
+            ),
+            (
+                "crates/bbb-native/src/window_surface.rs#select_cursor_forces_default_unless_allowed_and_skips_redundant_changes",
+                "crates/bbb-native/src/main.rs#cursor_icon_changes_flow_through_select_cursor_gating",
+            ),
+        ),
+        ("selectCursor",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/window_surface.rs#fn create_title",),
+            (
+                "crates/bbb-native/src/window_surface.rs#create_title_marks_modified_client_and_appends_multiplayer_while_connected",
+            ),
+        ),
+        ("createTitle",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn update_window_title",
+                "crates/bbb-native/src/main.rs#render_publication.net_counters.connected",
+            ),
+            ("crates/bbb-native/src/main.rs#window_title_follows_the_published_connection_state_and_diffs_applications",),
+        ),
+        ("updateTitle",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
@@ -5678,6 +6193,10 @@ METHOD_OWNER_EVIDENCE = {
     "input-key-mapping": INPUT_KEY_MAPPING_OWNER_EVIDENCE,
     "ui-accessibility-surface": UI_ACCESSIBILITY_SURFACE_OWNER_EVIDENCE,
     "ui-clipboard-surface": UI_CLIPBOARD_SURFACE_OWNER_EVIDENCE,
+    "platform-window-lifecycle": PLATFORM_WINDOW_LIFECYCLE_OWNER_EVIDENCE,
+    "platform-window-display-mode": PLATFORM_WINDOW_DISPLAY_MODE_OWNER_EVIDENCE,
+    "platform-window-surface-state": PLATFORM_WINDOW_SURFACE_STATE_OWNER_EVIDENCE,
+    "platform-window-chrome": PLATFORM_WINDOW_CHROME_OWNER_EVIDENCE,
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
