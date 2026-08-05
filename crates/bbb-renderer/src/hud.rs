@@ -94,16 +94,16 @@ use self::layout::{
     hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
     hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
     hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_locator_arrow_rect, hud_locator_marker_rect, hud_overlay_message_text_origin,
-    hud_player_heart_instances, hud_quad_vertices, hud_rect_intersection_uv_span,
-    hud_selected_item_name_origin, hud_spyglass_scope_layout, hud_styled_quad_vertices,
-    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
-    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
-    inventory_slot_item_hud_rect, nine_slice_segments, tiled_sprite_segments,
-    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
-    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
-    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
-    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_item_pop_corners, hud_item_pop_placement, hud_locator_arrow_rect, hud_locator_marker_rect,
+    hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
+    hud_rect_intersection_uv_span, hud_selected_item_name_origin, hud_spyglass_scope_layout,
+    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
+    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, nine_slice_segments,
+    tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
+    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
+    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
+    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 pub use self::player_list::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
@@ -1957,6 +1957,10 @@ pub struct HudItemIcon {
     pub count_label: Option<HudItemCountLabel>,
     pub durability_bar: Option<HudItemDurabilityBar>,
     pub cooldown_progress: Option<f32>,
+    /// Vanilla `ItemStack.getPopTime()` minus this frame's partial tick. While
+    /// positive, `Gui.extractSlot` squeezes the item quad; decorations are
+    /// never posed.
+    pub pop: f32,
 }
 
 impl HudItemIcon {
@@ -1968,6 +1972,7 @@ impl HudItemIcon {
             count_label: None,
             durability_bar: None,
             cooldown_progress: None,
+            pop: 0.0,
         }
     }
 }
@@ -6721,8 +6726,14 @@ impl Renderer {
         {
             for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
                 if let Some(model) = model {
+                    let rect = hotbar_item_hud_rect(surface_size, slot);
+                    let pop = self
+                        .hud_hotbar_item_icons
+                        .get(slot)
+                        .and_then(|icon| icon.as_ref())
+                        .map_or(0.0, |icon| icon.pop);
                     let placement =
-                        gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
+                        hud_item_pop_placement(rect, pop) * gui_item_slot_placement(rect);
                     append_model(model, placement, None);
                 }
             }
@@ -9618,6 +9629,21 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     commands.push(HudDrawCommand::Sprite { sprite, start, end });
 }
 
+fn push_hud_draw_with_corners_uv_and_tint<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    sprite: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    corners: [[f32; 2]; 4],
+    uv: HudUvRect,
+    tint: [f32; 4],
+) {
+    let start = vertices.len() as u32;
+    vertices.extend_from_slice(&hud_styled_quad_vertices(surface_size, corners, uv, tint));
+    let end = vertices.len() as u32;
+    commands.push(HudDrawCommand::Sprite { sprite, start, end });
+}
+
 fn push_hud_spyglass_scope<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -9775,13 +9801,14 @@ fn push_hud_item_glint<'a>(
     commands: &mut Vec<HudDrawCommand<'a>>,
     item_atlas: &'a HudSpriteGpu,
     surface_size: PhysicalSize<u32>,
-    item_rect: HudRect,
+    corners: [[f32; 2]; 4],
     uv: HudUvRect,
     alpha: f32,
     foil: HudItemFoil,
 ) {
     let start = vertices.len() as u32;
-    let mut quad_vertices = hud_quad_vertices(surface_size, item_rect, uv, [1.0, 1.0, 1.0, alpha]);
+    let mut quad_vertices =
+        hud_styled_quad_vertices(surface_size, corners, uv, [1.0, 1.0, 1.0, alpha]);
     if foil == HudItemFoil::Special {
         for vertex in &mut quad_vertices {
             vertex.local_uv = hud_item_special_foil_glint_uv(vertex.local_uv);
@@ -9858,15 +9885,16 @@ fn push_hud_item_icon_clipped<'a>(
     };
     let scissor_active =
         scissor_rect.is_some_and(|rect| push_hud_rect_scissor(commands, surface_size, rect));
+    let layer_corners = hud_item_pop_corners(layer_rect, icon.pop);
     for_each_hud_item_icon_draw_step(icon, draw_layers, draw_decorations, |step| match step {
         HudItemIconDrawStep::Layers => {
             for layer in &icon.layers {
-                push_hud_draw_with_uv_and_tint(
+                push_hud_draw_with_corners_uv_and_tint(
                     vertices,
                     commands,
                     item_atlas,
                     surface_size,
-                    layer_rect,
+                    layer_corners,
                     hud_uv_rect_subspan(layer.uv, layer_uv_min, layer_uv_max),
                     layer.tint,
                 );
@@ -9879,7 +9907,7 @@ fn push_hud_item_icon_clipped<'a>(
                     commands,
                     item_atlas,
                     surface_size,
-                    layer_rect,
+                    layer_corners,
                     hud_uv_rect_subspan(layer.uv, layer_uv_min, layer_uv_max),
                     layer.tint[3],
                     icon.foil,
@@ -22341,6 +22369,10 @@ fn sanitize_hud_multiline_styled_runs(
     }
 }
 
+/// Vanilla `ItemStack.setPopTime(5)` is the only value the client ever writes,
+/// so a projected pop can never exceed five ticks.
+const VANILLA_ITEM_POP_TIME_TICKS: f32 = 5.0;
+
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
     if icon.lighting != GuiItemLightingEntry::ItemsFlat {
         return None;
@@ -22351,6 +22383,11 @@ fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
         .filter_map(sanitize_hud_icon_layer)
         .collect::<Vec<_>>();
     (!layers.is_empty()).then_some(HudItemIcon {
+        pop: if icon.pop.is_finite() {
+            icon.pop.clamp(0.0, VANILLA_ITEM_POP_TIME_TICKS)
+        } else {
+            0.0
+        },
         lighting: GuiItemLightingEntry::ItemsFlat,
         layers,
         foil: icon.foil,
@@ -22901,6 +22938,64 @@ mod tests {
             HudCrosshairAttackIndicator::None
         );
         assert_eq!(renderer.collect_hud_draws().commands.len(), 1);
+    }
+
+    #[test]
+    fn the_slot_pop_pose_moves_the_item_quad_but_never_its_decorations() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_item_atlas(2, 2, &[255, 255, 255, 255].repeat(4))
+            .expect("item atlas");
+        renderer.set_hud_hotbar_mode(HudHotbarMode::Ordinary);
+
+        let icon = |pop: f32| HudItemIcon {
+            pop,
+            durability_bar: Some(HudItemDurabilityBar::new(13, [0.0, 1.0, 0.0])),
+            ..HudItemIcon::single(HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            })
+        };
+        let pixel_xs = |renderer: &mut Renderer| {
+            let mut xs = renderer
+                .collect_hud_draws()
+                .vertices
+                .iter()
+                .map(|vertex| (vertex.position[0] + 1.0) * 160.0)
+                .map(|x| x.round() as i32)
+                .collect::<Vec<_>>();
+            xs.sort_unstable();
+            xs.dedup();
+            xs
+        };
+
+        let mut icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] = std::array::from_fn(|_| None);
+        icons[0] = Some(icon(0.0));
+        renderer.set_hud_hotbar_item_icons(icons.clone());
+        let resting = pixel_xs(&mut renderer);
+        let slot_left = *resting.first().unwrap();
+        // The 13-pixel durability bar sits two pixels inside the slot.
+        assert!(resting.contains(&(slot_left + 2)));
+        assert!(resting.contains(&(slot_left + 15)));
+        assert_eq!(*resting.last().unwrap(), slot_left + 16);
+
+        icons[0] = Some(icon(5.0));
+        renderer.set_hud_hotbar_item_icons(icons.clone());
+        let popped = pixel_xs(&mut renderer);
+
+        // `squeeze = 2` halves the item quad about its `x + 8` pivot, while the
+        // decorations keep their unposed pixels.
+        assert!(popped.contains(&(slot_left + 4)));
+        assert!(popped.contains(&(slot_left + 12)));
+        assert!(!popped.contains(&slot_left));
+        assert!(popped.contains(&(slot_left + 2)));
+        assert!(popped.contains(&(slot_left + 15)));
+
+        icons[0] = Some(icon(f32::INFINITY));
+        renderer.set_hud_hotbar_item_icons(icons);
+        assert_eq!(renderer.hud_hotbar_item_icons[0].as_ref().unwrap().pop, 0.0);
     }
 
     #[test]
@@ -24541,6 +24636,7 @@ mod tests {
         assert_eq!(
             icon,
             HudItemIcon {
+                pop: 0.0,
                 lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
@@ -25965,6 +26061,7 @@ mod tests {
             [0.75, 0.5, 0.25, 0.0],
         );
         let icon = sanitize_hud_item_icon(HudItemIcon {
+            pop: 0.0,
             lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![first, second],
             foil: HudItemFoil::Standard,
@@ -25996,6 +26093,7 @@ mod tests {
         // `itemCooldown`, then `itemCount`, after the item sprite itself has
         // already been submitted to the GUI item atlas.
         let icon = HudItemIcon {
+            pop: 0.0,
             lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![HudIconLayer::new(
                 HudUvRect {
@@ -26053,6 +26151,7 @@ mod tests {
     #[test]
     fn sanitize_hud_item_icon_discards_invalid_layers() {
         let icon = sanitize_hud_item_icon(HudItemIcon {
+            pop: 0.0,
             lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![
                 HudIconLayer::new(
@@ -26094,6 +26193,7 @@ mod tests {
 
         assert_eq!(
             sanitize_hud_item_icon(HudItemIcon {
+                pop: 0.0,
                 lighting: GuiItemLightingEntry::EntityInUi,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
@@ -26112,6 +26212,7 @@ mod tests {
 
         assert_eq!(
             sanitize_hud_item_icon(HudItemIcon {
+                pop: 0.0,
                 lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
@@ -28309,6 +28410,7 @@ mod tests {
                     x: 8,
                     y: 84,
                     icon: Some(HudItemIcon {
+                        pop: 0.0,
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
@@ -28329,6 +28431,7 @@ mod tests {
                     x: 26,
                     y: 84,
                     icon: Some(HudItemIcon {
+                        pop: 0.0,
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
@@ -28448,6 +28551,7 @@ mod tests {
         assert_eq!(
             screen.slots[0].icon,
             Some(HudItemIcon {
+                pop: 0.0,
                 lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
@@ -29163,6 +29267,7 @@ mod tests {
                     scale: 2.0,
                     scale_y: 20.0,
                     icon: HudItemIcon {
+                        pop: 0.0,
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
@@ -29191,6 +29296,7 @@ mod tests {
                     scale: 1.0,
                     scale_y: 1.0,
                     icon: HudItemIcon {
+                        pop: 0.0,
                         lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
@@ -29231,6 +29337,7 @@ mod tests {
         assert_eq!(
             screen.floating_items[0].icon,
             HudItemIcon {
+                pop: 0.0,
                 lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {

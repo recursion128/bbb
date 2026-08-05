@@ -151,11 +151,11 @@ impl WorldStore {
         self.creative_inventory.remote_inventory_menu_slots.clear();
     }
 
-    pub fn creative_hotbar_pop_times(&self) -> [u8; PLAYER_HOTBAR_SIZE] {
+    pub fn hotbar_pop_times(&self) -> [u8; PLAYER_HOTBAR_SIZE] {
         self.creative_inventory.hotbar_pop_times
     }
 
-    pub fn advance_creative_hotbar_pop_times(&mut self, ticks: u32) {
+    pub fn advance_hotbar_pop_times(&mut self, ticks: u32) {
         let ticks = u8::try_from(ticks).unwrap_or(u8::MAX);
         for pop_time in &mut self.creative_inventory.hotbar_pop_times {
             *pop_time = pop_time.saturating_sub(ticks);

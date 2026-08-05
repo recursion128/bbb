@@ -5524,9 +5524,10 @@ fn hotbar_item_icons_with_input_context(
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
-    let mut icons = std::array::from_fn(|_| None);
+    let mut icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] = std::array::from_fn(|_| None);
     let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
     let using_selected_item = world.local_player().interaction.using_item;
+    let pop_times = world.hotbar_pop_times();
     for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
         let selected_item = slot_index == selected_slot;
         let fishing_rod_cast =
@@ -5545,6 +5546,13 @@ fn hotbar_item_icons_with_input_context(
             i32::try_from(slot_index + 1).unwrap_or(0),
             partial_tick,
         );
+        // Vanilla `Gui.extractSlot` poses the slot by
+        // `itemStack.getPopTime() - getGameTimeDeltaPartialTick(false)`.
+        if let Some(icon) = icons[slot_index].as_mut() {
+            icon.pop = pop_times
+                .get(slot_index)
+                .map_or(0.0, |ticks| f32::from(*ticks) - partial_tick);
+        }
     }
 
     icons
@@ -18682,6 +18690,7 @@ fn hud_item_icon_for_stack_with_owner_team_color(
             world.frozen_registry_access(),
         )?;
     Some(HudItemIcon {
+        pop: 0.0,
         lighting: GuiItemLightingEntry::ItemsFlat,
         layers: icon
             .layers

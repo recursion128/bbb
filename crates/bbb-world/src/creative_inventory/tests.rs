@@ -615,7 +615,7 @@ fn inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time() {
         slot: 36,
         item: item_stack(VANILLA_ITEM_STONE_ID, 2),
     }));
-    assert_eq!(world.creative_hotbar_pop_times()[0], 5);
+    assert_eq!(world.hotbar_pop_times()[0], 5);
     assert_eq!(
         world
             .creative_remote_inventory_menu_slots()
@@ -636,8 +636,8 @@ fn inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time() {
         item_stack(VANILLA_ITEM_STONE_ID, 2)
     );
 
-    world.advance_creative_hotbar_pop_times(3);
-    assert_eq!(world.creative_hotbar_pop_times()[0], 2);
+    world.advance_hotbar_pop_times(3);
+    assert_eq!(world.hotbar_pop_times()[0], 2);
     assert!(world.apply_container_set_slot(ContainerSetSlot {
         container_id: 0,
         state_id: 2,
@@ -645,7 +645,7 @@ fn inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time() {
         item: item_stack(VANILLA_ITEM_DIAMOND_ID, 1),
     }));
     assert_eq!(
-        world.creative_hotbar_pop_times()[0],
+        world.hotbar_pop_times()[0],
         2,
         "a nonempty lower-count correction does not restart pop time"
     );
@@ -655,7 +655,7 @@ fn inventory_menu_corrections_sync_remote_player_slot_and_hotbar_pop_time() {
         slot: 36,
         item: item_stack(VANILLA_ITEM_DIAMOND_ID, 4),
     }));
-    assert_eq!(world.creative_hotbar_pop_times()[0], 5);
+    assert_eq!(world.hotbar_pop_times()[0], 5);
 }
 
 #[test]
@@ -674,7 +674,7 @@ fn level_reset_clears_creative_screen_remote_slots_and_pop_time() {
 
     assert!(world.creative_inventory_screen().is_none());
     assert!(world.creative_remote_inventory_menu_slots().is_empty());
-    assert_eq!(world.creative_hotbar_pop_times(), [0; 9]);
+    assert_eq!(world.hotbar_pop_times(), [0; 9]);
 }
 
 #[test]
@@ -693,7 +693,7 @@ fn registry_session_reset_clears_creative_interaction_state() {
 
     assert!(world.creative_inventory_screen().is_none());
     assert!(world.creative_remote_inventory_menu_slots().is_empty());
-    assert_eq!(world.creative_hotbar_pop_times(), [0; 9]);
+    assert_eq!(world.hotbar_pop_times(), [0; 9]);
 }
 
 #[test]

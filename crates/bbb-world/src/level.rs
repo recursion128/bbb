@@ -569,7 +569,7 @@ impl WorldStore {
             return;
         }
 
-        self.advance_creative_hotbar_pop_times(ticks);
+        self.advance_hotbar_pop_times(ticks);
 
         if self.local_player.portal_cooldown > 0 {
             let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);

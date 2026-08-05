@@ -16106,6 +16106,36 @@ fn hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down() {
             max: keybind_uv.max,
         }
     );
+    assert_eq!(inactive_icons[0].as_ref().unwrap().pop, 0.0);
+
+    // `ClientPacketListener.handleContainerSetSlot` sets `popTime` to 5 when a
+    // hotbar slot's count grows, and `Gui.extractSlot` subtracts this frame's
+    // `getGameTimeDeltaPartialTick(false)` from it.
+    assert!(
+        world.apply_container_set_slot(bbb_protocol::packets::ContainerSetSlot {
+            container_id: 0,
+            state_id: 1,
+            slot: 36,
+            item: item_stack(0, 3),
+        })
+    );
+    let popped_icons = hotbar_item_icons_with_input_context(
+        &world,
+        Some(&item_runtime),
+        0.25,
+        false,
+        ItemModelKeybindContext::default(),
+    );
+    assert_eq!(popped_icons[0].as_ref().unwrap().pop, 4.75);
+    world.advance_hotbar_pop_times(5);
+    let settled_icons = hotbar_item_icons_with_input_context(
+        &world,
+        Some(&item_runtime),
+        0.25,
+        false,
+        ItemModelKeybindContext::default(),
+    );
+    assert_eq!(settled_icons[0].as_ref().unwrap().pop, -0.25);
 
     std::fs::remove_dir_all(root).unwrap();
 }

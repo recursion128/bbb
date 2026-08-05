@@ -529,6 +529,48 @@ fn hotbar_attack_indicator_hud_rect(
     }
 }
 
+/// Vanilla `Gui.extractSlot`'s pop pose (Gui.java:1126-1134): while
+/// `ItemStack.getPopTime()` is still ahead of the partial tick, the item quad
+/// is squeezed about `(x + 8, y + 12)` by `1 / squeeze` horizontally and
+/// `(squeeze + 1) / 2` vertically, where `squeeze = 1 + pop / 5`. Only the item
+/// itself is posed — `graphics.itemDecorations` runs after `popMatrix`.
+///
+/// Returns the quad corners in `hud_styled_quad_vertices` order
+/// (`[top_left, bottom_left, bottom_right, top_right]`), which for a
+/// non-positive `pop` are exactly `rect`'s own corners.
+pub(super) fn hud_item_pop_corners(rect: HudRect, pop: f32) -> [[f32; 2]; 4] {
+    let x0 = rect.x;
+    let y0 = rect.y;
+    let x1 = rect.x + rect.width as f32;
+    let y1 = rect.y + rect.height as f32;
+    if !(pop > 0.0) || !pop.is_finite() {
+        return [[x0, y0], [x0, y1], [x1, y1], [x1, y0]];
+    }
+    let squeeze = 1.0 + pop / 5.0;
+    let pivot_x = rect.x + 8.0;
+    let pivot_y = rect.y + 12.0;
+    let scale_x = 1.0 / squeeze;
+    let scale_y = (squeeze + 1.0) / 2.0;
+    let posed_x = |x: f32| pivot_x + (x - pivot_x) * scale_x;
+    let posed_y = |y: f32| pivot_y + (y - pivot_y) * scale_y;
+    let (px0, px1) = (posed_x(x0), posed_x(x1));
+    let (py0, py1) = (posed_y(y0), posed_y(y1));
+    [[px0, py0], [px0, py1], [px1, py1], [px1, py0]]
+}
+
+/// The same pop pose as [`hud_item_pop_corners`], as the model-space transform
+/// a 3D block item's GUI placement composes with.
+pub(super) fn hud_item_pop_placement(rect: HudRect, pop: f32) -> Mat4 {
+    if !(pop > 0.0) || !pop.is_finite() {
+        return Mat4::IDENTITY;
+    }
+    let squeeze = 1.0 + pop / 5.0;
+    let pivot = Vec3::new(rect.x + 8.0, rect.y + 12.0, 0.0);
+    Mat4::from_translation(pivot)
+        * Mat4::from_scale(Vec3::new(1.0 / squeeze, (squeeze + 1.0) / 2.0, 1.0))
+        * Mat4::from_translation(-pivot)
+}
+
 /// The model→GUI-pixel placement for a 3D inventory item rendered in `rect`. Composed with the
 /// item's GUI display transform and projected by the GUI ortho camera, it seats a `0..1`
 /// (post-display) model in the slot's pixel rect, flipping Y to GUI space.
@@ -1672,6 +1714,40 @@ pub(super) fn hud_inventory_tooltip_sprite_segments(
 mod tests {
     use super::super::{HudAsciiGlyph, HudTextStyle};
     use super::*;
+
+    #[test]
+    fn item_pop_pose_squeezes_horizontally_and_stretches_vertically_about_the_vanilla_pivot() {
+        let rect = absolute_hud_rect(100.0, 200.0, 16, 16);
+        let identity = hud_item_pop_corners(rect, 0.0);
+        assert_eq!(
+            identity,
+            [
+                [100.0, 200.0],
+                [100.0, 216.0],
+                [116.0, 216.0],
+                [116.0, 200.0]
+            ]
+        );
+        assert_eq!(hud_item_pop_corners(rect, -1.0), identity);
+        assert_eq!(hud_item_pop_corners(rect, f32::NAN), identity);
+
+        // `squeeze = 1 + 5/5 = 2`, so x scales by 1/2 about x + 8 = 108 and y
+        // scales by (2 + 1)/2 = 1.5 about y + 12 = 212.
+        let [top_left, bottom_left, bottom_right, top_right] = hud_item_pop_corners(rect, 5.0);
+        assert_eq!(top_left, [104.0, 194.0]);
+        assert_eq!(bottom_left, [104.0, 218.0]);
+        assert_eq!(bottom_right, [112.0, 218.0]);
+        assert_eq!(top_right, [112.0, 194.0]);
+
+        let placement = hud_item_pop_placement(rect, 5.0);
+        assert_eq!(hud_item_pop_placement(rect, 0.0), Mat4::IDENTITY);
+        let posed = placement.transform_point3(Vec3::new(100.0, 200.0, 0.0));
+        assert!((posed.x - 104.0).abs() < 1e-4);
+        assert!((posed.y - 194.0).abs() < 1e-4);
+        let pivot = placement.transform_point3(Vec3::new(108.0, 212.0, 0.0));
+        assert!((pivot.x - 108.0).abs() < 1e-4);
+        assert!((pivot.y - 212.0).abs() < 1e-4);
+    }
 
     #[test]
     fn offhand_slot_layout_mirrors_vanilla_hotbar_offsets_on_both_sides() {
