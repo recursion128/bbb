@@ -172,6 +172,12 @@ impl SimulationInputRuntime {
         self.gui_surface_size = PhysicalSize::new(gui_scaled_width, gui_scaled_height);
     }
 
+    /// Vanilla `MouseHandler.isMouseGrabbed`: the capture owner the turn
+    /// path mirrors before advancing or resetting the smooth camera.
+    pub(crate) fn cursor_captured(&self) -> bool {
+        self.cursor_captured
+    }
+
     pub(crate) fn publication(&self) -> SimulationInputPublication {
         SimulationInputPublication {
             surface_size: self.surface_size,

@@ -626,6 +626,36 @@ impl LastInputType {
     }
 }
 
+/// Vanilla `net.minecraft.util.SmoothDouble`: the cinematic-camera
+/// accumulator that lerps toward the queued turn target.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct SmoothDouble {
+    target_value: f64,
+    remaining_value: f64,
+    last_amount: f64,
+}
+
+impl SmoothDouble {
+    pub(crate) fn new_delta_value(&mut self, target_delta: f64, time: f64) -> f64 {
+        self.target_value += target_delta;
+        let mut delta = self.target_value - self.remaining_value;
+        let new_last_amount = self.last_amount + (delta - self.last_amount) * 0.5;
+        let delta_sign = delta.signum();
+        if delta_sign * delta > delta_sign * self.last_amount {
+            delta = new_last_amount;
+        }
+        self.last_amount = new_last_amount;
+        self.remaining_value += delta * time;
+        delta * time
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.target_value = 0.0;
+        self.remaining_value = 0.0;
+        self.last_amount = 0.0;
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct MouseSensitivity(f64);
 
@@ -773,6 +803,18 @@ pub(crate) struct ClientInputState {
     invert_mouse_y: bool,
     discrete_mouse_scroll: bool,
     mouse_wheel_sensitivity: MouseWheelSensitivity,
+    /// Vanilla `Options.smoothCamera`: a transient (never persisted) toggle
+    /// flipped by the unbound-by-default `key.smoothCamera` mapping.
+    smooth_camera: bool,
+    smooth_turn_x: SmoothDouble,
+    smooth_turn_y: SmoothDouble,
+    /// Vanilla `MouseHandler.lastHandleMovementTime`: sampled every frame,
+    /// even when the mouse is not grabbed.
+    last_turn_sample_at: Option<Instant>,
+    /// Mirrors the simulation cursor-capture owner: vanilla only calls
+    /// `turnPlayer` (advancing or resetting the smooths) while grabbed.
+    mouse_look_live: bool,
+    pending_turn_delta: Option<(f64, f64)>,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1473,7 +1515,63 @@ impl ClientInputState {
         self.invert_mouse_y = invert_y;
     }
 
+    pub(crate) fn set_mouse_look_live(&mut self, live: bool) {
+        self.mouse_look_live = live;
+    }
+
+    /// Vanilla `MouseHandler.handleAccumulatedMovement`/`turnPlayer`: the
+    /// wall-clock gap (`mousea`) is sampled every call, but only a grabbed
+    /// mouse advances the smooth-camera accumulators or resets them on the
+    /// non-smooth branches; ungrabbed frames leave the smooths frozen.
+    pub(crate) fn prepare_mouse_turn(&mut self, world: &WorldStore, now: Instant) {
+        let mousea = self
+            .last_turn_sample_at
+            .and_then(|last| now.checked_duration_since(last))
+            .unwrap_or_default()
+            .as_secs_f64();
+        self.last_turn_sample_at = Some(now);
+        if !self.mouse_look_live {
+            self.pending_turn_delta = None;
+            return;
+        }
+        let scaled = self.mouse_sensitivity.0 * 0.6 + 0.2;
+        let sensitivity_modifier = scaled * scaled * scaled;
+        let sens = sensitivity_modifier * 8.0;
+        let (x, y) = if self.smooth_camera {
+            (
+                self.smooth_turn_x
+                    .new_delta_value(self.mouse_delta_x * sens, mousea * sens),
+                self.smooth_turn_y
+                    .new_delta_value(self.mouse_delta_y * sens, mousea * sens),
+            )
+        } else if self.camera_type.is_first_person() && world.local_player_is_scoping() {
+            self.smooth_turn_x.reset();
+            self.smooth_turn_y.reset();
+            (
+                self.mouse_delta_x * sensitivity_modifier,
+                self.mouse_delta_y * sensitivity_modifier,
+            )
+        } else {
+            self.smooth_turn_x.reset();
+            self.smooth_turn_y.reset();
+            (self.mouse_delta_x * sens, self.mouse_delta_y * sens)
+        };
+        self.pending_turn_delta = Some((
+            if self.invert_mouse_x { -x } else { x },
+            if self.invert_mouse_y { -y } else { y },
+        ));
+    }
+
+    pub(crate) fn clear_accumulated_mouse_turn(&mut self) {
+        self.mouse_delta_x = 0.0;
+        self.mouse_delta_y = 0.0;
+        self.pending_turn_delta = None;
+    }
+
     pub(crate) fn mouse_turn_delta(&self, world: &WorldStore) -> (f64, f64) {
+        if let Some(pending) = self.pending_turn_delta {
+            return pending;
+        }
         let scaled = self.mouse_sensitivity.0 * 0.6 + 0.2;
         let sensitivity_modifier = scaled * scaled * scaled;
         let scale = if self.camera_type.is_first_person() && world.local_player_is_scoping() {
@@ -12612,6 +12710,12 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
         if input.binding_matches("key.socialInteractions", code) {
             open_social_interactions_screen(input, counters, world, net_commands, false);
+            return;
+        }
+        if input.binding_matches("key.smoothCamera", code) {
+            // Vanilla `Minecraft.handleKeybinds`: each `key.smoothCamera`
+            // click flips the transient `Options.smoothCamera` toggle.
+            input.smooth_camera = !input.smooth_camera;
             return;
         }
         if input.binding_matches("key.chat", code) {

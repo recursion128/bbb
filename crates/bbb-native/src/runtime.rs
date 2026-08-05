@@ -2807,6 +2807,9 @@ pub(crate) fn advance_simulation(
         },
         input_profiling_enabled,
     );
+    // Vanilla `turnPlayer` only runs while the mouse is grabbed; mirror the
+    // capture owner after this step's window/control commands settled it.
+    input.set_mouse_look_live(input_runtime.cursor_captured());
     services_block_lists.tick(wall_clock_epoch_seconds);
     services_block_lists.synchronize_player_report_submissions(input, world);
     sync_stonecutter_recipe_scroll_state(input, world);

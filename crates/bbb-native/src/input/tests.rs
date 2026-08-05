@@ -31475,6 +31475,95 @@ fn the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve() {
 }
 
 #[test]
+fn smooth_double_matches_the_vanilla_accumulator() {
+    // Hand-computed `net.minecraft.util.SmoothDouble` sequence with target 8
+    // once and time 0.5 per call: lerp(0.5) toward the delta, sign-clamped.
+    let mut smooth = crate::input::SmoothDouble::default();
+    assert_eq!(smooth.new_delta_value(8.0, 0.5), 2.0);
+    assert_eq!(smooth.new_delta_value(0.0, 0.5), 2.5);
+    assert_eq!(smooth.new_delta_value(0.0, 0.5), 1.75);
+    smooth.reset();
+    assert_eq!(smooth.new_delta_value(0.0, 0.5), 0.0);
+}
+
+#[test]
+fn smooth_camera_turn_smooths_both_axes_and_freezes_while_ungrabbed() {
+    let world = world_with_debug_player(false);
+    let mut input = ClientInputState::new(true);
+    input.set_mouse_look_live(true);
+    input.smooth_camera = true;
+    // Default 0.5 sensitivity gives sens == 1.0, so the smooth chain sees the
+    // raw deltas and `mousea` directly.
+    input.mouse_delta_x = 8.0;
+    input.mouse_delta_y = 8.0;
+    let t0 = Instant::now();
+    // Vanilla's first frame has a zero wall-clock gap: the accumulator stores
+    // the target but returns no turn yet.
+    input.prepare_mouse_turn(&world, t0);
+    assert_eq!(input.mouse_turn_delta(&world), (0.0, 0.0));
+
+    input.mouse_delta_x = 0.0;
+    input.mouse_delta_y = 0.0;
+    input.prepare_mouse_turn(&world, t0 + Duration::from_millis(500));
+    assert_eq!(input.mouse_turn_delta(&world), (3.0, 3.0));
+
+    // An ungrabbed frame neither advances nor resets the accumulators
+    // (vanilla only calls `turnPlayer` while the mouse is grabbed).
+    input.set_mouse_look_live(false);
+    input.prepare_mouse_turn(&world, t0 + Duration::from_millis(1000));
+    assert_eq!(input.mouse_turn_delta(&world), (0.0, 0.0));
+
+    input.set_mouse_look_live(true);
+    input.prepare_mouse_turn(&world, t0 + Duration::from_millis(1500));
+    assert_eq!(input.mouse_turn_delta(&world), (2.5, 2.5));
+
+    // The non-smooth branch resets the accumulators, so re-enabling starts
+    // from an empty chain.
+    input.smooth_camera = false;
+    input.prepare_mouse_turn(&world, t0 + Duration::from_millis(2000));
+    assert_eq!(input.mouse_turn_delta(&world), (0.0, 0.0));
+    input.smooth_camera = true;
+    input.prepare_mouse_turn(&world, t0 + Duration::from_millis(2500));
+    assert_eq!(input.mouse_turn_delta(&world), (0.0, 0.0));
+}
+
+#[test]
+fn the_smooth_camera_key_toggles_the_transient_option() {
+    let (tx, _rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    // Vanilla ships `key.smoothCamera` unbound; binding it is the only way to
+    // reach the toggle.
+    let mut options = crate::client_options::ClientOptions::defaults(Default::default());
+    options.set_dynamic_raw_for_test("key_key.smoothCamera", "key.keyboard.o");
+    input
+        .set_key_bindings(crate::client_options::key_bindings::KeyBindings::from_options(&options));
+
+    for expected in [true, false] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::KeyO),
+            ElementState::Pressed,
+        );
+        assert_eq!(input.smooth_camera, expected);
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(KeyCode::KeyO),
+            ElementState::Released,
+        );
+    }
+}
+
+#[test]
 fn the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options() {
     let mut input = ClientInputState::new(true);
     let raw = MouseScrollDelta::LineDelta(-2.5, 4.0);

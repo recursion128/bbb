@@ -125,16 +125,6 @@ the mapping array), backend-scope limits stay recorded at their owners
 warp/first-move suppression, macOS right-click quirk, dev-only debug flags),
 and the X11/interactive-seat and macOS/Windows runner limitations stay
 external and deferred below.
-- **Smooth-camera turning is `active`** (user-reopened 2026-08-05).
-  `MouseHandler.turnPlayer(mousea)` passes the wall-clock seconds since the
-  previous `handleAccumulatedMovement`; with `options.smoothCamera` on, both
-  axes go through `SmoothDouble.getNewDeltaValue(accumulated * sens,
-  mousea * sens)` (`sens = (sensitivity*0.6+0.2)^3 * 8`), the spyglass branch
-  uses `sensitivityMod` without the smooth path, and both smooths reset on the
-  non-smooth branches. Done when bbb reproduces `SmoothDouble` exactly on both
-  axes, threads the frame-time gap into the turn path, and makes
-  `key.smoothCamera` bindable (vanilla ships it unbound). Owner: `bbb-native`
-  input turn path.
 - **Handing an in-flight IME composition to a newly focused field is
   `active`** (user-reopened 2026-08-05). `KeyboardHandler` stores
   `lastPreeditEvent` unconditionally on every pre-edit callback;

@@ -82,6 +82,11 @@ pub(crate) fn advance_player_input_for_client_ticks(
 ) {
     input.expire_spectator_menu_at(now);
     input.synchronize_last_input_type_screen_edge(world);
+    // Vanilla `MouseHandler.handleAccumulatedMovement` converts the raw
+    // accumulated deltas into the turn deltas (smooth camera included)
+    // before `turnPlayer`; every later `local_player_input` projection this
+    // step reuses the same prepared value.
+    input.prepare_mouse_turn(world, now);
     input.advance_attack_miss_time(world, client_ticks);
     // Vanilla calls LocalPlayer.tick from Minecraft.tick, so movement constants
     // remain per-tick (0.05 s) even when synchronized tick rate slows wall time.
@@ -139,8 +144,7 @@ pub(crate) fn advance_player_input_for_client_ticks(
         // Passenger `LocalPlayer.tick` sends Rot, authoritative vehicle move,
         // then `sendIsSprintingIfNeeded`.
         maybe_queue_local_player_sprint_transition(input, world, counters, net_commands);
-        input.mouse_delta_x = 0.0;
-        input.mouse_delta_y = 0.0;
+        input.clear_accumulated_mouse_turn();
         return;
     }
     input.last_vehicle_command_at = None;
@@ -149,14 +153,12 @@ pub(crate) fn advance_player_input_for_client_ticks(
     let Some(pose) =
         advance_unmounted_local_player_input(input, world, counters, net_commands, client_ticks)
     else {
-        input.mouse_delta_x = 0.0;
-        input.mouse_delta_y = 0.0;
+        input.clear_accumulated_mouse_turn();
         return;
     };
     maybe_disable_grounded_flying(counters, world, net_commands);
 
-    input.mouse_delta_x = 0.0;
-    input.mouse_delta_y = 0.0;
+    input.clear_accumulated_mouse_turn();
     if world.local_player().camera.follows_player
         && (client_ticks > 0 || input.last_move_command_at.is_none())
     {
