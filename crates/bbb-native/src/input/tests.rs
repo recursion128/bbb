@@ -30286,3 +30286,32 @@ fn the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve() {
     input.set_invert_mouse(true, true);
     assert_eq!(input.mouse_turn_delta(&world), (-100.0, 50.0));
 }
+
+#[test]
+fn the_scroll_delta_follows_the_discrete_and_wheel_sensitivity_options() {
+    let mut input = ClientInputState::new(true);
+    let raw = MouseScrollDelta::LineDelta(-2.5, 4.0);
+
+    assert_eq!(
+        input.scale_scroll_delta(raw),
+        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(-2.5, 4.0))
+    );
+
+    input.set_mouse_scroll_options(true, 1.0);
+    assert_eq!(
+        input.scale_scroll_delta(raw),
+        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(-1.0, 1.0))
+    );
+
+    input.set_mouse_scroll_options(false, 2.5);
+    assert_eq!(
+        input.scale_scroll_delta(raw),
+        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(-6.25, 10.0))
+    );
+
+    input.set_mouse_scroll_options(true, 0.25);
+    assert_eq!(
+        input.scale_scroll_delta(MouseScrollDelta::LineDelta(0.0, -8.0)),
+        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(0.0, -0.25))
+    );
+}

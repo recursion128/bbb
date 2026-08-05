@@ -124,6 +124,10 @@ pub(crate) struct Args {
     pub(crate) client_invert_mouse_x: bool,
     #[arg(long = "client-invert-mouse-y", default_value_t = false, action = ArgAction::Set)]
     pub(crate) client_invert_mouse_y: bool,
+    #[arg(long = "client-discrete-mouse-scroll", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_discrete_mouse_scroll: bool,
+    #[arg(long = "client-mouse-wheel-sensitivity", default_value_t = 1.0)]
+    pub(crate) client_mouse_wheel_sensitivity: f64,
     #[arg(
         long = "client-show-subtitles",
         default_value_t = false,
@@ -690,6 +694,18 @@ fn bind_stored_client_options(
         "invertYMouse",
         client_invert_mouse_y
     );
+    flag!(
+        "client_discrete_mouse_scroll",
+        "discrete_mouse_scroll",
+        client_discrete_mouse_scroll
+    );
+    parsed!(
+        "client_mouse_wheel_sensitivity",
+        "mouseWheelSensitivity",
+        Double,
+        client_mouse_wheel_sensitivity,
+        parse_client_mouse_wheel_sensitivity
+    );
 
     parsed!(
         "render_distance_chunks",
@@ -1100,6 +1116,18 @@ fn parse_client_unit_double(value: &str) -> std::result::Result<f64, String> {
         .map_err(|_| format!("expected a number, got {value}"))?;
     if !parsed.is_finite() || !(0.0..=1.0).contains(&parsed) {
         return Err(format!("expected a value between 0 and 1, got {value}"));
+    }
+    Ok(parsed)
+}
+
+fn parse_client_mouse_wheel_sensitivity(value: &str) -> std::result::Result<f64, String> {
+    let parsed: f64 = value
+        .parse()
+        .map_err(|_| format!("expected a number, got {value}"))?;
+    // `Options.mouseWheelSensitivity` is an `IntRange(-200, 100)` mapped through
+    // `logMouse`, so the stored double never leaves `10^-2 ..= 10^1`.
+    if !parsed.is_finite() || !(0.01..=10.0).contains(&parsed) {
+        return Err(format!("expected a value between 0.01 and 10, got {value}"));
     }
     Ok(parsed)
 }

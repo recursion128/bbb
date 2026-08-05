@@ -2054,6 +2054,7 @@ impl SimulationInputRuntime {
         delta: MouseScrollDelta,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        let delta = context.input.scale_scroll_delta(delta);
         if self.code_of_conduct_overlay.is_visible(context.world) {
             self.code_of_conduct_overlay.handle_mouse_wheel(
                 context.world,

@@ -610,6 +610,15 @@ impl Default for MouseSensitivity {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MouseWheelSensitivity(f64);
+
+impl Default for MouseWheelSensitivity {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -724,6 +733,8 @@ pub(crate) struct ClientInputState {
     mouse_sensitivity: MouseSensitivity,
     invert_mouse_x: bool,
     invert_mouse_y: bool,
+    discrete_mouse_scroll: bool,
+    mouse_wheel_sensitivity: MouseWheelSensitivity,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1329,6 +1340,27 @@ impl ClientInputState {
 
     pub(crate) fn set_mouse_sensitivity(&mut self, sensitivity: f64) {
         self.mouse_sensitivity = MouseSensitivity(sensitivity);
+    }
+
+    pub(crate) fn set_mouse_scroll_options(&mut self, discrete: bool, sensitivity: f64) {
+        self.discrete_mouse_scroll = discrete;
+        self.mouse_wheel_sensitivity = MouseWheelSensitivity(sensitivity);
+    }
+
+    pub(crate) fn scale_scroll_delta(&self, delta: MouseScrollDelta) -> MouseScrollDelta {
+        let (x, y) = match delta {
+            MouseScrollDelta::LineDelta(x, y) => (f64::from(x), f64::from(y)),
+            MouseScrollDelta::PixelDelta(position) => (position.x, position.y),
+        };
+        let scale = |value: f64| {
+            let value = if self.discrete_mouse_scroll && value != 0.0 {
+                value.signum()
+            } else {
+                value
+            };
+            value * self.mouse_wheel_sensitivity.0
+        };
+        MouseScrollDelta::PixelDelta(PhysicalPosition::new(scale(x), scale(y)))
     }
 
     pub(crate) fn set_invert_mouse(&mut self, invert_x: bool, invert_y: bool) {
