@@ -189,6 +189,10 @@ pub(crate) struct Args {
     pub(crate) narrator_command: Option<PathBuf>,
     #[arg(long = "narrator-command-arg", value_name = "ARG")]
     pub(crate) narrator_command_args: Vec<String>,
+    /// `Options.getFinalSoundSourceVolume(SoundSource.VOICE)`: voice times
+    /// master, resolved from the stored `soundCategory_*` lines.
+    #[arg(skip = 1.0_f32)]
+    pub(crate) narrator_voice_volume: f32,
     #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
     pub(crate) client_chat_visibility: ClientChatVisibilityArg,
     #[arg(
@@ -589,7 +593,24 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
     };
     args.client_key_bindings = KeyBindings::from_options(&options);
     crate::client_options::key_bindings::install_bound_key_display_keys(&options);
+    args.narrator_voice_volume = narrator_voice_volume(&options);
     bind_stored_client_options(args, StoredOptions::new(&options, matches));
+}
+
+/// `GameNarrator.narrateMessage` speaks at
+/// `getFinalSoundSourceVolume(SoundSource.VOICE)` — the stored voice volume
+/// times the stored master volume, each defaulting to 1.0 and clamped to the
+/// accepted 0..=1 range; an unparsable line keeps its default.
+fn narrator_voice_volume(options: &ClientOptions) -> f32 {
+    let source_volume = |key: &str| {
+        options
+            .dynamic_raw(key)
+            .and_then(|raw| raw.parse::<f32>().ok())
+            .filter(|volume| volume.is_finite())
+            .map(|volume| volume.clamp(0.0, 1.0))
+            .unwrap_or(1.0)
+    };
+    source_volume("soundCategory_voice") * source_volume("soundCategory_master")
 }
 
 /// Every startup argument that mirrors an `options.txt` key. The stored line is
@@ -2234,6 +2255,23 @@ mod tests {
             vec!["vanilla", "startup/0", "startup/1"]
         );
         std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn narrator_voice_volume_multiplies_voice_and_master_with_safe_defaults() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        assert_eq!(narrator_voice_volume(&options), 1.0);
+
+        options.set_dynamic_raw_for_test("soundCategory_voice", "0.5");
+        options.set_dynamic_raw_for_test("soundCategory_master", "0.5");
+        assert_eq!(narrator_voice_volume(&options), 0.25);
+
+        options.set_dynamic_raw_for_test("soundCategory_master", "nonsense");
+        assert_eq!(narrator_voice_volume(&options), 0.5);
+
+        options.set_dynamic_raw_for_test("soundCategory_voice", "7.5");
+        options.set_dynamic_raw_for_test("soundCategory_master", "0.5");
+        assert_eq!(narrator_voice_volume(&options), 0.5);
     }
 
     #[test]

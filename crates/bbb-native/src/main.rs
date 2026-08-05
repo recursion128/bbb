@@ -213,6 +213,10 @@ impl NativeDebugClipboard {
 }
 
 impl DebugClipboard for NativeDebugClipboard {
+    /// `ClipboardManager.setClipboard`. Its `pushClipboard` half — the 8 KiB
+    /// scratch `ByteBuffer`, `MemoryUtil.memAlloc` overflow path and
+    /// NUL-terminated UTF-8 push GLFW requires — has no equivalent because
+    /// `arboard` takes an owned Rust `String` directly.
     fn set_debug_clipboard_text(&mut self, text: &str) -> bool {
         let Some(clipboard) = self.clipboard_mut() else {
             return false;
@@ -224,6 +228,11 @@ impl DebugClipboard for NativeDebugClipboard {
         true
     }
 
+    /// `ClipboardManager.getClipboard`, with backend errors collapsing to
+    /// `None` the way vanilla suppresses `FORMAT_UNAVAILABLE` to `""`.
+    /// Vanilla's `StringDecomposer.filterBrokenSurrogates` pass has no
+    /// equivalent step: a Rust `String` is well-formed UTF-8 by construction,
+    /// so broken surrogates cannot reach the paste path.
     fn get_debug_clipboard_text(&mut self) -> Option<String> {
         let clipboard = self.clipboard_mut()?;
         match clipboard.get_text() {
@@ -740,9 +749,20 @@ fn run_client(args: startup::Args) -> Result<()> {
             .unwrap_or_default(),
     );
     let mut narrator_runtime = args.narrator_command.clone().map(|command| {
-        NativeNarratorRuntime::new(narrator_status, command, args.narrator_command_args.clone())
+        NativeNarratorRuntime::new(
+            narrator_status,
+            command,
+            args.narrator_command_args.clone(),
+            args.narrator_voice_volume,
+        )
     });
     let mut sound_subtitle_runtime = SoundSubtitleRuntime::default();
+    // `GameNarrator.checkStatus` raises an OS `MessageBox.errorWithContinue`
+    // and aborts startup via `NarratorInitException` when the user declines a
+    // dead TTS library. The narrator backend here is explicit CLI
+    // configuration rather than a bundled library probe, so the equivalent
+    // decision — narrator requested but no backend — is a bounded startup
+    // warning and a continue; there is no modal prompt to decline.
     if narrator_runtime.is_none() && narrator_status != NarratorStatus::Off {
         tracing::warn!(
             ?narrator_status,
@@ -860,6 +880,12 @@ fn run_client(args: startup::Args) -> Result<()> {
         "native platform window created"
     );
     window_icon::install_startup_window_icon(&window, pack_roots.as_ref(), window_backend);
+    // IME stays allowed for the whole session instead of toggling per
+    // text-input focus change (`Minecraft.onTextInputFocusChange` →
+    // `TextInputManager`): the simulation routes every `Ime::Preedit`/`Commit`
+    // to whichever text owner is focused and clears it on all other branches,
+    // so an out-of-focus composition never lands in gameplay input. Only the
+    // resubmit-on-focus-gain half is deferred (see the ledger).
     window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
     input.set_save_chat_drafts(args.client_save_chat_drafts);

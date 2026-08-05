@@ -292,24 +292,34 @@ impl ScreenNarrationRuntime {
 
 /// A process-backed TTS adapter. The executable and arguments come only from startup CLI
 /// configuration. Every exact `{text}` argument is replaced with the narration; when no
-/// placeholder is present, the narration is appended as the final argument.
+/// placeholder is present, the narration is appended as the final argument. Every exact
+/// `{volume}` argument is replaced with the narrator volume — vanilla
+/// `GameNarrator.narrateMessage` passes
+/// `options.getFinalSoundSourceVolume(SoundSource.VOICE)` (voice times master) with
+/// every `Narrator.say`; a command without the placeholder simply does not consume it.
 struct CommandTextToSpeech {
     executable: PathBuf,
     arguments: Vec<String>,
+    volume: f32,
     pending: VecDeque<String>,
     child: Option<Child>,
 }
 
 impl CommandTextToSpeech {
-    fn new(executable: PathBuf, arguments: Vec<String>) -> Self {
+    fn new(executable: PathBuf, arguments: Vec<String>, volume: f32) -> Self {
         Self {
             executable,
             arguments,
+            volume,
             pending: VecDeque::new(),
             child: None,
         }
     }
 
+    /// `GameNarrator.narrateMessage`. Its `logNarratedMessage` companion is
+    /// gated on `SharedConstants.IS_RUNNING_IN_IDE`, false in every shipped
+    /// vanilla client, so the narrated text is deliberately not logged here —
+    /// only process lifecycle failures are.
     fn say(&mut self, message: &str, interrupt: bool) {
         if message.is_empty() {
             return;
@@ -353,7 +363,7 @@ impl CommandTextToSpeech {
         let Some(message) = self.pending.pop_front() else {
             return;
         };
-        let arguments = narrator_command_arguments(&self.arguments, &message);
+        let arguments = narrator_command_arguments(&self.arguments, &message, self.volume);
         match Command::new(&self.executable)
             .args(arguments)
             .stdin(Stdio::null())
@@ -380,7 +390,7 @@ impl Drop for CommandTextToSpeech {
     }
 }
 
-fn narrator_command_arguments(arguments: &[String], message: &str) -> Vec<OsString> {
+fn narrator_command_arguments(arguments: &[String], message: &str, volume: f32) -> Vec<OsString> {
     let mut replaced = false;
     let mut result = arguments
         .iter()
@@ -388,6 +398,8 @@ fn narrator_command_arguments(arguments: &[String], message: &str) -> Vec<OsStri
             if argument == "{text}" {
                 replaced = true;
                 OsString::from(message)
+            } else if argument == "{volume}" {
+                OsString::from(format!("{volume}"))
             } else {
                 OsString::from(argument)
             }
@@ -407,10 +419,18 @@ pub(crate) struct NativeNarratorRuntime {
 }
 
 impl NativeNarratorRuntime {
-    pub(crate) fn new(status: NarratorStatus, executable: PathBuf, arguments: Vec<String>) -> Self {
+    /// `volume` is `getFinalSoundSourceVolume(VOICE)` resolved once at
+    /// startup: sound volumes only change through `options.txt` (the in-game
+    /// options UI is a non-goal), so there is no runtime volume writer.
+    pub(crate) fn new(
+        status: NarratorStatus,
+        executable: PathBuf,
+        arguments: Vec<String>,
+        volume: f32,
+    ) -> Self {
         Self {
             status,
-            speech: CommandTextToSpeech::new(executable, arguments),
+            speech: CommandTextToSpeech::new(executable, arguments, volume),
         }
     }
 
@@ -525,35 +545,84 @@ mod tests {
     #[test]
     fn command_arguments_replace_exact_text_placeholder_or_append_message() {
         assert_eq!(
-            narrator_command_arguments(&["--voice".to_string(), "{text}".to_string()], "hello"),
+            narrator_command_arguments(
+                &["--voice".to_string(), "{text}".to_string()],
+                "hello",
+                1.0
+            ),
             [OsString::from("--voice"), OsString::from("hello")]
         );
         assert_eq!(
-            narrator_command_arguments(&["--voice={text}".to_string()], "hello"),
+            narrator_command_arguments(&["--voice={text}".to_string()], "hello", 1.0),
             [OsString::from("--voice={text}"), OsString::from("hello")]
         );
     }
 
     #[test]
+    fn command_arguments_substitute_the_final_voice_volume_placeholder() {
+        assert_eq!(
+            narrator_command_arguments(
+                &["--volume".to_string(), "{volume}".to_string()],
+                "hello",
+                0.25
+            ),
+            [
+                OsString::from("--volume"),
+                OsString::from("0.25"),
+                OsString::from("hello")
+            ]
+        );
+        assert_eq!(
+            narrator_command_arguments(&["{text}".to_string()], "hello", 0.25),
+            [OsString::from("hello")]
+        );
+    }
+
+    #[test]
+    fn dropping_the_narrator_runtime_kills_and_reaps_the_speaking_child() {
+        let mut speech = CommandTextToSpeech::new(
+            PathBuf::from("/bin/sh"),
+            vec!["-c".to_string(), "sleep 10".to_string()],
+            1.0,
+        );
+        speech.say("spoken", true);
+        let id = speech.child.as_ref().expect("child spawned").id();
+        drop(speech);
+        // `GameNarrator.destroy` tears the TTS backend down; the RAII drop
+        // must have killed and reaped the child, so its pid no longer exists
+        // (or is at most an unreaped zombie belonging to someone else).
+        let alive = std::path::Path::new(&format!("/proc/{id}/stat"))
+            .exists()
+            .then(|| std::fs::read_to_string(format!("/proc/{id}/stat")).ok())
+            .flatten()
+            .is_some_and(|stat| !stat.contains(") Z"));
+        assert!(!alive, "narrator child {id} survived the runtime drop");
+    }
+
+    #[test]
     fn narrator_status_filters_interrupting_system_messages() {
         let executable = PathBuf::from("/bin/true");
-        let mut off = NativeNarratorRuntime::new(NarratorStatus::Off, executable.clone(), vec![]);
+        let mut off =
+            NativeNarratorRuntime::new(NarratorStatus::Off, executable.clone(), vec![], 1.0);
         off.say_system_now("ignored");
         assert!(off.speech.pending.is_empty());
         assert!(off.speech.child.is_none());
 
-        let mut chat = NativeNarratorRuntime::new(NarratorStatus::Chat, executable.clone(), vec![]);
+        let mut chat =
+            NativeNarratorRuntime::new(NarratorStatus::Chat, executable.clone(), vec![], 1.0);
         chat.say_system_now("ignored");
         assert!(chat.speech.pending.is_empty());
         assert!(chat.speech.child.is_none());
 
-        let mut all = NativeNarratorRuntime::new(NarratorStatus::All, executable.clone(), vec![]);
+        let mut all =
+            NativeNarratorRuntime::new(NarratorStatus::All, executable.clone(), vec![], 1.0);
         all.say_system_now("spoken");
         assert!(all.speech.pending.is_empty());
         assert!(all.speech.child.is_some());
         all.speech.clear();
 
-        let mut system = NativeNarratorRuntime::new(NarratorStatus::System, executable, vec![]);
+        let mut system =
+            NativeNarratorRuntime::new(NarratorStatus::System, executable, vec![], 1.0);
         system.say_system_now("spoken");
         assert!(system.speech.pending.is_empty());
         assert!(system.speech.child.is_some());
@@ -568,8 +637,12 @@ mod tests {
             "--".to_string(),
             "{text}".to_string(),
         ];
-        let mut chat =
-            NativeNarratorRuntime::new(NarratorStatus::Chat, executable.clone(), arguments.clone());
+        let mut chat = NativeNarratorRuntime::new(
+            NarratorStatus::Chat,
+            executable.clone(),
+            arguments.clone(),
+            1.0,
+        );
         chat.say_chat_queued("chat one");
         chat.say_system_chat_queued("system chat two");
         assert!(chat.speech.child.is_some());
@@ -578,7 +651,8 @@ mod tests {
         assert_eq!(chat.speech.pending, ["system chat two"]);
         chat.speech.clear();
 
-        let mut system = NativeNarratorRuntime::new(NarratorStatus::System, executable, arguments);
+        let mut system =
+            NativeNarratorRuntime::new(NarratorStatus::System, executable, arguments, 1.0);
         system.say_chat_queued("ignored chat");
         assert!(system.speech.child.is_none());
         system.say_system_chat_queued("system chat");

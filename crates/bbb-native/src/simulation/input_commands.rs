@@ -1277,6 +1277,15 @@ impl SimulationInputRuntime {
         }
         let narrator_status_requests = context.input.take_narrator_status_requests();
         if !narrator_status_requests.is_empty() {
+            for request in &narrator_status_requests {
+                // `Options.narrator`'s update callback runs
+                // `GameNarrator.updateNarratorStatus`, which pairs the spoken
+                // announcement with the `NARRATOR_TOGGLE` system toast.
+                context.world.push_narrator_toggle_toast(
+                    request.status != crate::narrator_runtime::NarratorStatus::Off,
+                    request.status.option_name(),
+                );
+            }
             context
                 .platform
                 .submit(PlatformEffect::NarratorStatusChanged {

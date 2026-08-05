@@ -677,6 +677,7 @@ pub(crate) struct ClientAnimationTickState {
 
 #[derive(Debug, Default)]
 pub(crate) struct HudRenderRuntime {
+    narrator_toggle_toast: SystemToastAnimationState,
     insecure_chat_toast: SystemToastAnimationState,
     resource_pack_load_failure_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
@@ -7724,7 +7725,34 @@ fn hud_system_toast(
     now: Instant,
 ) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
     let periodic_notification = state.periodic_notifications.update(now).cloned();
-    let (frame, title, message, multiline) = if let Some(frame) = state
+    // `GameNarrator.updateNarratorStatus`: `narrator.toast.enabled` keeps the
+    // status name as its detail line; the OFF edge shows
+    // `narrator.toast.disabled` alone.
+    let narrator_toggle = state
+        .narrator_toggle_toast
+        .update(world.narrator_toggle_toast_count(), now)
+        .and_then(|frame| {
+            world
+                .narrator_toggle_toast()
+                .map(|toggle| (frame, toggle.clone()))
+        });
+    let (frame, title, message, multiline) = if let Some((frame, toggle)) = narrator_toggle {
+        if toggle.enabled {
+            (
+                frame,
+                localized_gui_text(item_runtime, "narrator.toast.enabled", "Narrator Enabled"),
+                toggle.status_name,
+                false,
+            )
+        } else {
+            (
+                frame,
+                localized_gui_text(item_runtime, "narrator.toast.disabled", "Narrator Disabled"),
+                String::new(),
+                false,
+            )
+        }
+    } else if let Some(frame) = state
         .insecure_chat_toast
         .update(world.insecure_chat_warning_count(), now)
     {

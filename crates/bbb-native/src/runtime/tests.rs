@@ -13472,6 +13472,38 @@ fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
 }
 
 #[test]
+fn narrator_toggle_projects_enabled_and_disabled_system_toasts() {
+    let start = std::time::Instant::now();
+    let mut world = WorldStore::new();
+    let mut state = HudRenderRuntime::default();
+
+    world.push_narrator_toggle_toast(true, "Narrates Chat");
+    let (toast, _) = hud_system_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Narrator Enabled".to_string(),
+            message: "Narrates Chat".to_string(),
+            multiline: false,
+            visible_portion: 0.0,
+        })
+    );
+
+    world.push_narrator_toggle_toast(false, "Off");
+    let (toast, _) = hud_system_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Narrator Disabled".to_string(),
+            message: String::new(),
+            multiline: false,
+            visible_portion: 0.0,
+        })
+    );
+    assert_eq!(world.narrator_toggle_toast_count(), 2);
+}
+
+#[test]
 fn low_disk_space_warning_projects_one_server_driven_system_toast() {
     let start = std::time::Instant::now();
     let mut world = WorldStore::new();

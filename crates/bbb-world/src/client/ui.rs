@@ -33,6 +33,10 @@ pub struct ClientUiState {
     pub low_disk_space_warning_count: usize,
     #[serde(default)]
     pub resource_pack_load_failure_count: usize,
+    #[serde(default)]
+    pub narrator_toggle_toast_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub narrator_toggle_toast: Option<NarratorToggleToastState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_command_block_editor: Option<crate::CommandBlockEditorState>,
     #[serde(default)]
@@ -623,10 +627,42 @@ pub struct PongResponseState {
     pub time: i64,
 }
 
+/// One `GameNarrator.updateNarratorStatus` toast payload: the
+/// `SystemToastId.NARRATOR_TOGGLE` slot shows `narrator.toast.enabled` with
+/// the status name while the narrator narrates, and `narrator.toast.disabled`
+/// with no detail line when the cycle lands on OFF. The
+/// `options.narrator.notavailable` branch never publishes here: the Ctrl+B
+/// hotkey requires an active narrator and the options UI is a non-goal, so no
+/// caller can change the status of an inactive narrator.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NarratorToggleToastState {
+    pub enabled: bool,
+    pub status_name: String,
+}
+
 impl WorldStore {
     pub fn apply_low_disk_space_warning(&mut self) {
         self.counters.low_disk_space_warnings += 1;
         self.client_ui.low_disk_space_warning_count += 1;
+    }
+
+    /// `SystemToast.addOrUpdate(NARRATOR_TOGGLE, ...)`: every status change
+    /// replaces the retained payload and bumps the monotonic count the HUD
+    /// toast animation watches.
+    pub fn push_narrator_toggle_toast(&mut self, enabled: bool, status_name: &str) {
+        self.client_ui.narrator_toggle_toast_count += 1;
+        self.client_ui.narrator_toggle_toast = Some(NarratorToggleToastState {
+            enabled,
+            status_name: status_name.to_string(),
+        });
+    }
+
+    pub fn narrator_toggle_toast_count(&self) -> usize {
+        self.client_ui.narrator_toggle_toast_count
+    }
+
+    pub fn narrator_toggle_toast(&self) -> Option<&NarratorToggleToastState> {
+        self.client_ui.narrator_toggle_toast.as_ref()
     }
 
     /// Publishes one completed Vanilla `PACK_LOAD_FAILURE` system-toast update.
