@@ -4679,6 +4679,17 @@ impl Renderer {
                     pass.draw(*start..*end, 0..1);
                     draw_calls += 1;
                 }
+                crate::hud::HudDrawCommand::TerrainAtlas { start, end } => {
+                    if active_pipeline != Some(HudActivePipeline::Sprite) {
+                        pass.set_pipeline(&self.hud_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
+                        active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, &self.hud_terrain_atlas_bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
                 crate::hud::HudDrawCommand::BannerPattern { atlas, start, end } => {
                     let bind_group = match atlas {
                         crate::hud::HudBannerPatternAtlas::StaticEntity => self

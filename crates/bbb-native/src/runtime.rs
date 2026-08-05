@@ -60,22 +60,23 @@ use bbb_renderer::{
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
     HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
     HudJumpBar, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPauseScreenTooltip,
-    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer,
-    HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
-    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
-    HudSocialInteractionsScreen, HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
-    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
-    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
-    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
-    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting,
-    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
-    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
-    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
-    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
-    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
-    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudPortalOverlay,
+    HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit,
+    HudSignEditorScreen, HudSocialInteractionsFocus, HudSocialInteractionsPage,
+    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpyglassScope,
+    HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
+    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
+    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
+    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
+    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
+    ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
+    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
+    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
+    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -653,6 +654,7 @@ const VANILLA_SPYGLASS_SCOPE_TARGET_SCALE: f32 = 1.125;
 /// Vanilla `Gui.POWDER_SNOW_OUTLINE_LOCATION`.
 pub(crate) const VANILLA_POWDER_SNOW_OUTLINE_TEXTURE: &str =
     "minecraft:textures/misc/powder_snow_outline.png";
+const VANILLA_NETHER_PORTAL_BLOCK: &str = "minecraft:nether_portal";
 const VANILLA_SPYGLASS_SCOPE_RESET_SCALE: f32 = 0.5;
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
@@ -4125,6 +4127,12 @@ pub(crate) fn update_renderer_from_publication(
         input.camera_type().is_first_person(),
         world.local_player_is_scoping(),
     );
+    let hud_portal_overlay = hud_portal_overlay(
+        world,
+        terrain_textures,
+        input.hide_gui(),
+        entity_partial_tick,
+    );
     let hud_camera_overlays = hud_camera_overlays(
         world,
         input.hide_gui(),
@@ -4884,6 +4892,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_vignette,
             hud_spyglass_scope,
             hud_camera_overlays,
+            hud_portal_overlay,
             hud_contextual_bar,
             hud_experience_level,
             hud_hotbar_mode,
@@ -5800,6 +5809,44 @@ fn hud_block_geometry_layers(
 /// and slot are drawn only for a non-empty offhand stack, on the side opposite
 /// `Player.getMainArm()`, and the slot seeds continue after the nine hotbar
 /// slots.
+/// Vanilla `Gui.extractCameraOverlays` (Gui.java:277-282): the portal overlay
+/// follows the partial-tick interpolation of `Player.portalEffectIntensity`
+/// and blits the nether-portal block's own particle sprite, so it keeps
+/// animating with the rest of the blocks atlas.
+fn hud_portal_overlay(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    hide_gui: bool,
+    partial_tick: f32,
+) -> Option<HudPortalOverlay> {
+    if hide_gui {
+        return None;
+    }
+    let intensity = world.local_player_portal_effect_intensity(partial_tick);
+    if !(intensity > 0.0) {
+        return None;
+    }
+    let block_state_id = bbb_world::vanilla_block_state_id(
+        VANILLA_NETHER_PORTAL_BLOCK,
+        &std::collections::BTreeMap::new(),
+    )
+    .or_else(|| {
+        bbb_world::BlockStateRegistry::vanilla_26_1()
+            .iter()
+            .find(|state| state.name == VANILLA_NETHER_PORTAL_BLOCK)
+            .map(|state| state.id)
+    })?;
+    let sprite_id = terrain_textures.particle_sprite_id_for_block_state(block_state_id)?;
+    let uv = terrain_textures.sprite_uv_rect(&sprite_id);
+    Some(HudPortalOverlay {
+        sprite_uv: HudUvRect {
+            min: uv.min,
+            max: uv.max,
+        },
+        intensity,
+    })
+}
+
 /// Vanilla `Gui.extractCameraOverlays` (Gui.java:258-276): the equippable
 /// camera overlays are first-person only and are replaced by the spyglass scope
 /// while scoping, while the powder-snow outline follows `getTicksFrozen()` in

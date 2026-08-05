@@ -6509,6 +6509,11 @@ fn local_player_portal_transition_effect_tracks_vanilla_intensity_curve() {
     world.advance_local_player_portal_transition_effect();
     assert_f32_near(world.local_player.portal_effect_intensity, 0.025);
     assert_f32_near(world.local_player.previous_portal_effect_intensity, 0.0125);
+    // `Gui.extractCameraOverlays` interpolates the two intensities.
+    assert_f32_near(world.local_player_portal_effect_intensity(0.0), 0.0125);
+    assert_f32_near(world.local_player_portal_effect_intensity(1.0), 0.025);
+    assert_f32_near(world.local_player_portal_effect_intensity(0.5), 0.01875);
+    assert_f32_near(world.local_player_portal_effect_intensity(f32::NAN), 0.0125);
     assert_eq!(
         world.take_pending_portal_transition_effects(),
         (false, false),

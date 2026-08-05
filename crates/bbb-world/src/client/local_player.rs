@@ -684,6 +684,18 @@ impl WorldStore {
             (self.local_player.portal_effect_intensity + step).clamp(0.0, 1.0);
     }
 
+    /// Vanilla `Gui.extractCameraOverlays`'s
+    /// `Mth.lerp(partialTicks, oPortalEffectIntensity, portalEffectIntensity)`.
+    pub fn local_player_portal_effect_intensity(&self, partial_tick: f32) -> f32 {
+        let partial_tick = if partial_tick.is_finite() {
+            partial_tick.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let previous = self.local_player.previous_portal_effect_intensity;
+        previous + (self.local_player.portal_effect_intensity - previous) * partial_tick
+    }
+
     /// Drains the one-shot portal-transition side effects for the native
     /// consumer: `(trigger_sound, close_container)`.
     pub fn take_pending_portal_transition_effects(&mut self) -> (bool, bool) {

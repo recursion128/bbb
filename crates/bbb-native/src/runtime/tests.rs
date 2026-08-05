@@ -29078,3 +29078,12 @@ fn camera_overlays_split_first_person_equippables_from_the_freeze_outline() {
     assert_eq!(hud_camera_overlays(&world, false, true, false).len(), 2);
     assert!(hud_camera_overlays(&world, true, true, false).is_empty());
 }
+
+#[test]
+fn the_portal_overlay_is_absent_without_an_active_portal_effect_or_with_hide_gui() {
+    let world = WorldStore::new();
+    let textures = TerrainTextureState::default();
+    assert_eq!(world.local_player_portal_effect_intensity(1.0), 0.0);
+    assert!(hud_portal_overlay(&world, &textures, false, 0.5).is_none());
+    assert!(hud_portal_overlay(&world, &textures, true, 0.5).is_none());
+}

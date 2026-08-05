@@ -75,9 +75,9 @@ pub use self::game_rules::{
     HUD_GAME_RULES_VALUE_HEIGHT, HUD_GAME_RULES_VALUE_WIDTH,
 };
 pub(super) use self::gpu::{
-    create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
-    create_hud_sprite_gpu, create_repeating_hud_sprite_gpu, create_standalone_hud_sprite_gpu,
-    HudSpriteGpu,
+    create_hud_atlas_bind_group, create_hud_bind_group_layout, create_hud_item_glint_pipeline,
+    create_hud_pipeline, create_hud_sprite_gpu, create_repeating_hud_sprite_gpu,
+    create_standalone_hud_sprite_gpu, HudSpriteGpu,
 };
 #[cfg(test)]
 use self::layout::hud_rect_bounds;
@@ -1357,6 +1357,32 @@ pub enum HudHotbarAttackIndicator {
         strength_scale: f32,
         main_arm_left: bool,
     },
+}
+
+/// Vanilla `Gui.extractPortalOverlay`: the nether-portal particle sprite blit
+/// over the whole GUI at the eased portal intensity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudPortalOverlay {
+    /// Atlas-absolute UV span of
+    /// `getParticleMaterial(Blocks.NETHER_PORTAL.defaultBlockState()).sprite()`.
+    pub sprite_uv: HudUvRect,
+    /// `Player.portalEffectIntensity` interpolated by the partial tick, before
+    /// the vanilla easing.
+    pub intensity: f32,
+}
+
+impl HudPortalOverlay {
+    /// Vanilla `Gui.extractPortalOverlay` (Gui.java:1078-1084): a partial
+    /// intensity is raised to the fourth power and then remapped into
+    /// `[0.2, 1.0]`, so the overlay never fades below a fifth of its opacity
+    /// while the portal effect is active.
+    pub fn alpha(self) -> f32 {
+        if self.intensity >= 1.0 {
+            return 1.0;
+        }
+        let squared = self.intensity * self.intensity;
+        squared * squared * 0.8 + 0.2
+    }
 }
 
 /// One `Gui.extractTextureOverlay` call: a full-screen blit of a standalone
@@ -3446,6 +3472,10 @@ pub(super) enum HudDrawCommand<'a> {
         start: u32,
         end: u32,
     },
+    /// A HUD quad sampled straight from the resident blocks atlas, for
+    /// `Gui.extractPortalOverlay`'s `blitSprite` of the nether-portal particle
+    /// sprite (which keeps animating with the rest of the atlas).
+    TerrainAtlas { start: u32, end: u32 },
     /// Complete dynamic map stack (pixels, decorations, and names) for one
     /// sanitized cartography preview. The renderer resolves this index against
     /// its resident GUI map targets.
@@ -6528,6 +6558,14 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn set_hud_portal_overlay(&mut self, overlay: Option<HudPortalOverlay>) {
+        self.hud_portal_overlay = overlay.filter(|overlay| {
+            overlay.intensity.is_finite()
+                && overlay.intensity > 0.0
+                && sanitize_hud_uv_rect(overlay.sprite_uv).is_some()
+        });
+    }
+
     /// Replaces this frame's ordered `Gui.extractTextureOverlay` calls. An
     /// overlay whose texture is not resident is dropped rather than drawn with
     /// a stand-in.
@@ -7047,6 +7085,17 @@ impl Renderer {
                     surface_size,
                     scope,
                 );
+            }
+            if let Some(portal) = self.hud_portal_overlay {
+                let start = vertices.len() as u32;
+                vertices.extend_from_slice(&hud_quad_vertices(
+                    surface_size,
+                    full_screen_hud_rect(surface_size),
+                    portal.sprite_uv,
+                    [1.0, 1.0, 1.0, portal.alpha()],
+                ));
+                let end = vertices.len() as u32;
+                commands.push(HudDrawCommand::TerrainAtlas { start, end });
             }
             for overlay in &self.hud_camera_overlays {
                 let Some(texture) = self.hud_camera_overlay_textures.get(&overlay.texture_id)
@@ -23051,6 +23100,75 @@ mod tests {
         icons[0] = Some(icon(f32::INFINITY));
         renderer.set_hud_hotbar_item_icons(icons);
         assert_eq!(renderer.hud_hotbar_item_icons[0].as_ref().unwrap().pop, 0.0);
+    }
+
+    #[test]
+    fn the_portal_overlay_eases_partial_intensity_and_samples_the_blocks_atlas() {
+        // `alpha^4 * 0.8 + 0.2` for a partial intensity, unchanged at full.
+        assert_eq!(
+            HudPortalOverlay {
+                sprite_uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                intensity: 0.5,
+            }
+            .alpha(),
+            0.5_f32.powi(4) * 0.8 + 0.2
+        );
+        assert_eq!(
+            HudPortalOverlay {
+                sprite_uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                intensity: 1.0,
+            }
+            .alpha(),
+            1.0
+        );
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let sprite_uv = HudUvRect {
+            min: [0.25, 0.5],
+            max: [0.5, 0.75],
+        };
+        renderer.set_hud_portal_overlay(Some(HudPortalOverlay {
+            sprite_uv,
+            intensity: 1.0,
+        }));
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 1);
+        assert!(matches!(
+            draws.commands[0],
+            HudDrawCommand::TerrainAtlas { .. }
+        ));
+        assert!(draws.vertices.iter().all(|vertex| vertex.tint[3] == 1.0));
+        assert!(draws
+            .vertices
+            .iter()
+            .all(|vertex| (0.25..=0.5).contains(&vertex.uv[0])));
+        drop(draws);
+
+        renderer.set_hud_portal_overlay(Some(HudPortalOverlay {
+            sprite_uv,
+            intensity: 0.0,
+        }));
+        assert!(renderer.hud_portal_overlay.is_none());
+        renderer.set_hud_portal_overlay(Some(HudPortalOverlay {
+            sprite_uv,
+            intensity: f32::NAN,
+        }));
+        assert!(renderer.hud_portal_overlay.is_none());
+
+        renderer.set_hud_portal_overlay(Some(HudPortalOverlay {
+            sprite_uv,
+            intensity: 1.0,
+        }));
+        renderer.set_hide_gui(true);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 0);
     }
 
     #[test]

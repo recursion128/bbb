@@ -22,18 +22,18 @@ use bbb_renderer::{
     HudMapPreviewSurface, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPlayerHealth,
     HudPlayerList, HudPlayerListEntry, HudPlayerListScore, HudPlayerReportingControl,
     HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
-    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudRecipeToast,
-    HudScoreboardSidebar, HudScoreboardSidebarEntry, HudSignEditorScreen, HudSleepOverlay,
-    HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
-    HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
-    HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudSpectatorGui,
-    HudSpectatorGuiSlot, HudSpectatorIcon, HudSpyglassScope, HudStatsScreen,
-    HudStructureBlockEditorScreen, HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen,
-    HudTestInstanceBlockEditorScreen, HudTextStyle, HudTitleText, HudTutorialToast,
-    HudVehicleHealth, HudVignette, ItemEntityBillboard, ItemFrameMapDecorationSurface,
-    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
-    ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer, SelectionOutline,
-    SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
+    HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
+    HudPortalOverlay, HudRecipeToast, HudScoreboardSidebar, HudScoreboardSidebarEntry,
+    HudSignEditorScreen, HudSleepOverlay, HudSocialInteractionsFocus,
+    HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+    HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpectatorGui, HudSpectatorGuiSlot, HudSpectatorIcon,
+    HudSpyglassScope, HudStatsScreen, HudStructureBlockEditorScreen, HudStyledTextRun,
+    HudSystemToast, HudTestBlockEditorScreen, HudTestInstanceBlockEditorScreen, HudTextStyle,
+    HudTitleText, HudTutorialToast, HudVehicleHealth, HudVignette, ItemEntityBillboard,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelResidencyFrame, Renderer,
+    SelectionOutline, SignTextOutlineContext, SignTextSurface, WorldBorderRenderState,
 };
 
 use crate::component_text::{
@@ -2849,6 +2849,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_vignette: Option<HudVignette>,
     pub(crate) hud_spyglass_scope: Option<HudSpyglassScope>,
     pub(crate) hud_camera_overlays: Vec<HudCameraOverlay>,
+    pub(crate) hud_portal_overlay: Option<HudPortalOverlay>,
     pub(crate) hud_contextual_bar: HudContextualBar,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_hotbar_mode: HudHotbarMode,
@@ -3341,6 +3342,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_vignette(frame.hud_vignette);
     renderer.set_hud_spyglass_scope(frame.hud_spyglass_scope);
     renderer.set_hud_camera_overlays(frame.hud_camera_overlays);
+    renderer.set_hud_portal_overlay(frame.hud_portal_overlay);
     renderer.set_hud_contextual_bar(frame.hud_contextual_bar);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_hotbar_mode(frame.hud_hotbar_mode);

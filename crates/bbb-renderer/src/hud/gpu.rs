@@ -183,6 +183,31 @@ pub(crate) fn create_hud_bind_group_layout(device: &wgpu::Device) -> wgpu::BindG
     })
 }
 
+/// A HUD-pipeline bind group over an existing texture view and sampler, for
+/// the HUD draws that sample a shared atlas instead of their own sprite.
+pub(crate) fn create_hud_atlas_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    label: &str,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
 pub(crate) fn create_hud_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,

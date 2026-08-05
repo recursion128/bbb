@@ -554,6 +554,7 @@ pub struct Renderer {
     pub(super) terrain_atlas_animation: Option<TerrainAtlasAnimationGpu>,
     pub(super) terrain_bind_group: wgpu::BindGroup,
     pub(super) hud3d_terrain_bind_group: wgpu::BindGroup,
+    pub(super) hud_terrain_atlas_bind_group: wgpu::BindGroup,
     pub(super) gui_item_bind_group: wgpu::BindGroup,
     pub(super) hud_hotbar_block_item_models: Vec<Option<crate::item_models::HudBlockItemModel>>,
     pub(super) hud_offhand_slot: Option<crate::hud::HudOffhandSlot>,
@@ -747,6 +748,7 @@ pub struct Renderer {
     pub(super) hud_spyglass_scope_texture: Option<HudSpriteGpu>,
     pub(super) hud_camera_overlay_textures: HashMap<String, HudSpriteGpu>,
     pub(super) hud_camera_overlays: Vec<crate::hud::HudCameraOverlay>,
+    pub(super) hud_portal_overlay: Option<crate::hud::HudPortalOverlay>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_crosshair_visible: bool,
     pub(super) hud_crosshair_attack_indicator_full: Option<HudSpriteGpu>,
@@ -1541,6 +1543,16 @@ impl Renderer {
             &hud3d_camera_buffer,
             &terrain_atlas,
         );
+        let hud_terrain_atlas_bind_group = {
+            let (view, sampler) = terrain_atlas.view_and_sampler();
+            crate::hud::create_hud_atlas_bind_group(
+                &device,
+                &hud_bind_group_layout,
+                "bbb-hud-terrain-atlas-bind-group",
+                view,
+                sampler,
+            )
+        };
         // The GUI item pass reuses the item-model pipeline + blocks atlas but with its own ortho camera.
         let gui_item_bind_group = create_terrain_bind_group(
             &device,
@@ -2337,6 +2349,7 @@ impl Renderer {
             terrain_atlas_animation: None,
             terrain_bind_group,
             hud3d_terrain_bind_group,
+            hud_terrain_atlas_bind_group,
             gui_item_bind_group,
             hud_hotbar_block_item_models: Vec::new(),
             hud_offhand_slot: None,
@@ -2511,6 +2524,7 @@ impl Renderer {
             hud_spyglass_scope_texture: None,
             hud_camera_overlay_textures: HashMap::new(),
             hud_camera_overlays: Vec::new(),
+            hud_portal_overlay: None,
             hud_crosshair: None,
             hud_crosshair_visible: true,
             hud_crosshair_attack_indicator_full: None,
@@ -3705,6 +3719,16 @@ impl Renderer {
             &self.hud3d_camera_buffer,
             &terrain_atlas,
         );
+        let hud_terrain_atlas_bind_group = {
+            let (view, sampler) = terrain_atlas.view_and_sampler();
+            crate::hud::create_hud_atlas_bind_group(
+                &self.device,
+                &self.hud_bind_group_layout,
+                "bbb-hud-terrain-atlas-bind-group",
+                view,
+                sampler,
+            )
+        };
         let gui_item_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,
@@ -3725,6 +3749,13 @@ impl Renderer {
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.hud3d_terrain_bind_group = previous;
             }));
+            let previous = std::mem::replace(
+                &mut self.hud_terrain_atlas_bind_group,
+                hud_terrain_atlas_bind_group,
+            );
+            self.register_resource_owner_restore(Box::new(move |renderer| {
+                renderer.hud_terrain_atlas_bind_group = previous;
+            }));
             let previous = std::mem::replace(&mut self.gui_item_bind_group, gui_item_bind_group);
             self.register_resource_owner_restore(Box::new(move |renderer| {
                 renderer.gui_item_bind_group = previous;
@@ -3733,6 +3764,7 @@ impl Renderer {
             self.terrain_atlas = terrain_atlas;
             self.terrain_bind_group = terrain_bind_group;
             self.hud3d_terrain_bind_group = hud3d_terrain_bind_group;
+            self.hud_terrain_atlas_bind_group = hud_terrain_atlas_bind_group;
             self.gui_item_bind_group = gui_item_bind_group;
         }
         self.counters.atlas_pages = 1;
