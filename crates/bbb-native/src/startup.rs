@@ -299,6 +299,12 @@ pub(crate) struct Args {
         value_parser = parse_client_framerate_limit
     )]
     pub(crate) client_framerate_limit: u32,
+    #[arg(
+        long = "inactivity-fps-limit",
+        default_value = "afk",
+        value_parser = parse_stored_inactivity_fps_limit
+    )]
+    pub(crate) inactivity_fps_limit: InactivityFpsLimitArg,
     #[arg(long = "client-vsync", default_value_t = true, action = ArgAction::Set)]
     pub(crate) client_vsync: bool,
     #[arg(long = "terrain-texture-filtering", value_enum, default_value = "none")]
@@ -461,6 +467,13 @@ impl From<ClientNarratorArg> for NarratorStatus {
             ClientNarratorArg::System => Self::System,
         }
     }
+}
+
+/// Vanilla `InactivityFpsLimit` (`inactivityFpsLimit`), default `AFK`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum InactivityFpsLimitArg {
+    Minimized,
+    Afk,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -842,6 +855,13 @@ fn bind_stored_client_options(
         Integer,
         client_framerate_limit,
         parse_client_framerate_limit
+    );
+    parsed!(
+        "inactivity_fps_limit",
+        "inactivityFpsLimit",
+        EnumName,
+        inactivity_fps_limit,
+        parse_stored_inactivity_fps_limit
     );
     parsed!(
         "menu_background_blurriness",
@@ -1329,10 +1349,13 @@ fn parse_client_framerate_limit(value: &str) -> std::result::Result<u32, String>
     let limit = value
         .parse::<u32>()
         .map_err(|_| format!("client framerate limit must be an integer or inf: {value}"))?;
-    if (1..=250).contains(&limit) || limit == VANILLA_UNLIMITED_FRAMERATE_LIMIT {
+    // Vanilla `Options.framerateLimit` persists through `Codec.intRange(10,
+    // 260)`: the slider only reaches multiples of ten, but any stored value in
+    // range loads, and only `UNLIMITED_FRAMERATE_CUTOFF` (260) lifts the cap.
+    if (10..=VANILLA_UNLIMITED_FRAMERATE_LIMIT).contains(&limit) {
         Ok(limit)
     } else {
-        Err("client framerate limit must be 1..=250, 260, inf, or unlimited".to_string())
+        Err("client framerate limit must be 10..=260, inf, or unlimited".to_string())
     }
 }
 
@@ -1349,8 +1372,61 @@ fn parse_cloud_range(value: &str) -> std::result::Result<u32, String> {
     }
 }
 
+fn parse_stored_inactivity_fps_limit(
+    value: &str,
+) -> std::result::Result<InactivityFpsLimitArg, String> {
+    match value.trim_matches('"') {
+        "minimized" => Ok(InactivityFpsLimitArg::Minimized),
+        "afk" => Ok(InactivityFpsLimitArg::Afk),
+        other => Err(format!(
+            "inactivity fps limit must be minimized or afk, got {other}"
+        )),
+    }
+}
+
+/// Vanilla `FramerateLimitTracker.ICONIFIED_WINDOW_LIMIT` / `LONG_AFK_LIMIT`.
+const VANILLA_ICONIFIED_FRAMERATE_LIMIT: u32 = 10;
+/// Vanilla `FramerateLimitTracker.AFK_LIMIT`.
+const VANILLA_SHORT_AFK_FRAMERATE_LIMIT: u32 = 30;
+/// Vanilla `FramerateLimitTracker.OUT_OF_LEVEL_MENU_LIMIT`.
+const VANILLA_OUT_OF_LEVEL_MENU_FRAMERATE_LIMIT: u32 = 60;
+/// Vanilla `FramerateLimitTracker.AFK_THRESHOLD_MS` / `LONG_AFK_THRESHOLD_MS`.
+const VANILLA_AFK_THRESHOLD_MS: u128 = 60_000;
+const VANILLA_LONG_AFK_THRESHOLD_MS: u128 = 600_000;
+
+/// Vanilla `FramerateLimitTracker.getFramerateLimit`: an iconified window and
+/// a long AFK force 10 fps, a short AFK caps at 30, and a menu with no level
+/// runs at exactly 60 — even above the configured limit. The window state is
+/// checked before the AFK branches, which only fire with the option on `AFK`.
+/// bbb has no vanilla `LoadingOverlay` equivalent, so the out-of-level branch
+/// only tests the screen set.
+pub(crate) fn effective_framerate_limit(
+    framerate_limit: u32,
+    inactivity_fps_limit: InactivityFpsLimitArg,
+    window_iconified: bool,
+    afk_millis: u128,
+    level_loaded: bool,
+    menu_screen_open: bool,
+) -> u32 {
+    if window_iconified {
+        return VANILLA_ICONIFIED_FRAMERATE_LIMIT;
+    }
+    if inactivity_fps_limit == InactivityFpsLimitArg::Afk {
+        if afk_millis > VANILLA_LONG_AFK_THRESHOLD_MS {
+            return VANILLA_ICONIFIED_FRAMERATE_LIMIT;
+        }
+        if afk_millis > VANILLA_AFK_THRESHOLD_MS {
+            return framerate_limit.min(VANILLA_SHORT_AFK_FRAMERATE_LIMIT);
+        }
+    }
+    if !level_loaded && menu_screen_open {
+        return VANILLA_OUT_OF_LEVEL_MENU_FRAMERATE_LIMIT;
+    }
+    framerate_limit
+}
+
 pub(crate) fn client_framerate_limit_interval(client_framerate_limit: u32) -> Option<Duration> {
-    if !(1..=250).contains(&client_framerate_limit) {
+    if client_framerate_limit == 0 || client_framerate_limit >= VANILLA_UNLIMITED_FRAMERATE_LIMIT {
         return None;
     }
     Some(Duration::from_nanos(
@@ -1806,7 +1882,11 @@ mod tests {
             VANILLA_UNLIMITED_FRAMERATE_LIMIT
         );
 
-        assert!(Args::try_parse_from(["bbb-native", "--client-framerate-limit", "251"]).is_err());
+        // `Codec.intRange(10, 260)` loads every in-range value; the slider
+        // granularity never restricts the stored one.
+        let odd = Args::try_parse_from(["bbb-native", "--client-framerate-limit", "251"]).unwrap();
+        assert_eq!(odd.client_framerate_limit, 251);
+        assert!(Args::try_parse_from(["bbb-native", "--client-framerate-limit", "9"]).is_err());
     }
 
     #[test]
@@ -1894,6 +1974,87 @@ mod tests {
             client_framerate_limit_interval(120),
             Some(Duration::from_nanos(8_333_333))
         );
+        // 251-259 load through `Codec.intRange(10, 260)` as literal caps; only
+        // the 260 cutoff itself lifts the limiter.
+        assert_eq!(
+            client_framerate_limit_interval(259),
+            Some(Duration::from_nanos(3_861_004))
+        );
+    }
+
+    #[test]
+    fn client_framerate_limit_accepts_the_vanilla_codec_range() {
+        assert_eq!(parse_client_framerate_limit("255"), Ok(255));
+        assert_eq!(parse_client_framerate_limit("10"), Ok(10));
+        assert_eq!(
+            parse_client_framerate_limit("260"),
+            Ok(VANILLA_UNLIMITED_FRAMERATE_LIMIT)
+        );
+        assert!(parse_client_framerate_limit("9").is_err());
+        assert!(parse_client_framerate_limit("261").is_err());
+    }
+
+    #[test]
+    fn effective_framerate_limit_matches_the_vanilla_tracker() {
+        // Vanilla `FramerateLimitTracker.getFramerateLimit`: NONE keeps the
+        // option, iconified/long-AFK force 10, short AFK caps at 30, and an
+        // out-of-level menu runs at exactly 60 even above the configured cap.
+        let base = 120;
+        let afk = InactivityFpsLimitArg::Afk;
+        assert_eq!(
+            effective_framerate_limit(base, afk, false, 0, true, false),
+            120
+        );
+        assert_eq!(
+            effective_framerate_limit(base, afk, true, 0, true, false),
+            10
+        );
+        assert_eq!(
+            effective_framerate_limit(base, afk, false, 600_001, true, false),
+            10
+        );
+        assert_eq!(
+            effective_framerate_limit(base, afk, false, 60_001, true, false),
+            30
+        );
+        assert_eq!(
+            effective_framerate_limit(20, afk, false, 60_001, true, false),
+            20,
+            "a short AFK takes min(limit, 30)"
+        );
+        assert_eq!(
+            effective_framerate_limit(20, afk, false, 0, false, true),
+            60,
+            "the out-of-level menu limit overrides even a lower option"
+        );
+        assert_eq!(
+            effective_framerate_limit(base, afk, false, 0, false, false),
+            120
+        );
+        // `inactivityFpsLimit: minimized` skips the AFK branches but keeps the
+        // iconified clamp.
+        let minimized = InactivityFpsLimitArg::Minimized;
+        assert_eq!(
+            effective_framerate_limit(base, minimized, false, 600_001, true, false),
+            120
+        );
+        assert_eq!(
+            effective_framerate_limit(base, minimized, true, 0, true, false),
+            10
+        );
+    }
+
+    #[test]
+    fn stored_inactivity_fps_limit_reads_quoted_enum_names() {
+        assert_eq!(
+            parse_stored_inactivity_fps_limit("\"minimized\""),
+            Ok(InactivityFpsLimitArg::Minimized)
+        );
+        assert_eq!(
+            parse_stored_inactivity_fps_limit("afk"),
+            Ok(InactivityFpsLimitArg::Afk)
+        );
+        assert!(parse_stored_inactivity_fps_limit("\"other\"").is_err());
     }
 
     #[test]

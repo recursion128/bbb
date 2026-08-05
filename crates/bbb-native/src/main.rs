@@ -126,7 +126,7 @@ use resource_reload::{
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, hud_player_list_is_visible,
-    hud_player_list_narration_from_world, narrate_command_suggestion_change,
+    hud_player_list_narration_from_world, input_screen_is_open, narrate_command_suggestion_change,
     narrate_player_list_visibility_change, project_dynamic_texture_counters,
     world_client_tick_interval, ClientAnimationTickState, DebugCollisionCache,
     DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
@@ -148,10 +148,11 @@ use simulation::{
 use sky_assets::load_sky_textures;
 use sound_subtitle_runtime::SoundSubtitleRuntime;
 use startup::{
-    build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
-    load_known_packs_manager, load_pack_roots, parse_args, run_build_info_if_requested,
-    run_probe_if_requested, run_status_if_requested, services_block_list_client_from_args,
-    spawn_frame_tick, start_control_api, start_network_if_requested,
+    build_window, client_framerate_limit_interval, create_event_loop, effective_framerate_limit,
+    init_tracing, load_known_packs_manager, load_pack_roots, parse_args,
+    run_build_info_if_requested, run_probe_if_requested, run_status_if_requested,
+    services_block_list_client_from_args, spawn_frame_tick, start_control_api,
+    start_network_if_requested,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 use win_screen_resources::WinScreenResources;
@@ -1102,7 +1103,8 @@ fn run_client(args: startup::Args) -> Result<()> {
     );
     let level_event_sound_random = LevelEventSoundRandomState::with_seed(world.next_sound_seed());
     let mut cursor_captured = false;
-    let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
+    let mut frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
+    let mut latest_input_at = Instant::now();
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut player_list_narration_visible = false;
@@ -1451,6 +1453,24 @@ fn run_client(args: startup::Args) -> Result<()> {
                 .map(|_| ControlFlow::WaitUntil(next_redraw_at))
                 .unwrap_or(ControlFlow::Poll),
         );
+        // Vanilla `FramerateLimitTracker.onInputReceived`: `KeyboardHandler`
+        // and `MouseHandler` stamp the AFK clock on every key, click, scroll
+        // and cursor move.
+        if matches!(
+            &event,
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { .. }
+                    | WindowEvent::MouseInput { .. }
+                    | WindowEvent::MouseWheel { .. }
+                    | WindowEvent::CursorMoved { .. },
+                ..
+            } | Event::DeviceEvent {
+                event: DeviceEvent::MouseMotion { .. },
+                ..
+            }
+        ) {
+            latest_input_at = Instant::now();
+        }
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 // This event arm is also `Window.resetIsResized`'s stand-in:
@@ -2074,6 +2094,19 @@ fn run_client(args: startup::Args) -> Result<()> {
                             "debug profiling lifecycle",
                         );
                     }
+                    // Vanilla samples `FramerateLimitTracker.getFramerateLimit`
+                    // every frame, so the cap follows window/AFK/menu state.
+                    frame_interval = client_framerate_limit_interval(effective_framerate_limit(
+                        args.client_framerate_limit,
+                        args.inactivity_fps_limit,
+                        window.is_minimized().unwrap_or(false),
+                        latest_input_at.elapsed().as_millis(),
+                        render_publication.world.level_info().is_some(),
+                        input_screen_is_open(
+                            render_publication.input.as_state(),
+                            &render_publication.world,
+                        ),
+                    ));
                     if let Some(interval) = frame_interval {
                         next_redraw_at = Instant::now() + interval;
                     }

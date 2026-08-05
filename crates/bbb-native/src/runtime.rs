@@ -6131,7 +6131,7 @@ fn release_input_if_screen_opened(
     }
 }
 
-fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
+pub(crate) fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     input.disconnected_screen_runtime().is_some()
         || input.chat_restrictions_screen_is_open()
         || world.open_container_id().is_some()
