@@ -30,7 +30,7 @@ use super::super::{
         hotbar_slot_for_key, queue_set_creative_mode_slot_commands_atomically,
         QueueCreativeModeSlotBatchError,
     },
-    text_edit,
+    copy_selection_to_clipboard, text_edit, DebugClipboard,
 };
 
 const CREATIVE_SEARCH_MAX_CHARS: usize = 50;
@@ -748,12 +748,17 @@ impl CreativeInventoryInputState {
                 return true;
             }
         }
+        self.insert_search_text(text);
+        true
+    }
+
+    fn insert_search_text(&mut self, text: &str) {
         let filtered = text
             .chars()
             .filter(|ch| !ch.is_control())
             .collect::<String>();
         if filtered.is_empty() {
-            return true;
+            return;
         }
         delete_selection(
             &mut self.search_text,
@@ -768,7 +773,6 @@ impl CreativeInventoryInputState {
         self.search_cursor += text_edit::char_len(&insert);
         self.search_selection = self.search_cursor;
         self.scroll_row = 0;
-        true
     }
 
     pub(crate) fn handle_key(
@@ -777,6 +781,8 @@ impl CreativeInventoryInputState {
         code: KeyCode,
         control_down: bool,
         shift_down: bool,
+        text_edit_shortcut_down: bool,
+        clipboard: &mut Option<&mut dyn DebugClipboard>,
     ) -> bool {
         if !self.search_is_active(snapshot) && code == KeyCode::KeyT {
             if let Some(search) = snapshot
@@ -794,9 +800,40 @@ impl CreativeInventoryInputState {
         }
         let length = text_edit::char_len(&self.search_text);
         match code {
-            KeyCode::KeyA if control_down => {
+            KeyCode::KeyA if text_edit_shortcut_down => {
                 self.search_cursor = length;
                 self.search_selection = 0;
+            }
+            KeyCode::KeyC if text_edit_shortcut_down => {
+                let selected = selected_search_text(
+                    &self.search_text,
+                    self.search_cursor,
+                    self.search_selection,
+                );
+                copy_selection_to_clipboard(clipboard, &selected);
+            }
+            KeyCode::KeyX if text_edit_shortcut_down => {
+                let selected = selected_search_text(
+                    &self.search_text,
+                    self.search_cursor,
+                    self.search_selection,
+                );
+                if copy_selection_to_clipboard(clipboard, &selected) {
+                    delete_selection(
+                        &mut self.search_text,
+                        &mut self.search_cursor,
+                        &mut self.search_selection,
+                    );
+                    self.scroll_row = 0;
+                }
+            }
+            KeyCode::KeyV if text_edit_shortcut_down => {
+                if let Some(text) = clipboard
+                    .as_deref_mut()
+                    .and_then(DebugClipboard::get_debug_clipboard_text)
+                {
+                    self.insert_search_text(&text);
+                }
             }
             KeyCode::ArrowLeft => {
                 let cursor = if control_down {
@@ -1132,6 +1169,14 @@ fn item_stack_is_empty(item: &ItemStackSummary) -> bool {
     item.item_id.is_none() || item.count <= 0
 }
 
+fn selected_search_text(text: &str, cursor: usize, selection: usize) -> String {
+    let start = cursor.min(selection);
+    let end = cursor.max(selection);
+    let start_byte = text_edit::byte_index(text, start);
+    let end_byte = text_edit::byte_index(text, end);
+    text[start_byte..end_byte].to_string()
+}
+
 fn delete_selection(text: &mut String, cursor: &mut usize, selection: &mut usize) -> bool {
     if *cursor == *selection {
         return false;
@@ -1360,7 +1405,7 @@ mod tests {
         state.select_tab(&snapshot.tabs[1]);
         assert!(state.handle_text(&snapshot, &"a".repeat(80)));
         assert_eq!(text_edit::char_len(&state.search_text), 50);
-        assert!(state.handle_key(&snapshot, KeyCode::KeyA, true, false));
+        assert!(state.handle_key(&snapshot, KeyCode::KeyA, true, false, true, &mut None));
         assert!(state.handle_text(&snapshot, "stone"));
         assert_eq!(state.search_text, "stone");
         state.select_tab(&snapshot.tabs[0]);
@@ -1382,7 +1427,7 @@ mod tests {
         state.sync(Some(&screen(1)), Some(&snapshot), 1);
         state.set_visible_item_count(100);
 
-        assert!(state.handle_key(&snapshot, KeyCode::KeyT, false, false));
+        assert!(state.handle_key(&snapshot, KeyCode::KeyT, false, false, false, &mut None));
         assert_eq!(
             state.selected_tab(&snapshot).unwrap().resource_id,
             "minecraft:search"

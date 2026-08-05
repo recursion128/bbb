@@ -253,7 +253,7 @@ pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
     advance_creative_inventory_commands, anvil_rename_entry_consumes_key,
     creative_inventory_search_entry_consumes_key, handle_inventory_cursor_moved,
-    handle_inventory_key_input, handle_inventory_mouse_input_with_item_runtime,
+    handle_inventory_key_input_with_clipboard, handle_inventory_mouse_input_with_item_runtime,
     handle_inventory_mouse_wheel, handle_inventory_text_input, inventory_screen_layout,
     inventory_screen_layout_for_surface, inventory_screen_selected_hotbar_slot_id,
     maybe_close_narrow_recipe_book, queue_lectern_button_click, recipe_book_button_position,
@@ -458,6 +458,16 @@ pub(crate) trait DebugClipboard {
     fn get_debug_clipboard_text(&mut self) -> Option<String> {
         None
     }
+}
+
+pub(crate) fn copy_selection_to_clipboard(
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
+    selected: &str,
+) -> bool {
+    selected.is_empty()
+        || clipboard
+            .as_deref_mut()
+            .is_some_and(|clipboard| clipboard.set_debug_clipboard_text(selected))
 }
 
 struct DebugNetContext<'a> {
@@ -2075,10 +2085,22 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
-    /// `Screen.isCopy`/`isPaste`/`isCut`/`isSelectAll` all share this modifier
-    /// shape, so a text field answers all four the same way.
+    /// `InputWithModifiers.isCopy`/`isPaste`/`isCut`/`isSelectAll` all share
+    /// this modifier shape, so a text field answers all four the same way. `InputQuirks`
+    /// replaces Ctrl with Command/Super on macOS (`EDIT_SHORTCUT_KEY_MODIFIER`
+    /// is 8 on macOS and 2 elsewhere), and all four reject Shift and Alt.
     pub(crate) fn text_edit_shortcut_down(&self) -> bool {
-        self.control_down() && !self.shift_down() && !self.alt_down()
+        let shortcut_down = if cfg!(target_os = "macos") {
+            self.super_down()
+        } else {
+            self.control_down()
+        };
+        shortcut_down && !self.shift_down() && !self.alt_down()
+    }
+
+    pub(crate) fn super_down(&self) -> bool {
+        self.pressed_keys.contains(&KeyCode::SuperLeft)
+            || self.pressed_keys.contains(&KeyCode::SuperRight)
     }
 
     pub(crate) fn alt_down(&self) -> bool {
@@ -3583,6 +3605,12 @@ impl ClientInputState {
         if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
             self.set_control_key(code, pressed);
         }
+        if matches!(code, KeyCode::SuperLeft | KeyCode::SuperRight) {
+            self.set_key_down(code, pressed);
+        }
+        if matches!(code, KeyCode::AltLeft | KeyCode::AltRight) {
+            self.set_key_down(code, pressed);
+        }
         if matches!(code, KeyCode::F3) || self.debug_modifier_down {
             return false;
         }
@@ -3616,19 +3644,18 @@ impl ClientInputState {
             KeyCode::ArrowRight if !search_focused => {
                 self.move_debug_options_horizontal_focus(1, surface_size);
             }
-            KeyCode::KeyA if search_focused && self.control_down() && !self.shift_down() => {
+            KeyCode::KeyA if search_focused && self.text_edit_shortcut_down() => {
                 if let Some(screen) = self.debug_options_screen.as_mut() {
                     select_debug_options_search_text(screen);
                 }
             }
-            KeyCode::KeyC if search_focused && self.control_down() && !self.shift_down() => {
-                if let (Some(screen), Some(clipboard)) =
-                    (self.debug_options_screen.as_ref(), clipboard.as_deref_mut())
-                {
-                    clipboard.set_debug_clipboard_text(&debug_options_search_selected_text(screen));
+            KeyCode::KeyC if search_focused && self.text_edit_shortcut_down() => {
+                if let Some(screen) = self.debug_options_screen.as_ref() {
+                    let selected = debug_options_search_selected_text(screen);
+                    copy_selection_to_clipboard(&mut clipboard, &selected);
                 }
             }
-            KeyCode::KeyV if search_focused && self.control_down() && !self.shift_down() => {
+            KeyCode::KeyV if search_focused && self.text_edit_shortcut_down() => {
                 if let (Some(text), Some(screen)) = (
                     clipboard
                         .as_deref_mut()
@@ -3638,12 +3665,10 @@ impl ClientInputState {
                     insert_debug_options_search_text(screen, &text);
                 }
             }
-            KeyCode::KeyX if search_focused && self.control_down() && !self.shift_down() => {
-                if let (Some(screen), Some(clipboard)) =
-                    (self.debug_options_screen.as_mut(), clipboard.as_deref_mut())
-                {
+            KeyCode::KeyX if search_focused && self.text_edit_shortcut_down() => {
+                if let Some(screen) = self.debug_options_screen.as_mut() {
                     let selected = debug_options_search_selected_text(screen);
-                    if clipboard.set_debug_clipboard_text(&selected) {
+                    if copy_selection_to_clipboard(&mut clipboard, &selected) {
                         let before = screen.search_text.clone();
                         delete_debug_options_search_selection(screen);
                         if screen.search_text != before {
@@ -12378,7 +12403,15 @@ pub(crate) fn handle_key_input_with_item_runtime(
         // creative C/X activators do not reach handleHotbarLoadOrSave while
         // CreativeModeInventoryScreen is open; the hovered-slot swap wins.
         if pressed {
-            handle_inventory_key_input(input, world, counters, net_commands, item_runtime, code);
+            handle_inventory_key_input_with_clipboard(
+                input,
+                world,
+                counters,
+                net_commands,
+                item_runtime,
+                code,
+                &mut clipboard,
+            );
         }
         return;
     }
@@ -12878,18 +12911,15 @@ fn handle_chat_entry_key(
         KeyCode::KeyC if input.text_edit_shortcut_down() => {
             if let Some(entry) = &input.chat_entry {
                 let selected = selected_chat_entry_text(entry);
-                if let Some(clipboard) = clipboard.as_deref_mut() {
-                    clipboard.set_debug_clipboard_text(&selected);
-                }
+                copy_selection_to_clipboard(&mut clipboard, &selected);
             }
         }
         KeyCode::KeyX if input.text_edit_shortcut_down() => {
             if let Some(entry) = &mut input.chat_entry {
                 let selected = selected_chat_entry_text(entry);
-                if let Some(clipboard) = clipboard.as_deref_mut() {
-                    clipboard.set_debug_clipboard_text(&selected);
+                if copy_selection_to_clipboard(&mut clipboard, &selected) {
+                    delete_chat_entry_selection(entry);
                 }
-                delete_chat_entry_selection(entry);
             }
         }
         KeyCode::KeyV if input.text_edit_shortcut_down() => {
@@ -13893,29 +13923,26 @@ fn handle_sign_editor_key(
     let shift_down = input.shift_down();
     match code {
         KeyCode::Escape => submit_sign_editor(input, counters, net_commands),
-        KeyCode::KeyA if control_down => {
+        KeyCode::KeyA if input.text_edit_shortcut_down() => {
             if let Some(editor) = &mut input.sign_editor {
                 select_sign_editor_line(editor);
             }
         }
-        KeyCode::KeyC if control_down => {
+        KeyCode::KeyC if input.text_edit_shortcut_down() => {
             if let Some(editor) = &input.sign_editor {
                 let selected = selected_sign_line_text(editor);
-                if let Some(clipboard) = clipboard.as_deref_mut() {
-                    clipboard.set_debug_clipboard_text(&selected);
-                }
+                copy_selection_to_clipboard(clipboard, &selected);
             }
         }
-        KeyCode::KeyX if control_down => {
+        KeyCode::KeyX if input.text_edit_shortcut_down() => {
             if let Some(editor) = &mut input.sign_editor {
                 let selected = selected_sign_line_text(editor);
-                if let Some(clipboard) = clipboard.as_deref_mut() {
-                    clipboard.set_debug_clipboard_text(&selected);
+                if copy_selection_to_clipboard(clipboard, &selected) {
+                    delete_sign_selection(editor);
                 }
-                delete_sign_selection(editor);
             }
         }
-        KeyCode::KeyV if control_down => {
+        KeyCode::KeyV if input.text_edit_shortcut_down() => {
             let pasted = clipboard
                 .as_deref_mut()
                 .and_then(DebugClipboard::get_debug_clipboard_text)

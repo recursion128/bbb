@@ -44,7 +44,8 @@ use super::{
         queue_recipe_book_seen_recipe_command, queue_rename_item_command,
         queue_select_trade_command, queue_set_beacon_command,
     },
-    text_edit, AnvilRenameInputSignature, ClientInputState, RecipeBookOverlayHudState,
+    copy_selection_to_clipboard, text_edit, AnvilRenameInputSignature, ClientInputState,
+    DebugClipboard, RecipeBookOverlayHudState,
 };
 use crate::recipe_book_ui::{
     clamped_recipe_book_page, crafting_recipe_book_collections,
@@ -1620,12 +1621,33 @@ pub(crate) fn handle_inventory_key_input(
     item_runtime: Option<&NativeItemRuntime>,
     code: KeyCode,
 ) -> bool {
+    handle_inventory_key_input_with_clipboard(
+        input,
+        world,
+        counters,
+        net_commands,
+        item_runtime,
+        code,
+        &mut None,
+    )
+}
+
+pub(crate) fn handle_inventory_key_input_with_clipboard(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    code: KeyCode,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
+) -> bool {
     if world.creative_inventory_screen().is_some() {
         if !input.focused {
             return false;
         }
         let control_down = input.control_down();
         let shift_down = input.shift_down();
+        let text_edit_shortcut_down = input.text_edit_shortcut_down();
         if input.binding_matches("key.drop", code)
             || hotbar_slot_for_key(input.key_bindings(), code).is_some()
         {
@@ -1645,28 +1667,46 @@ pub(crate) fn handle_inventory_key_input(
             ) {
                 return true;
             }
-            input
-                .creative_inventory
-                .handle_key(&snapshot, code, control_down, shift_down);
+            input.creative_inventory.handle_key(
+                &snapshot,
+                code,
+                control_down,
+                shift_down,
+                text_edit_shortcut_down,
+                clipboard,
+            );
             return true;
         }
         let Some(snapshot) = world.creative_inventory_snapshot() else {
             return true;
         };
-        input
-            .creative_inventory
-            .handle_key(snapshot, code, control_down, shift_down);
+        input.creative_inventory.handle_key(
+            snapshot,
+            code,
+            control_down,
+            shift_down,
+            text_edit_shortcut_down,
+            clipboard,
+        );
         return true;
     }
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
 
-    if handle_recipe_book_search_key_input(input, world, code) {
+    if handle_recipe_book_search_key_input(input, world, code, clipboard) {
         return true;
     }
 
-    if handle_anvil_rename_key_input(input, world, counters, net_commands, item_runtime, code) {
+    if handle_anvil_rename_key_input(
+        input,
+        world,
+        counters,
+        net_commands,
+        item_runtime,
+        code,
+        clipboard,
+    ) {
         return true;
     }
 
@@ -1726,6 +1766,7 @@ fn handle_recipe_book_search_key_input(
     input: &mut ClientInputState,
     world: &WorldStore,
     code: KeyCode,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
 ) -> bool {
     if !recipe_book_search_box_is_open(world) {
         input.recipe_book_search_focused = false;
@@ -1746,8 +1787,29 @@ fn handle_recipe_book_search_key_input(
 
     match code {
         KeyCode::Escape => false,
-        KeyCode::KeyA if input.control_down() && !input.shift_down() => {
+        KeyCode::KeyA if input.text_edit_shortcut_down() => {
             select_recipe_book_search_text(input);
+            true
+        }
+        KeyCode::KeyC if input.text_edit_shortcut_down() => {
+            let selected = selected_recipe_book_search_text(input);
+            copy_selection_to_clipboard(clipboard, &selected);
+            true
+        }
+        KeyCode::KeyX if input.text_edit_shortcut_down() => {
+            let selected = selected_recipe_book_search_text(input);
+            if copy_selection_to_clipboard(clipboard, &selected) {
+                delete_recipe_book_search_selection(input);
+            }
+            true
+        }
+        KeyCode::KeyV if input.text_edit_shortcut_down() => {
+            if let Some(text) = clipboard
+                .as_deref_mut()
+                .and_then(DebugClipboard::get_debug_clipboard_text)
+            {
+                insert_recipe_book_search_text(input, &text);
+            }
             true
         }
         KeyCode::ArrowLeft => {
@@ -1831,16 +1893,55 @@ fn handle_anvil_rename_key_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     item_runtime: Option<&NativeItemRuntime>,
     code: KeyCode,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
 ) -> bool {
     if !anvil_screen_is_open(world) {
         return false;
     }
 
     match code {
-        KeyCode::KeyA if input.control_down() && !input.shift_down() => {
+        KeyCode::KeyA if input.text_edit_shortcut_down() => {
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
                 select_anvil_rename_text(input);
+            }
+            true
+        }
+        KeyCode::KeyC if input.text_edit_shortcut_down() => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                let selected = selected_anvil_rename_text(input);
+                copy_selection_to_clipboard(clipboard, &selected);
+            }
+            true
+        }
+        KeyCode::KeyX if input.text_edit_shortcut_down() => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                let before = input.anvil_rename_text.clone();
+                let selected = selected_anvil_rename_text(input);
+                if copy_selection_to_clipboard(clipboard, &selected) {
+                    delete_anvil_rename_selection(input);
+                }
+                if input.anvil_rename_text != before {
+                    queue_anvil_rename(input, counters, net_commands);
+                }
+            }
+            true
+        }
+        KeyCode::KeyV if input.text_edit_shortcut_down() => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                let pasted = clipboard
+                    .as_deref_mut()
+                    .and_then(DebugClipboard::get_debug_clipboard_text);
+                if let Some(pasted) = pasted {
+                    let before = input.anvil_rename_text.clone();
+                    insert_anvil_rename_text(input, &pasted);
+                    if input.anvil_rename_text != before {
+                        queue_anvil_rename(input, counters, net_commands);
+                    }
+                }
             }
             true
         }
@@ -2030,6 +2131,18 @@ fn select_recipe_book_search_text(input: &mut ClientInputState) {
     input.recipe_book_search_cursor = text_edit::char_len(&input.recipe_book_search_text);
 }
 
+fn selected_recipe_book_search_text(input: &ClientInputState) -> String {
+    let start = input
+        .recipe_book_search_selection
+        .min(input.recipe_book_search_cursor);
+    let end = input
+        .recipe_book_search_selection
+        .max(input.recipe_book_search_cursor);
+    let start_byte = text_edit::byte_index(&input.recipe_book_search_text, start);
+    let end_byte = text_edit::byte_index(&input.recipe_book_search_text, end);
+    input.recipe_book_search_text[start_byte..end_byte].to_string()
+}
+
 fn delete_recipe_book_search_selection(input: &mut ClientInputState) -> bool {
     if input.recipe_book_search_selection == input.recipe_book_search_cursor {
         return false;
@@ -2193,6 +2306,14 @@ fn set_anvil_rename_cursor(input: &mut ClientInputState, cursor: usize) {
 fn select_anvil_rename_text(input: &mut ClientInputState) {
     input.anvil_rename_selection = 0;
     input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
+}
+
+fn selected_anvil_rename_text(input: &ClientInputState) -> String {
+    let start = input.anvil_rename_selection.min(input.anvil_rename_cursor);
+    let end = input.anvil_rename_selection.max(input.anvil_rename_cursor);
+    let start_byte = anvil_rename_byte_index(&input.anvil_rename_text, start);
+    let end_byte = anvil_rename_byte_index(&input.anvil_rename_text, end);
+    input.anvil_rename_text[start_byte..end_byte].to_string()
 }
 
 fn delete_anvil_rename_selection(input: &mut ClientInputState) -> bool {

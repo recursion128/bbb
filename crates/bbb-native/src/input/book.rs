@@ -12,8 +12,9 @@ use winit::{
 };
 
 use super::{
-    commands::queue_container_close_command, queue_edit_book_command, queue_lectern_button_click,
-    text_edit, ClientInputState, CommandSuggestionTextMeasurer, DebugClipboard,
+    commands::queue_container_close_command, copy_selection_to_clipboard, queue_edit_book_command,
+    queue_lectern_button_click, text_edit, ClientInputState, CommandSuggestionTextMeasurer,
+    DebugClipboard,
 };
 
 pub(crate) const BOOK_SCREEN_WIDTH: i32 = 192;
@@ -195,23 +196,22 @@ impl ClientInputState {
                         world.turn_current_book_page(1);
                         self.sync_book_screen(world);
                     }
-                    KeyCode::KeyA if control_down => self.select_all_book_text(world),
-                    KeyCode::KeyC if control_down => {
-                        if let (Some(selected), Some(clipboard)) =
-                            (self.selected_book_text(world), clipboard.as_deref_mut())
-                        {
-                            clipboard.set_debug_clipboard_text(&selected);
+                    KeyCode::KeyA if self.text_edit_shortcut_down() => {
+                        self.select_all_book_text(world)
+                    }
+                    KeyCode::KeyC if self.text_edit_shortcut_down() => {
+                        if let Some(selected) = self.selected_book_text(world) {
+                            copy_selection_to_clipboard(clipboard, &selected);
                         }
                     }
-                    KeyCode::KeyX if control_down => {
-                        if let (Some(selected), Some(clipboard)) =
-                            (self.selected_book_text(world), clipboard.as_deref_mut())
-                        {
-                            clipboard.set_debug_clipboard_text(&selected);
+                    KeyCode::KeyX if self.text_edit_shortcut_down() => {
+                        if self.selected_book_text(world).is_some_and(|selected| {
+                            copy_selection_to_clipboard(clipboard, &selected)
+                        }) {
+                            self.replace_book_selection(world, "", measurer);
                         }
-                        self.replace_book_selection(world, "", measurer);
                     }
-                    KeyCode::KeyV if control_down => {
+                    KeyCode::KeyV if self.text_edit_shortcut_down() => {
                         if let Some(text) = clipboard
                             .as_deref_mut()
                             .and_then(DebugClipboard::get_debug_clipboard_text)
@@ -272,23 +272,22 @@ impl ClientInputState {
                     KeyCode::Enter | KeyCode::NumpadEnter => {
                         self.submit_signed_book(counters, world, net_commands);
                     }
-                    KeyCode::KeyA if control_down => self.select_all_book_text(world),
-                    KeyCode::KeyC if control_down => {
-                        if let (Some(selected), Some(clipboard)) =
-                            (self.selected_book_text(world), clipboard.as_deref_mut())
-                        {
-                            clipboard.set_debug_clipboard_text(&selected);
+                    KeyCode::KeyA if self.text_edit_shortcut_down() => {
+                        self.select_all_book_text(world)
+                    }
+                    KeyCode::KeyC if self.text_edit_shortcut_down() => {
+                        if let Some(selected) = self.selected_book_text(world) {
+                            copy_selection_to_clipboard(clipboard, &selected);
                         }
                     }
-                    KeyCode::KeyX if control_down => {
-                        if let (Some(selected), Some(clipboard)) =
-                            (self.selected_book_text(world), clipboard.as_deref_mut())
-                        {
-                            clipboard.set_debug_clipboard_text(&selected);
+                    KeyCode::KeyX if self.text_edit_shortcut_down() => {
+                        if self.selected_book_text(world).is_some_and(|selected| {
+                            copy_selection_to_clipboard(clipboard, &selected)
+                        }) {
+                            self.replace_book_selection(world, "", measurer);
                         }
-                        self.replace_book_selection(world, "", measurer);
                     }
-                    KeyCode::KeyV if control_down => {
+                    KeyCode::KeyV if self.text_edit_shortcut_down() => {
                         if let Some(text) = clipboard
                             .as_deref_mut()
                             .and_then(DebugClipboard::get_debug_clipboard_text)

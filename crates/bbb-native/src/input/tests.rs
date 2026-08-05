@@ -30125,6 +30125,823 @@ fn opening_a_screen_from_no_screen_resets_the_last_input_type() {
     assert_eq!(input.last_input_type(), LastInputType::None);
 }
 
+#[test]
+fn text_edit_shortcut_predicate_requires_modifier_without_shift_or_alt() {
+    let mut input = ClientInputState::new(true);
+    #[cfg(not(target_os = "macos"))]
+    let with_shortcut = {
+        input.control_left_down = true;
+        input.text_edit_shortcut_down()
+    };
+    #[cfg(target_os = "macos")]
+    let with_shortcut = {
+        input.pressed_keys.insert(KeyCode::SuperLeft);
+        input.text_edit_shortcut_down()
+    };
+    assert!(with_shortcut);
+    input.shift_left_down = true;
+    assert!(!input.text_edit_shortcut_down());
+    input.shift_left_down = false;
+    input.pressed_keys.insert(KeyCode::AltLeft);
+    assert!(!input.text_edit_shortcut_down());
+    input.pressed_keys.remove(&KeyCode::AltLeft);
+    input.control_left_down = false;
+    input.pressed_keys.remove(&KeyCode::SuperLeft);
+    assert!(!input.text_edit_shortcut_down());
+}
+
+#[test]
+fn anvil_rename_clipboard_shortcuts_select_copy_cut_paste_and_emit_only_on_change() {
+    let (tx, _rx) = mpsc::channel(16);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "Sharp Pick",
+    );
+    assert_eq!(input.anvil_rename_text(), "Sharp Pick");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+
+    let mut clipboard = MockDebugClipboard::with_text("stale");
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), "Sharp Pick");
+    assert_eq!(clipboard.text.as_deref(), Some("Sharp Pick"));
+    assert_eq!(counters.rename_item_commands_queued, 1);
+
+    input.anvil_rename_cursor = 5;
+    input.anvil_rename_selection = 0;
+    clipboard.text = Some("Stone".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), "Stone Pick");
+    assert_eq!(counters.rename_item_commands_queued, 2);
+
+    input.anvil_rename_cursor = 0;
+    input.anvil_rename_selection = 5;
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), " Pick");
+    assert_eq!(clipboard.text.as_deref(), Some("Stone"));
+    assert_eq!(counters.rename_item_commands_queued, 3);
+
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), " Pick");
+    assert_eq!(clipboard.text.as_deref(), Some("Stone"));
+    assert_eq!(counters.rename_item_commands_queued, 3);
+
+    input.anvil_rename_cursor = 0;
+    input.anvil_rename_selection = 0;
+    clipboard.text = Some("§a\nb".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), "ab Pick");
+    assert_eq!(counters.rename_item_commands_queued, 4);
+
+    clipboard.text = Some("§\u{7f}\n".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text(), "ab Pick");
+    assert_eq!(counters.rename_item_commands_queued, 4);
+
+    input.anvil_rename_cursor = 0;
+    input.anvil_rename_selection = 0;
+    clipboard.text = Some("x".repeat(80));
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(input.anvil_rename_text().encode_utf16().count(), 50);
+    assert_eq!(counters.rename_item_commands_queued, 5);
+}
+
+#[test]
+fn recipe_book_search_clipboard_shortcuts_select_copy_cut_paste_and_keep_state() {
+    let (tx, _rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.recipe_book_search_focused = true;
+    let mut counters = NetCounters::default();
+    let mut world = open_recipe_book_crafting_table_world();
+    let mut clipboard = MockDebugClipboard::with_text("stale");
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "stone sword",
+    );
+    assert_eq!(input.recipe_book_search_hud_state().text, "stone sword");
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    let state = input.recipe_book_search_hud_state();
+    assert_eq!(state.text, "stone sword");
+    assert_eq!(state.cursor, 11);
+    assert_eq!(state.selection, 0);
+    assert_eq!(clipboard.text.as_deref(), Some("stone sword"));
+
+    input.recipe_book_search_cursor = 5;
+    input.recipe_book_search_selection = 0;
+    clipboard.text = Some("stick".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    let state = input.recipe_book_search_hud_state();
+    assert_eq!(state.text, "stick sword");
+    assert_eq!(state.cursor, 5);
+    assert_eq!(state.selection, 5);
+
+    input.recipe_book_search_cursor = 0;
+    input.recipe_book_search_selection = 5;
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    let state = input.recipe_book_search_hud_state();
+    assert_eq!(state.text, " sword");
+    assert_eq!(state.cursor, 0);
+    assert_eq!(state.selection, 0);
+    assert_eq!(clipboard.text.as_deref(), Some("stick"));
+
+    input.recipe_book_search_cursor = 0;
+    input.recipe_book_search_selection = 0;
+    clipboard.text = Some("§a\nb".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(input.recipe_book_search_hud_state().text, "ab sword");
+
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    assert_eq!(input.recipe_book_search_hud_state().text, "");
+
+    clipboard.text = Some("y".repeat(80));
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    let state = input.recipe_book_search_hud_state();
+    assert_eq!(state.text.encode_utf16().count(), 50);
+    assert_eq!(state.cursor, 50);
+    assert_eq!(state.selection, 50);
+}
+
+#[test]
+fn creative_search_clipboard_shortcuts_select_copy_cut_paste_and_keep_filters() {
+    let (tx, _rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: Vec::new(),
+    });
+    set_player_abilities(&mut world, false, true);
+    assert!(world.open_local_inventory_with_operator_tab(false).unwrap());
+    world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:vanilla".to_string()],
+    });
+    input.sync_creative_inventory_presentation(&world, None);
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyT,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "stone");
+    let hud = input.creative_inventory_hud_state(&world).unwrap();
+    assert_eq!(hud.search_text, "stone");
+    assert!(hud.search_focused);
+
+    let mut clipboard = MockDebugClipboard::with_text("stale");
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    let hud = input.creative_inventory_hud_state(&world).unwrap();
+    assert_eq!(hud.search_text, "stone");
+    assert_eq!(hud.search_cursor, 5);
+    assert_eq!(hud.search_selection, 0);
+    assert_eq!(clipboard.text.as_deref(), Some("stone"));
+
+    clipboard.text = Some("stick".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    let hud = input.creative_inventory_hud_state(&world).unwrap();
+    assert_eq!(hud.search_text, "stick");
+    assert_eq!(hud.search_cursor, 5);
+    assert_eq!(hud.search_selection, 5);
+
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    let hud = input.creative_inventory_hud_state(&world).unwrap();
+    assert_eq!(hud.search_text, "");
+    assert_eq!(hud.search_cursor, 0);
+    assert_eq!(hud.search_selection, 0);
+    assert_eq!(clipboard.text.as_deref(), Some("stick"));
+
+    clipboard.text = Some("\n\t".to_string());
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    assert_eq!(
+        input
+            .creative_inventory_hud_state(&world)
+            .unwrap()
+            .search_text,
+        ""
+    );
+
+    clipboard.text = Some("z".repeat(80));
+    press_key_with_clipboard(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        KeyCode::KeyV,
+        &mut clipboard,
+    );
+    let hud = input.creative_inventory_hud_state(&world).unwrap();
+    assert_eq!(hud.search_text.chars().count(), 50);
+    assert!(hud.search_text.chars().all(|ch| ch == 'z'));
+    assert_eq!(hud.search_cursor, 50);
+    assert_eq!(hud.search_selection, 50);
+}
+
+#[test]
+fn sign_book_chat_and_debug_options_edit_shortcuts_reject_shift_and_alt() {
+    let (tx, _rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+
+    // Sign editor: Shift and Alt reject copy/cut; plain Ctrl still copies.
+    let sign_pos = BlockPos { x: 3, y: 64, z: 3 };
+    let mut sign_world = world_with_sign_text(sign_pos, ["", "", "", ""], ["", "", "", ""]);
+    sign_world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 3, y: 64, z: 3 },
+        is_front_text: true,
+    });
+    let mut sign_input = ClientInputState::new(true);
+    handle_text_input(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        "copy",
+    );
+    press_key(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::ShiftLeft,
+    );
+    let mut clipboard = MockDebugClipboard::with_text("keep");
+    press_key_with_clipboard(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+    assert_eq!(sign_input.sign_editor.as_ref().unwrap().lines[0], "copy");
+    press_key(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::AltLeft,
+    );
+    press_key_with_clipboard(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    assert_eq!(sign_input.sign_editor.as_ref().unwrap().lines[0], "copy");
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+    sign_input.shift_left_down = false;
+    sign_input.pressed_keys.remove(&KeyCode::AltLeft);
+    press_key_with_clipboard(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut sign_input,
+        &mut counters,
+        &mut sign_world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    assert_eq!(clipboard.text.as_deref(), Some("copy"));
+    clipboard.text = Some("keep".to_string());
+
+    // Book editor: Shift and Alt reject copy/cut; plain Ctrl still copies.
+    let mut book_world = WorldStore::new();
+    let mut stack = test_item_stack(42, 1);
+    stack.component_patch.writable_book_pages = vec!["hello".to_string()];
+    stack.item_id = Some(bbb_protocol::item_types::VANILLA_ITEM_WRITABLE_BOOK_ID);
+    book_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    assert!(book_world.open_writable_book_editor(InteractionHand::MainHand, false));
+    let mut book_input = ClientInputState::new(true);
+    book_input.sync_book_screen(&book_world);
+    press_key(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::ShiftLeft,
+    );
+    press_key_with_clipboard(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+    book_input.shift_left_down = false;
+    press_key(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::AltLeft,
+    );
+    press_key_with_clipboard(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::KeyX,
+        &mut clipboard,
+    );
+    let book = book_world.current_book().unwrap();
+    assert!(book.is_edit());
+    assert_eq!(book.plain_pages_for_filter(false)[0], "hello");
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+    book_input.pressed_keys.remove(&KeyCode::AltLeft);
+    press_key_with_clipboard(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::KeyA,
+        &mut clipboard,
+    );
+    press_key_with_clipboard(
+        &mut book_input,
+        &mut counters,
+        &mut book_world,
+        &commands,
+        KeyCode::KeyC,
+        &mut clipboard,
+    );
+    assert_eq!(clipboard.text.as_deref(), Some("hello"));
+    clipboard.text = Some("keep".to_string());
+
+    // Chat: Alt rejects copy; Shift rejects cut.
+    let mut chat_world = world_with_local_player_id(9);
+    let mut chat_input = ClientInputState::new(true);
+    open_chat_entry(
+        &mut chat_input,
+        &mut chat_world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    chat_input.replace_chat_entry_text("hello".to_string());
+    chat_input.control_left_down = true;
+    chat_input.pressed_keys.insert(KeyCode::AltLeft);
+    handle_chat_entry_key(
+        &mut chat_input,
+        &mut counters,
+        &mut chat_world,
+        &commands,
+        KeyCode::KeyC,
+        true,
+        Some(&mut clipboard),
+    );
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+    assert_eq!(chat_input.chat_entry.as_ref().unwrap().text, "hello");
+    chat_input.pressed_keys.remove(&KeyCode::AltLeft);
+    chat_input.shift_left_down = true;
+    handle_chat_entry_key(
+        &mut chat_input,
+        &mut counters,
+        &mut chat_world,
+        &commands,
+        KeyCode::KeyX,
+        true,
+        Some(&mut clipboard),
+    );
+    assert_eq!(chat_input.chat_entry.as_ref().unwrap().text, "hello");
+    assert_eq!(clipboard.text.as_deref(), Some("keep"));
+
+    // Debug-options search: Shift rejects copy; Alt rejects cut.
+    let mut debug_input = ClientInputState::new(true);
+    debug_input.open_debug_options_screen();
+    assert!(debug_input.handle_debug_options_screen_text_input("chunk stats"));
+    let mut debug_clipboard = MockDebugClipboard::with_text("keep");
+    assert!(debug_input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    ));
+    assert!(debug_input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    ));
+    assert!(debug_input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyC),
+        ElementState::Pressed,
+        Some(&mut debug_clipboard),
+    ));
+    assert_eq!(debug_clipboard.text.as_deref(), Some("keep"));
+    let screen = debug_input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_text, "chunk stats");
+    assert_eq!(screen.search_cursor, 11);
+    assert_eq!(screen.search_selection, 11);
+    assert!(debug_input.handle_debug_options_screen_key(
+        PhysicalKey::Code(KeyCode::AltLeft),
+        ElementState::Pressed,
+    ));
+    assert!(debug_input.handle_debug_options_screen_key_with_clipboard(
+        PhysicalKey::Code(KeyCode::KeyX),
+        ElementState::Pressed,
+        Some(&mut debug_clipboard),
+    ));
+    let screen = debug_input.debug_options_screen.as_ref().unwrap();
+    assert_eq!(screen.search_text, "chunk stats");
+    assert_eq!(debug_clipboard.text.as_deref(), Some("keep"));
+}
+
+#[test]
+fn absent_or_failing_clipboard_is_a_safe_noop_for_edit_shortcuts() {
+    let (tx, _rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut counters = NetCounters::default();
+
+    // Anvil paste with no clipboard object leaves the rename untouched.
+    let mut anvil_input = ClientInputState::new(true);
+    let mut anvil_world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+    handle_text_input(
+        &mut anvil_input,
+        &mut counters,
+        &mut anvil_world,
+        &commands,
+        "Pick",
+    );
+    press_key(
+        &mut anvil_input,
+        &mut counters,
+        &mut anvil_world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut anvil_input,
+        &mut counters,
+        &mut anvil_world,
+        &commands,
+        KeyCode::KeyV,
+    );
+    assert_eq!(anvil_input.anvil_rename_text(), "Pick");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+
+    // Cut with no clipboard object or a failed write preserves the selection.
+    anvil_input.anvil_rename_cursor = 4;
+    anvil_input.anvil_rename_selection = 0;
+    press_key(
+        &mut anvil_input,
+        &mut counters,
+        &mut anvil_world,
+        &commands,
+        KeyCode::KeyX,
+    );
+    assert_eq!(anvil_input.anvil_rename_text(), "Pick");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    let mut rejecting = MockDebugClipboard::with_text("keep");
+    rejecting.accepts_text = false;
+    press_key_with_clipboard(
+        &mut anvil_input,
+        &mut counters,
+        &mut anvil_world,
+        &commands,
+        KeyCode::KeyX,
+        &mut rejecting,
+    );
+    assert_eq!(anvil_input.anvil_rename_text(), "Pick");
+    assert_eq!(rejecting.text.as_deref(), Some("keep"));
+    assert_eq!(counters.rename_item_commands_queued, 1);
+
+    // Recipe-book search paste with an unreadable clipboard leaves state.
+    let mut recipe_input = ClientInputState::new(true);
+    recipe_input.recipe_book_search_focused = true;
+    let mut recipe_world = open_recipe_book_crafting_table_world();
+    handle_text_input(
+        &mut recipe_input,
+        &mut counters,
+        &mut recipe_world,
+        &commands,
+        "stone",
+    );
+    press_key(
+        &mut recipe_input,
+        &mut counters,
+        &mut recipe_world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    let mut unreadable = MockDebugClipboard::with_text("stale");
+    unreadable.text = None;
+    press_key_with_clipboard(
+        &mut recipe_input,
+        &mut counters,
+        &mut recipe_world,
+        &commands,
+        KeyCode::KeyV,
+        &mut unreadable,
+    );
+    let state = recipe_input.recipe_book_search_hud_state();
+    assert_eq!(state.text, "stone");
+    assert_eq!(state.cursor, 5);
+    assert_eq!(state.selection, 5);
+
+    // Creative search paste with an unreadable clipboard leaves search text.
+    let mut creative_input = ClientInputState::new(true);
+    let mut creative_world = WorldStore::new();
+    creative_world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: Vec::new(),
+    });
+    set_player_abilities(&mut creative_world, false, true);
+    assert!(creative_world
+        .open_local_inventory_with_operator_tab(false)
+        .unwrap());
+    creative_world.apply_update_enabled_features(bbb_protocol::packets::UpdateEnabledFeatures {
+        features: vec!["minecraft:vanilla".to_string()],
+    });
+    creative_input.sync_creative_inventory_presentation(&creative_world, None);
+    press_key(
+        &mut creative_input,
+        &mut counters,
+        &mut creative_world,
+        &commands,
+        KeyCode::KeyT,
+    );
+    handle_text_input(
+        &mut creative_input,
+        &mut counters,
+        &mut creative_world,
+        &commands,
+        "stone",
+    );
+    press_key(
+        &mut creative_input,
+        &mut counters,
+        &mut creative_world,
+        &commands,
+        KeyCode::ControlLeft,
+    );
+    press_key_with_clipboard(
+        &mut creative_input,
+        &mut counters,
+        &mut creative_world,
+        &commands,
+        KeyCode::KeyV,
+        &mut unreadable,
+    );
+    assert_eq!(
+        creative_input
+            .creative_inventory_hud_state(&creative_world)
+            .unwrap()
+            .search_text,
+        "stone"
+    );
+
+    // Chat copy with no clipboard object is a safe no-op.
+    let mut chat_world = world_with_local_player_id(9);
+    let mut chat_input = ClientInputState::new(true);
+    open_chat_entry(
+        &mut chat_input,
+        &mut chat_world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    chat_input.replace_chat_entry_text("hello".to_string());
+    chat_input.control_left_down = true;
+    handle_chat_entry_key(
+        &mut chat_input,
+        &mut counters,
+        &mut chat_world,
+        &commands,
+        KeyCode::KeyC,
+        true,
+        None,
+    );
+    assert_eq!(chat_input.chat_entry.as_ref().unwrap().text, "hello");
+}
+
 fn press_key(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -30139,6 +30956,28 @@ fn press_key(
         net_commands,
         PhysicalKey::Code(code),
         ElementState::Pressed,
+    );
+}
+
+fn press_key_with_clipboard(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+    clipboard: &mut MockDebugClipboard,
+) {
+    handle_key_input_with_item_runtime(
+        input,
+        counters,
+        world,
+        net_commands,
+        None,
+        PhysicalKey::Code(code),
+        ElementState::Pressed,
+        PhysicalSize::new(1280, 720),
+        &FixedCommandSuggestionTextMeasurer,
+        Some(clipboard),
     );
 }
 
