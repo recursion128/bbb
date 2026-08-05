@@ -113,6 +113,16 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   Implement all repo-owned semantic gaps and keep the separately recorded
   X11/interactive-seat and macOS/Windows runner limitations external; absence
   of those runners must not hide an internally testable mechanism.
+- **Handing an in-flight IME composition to a newly focused field is
+  `deferred`.** `Minecraft.onTextInputFocusChange` calls
+  `KeyboardHandler.resubmitLastPreeditEvent` on the gaining element and
+  `submitPreeditEvent(element, null)` on the losing one, so vanilla moves a
+  composition that is already open. BBB routes each pre-edit event to whichever
+  target is active when the event arrives and keeps no stored event, so a
+  composition opened before a focus change stays on the old field until the IME
+  sends its next event. Reopen when a second BBB surface gains pre-edit
+  rendering beyond the dialog and sign editor, and then store the last event
+  once for every target rather than per screen.
 
 ## Persistence, profile and secure-session closure
 
