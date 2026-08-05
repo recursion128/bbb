@@ -4698,7 +4698,294 @@ HUD_TEXT_AND_LISTS_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#pub(crate) struct ClientInputState",
+                "crates/bbb-native/src/main.rs#window.set_ime_allowed(true)",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#debug_advanced_item_tooltips_startup_state_is_runtime_initial_value",
+            ),
+        ),
+        ("KeyboardHandler",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_key_input_with_item_runtime",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_key",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_release_toggles_debug_overlay_without_gameplay_command",
+                "crates/bbb-native/src/input/tests.rs#the_fullscreen_key_toggles_the_window_and_saves_the_option",
+                "crates/bbb-native/src/input/tests.rs#the_screenshot_key_requests_one_grab_per_press_and_announces_the_saved_name",
+            ),
+        ),
+        ("keyPress",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_text_input_with_item_runtime",
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_ime_commit",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#text_input_requires_focus_and_leading_slash",
+                "crates/bbb-native/src/input/tests.rs#sign_editor_text_input_changes_lines_and_queues_sign_update",
+            ),
+        ),
+        ("charTyped",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_ime_preedit",
+                "crates/bbb-native/src/input.rs#fn handle_dialog_ime_preedit_at",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+            ),
+        ),
+        ("preeditCallback",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "docs/unsupported-features.md#Handing an in-flight IME composition to a newly focused field is",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+            ),
+        ),
+        ("resubmitLastPreeditEvent",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_dialog_ime_preedit_at",
+                "crates/bbb-native/src/input.rs#fn handle_sign_editor_ime_preedit_at",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+            ),
+        ),
+        ("submitPreeditEvent",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#fn enqueue_simulation_window_event",),
+            (
+                "crates/bbb-native/src/simulation.rs#all_external_commands_enter_one_mailbox_and_apply_without_a_second_queue",
+                "crates/bbb-native/src/simulation/commands.rs#saturated_mailbox_never_drops_key_mouse_or_control_releases",
+            ),
+        ),
+        ("setup",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_key_input_with_item_runtime",
+                "crates/bbb-native/src/input/commands.rs#fn hotbar_slot_for_key",
+                "crates/bbb-native/src/input.rs#fn toggled_down",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#digit_key_selects_hotbar_slot_updates_world_and_queues_command",
+                "crates/bbb-native/src/input/tests.rs#camera_perspective_f5_consumes_one_cycle_per_press_edge",
+                "crates/bbb-native/src/input/tests.rs#drop_key_queues_drop_item_action",
+            ),
+        ),
+        ("handleKeybinds",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn shift_down",),
+            (
+                "crates/bbb-native/src/input/tests.rs#release_active_input_keeps_shift_modifier_for_inventory_clicks",
+            ),
+        ),
+        ("hasShiftDown",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn control_down",),
+            (
+                "crates/bbb-native/src/input/tests.rs#control_drop_key_queues_drop_all_items_action",
+            ),
+        ),
+        ("hasControlDown",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn alt_down",),
+            (
+                "crates/bbb-native/src/input/tests.rs#text_edit_shortcut_predicate_requires_modifier_without_shift_or_alt",
+            ),
+        ),
+        ("hasAltDown",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn note_key_input_type",
+                "crates/bbb-native/src/input.rs#enum LastInputType",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_last_input_type_follows_the_screen_gated_keyboard_and_mouse_events",
+                "crates/bbb-native/src/input/tests.rs#opening_a_screen_from_no_screen_resets_the_last_input_type",
+            ),
+        ),
+        ("setLastInputType",),
+    ),
+)
+
+
+INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn debug_copy_recreate_command",
+                "crates/bbb-native/src/input.rs#fn queue_debug_recreate_server_query_request",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_i_without_shift_records_server_recreate_query_request_shell",
+                "crates/bbb-native/src/input/tests.rs#f3_i_without_gamemaster_permission_copies_client_recreate_command_without_query",
+            ),
+        ),
+        ("copyRecreateCommand",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn debug_copy_recreate_block_command",),
+            (
+                "crates/bbb-native/src/input/tests.rs#shift_f3_i_copies_block_recreate_command_to_clipboard_and_reports_feedback",
+                "crates/bbb-native/src/input/tests.rs#shift_f3_i_with_permission_copies_local_block_entity_nbt_to_clipboard",
+            ),
+        ),
+        ("copyCreateBlockCommand",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn debug_copy_recreate_entity_command",),
+            (
+                "crates/bbb-native/src/input/tests.rs#shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback",
+                "crates/bbb-native/src/input/tests.rs#f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos",
+            ),
+        ),
+        ("copyCreateEntityCommand",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn push_debug_feedback_chat_message",),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_t_records_resource_pack_reload_request_and_feedback_without_toggling_overlay",
+            ),
+        ),
+        ("debugFeedback", "debugFeedbackTranslated"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn push_debug_feedback_chat_runs",),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_s_records_dynamic_texture_dump_request_and_feedback_without_toggling_overlay",
+            ),
+        ),
+        ("debugFeedbackComponent",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn handle_shared_debug_hotkey",),
+            (
+                "crates/bbb-native/src/input/tests.rs#shared_debug_hotkeys_toggle_dev_state_when_startup_flag_is_enabled",
+                "crates/bbb-native/src/runtime/tests.rs#f3_p_emits_pause_on_lost_focus_debug_feedback_with_world",
+            ),
+        ),
+        ("debugFeedbackEnabledStatus",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn push_debug_warning_chat_message",
+                "crates/bbb-native/src/input.rs#VANILLA_DEBUG_WARNING_COLOR",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay",
+            ),
+        ),
+        ("debugWarningComponent",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn decorated_debug_styled_runs",
+                "crates/bbb-native/src/input.rs#VANILLA_DEBUG_FEEDBACK_COLOR",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_t_records_resource_pack_reload_request_and_feedback_without_toggling_overlay",
+                "crates/bbb-native/src/input/tests.rs#f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay",
+            ),
+        ),
+        ("decorateDebugComponent",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn push_debug_feedback_chat_runs",
+                "crates/bbb-world/src/client/chat.rs#fn push_styled_client_system_chat_message",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_v_dumps_version_debug_chat_without_toggling_overlay_on_release",
+            ),
+        ),
+        ("showDebugChat",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_shared_debug_hotkey",
+                "crates/bbb-native/src/startup.rs#debug_hotkeys",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#shared_debug_hotkeys_toggle_dev_state_when_startup_flag_is_enabled",
+                "crates/bbb-native/src/input/tests.rs#shared_debug_hotkeys_without_player_only_handle_global_dev_toggles",
+            ),
+        ),
+        ("handleChunkDebugKeys",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn handle_debug_overlay_key_inner",
+                "crates/bbb-native/src/input.rs#fn handle_debug_feature_count_key",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#debug_hotkeys_take_priority_over_feature_count_and_regular_keymap",
+                "crates/bbb-native/src/input/tests.rs#f3_release_toggles_debug_overlay_without_gameplay_command",
+                "crates/bbb-native/src/input/tests.rs#f3_n_queues_spectator_game_mode_with_permission",
+            ),
+        ),
+        ("handleDebugKeys",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/input.rs#fn advance_debug_crash_hold",
+                "crates/bbb-native/src/input.rs#DEBUG_CRASH_TIME",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#f3_c_hold_reports_manual_crash_warning_countdown_without_toggling_overlay",
+                "crates/bbb-native/src/input/tests.rs#f3_c_hold_panics_after_vanilla_manual_crash_delay",
+            ),
+        ),
+        ("tick",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
+    "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
+    "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
