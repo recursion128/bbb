@@ -56,26 +56,14 @@
   8 个 owner 归 `persistence-options-unconsumed`（`missing`），只服务 options 屏的归 `scope-options-ui`，
   多人服务器选择屏的 5 个归 `scope-multiplayer-server-list`。
 
-- **2026-08-05（HUD step surface closure）**：`Gui` 72 owner 拆七个 support accessor 加 65 个决策 owner，
-  按 frame order / vitals / hotbar+crosshair / overlay effects / text+lists 五条 route 逐条挂 evidence。
-  camera player 收敛到唯一的 `WorldStore::camera_entity_id` 并新增远端 camera player vitals 投影，
-  补齐 nausea overlay 管线与 `LevelLoadingScreen`（reason 驱动背景 + 居中状态行），sound subtitle
-  位置按 screen 是否 in-game UI 裁决；五行翻 `equivalent`，toasts/F3 覆盖全屏 screen 记为 deferred。
-
-- **2026-08-05（native input/window closure）**：`native-input-window-surface` 工程收口：173 owner
-  （27 support accessor + 146 决策）逐 owner 挂 implementation/test evidence，十行 matrix 全翻
-  `equivalent`。census 揭示的真缺口同批闭合：debug-crash 红色警告与 Ctrl abort、debug chat 改
-  `saySystemQueued` 门控、respawn 重置 toggle 键、screen 关闭恢复 toggle 测试、keybind 组件按当前
-  绑定键解析、narrator toggle toast + voice*master 音量链 + Drop 收割；GLFW 专有面（error callback
-  族、raw-mouse、cursor warp/first-move、macOS quirk、dev flag）逐 owner 记录 scope 决策。
-
-- **2026-08-05（game-renderer step surface closure）**：`Minecraft.renderFrame` + `GameRenderer` 53 owner 拆
-  frame-order（10）/extract-surface（11）/level-pass（14）/effects-screenshot（17）四条 route，`getMinecraft`
-  归 direct support，52 个决策 owner 逐条挂 implementation/test evidence。census 揭示的缺口同批闭合：totem
-  item activation（40 tick 状态机 + first-person 弹出动画矩阵）、glintSpeed/glintStrength/panoramaScrollSpeed
-  接线、framerate 10..260 + iconified/AFK/menu 节流表、renderClouds off/fast/fancy、ao smooth-lighting 开关；
-  redraw-arm 顺序与 clearLevel 相机复位补守卫测试；auto-screenshot 对外部客户端记 `not-needed`
-  （`isLocalServer()` 恒 false），anisotropy 记 deferred。四行翻 `equivalent`，P2 屏幕/HUD 节关闭。
+- **2026-08-05（HUD/input-window/game-renderer census closures）**：三个 census 工程同日收口，
+  全部逐 owner 挂 implementation/test evidence：`Gui` 72 owner 五条 `hud-*` route（camera player 唯一
+  裁决点、nausea overlay、`LevelLoadingScreen`、subtitle 位置按 in-game UI 裁决）；
+  `native-input-window-surface` 173 owner 十行 route（debug-crash abort、`saySystemQueued` 门控、
+  respawn/screen toggle 重置、keybind 组件解析、narrator toast/音量链，GLFW 专有面逐 owner 记 scope）；
+  `Minecraft.renderFrame`+`GameRenderer` 53 owner 四条 route（totem 40-tick 状态机、glint/panorama
+  接线、framerate 节流表、renderClouds、ao 开关、redraw-arm/clearLevel 守卫；auto-screenshot 记
+  `not-needed`）。十九行 matrix 全翻 `equivalent`。
 
 - **2026-08-05（secure-chat/social/reporting closure）**：`security-secure-chat-reporting` 30 owner
   （`Minecraft` chat abilities 9 + `PlayerSocialManager` 12 + `ReportingContext` 9）逐条挂
