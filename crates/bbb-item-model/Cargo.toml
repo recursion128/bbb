@@ -25,6 +25,11 @@ bbb-world = { path = "../bbb-world" }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
 glam = { workspace = true }
+icu_calendar = { workspace = true }
+icu_datetime = { workspace = true }
+icu_decimal = { workspace = true }
+icu_locale = { workspace = true }
+icu_time = { workspace = true }
 reqwest = { workspace = true }
 rsa = { workspace = true }
 serde = { workspace = true }
@@ -32,6 +37,7 @@ serde_json = { workspace = true }
 sha1 = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
+writeable = { workspace = true }
 zip = { workspace = true }
 
 [dev-dependencies]

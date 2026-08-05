@@ -256,7 +256,7 @@ Matrix routes: `debug-integrated-server-mirrors`, `movement-remote-type-exceptio
 
 Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 
-Matrix routes: `ui-context-entity-type`, `ui-local-time-icu`, `items-server-owned-effects`
+Matrix routes: `ui-context-entity-type`, `items-server-owned-effects`
 
 Each item below plugs into the existing value-aware `RangeDispatch` / `Select`
 resolver by adding a value provider. No new selection machinery is required.
@@ -268,12 +268,6 @@ resolver by adding a value provider. No new selection machinery is required.
   left-hand preview. Reopen when a different current client consumer passes a
   real living owner to `ItemModelResolver`; non-living `ItemOwner` values remain
   null after Vanilla's `asLivingEntity` narrowing.
-- Full `minecraft:local_time` ICU parity is `deferred`: the remaining localized
-  symbols, locale-specific week data, IANA long `z`, generic `v`, and
-  one-/four-letter `V` widths have no portable ICU owner compatible with the
-  workspace Rust 1.80 target. Reopen when an approved repo-native provider can
-  cover Vanilla's arbitrary `SimpleDateFormat` patterns, locale calendar data,
-  and timezone names without raising the MSRV implicitly.
 - `not-needed`: synchronized conditional value/entity/location enchantment
   effects, damage immunity, equipment-drop prevention, and crossbow charging
   sounds remain server-owned in Vanilla 26.1. Conditional execution enters

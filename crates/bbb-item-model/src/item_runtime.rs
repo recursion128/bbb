@@ -74,6 +74,7 @@ use crate::{
 
 mod icon_model;
 mod item_membership_catalog;
+mod local_time;
 #[cfg(test)]
 mod profile_skin;
 

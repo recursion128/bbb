@@ -11099,7 +11099,8 @@ fn native_item_runtime_resolves_local_time_select_property() {
     assert_eq!(selected(3), uv("utc_offset_clock_fallback"));
 
     // `uuuu-DDD-G` exercises the proleptic-year, day-of-year, and era fields:
-    // 2026-12-25 UTC formats to "2026-359-AD" (2026 is not a leap year).
+    // 2026-12-25 UTC formats to "2026-359-CE" (2026 is not a leap year;
+    // IsoChronology eras render as CE/BCE under the root locale).
     runtime.set_local_time_epoch_millis_for_test(
         chrono::Utc
             .with_ymd_and_hms(2026, 12, 25, 0, 0, 0)
@@ -11218,8 +11219,9 @@ fn native_item_runtime_resolves_local_time_select_property() {
     );
     assert_eq!(selected(8), uv("week_clock_fallback"));
 
-    // ICU root-locale `e`/`c`: local weekday number uses the same Monday-first
-    // week data, then widths 3..=6 follow weekday text widths.
+    // ICU root-locale `e`/`c`: root week data resolves through likely
+    // subtags to en-US Sunday-first rules, then widths 3..=6 follow the
+    // root weekday text widths.
     runtime.set_local_time_epoch_millis_for_test(
         chrono::Utc
             .with_ymd_and_hms(2026, 1, 4, 0, 0, 0)
@@ -11422,8 +11424,8 @@ fn native_item_runtime_resolves_local_time_select_property() {
     assert_eq!(selected(18), uv("us_week_clock_fallback"));
 
     // ICU en_GB week data is Monday-first with minimal-days=4: 2027-01-01 is
-    // still week 53 of week-year 2026, and `W` reports the previous month's
-    // final week because January's first week starts on 2027-01-04.
+    // still week 53 of week-year 2026, and `W` is 0 because January's first
+    // counted week starts on 2027-01-04 (ICU's WEEK_OF_MONTH minimum is 0).
     runtime.set_local_time_epoch_millis_for_test(
         chrono::Utc
             .with_ymd_and_hms(2027, 1, 1, 0, 0, 0)
@@ -17428,10 +17430,10 @@ fn write_local_time_select_fixture(root: &Path) {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
                     "pattern": "yyyy-MM-dd'T'HH:mm:ss.SSS EEEE a",
-                    "time_zone": "UTC+02:30",
+                    "time_zone": "GMT+02:30",
                     "cases": [
                         {
-                            "when": "2026-12-25T00:08:07.123 Friday AM",
+                            "when": "2026-12-25T00:08:07.123 Fri AM",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/precise_clock_match" }
                         }
                     ],
@@ -17485,7 +17487,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-359-AD",
+                            "when": "2026-359-CE",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/date_field_clock_match" }
                         }
                     ],
@@ -17503,7 +17505,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-3-03-Q3-3rd quarter-3-3-03-Q3-3rd quarter-3",
+                            "when": "2026-3-03-Q3-Q3-3-3-03-Q3-Q3-3",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/quarter_clock_match" }
                         }
                     ],
@@ -17518,10 +17520,10 @@ fn write_local_time_select_fixture(root: &Path) {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
                     "pattern": "yyyy-MM-dd O OO OOO OOOO",
-                    "time_zone": "UTC+02:30",
+                    "time_zone": "GMT+02:30",
                     "cases": [
                         {
-                            "when": "2026-01-01 GMT+2:30 GMT+2:30 GMT+2:30 GMT+02:30",
+                            "when": "2026-01-01 GMT+2:30 null null GMT+02:30",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/localized_gmt_clock_match" }
                         }
                     ],
@@ -17557,7 +17559,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-01-04 1 01 1 01",
+                            "when": "2026-01-04 2 02 2 02",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/week_clock_match" }
                         }
                     ],
@@ -17575,7 +17577,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-01-04 7 07 Sun Sunday S Su 7 07 Sun Sunday S Su Sun Sunday S Su",
+                            "when": "2026-01-04 1 01 Sun Sun S Sun 1 1 Sun Sun S Sun Sun Sun S Sun",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/local_weekday_clock_match" }
                         }
                     ],
@@ -17593,7 +17595,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "Asia/Tokyo",
                     "cases": [
                         {
-                            "when": "2026-01-01 JST JST Asia/Tokyo Tokyo",
+                            "when": "2026-01-01 GMT+9 GMT+9 Asia/Tokyo Tokyo",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/zone_name_clock_match" }
                         }
                     ],
@@ -17608,10 +17610,10 @@ fn write_local_time_select_fixture(root: &Path) {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
                     "pattern": "yyyy-MM-dd z zzzz",
-                    "time_zone": "UTC+02:30",
+                    "time_zone": "GMT+02:30",
                     "cases": [
                         {
-                            "when": "2026-01-01 +0230 GMT+02:30",
+                            "when": "2026-01-01 GMT+2:30 GMT+02:30",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/fixed_zone_long_clock_match" }
                         }
                     ],
@@ -17626,7 +17628,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
                     "pattern": "yyyy-MM-dd Z ZZZZ ZZZZZ X XX XXX XXXX XXXXX x xx xxx xxxx xxxxx",
-                    "time_zone": "UTC+02:30",
+                    "time_zone": "GMT+02:30",
                     "cases": [
                         {
                             "when": "2026-01-01 +0230 GMT+02:30 +02:30 +0230 +0230 +02:30 +0230 +02:30 +0230 +0230 +02:30 +0230 +02:30",
@@ -17647,7 +17649,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-8-08-Aug-August-A-8-08-Aug-August-A",
+                            "when": "2026-8-08-M08-M08-8-8-08-M08-M08-8",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/narrow_month_clock_match" }
                         }
                     ],
@@ -17665,7 +17667,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-01-01 PM PM PM p",
+                            "when": "2026-01-01 PM PM PM PM",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/ampm_width_clock_match" }
                         }
                     ],
@@ -17701,7 +17703,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026-12-31 53 53",
+                            "when": "2026-12-31 1 01",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/year_end_week_clock_match" }
                         }
                     ],
@@ -17719,7 +17721,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2026 26 2026 2026 02026 53 53",
+                            "when": "2026 27 2027 2027 02027 1 01",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/week_year_clock_match" }
                         }
                     ],
@@ -17757,7 +17759,7 @@ fn write_local_time_select_fixture(root: &Path) {
                     "time_zone": "UTC",
                     "cases": [
                         {
-                            "when": "2027-01-01 2026 53 53 5 5 5 Fri",
+                            "when": "2027-01-01 2026 53 53 0 5 5 Fri",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/gb_week_clock_match" }
                         }
                     ],

@@ -89,4 +89,11 @@
   五条目改判 not-applicable、`identity-profile-key-lifecycle` 行转 `not-needed`、账本 deferred #1
   改 `not-needed`（deferred 6→5）。
 
+- **2026-08-05（toolchain + local_time ICU parity）**：用户裁决不卡 Rust 1.80，工具链升 stable
+  1.97.1（MSRV 1.97），解锁 ICU4X 2.2。`ui-local-time-icu` 从 `deferred-external` 关为
+  `equivalent`：混合实现（ICU4X 承接 CLDR 文本/zone 名/每 locale 历法数字系统；native 承接全部
+  数字字段与 ICU4J 周算法；generated 表承接 quarter/GMT-zero/unknown-city/root 地区码），以
+  vanilla 同款 ICU4J 77.1 jar 做 oracle 的 8656 行 goldens 全绿；同宽度多字段各持独立 names
+  实例（单实例装不下同 kind 两宽度）。账本 deferred 5→4（三项环境绑定 + 一项消费者门控）。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

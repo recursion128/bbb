@@ -33,6 +33,11 @@ criterion = "0.5"
 flate2 = "1"
 glam = "0.29"
 hecs = "0.10"
+icu_calendar = "2.2"
+icu_datetime = "2.2"
+icu_decimal = "2.2"
+icu_locale = "2.2"
+icu_time = { version = "2.2", features = ["unstable_chrono_0_4"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 isocountry = "0.3.2"
 kira = { version = "0.12.1", default-features = false, features = ["ogg", "vorbis"] }
@@ -58,6 +63,7 @@ unicode_names2 = "=3.1.0"
 unicode-bidi = "0.3.18"
 unicode-character-database = "0.1.0"
 url = "2"
+writeable = "0.6"
 uuid = { version = "1", features = ["serde"] }
 wgpu = "0.19"
 winit = "0.29"
