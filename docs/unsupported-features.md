@@ -85,6 +85,15 @@ Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selec
   reachable evidence cell for every GUI owner — now split into the five `hud-*` routes — and every game-renderer owner.
   Split only by semantic owner and preserve the single frame-extract/submission
   path.
+- **The remote-camera-player half of `Gui.getCameraPlayer` is `active`.** A
+  camera entity that is not a player now suppresses the vitals rows and the
+  ordinary hotbar, but a camera set to another player still projects the local
+  player's values. Vanilla reads that `RemotePlayer`: synced `DATA_HEALTH_ID`
+  and `DATA_AIR_SUPPLY_ID`, the client-side defaults for max health, zero
+  absorption, zero `getArmorValue()` and a full `foodData`, an empty
+  `Inventory`, and the synced passenger relation for
+  `getPlayerVehicleWithHealth`. Project those per-entity instead of the local
+  player's.
 - **`LevelLoadingScreen` and the `Gui.extractRenderState` gate it drives are
   `active`.** `ClientPacketListener.startWaitingForNewLevel` shows the screen
   for the whole `WaitingForServer`/`WaitingForPlayerChunk` window, and

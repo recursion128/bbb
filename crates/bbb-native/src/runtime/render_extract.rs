@@ -2665,7 +2665,11 @@ pub(crate) fn hud_hotbar_mode_from_world(
         return HudHotbarMode::Hidden;
     }
     if !world.local_player_is_spectator() {
-        return HudHotbarMode::Ordinary;
+        return if world.hud_camera_player_id() == world.local_player_id() {
+            HudHotbarMode::Ordinary
+        } else {
+            HudHotbarMode::Hidden
+        };
     }
     let Some(page) = input.spectator_menu_page_at(now) else {
         return HudHotbarMode::Spectator(None);

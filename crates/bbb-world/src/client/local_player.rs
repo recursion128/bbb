@@ -351,6 +351,16 @@ impl Default for CameraState {
 }
 
 impl WorldStore {
+    pub fn hud_camera_player_id(&self) -> Option<i32> {
+        let camera_id = self.local_player.camera.entity_id?;
+        if self.local_player.camera.follows_player {
+            return Some(camera_id);
+        }
+        (self.entity_type_id(camera_id)
+            == Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID))
+        .then_some(camera_id)
+    }
+
     pub fn set_local_player_auto_jump_enabled(&mut self, enabled: bool) {
         self.local_player.auto_jump.enabled = enabled;
     }
@@ -1939,6 +1949,25 @@ mod tests {
         assert_eq!(store.counters().set_camera_packets, 3);
         assert_eq!(store.counters().set_camera_updates_applied, 2);
         assert_eq!(store.counters().set_camera_updates_ignored, 1);
+    }
+
+    #[test]
+    fn the_hud_camera_player_only_resolves_for_the_local_player_or_a_player_entity() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(9);
+        assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 9 }));
+        assert_eq!(store.hud_camera_player_id(), Some(9));
+
+        store.apply_add_entity(protocol_add_entity(123));
+        assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 123 }));
+        assert_eq!(store.hud_camera_player_id(), None);
+
+        store.apply_add_entity(ProtocolAddEntity {
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ..protocol_add_entity(55)
+        });
+        assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 55 }));
+        assert_eq!(store.hud_camera_player_id(), Some(55));
     }
 
     #[test]

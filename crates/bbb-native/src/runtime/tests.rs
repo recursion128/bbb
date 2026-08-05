@@ -2402,6 +2402,57 @@ fn hud_spectator_projection_preserves_ordinary_and_hidden_hotbar_modes() {
 }
 
 #[test]
+fn a_non_player_camera_entity_hides_the_ordinary_item_hotbar() {
+    let mut world = WorldStore::new();
+    let input = ClientInputState::new(true);
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world.apply_add_entity(test_add_entity(
+        700,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Ordinary
+    ));
+
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 700 }));
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Hidden
+    ));
+
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 42 }));
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Ordinary
+    ));
+}
+
+#[test]
 fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
     use bbb_protocol::packets::{
         ChatFormatting, NumberFormatSummary, ObjectiveRenderType, PlayerTeamMethod,

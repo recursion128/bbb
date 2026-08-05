@@ -3384,42 +3384,44 @@ pub(crate) fn update_renderer_from_publication(
         GameType::from_id(world.gameplay().game_type),
         GameType::Survival | GameType::Adventure
     );
-    let hud_player_health = (!input.hide_gui() && game_mode_can_hurt_player)
-        .then_some(local_player.health)
-        .flatten()
-        .filter(|health| health.health.is_finite())
-        .map(|health| {
-            let presentation = hud_render_runtime.player_health_frame(
-                render_started_at,
-                publication.client_tick_index,
-                health.health.ceil() as i32,
-                local_player_invulnerable_time,
-            );
-            HudPlayerHealth {
-                health: health.health,
-                display_health: presentation.display_health,
-                blinking: presentation.blinking,
-                max_health: world.local_player_max_health(),
-                absorption: world.local_player_absorption(),
-                heart_type: local_player_heart_type(world),
-                hardcore: world.is_hardcore(),
-                regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
-                tick_count: publication.client_tick_index,
-            }
-        });
+    let camera_player_is_local_player = world.hud_camera_player_id() == world.local_player_id();
+    let hud_player_health =
+        (!input.hide_gui() && game_mode_can_hurt_player && camera_player_is_local_player)
+            .then_some(local_player.health)
+            .flatten()
+            .filter(|health| health.health.is_finite())
+            .map(|health| {
+                let presentation = hud_render_runtime.player_health_frame(
+                    render_started_at,
+                    publication.client_tick_index,
+                    health.health.ceil() as i32,
+                    local_player_invulnerable_time,
+                );
+                HudPlayerHealth {
+                    health: health.health,
+                    display_health: presentation.display_health,
+                    blinking: presentation.blinking,
+                    max_health: world.local_player_max_health(),
+                    absorption: world.local_player_absorption(),
+                    heart_type: local_player_heart_type(world),
+                    hardcore: world.is_hardcore(),
+                    regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
+                    tick_count: publication.client_tick_index,
+                }
+            });
     // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
     // the `Options.hideGui` branch and does not partial-tick interpolate it.
     let hud_sleep_overlay = hud_sleep_overlay_from_world(world);
     // `Gui.extractHotbarAndDecorations` reaches `extractFood` only through
     // `GameMode.canHurtPlayer`; spectator/creative HUDs must not retain the
     // ordinary food row merely because synced health is still present.
-    let hud_food = game_mode_can_hurt_player
+    let hud_food = (game_mode_can_hurt_player && camera_player_is_local_player)
         .then_some(local_player.health)
         .flatten()
         .map(|health| health.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
-    let hud_armor = Some(world.local_player_armor_value());
+    let hud_armor = camera_player_is_local_player.then(|| world.local_player_armor_value());
     // Vanilla `Gui.extractAirBubbles` inputs (Gui.java:887-890): the synced
     // `DATA_AIR_SUPPLY_ID` int, the fixed 300-tick `getMaxAirSupply()`, the
     // `isEyeInFluid(WATER)` gate, and the client tick for the all-empty
@@ -3433,7 +3435,7 @@ pub(crate) fn update_renderer_from_publication(
     if let Some(position) = world.local_player_pose().map(|pose| pose.position) {
         if let Some(sound) = hud_render_runtime.air_bubble_pop_sound(
             hud_air_state,
-            !input.hide_gui() && game_mode_can_hurt_player,
+            !input.hide_gui() && game_mode_can_hurt_player && camera_player_is_local_player,
         ) {
             mailbox.enqueue_or_report(
                 crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
@@ -3446,13 +3448,14 @@ pub(crate) fn update_renderer_from_publication(
             );
         }
     }
-    let hud_air = Some(hud_air_state);
+    let hud_air = camera_player_is_local_player.then_some(hud_air_state);
     // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the local
     // player's living vehicle health + MAX_HEALTH attribute; the renderer
     // derives the heart count (`getVehicleMaxHearts`) and replaces the food
     // row while it is non-zero.
-    let hud_vehicle_health = world
-        .local_player_vehicle_health()
+    let hud_vehicle_health = camera_player_is_local_player
+        .then(|| world.local_player_vehicle_health())
+        .flatten()
         .map(|vehicle| HudVehicleHealth {
             health: vehicle.health,
             max_health: vehicle.max_health as f32,
