@@ -96,4 +96,12 @@
   绑定键解析、narrator toggle toast + voice*master 音量链 + Drop 收割；GLFW 专有面（error callback
   族、raw-mouse、cursor warp/first-move、macOS quirk、dev flag）逐 owner 记录 scope 决策。
 
+- **2026-08-05（game-renderer step surface closure）**：`Minecraft.renderFrame` + `GameRenderer` 53 owner 拆
+  frame-order（10）/extract-surface（11）/level-pass（14）/effects-screenshot（17）四条 route，`getMinecraft`
+  归 direct support，52 个决策 owner 逐条挂 implementation/test evidence。census 揭示的缺口同批闭合：totem
+  item activation（40 tick 状态机 + first-person 弹出动画矩阵）、glintSpeed/glintStrength/panoramaScrollSpeed
+  接线、framerate 10..260 + iconified/AFK/menu 节流表、renderClouds off/fast/fancy、ao smooth-lighting 开关；
+  redraw-arm 顺序与 clearLevel 相机复位补守卫测试；auto-screenshot 对外部客户端记 `not-needed`
+  （`isLocalServer()` 恒 false），anisotropy 记 deferred。四行翻 `equivalent`，P2 屏幕/HUD 节关闭。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
