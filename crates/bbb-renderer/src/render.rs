@@ -44,6 +44,7 @@ enum HudActivePipeline {
     Sprite,
     ItemGlint,
     Map,
+    NauseaOverlay,
 }
 
 const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
@@ -4673,6 +4674,17 @@ impl Renderer {
                         pass.set_pipeline(&self.hud_pipeline);
                         pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                         active_pipeline = Some(HudActivePipeline::Sprite);
+                        pipeline_switches += 1;
+                    }
+                    pass.set_bind_group(0, &sprite.bind_group, &[]);
+                    pass.draw(*start..*end, 0..1);
+                    draw_calls += 1;
+                }
+                crate::hud::HudDrawCommand::NauseaOverlay { sprite, start, end } => {
+                    if active_pipeline != Some(HudActivePipeline::NauseaOverlay) {
+                        pass.set_pipeline(&self.hud_nausea_overlay_pipeline);
+                        pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
+                        active_pipeline = Some(HudActivePipeline::NauseaOverlay);
                         pipeline_switches += 1;
                     }
                     pass.set_bind_group(0, &sprite.bind_group, &[]);

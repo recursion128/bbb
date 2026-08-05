@@ -212,6 +212,8 @@ pub(crate) struct Args {
         default_value = "crosshair"
     )]
     pub(crate) client_attack_indicator: ClientAttackIndicatorArg,
+    #[arg(long = "client-screen-effect-scale", default_value_t = 1.0)]
+    pub(crate) client_screen_effect_scale: f32,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
@@ -570,6 +572,13 @@ fn bind_stored_client_options(
         EnumId,
         client_attack_indicator,
         parse_stored_attack_indicator
+    );
+    parsed!(
+        "client_screen_effect_scale",
+        "screenEffectScale",
+        Double,
+        client_screen_effect_scale,
+        parse_client_screen_effect_scale
     );
     flag!("client_chat_colors", "chatColors", client_chat_colors);
     flag!("client_chat_links", "chatLinks", client_chat_links);
@@ -1017,6 +1026,17 @@ fn parse_damage_tilt_strength(value: &str) -> std::result::Result<f32, String> {
         return Err("damage tilt strength must be between 0.0 and 1.0".to_string());
     }
     Ok(strength)
+}
+
+fn parse_client_screen_effect_scale(value: &str) -> std::result::Result<f32, String> {
+    let scale = value
+        .parse::<f32>()
+        .map_err(|err| format!("screen effect scale must be a number: {err}"))?;
+    if scale.is_finite() && (0.0..=1.0).contains(&scale) {
+        Ok(scale)
+    } else {
+        Err("screen effect scale must be between 0.0 and 1.0".to_string())
+    }
 }
 
 fn parse_stored_attack_indicator(
@@ -2084,6 +2104,22 @@ mod tests {
         bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
 
         assert!(!args.client_vignette);
+    }
+
+    #[test]
+    fn the_stored_screen_effect_scale_defaults_full_and_rejects_out_of_range_lines() {
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert_eq!(args.client_screen_effect_scale, 1.0);
+
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("screenEffectScale", "0.25");
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+        assert_eq!(args.client_screen_effect_scale, 0.25);
+
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("screenEffectScale", "2.0");
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+        assert_eq!(args.client_screen_effect_scale, 0.25);
     }
 
     #[test]

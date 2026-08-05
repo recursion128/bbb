@@ -29087,3 +29087,29 @@ fn the_portal_overlay_is_absent_without_an_active_portal_effect_or_with_hide_gui
     assert!(hud_portal_overlay(&world, &textures, false, 0.5).is_none());
     assert!(hud_portal_overlay(&world, &textures, true, 0.5).is_none());
 }
+
+#[test]
+fn the_confusion_overlay_needs_nausea_and_a_reduced_screen_effect_scale() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(hud_confusion_overlay(&world, false, 0.0, 1.0).is_none());
+
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NAUSEA_ID, 600,)));
+    // `screenEffectScale` at its `1.0` default suppresses the overlay entirely,
+    // and `hideGui` drops every camera overlay.
+    assert!(hud_confusion_overlay(&world, false, 1.0, 1.0).is_none());
+    assert!(hud_confusion_overlay(&world, true, 0.0, 1.0).is_none());
+
+    assert_eq!(
+        hud_confusion_overlay(&world, false, 0.0, 1.0)
+            .unwrap()
+            .strength,
+        1.0
+    );
+    assert_eq!(
+        hud_confusion_overlay(&world, false, 0.5, 1.0)
+            .unwrap()
+            .strength,
+        0.5
+    );
+}

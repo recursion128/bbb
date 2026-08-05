@@ -233,6 +233,52 @@ pub(crate) fn create_hud_pipeline(
         .build())
 }
 
+/// Vanilla `RenderPipelines.GUI_NAUSEA_OVERLAY`
+/// (`RenderPipelines.java:676-681`): the ordinary GUI textured pipeline with
+/// `BlendFunction.ADDITIVE` (`ONE, ONE` for both colour and alpha).
+pub(crate) const HUD_NAUSEA_OVERLAY_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+
+pub(crate) fn create_hud_nausea_overlay_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    shaders: Option<&crate::core_shaders::AdaptedPositionTexColorShaders>,
+) -> Result<wgpu::RenderPipeline> {
+    if let Some(shaders) = shaders {
+        return crate::core_shaders::create_selected_position_tex_color_pipeline(
+            device,
+            format,
+            bind_group_layout,
+            "bbb-selected-hud-nausea-overlay",
+            &shaders.hud,
+            &[hud_vertex_layout()],
+            Some(HUD_NAUSEA_OVERLAY_BLEND),
+        );
+    }
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-hud-nausea-overlay-pipeline")
+            .shader("bbb-hud-nausea-overlay-shader", HUD_SHADER)
+            .layout(
+                "bbb-hud-nausea-overlay-pipeline-layout",
+                &[bind_group_layout],
+            )
+            .vertex_buffers(&[hud_vertex_layout()])
+            .color_target(format, Some(HUD_NAUSEA_OVERLAY_BLEND))
+            .build(),
+    )
+}
+
 pub(crate) fn create_hud_item_glint_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,

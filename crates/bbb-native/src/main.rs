@@ -1355,6 +1355,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             view_bobbing: args.client_view_bobbing,
                             vignette: args.client_vignette,
                             attack_indicator: args.client_attack_indicator.into(),
+                            screen_effect_scale: args.client_screen_effect_scale,
                             notification_display_time: args.notification_display_time,
                             entity_shadows: args.entity_shadows,
                             high_contrast_block_outline: args.high_contrast_block_outline,

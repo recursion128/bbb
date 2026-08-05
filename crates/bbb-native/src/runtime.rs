@@ -45,7 +45,7 @@ use bbb_renderer::{
     HudCameraOverlay, HudChatContext, HudChatMessage, HudChatRestrictionsScreen, HudChatTag,
     HudChatTagKind, HudCommandBlockEditorKind, HudCommandBlockEditorScreen,
     HudCommandSuggestionEntry, HudCommandSuggestionTooltip, HudCommandSuggestions,
-    HudCommandSuggestionsLayout, HudComponentTextRun, HudContextualBar,
+    HudCommandSuggestionsLayout, HudComponentTextRun, HudConfusionOverlay, HudContextualBar,
     HudCrosshairAttackIndicator, HudDebugCrosshair, HudDebugFrameTimeChart,
     HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
     HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
@@ -3316,6 +3316,7 @@ pub(crate) fn update_renderer_from_publication(
         view_bobbing,
         vignette,
         attack_indicator,
+        screen_effect_scale,
         notification_display_time,
         entity_shadows,
         high_contrast_block_outline,
@@ -4127,6 +4128,12 @@ pub(crate) fn update_renderer_from_publication(
         input.camera_type().is_first_person(),
         world.local_player_is_scoping(),
     );
+    let hud_confusion_overlay = hud_confusion_overlay(
+        world,
+        input.hide_gui(),
+        screen_effect_scale,
+        entity_partial_tick,
+    );
     let hud_portal_overlay = hud_portal_overlay(
         world,
         terrain_textures,
@@ -4893,6 +4900,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_spyglass_scope,
             hud_camera_overlays,
             hud_portal_overlay,
+            hud_confusion_overlay,
             hud_contextual_bar,
             hud_experience_level,
             hud_hotbar_mode,
@@ -5809,6 +5817,36 @@ fn hud_block_geometry_layers(
 /// and slot are drawn only for a non-empty offhand stack, on the side opposite
 /// `Player.getMainArm()`, and the slot seeds continue after the nine hotbar
 /// slots.
+/// Vanilla `Gui.extractCameraOverlays` (Gui.java:281-288): the nausea overlay
+/// is the portal overlay's `else` branch, so an active portal effect hides it
+/// entirely, and `screenEffectScale` at its default `1.0` suppresses it too.
+fn hud_confusion_overlay(
+    world: &WorldStore,
+    hide_gui: bool,
+    screen_effect_scale: f32,
+    partial_tick: f32,
+) -> Option<HudConfusionOverlay> {
+    if hide_gui || world.local_player_portal_effect_intensity(partial_tick) > 0.0 {
+        return None;
+    }
+    let scale = if screen_effect_scale.is_finite() {
+        screen_effect_scale.clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    if scale >= 1.0 {
+        return None;
+    }
+    let nausea =
+        local_player_effect(world, VANILLA_MOB_EFFECT_NAUSEA_ID)?.blend_factor(partial_tick);
+    if !(nausea > 0.0) {
+        return None;
+    }
+    Some(HudConfusionOverlay {
+        strength: nausea * (1.0 - scale),
+    })
+}
+
 /// Vanilla `Gui.extractCameraOverlays` (Gui.java:277-282): the portal overlay
 /// follows the partial-tick interpolation of `Player.portalEffectIntensity`
 /// and blits the nether-portal block's own particle sprite, so it keeps

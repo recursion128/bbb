@@ -499,6 +499,7 @@ impl SkyCorePipelines {
 
 struct GuiCorePipelines {
     hud: wgpu::RenderPipeline,
+    hud_nausea_overlay: wgpu::RenderPipeline,
     vignette: wgpu::RenderPipeline,
 }
 
@@ -552,6 +553,12 @@ impl GuiCorePipelines {
     ) -> Result<Self> {
         Ok(Self {
             hud: crate::hud::create_hud_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.hud_bind_group_layout,
+                shaders,
+            )?,
+            hud_nausea_overlay: crate::hud::create_hud_nausea_overlay_pipeline(
                 &renderer.device,
                 renderer.config.format,
                 &renderer.hud_bind_group_layout,
@@ -1098,6 +1105,10 @@ impl CorePipelineGeneration {
         }
         if let Some(gui) = self.gui.as_mut() {
             std::mem::swap(&mut gui.hud, &mut renderer.hud_pipeline);
+            std::mem::swap(
+                &mut gui.hud_nausea_overlay,
+                &mut renderer.hud_nausea_overlay_pipeline,
+            );
             std::mem::swap(&mut gui.vignette, &mut renderer.vignette_pipeline);
         }
         if let Some(static_core) = self.static_core.as_mut() {
@@ -1398,6 +1409,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_demo_popup_background);
         $take_owner!(hud_spyglass_scope_texture);
         $take_owner!(hud_camera_overlay_textures);
+        $take_owner!(hud_nausea_overlay_texture);
         $take_owner!(hud_crosshair);
         $take_owner!(hud_crosshair_attack_indicator_full);
         $take_owner!(hud_crosshair_attack_indicator_background);
@@ -2189,8 +2201,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            78,
-            "77 GPU handles plus the publication generation must share one mapping"
+            79,
+            "78 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -2441,8 +2453,8 @@ mod tests {
             ("entity_outline_blit_pipeline", "minecraft:entity_outline post fallback copy"),
         ];
 
-        assert_eq!(all.len(), 87, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 77, "selected core generation changed");
+        assert_eq!(all.len(), 88, "renderer pipeline inventory changed");
+        assert_eq!(selected.len(), 78, "selected core generation changed");
         assert_eq!(
             pending.len(),
             0,

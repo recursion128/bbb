@@ -113,7 +113,7 @@ pub use crate::hud::{
     HudCodeOfConductScreen, HudCommandBlockEditorKind, HudCommandBlockEditorLayout,
     HudCommandBlockEditorRect, HudCommandBlockEditorScreen, HudCommandSuggestionEntry,
     HudCommandSuggestionTooltip, HudCommandSuggestions, HudCommandSuggestionsLayout,
-    HudComponentTextRun, HudContextualBar, HudCreativeInventoryBackground,
+    HudComponentTextRun, HudConfusionOverlay, HudContextualBar, HudCreativeInventoryBackground,
     HudCreativeInventoryChrome, HudCreativeInventorySlot, HudCreativeInventorySlotLayout,
     HudCreativeInventorySlotLayoutKind, HudCreativeInventoryTab, HudCreativeInventoryTabRow,
     HudCrosshairAttackIndicator, HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen,

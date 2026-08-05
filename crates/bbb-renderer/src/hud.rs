@@ -76,8 +76,8 @@ pub use self::game_rules::{
 };
 pub(super) use self::gpu::{
     create_hud_atlas_bind_group, create_hud_bind_group_layout, create_hud_item_glint_pipeline,
-    create_hud_pipeline, create_hud_sprite_gpu, create_repeating_hud_sprite_gpu,
-    create_standalone_hud_sprite_gpu, HudSpriteGpu,
+    create_hud_nausea_overlay_pipeline, create_hud_pipeline, create_hud_sprite_gpu,
+    create_repeating_hud_sprite_gpu, create_standalone_hud_sprite_gpu, HudSpriteGpu,
 };
 #[cfg(test)]
 use self::layout::hud_rect_bounds;
@@ -88,22 +88,23 @@ use self::layout::{
     hotbar_selection_hud_rect, hud_air_bubble_icons, hud_air_bubble_pop as air_bubble_pop,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
     hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
-    hud_contextual_bar_progress_width, hud_crosshair_attack_indicator_layout,
-    hud_experience_level_text_origin, hud_food_fill, hud_food_jitter_offsets,
-    hud_health_row_geometry, hud_hotbar_attack_indicator_layout, hud_inventory_text_label_origin,
-    hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_line_origin,
-    hud_inventory_tooltip_sprite_segments, hud_inventory_tooltip_text_height,
-    hud_item_cooldown_rect, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect,
-    hud_item_pop_corners, hud_item_pop_placement, hud_locator_arrow_rect, hud_locator_marker_rect,
-    hud_overlay_message_text_origin, hud_player_heart_instances, hud_quad_vertices,
-    hud_rect_intersection_uv_span, hud_selected_item_name_origin, hud_spyglass_scope_layout,
-    hud_styled_quad_vertices, hud_subtitle_text_origin, hud_title_text_origin,
-    hud_vehicle_heart_fill, hud_vehicle_max_hearts, inventory_background_hud_rect,
-    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, nine_slice_segments,
-    tiled_sprite_segments, vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect,
-    HudTooltipSpriteLayer, HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH,
-    HUD_FOOD_ICONS_PER_ROW, HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT,
-    HUD_SUBTITLE_TEXT_SCALE, HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
+    hud_confusion_overlay_corners, hud_contextual_bar_progress_width,
+    hud_crosshair_attack_indicator_layout, hud_experience_level_text_origin, hud_food_fill,
+    hud_food_jitter_offsets, hud_health_row_geometry, hud_hotbar_attack_indicator_layout,
+    hud_inventory_text_label_origin, hud_inventory_tooltip_background_hud_rect,
+    hud_inventory_tooltip_line_origin, hud_inventory_tooltip_sprite_segments,
+    hud_inventory_tooltip_text_height, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
+    hud_item_durability_bar_rect, hud_item_pop_corners, hud_item_pop_placement,
+    hud_locator_arrow_rect, hud_locator_marker_rect, hud_overlay_message_text_origin,
+    hud_player_heart_instances, hud_quad_vertices, hud_rect_intersection_uv_span,
+    hud_selected_item_name_origin, hud_spyglass_scope_layout, hud_styled_quad_vertices,
+    hud_subtitle_text_origin, hud_title_text_origin, hud_vehicle_heart_fill,
+    hud_vehicle_max_hearts, inventory_background_hud_rect, inventory_slot_highlight_hud_rect,
+    inventory_slot_item_hud_rect, nine_slice_segments, tiled_sprite_segments,
+    vehicle_heart_hud_rect, HudAirBubbleIcon, HudIconFill, HudRect, HudTooltipSpriteLayer,
+    HUD_AIR_BUBBLES_PER_ROW, HUD_ARMOR_ICONS_PER_ROW, HUD_BOSS_BAR_WIDTH, HUD_FOOD_ICONS_PER_ROW,
+    HUD_INVENTORY_ITEM_SIZE, HUD_SINGLE_HEALTH_ROW_HEIGHT, HUD_SUBTITLE_TEXT_SCALE,
+    HUD_TITLE_TEXT_SCALE, HUD_VEHICLE_HEARTS_PER_ROW,
 };
 pub use self::player_list::{
     HudPlayerList, HudPlayerListEntry, HudPlayerListPingSprite, HudPlayerListScore,
@@ -1357,6 +1358,33 @@ pub enum HudHotbarAttackIndicator {
         strength_scale: f32,
         main_arm_left: bool,
     },
+}
+
+/// Vanilla `Gui.extractConfusionOverlay`: the nausea texture blown up about
+/// the screen centre and blended additively at a strength-scaled green tint.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudConfusionOverlay {
+    /// `nauseaIntensity * (1 - screenEffectScale)`, the only input vanilla
+    /// passes in.
+    pub strength: f32,
+}
+
+impl HudConfusionOverlay {
+    /// `Mth.lerp(strength, 2.0F, 1.0F)` — a weak effect covers twice the
+    /// screen, a full one exactly fills it.
+    pub fn scale(self) -> f32 {
+        2.0 - self.strength
+    }
+
+    /// `ARGB.colorFromFloat(1.0F, 0.2F * strength, 0.4F * strength, 0.2F * strength)`.
+    pub fn tint(self) -> [f32; 4] {
+        [
+            0.2 * self.strength,
+            0.4 * self.strength,
+            0.2 * self.strength,
+            1.0,
+        ]
+    }
 }
 
 /// Vanilla `Gui.extractPortalOverlay`: the nether-portal particle sprite blit
@@ -3469,6 +3497,12 @@ pub(super) enum HudDrawCommand<'a> {
     },
     ItemGlint {
         mask: &'a HudSpriteGpu,
+        start: u32,
+        end: u32,
+    },
+    /// The additive `RenderPipelines.GUI_NAUSEA_OVERLAY` blit.
+    NauseaOverlay {
+        sprite: &'a HudSpriteGpu,
         start: u32,
         end: u32,
     },
@@ -6543,6 +6577,9 @@ impl Renderer {
     standalone_hud_texture_upload!(
         upload_hud_spyglass_scope_with_sampling => hud_spyglass_scope_texture
     );
+    standalone_hud_texture_upload!(
+        upload_hud_nausea_overlay_with_sampling => hud_nausea_overlay_texture
+    );
 
     pub fn upload_hud_camera_overlay_texture_with_sampling(
         &mut self,
@@ -6556,6 +6593,14 @@ impl Renderer {
         self.hud_camera_overlay_textures
             .insert(texture_id.to_string(), sprite);
         Ok(())
+    }
+
+    pub fn set_hud_confusion_overlay(&mut self, overlay: Option<HudConfusionOverlay>) {
+        self.hud_confusion_overlay = overlay
+            .filter(|overlay| overlay.strength.is_finite() && overlay.strength > 0.0)
+            .map(|overlay| HudConfusionOverlay {
+                strength: overlay.strength.min(1.0),
+            });
     }
 
     pub fn set_hud_portal_overlay(&mut self, overlay: Option<HudPortalOverlay>) {
@@ -7085,6 +7130,27 @@ impl Renderer {
                     surface_size,
                     scope,
                 );
+            }
+            if let (Some(confusion), Some(texture)) = (
+                self.hud_confusion_overlay,
+                self.hud_nausea_overlay_texture.as_ref(),
+            ) {
+                let start = vertices.len() as u32;
+                vertices.extend_from_slice(&hud_styled_quad_vertices(
+                    surface_size,
+                    hud_confusion_overlay_corners(surface_size, confusion.scale()),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    confusion.tint(),
+                ));
+                let end = vertices.len() as u32;
+                commands.push(HudDrawCommand::NauseaOverlay {
+                    sprite: texture,
+                    start,
+                    end,
+                });
             }
             if let Some(portal) = self.hud_portal_overlay {
                 let start = vertices.len() as u32;
@@ -23100,6 +23166,64 @@ mod tests {
         icons[0] = Some(icon(f32::INFINITY));
         renderer.set_hud_hotbar_item_icons(icons);
         assert_eq!(renderer.hud_hotbar_item_icons[0].as_ref().unwrap().pop, 0.0);
+    }
+
+    #[test]
+    fn the_confusion_overlay_scales_about_the_centre_and_blends_additively() {
+        assert_eq!(HudConfusionOverlay { strength: 0.0 }.scale(), 2.0);
+        assert_eq!(HudConfusionOverlay { strength: 1.0 }.scale(), 1.0);
+        assert_eq!(
+            HudConfusionOverlay { strength: 0.5 }.tint(),
+            [0.1, 0.2, 0.1, 1.0]
+        );
+
+        let corners = hud_confusion_overlay_corners(PhysicalSize::new(320, 240), 2.0);
+        assert_eq!(
+            corners,
+            [
+                [-160.0, -120.0],
+                [-160.0, 360.0],
+                [480.0, 360.0],
+                [480.0, -120.0]
+            ]
+        );
+        assert_eq!(
+            hud_confusion_overlay_corners(PhysicalSize::new(320, 240), 1.0),
+            [[0.0, 0.0], [0.0, 240.0], [320.0, 240.0], [320.0, 0.0]]
+        );
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_nausea_overlay_with_sampling(
+                2,
+                2,
+                &[255, 255, 255, 255].repeat(4),
+                StandaloneTextureSampling::new(false, false),
+            )
+            .expect("nausea texture");
+        renderer.set_hud_confusion_overlay(Some(HudConfusionOverlay { strength: 0.5 }));
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 1);
+        assert!(matches!(
+            draws.commands[0],
+            HudDrawCommand::NauseaOverlay { .. }
+        ));
+        assert!(draws
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [0.1, 0.2, 0.1, 1.0]));
+        drop(draws);
+
+        renderer.set_hud_confusion_overlay(Some(HudConfusionOverlay { strength: 0.0 }));
+        assert!(renderer.hud_confusion_overlay.is_none());
+        renderer.set_hud_confusion_overlay(Some(HudConfusionOverlay { strength: f32::NAN }));
+        assert!(renderer.hud_confusion_overlay.is_none());
+
+        renderer.set_hud_confusion_overlay(Some(HudConfusionOverlay { strength: 0.5 }));
+        renderer.set_hide_gui(true);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 0);
     }
 
     #[test]

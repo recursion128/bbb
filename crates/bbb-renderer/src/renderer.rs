@@ -73,13 +73,14 @@ use crate::{
     },
     gpu_timing::{optional_gpu_timing_features, GpuFrameTiming},
     hud::{
-        create_hud_bind_group_layout, create_hud_item_glint_pipeline, create_hud_pipeline,
-        create_hud_sprite_gpu, HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite,
-        HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine,
-        HudChatMessage, HudCrosshairAttackIndicator, HudDigitGlyph, HudFontGlyphBook,
-        HudFontGlyphMap, HudHotbarMode, HudInventoryScreen, HudItemIcon, HudNineSliceSprite,
-        HudObfuscatedGlyphPool, HudPlayerListPingSprite, HudSmithingSlotIcon, HudSpriteGpu,
-        HudStatsScrollbarSprite, HudStatsSprite, HUD_HOTBAR_SLOTS,
+        create_hud_bind_group_layout, create_hud_item_glint_pipeline,
+        create_hud_nausea_overlay_pipeline, create_hud_pipeline, create_hud_sprite_gpu,
+        HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
+        HudAdvancementWidgetFrameSprite, HudChatContext, HudChatLine, HudChatMessage,
+        HudCrosshairAttackIndicator, HudDigitGlyph, HudFontGlyphBook, HudFontGlyphMap,
+        HudHotbarMode, HudInventoryScreen, HudItemIcon, HudNineSliceSprite, HudObfuscatedGlyphPool,
+        HudPlayerListPingSprite, HudSmithingSlotIcon, HudSpriteGpu, HudStatsScrollbarSprite,
+        HudStatsSprite, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
@@ -540,6 +541,7 @@ pub struct Renderer {
     pub(super) cloud_bind_group: wgpu::BindGroup,
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
+    pub(super) hud_nausea_overlay_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) vignette_pipeline: wgpu::RenderPipeline,
     pub(super) vignette_bind_group_layout: wgpu::BindGroupLayout,
@@ -749,6 +751,8 @@ pub struct Renderer {
     pub(super) hud_camera_overlay_textures: HashMap<String, HudSpriteGpu>,
     pub(super) hud_camera_overlays: Vec<crate::hud::HudCameraOverlay>,
     pub(super) hud_portal_overlay: Option<crate::hud::HudPortalOverlay>,
+    pub(super) hud_confusion_overlay: Option<crate::hud::HudConfusionOverlay>,
+    pub(super) hud_nausea_overlay_texture: Option<HudSpriteGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_crosshair_visible: bool,
     pub(super) hud_crosshair_attack_indicator_full: Option<HudSpriteGpu>,
@@ -2101,6 +2105,8 @@ impl Renderer {
             None,
         )?;
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout, None)?;
+        let hud_nausea_overlay_pipeline =
+            create_hud_nausea_overlay_pipeline(&device, format, &hud_bind_group_layout, None)?;
         let vignette_bind_group_layout = create_vignette_bind_group_layout(&device);
         let vignette_pipeline =
             create_vignette_pipeline(&device, format, &vignette_bind_group_layout, None)?;
@@ -2335,6 +2341,7 @@ impl Renderer {
             cloud_bind_group,
             cloud_uniform_buffer,
             hud_pipeline,
+            hud_nausea_overlay_pipeline,
             hud_bind_group_layout,
             vignette_pipeline,
             vignette_bind_group_layout,
@@ -2525,6 +2532,8 @@ impl Renderer {
             hud_camera_overlay_textures: HashMap::new(),
             hud_camera_overlays: Vec::new(),
             hud_portal_overlay: None,
+            hud_confusion_overlay: None,
+            hud_nausea_overlay_texture: None,
             hud_crosshair: None,
             hud_crosshair_visible: true,
             hud_crosshair_attack_indicator_full: None,

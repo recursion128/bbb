@@ -130,6 +130,7 @@ pub(crate) struct SimulationRenderContext<'a> {
     pub(crate) view_bobbing: bool,
     pub(crate) vignette: bool,
     pub(crate) attack_indicator: AttackIndicatorOption,
+    pub(crate) screen_effect_scale: f32,
     pub(crate) notification_display_time: f32,
     pub(crate) entity_shadows: bool,
     pub(crate) high_contrast_block_outline: bool,

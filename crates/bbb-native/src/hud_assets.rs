@@ -109,6 +109,12 @@ pub(crate) fn try_load_hud_textures(
         upload_hud_spyglass_scope_with_sampling,
         &spyglass_scope
     )?;
+    let nausea = gui_texture(
+        roots,
+        "textures/misc/nausea.png",
+        "minecraft:textures/misc/nausea",
+    )?;
+    upload_standalone_hud!(renderer, upload_hud_nausea_overlay_with_sampling, &nausea)?;
     for texture_id in CAMERA_OVERLAY_TEXTURE_IDS {
         let path = texture_id.strip_prefix("minecraft:").unwrap_or(texture_id);
         let image = gui_texture(roots, path, texture_id)?;

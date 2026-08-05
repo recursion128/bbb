@@ -430,6 +430,28 @@ pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize)
 /// `hud/hotbar_offhand_left` sprite sits at `screenCenter - 91 - 29`, the right
 /// one at `screenCenter + 91`, both one pixel above the hotbar strip at
 /// `guiHeight - 23` and both 29x24.
+/// Vanilla `Gui.extractConfusionOverlay`'s pose (Gui.java:1092-1097): the
+/// full-screen quad is scaled uniformly about the screen centre, so a `scale`
+/// above one pushes the quad past every edge.
+pub(super) fn hud_confusion_overlay_corners(
+    surface_size: PhysicalSize<u32>,
+    scale: f32,
+) -> [[f32; 2]; 4] {
+    let width = surface_size.width.max(1) as f32;
+    let height = surface_size.height.max(1) as f32;
+    let scale = if scale.is_finite() {
+        scale.max(0.0)
+    } else {
+        1.0
+    };
+    let half_width = width * 0.5 * scale;
+    let half_height = height * 0.5 * scale;
+    let (center_x, center_y) = (width * 0.5, height * 0.5);
+    let (x0, x1) = (center_x - half_width, center_x + half_width);
+    let (y0, y1) = (center_y - half_height, center_y + half_height);
+    [[x0, y0], [x0, y1], [x1, y1], [x1, y0]]
+}
+
 /// `Gui.extractTextureOverlay` blits the whole GUI surface.
 pub(super) fn full_screen_hud_rect(surface_size: PhysicalSize<u32>) -> HudRect {
     HudRect {
