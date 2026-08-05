@@ -430,6 +430,8 @@ pub struct ItemModelKeybindContext {
     pub advancements: bool,
     pub quick_actions: bool,
     pub toggle_gui: bool,
+    pub smooth_camera: bool,
+    pub spectator_outlines: bool,
     pub toggle_spectator_shader_effects: bool,
     pub save_toolbar_activator: bool,
     pub load_toolbar_activator: bool,
@@ -460,9 +462,10 @@ impl ItemModelKeybindContext {
             "key.screenshot" => self.screenshot,
             "key.togglePerspective" => self.toggle_perspective,
             // Vanilla Options registers these key mappings with
-            // InputConstants.UNKNOWN by default, so they are valid keybind names
-            // but cannot be down until user rebinding exists.
-            "key.smoothCamera" | "key.spectatorOutlines" => false,
+            // InputConstants.UNKNOWN by default; an options.txt rebinding makes
+            // them live, so their state flows from the input runtime.
+            "key.smoothCamera" => self.smooth_camera,
+            "key.spectatorOutlines" => self.spectator_outlines,
             "key.fullscreen" => self.fullscreen,
             "key.advancements" => self.advancements,
             "key.quickActions" => self.quick_actions,

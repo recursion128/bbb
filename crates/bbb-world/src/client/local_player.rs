@@ -377,6 +377,12 @@ impl WorldStore {
         self.local_player.camera.follows_player
     }
 
+    /// Synchronizes vanilla `options.keySpectatorOutlines.isDown()` from the
+    /// input runtime for `Minecraft.shouldEntityAppearGlowing`.
+    pub fn set_spectator_outlines_key_down(&mut self, down: bool) {
+        self.spectator_outlines_key_down = down;
+    }
+
     pub fn set_local_player_auto_jump_enabled(&mut self, enabled: bool) {
         self.local_player.auto_jump.enabled = enabled;
     }

@@ -211,6 +211,11 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) local_block_predictions: Vec<LocalBlockPredictionState>,
     pub(crate) entities: crate::entities::EntityStore,
+    /// Vanilla `options.keySpectatorOutlines.isDown()`, synchronized from the
+    /// input runtime each simulation step for
+    /// `Minecraft.shouldEntityAppearGlowing`'s spectator branch.
+    #[serde(default)]
+    pub(crate) spectator_outlines_key_down: bool,
     #[serde(default)]
     pub(crate) scoreboard: ScoreboardState,
     #[serde(default)]

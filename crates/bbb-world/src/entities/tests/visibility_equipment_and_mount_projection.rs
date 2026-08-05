@@ -387,6 +387,61 @@ fn entity_model_sources_project_team_outline_color() {
 }
 
 #[test]
+fn spectator_outline_key_glows_every_player_for_a_spectating_local_player() {
+    // Vanilla `Minecraft.shouldEntityAppearGlowing`: a spectating local player
+    // holding `key.spectatorOutlines` outlines players (and only players)
+    // without the synced glowing flag.
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(9));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        37,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        38,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    store.set_spectator_outlines_key_down(true);
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let chicken = sources
+        .iter()
+        .find(|source| source.entity_id == 37)
+        .unwrap();
+    let player = sources
+        .iter()
+        .find(|source| source.entity_id == 38)
+        .unwrap();
+    assert!(!player.appears_glowing, "no synced glowing flag involved");
+    assert_eq!(player.outline_color, 0xffff_ffff, "players glow white");
+    assert_eq!(chicken.outline_color, 0, "non-players stay unoutlined");
+
+    store.set_spectator_outlines_key_down(false);
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let player = sources
+        .iter()
+        .find(|source| source.entity_id == 38)
+        .unwrap();
+    assert_eq!(player.outline_color, 0, "releasing the key clears the glow");
+
+    store.set_spectator_outlines_key_down(true);
+    store.apply_game_event(bbb_protocol::packets::GameEvent {
+        event_id: 3,
+        param: 0.0,
+    });
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let player = sources
+        .iter()
+        .find(|source| source.entity_id == 38)
+        .unwrap();
+    assert_eq!(player.outline_color, 0, "a survival viewer never spectator-glows");
+}
+
+#[test]
 fn entity_model_sources_project_effective_equipment_asset_ids_and_exact_trim_names() {
     use std::collections::BTreeMap;
 

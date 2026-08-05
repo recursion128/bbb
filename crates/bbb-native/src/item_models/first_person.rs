@@ -105,7 +105,12 @@ pub(crate) fn first_person_item_models_with_map_cache(
     let (Some(item_runtime), Some(camera_pose)) = (item_runtime, camera_pose) else {
         return models;
     };
-    if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
+    // Vanilla `renderItemInHand`: no hands while the camera entity sleeps
+    // (`cameraState.entityRenderState.isSleeping`).
+    if !world.local_player().camera.follows_player
+        || world.local_player_is_spectator()
+        || world.local_player_is_sleeping()
+    {
         return models;
     }
     if world.local_player_is_scoping() {
@@ -474,7 +479,12 @@ pub(crate) fn first_person_player_arms(
     else {
         return Vec::new();
     };
-    if !world.local_player().camera.follows_player || world.local_player_is_spectator() {
+    // Vanilla `renderItemInHand`: no hands while the camera entity sleeps
+    // (`cameraState.entityRenderState.isSleeping`).
+    if !world.local_player().camera.follows_player
+        || world.local_player_is_spectator()
+        || world.local_player_is_sleeping()
+    {
         return Vec::new();
     }
     if world.local_player_is_scoping() {

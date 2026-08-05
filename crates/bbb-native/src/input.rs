@@ -1424,6 +1424,13 @@ impl ClientInputState {
         }
     }
 
+    /// Vanilla `options.keySpectatorOutlines.isDown()` (unbound by default,
+    /// live once `options.txt` binds it), synchronized into the world store
+    /// for `Minecraft.shouldEntityAppearGlowing`.
+    pub(crate) fn spectator_outlines_key_down(&self) -> bool {
+        self.binding_down("key.spectatorOutlines")
+    }
+
     pub(crate) fn take_narrator_status_requests(&mut self) -> Vec<NarratorStatusRequest> {
         std::mem::take(&mut self.narrator_status_requests)
     }
@@ -2260,6 +2267,8 @@ impl ClientInputState {
             advancements: self.binding_down("key.advancements"),
             quick_actions: self.binding_down("key.quickActions"),
             toggle_gui: self.binding_down("key.toggleGui"),
+            smooth_camera: self.binding_down("key.smoothCamera"),
+            spectator_outlines: self.binding_down("key.spectatorOutlines"),
             toggle_spectator_shader_effects: self.binding_down("key.toggleSpectatorShaderEffects"),
             save_toolbar_activator: self.binding_down("key.saveToolbarActivator"),
             load_toolbar_activator: self.binding_down("key.loadToolbarActivator"),

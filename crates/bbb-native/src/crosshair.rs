@@ -53,6 +53,19 @@ pub(crate) fn block_selection_from_camera(
     world: &WorldStore,
     pose: Option<CameraPose>,
 ) -> Option<BlockSelectionProjection> {
+    // Vanilla `shouldRenderBlockOutline`: the outline requires
+    // `getCameraEntity() instanceof Player`. A camera following the player is
+    // the player itself (`GameRenderer.tick` defaults the camera entity); only
+    // a server `SetCamera` onto a non-player entity fails the check.
+    let camera = world.local_player().camera;
+    if !camera.follows_player
+        && !camera.entity_id.is_some_and(|id| {
+            world.entity_type_id(id)
+                == Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID)
+        })
+    {
+        return None;
+    }
     let hit = crosshair_block_hit_from_camera(world, pose)?;
     if world.local_player_is_spectator() && !world.block_provides_menu(hit.pos) {
         return None;
@@ -2059,6 +2072,42 @@ mod tests {
             &world,
             crosshair_target_from_camera_at_partial_tick(&world, pose, 0.0),
         ));
+    }
+
+    #[test]
+    fn a_non_player_camera_entity_suppresses_the_block_outline() {
+        // Vanilla `shouldRenderBlockOutline`: `getCameraEntity() instanceof
+        // Player` gates the selection box, so a server `SetCamera` onto a mob
+        // hides it and one onto another player restores it.
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+            })
+        );
+        let pose = Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0));
+        assert!(block_selection_from_camera(&world, pose).is_some());
+
+        world.apply_add_entity(protocol_add_entity(
+            71,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            [0.0, 1.0, 2.0],
+        ));
+        assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 71 }));
+        assert_eq!(block_selection_from_camera(&world, pose), None);
+
+        world.apply_add_entity(protocol_add_entity(
+            72,
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.0, 1.0, 2.0],
+        ));
+        assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 72 }));
+        assert!(block_selection_from_camera(&world, pose).is_some());
     }
 
     #[test]

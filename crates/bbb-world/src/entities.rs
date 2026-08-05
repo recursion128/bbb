@@ -4519,7 +4519,13 @@ impl WorldStore {
     }
 
     fn entity_outline_color(&self, source: &EntityModelSourceState) -> u32 {
-        if !source.appears_glowing {
+        // Vanilla `Minecraft.shouldEntityAppearGlowing`: the synced glowing
+        // flag, or every player glows while the spectating local player holds
+        // `key.spectatorOutlines`.
+        let spectator_outline = self.spectator_outlines_key_down
+            && self.local_player_is_spectator()
+            && source.entity_type_id == bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
+        if !source.appears_glowing && !spectator_outline {
             return 0;
         }
 

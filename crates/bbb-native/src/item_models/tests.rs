@@ -2202,6 +2202,41 @@ fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_pa
         1.0e-5,
     ));
 
+    let mut sleeping_world = world_with_level_dimension("minecraft:overworld");
+    sleeping_world.apply_add_entity(AddEntity {
+        id: 1,
+        uuid: Uuid::from_u128(1),
+        entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: Vec3d::default(),
+        delta_movement: Vec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    let accessors = bbb_world::vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert!(sleeping_world.apply_set_entity_data(SetEntityData {
+        id: 1,
+        values: vec![EntityDataValue {
+            data_id: accessors.pose_data_id,
+            serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+            value: EntityDataValueKind::Pose(bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID),
+        }],
+    }));
+    assert!(
+        first_person_player_arms(
+            &sleeping_world,
+            &FirstPersonHandPresentation::fully_raised_for_test(&sleeping_world),
+            None,
+            Some(&player),
+            Some(pose),
+            1.0,
+        )
+        .is_empty(),
+        "vanilla renderItemInHand skips the hands while the camera player sleeps",
+    );
+
     assert!(
         first_person_player_arms(
             &world,

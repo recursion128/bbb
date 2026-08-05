@@ -271,6 +271,9 @@ impl SimulationInputRuntime {
         context
             .input
             .sync_respawn_toggle_reset(context.net_counters);
+        context
+            .world
+            .set_spectator_outlines_key_down(context.input.spectator_outlines_key_down());
         let queued_effects = RefCell::new(Vec::new());
         let mut clipboard = SimulationClipboard {
             read: None,
