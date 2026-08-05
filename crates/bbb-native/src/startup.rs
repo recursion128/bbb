@@ -1371,6 +1371,14 @@ impl WindowConfig {
     }
 }
 
+/// `Window.createWindow`/`createGlfwWindow` collapsed into one owner. The
+/// GLFW error plumbing around it — `checkGlfwError`'s error-queue drain,
+/// `defaultErrorCallback`, and the `setBootErrorCallback`/
+/// `setDefaultErrorCallback` install/swap pair — has no equivalent surface:
+/// winit and wgpu return typed `Result`s at each call site instead of parking
+/// errors in a process-global queue behind an installable callback, so every
+/// failure is handled where it occurs and flows into the guarded crash
+/// report.
 pub(crate) fn build_window(event_loop: &EventLoop<()>) -> Result<Window> {
     let config = WindowConfig::default();
     WindowBuilder::new()

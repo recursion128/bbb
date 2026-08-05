@@ -256,7 +256,10 @@ struct NativeRenderEffectSink<'a> {
     vsync_enabled: bool,
     /// The stored `fullscreenResolution` (`Options.fullscreenVideoModeString`);
     /// `None` means no preferred exclusive mode, exactly like
-    /// `Window.preferredFullscreenVideoMode` empty.
+    /// `Window.preferredFullscreenVideoMode` empty. It never changes after
+    /// startup — `Window.changeFullscreenVideoMode`'s dirty-flag re-apply only
+    /// serves the video-settings screen writing the option at runtime, and
+    /// that options UI is a non-goal — so no re-apply path exists.
     preferred_video_mode: Option<window_surface::PreferredVideoMode>,
     /// Backend capability, not a stored option: Wayland no-ops
     /// `Fullscreen::Exclusive`, so BBB falls back to borderless there.
@@ -1447,13 +1450,24 @@ fn run_client(args: startup::Args) -> Result<()> {
         );
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
+                // This event arm is also `Window.resetIsResized`'s stand-in:
+                // vanilla latches `isResized` for `runTick` to poll and clear
+                // once per frame, while winit delivers each resize as an event
+                // consumed exactly once right here.
                 WindowEvent::Resized(size) => {
+                    let old_size = renderer.physical_surface_size();
                     if let Err(error) = renderer.resize(size) {
                         record_runtime_failure(
                             &event_failures,
+                            // `Window.onFramebufferResize` failure reporting
+                            // keeps the old/new dimensions in its crash
+                            // category ("Window Dimensions"); carry both here.
                             RuntimeFailure::new(
                                 "renderer resize",
-                                "Failed to resize renderer resources",
+                                format!(
+                                    "Failed to resize renderer resources from {}x{} to {}x{}",
+                                    old_size.width, old_size.height, size.width, size.height
+                                ),
                                 error,
                             ),
                             Some(render_publication.world.as_ref()),
