@@ -89,4 +89,11 @@
   补齐 nausea overlay 管线与 `LevelLoadingScreen`（reason 驱动背景 + 居中状态行），sound subtitle
   位置按 screen 是否 in-game UI 裁决；五行翻 `equivalent`，toasts/F3 覆盖全屏 screen 记为 deferred。
 
+- **2026-08-05（native input/window closure）**：`native-input-window-surface` 工程收口：173 owner
+  （27 support accessor + 146 决策）逐 owner 挂 implementation/test evidence，十行 matrix 全翻
+  `equivalent`。census 揭示的真缺口同批闭合：debug-crash 红色警告与 Ctrl abort、debug chat 改
+  `saySystemQueued` 门控、respawn 重置 toggle 键、screen 关闭恢复 toggle 测试、keybind 组件按当前
+  绑定键解析、narrator toggle toast + voice*master 音量链 + Drop 收割；GLFW 专有面（error callback
+  族、raw-mouse、cursor warp/first-move、macOS quirk、dev flag）逐 owner 记录 scope 决策。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。
