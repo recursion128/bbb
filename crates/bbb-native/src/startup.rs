@@ -118,6 +118,12 @@ pub(crate) struct Args {
     pub(crate) client_narrator_hotkey: bool,
     #[arg(long = "client-fullscreen", default_value_t = false, action = ArgAction::Set)]
     pub(crate) client_fullscreen: bool,
+    #[arg(long = "client-mouse-sensitivity", default_value_t = 0.5)]
+    pub(crate) client_mouse_sensitivity: f64,
+    #[arg(long = "client-invert-mouse-x", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_invert_mouse_x: bool,
+    #[arg(long = "client-invert-mouse-y", default_value_t = false, action = ArgAction::Set)]
+    pub(crate) client_invert_mouse_y: bool,
     #[arg(
         long = "client-show-subtitles",
         default_value_t = false,
@@ -667,6 +673,23 @@ fn bind_stored_client_options(
     );
     flag!("client_vsync", "enableVsync", client_vsync);
     flag!("client_fullscreen", "fullscreen", client_fullscreen);
+    parsed!(
+        "client_mouse_sensitivity",
+        "mouseSensitivity",
+        Double,
+        client_mouse_sensitivity,
+        parse_client_unit_double
+    );
+    flag!(
+        "client_invert_mouse_x",
+        "invertXMouse",
+        client_invert_mouse_x
+    );
+    flag!(
+        "client_invert_mouse_y",
+        "invertYMouse",
+        client_invert_mouse_y
+    );
 
     parsed!(
         "render_distance_chunks",
@@ -1069,6 +1092,16 @@ fn parse_stored_attack_indicator(
         "2" => Ok(ClientAttackIndicatorArg::Hotbar),
         other => Err(format!("attack indicator must be 0, 1 or 2, got {other}")),
     }
+}
+
+fn parse_client_unit_double(value: &str) -> std::result::Result<f64, String> {
+    let parsed: f64 = value
+        .parse()
+        .map_err(|_| format!("expected a number, got {value}"))?;
+    if !parsed.is_finite() || !(0.0..=1.0).contains(&parsed) {
+        return Err(format!("expected a value between 0 and 1, got {value}"));
+    }
+    Ok(parsed)
 }
 
 fn parse_stored_narrator(value: &str) -> std::result::Result<ClientNarratorArg, String> {

@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(end.position[2], current.position.z as f32);
         assert_eq!(mid.position[2], end.position[2] * 0.5);
         assert_eq!(old.y_rot, 170.0);
-        assert_eq!(mid.y_rot, 182.0);
+        assert_eq!(mid.y_rot, 185.0);
         assert_eq!(end.y_rot, current.y_rot);
     }
 

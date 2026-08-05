@@ -1621,7 +1621,7 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(pose.y_rot, 12.0);
+        assert_eq!(pose.y_rot, 15.000001);
         assert_eq!(pose.x_rot, 90.0);
     }
 
@@ -1661,9 +1661,9 @@ mod tests {
             0.000001,
         );
         assert_eq!(old.y_rot, 170.0);
-        assert_eq!(mid.y_rot, 182.0);
+        assert_eq!(mid.y_rot, 185.0);
         assert_eq!(end.y_rot, current.y_rot);
-        assert_eq!(mid.x_rot, -4.0);
+        assert_f64_near(f64::from(mid.x_rot), -2.5, 0.000001);
     }
 
     #[test]
@@ -1690,7 +1690,7 @@ mod tests {
 
         assert_eq!(pose.position, initial.position);
         assert_eq!(pose.delta_movement, initial.delta_movement);
-        assert_eq!(pose.y_rot, -166.0);
+        assert_eq!(pose.y_rot, -160.0);
         assert_eq!(pose.x_rot, -90.0);
         assert_eq!(store.local_player_pose(), Some(pose));
     }

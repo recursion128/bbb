@@ -33,7 +33,7 @@ mod tests;
 use self::fluid::advance_local_player_fluid_physics_step;
 pub(crate) use self::fluid::local_player_lava_current_push_per_tick;
 
-pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
+pub(super) const LOCAL_INPUT_TURN_DEGREES_PER_UNIT: f32 = 0.15;
 
 const LOCAL_PLAYER_SPRINT_MIN_FOOD_LEVEL: i32 = 7;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
@@ -179,10 +179,9 @@ pub(super) fn apply_local_player_input_look(
 ) -> LocalPlayerPoseState {
     if input.focused {
         pose.y_rot = wrap_degrees_f32(
-            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES,
+            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_TURN_DEGREES_PER_UNIT,
         );
-        pose.x_rot = (pose.x_rot
-            + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
+        pose.x_rot = (pose.x_rot + input.mouse_delta_y as f32 * LOCAL_INPUT_TURN_DEGREES_PER_UNIT)
             .clamp(-90.0, 90.0);
     }
     pose

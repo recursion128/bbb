@@ -601,6 +601,15 @@ impl LastInputType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MouseSensitivity(f64);
+
+impl Default for MouseSensitivity {
+    fn default() -> Self {
+        Self(0.5)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -712,6 +721,9 @@ pub(crate) struct ClientInputState {
     fullscreen: bool,
     fullscreen_requests: Vec<bool>,
     screenshot_requests: u32,
+    mouse_sensitivity: MouseSensitivity,
+    invert_mouse_x: bool,
+    invert_mouse_y: bool,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1313,6 +1325,31 @@ impl ClientInputState {
 
     pub(crate) fn set_fullscreen(&mut self, fullscreen: bool) {
         self.fullscreen = fullscreen;
+    }
+
+    pub(crate) fn set_mouse_sensitivity(&mut self, sensitivity: f64) {
+        self.mouse_sensitivity = MouseSensitivity(sensitivity);
+    }
+
+    pub(crate) fn set_invert_mouse(&mut self, invert_x: bool, invert_y: bool) {
+        self.invert_mouse_x = invert_x;
+        self.invert_mouse_y = invert_y;
+    }
+
+    pub(crate) fn mouse_turn_delta(&self, world: &WorldStore) -> (f64, f64) {
+        let scaled = self.mouse_sensitivity.0 * 0.6 + 0.2;
+        let sensitivity_modifier = scaled * scaled * scaled;
+        let scale = if self.camera_type.is_first_person() && world.local_player_is_scoping() {
+            sensitivity_modifier
+        } else {
+            sensitivity_modifier * 8.0
+        };
+        let x = self.mouse_delta_x * scale;
+        let y = self.mouse_delta_y * scale;
+        (
+            if self.invert_mouse_x { -x } else { x },
+            if self.invert_mouse_y { -y } else { y },
+        )
     }
 
     pub(crate) fn take_fullscreen_requests(&mut self) -> Vec<bool> {

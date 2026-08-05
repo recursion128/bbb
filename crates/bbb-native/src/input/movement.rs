@@ -24,6 +24,7 @@ const RIDING_JUMP_TICK_SECONDS: f64 = 0.05;
 
 impl ClientInputState {
     pub(crate) fn local_player_input(&self, world: &WorldStore) -> LocalPlayerInputState {
+        let (mouse_delta_x, mouse_delta_y) = self.mouse_turn_delta(world);
         LocalPlayerInputState {
             focused: self.focused,
             forward: self.forward,
@@ -33,8 +34,8 @@ impl ClientInputState {
             jump: self.jump,
             sneak: self.sneak,
             sprinting: world.local_player_is_sprinting(),
-            mouse_delta_x: self.mouse_delta_x,
-            mouse_delta_y: self.mouse_delta_y,
+            mouse_delta_x,
+            mouse_delta_y,
         }
     }
 
@@ -933,7 +934,7 @@ mod tests {
         assert!(rx.try_recv().is_err());
         let half_tick_pose = world.local_player_pose().unwrap();
         assert_eq!(half_tick_pose.position, initial_pose.position);
-        assert_eq!(half_tick_pose.y_rot, 12.0);
+        assert_eq!(half_tick_pose.y_rot, 15.000001);
 
         advance_player_input(
             &mut input,
@@ -1534,8 +1535,8 @@ mod tests {
             other => panic!("expected player rotation command, got {other:?}"),
         };
         assert_eq!(command.state.position, initial_pose.position);
-        assert_eq!(command.state.y_rot, 12.0);
-        assert_eq!(command.state.x_rot, -6.0);
+        assert_eq!(command.state.y_rot, 15.000001);
+        assert_eq!(command.state.x_rot, -7.5000005);
         assert!(command.force_rotation_only);
         assert_eq!(
             world.local_player_pose().unwrap().position,

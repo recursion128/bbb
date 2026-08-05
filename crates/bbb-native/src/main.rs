@@ -856,6 +856,8 @@ fn run_client(args: startup::Args) -> Result<()> {
     input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
     input.set_narrator_available(narrator_runtime.is_some());
     input.set_fullscreen(args.client_fullscreen);
+    input.set_mouse_sensitivity(args.client_mouse_sensitivity);
+    input.set_invert_mouse(args.client_invert_mouse_x, args.client_invert_mouse_y);
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );

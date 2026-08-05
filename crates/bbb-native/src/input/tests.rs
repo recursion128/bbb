@@ -30261,3 +30261,28 @@ fn the_screenshot_key_requests_one_grab_per_press_and_announces_the_saved_name()
         "Couldn't save screenshot: disk full"
     );
 }
+
+#[test]
+fn the_mouse_turn_delta_follows_the_vanilla_sensitivity_curve() {
+    let world = world_with_debug_player(false);
+    let mut input = ClientInputState::new(true);
+    input.mouse_delta_x = 100.0;
+    input.mouse_delta_y = -50.0;
+
+    // The 0.5 default gives (0.5 * 0.6 + 0.2)^3 * 8 == 1.0.
+    assert_eq!(input.mouse_turn_delta(&world), (100.0, -50.0));
+
+    input.set_mouse_sensitivity(1.0);
+    let (x, y) = input.mouse_turn_delta(&world);
+    assert!((x - 409.6).abs() < 1e-9, "{x}");
+    assert!((y + 204.8).abs() < 1e-9, "{y}");
+
+    input.set_mouse_sensitivity(0.0);
+    let (x, y) = input.mouse_turn_delta(&world);
+    assert!((x - 6.4).abs() < 1e-9, "{x}");
+    assert!((y + 3.2).abs() < 1e-9, "{y}");
+
+    input.set_mouse_sensitivity(0.5);
+    input.set_invert_mouse(true, true);
+    assert_eq!(input.mouse_turn_delta(&world), (-100.0, 50.0));
+}

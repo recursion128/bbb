@@ -1472,7 +1472,7 @@ def _await_input_pipeline(address: tuple[str, int], deadline: float) -> None:
 
 def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: float) -> None:
     """Closed-loop pitch steering: read x_rot, inject a conservative look
-    delta, repeat until converged (vanilla sensitivity ~0.12 deg/px here).
+    delta, repeat until converged (vanilla sensitivity 0.15 deg/px here).
     The tight tolerance keeps a straight-down crosshair ray from drifting
     into a neighboring block column over a multi-block drop."""
 
@@ -1484,7 +1484,7 @@ def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: floa
         _control_request(
             address,
             "input.look_delta",
-            {"dx": 0.0, "dy": max(-600.0, min(600.0, error / 0.12 * 0.7))},
+            {"dx": 0.0, "dy": max(-600.0, min(600.0, error / 0.15 * 0.7))},
         )
         time.sleep(0.1)
     raise GateFailure(f"look steering did not reach pitch {target_pitch}")
@@ -1830,7 +1830,7 @@ def _steer_look_to_point(
 ) -> None:
     """Closed-loop yaw+pitch steering onto a world-space point, re-reading
     the target and the player pose every round so a drifting player or a
-    moving target cannot invalidate a precomputed angle.  Same ~0.12 deg/px
+    moving target cannot invalidate a precomputed angle.  Same 0.15 deg/px
     sensitivity model as the pitch steering used by the block smoke."""
 
     while time.monotonic() < deadline:
@@ -1852,8 +1852,8 @@ def _steer_look_to_point(
             address,
             "input.look_delta",
             {
-                "dx": max(-600.0, min(600.0, yaw_error / 0.12 * 0.7)),
-                "dy": max(-600.0, min(600.0, pitch_error / 0.12 * 0.7)),
+                "dx": max(-600.0, min(600.0, yaw_error / 0.15 * 0.7)),
+                "dy": max(-600.0, min(600.0, pitch_error / 0.15 * 0.7)),
             },
         )
         time.sleep(0.1)
