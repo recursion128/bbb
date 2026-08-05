@@ -4610,7 +4610,7 @@ pub(crate) fn update_renderer_from_publication(
             world.game_test_highlight_render_revision(),
             || game_test_highlight_gizmos(world),
         );
-    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let reduced_debug_info = input.show_only_reduced_info(world);
     let chunk_section_debug_gizmos = terrain_upload.chunk_section_debug_gizmos(
         terrain_visibility_context,
         input.debug_screen_entry_enabled(DebugScreenEntryId::ChunkSectionPaths, reduced_debug_info),
@@ -8935,7 +8935,7 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
     audio_counters: &AudioCounters,
     current_post_effect_id: Option<&str>,
 ) -> Option<HudDebugOverlay> {
-    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let reduced_debug_info = input.show_only_reduced_info(world);
     let entry_enabled = |entry| input.debug_screen_entry_enabled(entry, reduced_debug_info);
 
     let mut left_lines = Vec::new();
@@ -9552,7 +9552,7 @@ fn debug_heightmap_boxes(
 ) -> Vec<DebugFilledBox> {
     if !input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeHeightmap,
-        world.local_player_has_reduced_debug_info(),
+        input.show_only_reduced_info(world),
     ) || world.level_info().is_none()
     {
         return Vec::new();
@@ -9620,7 +9620,7 @@ struct DebugWaterSample {
 fn debug_water_samples(input: &ClientInputState, world: &WorldStore) -> Vec<DebugWaterSample> {
     if !input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeWaterLevels,
-        world.local_player_has_reduced_debug_info(),
+        input.show_only_reduced_info(world),
     ) || world.level_info().is_none()
     {
         return Vec::new();
@@ -9733,7 +9733,7 @@ fn debug_light_level_billboards(
     world: &WorldStore,
     camera_pose: Option<CameraPose>,
 ) -> Vec<DebugTextBillboard> {
-    let reduced_debug_info = world.local_player_has_reduced_debug_info();
+    let reduced_debug_info = input.show_only_reduced_info(world);
     let show_block_light = input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeBlockLightLevels,
         reduced_debug_info,
@@ -9857,7 +9857,7 @@ fn debug_solid_face_rects(
 ) -> Vec<DebugFilledRect> {
     if !input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeSolidFaces,
-        world.local_player_has_reduced_debug_info(),
+        input.show_only_reduced_info(world),
     ) || world.level_info().is_none()
     {
         return Vec::new();
@@ -9950,7 +9950,7 @@ const DEBUG_SUPPORTING_BLOCK_LEGACY_OFFSET: f64 = 0.04;
 fn debug_collision_entry_enabled(input: &ClientInputState, world: &WorldStore) -> bool {
     input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeCollisionBoxes,
-        world.local_player_has_reduced_debug_info(),
+        input.show_only_reduced_info(world),
     )
 }
 
@@ -9972,7 +9972,7 @@ fn collect_debug_collision_lines(world: &WorldStore) -> Vec<DebugLine> {
 fn debug_supporting_block_entry_enabled(input: &ClientInputState, world: &WorldStore) -> bool {
     input.debug_screen_entry_enabled(
         DebugScreenEntryId::VisualizeEntitySupportingBlocks,
-        world.local_player_has_reduced_debug_info(),
+        input.show_only_reduced_info(world),
     )
 }
 

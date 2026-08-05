@@ -1505,7 +1505,7 @@ impl SimulationInputRuntime {
                     state,
                     self.cursor_position,
                     self.surface_size,
-                    context.world.local_player_has_reduced_debug_info(),
+                    context.input.show_only_reduced_info(context.world),
                     &self.text_measurements,
                 );
             context

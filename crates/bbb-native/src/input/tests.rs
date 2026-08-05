@@ -950,6 +950,35 @@ fn world_with_local_player_id(player_id: i32) -> WorldStore {
     world
 }
 
+fn world_with_reduced_debug_info(player_id: i32) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: true,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world
+}
+
 fn set_local_player_sprint_test_pose(world: &mut WorldStore) {
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -29820,4 +29849,45 @@ fn creative_screen_hotbar_keys_swap_hovered_items_even_with_preset_activators() 
         assert!(world.action_bar().is_none());
         assert!(!store_path.exists());
     }
+}
+
+#[test]
+fn show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag() {
+    // Vanilla `Minecraft.showOnlyReducedInfo` (Minecraft.java:2666) is
+    // `player != null && player.isReducedDebugInfo() || options.reducedDebugInfo().get()`,
+    // so the option alone already restricts `DebugScreenEntryList.rebuildCurrentList`
+    // (DebugScreenEntryList.java:155) before any player exists. The
+    // `KeyboardHandler` debug bindings (KeyboardHandler.java:202/213/307) stay on
+    // the player flag alone.
+    let mut input = ClientInputState::new(true);
+    input.set_debug_screen_entry_status(
+        DebugScreenEntryId::EntityHitboxes,
+        DebugScreenEntryStatus::AlwaysOn,
+    );
+    let empty = WorldStore::new();
+    let plain = world_with_local_player_id(7);
+    let flagged = world_with_reduced_debug_info(7);
+
+    assert!(!input.show_only_reduced_info(&empty));
+    assert!(!input.show_only_reduced_info(&plain));
+    assert!(input.show_only_reduced_info(&flagged));
+    assert!(input.debug_entity_hitboxes_visible_for_world(&plain));
+    assert!(!input.debug_entity_hitboxes_visible_for_world(&flagged));
+
+    input.set_reduced_debug_info_option(true);
+
+    // The option half needs no player, unlike the synced flag.
+    assert!(input.show_only_reduced_info(&empty));
+    assert!(input.show_only_reduced_info(&plain));
+    assert!(input.show_only_reduced_info(&flagged));
+    assert!(!input.debug_entity_hitboxes_visible_for_world(&plain));
+
+    // `KeyboardHandler` reads `player.isReducedDebugInfo()` directly, so the
+    // option must not disarm F3+B / F3+G / F3+C.
+    assert!(ClientInputState::debug_world_status_toggles_allowed(Some(
+        &plain
+    )));
+    assert!(!ClientInputState::debug_world_status_toggles_allowed(Some(
+        &flagged
+    )));
 }

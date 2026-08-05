@@ -37,7 +37,7 @@ impl DebugSkyLightSectionCache {
     ) -> (Vec<DebugFilledRect>, Vec<DebugLine>) {
         if !input.debug_screen_entry_enabled(
             DebugScreenEntryId::VisualizeSkyLightSections,
-            world.local_player_has_reduced_debug_info(),
+            input.show_only_reduced_info(world),
         ) || world.level_info().is_none()
         {
             self.reset();

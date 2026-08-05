@@ -198,6 +198,14 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_auto_jump: bool,
+    /// `Options.reducedDebugInfo`, the client half of
+    /// `Minecraft.showOnlyReducedInfo` (Minecraft.java:2666).
+    #[arg(
+        long = "client-reduced-debug-info",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_reduced_debug_info: bool,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
@@ -525,6 +533,11 @@ fn bind_stored_client_options(
     }
 
     flag!("client_auto_jump", "autoJump", client_auto_jump);
+    flag!(
+        "client_reduced_debug_info",
+        "reducedDebugInfo",
+        client_reduced_debug_info
+    );
     flag!("client_chat_colors", "chatColors", client_chat_colors);
     flag!("client_chat_links", "chatLinks", client_chat_links);
     flag!(
@@ -2000,6 +2013,21 @@ mod tests {
         // if the next run starts from it.
         assert!(args.advanced_item_tooltips);
         assert!(!args.pause_on_lost_focus);
+    }
+
+    #[test]
+    fn the_stored_reduced_debug_info_option_becomes_the_session_starting_value() {
+        // `Minecraft.showOnlyReducedInfo` (Minecraft.java:2666) reads
+        // `options.reducedDebugInfo()`, which only ever comes from
+        // `options.txt` for an external client.
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("reducedDebugInfo", "true");
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert!(!args.client_reduced_debug_info);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert!(args.client_reduced_debug_info);
     }
 
     #[test]

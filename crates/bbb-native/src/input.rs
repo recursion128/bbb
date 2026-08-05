@@ -704,6 +704,8 @@ pub(crate) struct ClientInputState {
     debug_frustum_requests: Vec<DebugFrustumRequest>,
     debug_feature_count_requests: Vec<DebugFeatureCountRequest>,
     debug_pause_on_lost_focus: bool,
+    /// The `Options.reducedDebugInfo` half of `Minecraft.showOnlyReducedInfo`.
+    debug_reduced_debug_info_option: bool,
     debug_client_option_writes: Vec<ClientOptionWrite>,
     debug_resource_pack_reload_requests: u32,
     debug_dynamic_texture_dump_requests: u32,
@@ -1490,6 +1492,7 @@ impl ClientInputState {
             camera_post_effect_id: self.camera_post_effect_id,
             camera_post_effect_active: self.camera_post_effect_active,
             debug_pause_on_lost_focus: self.debug_pause_on_lost_focus,
+            debug_reduced_debug_info_option: self.debug_reduced_debug_info_option,
             debug_profiling_recording: self.debug_profiling_recording,
             debug_options_screen: self.debug_options_screen.clone(),
             debug_pause_screen: self.debug_pause_screen.clone(),
@@ -2849,14 +2852,14 @@ impl ClientInputState {
     pub(crate) fn debug_entity_hitboxes_visible_for_world(&self, world: &WorldStore) -> bool {
         self.debug_screen_entry_enabled(
             DebugScreenEntryId::EntityHitboxes,
-            world.local_player_has_reduced_debug_info(),
+            self.show_only_reduced_info(world),
         )
     }
 
     pub(crate) fn debug_chunk_borders_visible_for_world(&self, world: &WorldStore) -> bool {
         self.debug_screen_entry_enabled(
             DebugScreenEntryId::ChunkBorders,
-            world.local_player_has_reduced_debug_info(),
+            self.show_only_reduced_info(world),
         )
     }
 
@@ -2985,6 +2988,19 @@ impl ClientInputState {
 
     pub(crate) fn set_debug_pause_on_lost_focus(&mut self, enabled: bool) {
         self.debug_pause_on_lost_focus = enabled;
+    }
+
+    pub(crate) fn set_reduced_debug_info_option(&mut self, enabled: bool) {
+        self.debug_reduced_debug_info_option = enabled;
+    }
+
+    /// `Minecraft.showOnlyReducedInfo` (Minecraft.java:2666): the synced
+    /// `LocalPlayer` flag or the `reducedDebugInfo` option, so the option alone
+    /// still restricts the debug entries before a local player exists. The
+    /// `KeyboardHandler` debug bindings deliberately read the player flag on
+    /// its own instead — they are a different vanilla predicate.
+    pub(crate) fn show_only_reduced_info(&self, world: &WorldStore) -> bool {
+        world.local_player_has_reduced_debug_info() || self.debug_reduced_debug_info_option
     }
 
     pub(crate) fn take_debug_resource_pack_reload_requests(&mut self) -> u32 {

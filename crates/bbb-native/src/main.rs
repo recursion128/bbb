@@ -789,6 +789,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     }
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
     input.set_debug_pause_on_lost_focus(args.pause_on_lost_focus);
+    input.set_reduced_debug_info_option(args.client_reduced_debug_info);
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );
@@ -1298,8 +1299,8 @@ fn run_client(args: startup::Args) -> Result<()> {
                         || render_publication.input.debug_screen_entry_enabled(
                             DebugScreenEntryId::GpuUtilization,
                             render_publication
-                                .world
-                                .local_player_has_reduced_debug_info(),
+                                .input
+                                .show_only_reduced_info(&render_publication.world),
                         );
                     renderer.set_gpu_timing_enabled(gpu_timing_enabled);
                     frame_phase_diagnostics.set_enabled(gpu_timing_enabled);

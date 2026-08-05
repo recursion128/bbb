@@ -21,10 +21,8 @@ pub(super) fn hud_debug_options_screen(
     item_runtime: Option<&NativeItemRuntime>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<HudDebugOptionsScreen> {
-    let state = input.debug_options_screen_hud_state(
-        surface_size,
-        world.local_player_has_reduced_debug_info(),
-    )?;
+    let state =
+        input.debug_options_screen_hud_state(surface_size, input.show_only_reduced_info(world))?;
     let rows = state
         .rows
         .into_iter()
