@@ -5439,11 +5439,245 @@ INPUT_KEY_MAPPING_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+UI_ACCESSIBILITY_SURFACE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#NativeNarratorRuntime",
+                "crates/bbb-native/src/narrator_runtime.rs#struct CommandTextToSpeech",
+            ),
+            (
+                "crates/bbb-native/src/startup.rs#args_accept_narrator_status_command_and_repeated_arguments",
+                "crates/bbb-native/src/narrator_runtime.rs#narrator_status_filters_interrupting_system_messages",
+            ),
+        ),
+        ("GameNarrator",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn say_chat_queued",
+                "crates/bbb-native/src/narrator_runtime.rs#should_narrate_chat",
+            ),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#chat_narration_modes_queue_without_interrupting_current_speech",
+                "crates/bbb-world/src/client/chat.rs#delayed_player_chat_defers_display_reporting_and_last_seen_until_acceptance",
+            ),
+        ),
+        ("sayChatQueued",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn say_system_chat_queued",
+                "crates/bbb-world/src/client/chat.rs#fn push_rich_server_system_chat_message",
+            ),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#chat_narration_modes_queue_without_interrupting_current_speech",
+                "crates/bbb-native/src/runtime/tests.rs#game_event_chat_components_localize_for_hud_and_system_narration",
+            ),
+        ),
+        ("saySystemChatQueued",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn say_system_queued",
+                "crates/bbb-world/src/client/chat.rs#fn push_overlay_chat_narration",
+            ),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#chat_narration_modes_queue_without_interrupting_current_speech",
+                "crates/bbb-world/src/level.rs#demo_hint_game_events_record_rich_translations_and_system_narration",
+            ),
+        ),
+        ("saySystemQueued",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#world.take_pending_chat_narrations()",
+                "crates/bbb-native/src/runtime/render_extract.rs#fn chat_narration_text",
+            ),
+            (
+                "crates/bbb-native/src/simulation.rs#chat_narration_enters_the_lossless_effect_gate_before_publication",
+                "crates/bbb-native/src/runtime/tests.rs#chat_narration_text_uses_styled_content_without_duplicate_projection",
+            ),
+        ),
+        ("narrateNotInterruptingMessage",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn say_system_now",
+                "crates/bbb-world/src/client/chat.rs#fn push_interrupting_system_component_narration",
+            ),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#narrator_status_filters_interrupting_system_messages",
+                "crates/bbb-world/src/client/hud.rs#jukebox_now_playing_wraps_one_exact_component_for_overlay_and_narration",
+            ),
+        ),
+        ("saySystemNow",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn narrator_command_arguments",
+                "crates/bbb-native/src/startup.rs#fn narrator_voice_volume",
+            ),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#command_arguments_substitute_the_final_voice_volume_placeholder",
+                "crates/bbb-native/src/startup.rs#narrator_voice_volume_multiplies_voice_and_master_with_safe_defaults",
+            ),
+        ),
+        ("narrateMessage",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#enum NarratorStatus",
+                "crates/bbb-native/src/input.rs#fn set_narrator_status",
+            ),
+            (
+                "crates/bbb-native/src/client_options.rs#an_enum_option_write_stores_the_numeric_id",
+                "crates/bbb-native/src/input/tests.rs#the_narrator_hotkey_cycles_the_status_and_saves_the_enum_id",
+            ),
+        ),
+        ("getStatus",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/narrator_runtime.rs#IS_RUNNING_IN_IDE",),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#chat_narration_modes_queue_without_interrupting_current_speech",
+            ),
+        ),
+        ("logNarratedMessage",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#fn update_status",
+                "crates/bbb-native/src/input.rs#fn handle_narrator_hotkey",
+                "crates/bbb-world/src/client/ui.rs#fn push_narrator_toggle_toast",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_narrator_hotkey_cycles_the_status_and_saves_the_enum_id",
+                "crates/bbb-native/src/runtime/tests.rs#narrator_toggle_projects_enabled_and_disabled_system_toasts",
+                "crates/bbb-native/src/narrator_runtime.rs#a_keyboard_opened_screen_suppresses_narration_until_the_next_action",
+            ),
+        ),
+        ("updateNarratorStatus",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#fn set_narrator_available",),
+            (
+                "crates/bbb-native/src/input/tests.rs#the_narrator_hotkey_stays_out_of_text_entry_and_unavailable_narrators",
+            ),
+        ),
+        ("isActive",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/narrator_runtime.rs#fn clear",),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#chat_narration_modes_queue_without_interrupting_current_speech",
+            ),
+        ),
+        ("clear",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/narrator_runtime.rs#impl Drop for CommandTextToSpeech",),
+            (
+                "crates/bbb-native/src/narrator_runtime.rs#dropping_the_narrator_runtime_kills_and_reaps_the_speaking_child",
+            ),
+        ),
+        ("destroy",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#MessageBox.errorWithContinue",),
+            (
+                "crates/bbb-native/src/startup.rs#args_accept_narrator_status_command_and_repeated_arguments",
+            ),
+        ),
+        ("checkStatus",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#NarratorInitException",),
+            (
+                "crates/bbb-native/src/crash_report.rs#production_fatal_paths_cannot_restore_log_only_exit_or_string_worker_errors",
+            ),
+        ),
+        ("NarratorInitException",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/simulation/input_commands.rs#fn apply_ime_preedit",
+                "crates/bbb-native/src/input.rs#fn clear_dialog_ime_preedit",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period",
+                "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+            ),
+        ),
+        ("onTextInputFocusChange",),
+    ),
+)
+
+
+UI_CLIPBOARD_SURFACE_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn get_debug_clipboard_text",
+                "crates/bbb-native/src/input.rs#trait DebugClipboard",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#chat_entry_copies_cuts_and_pastes_through_the_clipboard",
+                "crates/bbb-native/src/input/tests.rs#absent_or_failing_clipboard_is_a_safe_noop_for_edit_shortcuts",
+                "crates/bbb-native/src/input/tests.rs#sign_editor_clipboard_copy_cut_and_sanitized_paste_match_text_field_helper",
+            ),
+        ),
+        ("getClipboard",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/main.rs#fn set_debug_clipboard_text",
+                "crates/bbb-native/src/input.rs#fn copy_selection_to_clipboard",
+                "crates/bbb-native/src/runtime/dialog_screen.rs#KeyboardHandler.setClipboard intentionally ignores empty text.",
+            ),
+            (
+                "crates/bbb-native/src/input/tests.rs#chat_entry_copies_cuts_and_pastes_through_the_clipboard",
+                "crates/bbb-native/src/input/tests.rs#anvil_rename_clipboard_shortcuts_select_copy_cut_paste_and_emit_only_on_change",
+                "crates/bbb-native/src/runtime/dialog_screen.rs#copy_to_clipboard_action_writes_non_empty_text_before_transition",
+            ),
+        ),
+        ("setClipboard",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/main.rs#pushClipboard",),
+            (
+                "crates/bbb-native/src/input/tests.rs#absent_or_failing_clipboard_is_a_safe_noop_for_edit_shortcuts",
+            ),
+        ),
+        ("pushClipboard",),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
     "input-keyboard-routing": INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE,
     "input-debug-key-actions": INPUT_DEBUG_KEY_ACTIONS_OWNER_EVIDENCE,
     "input-mouse-routing": INPUT_MOUSE_ROUTING_OWNER_EVIDENCE,
     "input-key-mapping": INPUT_KEY_MAPPING_OWNER_EVIDENCE,
+    "ui-accessibility-surface": UI_ACCESSIBILITY_SURFACE_OWNER_EVIDENCE,
+    "ui-clipboard-surface": UI_CLIPBOARD_SURFACE_OWNER_EVIDENCE,
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "world-client-chunk-light-lifecycle": CLIENT_LEVEL_CHUNK_LIGHT_OWNER_EVIDENCE,
