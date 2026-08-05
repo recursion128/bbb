@@ -27770,6 +27770,49 @@ fn sprint_key_without_local_player_id_only_queues_input() {
 }
 
 #[test]
+fn a_rebound_jump_key_moves_both_the_action_and_the_key_it_left() {
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    let mut options = crate::client_options::ClientOptions::defaults(Default::default());
+    options.set_dynamic_raw_for_test("key_key.jump", "key.keyboard.z");
+    input
+        .set_key_bindings(crate::client_options::key_bindings::KeyBindings::from_options(&options));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyZ),
+        ElementState::Pressed,
+    );
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(input.item_model_keybind_context().jump);
+}
+
+#[test]
 fn jump_key_double_tap_toggles_creative_flight() {
     let (tx, mut rx) = mpsc::channel(6);
     let commands = Some(tx);

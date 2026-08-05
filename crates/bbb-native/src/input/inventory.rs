@@ -1626,16 +1626,20 @@ pub(crate) fn handle_inventory_key_input(
         }
         let control_down = input.control_down();
         let shift_down = input.shift_down();
-        if code == KeyCode::KeyQ || hotbar_slot_for_key(code).is_some() {
+        if input.binding_matches("key.drop", code)
+            || hotbar_slot_for_key(input.key_bindings(), code).is_some()
+        {
             let Some(snapshot) = world.creative_inventory_snapshot().cloned() else {
                 return true;
             };
+            let bindings = input.key_bindings().clone();
             if input.creative_inventory.handle_action_key(
                 world,
                 counters,
                 net_commands,
                 item_runtime,
                 &snapshot,
+                &bindings,
                 code,
                 control_down,
             ) {
@@ -1666,12 +1670,12 @@ pub(crate) fn handle_inventory_key_input(
         return true;
     }
 
-    if let Some(button_num) = local_inventory_swap_button_num(code) {
+    if let Some(button_num) = local_inventory_swap_button_num(input, code) {
         handle_inventory_swap_key(input, world, counters, net_commands, button_num);
         return true;
     }
 
-    if code != KeyCode::KeyQ {
+    if !input.binding_matches("key.drop", code) {
         return true;
     }
 
@@ -2264,11 +2268,11 @@ fn remove_anvil_rename_char_at_cursor(current: &mut String, cursor: usize) {
     current.replace_range(start..end, "");
 }
 
-fn local_inventory_swap_button_num(code: KeyCode) -> Option<i8> {
-    if code == KeyCode::KeyF {
+fn local_inventory_swap_button_num(input: &ClientInputState, code: KeyCode) -> Option<i8> {
+    if input.binding_matches("key.swapOffhand", code) {
         return Some(40);
     }
-    hotbar_slot_for_key(code).map(|slot| slot as i8)
+    hotbar_slot_for_key(input.key_bindings(), code).map(|slot| slot as i8)
 }
 
 fn handle_inventory_swap_key(

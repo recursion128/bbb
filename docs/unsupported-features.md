@@ -113,14 +113,17 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   Implement all repo-owned semantic gaps and keep the separately recorded
   X11/interactive-seat and macOS/Windows runner limitations external; absence
   of those runners must not hide an internally testable mechanism.
-- **Only the item-model keybind surface honours a rebound key so far.** Every
-  `key_<name>` line now resolves through the generated catalog
+- **The debug (`key.debug.*`) bindings are the only ones a rebind cannot move.**
+  Every `key_<name>` line resolves through the generated catalog
   (`crates/bbb-native/src/client_options/key_mappings_26_1.rs`) to the physical
-  key winit reports, and `ClientInputState::item_model_keybind_context` asks for
-  the binding by name. The raw key dispatch still compares against hard-coded
-  `KeyCode`s, so a rebind changes what an item model sees but not what the key
-  actually does; startup logs a warning naming the affected bindings. This stays
-  inside the `active` route above and closes with it.
+  key winit reports, and movement, drop, swap, inventory, chat, command,
+  advancements, social interactions, hotbar slots, the toolbar activators, the
+  player list, screenshot, fullscreen, GUI/perspective/shader toggles all ask
+  for their binding by name. The F3 combinations still compare against
+  hard-coded `KeyCode`s, matching how Vanilla routes them through
+  `handleDebugKeys` rather than the mapping array; startup logs a warning naming
+  any binding a rebind still cannot move. This stays inside the `active` route
+  above and closes with it.
 - **Handing an in-flight IME composition to a newly focused field is
   `deferred`.** `Minecraft.onTextInputFocusChange` calls
   `KeyboardHandler.resubmitLastPreeditEvent` on the gaining element and

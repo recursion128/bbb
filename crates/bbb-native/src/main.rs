@@ -1148,11 +1148,14 @@ fn run_client(args: startup::Args) -> Result<()> {
             fatal_failures
                 .borrow_mut()
                 .attach_client_options(options.options().dump_for_report());
-            let rebound = client_options::key_bindings::rebound_keys(options.options());
+            let rebound: Vec<_> = client_options::key_bindings::rebound_keys(options.options())
+                .into_iter()
+                .filter(|(name, _)| name.starts_with("key.debug."))
+                .collect();
             if !rebound.is_empty() {
                 tracing::warn!(
                     bindings = ?rebound,
-                    "options.txt rebinds keys the raw key dispatch still reads at their Vanilla defaults"
+                    "options.txt rebinds debug keys this client still reads at their Vanilla defaults"
                 );
             }
             Some(options)

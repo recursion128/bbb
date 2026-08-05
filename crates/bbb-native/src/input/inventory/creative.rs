@@ -1,3 +1,4 @@
+use crate::client_options::key_bindings::KeyBindings;
 use bbb_control::NetCounters;
 use bbb_item_model::{NativeItemRuntime, NativeItemTooltipOptions};
 use bbb_net::NetCommand;
@@ -456,6 +457,7 @@ impl CreativeInventoryInputState {
         net_commands: &Option<mpsc::Sender<NetCommand>>,
         item_runtime: Option<&NativeItemRuntime>,
         snapshot: &CreativeInventorySnapshot,
+        bindings: &KeyBindings,
         code: KeyCode,
         control_down: bool,
     ) -> bool {
@@ -465,7 +467,7 @@ impl CreativeInventoryInputState {
         let Some(CreativeInventoryHover::Slot(slot)) = self.hovered else {
             return false;
         };
-        if let Some(hotbar_index) = hotbar_slot_for_key(code) {
+        if let Some(hotbar_index) = hotbar_slot_for_key(bindings, code) {
             let Some(action) = self.action_for_slot(
                 world,
                 item_runtime,
@@ -1617,6 +1619,7 @@ mod tests {
             &commands,
             None,
             &catalog,
+            &KeyBindings::default(),
             KeyCode::Digit3,
             false,
         ));
@@ -1627,6 +1630,7 @@ mod tests {
             &commands,
             None,
             &catalog,
+            &KeyBindings::default(),
             KeyCode::KeyQ,
             false,
         ));

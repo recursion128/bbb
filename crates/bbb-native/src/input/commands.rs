@@ -27,6 +27,7 @@ use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
 use winit::keyboard::KeyCode;
 
+use crate::client_options::key_bindings::{BoundInput, KeyBindings};
 use crate::crosshair::{
     protocol_block_hit_result_from_crosshair_hit, protocol_block_pos_from_world, CrosshairBlockHit,
 };
@@ -551,19 +552,11 @@ pub(super) fn queue_player_command_action(
     false
 }
 
-pub(super) fn hotbar_slot_for_key(code: KeyCode) -> Option<u8> {
-    match code {
-        KeyCode::Digit1 => Some(0),
-        KeyCode::Digit2 => Some(1),
-        KeyCode::Digit3 => Some(2),
-        KeyCode::Digit4 => Some(3),
-        KeyCode::Digit5 => Some(4),
-        KeyCode::Digit6 => Some(5),
-        KeyCode::Digit7 => Some(6),
-        KeyCode::Digit8 => Some(7),
-        KeyCode::Digit9 => Some(8),
-        _ => None,
-    }
+pub(super) fn hotbar_slot_for_key(bindings: &KeyBindings, code: KeyCode) -> Option<u8> {
+    super::HOTBAR_BINDING_NAMES
+        .iter()
+        .position(|name| bindings.input(name) == BoundInput::Key(code))
+        .map(|slot| slot as u8)
 }
 
 pub(crate) fn select_hotbar_slot(

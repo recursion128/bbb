@@ -1347,6 +1347,15 @@ impl ClientInputState {
         self.key_bindings = bindings;
     }
 
+    pub(crate) fn key_bindings(&self) -> &KeyBindings {
+        &self.key_bindings
+    }
+
+    /// Whether `code` is the physical key `name` currently sits on.
+    pub(crate) fn binding_matches(&self, name: &str, code: KeyCode) -> bool {
+        self.key_bindings.input(name) == BoundInput::Key(code)
+    }
+
     fn binding_down(&self, name: &str) -> bool {
         match self.key_bindings.input(name) {
             BoundInput::Key(code) => self.pressed_keys.contains(&code),
@@ -2011,7 +2020,7 @@ impl ClientInputState {
     }
 
     pub(crate) fn player_list_key_down(&self) -> bool {
-        self.pressed_keys.contains(&KeyCode::Tab)
+        self.binding_down("key.playerlist")
     }
 
     pub(crate) fn hide_gui(&self) -> bool {
@@ -11995,8 +12004,8 @@ fn handle_creative_hotbar_preset_key(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     slot: u8,
 ) -> bool {
-    let load_pressed = input.pressed_keys.contains(&KeyCode::KeyX);
-    let save_pressed = input.pressed_keys.contains(&KeyCode::KeyC);
+    let load_pressed = input.binding_down("key.loadToolbarActivator");
+    let save_pressed = input.binding_down("key.saveToolbarActivator");
     if !load_pressed && !save_pressed {
         return false;
     }
@@ -12090,12 +12099,12 @@ pub(crate) fn handle_key_input_with_item_runtime(
         input.set_control_key(code, pressed);
     }
 
-    if pressed && code == KeyCode::F11 {
+    if pressed && input.binding_matches("key.fullscreen", code) {
         input.toggle_fullscreen();
         return;
     }
 
-    if pressed && code == KeyCode::F2 {
+    if pressed && input.binding_matches("key.screenshot", code) {
         input.screenshot_requests = input.screenshot_requests.saturating_add(1);
         return;
     }
@@ -12261,7 +12270,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
         {
             return;
         }
-        if matches!(code, KeyCode::KeyE)
+        if input.binding_matches("key.inventory", code)
             && !anvil_rename_entry_consumes_key(world, code)
             && !recipe_book_search_entry_consumes_key(input, world, code)
             && !creative_inventory_search_entry_consumes_key(input, world, code)
@@ -12291,19 +12300,19 @@ pub(crate) fn handle_key_input_with_item_runtime(
             return;
         }
         input.record_debug_profiler_chart_navigation_key(code);
-        if just_pressed && code == KeyCode::F1 {
+        if just_pressed && input.binding_matches("key.toggleGui", code) {
             input.hide_gui = !input.hide_gui;
             return;
         }
-        if just_pressed && code == KeyCode::F4 {
+        if just_pressed && input.binding_matches("key.toggleSpectatorShaderEffects", code) {
             input.toggle_camera_post_effect();
             return;
         }
-        if just_pressed && code == KeyCode::F5 {
+        if just_pressed && input.binding_matches("key.togglePerspective", code) {
             input.cycle_camera_type(current_post_effect_id_from_world(world));
             return;
         }
-        if let Some(slot) = hotbar_slot_for_key(code) {
+        if let Some(slot) = hotbar_slot_for_key(input.key_bindings(), code) {
             if world.local_player_is_spectator() {
                 input.handle_spectator_hotbar_selected(world, counters, net_commands, slot);
                 return;
@@ -12314,131 +12323,127 @@ pub(crate) fn handle_key_input_with_item_runtime(
             select_hotbar_slot(counters, world, net_commands, slot);
             return;
         }
-        match code {
-            KeyCode::KeyQ => {
-                if world.local_player_is_spectator() {
-                    return;
-                }
-                let drop_all = input.control_down();
-                let action = if drop_all {
-                    PlayerActionKind::DropAllItems
-                } else {
-                    PlayerActionKind::DropItem
-                };
-                let dropped_item = world.drop_local_selected_hotbar_item(drop_all);
-                queue_zero_pos_player_action_command(counters, net_commands, action);
-                if dropped_item {
-                    queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
-                }
+        if input.binding_matches("key.drop", code) {
+            if world.local_player_is_spectator() {
                 return;
             }
-            KeyCode::KeyF => {
-                if world.local_player_is_spectator() {
-                    return;
-                }
-                queue_zero_pos_player_action_command(
+            let drop_all = input.control_down();
+            let action = if drop_all {
+                PlayerActionKind::DropAllItems
+            } else {
+                PlayerActionKind::DropItem
+            };
+            let dropped_item = world.drop_local_selected_hotbar_item(drop_all);
+            queue_zero_pos_player_action_command(counters, net_commands, action);
+            if dropped_item {
+                queue_swing_command(world, counters, net_commands, InteractionHand::MainHand);
+            }
+            return;
+        }
+        if input.binding_matches("key.swapOffhand", code) {
+            if world.local_player_is_spectator() {
+                return;
+            }
+            queue_zero_pos_player_action_command(
+                counters,
+                net_commands,
+                PlayerActionKind::SwapItemWithOffhand,
+            );
+            return;
+        }
+        if input.binding_matches("key.inventory", code) {
+            if world
+                .local_player_server_controlled_inventory_vehicle_id()
+                .is_some()
+            {
+                queue_player_command_action(
                     counters,
-                    net_commands,
-                    PlayerActionKind::SwapItemWithOffhand,
-                );
-                return;
-            }
-            KeyCode::KeyE => {
-                if world
-                    .local_player_server_controlled_inventory_vehicle_id()
-                    .is_some()
-                {
-                    queue_player_command_action(
-                        counters,
-                        world,
-                        net_commands,
-                        PlayerCommandAction::OpenInventory,
-                        0,
-                    );
-                } else {
-                    world.tutorial_on_open_inventory();
-                    input.interrupt_chat_screen();
-                    world.open_local_inventory();
-                }
-                return;
-            }
-            KeyCode::KeyL => {
-                open_advancements_screen(input, counters, world, net_commands);
-                return;
-            }
-            KeyCode::KeyP => {
-                open_social_interactions_screen(input, counters, world, net_commands, false);
-                return;
-            }
-            KeyCode::KeyT => {
-                open_chat_entry(
-                    input,
                     world,
-                    counters,
                     net_commands,
-                    ChatMethod::Message,
-                    true,
+                    PlayerCommandAction::OpenInventory,
+                    0,
                 );
-                return;
+            } else {
+                world.tutorial_on_open_inventory();
+                input.interrupt_chat_screen();
+                world.open_local_inventory();
             }
-            KeyCode::Slash => {
-                open_chat_entry(
-                    input,
-                    world,
-                    counters,
-                    net_commands,
-                    ChatMethod::Command,
-                    true,
-                );
-                return;
-            }
-            _ => {}
+            return;
+        }
+        if input.binding_matches("key.advancements", code) {
+            open_advancements_screen(input, counters, world, net_commands);
+            return;
+        }
+        if input.binding_matches("key.socialInteractions", code) {
+            open_social_interactions_screen(input, counters, world, net_commands, false);
+            return;
+        }
+        if input.binding_matches("key.chat", code) {
+            open_chat_entry(
+                input,
+                world,
+                counters,
+                net_commands,
+                ChatMethod::Message,
+                true,
+            );
+            return;
+        }
+        if input.binding_matches("key.command", code) {
+            open_chat_entry(
+                input,
+                world,
+                counters,
+                net_commands,
+                ChatMethod::Command,
+                true,
+            );
+            return;
         }
     }
 
     let before = player_input_from_state(input);
-    let handled = match code {
-        KeyCode::KeyW | KeyCode::ArrowUp => {
-            input.forward = pressed;
-            if pressed && !before.forward {
-                maybe_apply_forward_sprint_trigger(input, world);
-            }
-            true
+    let matches_binding =
+        |name: &str, alias: KeyCode| input.binding_matches(name, code) || code == alias;
+    let handled = if matches_binding("key.forward", KeyCode::ArrowUp) {
+        input.forward = pressed;
+        if pressed && !before.forward {
+            maybe_apply_forward_sprint_trigger(input, world);
         }
-        KeyCode::KeyS | KeyCode::ArrowDown => {
-            input.backward = pressed;
-            if pressed {
-                input.clear_sprint_trigger();
-            }
-            true
+        true
+    } else if matches_binding("key.back", KeyCode::ArrowDown) {
+        input.backward = pressed;
+        if pressed {
+            input.clear_sprint_trigger();
         }
-        KeyCode::KeyA | KeyCode::ArrowLeft => {
-            input.left = pressed;
-            true
+        true
+    } else if matches_binding("key.left", KeyCode::ArrowLeft) {
+        input.left = pressed;
+        true
+    } else if matches_binding("key.right", KeyCode::ArrowRight) {
+        input.right = pressed;
+        true
+    } else if input.binding_matches("key.jump", code) {
+        input.jump = pressed;
+        true
+    } else if matches_binding("key.sneak", KeyCode::ShiftRight) {
+        input.sneak = if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
+            input.shift_down()
+        } else {
+            pressed
+        };
+        if input.sneak {
+            input.clear_sprint_trigger();
         }
-        KeyCode::KeyD | KeyCode::ArrowRight => {
-            input.right = pressed;
-            true
+        true
+    } else if matches_binding("key.sprint", KeyCode::ControlRight) {
+        input.sprint_key_down = pressed;
+        if pressed {
+            input.clear_sprint_trigger();
         }
-        KeyCode::Space => {
-            input.jump = pressed;
-            true
-        }
-        KeyCode::ShiftLeft | KeyCode::ShiftRight => {
-            input.sneak = input.shift_down();
-            if input.sneak {
-                input.clear_sprint_trigger();
-            }
-            true
-        }
-        KeyCode::ControlLeft | KeyCode::ControlRight => {
-            input.sprint_key_down = pressed;
-            if pressed {
-                input.clear_sprint_trigger();
-            }
-            true
-        }
-        _ => false,
+        true
+    } else {
+        false
     };
     if handled {
         let after = player_input_from_state(input);
