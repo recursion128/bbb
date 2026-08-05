@@ -500,6 +500,33 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
 
+#### Active contract：native-input-window-surface
+
+- 目标与完成标准：闭合 `KeyboardHandler` 22 + `MouseHandler` 25 + `KeyMapping` 34 +
+  `Window` 60 + `GameNarrator` 16 + `ClipboardManager` 3 加 `Minecraft` 侧 13 共
+  173 个 owner。每条源文件先按语义 owner 拆同构 sub-route、直接字段返回归 support
+  accessor、未分类方法 fail-closed，再逐 owner 挂机械可达 evidence，五行 matrix 翻
+  `equivalent`，账本对应 active 项收敛。
+- 审计事实：仓内输入面在 `input.rs` 与 `input/mouse.rs` 加十余个 screen 子模块，
+  窗口/事件循环在 `main.rs` 的 winit `WindowEvent` 分派，narrator 在
+  `narrator_runtime.rs`，图标在 `window_icon.rs`，声明平台行在 `platform.rs`。
+  五条 route 目前是「一源文件一 route」的粗粒度，既无 sub-route 也无 support
+  accessor 划分。bbb 用 winit 而非 GLFW，`Window` 的句柄/回调注册族必须按语义
+  可达性逐个裁决，不得按符号照搬。
+- 串行阶段：① 五条源文件的 sub-route 表与 fail-closed 判据（不可达的 GLFW 专有面
+  进 scope route 并附 vanilla 依据）；②～⑥ 逐族补齐实现缺口与 focused evidence
+  （keyboard routing / mouse routing / key mapping / narrator+clipboard / window
+  lifecycle）；⑦ census close。每族先 grep 现有 owner 再动手，证伪「已实现」优先。
+- 非目标：不加按键绑定 options 屏，不引入第二套输入分派或窗口 owner，不把
+  macOS/Windows 与 X11/interactive-seat 平台行拉进仓内实现。
+- 每阶段 focused tests：owner 级状态断言；涉及真实 seat/焦点/grab 的族补 live
+  playable gate 证据。
+- checkpoint：① 与 ⑦ 触及 generator 属高风险，各自单独一次完整 gate；②～⑥ 每族
+  一次干净提交，累计 4 个提交时 gate；最终 HEAD 必须 full-gated，且因输入改动需
+  再跑一次 live playable gate（headless weston 无 wl_seat 键盘，驱动须先
+  `input.focus`）。
+- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
+
 已有维护证据：
 
 - packet/NBT/component 与 resource JSON/model/font/image/audio 的不可信输入预算、
