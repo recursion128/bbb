@@ -128,6 +128,14 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   takes the toggle down remembers it, and closing the screen restores a
   keyboard-bound one. This stays inside the `active` route above and closes with
   it.
+- **Smooth-camera turning is `deferred`.** `key.smoothCamera` ships unbound, so
+  the only way to reach `MouseHandler`'s `SmoothDouble` branch is to bind it by
+  hand. Reaching it needs the per-frame wall-clock gap vanilla passes as
+  `mousea` and a `&mut` turn path, while `ClientInputState::local_player_input`
+  reads its deltas immutably. Reopen when the input owner already carries a
+  frame-time value into the turn path — for another mouse feature or for the
+  frame-rate limiter — and then add both `SmoothDouble` axes at once rather than
+  threading a clock in just for this.
 - **Handing an in-flight IME composition to a newly focused field is
   `deferred`.** `Minecraft.onTextInputFocusChange` calls
   `KeyboardHandler.resubmitLastPreeditEvent` on the gaining element and
