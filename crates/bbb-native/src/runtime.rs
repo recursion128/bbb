@@ -3259,6 +3259,7 @@ pub(crate) fn update_renderer_from_publication(
         client_vsync,
         damage_tilt_strength,
         view_bobbing,
+        vignette,
         entity_shadows,
         high_contrast_block_outline,
         improved_transparency,
@@ -4022,6 +4023,7 @@ pub(crate) fn update_renderer_from_publication(
         world,
         camera_pose.map(camera_eye_position),
         input.hide_gui(),
+        vignette,
     );
     let hud_spyglass_scope = hud_render_runtime.spyglass_scope(
         hud_frame_delta.game_time,

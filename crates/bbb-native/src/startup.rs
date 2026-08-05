@@ -198,14 +198,14 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_auto_jump: bool,
-    /// `Options.reducedDebugInfo`, the client half of
-    /// `Minecraft.showOnlyReducedInfo` (Minecraft.java:2666).
     #[arg(
         long = "client-reduced-debug-info",
         default_value_t = false,
         action = ArgAction::Set
     )]
     pub(crate) client_reduced_debug_info: bool,
+    #[arg(long = "client-vignette", default_value_t = true, action = ArgAction::Set)]
+    pub(crate) client_vignette: bool,
     #[arg(long = "tutorial-step", value_enum, default_value = "movement")]
     pub(crate) tutorial_step: TutorialStepArg,
     #[arg(
@@ -538,6 +538,7 @@ fn bind_stored_client_options(
         "reducedDebugInfo",
         client_reduced_debug_info
     );
+    flag!("client_vignette", "vignette", client_vignette);
     flag!("client_chat_colors", "chatColors", client_chat_colors);
     flag!("client_chat_links", "chatLinks", client_chat_links);
     flag!(
@@ -2028,6 +2029,18 @@ mod tests {
         bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
 
         assert!(args.client_reduced_debug_info);
+    }
+
+    #[test]
+    fn the_stored_vignette_option_defaults_on_and_comes_back_off() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("vignette", "false");
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert!(args.client_vignette);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert!(!args.client_vignette);
     }
 
     #[test]

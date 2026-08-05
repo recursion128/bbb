@@ -33,15 +33,16 @@ impl VignetteRuntime {
         }
     }
 
-    /// Mirrors `Gui.extractVignette`. The draw is hidden by F1, while the
-    /// smoothed tick state above remains live.
+    /// Mirrors `Gui.extractVignette`. The draw is hidden by F1 or by the
+    /// `vignette` option, while the smoothed tick state above remains live.
     pub(super) fn extract(
         &self,
         world: &WorldStore,
         camera_position: Option<[f32; 3]>,
         hide_gui: bool,
+        vignette_option: bool,
     ) -> Option<HudVignette> {
-        if hide_gui || world.level_info().is_none() {
+        if hide_gui || !vignette_option || world.level_info().is_none() {
             return None;
         }
         Some(vignette_for_border(
@@ -129,8 +130,38 @@ fn border_warning_strength(border: &WorldBorderState, camera_x: f64, camera_z: f
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        InitializeBorder, SetBorderWarningDelay, SetBorderWarningDistance,
+        CommonPlayerSpawnInfo, InitializeBorder, PlayLogin, SetBorderWarningDelay,
+        SetBorderWarningDistance,
     };
+
+    fn logged_in_world() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 1,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        });
+        world
+    }
 
     fn initialized_border(
         old_size: f64,
@@ -180,7 +211,23 @@ mod tests {
         // target darkness is zero.
         runtime.advance(1, &world, Some([0.0, 64.0, 0.0]));
         assert!((runtime.brightness - 0.99).abs() < 1.0e-6);
-        assert_eq!(runtime.extract(&world, Some([0.0; 3]), true), None);
+        assert_eq!(runtime.extract(&world, Some([0.0; 3]), true, true), None);
+    }
+
+    #[test]
+    fn the_vignette_option_hides_the_draw_while_the_tick_state_keeps_smoothing() {
+        let world = logged_in_world();
+        let mut runtime = VignetteRuntime::default();
+        runtime.advance(1, &world, Some([0.0, 64.0, 0.0]));
+        let smoothed = runtime.brightness;
+
+        assert_eq!(runtime.extract(&world, Some([0.0; 3]), false, false), None);
+        assert!(runtime
+            .extract(&world, Some([0.0; 3]), false, true)
+            .is_some());
+
+        runtime.advance(1, &world, Some([0.0, 64.0, 0.0]));
+        assert!(runtime.brightness < smoothed);
     }
 
     #[test]
