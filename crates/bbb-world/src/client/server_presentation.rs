@@ -187,6 +187,7 @@ impl WorldStore {
         self.counters.enabled_features_tracked = self.features.enabled.len();
         self.client_ui.last_code_of_conduct = None;
         self.counters.last_code_of_conduct_len = 0;
+        self.clear_client_chat_display_messages();
     }
 
     /// Ends a connection chain after a non-transfer disconnect.

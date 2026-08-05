@@ -666,6 +666,7 @@ impl WorldStore {
         self.reset_recipes_for_new_listener();
         self.reset_advancements_for_new_listener();
         self.reset_client_toasts_for_new_level();
+        self.clear_hud_for_level_teardown();
         self.clear_level_bound_state();
     }
 

@@ -413,6 +413,13 @@ impl WorldStore {
         self.counters.boss_bars_tracked = self.client_hud.boss_bars.len();
     }
 
+    pub(crate) fn clear_hud_for_level_teardown(&mut self) {
+        self.client_hud.tab_list = TabListState::default();
+        self.client_hud.boss_bars.clear();
+        self.update_boss_bar_count();
+        self.client_hud.title = HudTitleState::default();
+    }
+
     pub(crate) fn set_mount_onboard_overlay(&mut self) {
         // Vanilla `ClientPacketListener.handleSetEntityPassengersPacket` builds
         // `mount.onboard` with `Options.keyShift`. BBB currently has one fixed
@@ -1123,6 +1130,82 @@ mod tests {
         assert_eq!(counters.title_text_packets, 1);
         assert_eq!(counters.subtitle_text_packets, 1);
         assert_eq!(counters.clear_titles_packets, 2);
+    }
+
+    #[test]
+    fn level_teardown_resets_the_tab_list_boss_bars_and_titles_like_gui_on_disconnected() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(7);
+        store.apply_tab_list(ProtocolTabList {
+            header: RichTextComponent::plain("Welcome"),
+            footer: RichTextComponent::plain("Online"),
+        });
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id,
+            operation: ProtocolBossEventOperation::Add {
+                name: plain_component("Ender Dragon"),
+                progress: 0.75,
+                color: ProtocolBossBarColor::Purple,
+                overlay: ProtocolBossBarOverlay::Progress,
+                flags: ProtocolBossEventFlags {
+                    darken_screen: true,
+                    play_music: false,
+                    create_world_fog: true,
+                },
+            },
+        }));
+        store.apply_titles_animation(ProtocolSetTitlesAnimation {
+            fade_in: 5,
+            stay: 40,
+            fade_out: 15,
+        });
+        store.apply_title_text(ProtocolSetTitleText {
+            content: *plain_component("Chapter One"),
+        });
+        store.apply_action_bar_text(ProtocolSetActionBarText {
+            content: *plain_component("Now playing"),
+        });
+        let instance_revision = store.boss_bar(id).unwrap().instance_revision;
+        assert_eq!(store.counters().boss_bars_tracked, 1);
+
+        store.clear_client_level();
+
+        assert_eq!(store.tab_list(), &TabListState::default());
+        assert!(store.boss_bar(id).is_none());
+        assert_eq!(store.counters().boss_bars_tracked, 0);
+        assert_eq!(store.title(), &HudTitleState::default());
+        assert!(store.action_bar().is_some());
+
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id,
+            operation: ProtocolBossEventOperation::Add {
+                name: plain_component("Wither"),
+                progress: 1.0,
+                color: ProtocolBossBarColor::Blue,
+                overlay: ProtocolBossBarOverlay::Progress,
+                flags: ProtocolBossEventFlags {
+                    darken_screen: false,
+                    play_music: false,
+                    create_world_fog: false,
+                },
+            },
+        }));
+        assert!(store.boss_bar(id).unwrap().instance_revision > instance_revision);
+    }
+
+    #[test]
+    fn only_a_new_connection_chain_clears_the_displayed_chat_lines() {
+        let mut store = WorldStore::new();
+        store.push_client_system_chat_message("hello");
+        assert_eq!(store.client_chat().messages.len(), 1);
+
+        store.clear_client_level();
+
+        assert_eq!(store.client_chat().messages.len(), 1);
+
+        store.begin_connection_session(false);
+
+        assert!(store.client_chat().messages.is_empty());
     }
 
     #[test]
