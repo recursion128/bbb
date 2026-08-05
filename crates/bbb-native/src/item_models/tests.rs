@@ -2220,8 +2220,11 @@ fn first_person_player_arms_render_empty_main_hand_with_player_skin_light_and_pa
         id: 1,
         values: vec![EntityDataValue {
             data_id: accessors.pose_data_id,
-            serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-            value: EntityDataValueKind::Pose(bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID),
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+            value: EntityDataValueKind::Pose(
+                bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID
+            ),
         }],
     }));
     assert!(

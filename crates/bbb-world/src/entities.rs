@@ -69,7 +69,6 @@ pub(crate) use components::{
     EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub(crate) use dimensions::vanilla_bounds_for_type;
-pub(crate) use shadows::vanilla_lightmap_brightness;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     hanging_facing, prospective_item_frame_geometry, prospective_painting_geometry,
@@ -550,6 +549,7 @@ pub use schema::{
     VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION, VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE,
     VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID, VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID,
 };
+pub(crate) use shadows::vanilla_lightmap_brightness;
 pub use shadows::{EntityShadowPieceState, EntityShadowRenderSourceState};
 pub use sound_variants::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,

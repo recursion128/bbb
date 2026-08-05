@@ -67,12 +67,10 @@ impl WorldStore {
         // A loaded vanilla chunk always carries light; an absent bbb light
         // section degrades to raw brightness 0 rather than suppressing the
         // overlay entirely.
-        let raw = self
-            .sample_block_light(pos)
-            .map_or(0, |light| light.block.max(light.sky.saturating_sub(sky_darken)));
-        let ambient_light = self
-            .level_info()
-            .map_or(0.0, |level| level.ambient_light());
+        let raw = self.sample_block_light(pos).map_or(0, |light| {
+            light.block.max(light.sky.saturating_sub(sky_darken))
+        });
+        let ambient_light = self.level_info().map_or(0.0, |level| level.ambient_light());
         Some(vanilla_lightmap_brightness(ambient_light, raw))
     }
 }

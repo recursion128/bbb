@@ -140,13 +140,18 @@ pub(crate) fn create_screen_effect_pipeline(
             Some(SCREEN_EFFECT_BLEND),
         );
     }
-    Ok(RenderPipelineBuilder::new(device, "bbb-screen-effect-pipeline")
-        .shader("bbb-screen-effect-shader", SCREEN_EFFECT_SHADER)
-        .layout("bbb-screen-effect-pipeline-layout", &[texture_bind_group_layout])
-        .vertex_buffers(&[screen_effect_vertex_layout()])
-        .color_target(format, Some(SCREEN_EFFECT_BLEND))
-        .cull_mode(None)
-        .build())
+    Ok(
+        RenderPipelineBuilder::new(device, "bbb-screen-effect-pipeline")
+            .shader("bbb-screen-effect-shader", SCREEN_EFFECT_SHADER)
+            .layout(
+                "bbb-screen-effect-pipeline-layout",
+                &[texture_bind_group_layout],
+            )
+            .vertex_buffers(&[screen_effect_vertex_layout()])
+            .color_target(format, Some(SCREEN_EFFECT_BLEND))
+            .cull_mode(None)
+            .build(),
+    )
 }
 
 /// Projects the view-space quads through the vanilla 3D-HUD perspective and
@@ -170,10 +175,7 @@ pub(crate) fn screen_effect_draw_data(
         let clip: Vec<Vec4> = quad
             .positions
             .iter()
-            .map(|position| {
-                projection
-                    * Vec4::new(position[0], position[1], position[2], 1.0)
-            })
+            .map(|position| projection * Vec4::new(position[0], position[1], position[2], 1.0))
             .collect();
         let mut push_corner = |corner: usize| {
             vertices.extend_from_slice(&clip[corner].to_array());
@@ -339,15 +341,27 @@ mod tests {
         assert_eq!(vertices.len(), 4 * 6 * SCREEN_EFFECT_VERTEX_FLOATS);
         assert_eq!(batches.len(), 3);
         assert_eq!(
-            (batches[0].texture, batches[0].first_vertex, batches[0].vertex_count),
+            (
+                batches[0].texture,
+                batches[0].first_vertex,
+                batches[0].vertex_count
+            ),
             (ScreenEffectTexture::TerrainAtlas, 0, 6)
         );
         assert_eq!(
-            (batches[1].texture, batches[1].first_vertex, batches[1].vertex_count),
+            (
+                batches[1].texture,
+                batches[1].first_vertex,
+                batches[1].vertex_count
+            ),
             (ScreenEffectTexture::Underwater, 6, 6)
         );
         assert_eq!(
-            (batches[2].texture, batches[2].first_vertex, batches[2].vertex_count),
+            (
+                batches[2].texture,
+                batches[2].first_vertex,
+                batches[2].vertex_count
+            ),
             (ScreenEffectTexture::TerrainAtlas, 12, 12)
         );
     }

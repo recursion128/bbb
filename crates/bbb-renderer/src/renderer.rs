@@ -3134,10 +3134,7 @@ impl Renderer {
 
     /// Replaces the frame's vanilla `ScreenEffectRenderer` overlays, in the
     /// vanilla draw order (view-blocking block, then underwater, then fire).
-    pub fn set_screen_effect_quads(
-        &mut self,
-        quads: Vec<crate::screen_effects::ScreenEffectQuad>,
-    ) {
+    pub fn set_screen_effect_quads(&mut self, quads: Vec<crate::screen_effects::ScreenEffectQuad>) {
         self.screen_effect_quads = quads;
     }
 

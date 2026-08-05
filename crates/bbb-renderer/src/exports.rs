@@ -235,10 +235,10 @@ pub use crate::renderer::{
     LevelFrameRoute, Renderer, RendererFrameProfile, TerrainChunkMeshOwner,
     TerrainSectionMeshOwner, TerrainSectionRenderState, TerrainTextureFiltering,
 };
-pub use crate::screen_effects::{ScreenEffectQuad, ScreenEffectTexture};
 pub use crate::screen_blur::{
     VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
 };
+pub use crate::screen_effects::{ScreenEffectQuad, ScreenEffectTexture};
 pub use crate::selection::{
     BlockSelectionPhase, BlockSelectionRenderState, DebugLine, SelectionBox, SelectionColoredBox,
     SelectionLine, SelectionOutline, SelectionPoint, SelectionTextLabel,

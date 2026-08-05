@@ -438,7 +438,10 @@ fn spectator_outline_key_glows_every_player_for_a_spectating_local_player() {
         .iter()
         .find(|source| source.entity_id == 38)
         .unwrap();
-    assert_eq!(player.outline_color, 0, "a survival viewer never spectator-glows");
+    assert_eq!(
+        player.outline_color, 0,
+        "a survival viewer never spectator-glows"
+    );
 }
 
 #[test]

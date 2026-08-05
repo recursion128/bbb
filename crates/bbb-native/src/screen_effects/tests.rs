@@ -199,12 +199,18 @@ fn fire_overlay_quads_match_the_vanilla_side_transforms() {
     ];
     for (actual, expected) in quads[0].positions.iter().zip(expected_first) {
         for (a, e) in actual.iter().zip(expected) {
-            assert!((a - e).abs() < 1e-5, "first fire quad {actual:?} vs {expected:?}");
+            assert!(
+                (a - e).abs() < 1e-5,
+                "first fire quad {actual:?} vs {expected:?}"
+            );
         }
     }
     for (actual, expected) in quads[1].positions.iter().zip(expected_second) {
         for (a, e) in actual.iter().zip(expected) {
-            assert!((a - e).abs() < 1e-5, "second fire quad {actual:?} vs {expected:?}");
+            assert!(
+                (a - e).abs() < 1e-5,
+                "second fire quad {actual:?} vs {expected:?}"
+            );
         }
     }
 }
@@ -234,7 +240,12 @@ fn underwater_overlay_pans_uvs_with_head_rotation() {
     assert_eq!(quad.color, [1.0, 1.0, 1.0, 0.1]);
     let uo = -90.0 / 64.0;
     let vo = 45.0 / 64.0;
-    let expected = [[4.0 + uo, 4.0 + vo], [uo, 4.0 + vo], [uo, vo], [4.0 + uo, vo]];
+    let expected = [
+        [4.0 + uo, 4.0 + vo],
+        [uo, 4.0 + vo],
+        [uo, vo],
+        [4.0 + uo, vo],
+    ];
     for (actual, expected) in quad.uvs.iter().zip(expected) {
         for (a, e) in actual.iter().zip(expected) {
             assert!((a - e).abs() < 1e-6, "water uvs {actual:?} vs {expected:?}");

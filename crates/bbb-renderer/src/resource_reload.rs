@@ -1117,10 +1117,7 @@ impl CorePipelineGeneration {
                 &mut renderer.hud_nausea_overlay_pipeline,
             );
             std::mem::swap(&mut gui.vignette, &mut renderer.vignette_pipeline);
-            std::mem::swap(
-                &mut gui.screen_effect,
-                &mut renderer.screen_effect_pipeline,
-            );
+            std::mem::swap(&mut gui.screen_effect, &mut renderer.screen_effect_pipeline);
         }
         if let Some(static_core) = self.static_core.as_mut() {
             std::mem::swap(
