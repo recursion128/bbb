@@ -233,3 +233,10 @@
 # and schedules Vanilla's one-shot recovery reload. These two diagnostics/tests
 # name that rollback path; they do not select a second resource resolver.
 ^crates/bbb-native/src/resource_pack_runtime[.]rs$	recovery reload for the post-failure fallback stack|fallback recovery reload
+# Block-entity projection doc comments naming Vanilla's own codec defaults:
+# `ItemStack.OPTIONAL_CODEC` decodes an unresolvable retained stack to empty, and
+# `GameTestInstance.required` defaults to `true` for a missing holder. Both lines
+# document behavior BBB reproduces from vanilla, not a BBB renderer or
+# canonical-state fallback.
+^crates/bbb-world/src/block_entity_item_displays[.]rs$	matching Vanilla's empty-stack fallback
+^crates/bbb-world/src/test_instance_blocks[.]rs$	fallback both default to
