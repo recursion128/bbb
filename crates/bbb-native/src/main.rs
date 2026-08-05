@@ -69,6 +69,7 @@ mod remote_debug;
 mod resource_pack_runtime;
 mod resource_reload;
 mod runtime;
+mod screen_effects;
 mod screenshot;
 mod server_list;
 mod services_block_list_runtime;

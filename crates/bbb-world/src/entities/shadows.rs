@@ -190,7 +190,7 @@ fn entity_shadow_radius_and_strength(
     (radius, strength)
 }
 
-fn vanilla_lightmap_brightness(ambient_light: f32, brightness: u8) -> f32 {
+pub(crate) fn vanilla_lightmap_brightness(ambient_light: f32, brightness: u8) -> f32 {
     let linear = f32::from(brightness.min(15)) / 15.0;
     let curved = linear / (4.0 - 3.0 * linear);
     ambient_light + (1.0 - ambient_light) * curved

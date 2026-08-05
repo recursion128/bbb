@@ -569,6 +569,9 @@ pub struct Renderer {
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) vignette_pipeline: wgpu::RenderPipeline,
     pub(super) vignette_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) screen_effect_pipeline: wgpu::RenderPipeline,
+    pub(super) screen_effect_quads: Vec<crate::screen_effects::ScreenEffectQuad>,
+    pub(super) screen_effect_underwater: Option<crate::screen_effects::ScreenEffectUnderwaterGpu>,
     pub(super) hud_white_pixel: HudSpriteGpu,
     pub(super) hud_black_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
@@ -2139,6 +2142,12 @@ impl Renderer {
         let vignette_bind_group_layout = create_vignette_bind_group_layout(&device);
         let vignette_pipeline =
             create_vignette_pipeline(&device, format, &vignette_bind_group_layout, None)?;
+        let screen_effect_pipeline = crate::screen_effects::create_screen_effect_pipeline(
+            &device,
+            format,
+            &hud_bind_group_layout,
+            None,
+        )?;
         let map_surface_residency = MapSurfaceResidency::new(
             &device,
             format,
@@ -2379,6 +2388,9 @@ impl Renderer {
             hud_bind_group_layout,
             vignette_pipeline,
             vignette_bind_group_layout,
+            screen_effect_pipeline,
+            screen_effect_quads: Vec::new(),
+            screen_effect_underwater: None,
             hud_white_pixel,
             hud_black_pixel,
             terrain_bind_group_layout,
@@ -3118,6 +3130,35 @@ impl Renderer {
         }
         self.current_post_effect_id = id.map(str::to_owned);
         self.camera_post_effect_active = active;
+    }
+
+    /// Replaces the frame's vanilla `ScreenEffectRenderer` overlays, in the
+    /// vanilla draw order (view-blocking block, then underwater, then fire).
+    pub fn set_screen_effect_quads(
+        &mut self,
+        quads: Vec<crate::screen_effects::ScreenEffectQuad>,
+    ) {
+        self.screen_effect_quads = quads;
+    }
+
+    /// Uploads the selected pack generation's `textures/misc/underwater.png`
+    /// consumed by the first-person underwater screen effect.
+    pub fn upload_screen_effect_underwater_texture(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.screen_effect_underwater =
+            Some(crate::screen_effects::create_screen_effect_underwater_gpu(
+                &self.device,
+                &self.queue,
+                &self.hud_bind_group_layout,
+                width,
+                height,
+                rgba,
+            )?);
+        Ok(())
     }
 
     pub fn current_post_effect_id(&self) -> Option<&str> {

@@ -112,6 +112,7 @@ const OPAQUE_PARTICLE_MAIN_PASS_LABEL: &str = "bbb-native-opaque-particle-main-p
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
+const SCREEN_EFFECT_OVERLAY_PASS_LABEL: &str = "bbb-native-screen-effect-overlay-pass";
 const VIGNETTE_PASS_LABEL: &str = "bbb-native-vignette-pass";
 const WIN_SCREEN_PORTAL_PASS_LABEL: &str = "bbb-native-win-screen-portal-pass";
 const WIN_SCREEN_VIGNETTE_PASS_LABEL: &str = "bbb-native-win-screen-vignette-pass";
@@ -260,6 +261,7 @@ impl Renderer {
         }
         self.debug_always_on_top_text_pass(&mut encoder, &mut stats);
         self.first_person_item_pass(&mut encoder, &mut stats);
+        self.screen_effect_overlay_pass(&mut encoder, &mut stats);
         self.camera_post_effect_pass(&mut encoder, &mut stats)?;
         self.entity_preview_pip_passes(&mut encoder, &mut stats, glint_elapsed_millis);
         self.vignette_pass(&mut encoder, &mut stats);
@@ -3243,6 +3245,74 @@ impl Renderer {
         );
     }
 
+    /// Vanilla `ScreenEffectRenderer.renderScreenEffect`: the view-blocking
+    /// block, underwater and fire overlays drawn right after the first-person
+    /// items under the same plain 3D-HUD perspective, before the camera post
+    /// effect processes the frame.
+    fn screen_effect_overlay_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        stats: &mut FrameDrawStats,
+    ) {
+        if self.screen_effect_quads.is_empty() {
+            return;
+        }
+        let surface_size = self.physical_surface_size();
+        let aspect = surface_size.width.max(1) as f32 / surface_size.height.max(1) as f32;
+        let (vertices, batches) = crate::screen_effects::screen_effect_draw_data(
+            &self.screen_effect_quads,
+            self.camera_hud_fov_degrees,
+            aspect,
+        );
+        if vertices.is_empty() {
+            return;
+        }
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-screen-effect-vertex-buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let presentation_view = self.presentation_color_view();
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(SCREEN_EFFECT_OVERLAY_PASS_LABEL),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: presentation_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.screen_effect_pipeline);
+        stats.pipeline_switches += 1;
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        for batch in &batches {
+            let bind_group = match batch.texture {
+                crate::screen_effects::ScreenEffectTexture::TerrainAtlas => {
+                    &self.hud_terrain_atlas_bind_group
+                }
+                crate::screen_effects::ScreenEffectTexture::Underwater => {
+                    let Some(underwater) = self.screen_effect_underwater.as_ref() else {
+                        continue;
+                    };
+                    &underwater.bind_group
+                }
+            };
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.draw(
+                batch.first_vertex..batch.first_vertex + batch.vertex_count,
+                0..1,
+            );
+            stats.hud_draw_calls += 1;
+        }
+    }
+
     fn camera_post_effect_pass(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -5871,6 +5941,7 @@ mod tests {
         "transparency_combine_pass",
         "debug_always_on_top_text_pass",
         "first_person_item_pass",
+        "screen_effect_overlay_pass",
         "camera_post_effect_pass",
         "entity_preview_pip_passes",
         "vignette_pass",
@@ -6427,9 +6498,14 @@ mod tests {
                 && entity_preview < vignette
                 && vignette < hud
         );
-        assert!(FRAME_STEPS
-            .windows(2)
-            .any(|steps| steps == ["first_person_item_pass", "camera_post_effect_pass"]));
+        // Vanilla `renderLevel` draws the hand, then the screen effects, and the
+        // post effect processes the finished level frame.
+        assert!(FRAME_STEPS.windows(3).any(|steps| steps
+            == [
+                "first_person_item_pass",
+                "screen_effect_overlay_pass",
+                "camera_post_effect_pass"
+            ]));
     }
 
     #[test]

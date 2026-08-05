@@ -145,6 +145,7 @@ pub(crate) struct AdaptedPositionTexColorShaders {
     pub(crate) end_sky: AdaptedShaderPair,
     pub(crate) hud: AdaptedShaderPair,
     pub(crate) vignette: AdaptedShaderPair,
+    pub(crate) screen_effect: AdaptedShaderPair,
 }
 
 pub(crate) struct AdaptedEntitySpecialShaders {
@@ -627,6 +628,12 @@ pub(crate) fn adapt_selected_position_tex_color_shaders(
                 .context("adapt selected vignette vertex shader")?,
             fragment: adapt(PositionTexColorProjection::Vignette, false)
                 .context("adapt selected vignette fragment shader")?,
+        },
+        screen_effect: AdaptedShaderPair {
+            vertex: adapt(PositionTexColorProjection::ScreenEffect, true)
+                .context("adapt selected screen-effect vertex shader")?,
+            fragment: adapt(PositionTexColorProjection::ScreenEffect, false)
+                .context("adapt selected screen-effect fragment shader")?,
         },
     }))
 }
@@ -1305,6 +1312,7 @@ enum PositionTexColorProjection {
     EndSky,
     Hud,
     Vignette,
+    ScreenEffect,
 }
 
 fn adapt_position_tex_color_stage(
@@ -1332,6 +1340,10 @@ fn adapt_position_tex_color_stage(
         (PositionTexColorProjection::Vignette, false) => {
             adapt_vignette_position_tex_color_fragment(&source)?
         }
+        (PositionTexColorProjection::ScreenEffect, true) => {
+            adapt_screen_effect_position_tex_color_vertex(&source)?
+        }
+        (PositionTexColorProjection::ScreenEffect, false) => source,
         (PositionTexColorProjection::EndSky, _) => unreachable!(),
     };
     adapt_combined_samplers(
@@ -1358,6 +1370,25 @@ fn adapt_hud_position_tex_color_vertex(source: &str) -> Result<String> {
         "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
         "gl_Position = vec4(Position, 0.0, 1.0);",
         "selected HUD clip projection",
+    )
+}
+
+/// The screen-effect pass projects the vanilla `ScreenEffectRenderer` quads on
+/// the CPU (identity pose stack under the 3D-HUD perspective), so the selected
+/// `position_tex_color` vertex stage receives ready clip-space positions while
+/// UV and color flow through the pack shader unchanged.
+fn adapt_screen_effect_position_tex_color_vertex(source: &str) -> Result<String> {
+    let source = replace_required(
+        source,
+        "layout(location = 0) in vec3 Position;",
+        "layout(location = 0) in vec4 Position;",
+        "selected screen-effect clip-position input",
+    )?;
+    replace_required(
+        &source,
+        "gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);",
+        "gl_Position = Position;",
+        "selected screen-effect clip projection",
     )
 }
 

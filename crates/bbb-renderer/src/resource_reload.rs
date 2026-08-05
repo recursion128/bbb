@@ -501,6 +501,7 @@ struct GuiCorePipelines {
     hud: wgpu::RenderPipeline,
     hud_nausea_overlay: wgpu::RenderPipeline,
     vignette: wgpu::RenderPipeline,
+    screen_effect: wgpu::RenderPipeline,
 }
 
 struct StaticCorePipelines {
@@ -568,6 +569,12 @@ impl GuiCorePipelines {
                 &renderer.device,
                 renderer.config.format,
                 &renderer.vignette_bind_group_layout,
+                shaders,
+            )?,
+            screen_effect: crate::screen_effects::create_screen_effect_pipeline(
+                &renderer.device,
+                renderer.config.format,
+                &renderer.hud_bind_group_layout,
                 shaders,
             )?,
         })
@@ -1110,6 +1117,10 @@ impl CorePipelineGeneration {
                 &mut renderer.hud_nausea_overlay_pipeline,
             );
             std::mem::swap(&mut gui.vignette, &mut renderer.vignette_pipeline);
+            std::mem::swap(
+                &mut gui.screen_effect,
+                &mut renderer.screen_effect_pipeline,
+            );
         }
         if let Some(static_core) = self.static_core.as_mut() {
             std::mem::swap(
@@ -2201,8 +2212,8 @@ mod tests {
             .0;
         assert_eq!(
             mapping.matches("std::mem::swap(").count(),
-            79,
-            "78 GPU handles plus the publication generation must share one mapping"
+            80,
+            "79 GPU handles plus the publication generation must share one mapping"
         );
         for glint_owner in [
             "entity_model_entity_glint_pipeline",
@@ -2453,8 +2464,8 @@ mod tests {
             ("entity_outline_blit_pipeline", "minecraft:entity_outline post fallback copy"),
         ];
 
-        assert_eq!(all.len(), 88, "renderer pipeline inventory changed");
-        assert_eq!(selected.len(), 78, "selected core generation changed");
+        assert_eq!(all.len(), 89, "renderer pipeline inventory changed");
+        assert_eq!(selected.len(), 79, "selected core generation changed");
         assert_eq!(
             pending.len(),
             0,

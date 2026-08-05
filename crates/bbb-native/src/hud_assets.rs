@@ -103,6 +103,16 @@ pub(crate) fn try_load_hud_textures(
         &vignette.rgba,
         standalone_sampling(&vignette),
     )?;
+    let underwater = gui_texture(
+        roots,
+        "textures/misc/underwater.png",
+        "minecraft:textures/misc/underwater",
+    )?;
+    renderer.upload_screen_effect_underwater_texture(
+        underwater.width,
+        underwater.height,
+        &underwater.rgba,
+    )?;
     let spyglass_scope = load_spyglass_scope_image(roots)?;
     upload_standalone_hud!(
         renderer,

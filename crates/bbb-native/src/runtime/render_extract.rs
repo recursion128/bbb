@@ -2853,6 +2853,9 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_air: Option<HudAirSupply>,
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
     pub(crate) hud_vignette: Option<HudVignette>,
+    /// Vanilla `ScreenEffectRenderer` overlays in draw order (view-blocking
+    /// block, underwater, fire).
+    pub(crate) screen_effect_quads: Vec<bbb_renderer::ScreenEffectQuad>,
     pub(crate) hud_spyglass_scope: Option<HudSpyglassScope>,
     pub(crate) hud_camera_overlays: Vec<HudCameraOverlay>,
     pub(crate) hud_portal_overlay: Option<HudPortalOverlay>,
@@ -3348,6 +3351,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_air(frame.hud_air);
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);
     renderer.set_hud_vignette(frame.hud_vignette);
+    renderer.set_screen_effect_quads(frame.screen_effect_quads);
     renderer.set_hud_spyglass_scope(frame.hud_spyglass_scope);
     renderer.set_hud_camera_overlays(frame.hud_camera_overlays);
     renderer.set_hud_portal_overlay(frame.hud_portal_overlay);

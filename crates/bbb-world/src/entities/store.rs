@@ -3043,6 +3043,19 @@ impl EntityStore {
         Some(entity_data_pose(&metadata.data_values))
     }
 
+    /// Vanilla `Entity.isOnFire`: the synced shared-flags fire bit.
+    pub(crate) fn on_fire(&self, id: i32) -> Option<bool> {
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
+        let shared_flags = self
+            .metadata_byte(
+                id,
+                entity_accessors.shared_flags_data_id,
+                entity_accessors.shared_flags_default,
+            )
+            .unwrap_or(entity_accessors.shared_flags_default);
+        Some(shared_flags & entity_accessors.on_fire_mask != 0)
+    }
+
     pub(crate) fn pick_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;

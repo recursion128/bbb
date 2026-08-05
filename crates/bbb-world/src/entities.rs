@@ -69,6 +69,7 @@ pub(crate) use components::{
     EntityTransform, EntityTransientEvents, LivingDeathWakeTransition,
 };
 pub(crate) use dimensions::vanilla_bounds_for_type;
+pub(crate) use shadows::vanilla_lightmap_brightness;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     hanging_facing, prospective_item_frame_geometry, prospective_painting_geometry,

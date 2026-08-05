@@ -4138,6 +4138,12 @@ pub(crate) fn update_renderer_from_publication(
         .is_first_person()
         .then_some(camera_entity_pose)
         .flatten();
+    let screen_effect_quads = crate::screen_effects::screen_effect_overlay_quads(
+        world,
+        terrain_textures,
+        input.camera_type().is_first_person(),
+        entity_shadow_sky_darken(world),
+    );
     hud_render_runtime.vignette.advance(
         advanced_ticks,
         world,
@@ -4931,6 +4937,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_air,
             hud_vehicle_health,
             hud_vignette,
+            screen_effect_quads,
             hud_spyglass_scope,
             hud_camera_overlays,
             hud_portal_overlay,

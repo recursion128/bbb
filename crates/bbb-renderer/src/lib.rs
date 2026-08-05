@@ -29,6 +29,7 @@ mod render;
 mod renderer;
 mod resource_reload;
 mod screen_blur;
+mod screen_effects;
 mod screenshot;
 mod selection;
 mod sheeted_decal;

@@ -246,6 +246,23 @@ impl WorldStore {
             .is_some_and(|pose| pose == VANILLA_ENTITY_POSE_SLEEPING_ID)
     }
 
+    /// Vanilla `Entity.isSleeping` for any tracked entity: the synced pose
+    /// metadata equals `Pose.SLEEPING`. `ScreenEffectRenderer.renderScreenEffect`
+    /// consumes this for the camera entity to suppress first-person overlays.
+    pub fn entity_is_sleeping(&self, id: i32) -> bool {
+        self.entities
+            .pose(id)
+            .is_some_and(|pose| pose == VANILLA_ENTITY_POSE_SLEEPING_ID)
+    }
+
+    /// Vanilla `Entity.isOnFire` for the local player, consumed by the
+    /// first-person fire screen effect.
+    pub fn local_player_is_on_fire(&self) -> bool {
+        self.local_player_id
+            .and_then(|id| self.entities.on_fire(id))
+            .unwrap_or(false)
+    }
+
     pub fn apply_set_equipment(&mut self, packet: ProtocolSetEquipment) -> bool {
         self.counters.entity_equipment_updates_received += 1;
         self.counters.entity_equipment_slots_received += packet.slots.len();
