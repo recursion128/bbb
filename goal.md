@@ -492,9 +492,10 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
-关闭（后者十条 route 全 `equivalent`，见 archive）；剩余 active 工程是 persistence/profile/
-secure-session 的安全 owner 面，按账本实现并刷新适用 live/lifecycle/platform gate。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
+状态：`closed`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
+关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
+安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻
+`equivalent`，authenticated Services 端到端仍按账本 deferred）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
 关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。

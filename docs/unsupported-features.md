@@ -177,11 +177,18 @@ Matrix routes: `persistence-options-file`, `persistence-options-derived`,
   externally unverified. Reopen when an account owner provisions an ephemeral
   legal credential pair and controlled Vanilla 26.1 online-mode server runner that
   redacts process/log material and can assert that complete sequence.
-- **Secure-chat/social/reporting decisions remain `active`.** The 30 security
-  owners and their online/offline service boundary and live consumer behavior are
-  unproven. Launcher token acquisition remains outside the client. (The 158
-  client-persistence owners this item used to carry are closed; see the
-  `persistence-options-*` and `persistence-server-list` matrix rows.)
+The `security-secure-chat-reporting` route is closed: the 30 security owners
+(`Minecraft` chat abilities 9, `PlayerSocialManager` 12, `ReportingContext` 9)
+each carry a mechanically reachable implementation/test evidence cell and the
+matrix row is `equivalent`. The offline service boundary follows vanilla's
+`UserApiService.OFFLINE_PROPERTIES` semantics — empty flags and ban scopes, so
+profile-flag chat restrictions, the Services block list, and the abuse-report
+sender only activate when startup credentials are supplied and stay inert
+offline exactly like vanilla's auth-failure fallback. The census fixed one
+divergence in place: matched-name system-chat suppression now resolves through
+the social discovered-names map (vanilla `guessChatUUID`), not the live tab
+list. Launcher token acquisition remains outside the client, and the live
+authenticated end-to-end sequence stays under the `deferred` bullet above.
 
 ## Runtime performance parity and stable frame tails
 
