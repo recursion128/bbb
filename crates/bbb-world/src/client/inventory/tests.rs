@@ -11184,6 +11184,82 @@ fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
     }
 }
 
+#[test]
+fn camera_overlay_textures_follow_equipped_items_that_declare_their_own_slot() {
+    let mut store = WorldStore::new();
+    assert!(store.local_player_camera_overlay_textures().is_empty());
+
+    let mut pumpkin = item_stack(bbb_protocol::item_types::VANILLA_ITEM_CARVED_PUMPKIN_ID, 1);
+    pumpkin.component_patch.equippable = Some(equippable_with_camera_overlay(
+        bbb_protocol::equipment_slots::vanilla_equipment_slot_for_serialized_name("head")
+            .unwrap()
+            .id,
+        Some("minecraft:misc/pumpkinblur"),
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+        item: pumpkin.clone(),
+    });
+    assert_eq!(
+        store.local_player_camera_overlay_textures(),
+        vec!["minecraft:textures/misc/pumpkinblur.png".to_string()]
+    );
+
+    // `Equippable.slot()` must match the slot the item actually occupies.
+    let mut wrong_slot = pumpkin.clone();
+    wrong_slot.component_patch.equippable = Some(equippable_with_camera_overlay(
+        bbb_protocol::equipment_slots::vanilla_equipment_slot_for_serialized_name("feet")
+            .unwrap()
+            .id,
+        Some("minecraft:misc/pumpkinblur"),
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+        item: wrong_slot,
+    });
+    assert!(store.local_player_camera_overlay_textures().is_empty());
+
+    let mut without_overlay = pumpkin;
+    without_overlay.component_patch.equippable = Some(equippable_with_camera_overlay(
+        bbb_protocol::equipment_slots::vanilla_equipment_slot_for_serialized_name("head")
+            .unwrap()
+            .id,
+        None,
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+        item: without_overlay,
+    });
+    assert!(store.local_player_camera_overlay_textures().is_empty());
+}
+
+fn equippable_with_camera_overlay(
+    slot_id: i32,
+    camera_overlay: Option<&str>,
+) -> bbb_protocol::packets::EquippableSummary {
+    bbb_protocol::packets::EquippableSummary {
+        slot_id,
+        equip_sound: bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("minecraft:item.armor.equip_generic".to_string()),
+            fixed_range_bits: None,
+        },
+        asset_id: None,
+        camera_overlay: camera_overlay.map(str::to_string),
+        allowed_entities: None,
+        dispensable: true,
+        swappable: true,
+        damage_on_hurt: true,
+        equip_on_interact: false,
+        can_be_sheared: false,
+        shearing_sound: bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("minecraft:item.shears.snip".to_string()),
+            fixed_range_bits: None,
+        },
+    }
+}
+
 fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
     ProtocolItemStackSummary {
         item_id: Some(item_id),

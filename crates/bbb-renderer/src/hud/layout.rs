@@ -430,6 +430,16 @@ pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize)
 /// `hud/hotbar_offhand_left` sprite sits at `screenCenter - 91 - 29`, the right
 /// one at `screenCenter + 91`, both one pixel above the hotbar strip at
 /// `guiHeight - 23` and both 29x24.
+/// `Gui.extractTextureOverlay` blits the whole GUI surface.
+pub(super) fn full_screen_hud_rect(surface_size: PhysicalSize<u32>) -> HudRect {
+    HudRect {
+        x: 0.0,
+        y: 0.0,
+        width: surface_size.width.max(1),
+        height: surface_size.height.max(1),
+    }
+}
+
 pub(super) fn hotbar_offhand_hud_rect(
     surface_size: PhysicalSize<u32>,
     on_left: bool,

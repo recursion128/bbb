@@ -1668,15 +1668,25 @@ fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
         return 0.0;
     }
 
-    let ticks_frozen = world
-        .local_player_id
-        .and_then(|id| world.entities.ticks_frozen(id))
-        .unwrap_or(0)
-        .max(0);
-    let frozen_percent = (f64::from(ticks_frozen.min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE))
-        / f64::from(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE))
-    .clamp(0.0, 1.0);
-    POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE * frozen_percent
+    POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE
+        * f64::from(world.local_player_percent_frozen())
+}
+
+impl WorldStore {
+    /// Vanilla `Entity.getTicksFrozen` for the local player.
+    pub fn local_player_ticks_frozen(&self) -> i32 {
+        self.local_player_id
+            .and_then(|id| self.entities.ticks_frozen(id))
+            .unwrap_or(0)
+            .max(0)
+    }
+
+    /// Vanilla `Entity.getPercentFrozen`:
+    /// `min(ticksFrozen, getTicksRequiredToFreeze()) / getTicksRequiredToFreeze()`.
+    pub fn local_player_percent_frozen(&self) -> f32 {
+        (self.local_player_ticks_frozen() as f32 / LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE as f32)
+            .clamp(0.0, 1.0)
+    }
 }
 
 fn local_player_inside_powder_snow(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {

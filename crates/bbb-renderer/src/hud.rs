@@ -83,8 +83,8 @@ pub(super) use self::gpu::{
 use self::layout::hud_rect_bounds;
 use self::layout::{
     absolute_hud_rect, air_bubble_hud_rect, armor_hud_rect, boss_bar_hud_rect, centered_hud_rect,
-    experience_bar_hud_rect, food_hud_rect, gui_item_slot_placement, hotbar_hud_rect,
-    hotbar_item_hud_rect, hotbar_offhand_hud_rect, hotbar_offhand_item_hud_rect,
+    experience_bar_hud_rect, food_hud_rect, full_screen_hud_rect, gui_item_slot_placement,
+    hotbar_hud_rect, hotbar_item_hud_rect, hotbar_offhand_hud_rect, hotbar_offhand_item_hud_rect,
     hotbar_selection_hud_rect, hud_air_bubble_icons, hud_air_bubble_pop as air_bubble_pop,
     hud_air_bubble_wobble_offsets, hud_air_bubbles_visible, hud_armor_fill, hud_boss_bar_fill_uv,
     hud_boss_bar_name_origin, hud_boss_bar_progress_width, hud_boss_bar_rows,
@@ -1357,6 +1357,15 @@ pub enum HudHotbarAttackIndicator {
         strength_scale: f32,
         main_arm_left: bool,
     },
+}
+
+/// One `Gui.extractTextureOverlay` call: a full-screen blit of a standalone
+/// texture at `ARGB.white(alpha)`. Vanilla reaches it for an equipped item's
+/// `Equippable.cameraOverlay` and for the powder-snow freeze outline.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudCameraOverlay {
+    pub texture_id: String,
+    pub alpha: f32,
 }
 
 /// Vanilla `Gui.extractItemHotbar`'s offhand slot: drawn only when the offhand
@@ -6504,6 +6513,34 @@ impl Renderer {
     standalone_hud_texture_upload!(
         upload_hud_spyglass_scope_with_sampling => hud_spyglass_scope_texture
     );
+
+    pub fn upload_hud_camera_overlay_texture_with_sampling(
+        &mut self,
+        texture_id: &str,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sampling: StandaloneTextureSampling,
+    ) -> Result<()> {
+        let sprite = self.upload_standalone_hud_sprite(width, height, rgba, sampling)?;
+        self.hud_camera_overlay_textures
+            .insert(texture_id.to_string(), sprite);
+        Ok(())
+    }
+
+    /// Replaces this frame's ordered `Gui.extractTextureOverlay` calls. An
+    /// overlay whose texture is not resident is dropped rather than drawn with
+    /// a stand-in.
+    pub fn set_hud_camera_overlays(&mut self, overlays: Vec<HudCameraOverlay>) {
+        self.hud_camera_overlays = overlays
+            .into_iter()
+            .filter(|overlay| overlay.alpha.is_finite() && overlay.alpha > 0.0)
+            .map(|overlay| HudCameraOverlay {
+                texture_id: overlay.texture_id,
+                alpha: overlay.alpha.min(1.0),
+            })
+            .collect();
+    }
     standalone_hud_texture_upload!(upload_hud_win_logo_with_sampling => hud_win_logo);
     standalone_hud_texture_upload!(
         upload_hud_win_easter_egg_logo_with_sampling => hud_win_easter_egg_logo
@@ -7009,6 +7046,24 @@ impl Renderer {
                     &self.hud_white_pixel,
                     surface_size,
                     scope,
+                );
+            }
+            for overlay in &self.hud_camera_overlays {
+                let Some(texture) = self.hud_camera_overlay_textures.get(&overlay.texture_id)
+                else {
+                    continue;
+                };
+                push_hud_draw_with_uv_and_tint(
+                    &mut vertices,
+                    &mut commands,
+                    texture,
+                    surface_size,
+                    full_screen_hud_rect(surface_size),
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    [1.0, 1.0, 1.0, overlay.alpha],
                 );
             }
         }
@@ -22996,6 +23051,69 @@ mod tests {
         icons[0] = Some(icon(f32::INFINITY));
         renderer.set_hud_hotbar_item_icons(icons);
         assert_eq!(renderer.hud_hotbar_item_icons[0].as_ref().unwrap().pop, 0.0);
+    }
+
+    #[test]
+    fn camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_camera_overlay_texture_with_sampling(
+                "minecraft:textures/misc/pumpkinblur.png",
+                2,
+                2,
+                &[255, 255, 255, 255].repeat(4),
+                StandaloneTextureSampling::new(false, false),
+            )
+            .expect("pumpkin overlay");
+
+        renderer.set_hud_camera_overlays(vec![
+            HudCameraOverlay {
+                texture_id: "minecraft:textures/misc/pumpkinblur.png".to_string(),
+                alpha: 1.0,
+            },
+            HudCameraOverlay {
+                texture_id: "minecraft:textures/misc/powder_snow_outline.png".to_string(),
+                alpha: 0.5,
+            },
+        ]);
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(draws.commands.len(), 1);
+        assert_eq!(draws.vertices.len(), 6);
+        let corners = draws
+            .vertices
+            .iter()
+            .map(|vertex| vertex.position)
+            .collect::<Vec<_>>();
+        assert!(corners.contains(&[-1.0, 1.0]));
+        assert!(corners.contains(&[1.0, -1.0]));
+        assert!(draws.vertices.iter().all(|vertex| vertex.tint[3] == 1.0));
+        drop(draws);
+
+        renderer.set_hud_camera_overlays(vec![HudCameraOverlay {
+            texture_id: "minecraft:textures/misc/pumpkinblur.png".to_string(),
+            alpha: 0.25,
+        }]);
+        assert!(renderer
+            .collect_hud_draws()
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint[3] == 0.25));
+
+        // A non-positive or non-finite alpha never reaches the draw list, and
+        // `hideGui` suppresses every camera overlay.
+        renderer.set_hud_camera_overlays(vec![HudCameraOverlay {
+            texture_id: "minecraft:textures/misc/pumpkinblur.png".to_string(),
+            alpha: 0.0,
+        }]);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 0);
+        renderer.set_hud_camera_overlays(vec![HudCameraOverlay {
+            texture_id: "minecraft:textures/misc/pumpkinblur.png".to_string(),
+            alpha: 1.0,
+        }]);
+        renderer.set_hide_gui(true);
+        assert_eq!(renderer.collect_hud_draws().commands.len(), 0);
     }
 
     #[test]

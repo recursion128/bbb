@@ -1397,6 +1397,7 @@ macro_rules! take_hud_resource_owners {
         $take_owner!(hud_win_credits_vignette);
         $take_owner!(hud_demo_popup_background);
         $take_owner!(hud_spyglass_scope_texture);
+        $take_owner!(hud_camera_overlay_textures);
         $take_owner!(hud_crosshair);
         $take_owner!(hud_crosshair_attack_indicator_full);
         $take_owner!(hud_crosshair_attack_indicator_background);

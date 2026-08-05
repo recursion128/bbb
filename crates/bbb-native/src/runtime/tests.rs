@@ -28987,3 +28987,94 @@ fn offhand_test_login() -> PlayLogin {
         enforces_secure_chat: false,
     }
 }
+
+#[test]
+fn camera_overlays_split_first_person_equippables_from_the_freeze_outline() {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 7,
+        ..offhand_test_login()
+    });
+    world.apply_add_entity(bbb_protocol::packets::AddEntity {
+        id: 7,
+        uuid: uuid::Uuid::from_u128(7),
+        entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+        position: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        delta_movement: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(hud_camera_overlays(&world, false, true, false).is_empty());
+
+    let mut pumpkin = item_stack(bbb_protocol::item_types::VANILLA_ITEM_CARVED_PUMPKIN_ID, 1);
+    pumpkin.component_patch.equippable = Some(bbb_protocol::packets::EquippableSummary {
+        slot_id: bbb_protocol::equipment_slots::vanilla_equipment_slot_for_serialized_name("head")
+            .unwrap()
+            .id,
+        equip_sound: bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("minecraft:item.armor.equip_generic".to_string()),
+            fixed_range_bits: None,
+        },
+        asset_id: None,
+        camera_overlay: Some("minecraft:misc/pumpkinblur".to_string()),
+        allowed_entities: None,
+        dispensable: true,
+        swappable: true,
+        damage_on_hurt: true,
+        equip_on_interact: false,
+        can_be_sheared: false,
+        shearing_sound: bbb_protocol::packets::SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("minecraft:item.shears.snip".to_string()),
+            fixed_range_bits: None,
+        },
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+        item: pumpkin,
+    });
+
+    let overlays = hud_camera_overlays(&world, false, true, false);
+    assert_eq!(overlays.len(), 1);
+    assert_eq!(
+        overlays[0].texture_id,
+        "minecraft:textures/misc/pumpkinblur.png"
+    );
+    assert_eq!(overlays[0].alpha, 1.0);
+    assert!(hud_camera_overlays(&world, false, false, false).is_empty());
+    assert!(hud_camera_overlays(&world, false, true, true).is_empty());
+    assert!(hud_camera_overlays(&world, true, true, false).is_empty());
+
+    let accessors = bbb_world::vanilla_entity_metadata_entity_accessors().unwrap();
+    assert!(
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 7,
+            values: vec![bbb_protocol::packets::EntityDataValue {
+                data_id: accessors.ticks_frozen_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                value: bbb_protocol::packets::EntityDataValueKind::Int(70),
+            }],
+        })
+    );
+    let frozen = hud_camera_overlays(&world, false, false, false);
+    assert_eq!(frozen.len(), 1);
+    assert_eq!(
+        frozen[0].texture_id,
+        "minecraft:textures/misc/powder_snow_outline.png"
+    );
+    assert_eq!(frozen[0].alpha, 0.5);
+    assert_eq!(hud_camera_overlays(&world, false, true, false).len(), 2);
+    assert!(hud_camera_overlays(&world, true, true, false).is_empty());
+}

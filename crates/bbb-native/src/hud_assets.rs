@@ -19,6 +19,13 @@ use bbb_item_model::font::{
 use crate::sign_scene::sign_model_wood;
 
 const SPYGLASS_SCOPE_TEXTURE_PATH: &str = "textures/misc/spyglass_scope.png";
+/// The `Gui.extractTextureOverlay` textures a vanilla server can reach: the
+/// powder-snow freeze outline and the only vanilla item `Equippable`
+/// `cameraOverlay` (`carved_pumpkin`).
+const CAMERA_OVERLAY_TEXTURE_IDS: &[&str] = &[
+    crate::runtime::VANILLA_POWDER_SNOW_OUTLINE_TEXTURE,
+    "minecraft:textures/misc/pumpkinblur.png",
+];
 
 macro_rules! upload_standalone_hud {
     ($renderer:expr, $method:ident, $image:expr) => {
@@ -102,6 +109,17 @@ pub(crate) fn try_load_hud_textures(
         upload_hud_spyglass_scope_with_sampling,
         &spyglass_scope
     )?;
+    for texture_id in CAMERA_OVERLAY_TEXTURE_IDS {
+        let path = texture_id.strip_prefix("minecraft:").unwrap_or(texture_id);
+        let image = gui_texture(roots, path, texture_id)?;
+        renderer.upload_hud_camera_overlay_texture_with_sampling(
+            texture_id,
+            image.width,
+            image.height,
+            &image.rgba,
+            standalone_sampling(&image),
+        )?;
+    }
     let win_logo = gui_texture(
         roots,
         "textures/gui/title/minecraft.png",

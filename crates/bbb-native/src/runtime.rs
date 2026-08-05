@@ -42,40 +42,40 @@ use bbb_renderer::{
     EntityModelInstance, EntityModelKind, FogEnvironment, GuiItemLightingEntry,
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementLineTexture,
     HudAdvancementTabSprite, HudAdvancementWidgetFrameSprite, HudAirSupply, HudBlockItemModel,
-    HudChatContext, HudChatMessage, HudChatRestrictionsScreen, HudChatTag, HudChatTagKind,
-    HudCommandBlockEditorKind, HudCommandBlockEditorScreen, HudCommandSuggestionEntry,
-    HudCommandSuggestionTooltip, HudCommandSuggestions, HudCommandSuggestionsLayout,
-    HudComponentTextRun, HudContextualBar, HudCrosshairAttackIndicator, HudDebugCrosshair,
-    HudDebugFrameTimeChart, HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot,
-    HudDebugNetworkCharts, HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart,
-    HudDebugTpsChart, HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen,
-    HudEntityPreview, HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer,
-    HudEntityPreviewItemSlot, HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect,
-    HudGameEventButton, HudGameEventScreen, HudGameModeSwitcherMode, HudHeartKind,
-    HudHotbarAttackIndicator, HudHotbarMode, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryFillLayer, HudInventoryFillStage,
-    HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor, HudInventoryMapPreview,
-    HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemFoil, HudItemIcon,
-    HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField, HudJumpBar, HudMobEffect,
-    HudOffhandSlot, HudPauseScreen, HudPauseScreenTooltip, HudPlayerHealth, HudPlayerList,
-    HudPlayerReportingFocus, HudResidentItemLayer, HudScoreboardSidebar, HudSignEditorKind,
-    HudSignEditorPreedit, HudSignEditorScreen, HudSocialInteractionsFocus,
-    HudSocialInteractionsPage, HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen,
-    HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen, HudStructureBlockEditorScreen,
-    HudStructureBlockEditorTextField, HudStructureBlockMode, HudStyledTextRun, HudSystemToast,
-    HudTestBlockEditorScreen, HudTestBlockEditorTextField, HudTestInstanceBlockEditorScreen,
-    HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect, HudVehicleHealth, HudWinScreen,
-    HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource, ItemModelAtlasKind,
-    ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, ParticleBlockFluidSurfaceSample, ParticleEntityTargetContext,
-    ParticleFluidKind, ParticleLocalPlayerScopeContext, ParticlePlayerMotionContext,
-    ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand, Renderer, SelectionColoredBox,
-    SelectionLine, SelectionOutline, SignModelAttachment, SignModelWood, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE,
-    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudCameraOverlay, HudChatContext, HudChatMessage, HudChatRestrictionsScreen, HudChatTag,
+    HudChatTagKind, HudCommandBlockEditorKind, HudCommandBlockEditorScreen,
+    HudCommandSuggestionEntry, HudCommandSuggestionTooltip, HudCommandSuggestions,
+    HudCommandSuggestionsLayout, HudComponentTextRun, HudContextualBar,
+    HudCrosshairAttackIndicator, HudDebugCrosshair, HudDebugFrameTimeChart,
+    HudDebugGameModeSwitcher, HudDebugGameModeSwitcherSlot, HudDebugNetworkCharts,
+    HudDebugOptionsTooltip, HudDebugOverlay, HudDebugProfilerChart, HudDebugTpsChart,
+    HudDebugTpsSample, HudDemoLinkConfirmationScreen, HudDemoPopupScreen, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
+    HudEntityPreviewRect, HudFontGlyphBook, HudFoodEffect, HudGameEventButton, HudGameEventScreen,
+    HudGameModeSwitcherMode, HudHeartKind, HudHotbarAttackIndicator, HudHotbarMode, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryGhostItem, HudInventoryItem, HudInventoryItemScissor,
+    HudInventoryMapPreview, HudInventoryScreen, HudInventoryScrollingText, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemFoil, HudItemIcon, HudJigsawBlockEditorScreen, HudJigsawBlockEditorTextField,
+    HudJumpBar, HudMobEffect, HudOffhandSlot, HudPauseScreen, HudPauseScreenTooltip,
+    HudPlayerHealth, HudPlayerList, HudPlayerReportingFocus, HudResidentItemLayer,
+    HudScoreboardSidebar, HudSignEditorKind, HudSignEditorPreedit, HudSignEditorScreen,
+    HudSocialInteractionsFocus, HudSocialInteractionsPage, HudSocialInteractionsPlayerAction,
+    HudSocialInteractionsScreen, HudSpyglassScope, HudStatsItemRow, HudStatsRow, HudStatsScreen,
+    HudStructureBlockEditorScreen, HudStructureBlockEditorTextField, HudStructureBlockMode,
+    HudStyledTextRun, HudSystemToast, HudTestBlockEditorScreen, HudTestBlockEditorTextField,
+    HudTestInstanceBlockEditorScreen, HudTestInstanceBlockEditorTextField, HudTextStyle, HudUvRect,
+    HudVehicleHealth, HudWinScreen, HudWinScreenLine, ItemModelAssetIdentity, ItemModelAssetSource,
+    ItemModelAtlasKind, ItemModelGeometryClass, ItemModelQuad, LevelFrameRoute, LevelLighting,
+    LightmapEnvironment, LightningBoltRenderState, ParticleBlockFluidSurfaceSample,
+    ParticleEntityTargetContext, ParticleFluidKind, ParticleLocalPlayerScopeContext,
+    ParticlePlayerMotionContext, ParticleSoundEvent, ParticleSpawnBatch, ParticleSpawnCommand,
+    Renderer, SelectionColoredBox, SelectionLine, SelectionOutline, SignModelAttachment,
+    SignModelWood, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS,
+    ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -650,6 +650,9 @@ const DEBUG_WATER_SCAN_RADIUS: i32 = 10;
 const DEBUG_WATER_BOX_INSET: f32 = 0.01;
 const DEBUG_WATER_BOX_COLOR: [u8; 4] = [0, 255, 0, 38];
 const VANILLA_SPYGLASS_SCOPE_TARGET_SCALE: f32 = 1.125;
+/// Vanilla `Gui.POWDER_SNOW_OUTLINE_LOCATION`.
+pub(crate) const VANILLA_POWDER_SNOW_OUTLINE_TEXTURE: &str =
+    "minecraft:textures/misc/powder_snow_outline.png";
 const VANILLA_SPYGLASS_SCOPE_RESET_SCALE: f32 = 0.5;
 
 fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usize) {
@@ -4122,6 +4125,12 @@ pub(crate) fn update_renderer_from_publication(
         input.camera_type().is_first_person(),
         world.local_player_is_scoping(),
     );
+    let hud_camera_overlays = hud_camera_overlays(
+        world,
+        input.hide_gui(),
+        input.camera_type().is_first_person(),
+        hud_spyglass_scope.is_some(),
+    );
     let camera_hurt_effect =
         camera_hurt_effect_from_world(world, entity_partial_tick, damage_tilt_strength);
     let camera_view_bob_effect =
@@ -4874,6 +4883,7 @@ pub(crate) fn update_renderer_from_publication(
             hud_vehicle_health,
             hud_vignette,
             hud_spyglass_scope,
+            hud_camera_overlays,
             hud_contextual_bar,
             hud_experience_level,
             hud_hotbar_mode,
@@ -5790,6 +5800,40 @@ fn hud_block_geometry_layers(
 /// and slot are drawn only for a non-empty offhand stack, on the side opposite
 /// `Player.getMainArm()`, and the slot seeds continue after the nine hotbar
 /// slots.
+/// Vanilla `Gui.extractCameraOverlays` (Gui.java:258-276): the equippable
+/// camera overlays are first-person only and are replaced by the spyglass scope
+/// while scoping, while the powder-snow outline follows `getTicksFrozen()` in
+/// every camera type.
+fn hud_camera_overlays(
+    world: &WorldStore,
+    hide_gui: bool,
+    first_person: bool,
+    scoping: bool,
+) -> Vec<HudCameraOverlay> {
+    if hide_gui {
+        return Vec::new();
+    }
+    let mut overlays = Vec::new();
+    if first_person && !scoping {
+        overlays.extend(
+            world
+                .local_player_camera_overlay_textures()
+                .into_iter()
+                .map(|texture_id| HudCameraOverlay {
+                    texture_id,
+                    alpha: 1.0,
+                }),
+        );
+    }
+    if world.local_player_ticks_frozen() > 0 {
+        overlays.push(HudCameraOverlay {
+            texture_id: VANILLA_POWDER_SNOW_OUTLINE_TEXTURE.to_string(),
+            alpha: world.local_player_percent_frozen(),
+        });
+    }
+    overlays
+}
+
 fn hud_offhand_slot_side(world: &WorldStore) -> Option<bool> {
     (world.inventory().offhand_item_state().item.count > 0)
         .then(|| !world.local_player_main_arm_left().unwrap_or(false))

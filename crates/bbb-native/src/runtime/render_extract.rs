@@ -2848,6 +2848,7 @@ pub(crate) struct RendererFrame<'a> {
     pub(crate) hud_vehicle_health: Option<HudVehicleHealth>,
     pub(crate) hud_vignette: Option<HudVignette>,
     pub(crate) hud_spyglass_scope: Option<HudSpyglassScope>,
+    pub(crate) hud_camera_overlays: Vec<HudCameraOverlay>,
     pub(crate) hud_contextual_bar: HudContextualBar,
     pub(crate) hud_experience_level: Option<i32>,
     pub(crate) hud_hotbar_mode: HudHotbarMode,
@@ -3339,6 +3340,7 @@ pub(crate) fn apply_renderer_frame(
     renderer.set_hud_vehicle_health(frame.hud_vehicle_health);
     renderer.set_hud_vignette(frame.hud_vignette);
     renderer.set_hud_spyglass_scope(frame.hud_spyglass_scope);
+    renderer.set_hud_camera_overlays(frame.hud_camera_overlays);
     renderer.set_hud_contextual_bar(frame.hud_contextual_bar);
     renderer.set_hud_experience_level(frame.hud_experience_level);
     renderer.set_hud_hotbar_mode(frame.hud_hotbar_mode);

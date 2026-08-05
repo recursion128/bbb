@@ -3664,6 +3664,29 @@ impl WorldStore {
             .local_player_equipment_item(inventory_ctx!(self), equipment_slot)
     }
 
+    /// Vanilla `Gui.extractCameraOverlays` (Gui.java:263-270): every equipment
+    /// slot whose item carries an `Equippable` for that same slot with a
+    /// `cameraOverlay`, in `EquipmentSlot.values()` order. The identifiers are
+    /// resolved to their `textures/<path>.png` locations the way vanilla's
+    /// `withPath` call does.
+    pub fn local_player_camera_overlay_textures(&self) -> Vec<String> {
+        VANILLA_EQUIPMENT_SLOTS
+            .iter()
+            .filter_map(|entry| {
+                let item = self.local_player_equipment_item(entry.slot)?;
+                let equippable = item.component_patch.equippable.as_ref()?;
+                if equippable.slot_id != entry.id {
+                    return None;
+                }
+                let overlay = equippable.camera_overlay.as_ref()?;
+                let (namespace, path) = overlay
+                    .split_once(':')
+                    .unwrap_or(("minecraft", overlay.as_str()));
+                Some(format!("{namespace}:textures/{path}.png"))
+            })
+            .collect()
+    }
+
     pub(crate) fn swap_local_item_with_equipment_slot(
         &mut self,
         hand: InteractionHand,
