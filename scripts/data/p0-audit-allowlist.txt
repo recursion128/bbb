@@ -240,3 +240,9 @@
 # canonical-state fallback.
 ^crates/bbb-world/src/block_entity_item_displays[.]rs$	matching Vanilla's empty-stack fallback
 ^crates/bbb-world/src/test_instance_blocks[.]rs$	fallback both default to
+# Window-surface doc comments naming Vanilla's own preferred-video-mode
+# parse/match/fallback chain (Monitor.getPreferredVidMode) and the borderless
+# equivalent of GLFW's current-mode fallback on winit/Wayland. Both document
+# behavior BBB reproduces from vanilla, not a renderer or canonical-state
+# fallback path.
+^crates/bbb-native/src/window_surface[.]rs$	parse/match/fallback|GLFW's current-mode fallback
