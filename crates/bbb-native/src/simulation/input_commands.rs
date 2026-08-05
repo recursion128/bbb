@@ -394,6 +394,13 @@ impl SimulationInputRuntime {
             SimulationCommand::CursorCaptureResult { captured } => {
                 self.cursor_captured = captured;
             }
+            SimulationCommand::ScreenshotSaved { name, error } => {
+                crate::input::ClientInputState::push_screenshot_saved_message(
+                    Some(context.world),
+                    &name,
+                    error.as_deref(),
+                );
+            }
             SimulationCommand::ClipboardWriteResult { success } => {
                 if !success {
                     tracing::warn!("platform clipboard write failed");
@@ -1172,6 +1179,9 @@ impl SimulationInputRuntime {
                 context.net_commands,
                 &self.client_information,
             );
+        }
+        for _ in 0..context.input.take_screenshot_requests() {
+            context.platform.submit(PlatformEffect::GrabScreenshot);
         }
         for fullscreen in context.input.take_fullscreen_requests() {
             context

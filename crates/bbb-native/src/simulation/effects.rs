@@ -63,6 +63,9 @@ pub(crate) enum PlatformEffect {
     },
     /// `KeyboardHandler`'s Ctrl+B narrator hotkey, carrying the cycled status
     /// and `Screen.updateNarratorStatus`'s re-enable narration schedule.
+    /// `KeyboardHandler`'s `keyScreenshot` branch, which reaches
+    /// `Screenshot.grab` for the main render target.
+    GrabScreenshot,
     /// `KeyboardHandler`'s `keyFullscreen` branch, which flips
     /// `Window.toggleFullScreen` before saving the option.
     SetFullscreen(bool),

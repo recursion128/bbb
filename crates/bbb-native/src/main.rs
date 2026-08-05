@@ -68,6 +68,7 @@ mod remote_debug;
 mod resource_pack_runtime;
 mod resource_reload;
 mod runtime;
+mod screenshot;
 mod server_list;
 mod services_block_list_runtime;
 mod shulker_box_scene;
@@ -251,7 +252,8 @@ struct NativeRenderEffectSink<'a> {
     chat_screen_narration: &'a mut ScreenNarrationRuntime,
     game_event_screen_narration: &'a mut ScreenNarrationRuntime,
     narrator: Option<&'a mut dyn narrator_runtime::SystemNarrator>,
-    control_screenshots: &'a mut std::collections::VecDeque<std::path::PathBuf>,
+    control_screenshots: &'a mut std::collections::VecDeque<PendingScreenshot>,
+    game_dir: &'a std::path::Path,
     client_options: Option<&'a mut ClientOptionsFile>,
     exit_requested: &'a mut bool,
 }
@@ -311,7 +313,33 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                     tracing::warn!(%error, "failed to save options.txt");
                 }
             }
-            PlatformEffect::Screenshot(path) => self.control_screenshots.push_back(path),
+            PlatformEffect::Screenshot(path) => {
+                self.control_screenshots.push_back(PendingScreenshot {
+                    path,
+                    announce: false,
+                });
+            }
+            PlatformEffect::GrabScreenshot => {
+                let directory = self.game_dir.join(screenshot::SCREENSHOT_DIR);
+                if let Err(err) = std::fs::create_dir_all(&directory) {
+                    tracing::warn!(?err, path = %directory.display(), "couldn't create screenshot directory");
+                    self.mailbox.enqueue_or_report(
+                        SimulationCommand::ScreenshotSaved {
+                            name: String::new(),
+                            error: Some(err.to_string()),
+                        },
+                        "screenshot directory failure",
+                    );
+                    return;
+                }
+                let stamp = chrono::Local::now().format("%Y-%m-%d_%H.%M.%S").to_string();
+                let path =
+                    screenshot::next_screenshot_file(&directory, &stamp, |path| path.exists());
+                self.control_screenshots.push_back(PendingScreenshot {
+                    path,
+                    announce: true,
+                });
+            }
             PlatformEffect::ReloadTerrain => self.terrain_upload.request_reload_all_chunks(),
             PlatformEffect::DumpDynamicTextures { requests } => {
                 let path = std::path::Path::new(input::DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH);
@@ -516,6 +544,11 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
             PlatformEffect::Exit => *self.exit_requested = true,
         }
     }
+}
+
+struct PendingScreenshot {
+    path: std::path::PathBuf,
+    announce: bool,
 }
 
 fn main() {
@@ -1183,6 +1216,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                         control_screenshots: &mut pending_control_screenshots,
+                        game_dir: args.game_dir.as_path(),
                         client_options: client_options.as_mut(),
                         exit_requested: &mut platform_exit_requested,
                     };
@@ -1568,12 +1602,14 @@ fn run_client(args: startup::Args) -> Result<()> {
                     let cli_screenshot_path = screenshot
                         .as_deref()
                         .filter(|_| terrain_ready_for_screenshot);
-                    let control_screenshot_path = if cli_screenshot_path.is_none() {
+                    let control_screenshot = if cli_screenshot_path.is_none() {
                         pending_control_screenshots.pop_front()
                     } else {
                         None
                     };
-                    let render_path = cli_screenshot_path.or(control_screenshot_path.as_deref());
+                    let render_path = cli_screenshot_path.or(control_screenshot
+                        .as_ref()
+                        .map(|pending| pending.path.as_path()));
                     let wrote_cli_screenshot = cli_screenshot_path.is_some();
 
                     let profiler_render_started_at = Instant::now();
@@ -1592,6 +1628,22 @@ fn run_client(args: startup::Args) -> Result<()> {
                     }
                     let profiler_render_duration = profiler_render_started_at.elapsed();
                     let renderer_frame_profile = renderer.last_frame_profile();
+                    if let Some(pending) = control_screenshot
+                        .as_ref()
+                        .filter(|pending| pending.announce)
+                    {
+                        simulation_mailbox.enqueue_or_report(
+                            SimulationCommand::ScreenshotSaved {
+                                name: pending
+                                    .path
+                                    .file_name()
+                                    .map(|name| name.to_string_lossy().into_owned())
+                                    .unwrap_or_default(),
+                                error: None,
+                            },
+                            "screenshot saved",
+                        );
+                    }
 
                     if wrote_cli_screenshot {
                         screenshot = None;

@@ -711,6 +711,7 @@ pub(crate) struct ClientInputState {
     narrator_status_requests: Vec<NarratorStatusRequest>,
     fullscreen: bool,
     fullscreen_requests: Vec<bool>,
+    screenshot_requests: u32,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1316,6 +1317,38 @@ impl ClientInputState {
 
     pub(crate) fn take_fullscreen_requests(&mut self) -> Vec<bool> {
         std::mem::take(&mut self.fullscreen_requests)
+    }
+
+    pub(crate) fn take_screenshot_requests(&mut self) -> u32 {
+        std::mem::take(&mut self.screenshot_requests)
+    }
+
+    pub(crate) fn push_screenshot_saved_message(
+        world: Option<&mut WorldStore>,
+        name: &str,
+        error: Option<&str>,
+    ) {
+        let Some(world) = world else { return };
+        let runs = match error {
+            None => vec![
+                StyledTextRun {
+                    text: "Saved screenshot as ".to_string(),
+                    style: ComponentStyle::default(),
+                },
+                StyledTextRun {
+                    text: name.to_string(),
+                    style: ComponentStyle {
+                        underlined: Some(true),
+                        ..ComponentStyle::default()
+                    },
+                },
+            ],
+            Some(error) => vec![StyledTextRun {
+                text: format!("Couldn't save screenshot: {error}"),
+                style: ComponentStyle::default(),
+            }],
+        };
+        world.push_styled_client_system_chat_message(runs);
     }
 
     fn toggle_fullscreen(&mut self) {
@@ -11973,6 +12006,11 @@ pub(crate) fn handle_key_input_with_item_runtime(
 
     if pressed && code == KeyCode::F11 {
         input.toggle_fullscreen();
+        return;
+    }
+
+    if pressed && code == KeyCode::F2 {
+        input.screenshot_requests = input.screenshot_requests.saturating_add(1);
         return;
     }
 

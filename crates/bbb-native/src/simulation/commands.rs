@@ -181,6 +181,10 @@ pub(crate) enum SimulationCommand {
     ClipboardWriteResult {
         success: bool,
     },
+    ScreenshotSaved {
+        name: String,
+        error: Option<String>,
+    },
     OpenUriResult {
         url: String,
         success: bool,
@@ -244,6 +248,7 @@ impl SimulationCommand {
             | Self::TextMeasurements(_)
             | Self::CursorCaptureResult { .. }
             | Self::ClipboardWriteResult { .. }
+            | Self::ScreenshotSaved { .. }
             | Self::OpenUriResult { .. }
             | Self::OpenPathResult { .. }
             | Self::ResourceReloadAck(_)

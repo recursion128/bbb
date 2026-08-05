@@ -30195,3 +30195,69 @@ fn the_fullscreen_key_toggles_the_window_and_saves_the_option() {
         }]
     );
 }
+
+#[test]
+fn the_screenshot_key_requests_one_grab_per_press_and_announces_the_saved_name() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::F2,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::F2),
+        ElementState::Released,
+    );
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::F2,
+    );
+    assert_eq!(input.take_screenshot_requests(), 2);
+    assert_eq!(input.take_screenshot_requests(), 0);
+
+    ClientInputState::push_screenshot_saved_message(
+        Some(&mut world),
+        "2026-08-05_11.22.33.png",
+        None,
+    );
+    let messages = &world.client_chat().messages;
+    let saved = messages.last().expect("screenshot chat message");
+    assert_eq!(
+        saved
+            .styled_content
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "Saved screenshot as 2026-08-05_11.22.33.png"
+    );
+    assert_eq!(
+        saved.styled_content.last().map(|run| run.style.underlined),
+        Some(Some(true))
+    );
+
+    ClientInputState::push_screenshot_saved_message(Some(&mut world), "", Some("disk full"));
+    let messages = &world.client_chat().messages;
+    assert_eq!(
+        messages
+            .last()
+            .expect("screenshot failure message")
+            .styled_content
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect::<String>(),
+        "Couldn't save screenshot: disk full"
+    );
+}
