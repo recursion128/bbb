@@ -107,22 +107,27 @@ the single frame-extract/submission path stays the structural invariant.
   `SharedConstants.DEBUG_ACTIVE_TEXT_AREAS`, a dev-build `debugFlag` that is
   false whenever `DEBUG_ENABLED` is off, so no production 26.1 client renders the
   glyph-area markers. Reopen if the flag ever ships enabled.
-- **Anisotropic terrain filtering (`maxAnisotropyBit`) is `deferred`.** Vanilla
-  feeds `Options.maxAnisotropyBit` through `SpriteLoader`/`Stitcher` into the
-  block-atlas sampler (2^bit anisotropy with matching sprite padding). BBB's
-  terrain atlas samples nearest-neighbor with its own mip chain and has no
-  anisotropic sampler or padding path; the option is persisted but has no
-  consumer. Observable only as texture sharpness at oblique view angles.
-  Reopen when the terrain sampler grows anisotropy support, and wire the
-  stored bit plus the atlas padding in the same slice. Owner: `bbb-renderer`
-  sampler creation + `bbb-pack` atlas stitching.
-- **Toasts and the F3 overlay above a full-screen screen are `deferred`.**
-  `GameRenderer.render` extracts `ToastManager` and `Gui.extractDebugOverlay`
-  after the screen, so vanilla draws both over `LevelLoadingScreen`, the win
-  screen and `DisconnectedScreen`. BBB's HUD collection returns early for all
-  three, so they hide both. Reopen when a screen in that set has to show a toast
-  or the debug overlay (any of them, not just the loading screen), and fix all
-  three through the same collection path rather than per screen.
+- **Vanilla terrain texture filtering (`textureFiltering` +
+  `maxAnisotropyBit`) is `active`** (user-reopened 2026-08-05). Vanilla 26.1
+  samples the terrain atlas through a LINEAR/LINEAR sampler whose
+  `maxAnisotropy` is `effectiveMaxAnisotropy()` (`min(1 << bit, device max)`)
+  only when `textureFiltering == ANISOTROPIC`, else 1; the blocky look comes
+  from the shader (`terrain.fsh` `sampleNearest` texel-center snap with
+  screen-size-aware edge AA via `textureGrad`), and `RGSS` adds a 4-tap
+  rotated-grid path (`UseRgss`) with manual mip selection. `Stitcher` pads
+  sprites by `1 << mipLevel << clamp(anisotropyBit - 1, 0, 4)`;
+  `maxAnisotropyBit` is `IntRange(1, 3)` default 2 and only consumed under
+  `ANISOTROPIC`. Done when bbb's terrain path reproduces the three filtering
+  modes with those exact constants (sampler, shader ports, atlas padding,
+  options wire). Owner: `bbb-renderer` terrain sampler/shader + `bbb-native`
+  atlas build/options + `bbb-pack` stitching.
+- **Toasts and the F3 overlay above a full-screen screen are `active`**
+  (user-reopened 2026-08-05). `GameRenderer.render` extracts `ToastManager`
+  and `Gui.extractDebugOverlay` after the screen, so vanilla draws both over
+  `LevelLoadingScreen`, the win screen and `DisconnectedScreen`; BBB's HUD
+  collection returns early for all three and hides both. Done when all three
+  screens show toasts and the debug overlay through the same collection path
+  rather than per-screen patches. Owner: `bbb-native` runtime HUD collection.
 
 ## Native input, accessibility and window lifecycle closure
 
@@ -141,24 +146,25 @@ the mapping array), backend-scope limits stay recorded at their owners
 warp/first-move suppression, macOS right-click quirk, dev-only debug flags),
 and the X11/interactive-seat and macOS/Windows runner limitations stay
 external and deferred below.
-- **Smooth-camera turning is `deferred`.** `key.smoothCamera` ships unbound, so
-  the only way to reach `MouseHandler`'s `SmoothDouble` branch is to bind it by
-  hand. Reaching it needs the per-frame wall-clock gap vanilla passes as
-  `mousea` and a `&mut` turn path, while `ClientInputState::local_player_input`
-  reads its deltas immutably. Reopen when the input owner already carries a
-  frame-time value into the turn path — for another mouse feature or for the
-  frame-rate limiter — and then add both `SmoothDouble` axes at once rather than
-  threading a clock in just for this.
+- **Smooth-camera turning is `active`** (user-reopened 2026-08-05).
+  `MouseHandler.turnPlayer(mousea)` passes the wall-clock seconds since the
+  previous `handleAccumulatedMovement`; with `options.smoothCamera` on, both
+  axes go through `SmoothDouble.getNewDeltaValue(accumulated * sens,
+  mousea * sens)` (`sens = (sensitivity*0.6+0.2)^3 * 8`), the spyglass branch
+  uses `sensitivityMod` without the smooth path, and both smooths reset on the
+  non-smooth branches. Done when bbb reproduces `SmoothDouble` exactly on both
+  axes, threads the frame-time gap into the turn path, and makes
+  `key.smoothCamera` bindable (vanilla ships it unbound). Owner: `bbb-native`
+  input turn path.
 - **Handing an in-flight IME composition to a newly focused field is
-  `deferred`.** `Minecraft.onTextInputFocusChange` calls
-  `KeyboardHandler.resubmitLastPreeditEvent` on the gaining element and
-  `submitPreeditEvent(element, null)` on the losing one, so vanilla moves a
-  composition that is already open. BBB routes each pre-edit event to whichever
-  target is active when the event arrives and keeps no stored event, so a
-  composition opened before a focus change stays on the old field until the IME
-  sends its next event. Reopen when a second BBB surface gains pre-edit
-  rendering beyond the dialog and sign editor, and then store the last event
-  once for every target rather than per screen.
+  `active`** (user-reopened 2026-08-05). `KeyboardHandler` stores
+  `lastPreeditEvent` unconditionally on every pre-edit callback;
+  `Minecraft.onTextInputFocusChange` resubmits it to the gaining element and
+  submits `null` to the losing one, so vanilla moves a composition that is
+  already open. BBB routes each pre-edit event to whichever target is active
+  when the event arrives and keeps no stored event. Done when bbb stores the
+  last pre-edit event once for every target and performs the gain/lose handoff
+  on focus changes. Owner: `bbb-native` input IME routing.
 
 ## Persistence, profile and secure-session closure
 
