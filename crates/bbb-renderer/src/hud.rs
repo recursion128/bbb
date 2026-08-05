@@ -7007,11 +7007,10 @@ impl Renderer {
     }
 
     fn hud_sound_subtitle_placement(&self) -> Option<HudSoundSubtitlePlacement> {
-        let in_game_ui = self.hud_has_ingame_ui_screen();
-        if self.hide_gui {
-            return in_game_ui.then_some(HudSoundSubtitlePlacement::Deferred);
+        if self.hide_gui && !self.hud_has_ingame_ui_screen() {
+            return None;
         }
-        Some(if self.hud_has_any_screen() && !in_game_ui {
+        Some(if self.hud_has_any_screen() {
             HudSoundSubtitlePlacement::BeforeScreen
         } else {
             HudSoundSubtitlePlacement::Deferred
@@ -22770,12 +22769,12 @@ mod tests {
         });
         assert_eq!(
             renderer.hud_sound_subtitle_placement(),
-            Some(HudSoundSubtitlePlacement::Deferred)
+            Some(HudSoundSubtitlePlacement::BeforeScreen)
         );
         renderer.set_hide_gui(true);
         assert_eq!(
             renderer.hud_sound_subtitle_placement(),
-            Some(HudSoundSubtitlePlacement::Deferred)
+            Some(HudSoundSubtitlePlacement::BeforeScreen)
         );
     }
 
