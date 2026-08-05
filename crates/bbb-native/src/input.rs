@@ -2075,6 +2075,12 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
+    /// `Screen.isCopy`/`isPaste`/`isCut`/`isSelectAll` all share this modifier
+    /// shape, so a text field answers all four the same way.
+    pub(crate) fn text_edit_shortcut_down(&self) -> bool {
+        self.control_down() && !self.shift_down() && !self.alt_down()
+    }
+
     pub(crate) fn alt_down(&self) -> bool {
         self.pressed_keys.contains(&KeyCode::AltLeft)
             || self.pressed_keys.contains(&KeyCode::AltRight)
@@ -12290,7 +12296,15 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     if input.command_entry_is_active() {
-        handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
+        handle_chat_entry_key(
+            input,
+            counters,
+            world,
+            net_commands,
+            code,
+            pressed,
+            clipboard.take(),
+        );
         return;
     }
 
@@ -12773,6 +12787,7 @@ fn handle_chat_entry_key(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     code: KeyCode,
     pressed: bool,
+    mut clipboard: Option<&mut dyn DebugClipboard>,
 ) {
     if !pressed {
         return;
@@ -12855,9 +12870,34 @@ fn handle_chat_entry_key(
                 apply_latest_chat_suggestion(input, world);
             }
         }
-        KeyCode::KeyA if input.control_down() && !input.shift_down() => {
+        KeyCode::KeyA if input.text_edit_shortcut_down() => {
             if let Some(entry) = &mut input.chat_entry {
                 select_chat_entry_text(entry);
+            }
+        }
+        KeyCode::KeyC if input.text_edit_shortcut_down() => {
+            if let Some(entry) = &input.chat_entry {
+                let selected = selected_chat_entry_text(entry);
+                if let Some(clipboard) = clipboard.as_deref_mut() {
+                    clipboard.set_debug_clipboard_text(&selected);
+                }
+            }
+        }
+        KeyCode::KeyX if input.text_edit_shortcut_down() => {
+            if let Some(entry) = &mut input.chat_entry {
+                let selected = selected_chat_entry_text(entry);
+                if let Some(clipboard) = clipboard.as_deref_mut() {
+                    clipboard.set_debug_clipboard_text(&selected);
+                }
+                delete_chat_entry_selection(entry);
+            }
+        }
+        KeyCode::KeyV if input.text_edit_shortcut_down() => {
+            let pasted = clipboard
+                .as_deref_mut()
+                .and_then(DebugClipboard::get_debug_clipboard_text);
+            if let (Some(entry), Some(pasted)) = (&mut input.chat_entry, pasted) {
+                insert_chat_entry_text(entry, &pasted);
             }
         }
         KeyCode::ArrowUp => {
@@ -13584,6 +13624,14 @@ fn insert_chat_entry_text(entry: &mut ChatEntryState, text: &str) {
 fn set_chat_entry_cursor(entry: &mut ChatEntryState, cursor: usize) {
     entry.cursor = cursor.min(text_edit::char_len(&entry.text));
     entry.selection = entry.cursor;
+}
+
+fn selected_chat_entry_text(entry: &ChatEntryState) -> String {
+    let start = entry.selection.min(entry.cursor);
+    let end = entry.selection.max(entry.cursor);
+    let start_byte = text_edit::byte_index(&entry.text, start);
+    let end_byte = text_edit::byte_index(&entry.text, end);
+    entry.text[start_byte..end_byte].to_string()
 }
 
 fn select_chat_entry_text(entry: &mut ChatEntryState) {

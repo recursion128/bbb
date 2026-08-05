@@ -128,6 +128,12 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   takes the toggle down remembers it, and closing the screen restores a
   keyboard-bound one. This stays inside the `active` route above and closes with
   it.
+- **Copy/cut/paste reach the chat entry and the sign editor only.** Both now go
+  through the same `DebugClipboard` the debug screens use, gated by
+  `ClientInputState::text_edit_shortcut_down` — Ctrl held with neither Shift nor
+  Alt, matching `Screen.isCopy`/`isPaste`/`isCut`/`isSelectAll`. The book, anvil
+  rename and the search boxes still take typed characters only. This stays
+  inside the `active` route above and closes with it.
 - **Smooth-camera turning is `deferred`.** `key.smoothCamera` ships unbound, so
   the only way to reach `MouseHandler`'s `SmoothDouble` branch is to bind it by
   hand. Reaching it needs the per-frame wall-clock gap vanilla passes as

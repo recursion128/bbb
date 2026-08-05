@@ -18669,11 +18669,67 @@ fn chat_draft_exit_reasons_and_focus_loss_follow_vanilla_lifecycle() {
         &commands,
         KeyCode::Backspace,
         true,
+        None,
     );
     assert_eq!(
         input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
         Some("")
     );
+}
+
+#[test]
+fn chat_entry_copies_cuts_and_pastes_through_the_clipboard() {
+    let (tx, _rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(9);
+    let mut clipboard = MockDebugClipboard::with_text("pasted");
+
+    open_chat_entry(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        ChatMethod::Message,
+        false,
+    );
+    input.replace_chat_entry_text("hello".to_string());
+    input.control_left_down = true;
+
+    let mut press = |input: &mut ClientInputState, code, clipboard: &mut MockDebugClipboard| {
+        handle_chat_entry_key(
+            input,
+            &mut counters,
+            &mut world,
+            &commands,
+            code,
+            true,
+            Some(clipboard),
+        );
+    };
+
+    press(&mut input, KeyCode::KeyA, &mut clipboard);
+    press(&mut input, KeyCode::KeyC, &mut clipboard);
+    assert_eq!(clipboard.text.as_deref(), Some("hello"));
+
+    press(&mut input, KeyCode::KeyX, &mut clipboard);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("")
+    );
+
+    clipboard.text = Some("pasted".to_string());
+    press(&mut input, KeyCode::KeyV, &mut clipboard);
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("pasted")
+    );
+
+    input.shift_left_down = true;
+    clipboard.text = Some("kept".to_string());
+    press(&mut input, KeyCode::KeyC, &mut clipboard);
+    assert_eq!(clipboard.text.as_deref(), Some("kept"));
 }
 
 #[test]
