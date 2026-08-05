@@ -16871,7 +16871,11 @@ fn dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period() {
         (0, 7)
     );
 
+    // Vanilla `KeyMapping.releaseAll` leaves the composition alone; only the
+    // text-input focus handoff (or a newer IME event) clears it.
     input.clear_pressed();
+    assert!(input.dialog_ime_preedit_hud_state_at(start).is_some());
+    input.clear_dialog_ime_preedit();
     assert_eq!(input.dialog_ime_preedit_hud_state_at(start), None);
     assert!(input.handle_dialog_ime_preedit_at("", None, 8, start));
     assert_eq!(input.dialog_ime_preedit_hud_state_at(start), None);

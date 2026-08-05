@@ -2167,9 +2167,12 @@ impl ClientInputState {
         self.dialog_last_click_button = None;
         self.dialog_last_click_at = None;
         self.dialog_last_click_screen_revision = None;
-        self.dialog_ime_preedit = None;
+        // Vanilla `KeyMapping.releaseAll` never touches the IME composition:
+        // pre-edit state is cleared only by `Minecraft.onTextInputFocusChange`
+        // (the focus handoff in `sync_ime_preedit_focus`) or by a newer IME
+        // event, and the per-element projections already reject stale state
+        // via the dialog screen revision / sign editor signature.
         self.sign_editor_cursor_position = None;
-        self.sign_editor_ime_preedit = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
         self.loom_pattern_scrolling = false;

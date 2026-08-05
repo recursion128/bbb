@@ -125,15 +125,6 @@ the mapping array), backend-scope limits stay recorded at their owners
 warp/first-move suppression, macOS right-click quirk, dev-only debug flags),
 and the X11/interactive-seat and macOS/Windows runner limitations stay
 external and deferred below.
-- **Handing an in-flight IME composition to a newly focused field is
-  `active`** (user-reopened 2026-08-05). `KeyboardHandler` stores
-  `lastPreeditEvent` unconditionally on every pre-edit callback;
-  `Minecraft.onTextInputFocusChange` resubmits it to the gaining element and
-  submits `null` to the losing one, so vanilla moves a composition that is
-  already open. BBB routes each pre-edit event to whichever target is active
-  when the event arrives and keeps no stored event. Done when bbb stores the
-  last pre-edit event once for every target and performs the gain/lose handoff
-  on focus changes. Owner: `bbb-native` input IME routing.
 
 ## Persistence, profile and secure-session closure
 

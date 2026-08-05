@@ -97,6 +97,11 @@ pub(crate) struct SimulationInputRuntime {
     shutdown_requested: bool,
     terrain_readiness: Option<(u64, usize, bool)>,
     last_applied_sequence: u64,
+    /// Vanilla `KeyboardHandler.lastPreeditEvent`: stored on every pre-edit
+    /// callback so a focus change can hand the open composition to the
+    /// gaining element (`Minecraft.onTextInputFocusChange`).
+    last_ime_preedit: Option<(String, Option<(usize, usize)>)>,
+    ime_preedit_target: ImePreeditTarget,
     /// What `Options.buildPlayerInformation` would return. Nothing this client
     /// changes at runtime feeds it, so `broadcastOptions` re-sends the values
     /// the session was configured with.
@@ -128,6 +133,13 @@ enum SimulationCommandProfileKind {
     Other,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ImePreeditTarget {
+    None,
+    Dialog,
+    SignEditor,
+}
+
 impl SimulationInputRuntime {
     pub(crate) fn new(
         surface_size: PhysicalSize<u32>,
@@ -154,6 +166,8 @@ impl SimulationInputRuntime {
             shutdown_requested: false,
             terrain_readiness: None,
             last_applied_sequence: 0,
+            last_ime_preedit: None,
+            ime_preedit_target: ImePreeditTarget::None,
             client_information,
         }
     }
@@ -274,6 +288,7 @@ impl SimulationInputRuntime {
         // window never spuriously opens the pause screen. The 500 ms delay is
         // strict (`> 500L`) and an already-open screen suppresses reopening.
         context.input.pause_if_inactive(context.now, context.world);
+        self.sync_ime_preedit_focus(context);
         context
             .input
             .sync_respawn_toggle_reset(context.net_counters);
@@ -439,8 +454,14 @@ impl SimulationInputRuntime {
             SimulationCommand::ImePreedit { text, cursor_range } => {
                 self.apply_ime_preedit(&text, cursor_range, context);
             }
-            SimulationCommand::ImeCommit(text) => self.apply_ime_commit(&text, context),
+            SimulationCommand::ImeCommit(text) => {
+                // A commit ends the composition; the next pre-edit callback
+                // (usually the empty one that follows) restarts the store.
+                self.last_ime_preedit = None;
+                self.apply_ime_commit(&text, context);
+            }
             SimulationCommand::ImeDisabled => {
+                self.last_ime_preedit = None;
                 context.input.clear_dialog_ime_preedit();
                 context.input.clear_sign_editor_ime_preedit();
             }
@@ -1413,39 +1434,106 @@ impl SimulationInputRuntime {
         }
     }
 
+    /// The element that currently owns pre-edit rendering, in the same
+    /// priority order every pre-edit consumer uses.
+    fn ime_preedit_target(
+        &self,
+        context: &mut SimulationInputContext<'_, '_, '_>,
+    ) -> ImePreeditTarget {
+        if self.code_of_conduct_overlay.is_visible(context.world) {
+            ImePreeditTarget::None
+        } else if context.world.dialog_screen_is_open() {
+            ImePreeditTarget::Dialog
+        } else if context
+            .input
+            .sign_editor_is_active_or_pending(context.world)
+        {
+            ImePreeditTarget::SignEditor
+        } else {
+            ImePreeditTarget::None
+        }
+    }
+
     fn apply_ime_preedit(
         &mut self,
         text: &str,
         cursor_range: Option<(usize, usize)>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
-        if self.code_of_conduct_overlay.is_visible(context.world) {
-            context.input.clear_dialog_ime_preedit();
-            self.request_cursor_capture(false, context.platform);
-        } else if context.world.dialog_screen_is_open() {
-            self.request_cursor_capture(false, context.platform);
-            context.input.handle_dialog_ime_preedit(
-                text,
-                cursor_range,
-                context.world.dialog_screen_revision(),
-            );
-        } else if context
-            .input
-            .sign_editor_is_active_or_pending(context.world)
-        {
-            context.input.sync_sign_editor(
-                context.world,
-                context.net_counters,
-                context.net_commands,
-            );
-            context
-                .input
-                .handle_sign_editor_ime_preedit(text, cursor_range);
-            self.request_cursor_capture(false, context.platform);
-        } else {
-            context.input.clear_dialog_ime_preedit();
-            context.input.clear_sign_editor_ime_preedit();
+        // Vanilla `KeyboardHandler.preeditCallback` stores the event before
+        // routing, whether or not any element renders it right now.
+        self.last_ime_preedit = Some((text.to_string(), cursor_range));
+        let target = self.ime_preedit_target(context);
+        self.ime_preedit_target = target;
+        match target {
+            ImePreeditTarget::None => {
+                if self.code_of_conduct_overlay.is_visible(context.world) {
+                    context.input.clear_dialog_ime_preedit();
+                    self.request_cursor_capture(false, context.platform);
+                } else {
+                    context.input.clear_dialog_ime_preedit();
+                    context.input.clear_sign_editor_ime_preedit();
+                }
+            }
+            ImePreeditTarget::Dialog => {
+                self.request_cursor_capture(false, context.platform);
+                context.input.handle_dialog_ime_preedit(
+                    text,
+                    cursor_range,
+                    context.world.dialog_screen_revision(),
+                );
+            }
+            ImePreeditTarget::SignEditor => {
+                context.input.sync_sign_editor(
+                    context.world,
+                    context.net_counters,
+                    context.net_commands,
+                );
+                context
+                    .input
+                    .handle_sign_editor_ime_preedit(text, cursor_range);
+                self.request_cursor_capture(false, context.platform);
+            }
         }
+    }
+
+    /// Vanilla `Minecraft.onTextInputFocusChange`: when the element owning
+    /// pre-edit rendering changes, the losing one is cleared
+    /// (`submitPreeditEvent(element, null)`) and the stored composition is
+    /// resubmitted to the gaining one (`resubmitLastPreeditEvent`).
+    fn sync_ime_preedit_focus(&mut self, context: &mut SimulationInputContext<'_, '_, '_>) {
+        let target = self.ime_preedit_target(context);
+        if target == self.ime_preedit_target {
+            return;
+        }
+        match self.ime_preedit_target {
+            ImePreeditTarget::Dialog => context.input.clear_dialog_ime_preedit(),
+            ImePreeditTarget::SignEditor => context.input.clear_sign_editor_ime_preedit(),
+            ImePreeditTarget::None => {}
+        }
+        if let Some((text, cursor_range)) = self.last_ime_preedit.clone() {
+            match target {
+                ImePreeditTarget::Dialog => {
+                    context.input.handle_dialog_ime_preedit(
+                        &text,
+                        cursor_range,
+                        context.world.dialog_screen_revision(),
+                    );
+                }
+                ImePreeditTarget::SignEditor => {
+                    context.input.sync_sign_editor(
+                        context.world,
+                        context.net_counters,
+                        context.net_commands,
+                    );
+                    context
+                        .input
+                        .handle_sign_editor_ime_preedit(&text, cursor_range);
+                }
+                ImePreeditTarget::None => {}
+            }
+        }
+        self.ime_preedit_target = target;
     }
 
     fn apply_ime_commit(&mut self, text: &str, context: &mut SimulationInputContext<'_, '_, '_>) {
@@ -3224,6 +3312,198 @@ mod tests {
         // dropped.
         assert_eq!(runtime.last_applied_sequence, 1);
         assert!(!input.debug_pause_screen_is_open());
+    }
+
+    #[tokio::test]
+    async fn an_open_composition_hands_off_to_a_newly_focused_sign_editor() {
+        use crate::services_block_list_runtime::ServicesBlockListRuntime;
+        use crate::terrain_runtime::TerrainTextureState;
+        use bbb_control::{AudioCounters, NetCounters};
+        use tokio::runtime::Handle;
+        use uuid::Uuid;
+
+        // Vanilla `KeyboardHandler` stores `lastPreeditEvent` even when no
+        // element renders it; `Minecraft.onTextInputFocusChange` then resubmits
+        // it to the element gaining focus.
+        let mailbox = crate::simulation::commands::SimulationMailbox::default();
+        mailbox
+            .enqueue(SimulationCommand::ImePreedit {
+                text: "compose".to_string(),
+                cursor_range: Some((3, 3)),
+            })
+            .expect("preedit command queues into an empty mailbox");
+        let commands = mailbox.drain_through_barrier();
+
+        let now = Instant::now();
+        let mut input = crate::input::ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        // `sign_editor_is_valid_at` needs a local player within the vanilla
+        // block-interaction range of the sign.
+        world.apply_login(&bbb_protocol::packets::PlayLogin {
+            player_id: 7,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: bbb_protocol::packets::CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        });
+        world.set_local_player_pose(bbb_world::LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: -4.5,
+                y: 69.0,
+                z: 12.5,
+            },
+            on_ground: true,
+            ..bbb_world::LocalPlayerPoseState::default()
+        });
+        let mut net_counters = NetCounters::default();
+        let mut first_person_hand_presentation =
+            crate::item_models::FirstPersonHandPresentation::default();
+        let mut server_resource_packs = ServerResourcePackRuntime::new(
+            Handle::current(),
+            std::env::temp_dir(),
+            "ime-preedit-handoff-test",
+            Uuid::nil(),
+        );
+        let mut services_block_lists =
+            ServicesBlockListRuntime::new(Handle::current(), mailbox, None);
+        let mut particle_runtime = None;
+        let mut item_runtime = None;
+        let mut terrain_textures = TerrainTextureState::default();
+        let mut win_screen_resources =
+            std::sync::Arc::new(crate::win_screen_resources::WinScreenResources {
+                lines: Vec::new(),
+                narration_components: Vec::new(),
+                total_scroll_length: 0,
+            });
+        let mut level_random = bbb_world::LevelEventSoundRandomState::default();
+        let mut audio_events: Option<&mut dyn AudioEventSink> = None;
+        let collector =
+            crate::simulation::effects::RenderEffectCollector::new(1, AudioCounters::default());
+        let mut platform = collector.platform();
+
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
+        {
+            let mut context = SimulationInputContext {
+                input: &mut input,
+                now,
+                first_person_hand_presentation: &mut first_person_hand_presentation,
+                world: &mut world,
+                net_counters: &mut net_counters,
+                net_commands: &None,
+                server_resource_packs: &mut server_resource_packs,
+                services_block_lists: &mut services_block_lists,
+                particle_runtime: &mut particle_runtime,
+                item_runtime: &mut item_runtime,
+                terrain_textures: &mut terrain_textures,
+                code_of_conduct: None,
+                win_screen_resources: &mut win_screen_resources,
+                entity_partial_tick: 0.0,
+                level_random: &mut level_random,
+                audio_events: &mut audio_events,
+                platform: &mut platform,
+            };
+            runtime.apply_commands(commands, &mut context, false);
+        }
+        assert!(input.sign_editor_hud_state(&world).is_none());
+
+        // The sign editor opens with no further IME traffic; the next step's
+        // focus sync must hand the stored composition to the gaining editor.
+        world.insert_decoded_chunk(bbb_world::ChunkColumn {
+            pos: bbb_world::ChunkPos { x: -1, z: 0 },
+            state: bbb_world::ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: Vec::new(),
+            block_entities: vec![bbb_world::BlockEntityRecord {
+                local_x: 11,
+                y: 70,
+                local_z: 12,
+                type_id: 7,
+                raw_nbt: vec![0],
+                nbt: None,
+                sign_text: Some(bbb_world::SignBlockEntityTextState {
+                    front: bbb_world::SignTextSideState::default(),
+                    back: bbb_world::SignTextSideState::default(),
+                    is_waxed: false,
+                }),
+                command_block: None,
+                comparator_output: None,
+                structure_block: None,
+                jigsaw_block: None,
+                test_block: None,
+                test_instance_block: None,
+                vault_shared_data: None,
+                campfire: None,
+                shelf: None,
+                brushable: None,
+                conduit_destroy_target: None,
+                decorated_pot_sherds: None,
+                banner_patterns: None,
+                end_gateway: None,
+                spawner: None,
+                trial_spawner: None,
+                note_block_sound: None,
+                skull_profile: None,
+            }],
+            light: bbb_world::LightData::default(),
+        });
+        world.apply_open_sign_editor(bbb_protocol::packets::OpenSignEditor {
+            pos: bbb_protocol::packets::BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: true,
+        });
+        {
+            let mut context = SimulationInputContext {
+                input: &mut input,
+                now,
+                first_person_hand_presentation: &mut first_person_hand_presentation,
+                world: &mut world,
+                net_counters: &mut net_counters,
+                net_commands: &None,
+                server_resource_packs: &mut server_resource_packs,
+                services_block_lists: &mut services_block_lists,
+                particle_runtime: &mut particle_runtime,
+                item_runtime: &mut item_runtime,
+                terrain_textures: &mut terrain_textures,
+                code_of_conduct: None,
+                win_screen_resources: &mut win_screen_resources,
+                entity_partial_tick: 0.0,
+                level_random: &mut level_random,
+                audio_events: &mut audio_events,
+                platform: &mut platform,
+            };
+            runtime.apply_commands(Vec::new(), &mut context, false);
+        }
+        let editor = input
+            .sign_editor_hud_state(&world)
+            .expect("sign editor opened");
+        assert!(
+            editor.preedit.is_some(),
+            "the stored composition must reach the newly focused sign editor"
+        );
     }
 
     #[test]
