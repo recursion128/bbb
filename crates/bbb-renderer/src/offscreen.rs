@@ -138,13 +138,14 @@ mod tests {
         HudDeathDraftConfirmationScreen, HudDeathLinkConfirmationScreen, HudDeathMainScreen,
         HudDeathQuitConfirmationScreen, HudDeathScreen, HudDeathScreenButton, HudDemoPopupScreen,
         HudDisconnectedScreen, HudDisconnectedScreenButton, HudFontGlyphMap, HudGameEventButton,
-        HudGameEventScreen, HudNineSliceScaling, HudPlayerReportingControl,
-        HudPlayerReportingControlKind, HudPlayerReportingControlPlacement, HudPlayerReportingFocus,
-        HudPlayerReportingRow, HudPlayerReportingScreen, HudPlayerReportingScreenKind,
-        HudSocialInteractionsFocus, HudSocialInteractionsLinkConfirmationScreen,
-        HudSocialInteractionsMainScreen, HudSocialInteractionsPage, HudSocialInteractionsPlayer,
-        HudSocialInteractionsPlayerAction, HudSocialInteractionsScreen, HudStatsScrollbarSprite,
-        HudStyledTextRun, HudVignette, HudWinScreen, LevelFrameRoute, Renderer, SelectionBox,
+        HudGameEventScreen, HudLevelLoadingBackground, HudLevelLoadingScreen, HudNineSliceScaling,
+        HudPlayerReportingControl, HudPlayerReportingControlKind,
+        HudPlayerReportingControlPlacement, HudPlayerReportingFocus, HudPlayerReportingRow,
+        HudPlayerReportingScreen, HudPlayerReportingScreenKind, HudSocialInteractionsFocus,
+        HudSocialInteractionsLinkConfirmationScreen, HudSocialInteractionsMainScreen,
+        HudSocialInteractionsPage, HudSocialInteractionsPlayer, HudSocialInteractionsPlayerAction,
+        HudSocialInteractionsScreen, HudStatsScrollbarSprite, HudStyledTextRun, HudSystemToast,
+        HudVignette, HudWinScreen, LevelFrameRoute, Renderer, SelectionBox,
         StandaloneTextureSampling,
     };
 
@@ -1570,6 +1571,91 @@ mod tests {
             back_button[1] > 180 && back_button[0] > 180,
             "focused back button must cover ordinary HUD with highlighted sprite, got {back_button:?}"
         );
+    }
+
+    #[test]
+    fn full_screen_screens_still_draw_toasts_and_the_debug_overlay() {
+        // Vanilla `GameRenderer.render` extracts the `ToastManager` and
+        // `Gui.extractDebugOverlay` after the screen, so toasts draw above
+        // `LevelLoadingScreen`, the win screen and `DisconnectedScreen`.
+        let Some(mut renderer) = Renderer::new_offscreen(WIDTH, HEIGHT) else {
+            return;
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "Toastbdy".chars() {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    width: 1,
+                    height: 1,
+                    advance: 2,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .expect("font");
+        let toast = HudSystemToast {
+            title: "Toast".to_string(),
+            message: "body".to_string(),
+            multiline: false,
+            visible_portion: 1.0,
+        };
+
+        let screens: [(&str, Box<dyn Fn(&mut Renderer)>); 3] = [
+            (
+                "level loading",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_level_loading_screen(Some(HudLevelLoadingScreen {
+                        background: HudLevelLoadingBackground::EndPortal,
+                        downloading_terrain: String::new(),
+                    }));
+                }),
+            ),
+            (
+                "disconnected",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_level_loading_screen(None);
+                    renderer.set_hud_disconnected_screen(Some(HudDisconnectedScreen {
+                        generation: 1,
+                        panorama_rotation_degrees: 0.0,
+                        title: String::new(),
+                        reason_runs: Vec::new(),
+                        report_to_server_label: None,
+                        open_report_directory_label: None,
+                        back_label: String::new(),
+                        focused: HudDisconnectedScreenButton::Back,
+                        hovered: None,
+                    }));
+                }),
+            ),
+            (
+                "win",
+                Box::new(|renderer: &mut Renderer| {
+                    renderer.set_hud_disconnected_screen(None);
+                    renderer.set_hud_game_event_screen(Some(HudGameEventScreen::Win(
+                        HudWinScreen {
+                            generation: 2,
+                            scroll: 0.0,
+                            show_easter_egg_logo: false,
+                            lines: Arc::from([]),
+                        },
+                    )));
+                }),
+            ),
+        ];
+        for (label, set_screen) in screens {
+            set_screen(&mut renderer);
+            renderer.set_hud_system_toast(None);
+            let without_toast = renderer.collect_hud_draws().vertices.len();
+            renderer.set_hud_system_toast(Some(toast.clone()));
+            let with_toast = renderer.collect_hud_draws().vertices.len();
+            assert!(
+                with_toast > without_toast,
+                "the system toast must add draw geometry above the {label} screen"
+            );
+        }
     }
 
     #[test]

@@ -7031,6 +7031,118 @@ impl Renderer {
         })
     }
 
+    /// Vanilla `GameRenderer.render` extracts `Gui.extractDebugOverlay` after
+    /// the screen, so the F3 overlay also draws above `LevelLoadingScreen`,
+    /// the win screen and `DisconnectedScreen`.
+    fn push_hud_debug_overlay_block<'a>(
+        &'a self,
+        vertices: &mut Vec<HudVertex>,
+        commands: &mut Vec<HudDrawCommand<'a>>,
+        post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    ) {
+        let surface_size = self.gui_surface_size();
+        if let Some(debug_overlay) = &self.hud_debug_overlay {
+            push_hud_debug_overlay(
+                vertices,
+                commands,
+                post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_item_atlas.as_ref(),
+                self.hud_digit_atlas.as_ref(),
+                &self.hud_digit_glyphs,
+                self.hud_debug_game_mode_switcher_background.as_ref(),
+                self.hud_debug_game_mode_switcher_slot.as_ref(),
+                self.hud_debug_game_mode_switcher_selection.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                debug_overlay,
+            );
+            if debug_overlay.show_lightmap_preview {
+                push_hud_debug_lightmap_preview(
+                    vertices,
+                    post_gui_item_commands,
+                    &self.hud_black_pixel,
+                    surface_size,
+                );
+            }
+        }
+    }
+
+    /// Vanilla `GameRenderer.render` extracts the `ToastManager` after the
+    /// screen, so every toast family also draws above `LevelLoadingScreen`,
+    /// the win screen and `DisconnectedScreen`.
+    fn push_hud_toast_block<'a>(
+        &'a self,
+        vertices: &mut Vec<HudVertex>,
+        commands: &mut Vec<HudDrawCommand<'a>>,
+        post_gui_item_commands: &mut Vec<HudDrawCommand<'a>>,
+    ) {
+        let surface_size = self.gui_surface_size();
+        if let Some(toast) = &self.hud_system_toast {
+            push_hud_system_toast(
+                vertices,
+                post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_system_toast_background.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                toast,
+            );
+        }
+        push_hud_advancement_toasts(
+            vertices,
+            commands,
+            post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_item_atlas.as_ref(),
+            self.hud_digit_atlas.as_ref(),
+            &self.hud_digit_glyphs,
+            self.hud_advancement_toast_background.as_ref(),
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_advancement_toasts,
+        );
+        push_hud_recipe_toasts(
+            vertices,
+            commands,
+            post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_item_atlas.as_ref(),
+            self.hud_digit_atlas.as_ref(),
+            &self.hud_digit_glyphs,
+            self.hud_recipe_toast_background.as_ref(),
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_recipe_toasts,
+        );
+        push_hud_tutorial_toasts(
+            vertices,
+            commands,
+            post_gui_item_commands,
+            &self.hud_white_pixel,
+            self.hud_tutorial_toast_background.as_ref(),
+            &self.hud_tutorial_toast_icons,
+            self.hud_font_atlas.as_ref(),
+            &self.hud_font_glyphs,
+            &self.hud_obfuscated_glyph_pool,
+            self.counters.frame_index,
+            surface_size,
+            &self.hud_tutorial_toasts,
+        );
+    }
+
     pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
         let mut vertices = Vec::new();
         let mut commands = Vec::new();
@@ -7073,7 +7185,14 @@ impl Renderer {
                 surface_size,
                 screen,
             );
+            self.push_hud_debug_overlay_block(
+                &mut vertices,
+                &mut commands,
+                &mut post_gui_item_commands,
+            );
+            self.push_hud_toast_block(&mut vertices, &mut commands, &mut post_gui_item_commands);
             let post_gui_item_start = commands.len();
+            commands.extend(post_gui_item_commands);
             return HudDraws {
                 vertices,
                 commands,
@@ -7115,7 +7234,14 @@ impl Renderer {
                 surface_size,
                 screen,
             );
+            self.push_hud_debug_overlay_block(
+                &mut vertices,
+                &mut commands,
+                &mut post_gui_item_commands,
+            );
+            self.push_hud_toast_block(&mut vertices, &mut commands, &mut post_gui_item_commands);
             let post_gui_item_start = commands.len();
+            commands.extend(post_gui_item_commands);
             return HudDraws {
                 vertices,
                 commands,
@@ -7158,7 +7284,14 @@ impl Renderer {
                 self.hud_win_edition.as_ref(),
                 screen,
             );
+            self.push_hud_debug_overlay_block(
+                &mut vertices,
+                &mut commands,
+                &mut post_gui_item_commands,
+            );
+            self.push_hud_toast_block(&mut vertices, &mut commands, &mut post_gui_item_commands);
             let post_gui_item_start = commands.len();
+            commands.extend(post_gui_item_commands);
             return HudDraws {
                 vertices,
                 commands,
@@ -8760,96 +8893,15 @@ impl Renderer {
                 surface_size,
                 screen,
             );
-        } else if let Some(debug_overlay) = &self.hud_debug_overlay {
-            push_hud_debug_overlay(
+        } else {
+            self.push_hud_debug_overlay_block(
                 &mut vertices,
                 &mut commands,
                 &mut post_gui_item_commands,
-                &self.hud_white_pixel,
-                self.hud_item_atlas.as_ref(),
-                self.hud_digit_atlas.as_ref(),
-                &self.hud_digit_glyphs,
-                self.hud_debug_game_mode_switcher_background.as_ref(),
-                self.hud_debug_game_mode_switcher_slot.as_ref(),
-                self.hud_debug_game_mode_switcher_selection.as_ref(),
-                self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
-                self.counters.frame_index,
-                surface_size,
-                debug_overlay,
-            );
-            if debug_overlay.show_lightmap_preview {
-                push_hud_debug_lightmap_preview(
-                    &mut vertices,
-                    &mut post_gui_item_commands,
-                    &self.hud_black_pixel,
-                    surface_size,
-                );
-            }
-        }
-
-        if let Some(toast) = &self.hud_system_toast {
-            push_hud_system_toast(
-                &mut vertices,
-                &mut post_gui_item_commands,
-                &self.hud_white_pixel,
-                self.hud_system_toast_background.as_ref(),
-                self.hud_font_atlas.as_ref(),
-                &self.hud_font_glyphs,
-                &self.hud_obfuscated_glyph_pool,
-                self.counters.frame_index,
-                surface_size,
-                toast,
             );
         }
 
-        push_hud_advancement_toasts(
-            &mut vertices,
-            &mut commands,
-            &mut post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_item_atlas.as_ref(),
-            self.hud_digit_atlas.as_ref(),
-            &self.hud_digit_glyphs,
-            self.hud_advancement_toast_background.as_ref(),
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_advancement_toasts,
-        );
-        push_hud_recipe_toasts(
-            &mut vertices,
-            &mut commands,
-            &mut post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_item_atlas.as_ref(),
-            self.hud_digit_atlas.as_ref(),
-            &self.hud_digit_glyphs,
-            self.hud_recipe_toast_background.as_ref(),
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_recipe_toasts,
-        );
-        push_hud_tutorial_toasts(
-            &mut vertices,
-            &mut commands,
-            &mut post_gui_item_commands,
-            &self.hud_white_pixel,
-            self.hud_tutorial_toast_background.as_ref(),
-            &self.hud_tutorial_toast_icons,
-            self.hud_font_atlas.as_ref(),
-            &self.hud_font_glyphs,
-            &self.hud_obfuscated_glyph_pool,
-            self.counters.frame_index,
-            surface_size,
-            &self.hud_tutorial_toasts,
-        );
+        self.push_hud_toast_block(&mut vertices, &mut commands, &mut post_gui_item_commands);
 
         if sound_subtitle_placement == Some(HudSoundSubtitlePlacement::Deferred) {
             push_hud_sound_subtitles(
@@ -22970,18 +23022,18 @@ mod tests {
             .expect("before-screen subtitle draw");
         assert!(before_screen < first_normal_screen);
 
-        let tutorial_toasts = collect
-            .rfind("push_hud_tutorial_toasts(")
-            .expect("tutorial toast draw");
-        let deferred_subtitles = collect[tutorial_toasts..]
+        let toast_block = collect
+            .rfind("self.push_hud_toast_block(")
+            .expect("toast block draw");
+        let deferred_subtitles = collect[toast_block..]
             .find("push_hud_sound_subtitles(")
-            .map(|offset| tutorial_toasts + offset)
+            .map(|offset| toast_block + offset)
             .expect("deferred subtitle draw");
         let following_screen = collect[deferred_subtitles..]
             .find("if let Some(screen) = &self.hud_code_of_conduct_screen")
             .map(|offset| deferred_subtitles + offset)
             .expect("screen after deferred slot");
-        assert!(tutorial_toasts < deferred_subtitles);
+        assert!(toast_block < deferred_subtitles);
         assert!(deferred_subtitles < following_screen);
     }
 

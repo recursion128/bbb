@@ -107,13 +107,6 @@ the single frame-extract/submission path stays the structural invariant.
   `SharedConstants.DEBUG_ACTIVE_TEXT_AREAS`, a dev-build `debugFlag` that is
   false whenever `DEBUG_ENABLED` is off, so no production 26.1 client renders the
   glyph-area markers. Reopen if the flag ever ships enabled.
-- **Toasts and the F3 overlay above a full-screen screen are `active`**
-  (user-reopened 2026-08-05). `GameRenderer.render` extracts `ToastManager`
-  and `Gui.extractDebugOverlay` after the screen, so vanilla draws both over
-  `LevelLoadingScreen`, the win screen and `DisconnectedScreen`; BBB's HUD
-  collection returns early for all three and hides both. Done when all three
-  screens show toasts and the debug overlay through the same collection path
-  rather than per-screen patches. Owner: `bbb-native` runtime HUD collection.
 
 ## Native input, accessibility and window lifecycle closure
 
