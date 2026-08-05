@@ -1459,10 +1459,10 @@ class LocalPlayer {
             dict(by_mechanism),
             {
                 "persistence-options-file": 14,
-                "persistence-options-derived": 13,
+                "persistence-options-derived": 15,
                 "persistence-options-apply": 3,
                 # Values that round-trip but have no consumer subsystem here.
-                "persistence-options-unconsumed": 8,
+                "persistence-options-unconsumed": 6,
                 "scope-options-ui": 13,
                 "scope-support-accessors": 94,
             },
