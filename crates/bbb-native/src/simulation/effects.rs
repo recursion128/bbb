@@ -61,6 +61,11 @@ pub(crate) enum PlatformEffect {
         kind: bbb_world::ChatNarrationKind,
         text: String,
     },
+    /// `KeyboardHandler`'s Ctrl+B narrator hotkey, carrying the cycled status
+    /// and `Screen.updateNarratorStatus`'s re-enable narration schedule.
+    NarratorStatusChanged {
+        requests: Vec<crate::input::NarratorStatusRequest>,
+    },
     Exit,
 }
 

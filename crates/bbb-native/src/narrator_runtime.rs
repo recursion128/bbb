@@ -24,6 +24,33 @@ pub(crate) enum NarratorStatus {
 }
 
 impl NarratorStatus {
+    pub(crate) fn option_name(self) -> &'static str {
+        match self {
+            Self::Off => "Off",
+            Self::All => "Narrates All",
+            Self::Chat => "Narrates Chat",
+            Self::System => "Narrates System",
+        }
+    }
+
+    pub(crate) fn id(self) -> i32 {
+        match self {
+            Self::Off => 0,
+            Self::All => 1,
+            Self::Chat => 2,
+            Self::System => 3,
+        }
+    }
+
+    pub(crate) fn next(self) -> Self {
+        match self {
+            Self::Off => Self::All,
+            Self::All => Self::Chat,
+            Self::Chat => Self::System,
+            Self::System => Self::Off,
+        }
+    }
+
     fn should_narrate_chat(self) -> bool {
         matches!(self, Self::All | Self::Chat)
     }
@@ -44,6 +71,7 @@ pub(crate) trait SystemNarrator {
     fn say_chat_queued(&mut self, message: &str);
     fn say_system_chat_queued(&mut self, message: &str);
     fn say_system_queued(&mut self, message: &str);
+    fn update_status(&mut self, status: NarratorStatus);
 }
 
 pub(crate) fn submit_chat_narration(
@@ -204,6 +232,14 @@ impl ScreenNarrationRuntime {
         if ignore_suppression {
             self.suppression = ScreenNarrationSuppression::None;
         }
+    }
+
+    pub(crate) fn schedule_after_narrator_enabled(&mut self, now: Instant) {
+        if !self.active {
+            return;
+        }
+        self.narrate_at = now.checked_add(SCREEN_NARRATION_SUPPRESS_AFTER_INIT);
+        self.suppression = ScreenNarrationSuppression::None;
     }
 
     pub(crate) fn tick(
@@ -384,6 +420,15 @@ impl NativeNarratorRuntime {
 }
 
 impl SystemNarrator for NativeNarratorRuntime {
+    fn update_status(&mut self, status: NarratorStatus) {
+        if self.status != NarratorStatus::Off {
+            self.speech.clear();
+        }
+        self.status = status;
+        self.speech
+            .say(&format!("Narrator : {}", status.option_name()), true);
+    }
+
     fn say_system_now(&mut self, message: &str) {
         if self.status.should_narrate_system() {
             self.speech.say(message, true);
@@ -417,6 +462,10 @@ mod tests {
     struct RecordingNarrator(Vec<String>);
 
     impl SystemNarrator for RecordingNarrator {
+        fn update_status(&mut self, status: NarratorStatus) {
+            self.0.push(format!("status:{}", status.id()));
+        }
+
         fn say_system_now(&mut self, message: &str) {
             self.0.push(message.to_string());
         }
@@ -440,6 +489,10 @@ mod tests {
         struct DispatchRecorder(Vec<&'static str>);
 
         impl SystemNarrator for DispatchRecorder {
+            fn update_status(&mut self, _status: NarratorStatus) {
+                self.0.push("status");
+            }
+
             fn say_system_now(&mut self, _message: &str) {
                 self.0.push("system_now");
             }

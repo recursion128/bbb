@@ -2175,7 +2175,7 @@ fn debug_advanced_item_tooltips_startup_state_is_runtime_initial_value() {
         input.take_debug_client_option_writes(),
         vec![crate::client_options::ClientOptionWrite {
             key: "advancedItemTooltips",
-            value: false,
+            value: crate::client_options::ClientOptionValue::Boolean(false),
         }]
     );
     assert!(input.take_debug_client_option_writes().is_empty());
@@ -2213,7 +2213,7 @@ fn focus_pause_toggle_queues_the_option_line_vanilla_saves() {
         input.take_debug_client_option_writes(),
         vec![crate::client_options::ClientOptionWrite {
             key: "pauseOnLostFocus",
-            value: false,
+            value: crate::client_options::ClientOptionValue::Boolean(false),
         }]
     );
 }
@@ -29983,4 +29983,165 @@ fn opening_a_screen_from_no_screen_resets_the_last_input_type() {
         0,
     );
     assert_eq!(input.last_input_type(), LastInputType::None);
+}
+
+fn press_key(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+) {
+    handle_key_input(
+        input,
+        counters,
+        world,
+        net_commands,
+        PhysicalKey::Code(code),
+        ElementState::Pressed,
+    );
+}
+
+#[test]
+fn the_narrator_hotkey_cycles_the_status_and_saves_the_enum_id() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+    input.set_narrator_hotkey_enabled(true);
+    input.set_narrator_available(true);
+
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyB,
+    );
+
+    assert_eq!(
+        input.take_narrator_status_requests(),
+        vec![crate::input::NarratorStatusRequest {
+            status: crate::narrator_runtime::NarratorStatus::All,
+            schedule_narration: true,
+        }]
+    );
+    assert_eq!(
+        input.take_debug_client_option_writes(),
+        vec![crate::client_options::ClientOptionWrite {
+            key: "narrator",
+            value: crate::client_options::ClientOptionValue::EnumId(1),
+        }]
+    );
+
+    for expected in [
+        crate::narrator_runtime::NarratorStatus::Chat,
+        crate::narrator_runtime::NarratorStatus::System,
+        crate::narrator_runtime::NarratorStatus::Off,
+    ] {
+        press_key(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &net_commands,
+            KeyCode::KeyB,
+        );
+        assert_eq!(
+            input.take_narrator_status_requests(),
+            vec![crate::input::NarratorStatusRequest {
+                status: expected,
+                schedule_narration: false,
+            }]
+        );
+        input.take_debug_client_option_writes();
+    }
+}
+
+#[test]
+fn the_narrator_hotkey_stays_out_of_text_entry_and_unavailable_narrators() {
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+
+    let mut without_narrator = ClientInputState::new(true);
+    without_narrator.set_narrator_hotkey_enabled(true);
+    let mut world = world_with_debug_player(false);
+    press_key(
+        &mut without_narrator,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut without_narrator,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyB,
+    );
+    assert!(without_narrator.take_narrator_status_requests().is_empty());
+
+    let mut hotkey_off = ClientInputState::new(true);
+    hotkey_off.set_narrator_available(true);
+    press_key(
+        &mut hotkey_off,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut hotkey_off,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyB,
+    );
+    assert!(hotkey_off.take_narrator_status_requests().is_empty());
+
+    let mut typing = ClientInputState::new(true);
+    typing.set_narrator_hotkey_enabled(true);
+    typing.set_narrator_available(true);
+    open_chat_entry(
+        &mut typing,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        ChatMethod::Message,
+        false,
+    );
+    press_key(
+        &mut typing,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::ControlLeft,
+    );
+    press_key(
+        &mut typing,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyB,
+    );
+    assert!(typing.take_narrator_status_requests().is_empty());
+
+    let mut without_control = ClientInputState::new(true);
+    without_control.set_narrator_hotkey_enabled(true);
+    without_control.set_narrator_available(true);
+    press_key(
+        &mut without_control,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        KeyCode::KeyB,
+    );
+    assert!(without_control.take_narrator_status_requests().is_empty());
 }

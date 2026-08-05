@@ -484,6 +484,30 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 };
                 narrator_runtime::submit_chat_narration(narrator, kind, &text);
             }
+            PlatformEffect::NarratorStatusChanged { requests } => {
+                for request in requests {
+                    if let Some(narrator) = self.narrator.as_deref_mut() {
+                        narrator.update_status(request.status);
+                    }
+                    if !request.schedule_narration {
+                        continue;
+                    }
+                    let now = Instant::now();
+                    for narration in [
+                        &mut *self.debug_options_screen_narration,
+                        &mut *self.stats_screen_narration,
+                        &mut *self.recipe_book_narration,
+                        &mut *self.social_interactions_narration,
+                        &mut *self.player_reporting_narration,
+                        &mut *self.death_screen_narration,
+                        &mut *self.disconnected_screen_narration,
+                        &mut *self.chat_screen_narration,
+                        &mut *self.game_event_screen_narration,
+                    ] {
+                        narration.schedule_after_narrator_enabled(now);
+                    }
+                }
+            }
             PlatformEffect::Exit => *self.exit_requested = true,
         }
     }
@@ -790,6 +814,9 @@ fn run_client(args: startup::Args) -> Result<()> {
     input.set_debug_advanced_item_tooltips(args.advanced_item_tooltips);
     input.set_debug_pause_on_lost_focus(args.pause_on_lost_focus);
     input.set_reduced_debug_info_option(args.client_reduced_debug_info);
+    input.set_narrator_status(NarratorStatus::from(args.client_narrator));
+    input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
+    input.set_narrator_available(narrator_runtime.is_some());
     input.set_debug_show_local_server_entity_hit_boxes(
         args.debug_show_local_server_entity_hit_boxes,
     );

@@ -111,6 +111,12 @@ pub(crate) struct Args {
     #[arg(long = "client-narrator", value_enum, default_value = "off")]
     pub(crate) client_narrator: ClientNarratorArg,
     #[arg(
+        long = "client-narrator-hotkey",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_narrator_hotkey: bool,
+    #[arg(
         long = "client-show-subtitles",
         default_value_t = false,
         action = ArgAction::Set
@@ -566,6 +572,18 @@ fn bind_stored_client_options(
         client_reduced_debug_info
     );
     flag!("client_vignette", "vignette", client_vignette);
+    parsed!(
+        "client_narrator",
+        "narrator",
+        EnumId,
+        client_narrator,
+        parse_stored_narrator
+    );
+    flag!(
+        "client_narrator_hotkey",
+        "narratorHotkey",
+        client_narrator_hotkey
+    );
     parsed!(
         "client_attack_indicator",
         "attackIndicator",
@@ -1047,6 +1065,16 @@ fn parse_stored_attack_indicator(
         "1" => Ok(ClientAttackIndicatorArg::Crosshair),
         "2" => Ok(ClientAttackIndicatorArg::Hotbar),
         other => Err(format!("attack indicator must be 0, 1 or 2, got {other}")),
+    }
+}
+
+fn parse_stored_narrator(value: &str) -> std::result::Result<ClientNarratorArg, String> {
+    match value {
+        "0" => Ok(ClientNarratorArg::Off),
+        "1" => Ok(ClientNarratorArg::All),
+        "2" => Ok(ClientNarratorArg::Chat),
+        "3" => Ok(ClientNarratorArg::System),
+        other => Err(format!("narrator must be 0, 1, 2 or 3, got {other}")),
     }
 }
 

@@ -165,8 +165,9 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::client_options::ClientOptionWrite;
+use crate::client_options::{ClientOptionValue, ClientOptionWrite};
 use crate::hotbar_presets::HotbarPresetStore;
+use crate::narrator_runtime::NarratorStatus;
 
 use crate::debug_entries::{
     DebugScreenEntryId, DebugScreenEntryList, DebugScreenEntryStatus, DebugScreenProfile,
@@ -579,6 +580,12 @@ pub(crate) enum StatsScreenFocus {
     Done,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct NarratorStatusRequest {
+    pub(crate) status: NarratorStatus,
+    pub(crate) schedule_narration: bool,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum LastInputType {
     #[default]
@@ -698,6 +705,10 @@ pub(crate) struct ClientInputState {
     hotbar_preset_store: Option<HotbarPresetStore>,
     last_input_type: LastInputType,
     last_input_type_screen_was_open: bool,
+    narrator_status: NarratorStatus,
+    narrator_hotkey_enabled: bool,
+    narrator_available: bool,
+    narrator_status_requests: Vec<NarratorStatusRequest>,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1279,6 +1290,63 @@ impl ClientInputState {
 
     pub(crate) fn last_input_type(&self) -> LastInputType {
         self.last_input_type
+    }
+
+    pub(crate) fn set_narrator_status(&mut self, status: NarratorStatus) {
+        self.narrator_status = status;
+    }
+
+    pub(crate) fn set_narrator_hotkey_enabled(&mut self, enabled: bool) {
+        self.narrator_hotkey_enabled = enabled;
+    }
+
+    pub(crate) fn set_narrator_available(&mut self, available: bool) {
+        self.narrator_available = available;
+    }
+
+    pub(crate) fn take_narrator_status_requests(&mut self) -> Vec<NarratorStatusRequest> {
+        std::mem::take(&mut self.narrator_status_requests)
+    }
+
+    fn debug_options_screen_search_is_focused(&self) -> bool {
+        self.debug_options_screen
+            .as_ref()
+            .is_some_and(|screen| screen.focus == DebugOptionsScreenFocus::Search)
+    }
+
+    fn text_entry_consumes_input(&self, world: &WorldStore) -> bool {
+        self.chat_entry.is_some()
+            || self.book_input.is_some()
+            || self.sign_editor_is_active_or_pending(world)
+            || self.debug_options_screen_search_is_focused()
+            || world.command_block_editor().is_some()
+            || world.minecart_command_block_editor().is_some()
+            || world.structure_block_editor().is_some()
+            || world.jigsaw_block_editor().is_some()
+            || world.test_block_editor().is_some()
+            || world.test_instance_block_editor().is_some()
+            || world.game_rules_screen().is_some()
+            || world.social_interactions_screen().is_some()
+    }
+
+    fn handle_narrator_hotkey(&mut self, world: &WorldStore) {
+        if !self.narrator_hotkey_enabled
+            || !self.narrator_available
+            || !self.control_down()
+            || self.text_entry_consumes_input(world)
+        {
+            return;
+        }
+        let was_disabled = self.narrator_status == NarratorStatus::Off;
+        self.narrator_status = self.narrator_status.next();
+        self.narrator_status_requests.push(NarratorStatusRequest {
+            status: self.narrator_status,
+            schedule_narration: was_disabled,
+        });
+        self.debug_client_option_writes.push(ClientOptionWrite {
+            key: "narrator",
+            value: ClientOptionValue::EnumId(self.narrator_status.id()),
+        });
     }
 
     fn synchronize_last_input_type_screen_edge(&mut self, world: &WorldStore) {
@@ -4754,7 +4822,7 @@ impl ClientInputState {
                 // `keyDebugShowAdvancedTooltips` saves the toggled field.
                 self.debug_client_option_writes.push(ClientOptionWrite {
                     key: "advancedItemTooltips",
-                    value: self.debug_advanced_item_tooltips,
+                    value: ClientOptionValue::Boolean(self.debug_advanced_item_tooltips),
                 });
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
@@ -4771,7 +4839,7 @@ impl ClientInputState {
                 // `keyDebugFocusPause` saves the toggled field.
                 self.debug_client_option_writes.push(ClientOptionWrite {
                     key: "pauseOnLostFocus",
-                    value: self.debug_pause_on_lost_focus,
+                    value: ClientOptionValue::Boolean(self.debug_pause_on_lost_focus),
                 });
                 push_debug_feedback_chat_message(
                     world.as_deref_mut(),
@@ -11882,6 +11950,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
     if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
         input.set_control_key(code, pressed);
+    }
+
+    if pressed && code == KeyCode::KeyB {
+        input.handle_narrator_hotkey(world);
     }
 
     if input.chat_restrictions_screen_is_open() {

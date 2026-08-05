@@ -13244,6 +13244,10 @@ fn command_suggestion_narration_speaks_once_per_state_change_and_resets() {
     struct RecordingNarrator(Vec<String>);
 
     impl SystemNarrator for RecordingNarrator {
+        fn update_status(&mut self, status: crate::narrator_runtime::NarratorStatus) {
+            self.0.push(format!("status:{}", status.id()));
+        }
+
         fn say_system_now(&mut self, message: &str) {
             self.0.push(message.to_string());
         }
@@ -13290,6 +13294,10 @@ fn player_list_visibility_narration_speaks_only_on_opening_edges() {
     struct RecordingNarrator(Vec<String>);
 
     impl SystemNarrator for RecordingNarrator {
+        fn update_status(&mut self, status: crate::narrator_runtime::NarratorStatus) {
+            self.0.push(format!("status:{}", status.id()));
+        }
+
         fn say_system_now(&mut self, message: &str) {
             self.0.push(message.to_string());
         }

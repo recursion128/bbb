@@ -216,16 +216,32 @@ impl ClientOptionsFile {
     /// reaches `save` from a branch that actually flipped the field.
     pub(crate) fn apply(&mut self, writes: &[ClientOptionWrite]) -> Result<bool> {
         let mut changed = false;
+        let mut enum_text = String::new();
         for write in writes {
             let spec = client_option_spec(write.key)
                 .unwrap_or_else(|| panic!("{} is not a catalogued option key", write.key));
-            assert_eq!(
-                spec.encoding,
-                ClientOptionEncoding::Boolean,
-                "{} is not written as a boolean",
-                write.key
-            );
-            let text = bool_text(write.value);
+            let text = match write.value {
+                ClientOptionValue::Boolean(value) => {
+                    assert_eq!(
+                        spec.encoding,
+                        ClientOptionEncoding::Boolean,
+                        "{} is not written as a boolean",
+                        write.key
+                    );
+                    bool_text(value)
+                }
+                ClientOptionValue::EnumId(value) => {
+                    assert_eq!(
+                        spec.encoding,
+                        ClientOptionEncoding::EnumId,
+                        "{} is not written as an enum id",
+                        write.key
+                    );
+                    enum_text.clear();
+                    enum_text.push_str(&value.to_string());
+                    enum_text.as_str()
+                }
+            };
             if self.options.raw(spec.key) != Some(text) {
                 self.options.set_raw(spec.key, text);
                 changed = true;
@@ -246,7 +262,15 @@ impl ClientOptionsFile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ClientOptionWrite {
     pub(crate) key: &'static str,
-    pub(crate) value: bool,
+    pub(crate) value: ClientOptionValue,
+}
+
+/// The two encodings a hotkey can write today: `Options.save` writes booleans
+/// as `true`/`false` and enum options as their numeric id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ClientOptionValue {
+    Boolean(bool),
+    EnumId(i32),
 }
 
 /// The catalogued spec for `key`, so a binding can be checked against the
@@ -305,11 +329,11 @@ mod tests {
             .apply(&[
                 ClientOptionWrite {
                     key: "advancedItemTooltips",
-                    value: true,
+                    value: ClientOptionValue::Boolean(true),
                 },
                 ClientOptionWrite {
                     key: "pauseOnLostFocus",
-                    value: false,
+                    value: ClientOptionValue::Boolean(false),
                 },
             ])
             .unwrap());
@@ -319,6 +343,23 @@ mod tests {
         assert_eq!(reloaded.raw("pauseOnLostFocus"), Some("false"));
         // `save` rewrites the whole file, so the untouched keys come back too.
         assert_eq!(reloaded.raw("renderDistance"), Some("12"));
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn an_enum_option_write_stores_the_numeric_id() {
+        let path = unique_options_path("enum-id");
+        let mut file = ClientOptionsFile::load(path.clone(), ClientOptionHost::default()).unwrap();
+
+        assert!(file
+            .apply(&[ClientOptionWrite {
+                key: "narrator",
+                value: ClientOptionValue::EnumId(3),
+            }])
+            .unwrap());
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(reloaded.raw("narrator"), Some("3"));
         let _ = fs::remove_file(path);
     }
 
@@ -334,7 +375,7 @@ mod tests {
         assert!(!file
             .apply(&[ClientOptionWrite {
                 key: "pauseOnLostFocus",
-                value: true,
+                value: ClientOptionValue::Boolean(true),
             }])
             .unwrap());
         assert!(!path.exists());
@@ -342,7 +383,7 @@ mod tests {
         assert!(file
             .apply(&[ClientOptionWrite {
                 key: "pauseOnLostFocus",
-                value: false,
+                value: ClientOptionValue::Boolean(false),
             }])
             .unwrap());
         assert!(path.exists());

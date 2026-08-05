@@ -1173,6 +1173,14 @@ impl SimulationInputRuntime {
                 &self.client_information,
             );
         }
+        let narrator_status_requests = context.input.take_narrator_status_requests();
+        if !narrator_status_requests.is_empty() {
+            context
+                .platform
+                .submit(PlatformEffect::NarratorStatusChanged {
+                    requests: narrator_status_requests,
+                });
+        }
         let profiling_toggle_requests = context.input.take_debug_profiling_toggle_requests();
         if !profiling_toggle_requests.is_empty() {
             context.platform.submit(PlatformEffect::ProfilingToggled {
