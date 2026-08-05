@@ -89,6 +89,15 @@ reopen condition on the matrix row.
   still lacks one mechanically reachable evidence cell per `GameRenderer` owner.
   Split only by semantic owner and preserve the single frame-extract/submission
   path.
+- **Anisotropic terrain filtering (`maxAnisotropyBit`) is `deferred`.** Vanilla
+  feeds `Options.maxAnisotropyBit` through `SpriteLoader`/`Stitcher` into the
+  block-atlas sampler (2^bit anisotropy with matching sprite padding). BBB's
+  terrain atlas samples nearest-neighbor with its own mip chain and has no
+  anisotropic sampler or padding path; the option is persisted but has no
+  consumer. Observable only as texture sharpness at oblique view angles.
+  Reopen when the terrain sampler grows anisotropy support, and wire the
+  stored bit plus the atlas padding in the same slice. Owner: `bbb-renderer`
+  sampler creation + `bbb-pack` atlas stitching.
 - **Toasts and the F3 overlay above a full-screen screen are `deferred`.**
   `GameRenderer.render` extracts `ToastManager` and `Gui.extractDebugOverlay`
   after the screen, so vanilla draws both over `LevelLoadingScreen`, the win

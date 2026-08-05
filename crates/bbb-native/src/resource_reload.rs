@@ -257,12 +257,18 @@ fn apply_native_resource_reload(
         })?;
 
     let cutout_leaves = terrain_textures.cutout_leaves();
+    let smooth_lighting = terrain_textures.smooth_lighting();
     let shader_resources = prepared.post_effects.renderer_projection();
     let (next_terrain_textures, win_screen_resources) = renderer
         .transactional_shader_resource_reload(&shader_resources, false, |renderer| {
             upload_reload_atlases(renderer, &prepared.particles.render, &prepared.items)?;
-            let textures = try_load_terrain_textures(renderer, &prepared.roots, cutout_leaves)
-                .context("upload terrain resources during resource reload")?;
+            let textures = try_load_terrain_textures(
+                renderer,
+                &prepared.roots,
+                cutout_leaves,
+                smooth_lighting,
+            )
+            .context("upload terrain resources during resource reload")?;
             try_load_hud_textures(renderer, &prepared.roots)
                 .context("upload HUD resources during resource reload")?;
             upload_panorama(renderer, &prepared.panorama)

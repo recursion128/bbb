@@ -886,6 +886,72 @@ fn block_render_data_preserves_model_ambient_occlusion() {
 }
 
 #[test]
+fn smooth_lighting_off_disables_every_model_ambient_occlusion() {
+    // Vanilla `Options.ao` builds `ModelBlockRenderer` with the option, so
+    // smooth lighting off flattens even models that request AO.
+    let root = unique_temp_dir("block-render-smooth-lighting");
+    let asset_root = root
+        .join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/test_model" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("test_model.json"),
+        r##"{
+            "textures": {
+                "particle": "minecraft:block/stone",
+                "all": "minecraft:block/stone"
+            },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+
+    let mut texture_state = TerrainTextureState::default();
+    texture_state.block_models = Some(
+        bbb_pack::PackRoots::from_root(&root)
+            .unwrap()
+            .load_block_model_catalog()
+            .unwrap(),
+    );
+
+    let render_data = |texture_state: &TerrainTextureState| {
+        let (_, _, _, _, ambient_occlusion) = texture_state.block_render_data(
+            Some("minecraft:test_block"),
+            &BTreeMap::new(),
+            bbb_world::TerrainMaterialClass::Opaque,
+            None,
+            None,
+            None,
+        );
+        ambient_occlusion
+    };
+    assert!(render_data(&texture_state));
+    let texture_state = texture_state.with_smooth_lighting(false);
+    assert!(!render_data(&texture_state));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_render_data_preserves_empty_multipart_geometry() {
     let root = unique_temp_dir("block-render-empty-multipart");
     let asset_root = root

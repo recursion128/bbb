@@ -44,6 +44,9 @@ pub(crate) struct TerrainTextureState {
     sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
     cutout_leaves: bool,
+    /// Vanilla `Options.ao` (smooth lighting): `ModelBlockRenderer` is built
+    /// with the option and gates every model's ambient occlusion on it.
+    smooth_lighting: bool,
     block_item_default_quads: RefCell<HashMap<String, Option<Arc<[bbb_renderer::ItemModelQuad]>>>>,
     block_item_property_quads: RefCell<
         HashMap<(String, BTreeMap<String, String>), Option<Arc<[bbb_renderer::ItemModelQuad]>>>,
@@ -82,6 +85,7 @@ impl Default for TerrainTextureState {
             sprite_alphas: HashMap::new(),
             fallback_index: 0,
             cutout_leaves: true,
+            smooth_lighting: true,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
@@ -239,6 +243,7 @@ impl TerrainTextureState {
             sprite_alphas,
             fallback_index,
             cutout_leaves: true,
+            smooth_lighting: true,
             block_item_default_quads: RefCell::new(HashMap::new()),
             block_item_property_quads: RefCell::new(HashMap::new()),
             block_display_default_quads: RefCell::new(HashMap::new()),
@@ -250,6 +255,15 @@ impl TerrainTextureState {
     pub(crate) fn with_cutout_leaves(mut self, cutout_leaves: bool) -> Self {
         self.cutout_leaves = cutout_leaves;
         self
+    }
+
+    pub(crate) fn with_smooth_lighting(mut self, smooth_lighting: bool) -> Self {
+        self.smooth_lighting = smooth_lighting;
+        self
+    }
+
+    pub(crate) fn smooth_lighting(&self) -> bool {
+        self.smooth_lighting
     }
 
     pub(crate) fn cutout_leaves(&self) -> bool {
@@ -632,7 +646,7 @@ impl TerrainTextureState {
                     position,
                     blend,
                 ),
-                model.use_ambient_occlusion,
+                model.use_ambient_occlusion && self.smooth_lighting,
             );
         }
 
@@ -655,7 +669,7 @@ impl TerrainTextureState {
                 position,
                 blend,
             ),
-            true,
+            self.smooth_lighting,
         )
     }
 
@@ -1870,18 +1884,23 @@ pub(crate) fn load_terrain_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: Option<&PackRoots>,
     cutout_leaves: bool,
+    smooth_lighting: bool,
 ) -> TerrainTextureState {
     let Some(roots) = roots else {
         tracing::warn!("falling back to default terrain texture atlas without pack roots");
         renderer.set_terrain_particle_sprite_uvs(Vec::new());
-        return TerrainTextureState::default().with_cutout_leaves(cutout_leaves);
+        return TerrainTextureState::default()
+            .with_cutout_leaves(cutout_leaves)
+            .with_smooth_lighting(smooth_lighting);
     };
-    match try_load_terrain_textures(renderer, roots, cutout_leaves) {
+    match try_load_terrain_textures(renderer, roots, cutout_leaves, smooth_lighting) {
         Ok(textures) => textures,
         Err(err) => {
             tracing::warn!(?err, "falling back to default terrain texture atlas");
             renderer.set_terrain_particle_sprite_uvs(Vec::new());
-            TerrainTextureState::default().with_cutout_leaves(cutout_leaves)
+            TerrainTextureState::default()
+                .with_cutout_leaves(cutout_leaves)
+                .with_smooth_lighting(smooth_lighting)
         }
     }
 }
@@ -1890,6 +1909,7 @@ pub(crate) fn try_load_terrain_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
     cutout_leaves: bool,
+    smooth_lighting: bool,
 ) -> Result<TerrainTextureState> {
     let images = roots.load_block_texture_images()?;
     let block_models = roots.load_block_model_catalog()?;
@@ -1942,7 +1962,8 @@ pub(crate) fn try_load_terrain_textures(
         colormaps,
         biome_colors,
     )
-    .with_cutout_leaves(cutout_leaves);
+    .with_cutout_leaves(cutout_leaves)
+    .with_smooth_lighting(smooth_lighting);
     Ok(textures)
 }
 

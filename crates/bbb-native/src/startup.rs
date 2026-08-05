@@ -370,6 +370,12 @@ pub(crate) struct Args {
     )]
     pub(crate) panorama_scroll_speed: f64,
     #[arg(
+        long = "client-smooth-lighting",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_smooth_lighting: bool,
+    #[arg(
         long = "client-view-bobbing",
         default_value_t = true,
         action = ArgAction::Set
@@ -690,6 +696,7 @@ fn bind_stored_client_options(
     }
 
     flag!("client_auto_jump", "autoJump", client_auto_jump);
+    flag!("client_smooth_lighting", "ao", client_smooth_lighting);
     flag!(
         "client_reduced_debug_info",
         "reducedDebugInfo",

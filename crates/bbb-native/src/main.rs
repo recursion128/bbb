@@ -1001,8 +1001,12 @@ fn run_client(args: startup::Args) -> Result<()> {
             }
         }
     }
-    let mut terrain_textures =
-        load_terrain_textures(&mut renderer, pack_roots.as_ref(), args.cutout_leaves);
+    let mut terrain_textures = load_terrain_textures(
+        &mut renderer,
+        pack_roots.as_ref(),
+        args.cutout_leaves,
+        args.client_smooth_lighting,
+    );
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);
         if let Some(items) = &item_runtime {
