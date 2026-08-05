@@ -80,9 +80,13 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world` + `bbb-pack`
 Matrix routes: `hud-frame-extract-order`, `hud-player-vitals`, `hud-hotbar-selection`,
 `hud-overlay-effects`, `hud-text-and-lists`, `rendering-game-step-surface`
 
-- **The remaining frame/HUD step surfaces are `active`.** Existing focused and
-  pixel tests cover many branches, but do not yet provide one mechanically
-  reachable evidence cell for every GUI owner — now split into the five `hud-*` routes — and every game-renderer owner.
+The five `hud-*` routes are closed: `Gui`'s 72 owners split into seven direct
+support accessors plus 65 decision owners, each carrying a mechanically reachable
+implementation/test evidence cell, and every route is now `equivalent` with its own
+reopen condition on the matrix row.
+
+- **The game-renderer step surface is `active`.** `rendering-game-step-surface`
+  still lacks one mechanically reachable evidence cell per `GameRenderer` owner.
   Split only by semantic owner and preserve the single frame-extract/submission
   path.
 - **Toasts and the F3 overlay above a full-screen screen are `deferred`.**

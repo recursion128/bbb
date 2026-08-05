@@ -1539,9 +1539,9 @@ class LocalPlayer {
             Counter(
                 {
                     "hud-frame-extract-order": 9,
-                    "hud-player-vitals": 18,
+                    "hud-player-vitals": 19,
                     "hud-hotbar-selection": 6,
-                    "hud-overlay-effects": 11,
+                    "hud-overlay-effects": 10,
                     "hud-text-and-lists": 19,
                     # `getFont`/`getChat`/`getTabList`/`getBossOverlay`/
                     # `getDebugOverlay`/`getSpectatorGui`/`getGuiTicks`.

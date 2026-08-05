@@ -496,6 +496,7 @@ GUI_METHOD_ROUTES = _method_routes(
             "playAirBubblePoppedSound",
             "willPrioritizeExperienceInfo",
             "willPrioritizeJumpInfo",
+            "getSprite",
         ),
     ),
     (
@@ -522,7 +523,6 @@ GUI_METHOD_ROUTES = _method_routes(
             "extractDemoOverlay",
             "extractEffects",
             "getMobEffectSprite",
-            "getSprite",
         ),
     ),
     (
@@ -4047,6 +4047,541 @@ SERVER_LIST_OWNER_EVIDENCE = _owner_evidence(
 )
 
 
+HUD_FRAME_EXTRACT_ORDER_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#HudRenderRuntime",
+                "crates/bbb-world/src/client/hud.rs#HudTitleState",
+            ),
+            ("crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",),
+        ),
+        ("Gui",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#hud_level_loading_screen",
+                "crates/bbb-renderer/src/hud.rs#collect_hud_draws",
+            ),
+            (
+                "crates/bbb-renderer/src/hud.rs#the_level_loading_screen_replaces_every_hud_draw_and_centers_the_status_line",
+                "crates/bbb-native/src/runtime/tests.rs#renderer_frame_hud_extracts_after_input_and_use_item_tick",
+            ),
+        ),
+        ("extractRenderState",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_hotbar_mode_from_world",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_spectator_projection_preserves_ordinary_and_hidden_hotbar_modes",
+                "crates/bbb-native/src/runtime/tests.rs#a_non_player_camera_entity_hides_the_ordinary_item_hotbar",
+            ),
+        ),
+        ("extractHotbarAndDecorations",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_camera_overlays",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#camera_overlays_split_first_person_equippables_from_the_freeze_outline",
+                "crates/bbb-renderer/src/hud.rs#camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
+            ),
+        ),
+        ("extractCameraOverlays",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/hud.rs#advance_hud_text_ticks",),
+            (
+                "crates/bbb-world/src/client/hud.rs#hud_text_ticks_count_down_like_vanilla_gui_tick",
+                "crates/bbb-world/src/client/hud.rs#hud_text_tick_zero_and_partial_advances_keep_title_visible",
+            ),
+        ),
+        ("tick",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/level.rs#clear_level_bound_state",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_chunk_render_stats_under_reduced_debug_info",
+            ),
+        ),
+        ("clearCache",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/hud.rs#clear_hud_for_level_teardown",),
+            (
+                "crates/bbb-world/src/client/hud.rs#level_teardown_resets_the_tab_list_boss_bars_and_titles_like_gui_on_disconnected",
+            ),
+        ),
+        ("onDisconnected",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#hud_camera_player_id",
+                "crates/bbb-world/src/client/hud_camera_player.rs#hud_camera_player_vitals",
+            ),
+            (
+                "crates/bbb-world/src/client/hud_camera_player.rs#the_camera_player_defaults_to_the_local_player_until_set_camera_retargets_it",
+                "crates/bbb-world/src/client/hud_camera_player.rs#a_remote_camera_player_projects_its_own_synced_vitals_and_vanilla_food_defaults",
+            ),
+        ),
+        ("getCameraPlayer",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/input.rs#show_only_reduced_info",),
+            (
+                "crates/bbb-native/src/input/tests.rs#show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag",
+            ),
+        ),
+        ("showOnlyReducedInfo",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_debug_overlay",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_version_and_camera_position_lines",
+            ),
+        ),
+        ("getDebugOverlay",),
+    ),
+)
+
+
+HUD_PLAYER_VITALS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#player_health_frame",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_heart_health_frame_matches_vanilla_damage_hold_and_blink_phase",
+                "crates/bbb-native/src/runtime/tests.rs#hud_heart_health_frame_uses_ten_tick_heal_and_invulnerability_gate",
+            ),
+        ),
+        ("extractPlayerHealth",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud/layout.rs#hud_player_heart_instances",),
+            (
+                "crates/bbb-renderer/src/hud/layout.rs#hud_player_heart_instances_order_damage_and_heal_blink_strata",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_player_heart_instances_append_absorption_hearts",
+            ),
+        ),
+        ("extractHearts",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#hud_heart_sprite",),
+            (
+                "crates/bbb-renderer/src/hud.rs#hud_heart_sprite_names_match_vanilla_assets",
+                "crates/bbb-renderer/src/hud.rs#player_heart_damage_blink_offscreen_frame_consumes_ordered_sprite_variants",
+            ),
+        ),
+        ("extractHeart", "getSprite"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#camera_player_heart_type",
+                "crates/bbb-world/src/client/hud_camera_player.rs#fully_frozen",
+            ),
+            (
+                "crates/bbb-renderer/src/hud.rs#poison_heart_offscreen_frame_uses_the_poisoned_sprite",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_player_heart_instances_follow_the_base_heart_type",
+            ),
+        ),
+        ("HeartType", "forPlayer"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/local_player.rs#player_armor_value",),
+            ("crates/bbb-renderer/src/hud.rs#armor_bar_offscreen_frame_draws_only_when_armor_is_positive",),
+        ),
+        ("extractArmor",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#hud_food_sprite_variant",),
+            (
+                "crates/bbb-renderer/src/hud.rs#food_sprite_variant_prefers_the_hunger_icon_only_under_the_effect",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_layout_places_food_icons_above_hotbar",
+            ),
+        ),
+        ("extractFood",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/local_player.rs#player_air_supply",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_air_bubble_icons",
+            ),
+            (
+                "crates/bbb-renderer/src/hud.rs#air_bubbles_offscreen_frame_draw_only_underwater_or_below_max",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_air_bubble_icons_mirror_the_vanilla_bubble_formulas",
+            ),
+        ),
+        ("extractAirBubbles",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud/layout.rs#hud_air_bubbles_visible",),
+            ("crates/bbb-renderer/src/hud/layout.rs#hud_air_bubbles_visible_only_underwater_or_below_max",),
+        ),
+        ("getCurrentAirSupplyBubble", "getEmptyBubbleDelayDuration"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud/layout.rs#air_bubble_hud_rect",),
+            ("crates/bbb-renderer/src/hud/layout.rs#hud_layout_places_air_bubbles_one_row_above_the_food_row",),
+        ),
+        ("getAirBubbleYLine",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-native/src/runtime.rs#air_bubble_pop_sound",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_air_bubble_pop",
+            ),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_air_bubble_pop_sound_matches_vanilla_dedup_reset_and_gain_formulas",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_air_bubble_pop_exposes_the_sound_inputs_from_the_same_formulas",
+            ),
+        ),
+        ("playAirBubblePoppedSound",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/entities.rs#player_vehicle_health",),
+            (
+                "crates/bbb-renderer/src/hud.rs#vehicle_hearts_offscreen_frame_replace_the_food_row",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_layout_places_vehicle_hearts_on_the_food_row",
+            ),
+        ),
+        ("extractVehicleHealth", "getPlayerVehicleWithHealth"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/hud/layout.rs#hud_vehicle_max_hearts",
+                "crates/bbb-renderer/src/hud/layout.rs#vehicle_heart_hud_rect",
+            ),
+            (
+                "crates/bbb-renderer/src/hud/layout.rs#hud_vehicle_max_hearts_rounds_and_caps_like_the_gui",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_vehicle_heart_fill_splits_rows_on_the_20_half_heart_base",
+            ),
+        ),
+        ("getVehicleMaxHearts", "getVisibleVehicleHeartRows"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_jump_bar",),
+            ("crates/bbb-renderer/src/hud.rs#contextual_bar_jump_replaces_experience_and_uses_cooldown_overlay",),
+        ),
+        ("willPrioritizeExperienceInfo", "willPrioritizeJumpInfo"),
+    ),
+)
+
+
+HUD_HOTBAR_SELECTION_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hotbar_item_icons_with_input_context",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#a_remote_camera_player_keeps_the_hotbar_frame_but_projects_no_local_inventory",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_layout_matches_vanilla_hotbar_positions",
+            ),
+        ),
+        ("extractItemHotbar",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud/layout.rs#hud_item_pop_placement",),
+            (
+                "crates/bbb-renderer/src/hud.rs#the_slot_pop_pose_moves_the_item_quad_but_never_its_decorations",
+                "crates/bbb-renderer/src/hud/layout.rs#hud_layout_matches_vanilla_hotbar_item_positions",
+            ),
+        ),
+        ("extractSlot",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#selected_item_name_frame",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#the_selected_item_name_timer_restarts_on_a_new_item_and_counts_down_to_zero",
+                "crates/bbb-renderer/src/hud.rs#selected_item_name_draw_centers_above_the_hotbar_and_drops_without_hearts",
+            ),
+        ),
+        ("extractSelectedItemName",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_crosshair_visible",),
+            (
+                "crates/bbb-renderer/src/hud.rs#crosshair_visibility_gate_retains_the_uploaded_sprite",
+                "crates/bbb-renderer/src/hud.rs#crosshair_attack_indicator_draws_after_crosshair_and_obeys_debug_replacement",
+            ),
+        ),
+        ("extractCrosshair",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/crosshair.rs#can_render_crosshair_for_spectator",),
+            (
+                "crates/bbb-native/src/crosshair.rs#spectator_mode_only_outlines_and_crosshairs_menu_provider_blocks",
+                "crates/bbb-native/src/crosshair.rs#spectator_crosshair_follows_the_hit_entity_menu_provider",
+            ),
+        ),
+        ("canRenderCrosshairForSpectator",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_contextual_bar",),
+            ("crates/bbb-renderer/src/hud.rs#contextual_bar_jump_replaces_experience_and_uses_cooldown_overlay",),
+        ),
+        ("nextContextualInfoState",),
+    ),
+)
+
+
+HUD_OVERLAY_EFFECTS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/vignette.rs#VignetteRuntime",),
+            (
+                "crates/bbb-native/src/runtime/vignette.rs#the_vignette_option_hides_the_draw_while_the_tick_state_keeps_smoothing",
+                "crates/bbb-renderer/src/vignette.rs#vignette_pipeline_matches_vanilla_blend_and_blurred_texture_sampling",
+            ),
+        ),
+        ("extractVignette",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/vignette.rs#vignette_target_brightness",),
+            (
+                "crates/bbb-native/src/runtime/vignette.rs#vignette_brightness_curve_and_tick_smoothing_match_vanilla",
+                "crates/bbb-native/src/runtime/vignette.rs#vignette_runtime_keeps_brightness_without_camera_and_ticks_while_hidden",
+            ),
+        ),
+        ("updateVignetteBrightness",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_portal_overlay",),
+            ("crates/bbb-renderer/src/hud.rs#the_portal_overlay_eases_partial_intensity_and_samples_the_blocks_atlas",),
+        ),
+        ("extractPortalOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_confusion_overlay",),
+            (
+                "crates/bbb-renderer/src/hud.rs#the_confusion_overlay_scales_about_the_centre_and_blends_additively",
+                "crates/bbb-native/src/runtime/tests.rs#the_confusion_overlay_needs_nausea_and_a_reduced_screen_effect_scale",
+            ),
+        ),
+        ("extractConfusionOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#push_hud_spyglass_scope",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_spyglass_scope_matches_vanilla_frame_interpolation_and_visibility",
+                "crates/bbb-renderer/src/hud.rs#spyglass_scope_draws_texture_and_masks_before_crosshair_and_obeys_hide_gui",
+            ),
+        ),
+        ("extractSpyglassOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_camera_overlays",),
+            (
+                "crates/bbb-renderer/src/hud.rs#camera_overlays_blit_full_screen_in_order_and_skip_unknown_textures",
+                "crates/bbb-native/src/runtime/tests.rs#camera_overlays_split_first_person_equippables_from_the_freeze_outline",
+            ),
+        ),
+        ("extractTextureOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#push_hud_sleep_overlay",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#animate_player_wake_sleep_overlay_frame_wiring_is_hide_gui_independent",
+                "crates/bbb-renderer/src/hud.rs#sleep_overlay_submits_after_boss_bars_and_before_later_hud_content",
+            ),
+        ),
+        ("extractSleepOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#HudDemoPopupScreen",),
+            ("crates/bbb-native/src/runtime/tests.rs#hud_demo_popup_projects_exact_fallback_copy_and_initial_focus",),
+        ),
+        ("extractDemoOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_mob_effects_from_world",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_mob_effect_projection_uses_catalog_category_flags_level_and_duration",
+                "crates/bbb-renderer/src/hud.rs#hud_mob_effect_overlay_matches_vanilla_order_rows_and_icon_alpha",
+            ),
+        ),
+        ("extractEffects",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#hud_mob_effect_overlay_instances",),
+            ("crates/bbb-native/src/runtime/tests.rs#hud_mob_effect_projection_requires_local_player_and_formats_vanilla_time_ranges",),
+        ),
+        ("getMobEffectSprite",),
+    ),
+)
+
+
+HUD_TEXT_AND_LISTS_OWNER_EVIDENCE = _owner_evidence(
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_chat_messages_from_world",),
+            (
+                "crates/bbb-renderer/src/hud.rs#chat_alpha_matches_vanilla_focus_and_two_hundred_tick_fade",
+                "crates/bbb-native/src/runtime/tests.rs#chat_render_cache_rebuilds_only_for_display_revision_or_level",
+            ),
+        ),
+        ("extractChat",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_title_text_from_world",),
+            (
+                "crates/bbb-renderer/src/hud.rs#title_alpha_follows_the_fade_in_stay_fade_out_windows",
+                "crates/bbb-renderer/src/hud.rs#title_draws_center_and_scale_title_4x_and_subtitle_2x",
+            ),
+        ),
+        ("extractTitle",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/hud.rs#apply_title_text",
+                "crates/bbb-world/src/client/hud.rs#apply_subtitle_text",
+            ),
+            ("crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",),
+        ),
+        ("setTitle", "setSubtitle"),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-world/src/client/hud.rs#apply_titles_animation",
+                "crates/bbb-world/src/client/hud.rs#apply_clear_titles",
+            ),
+            (
+                "crates/bbb-world/src/client/hud.rs#title_packets_match_vanilla_timing_rules",
+                "crates/bbb-world/src/client/hud.rs#hud_text_packets_update_canonical_state",
+            ),
+        ),
+        ("setTimes", "clearTitles", "resetTitleTimes"),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_action_bar_text_from_world",),
+            (
+                "crates/bbb-renderer/src/hud.rs#overlay_message_alpha_matches_vanilla_ramp_and_cap",
+                "crates/bbb-renderer/src/hud.rs#overlay_message_rainbow_rgb_is_deterministic_and_matches_the_hsv_quirk",
+            ),
+        ),
+        ("extractOverlayMessage",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/hud.rs#set_overlay_message",),
+            ("crates/bbb-world/src/client/hud.rs#hud_text_components_remain_exact_across_all_overlay_producers",),
+        ),
+        ("setOverlayMessage",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/hud.rs#set_jukebox_now_playing",),
+            (
+                "crates/bbb-world/src/client/hud.rs#jukebox_now_playing_wraps_one_exact_component_for_overlay_and_narration",
+                "crates/bbb-native/src/runtime/tests.rs#jukebox_now_playing_localizes_for_animated_action_bar_and_system_now_narration",
+            ),
+        ),
+        ("setNowPlaying",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#hud_sound_subtitle_placement",),
+            ("crates/bbb-renderer/src/hud.rs#sound_subtitle_placement_obeys_screen_and_hide_gui_rules",),
+        ),
+        ("extractSubtitleOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud.rs#HudSoundSubtitlePlacement",),
+            ("crates/bbb-renderer/src/hud.rs#sound_subtitle_commands_precede_screens_or_defer_past_debug_and_toasts",),
+        ),
+        ("extractDeferredSubtitles",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_player_list_is_visible",),
+            (
+                "crates/bbb-native/src/runtime/tests.rs#hud_player_list_projection_uses_scores_rich_names_and_vanilla_visibility",
+                "crates/bbb-renderer/src/hud/player_list.rs#grid_and_ping_thresholds_match_vanilla",
+            ),
+        ),
+        ("extractTabList",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-world/src/client/scoreboard.rs#sidebar_state",),
+            ("crates/bbb-world/src/client/scoreboard/tests.rs#scoreboard_sidebar_prefers_team_slot_and_filters_sorts_and_limits_scores",),
+        ),
+        ("extractScoreboardSidebar",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-renderer/src/hud/scoreboard.rs#push_hud_scoreboard_sidebar",),
+            (
+                "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_matches_vanilla_right_edge_and_vertical_formula",
+                "crates/bbb-renderer/src/hud/scoreboard.rs#scoreboard_layout_counts_spacer_only_for_visible_scores",
+            ),
+        ),
+        ("displayScoreboardSidebar",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime/render_extract.rs#hud_boss_bars_from_world",),
+            (
+                "crates/bbb-renderer/src/hud.rs#boss_bar_layers_follow_vanilla_background_then_cropped_fill_order",
+                "crates/bbb-world/src/client/hud.rs#boss_events_add_update_remove_and_ignore_unknown_updates",
+            ),
+        ),
+        ("extractBossOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/runtime.rs#hud_debug_overlay_at_partial_tick",),
+            ("crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_vanilla_default_profile_entries",),
+        ),
+        ("extractDebugOverlay",),
+    ),
+    (
+        OwnerEvidence(
+            ("crates/bbb-native/src/client_options/catalog_26_1.rs#showAutosaveIndicator",),
+            ("crates/bbb-native/src/client_options.rs#defaults_carry_the_text_vanilla_writes_for_every_catalogued_key",),
+        ),
+        ("extractSavingIndicator", "tickAutosaveIndicator"),
+    ),
+)
+
+
 METHOD_OWNER_EVIDENCE = {
     **LEVEL_RENDERER_OWNER_EVIDENCE,
     "world-client-level-lifecycle": CLIENT_LEVEL_IDENTITY_LIFECYCLE_OWNER_EVIDENCE,
@@ -4092,6 +4627,11 @@ METHOD_OWNER_EVIDENCE = {
     "world-client-entity-lifecycle": CLIENT_LEVEL_ENTITY_LIFECYCLE_OWNER_EVIDENCE,
     "interaction-block-breaking": INTERACTION_BLOCK_BREAKING_OWNER_EVIDENCE,
     "interaction-prediction-sequence": INTERACTION_PREDICTION_SEQUENCE_OWNER_EVIDENCE,
+    "hud-frame-extract-order": HUD_FRAME_EXTRACT_ORDER_OWNER_EVIDENCE,
+    "hud-player-vitals": HUD_PLAYER_VITALS_OWNER_EVIDENCE,
+    "hud-hotbar-selection": HUD_HOTBAR_SELECTION_OWNER_EVIDENCE,
+    "hud-overlay-effects": HUD_OVERLAY_EFFECTS_OWNER_EVIDENCE,
+    "hud-text-and-lists": HUD_TEXT_AND_LISTS_OWNER_EVIDENCE,
 }
 
 def _registration_evidence(

@@ -456,10 +456,10 @@ interaction census 22 条 route（149 owner）已全部 `equivalent`，重开判
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`active`。字体/CJK 与既有 text shaping 保持 closed；block-entity registration 27 owner
-已 `equivalent` 关闭（见 archive）。剩余 census 将 Gui/GameRenderer step、menu mapping 和
-多人可达 screen 降级为账本中的有界 active 工程。每项按注册面、frame order、state/input
-lifecycle 和真实/pixel evidence 收口；不得借此加入 title、singleplayer、Realms 或 options UI。
+状态：`active`。字体/CJK 与既有 text shaping 保持 closed；block-entity registration 27 owner、
+多人可达 screen 五 route 与 `Gui` 72 owner 的五条 `hud-*` route 已 `equivalent` 关闭（见
+archive）。剩余只有 `GameRenderer` step surface，按 frame order、state/input lifecycle 和
+真实/pixel evidence 收口；不得借此加入 title、singleplayer、Realms 或 options UI。
 
 ### P3：动态资源 presentation breadth
 
@@ -499,28 +499,6 @@ runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 G
 官方 26.1 离线启动、共同 replay/capture 合同、当前 host/tool hash 与 GPU-duration
 边界由 Wiki 等负载机制页维护；不得把 MangoHud
 present interval 或 `perf stat` process mean 误写成 CPU/GPU frame duration。
-
-#### Active contract：rendering-hud-step-surface
-
-- 目标与完成标准：闭合 `Gui.java` 72 owner。按语义 owner 拆成同构 sub-route，
-  未分类方法 fail-closed，逐 owner 挂机械可达 evidence，matrix 行翻
-  `equivalent`，账本对应 active 项收敛。
-- 审计事实：仓内 HUD 由 `runtime/render_extract.rs` + `runtime/hud.rs` 承载，
-  已有大量 focused 与 pixel 测试但无逐 owner evidence cell。72 owner 里 7 个是
-  直接字段返回（CST 判据实测：`getFont`/`getChat`/`getTabList`/`getBossOverlay`/
-  `getDebugOverlay`/`getSpectatorGui`/`getGuiTicks`，归 support accessor），
-  其余 65 个是决策面。
-- 串行阶段：① 逐 method 路由表与 fail-closed 判据；②～⑥ 按 sub-route 逐族补齐
-  实现缺口与 focused evidence（frame order / vitals / hotbar+crosshair /
-  overlay effects / text+lists）；⑦ census close。每族先 grep 现有 owner 再动手，
-  证伪「已实现」比新增实现优先。
-- 非目标：不改单一 frame-extract/submission 路径，不加 title/singleplayer/
-  Realms/options UI，不把 pixel 测试替换成结构断言。
-- 每阶段 focused tests：owner 级投影断言；涉及像素的族补 readback。
-- checkpoint：① 与 ⑦ 触及 generator 属高风险，各自单独一次完整 gate；②～⑥ 每
-  族一次干净提交，累计 4 个提交时 gate；最终 HEAD 必须 full-gated，且因 HUD
-  改动需再跑一次 live playable gate（headless weston，见 memory 配方）。
-- 安全停止点：只允许阶段完成且 evidence 完整的干净提交。
 
 已有维护证据：
 
