@@ -72,6 +72,23 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct SimulationInputRuntime {
     surface_size: PhysicalSize<u32>,
+    /// The projected logical GUI surface (`Window.setGuiScale`, ceiling
+    /// division). Every screen layout, hit test, overlay and narration helper
+    /// in this runtime consumes the logical size; `surface_size` stays the
+    /// physical framebuffer for renderer/world consumers that read the
+    /// publication.
+    gui_surface_size: PhysicalSize<u32>,
+    /// `Window.guiScale` after `Minecraft.resizeGui` (Window.java:431).
+    pub(crate) gui_scale: u32,
+    /// Projected GUI dimensions (`Window.setGuiScale`, ceiling division).
+    pub(crate) gui_scaled_width: u32,
+    pub(crate) gui_scaled_height: u32,
+    /// `Options.guiScale` cap (0 = auto) and `isEnforceUnicode`.
+    pub(crate) gui_scale_max: u32,
+    pub(crate) enforce_unicode: bool,
+    /// A zero-size framebuffer callback means minimized and keeps the last
+    /// usable surface size (Window.onFramebufferResize, Window.java:267-297).
+    pub(crate) minimized: bool,
     cursor_position: Option<PhysicalPosition<f64>>,
     cursor_captured: bool,
     text_measurements: HudFontGlyphMap,
@@ -89,6 +106,10 @@ pub(crate) struct SimulationInputRuntime {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct SimulationInputPublication {
     pub(crate) surface_size: PhysicalSize<u32>,
+    pub(crate) gui_scale: u32,
+    pub(crate) gui_scaled_width: u32,
+    pub(crate) gui_scaled_height: u32,
+    pub(crate) minimized: bool,
     pub(crate) cursor_position: Option<PhysicalPosition<f64>>,
     pub(crate) cursor_captured: bool,
     pub(crate) code_of_conduct_overlay: CodeOfConductOverlayProjection,
@@ -115,6 +136,16 @@ impl SimulationInputRuntime {
     ) -> Self {
         Self {
             surface_size,
+            gui_surface_size: PhysicalSize::new(
+                surface_size.width.max(1),
+                surface_size.height.max(1),
+            ),
+            minimized: surface_size.width == 0 || surface_size.height == 0,
+            gui_scale: 1,
+            gui_scaled_width: surface_size.width.max(1),
+            gui_scaled_height: surface_size.height.max(1),
+            gui_scale_max: 0,
+            enforce_unicode: false,
             cursor_position: None,
             cursor_captured,
             text_measurements: HudFontGlyphMap::default(),
@@ -127,9 +158,27 @@ impl SimulationInputRuntime {
         }
     }
 
+    /// `Options.guiScale` / `isEnforceUnicode` are startup configuration; the
+    /// owner recomputes the current projection immediately so the published
+    /// window state matches the configured options before the first resize.
+    pub(crate) fn set_gui_scale_options(&mut self, gui_scale_max: u32, enforce_unicode: bool) {
+        self.gui_scale_max = gui_scale_max;
+        self.enforce_unicode = enforce_unicode;
+        let (gui_scale, gui_scaled_width, gui_scaled_height) =
+            project_gui_scale(self.surface_size, gui_scale_max, enforce_unicode);
+        self.gui_scale = gui_scale;
+        self.gui_scaled_width = gui_scaled_width;
+        self.gui_scaled_height = gui_scaled_height;
+        self.gui_surface_size = PhysicalSize::new(gui_scaled_width, gui_scaled_height);
+    }
+
     pub(crate) fn publication(&self) -> SimulationInputPublication {
         SimulationInputPublication {
             surface_size: self.surface_size,
+            gui_scale: self.gui_scale,
+            gui_scaled_width: self.gui_scaled_width,
+            gui_scaled_height: self.gui_scaled_height,
+            minimized: self.minimized,
             cursor_position: self.cursor_position,
             cursor_captured: self.cursor_captured,
             code_of_conduct_overlay: self.code_of_conduct_overlay.projection(),
@@ -140,8 +189,8 @@ impl SimulationInputRuntime {
         !self.shutdown_requested
     }
 
-    pub(crate) fn surface_size(&self) -> PhysicalSize<u32> {
-        self.surface_size
+    pub(crate) fn gui_surface_size(&self) -> PhysicalSize<u32> {
+        self.gui_surface_size
     }
 
     pub(crate) fn player_section_ready(
@@ -183,7 +232,7 @@ impl SimulationInputRuntime {
     ) -> SimulationInputProfile {
         self.code_of_conduct_overlay.sync(
             context.world,
-            self.surface_size,
+            self.gui_surface_size,
             &self.text_measurements,
         );
         let mut profile = SimulationInputProfile::default();
@@ -213,6 +262,12 @@ impl SimulationInputRuntime {
         if self.shutdown_requested {
             return profile;
         }
+        // `Minecraft.pauseIfInactive` (Minecraft.java:1382-1390) runs after
+        // every command for the step is applied: a `FocusChanged` arriving in
+        // the same step must update `input.focused` first, so a focus-regained
+        // window never spuriously opens the pause screen. The 500 ms delay is
+        // strict (`> 500L`) and an already-open screen suppresses reopening.
+        context.input.pause_if_inactive(context.now, context.world);
         let queued_effects = RefCell::new(Vec::new());
         let mut clipboard = SimulationClipboard {
             read: None,
@@ -224,7 +279,7 @@ impl SimulationInputRuntime {
         let _ = context.input.command_suggestion_hud_state(
             context.world,
             &self.text_measurements,
-            self.surface_size,
+            self.gui_surface_size(),
         );
         flush_platform_effects(&queued_effects, context.platform);
         if self.code_of_conduct_overlay.is_visible(context.world)
@@ -267,6 +322,7 @@ impl SimulationInputRuntime {
             SimulationCommand::MouseButton {
                 button,
                 state,
+                position,
                 chat_target,
                 book_target,
                 disconnected_screen_target,
@@ -279,6 +335,7 @@ impl SimulationInputRuntime {
                 self.apply_mouse_button(
                     button,
                     state,
+                    position,
                     chat_target,
                     book_target,
                     disconnected_screen_target,
@@ -324,7 +381,7 @@ impl SimulationInputRuntime {
                     delta_ticks,
                     i32::try_from(context.win_screen_resources.total_scroll_length)
                         .unwrap_or(i32::MAX),
-                    i32::try_from(self.surface_size.height).unwrap_or(i32::MAX),
+                    i32::try_from(self.gui_surface_size().height).unwrap_or(i32::MAX),
                 );
             }
             SimulationCommand::HudAirBubblePopSound {
@@ -358,7 +415,7 @@ impl SimulationInputRuntime {
                     .handle_structure_block_editor_cursor_moved(None);
                 context
                     .input
-                    .handle_jigsaw_block_editor_cursor_moved(None, self.surface_size);
+                    .handle_jigsaw_block_editor_cursor_moved(None, self.gui_surface_size());
                 context.input.handle_test_block_editor_cursor_moved(None);
                 context
                     .input
@@ -376,18 +433,13 @@ impl SimulationInputRuntime {
                 context.input.clear_sign_editor_ime_preedit();
             }
             SimulationCommand::SurfaceResized(size) => {
-                self.surface_size = size;
-                self.code_of_conduct_overlay.sync(
-                    context.world,
-                    self.surface_size,
-                    &self.text_measurements,
-                );
+                self.apply_surface_resized(size, context);
             }
             SimulationCommand::TextMeasurements(measurements) => {
                 self.text_measurements = measurements;
                 self.code_of_conduct_overlay.sync(
                     context.world,
-                    self.surface_size,
+                    self.gui_surface_size(),
                     &self.text_measurements,
                 );
             }
@@ -520,6 +572,38 @@ impl SimulationInputRuntime {
         );
     }
 
+    fn apply_surface_resized(
+        &mut self,
+        size: PhysicalSize<u32>,
+        context: &mut SimulationInputContext<'_, '_, '_>,
+    ) {
+        self.set_surface_size(size);
+        self.code_of_conduct_overlay.sync(
+            context.world,
+            self.gui_surface_size,
+            &self.text_measurements,
+        );
+    }
+
+    /// `Window.onFramebufferResize` (Window.java:267-297) plus
+    /// `Minecraft.resizeGui` (Minecraft.java:1434-1442): zero dimensions mean
+    /// minimized and keep the last usable framebuffer; nonzero sizes replace it
+    /// and recompute the GUI scale and projection.
+    fn set_surface_size(&mut self, size: PhysicalSize<u32>) {
+        if size.width == 0 || size.height == 0 {
+            self.minimized = true;
+            return;
+        }
+        self.minimized = false;
+        self.surface_size = size;
+        let (gui_scale, gui_scaled_width, gui_scaled_height) =
+            project_gui_scale(size, self.gui_scale_max, self.enforce_unicode);
+        self.gui_scale = gui_scale;
+        self.gui_scaled_width = gui_scaled_width;
+        self.gui_scaled_height = gui_scaled_height;
+        self.gui_surface_size = PhysicalSize::new(gui_scaled_width, gui_scaled_height);
+    }
+
     fn apply_cursor_moved(
         &mut self,
         position: PhysicalPosition<f64>,
@@ -561,16 +645,16 @@ impl SimulationInputRuntime {
             context.world,
             previous_cursor_position,
             self.cursor_position,
-            self.surface_size,
+            self.gui_surface_size(),
             &self.text_measurements,
         ) {
             self.request_cursor_capture(false, context.platform);
             return;
         }
-        if context
-            .input
-            .handle_debug_game_mode_switcher_cursor_moved(self.cursor_position, self.surface_size)
-        {
+        if context.input.handle_debug_game_mode_switcher_cursor_moved(
+            self.cursor_position,
+            self.gui_surface_size(),
+        ) {
             return;
         }
         if context.input.debug_options_screen_is_open() {
@@ -578,7 +662,7 @@ impl SimulationInputRuntime {
                 .input
                 .handle_debug_options_screen_cursor_moved_with_text_measurer(
                     self.cursor_position,
-                    self.surface_size,
+                    self.gui_surface_size(),
                     &self.text_measurements,
                 );
             context
@@ -636,7 +720,7 @@ impl SimulationInputRuntime {
         if context.world.social_interactions_screen().is_some() {
             context
                 .input
-                .refresh_social_interactions_scroll_bounds(self.surface_size);
+                .refresh_social_interactions_scroll_bounds(self.gui_surface_size());
             context
                 .input
                 .handle_social_interactions_hover(context.world, social_interactions_target);
@@ -657,7 +741,7 @@ impl SimulationInputRuntime {
             handle_dialog_cursor_moved_with_measurer(
                 context.world,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             return;
@@ -670,7 +754,7 @@ impl SimulationInputRuntime {
         }
         if context
             .input
-            .handle_jigsaw_block_editor_cursor_moved(self.cursor_position, self.surface_size)
+            .handle_jigsaw_block_editor_cursor_moved(self.cursor_position, self.gui_surface_size())
         {
             return;
         }
@@ -702,7 +786,7 @@ impl SimulationInputRuntime {
             context.input.handle_book_screen_cursor_moved(
                 context.world,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             return;
@@ -716,14 +800,14 @@ impl SimulationInputRuntime {
         if context.input.handle_game_rules_screen_cursor_moved(
             context.world,
             self.cursor_position,
-            self.surface_size,
+            self.gui_surface_size(),
         ) {
             return;
         }
         if context.input.handle_stats_screen_cursor_moved(
             context.world,
             self.cursor_position,
-            self.surface_size,
+            self.gui_surface_size(),
         ) {
             context.platform.submit(PlatformEffect::StatsScreenInput(
                 ScreenNarrationScheduleInput::MouseMove,
@@ -744,7 +828,7 @@ impl SimulationInputRuntime {
             context.net_counters,
             context.net_commands,
             self.cursor_position,
-            self.surface_size,
+            self.gui_surface_size(),
         );
         if recipe_book_screen_is_open(context.world) {
             context.platform.submit(PlatformEffect::RecipeBookInput(
@@ -785,7 +869,7 @@ impl SimulationInputRuntime {
                 context.item_runtime.as_ref(),
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
                 None,
             );
@@ -801,7 +885,7 @@ impl SimulationInputRuntime {
                 context.world,
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if let Some(request) = overlay_input.request {
@@ -821,7 +905,7 @@ impl SimulationInputRuntime {
                 context.item_runtime.as_ref(),
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
                 None,
             );
@@ -845,7 +929,7 @@ impl SimulationInputRuntime {
                 context.item_runtime.as_ref(),
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
                 None,
             );
@@ -871,7 +955,7 @@ impl SimulationInputRuntime {
                 context.item_runtime.as_ref(),
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
                 None,
             );
@@ -893,7 +977,7 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             context
                 .input
-                .refresh_social_interactions_scroll_bounds(self.surface_size);
+                .refresh_social_interactions_scroll_bounds(self.gui_surface_size());
             handle_key_input_with_item_runtime(
                 context.input,
                 context.net_counters,
@@ -902,7 +986,7 @@ impl SimulationInputRuntime {
                 context.item_runtime.as_ref(),
                 physical_key,
                 state,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
                 None,
             );
@@ -948,7 +1032,7 @@ impl SimulationInputRuntime {
                 physical_key,
                 state,
                 Some(&mut clipboard),
-                self.surface_size,
+                self.gui_surface_size(),
             )
         {
             flush_platform_effects(&queued_effects, context.platform);
@@ -1024,7 +1108,7 @@ impl SimulationInputRuntime {
                 state,
                 context.input.shift_down(),
                 context.input.control_down(),
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             collect_dialog_open_uri_effects(context.world, &queued_effects);
@@ -1109,7 +1193,7 @@ impl SimulationInputRuntime {
             context.item_runtime.as_ref(),
             physical_key,
             state,
-            self.surface_size,
+            self.gui_surface_size(),
             &self.text_measurements,
             Some(&mut clipboard),
         );
@@ -1465,6 +1549,7 @@ impl SimulationInputRuntime {
         &mut self,
         button: MouseButton,
         state: ElementState,
+        position: Option<PhysicalPosition<f64>>,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
         disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
@@ -1475,6 +1560,14 @@ impl SimulationInputRuntime {
         pause_draft_target: Option<HudPauseDraftButton>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        // A click re-projects the raw physical cache with the current GUI
+        // projection (`MouseHandler.onButton` -> `getScaledXPos`); the screen
+        // handlers below read the runtime's logical cursor position, so
+        // publish the click projection before they run rather than letting a
+        // stale pre-resize logical cache reach them.
+        if let Some(position) = position {
+            self.cursor_position = Some(position);
+        }
         context.input.note_mouse_button_input_type(context.world);
         if context.input.disconnected_screen_runtime().is_some() {
             self.request_cursor_capture(false, context.platform);
@@ -1507,7 +1600,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if let Some(request) = overlay_input.request {
@@ -1528,7 +1621,7 @@ impl SimulationInputRuntime {
                     button,
                     state,
                     self.cursor_position,
-                    self.surface_size,
+                    self.gui_surface_size(),
                     context.input.show_only_reduced_info(context.world),
                     &self.text_measurements,
                 );
@@ -1548,7 +1641,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 pause_draft_target,
             );
             let queued_effects = RefCell::new(Vec::new());
@@ -1644,7 +1737,7 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             context
                 .input
-                .refresh_social_interactions_scroll_bounds(self.surface_size);
+                .refresh_social_interactions_scroll_bounds(self.gui_surface_size());
             context.input.handle_social_interactions_mouse_input(
                 context.world,
                 button,
@@ -1671,7 +1764,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
@@ -1690,7 +1783,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
@@ -1717,7 +1810,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 context.input.shift_down(),
                 double_click,
                 &self.text_measurements,
@@ -1738,7 +1831,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if !simulation_wants_cursor(context.input, context.world) {
@@ -1755,7 +1848,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if !simulation_wants_cursor(context.input, context.world) {
@@ -1772,7 +1865,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if !simulation_wants_cursor(context.input, context.world) {
@@ -1789,7 +1882,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if !simulation_wants_cursor(context.input, context.world) {
@@ -1819,7 +1912,7 @@ impl SimulationInputRuntime {
                     button,
                     state,
                     self.cursor_position,
-                    self.surface_size,
+                    self.gui_surface_size(),
                     &self.text_measurements,
                 )
             {
@@ -1832,7 +1925,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             ) {
                 return;
@@ -1854,7 +1947,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             if !simulation_wants_cursor(context.input, context.world) {
                 self.request_cursor_capture(true, context.platform);
@@ -1875,7 +1968,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             if !simulation_wants_cursor(context.input, context.world) {
@@ -1899,7 +1992,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             return;
         }
@@ -1919,7 +2012,7 @@ impl SimulationInputRuntime {
                 button,
                 state,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             flush_local_interaction_sound_actions(
                 context.world,
@@ -2060,7 +2153,7 @@ impl SimulationInputRuntime {
                 context.world,
                 delta,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
                 &self.text_measurements,
             );
             self.request_cursor_capture(false, context.platform);
@@ -2070,7 +2163,7 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             context
                 .input
-                .handle_debug_options_screen_mouse_wheel(delta, self.surface_size);
+                .handle_debug_options_screen_mouse_wheel(delta, self.gui_surface_size());
             context
                 .platform
                 .submit(PlatformEffect::DebugOptionsScreenInput(
@@ -2098,7 +2191,7 @@ impl SimulationInputRuntime {
             self.request_cursor_capture(false, context.platform);
             context
                 .input
-                .refresh_social_interactions_scroll_bounds(self.surface_size);
+                .refresh_social_interactions_scroll_bounds(self.gui_surface_size());
             context
                 .input
                 .handle_social_interactions_mouse_wheel(context.world, delta);
@@ -2115,7 +2208,7 @@ impl SimulationInputRuntime {
                 context.world,
                 delta,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             return;
         }
@@ -2189,7 +2282,7 @@ impl SimulationInputRuntime {
                 context.net_commands,
                 delta,
                 self.cursor_position,
-                self.surface_size,
+                self.gui_surface_size(),
             );
             return;
         }
@@ -2304,7 +2397,7 @@ impl SimulationInputRuntime {
             context.net_commands,
             context.item_runtime.as_ref(),
             self.code_of_conduct_overlay.is_visible(context.world),
-            self.surface_size,
+            self.gui_surface_size(),
             context.entity_partial_tick,
             context.level_random,
             context.audio_events,
@@ -2411,6 +2504,7 @@ fn recipe_book_screen_is_open(world: &WorldStore) -> bool {
 
 pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) input: &'a mut crate::input::ClientInputState,
+    pub(crate) now: Instant,
     pub(crate) first_person_hand_presentation:
         &'a mut crate::item_models::FirstPersonHandPresentation,
     pub(crate) world: &'a mut WorldStore,
@@ -2429,6 +2523,24 @@ pub(crate) struct SimulationInputContext<'a, 'audio, 'collector> {
     pub(crate) level_random: &'a mut bbb_world::LevelEventSoundRandomState,
     pub(crate) audio_events: &'a mut Option<&'audio mut dyn AudioEventSink>,
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
+}
+
+/// `Minecraft.resizeGui` (Minecraft.java:1434-1442): `Window.calculateScale`
+/// plus `Window.setGuiScale`'s ceiling-division projection.
+fn project_gui_scale(
+    surface_size: PhysicalSize<u32>,
+    gui_scale_max: u32,
+    enforce_unicode: bool,
+) -> (u32, u32, u32) {
+    let gui_scale = crate::window_surface::calculate_gui_scale(
+        gui_scale_max,
+        enforce_unicode,
+        surface_size.width,
+        surface_size.height,
+    );
+    let (gui_scaled_width, gui_scaled_height) =
+        crate::window_surface::gui_scaled_size(surface_size.width, surface_size.height, gui_scale);
+    (gui_scale, gui_scaled_width, gui_scaled_height)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2925,6 +3037,172 @@ mod tests {
 
         runtime.terrain_readiness = Some((8, 1, false));
         assert!(!runtime.player_section_ready(8, 1));
+    }
+
+    #[test]
+    fn surface_resize_recomputes_gui_scale_and_projection() {
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1920, 1080),
+            false,
+            ClientInformation::default(),
+        );
+        runtime.set_gui_scale_options(0, false);
+        assert_eq!(runtime.gui_scale, 4);
+        assert_eq!(runtime.gui_scaled_width, 480);
+        assert_eq!(runtime.gui_scaled_height, 270);
+        assert!(!runtime.minimized);
+
+        runtime.set_surface_size(PhysicalSize::new(1280, 720));
+        assert_eq!(runtime.gui_scale, 3);
+        assert_eq!(runtime.gui_scaled_width, 427);
+        assert_eq!(runtime.gui_scaled_height, 240);
+        assert_eq!(runtime.surface_size, PhysicalSize::new(1280, 720));
+    }
+
+    #[test]
+    fn zero_size_resize_marks_minimized_and_keeps_last_usable_surface() {
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
+        runtime.set_gui_scale_options(2, true);
+        assert_eq!(runtime.gui_scale, 2);
+
+        runtime.set_surface_size(PhysicalSize::new(0, 0));
+        assert!(runtime.minimized);
+        assert_eq!(runtime.surface_size, PhysicalSize::new(1280, 720));
+        assert_eq!(runtime.gui_scale, 2);
+
+        runtime.set_surface_size(PhysicalSize::new(1920, 1080));
+        assert!(!runtime.minimized);
+        assert_eq!(runtime.surface_size, PhysicalSize::new(1920, 1080));
+        assert_eq!(runtime.gui_scale, 2);
+    }
+
+    #[test]
+    fn manual_gui_scale_cap_and_unicode_rounding_flow_into_projection() {
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1920, 1080),
+            false,
+            ClientInformation::default(),
+        );
+        runtime.set_gui_scale_options(3, true);
+        assert_eq!(runtime.gui_scale, 4);
+        assert_eq!(runtime.gui_scaled_width, 480);
+        assert_eq!(runtime.gui_scaled_height, 270);
+    }
+
+    #[test]
+    fn pause_if_inactive_is_evaluated_after_focus_changed_commands_in_the_step() {
+        // `Minecraft.pauseIfInactive` observes the already-updated focus state
+        // (Minecraft.java:1382-1390), so the command loop — including
+        // `FocusChanged` -> `apply_focus` -> `input.focused = focused` — must
+        // run before the pause evaluation. The behavioral half of this
+        // regression lives in `input/tests.rs`; this test pins the ordering in
+        // the production source.
+        let source = include_str!("input_commands.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let command_loop = production
+            .find("for command in commands {")
+            .expect("step command loop");
+        let shutdown_return = production
+            .find("if self.shutdown_requested {\n            return profile;\n        }")
+            .expect("shutdown early return after the loop");
+        let pause = production
+            .find("context.input.pause_if_inactive(context.now, context.world)")
+            .expect("pause evaluation after the step");
+        assert!(command_loop < shutdown_return && shutdown_return < pause);
+        let loop_region = &production[command_loop..shutdown_return];
+        assert!(loop_region.contains("self.apply_command(command.command, context)"));
+    }
+
+    #[tokio::test]
+    async fn focus_regained_in_the_same_step_prevents_the_pause_screen() {
+        use crate::services_block_list_runtime::ServicesBlockListRuntime;
+        use crate::terrain_runtime::TerrainTextureState;
+        use bbb_control::{AudioCounters, NetCounters};
+        use tokio::runtime::Handle;
+        use uuid::Uuid;
+
+        // The production `apply_commands` path, not a direct helper call: a
+        // sequenced `FocusChanged(true)` must run before the post-step
+        // `pauseIfInactive` evaluation observes the focus state.
+        let mailbox = crate::simulation::commands::SimulationMailbox::default();
+        mailbox
+            .enqueue(SimulationCommand::FocusChanged(true))
+            .expect("focus command queues into an empty mailbox");
+        let commands = mailbox.drain_through_barrier();
+        assert_eq!(commands.len(), 1);
+
+        let now = Instant::now();
+        let mut input = crate::input::ClientInputState::new(false);
+        // The window has been unfocused since `now`, so by `now + 600 ms` it
+        // is past the strict >500 ms delay (`Minecraft.pauseIfInactive`).
+        input.set_last_active_at_for_test(now);
+        let mut world = WorldStore::new();
+        let mut net_counters = NetCounters::default();
+        let mut first_person_hand_presentation =
+            crate::item_models::FirstPersonHandPresentation::default();
+        let mut server_resource_packs = ServerResourcePackRuntime::new(
+            Handle::current(),
+            std::env::temp_dir(),
+            "window-surface-focus-test",
+            Uuid::nil(),
+        );
+        let mut services_block_lists =
+            ServicesBlockListRuntime::new(Handle::current(), mailbox, None);
+        let mut particle_runtime = None;
+        let mut item_runtime = None;
+        let mut terrain_textures = TerrainTextureState::default();
+        let mut win_screen_resources =
+            std::sync::Arc::new(crate::win_screen_resources::WinScreenResources {
+                lines: Vec::new(),
+                narration_components: Vec::new(),
+                total_scroll_length: 0,
+            });
+        let mut level_random = bbb_world::LevelEventSoundRandomState::default();
+        let mut audio_events: Option<&mut dyn AudioEventSink> = None;
+        let collector =
+            crate::simulation::effects::RenderEffectCollector::new(1, AudioCounters::default());
+        let mut platform = collector.platform();
+
+        let mut runtime = SimulationInputRuntime::new(
+            PhysicalSize::new(1280, 720),
+            false,
+            ClientInformation::default(),
+        );
+        let mut context = SimulationInputContext {
+            input: &mut input,
+            now: now + Duration::from_millis(600),
+            first_person_hand_presentation: &mut first_person_hand_presentation,
+            world: &mut world,
+            net_counters: &mut net_counters,
+            net_commands: &None,
+            server_resource_packs: &mut server_resource_packs,
+            services_block_lists: &mut services_block_lists,
+            particle_runtime: &mut particle_runtime,
+            item_runtime: &mut item_runtime,
+            terrain_textures: &mut terrain_textures,
+            code_of_conduct: None,
+            win_screen_resources: &mut win_screen_resources,
+            entity_partial_tick: 0.0,
+            level_random: &mut level_random,
+            audio_events: &mut audio_events,
+            platform: &mut platform,
+        };
+        runtime.apply_commands(commands, &mut context, false);
+
+        // The focus-regained command applied first, so the post-step pause
+        // evaluation observes the updated focus and must not open a pause
+        // screen even though the window was unfocused for >500 ms. The
+        // sequence also proves the command itself was applied rather than
+        // dropped.
+        assert_eq!(runtime.last_applied_sequence, 1);
+        assert!(!input.debug_pause_screen_is_open());
     }
 
     #[test]

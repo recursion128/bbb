@@ -6233,6 +6233,10 @@ impl Renderer {
         self.hud_sign_editor_screen = screen.and_then(sanitize_hud_sign_editor_screen);
     }
 
+    /// The sign editor's native IME caret in logical GUI coordinates. The
+    /// caller converts back to physical window pixels at the platform
+    /// boundary (`Window.guiScaledWidth` ratio); `surface_size` here is the
+    /// renderer's `gui_surface_size()`.
     pub fn hud_sign_editor_ime_cursor_area(
         &self,
         surface_size: PhysicalSize<u32>,
@@ -6314,7 +6318,7 @@ impl Renderer {
         disconnected_screen::hud_disconnected_screen_hit_target_at(
             self.hud_disconnected_screen.as_ref()?,
             &self.hud_font_book,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6326,7 +6330,7 @@ impl Renderer {
         death_screen::hud_death_screen_hit_target_at(
             self.hud_death_screen.as_ref()?,
             &self.hud_font_book,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6338,7 +6342,7 @@ impl Renderer {
         hud_pause_draft_hit_target_in(
             self.hud_pause_screen.as_ref()?,
             &self.hud_font_book,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6354,7 +6358,7 @@ impl Renderer {
         game_event::hud_game_event_hit_target_at(
             self.hud_game_event_screen.as_ref()?,
             &self.hud_font_glyphs,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6470,7 +6474,7 @@ impl Renderer {
     /// state before executing a component action.
     pub fn hud_chat_hit_target_at(&self, position: (f64, f64)) -> Option<HudChatHitTarget> {
         if let Some(screen) = self.hud_chat_restrictions_screen.as_ref() {
-            if hud_chat_restrictions_done_contains(self.surface_size(), position) {
+            if hud_chat_restrictions_done_contains(self.gui_surface_size(), position) {
                 return Some(HudChatHitTarget {
                     level_generation: self.hud_chat_context.level_generation,
                     delivery_revision: self.hud_chat_context.delivery_revision,
@@ -6486,7 +6490,7 @@ impl Renderer {
             &self.hud_chat_lines,
             &self.hud_chat_context,
             &self.hud_font_book,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6495,7 +6499,7 @@ impl Renderer {
         book::hud_book_hit_target_at(
             self.hud_book_screen.as_ref()?,
             &self.hud_font_book,
-            self.surface_size(),
+            self.gui_surface_size(),
             position,
         )
     }
@@ -6816,7 +6820,7 @@ impl Renderer {
         stratum: HudScreenStratum,
         target: ItemModelDrawTarget,
     ) {
-        let surface_size = self.surface_size();
+        let surface_size = self.gui_surface_size();
         self.visit_hud_block_item_models_for_stratum(stratum, |model, placement, scissor| {
             match scissor {
                 None => {
@@ -6842,7 +6846,7 @@ impl Renderer {
         stratum: HudScreenStratum,
         mut visit: impl FnMut(&HudBlockItemModel, glam::Mat4, Option<HudRect>),
     ) {
-        let surface_size = self.surface_size();
+        let surface_size = self.gui_surface_size();
         let mut append_model =
             |model: &HudBlockItemModel, placement: glam::Mat4, scissor: Option<HudRect>| {
                 visit(model, placement, scissor);
@@ -7031,7 +7035,7 @@ impl Renderer {
         let mut vertices = Vec::new();
         let mut commands = Vec::new();
         let mut post_gui_item_commands = Vec::new();
-        let surface_size = self.surface_size();
+        let surface_size = self.gui_surface_size();
         let sound_subtitle_placement = self.hud_sound_subtitle_placement();
         // Vanilla `Gui.extractRenderState` (Gui.java:200-222) extracts nothing
         // at all while `minecraft.screen` is a `LevelLoadingScreen`, so the
@@ -22802,6 +22806,86 @@ mod tests {
             loading.commands.as_slice(),
             [HudDrawCommand::TerrainAtlas { .. }]
         ));
+    }
+
+    #[test]
+    fn hud_draws_and_hit_targets_consume_the_logical_gui_surface() {
+        let source = include_str!("hud.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let collect = production
+            .split_once("pub(super) fn collect_hud_draws(&self)")
+            .expect("HUD draw owner")
+            .1;
+        assert!(collect.contains("let surface_size = self.gui_surface_size();"));
+        // Every hit target and the sign editor IME caret use the same logical
+        // surface, never the physical framebuffer.
+        let hit = production
+            .split_once("pub fn hud_disconnected_screen_hit_target_at(")
+            .expect("hit target owner")
+            .1;
+        assert!(hit.contains("self.gui_surface_size(),"));
+        assert!(production
+            .split_once("pub fn hud_sign_editor_ime_cursor_area(")
+            .expect("sign editor IME owner")
+            .1
+            .contains("surface_size: PhysicalSize<u32>"));
+    }
+
+    #[test]
+    fn sign_editor_ime_caret_is_projected_in_logical_gui_coordinates() {
+        // The same fixture as the Vanilla-geometry test, but at the renderer's
+        // logical GUI surface for a 1920x1080 framebuffer at scale 4: the
+        // caret must land at the logical center (240) and the caller converts
+        // back to physical at the platform boundary.
+        let mut glyphs = HudFontGlyphMap::new();
+        for (ch, advance) in [('a', 5), ('b', 6), ('c', 6), ('?', 6)] {
+            glyphs.insert_first_wins(
+                ch,
+                HudAsciiGlyph {
+                    advance,
+                    ..HudAsciiGlyph::default()
+                },
+            );
+        }
+        let screen = HudSignEditorScreen {
+            kind: HudSignEditorKind::Standing {
+                wood: SignModelWood::Oak,
+                attachment: SignModelAttachment::Standing,
+            },
+            sign_preview: None,
+            title: "Edit Sign Message".to_string(),
+            lines: [
+                "ab".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+            line: 0,
+            cursor: 1,
+            selection: 1,
+            cursor_visible: true,
+            text_tint: [0.0, 0.0, 0.0, 1.0],
+            done: "Done".to_string(),
+            done_hovered: true,
+            preedit: Some(HudSignEditorPreedit {
+                text: "c".to_string(),
+                focused_start: 0,
+                focused_end: 1,
+                caret: Some(1),
+                caret_visible: true,
+            }),
+        };
+        let logical_gui = PhysicalSize::new(480, 270);
+        let projection = hud_sign_editor_preedit_projection(&screen, logical_gui, &glyphs).unwrap();
+        assert_eq!(projection.ime_position, PhysicalPosition::new(238, 68));
+        // A physical-framebuffer layout would center at 960, not 240.
+        let physical_layout =
+            hud_sign_editor_preedit_projection(&screen, PhysicalSize::new(1920, 1080), &glyphs)
+                .unwrap();
+        assert_ne!(physical_layout.ime_position, projection.ime_position);
     }
 
     #[test]

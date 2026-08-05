@@ -379,6 +379,30 @@ pub struct Renderer {
     pub(super) device: wgpu::Device,
     pub(super) queue: wgpu::Queue,
     pub(super) config: wgpu::SurfaceConfiguration,
+    /// The present modes the surface exposed at construction, so
+    /// `set_vsync_enabled` can renegotiate `updateVsync` (Window.java:246)
+    /// without recreating the adapter.
+    pub(super) present_modes: Vec<wgpu::PresentMode>,
+    /// `Options.enableVsync`: re-applied on fullscreen changes and forced off
+    /// by `Window.updateVsync`. Winit exposes no synchronous fullscreen
+    /// failure, so `Minecraft.onFullscreenError` has no trigger on this
+    /// backend.
+    pub(super) vsync_enabled: bool,
+    /// The projected logical GUI surface (`Window.setGuiScale` ceiling
+    /// division, `Minecraft.resizeGui`). HUD layout, GUI hit targets, toasts,
+    /// the GUI item ortho camera and scissors consume this; `size`/`config`
+    /// remain the physical framebuffer for the world camera, culling,
+    /// counters and screenshots. A zero-size physical resize keeps the last
+    /// usable GUI surface until a nonzero size republishes it.
+    pub(super) gui_surface_size: PhysicalSize<u32>,
+    /// Test-only counter of full camera-uniform refreshes (`update_camera`),
+    /// covering the world, HUD-3D and GUI-item ortho buffers. The renderer
+    /// test pins that `set_gui_surface_size` refreshes the dependent camera
+    /// uniforms on change and no-ops when unchanged. Production keeps
+    /// `update_camera(&self)`; the counter lives behind `#[cfg(test)]` so a
+    /// test seam never mutates production state.
+    #[cfg(test)]
+    pub(super) camera_uniform_writes: std::cell::Cell<u64>,
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
     pub(super) level_frame_route: LevelFrameRoute,
@@ -1442,14 +1466,18 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
-        Self::with_gpu(
+        let present_modes = caps.present_modes;
+        let mut renderer = Self::with_gpu(
             RenderSurface::Window(surface),
             device,
             queue,
             config,
             size,
             terrain_texture_filtering,
-        )
+        )?;
+        renderer.present_modes = present_modes;
+        renderer.vsync_enabled = vsync_enabled;
+        Ok(renderer)
     }
 
     /// Builds the renderer around an already-acquired GPU and frame surface.
@@ -2140,6 +2168,11 @@ impl Renderer {
             device,
             queue,
             config,
+            present_modes: Vec::new(),
+            vsync_enabled: true,
+            gui_surface_size: size,
+            #[cfg(test)]
+            camera_uniform_writes: std::cell::Cell::new(0),
             size,
             clear: ClearColor::default(),
             level_frame_route: LevelFrameRoute::default(),
@@ -2986,6 +3019,26 @@ impl Renderer {
 
     pub fn resize(&mut self, size: PhysicalSize<u32>) -> Result<()> {
         self.resize_with_prepare_check(size, |_| Ok(()))
+    }
+
+    /// `Window.updateVsync` (Window.java:246-249): renegotiates the surface
+    /// present mode from the supported set without touching the framebuffer
+    /// targets. Every fullscreen transition re-applies the stored preference.
+    /// A minimized (zero-size) surface only updates the stored config so the
+    /// next `resize` reconfigures with it.
+    pub fn set_vsync_enabled(&mut self, vsync_enabled: bool) -> Result<()> {
+        self.vsync_enabled = vsync_enabled;
+        let present_mode = choose_present_mode(&self.present_modes, vsync_enabled)?;
+        if self.config.present_mode == present_mode {
+            return Ok(());
+        }
+        let mut config = self.config.clone();
+        config.present_mode = present_mode;
+        if self.size.width != 0 && self.size.height != 0 {
+            self.surface.configure(&self.device, &config);
+        }
+        self.config = config;
+        Ok(())
     }
 
     pub fn counters(&self) -> RendererCounters {
@@ -3835,6 +3888,32 @@ impl Renderer {
         PhysicalSize::new(self.config.width.max(1), self.config.height.max(1))
     }
 
+    /// Public physical-framebuffer query for native callers that need the
+    /// world-side surface (camera aspect, culling, screenshots) next to the
+    /// logical GUI surface.
+    pub fn physical_surface_size(&self) -> PhysicalSize<u32> {
+        self.surface_size()
+    }
+
+    /// The physical framebuffer size stays `surface_size()`; this is the
+    /// narrow logical-GUI split `Minecraft.resizeGui` publishes so HUD layout
+    /// and hit testing never read the physical surface. An unchanged size is a
+    /// no-op; a change refreshes every camera/uniform state that reads the
+    /// logical surface (the GUI-item ortho buffer included) through
+    /// `update_camera`, so a later unrelated camera/fog setter is never
+    /// required to publish the new projection.
+    pub fn set_gui_surface_size(&mut self, size: PhysicalSize<u32>) {
+        if self.gui_surface_size == size {
+            return;
+        }
+        self.gui_surface_size = size;
+        self.update_camera();
+    }
+
+    pub fn gui_surface_size(&self) -> PhysicalSize<u32> {
+        self.gui_surface_size
+    }
+
     fn refresh_terrain_counters(&mut self) {
         self.counters.uploaded_sections = if self.terrain_opaque.is_empty()
             && self.terrain_cutout.is_empty()
@@ -4168,14 +4247,23 @@ impl Renderer {
         .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.queue
             .write_buffer(&self.hud3d_camera_buffer, 0, bytemuck::bytes_of(&hud3d));
-        // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
-        // does not clobber the world camera, which earlier passes in the same submit still read).
-        let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32)
-            .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
-            .with_shader_game_time_ticks(self.shader_game_time_ticks)
-            .with_viewport_size(self.config.width as f32, self.config.height as f32);
+        // The GUI item pass projects 3D inventory icons with a screen-space
+        // ortho over the logical GUI surface (`Window.setGuiScale`), so a
+        // 1920x1080 framebuffer at scale 4 lays icons out in 480x270 exactly
+        // like Vanilla. The separate buffer does not clobber the world camera,
+        // which earlier passes in the same submit still read.
+        let gui = CameraUniform::gui_ortho(
+            self.gui_surface_size.width as f32,
+            self.gui_surface_size.height as f32,
+        )
+        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED)
+        .with_shader_game_time_ticks(self.shader_game_time_ticks)
+        .with_viewport_size(self.config.width as f32, self.config.height as f32);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
+        #[cfg(test)]
+        self.camera_uniform_writes
+            .set(self.camera_uniform_writes.get().saturating_add(1));
     }
 
     fn update_sky_model_view_dynamics(&self, sky_model_view: Mat4) {
@@ -4580,6 +4668,117 @@ mod tests {
             renderer.counters().surface_zero_size_skips,
             previous_skips + 1
         );
+    }
+
+    #[test]
+    fn set_vsync_enabled_renegotiates_present_mode_without_touching_targets() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        let previous_sizes = resize_target_sizes(&renderer);
+        assert_eq!(renderer.config.present_mode, wgpu::PresentMode::Fifo);
+
+        renderer.present_modes = vec![wgpu::PresentMode::Fifo, wgpu::PresentMode::Immediate];
+        renderer.set_vsync_enabled(false).unwrap();
+        assert_eq!(renderer.config.present_mode, wgpu::PresentMode::Immediate);
+        assert!(!renderer.vsync_enabled);
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(16, 12));
+        assert_eq!(resize_target_sizes(&renderer), previous_sizes);
+
+        renderer.set_vsync_enabled(true).unwrap();
+        assert_eq!(renderer.config.present_mode, wgpu::PresentMode::Fifo);
+        assert!(renderer.vsync_enabled);
+    }
+
+    #[test]
+    fn set_vsync_enabled_survives_zero_size_without_reconfigure() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 12) else {
+            return;
+        };
+        renderer.present_modes = vec![wgpu::PresentMode::Fifo, wgpu::PresentMode::Immediate];
+        renderer.resize(PhysicalSize::new(0, 0)).unwrap();
+        renderer.set_vsync_enabled(false).unwrap();
+        assert_eq!(renderer.config.present_mode, wgpu::PresentMode::Immediate);
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(16, 12));
+
+        renderer.resize(PhysicalSize::new(24, 20)).unwrap();
+        assert_eq!(renderer.config.present_mode, wgpu::PresentMode::Immediate);
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(24, 20));
+    }
+
+    #[test]
+    fn gui_surface_size_stays_logical_while_surface_size_stays_physical() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(1920, 1080) else {
+            return;
+        };
+        // Defaults to the physical surface until the first resizeGui
+        // publication (scale 1).
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(1920, 1080));
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+
+        // 1920x1080 at auto scale 4 publishes 480x270 to the renderer.
+        renderer.set_gui_surface_size(PhysicalSize::new(480, 270));
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+
+        // A zero-size resize only marks minimized; both last usable sizes are
+        // retained until a nonzero resize replaces the physical surface.
+        renderer.resize(PhysicalSize::new(0, 0)).unwrap();
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
+
+        renderer.resize(PhysicalSize::new(1280, 720)).unwrap();
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(1280, 720));
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
+    }
+
+    #[test]
+    fn set_gui_surface_size_refreshes_dependent_camera_state_and_no_ops_when_unchanged() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(1920, 1080) else {
+            return;
+        };
+        let baseline = renderer.camera_uniform_writes.get();
+
+        // A changed logical GUI size publishes through `update_camera`, which
+        // rewrites the GUI-item ortho buffer from the new size; the world
+        // camera keeps reading the physical config.
+        renderer.set_gui_surface_size(PhysicalSize::new(480, 270));
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(480, 270));
+        assert_eq!(renderer.camera_uniform_writes.get(), baseline + 1);
+        assert_eq!(renderer.surface_size(), PhysicalSize::new(1920, 1080));
+
+        // An unchanged size is a true no-op, not a redundant uniform rewrite.
+        renderer.set_gui_surface_size(PhysicalSize::new(480, 270));
+        assert_eq!(renderer.camera_uniform_writes.get(), baseline + 1);
+
+        // A second change refreshes again; 1280x720 at scale 3 projects
+        // 427x240 (ceiling division).
+        renderer.set_gui_surface_size(PhysicalSize::new(427, 240));
+        assert_eq!(renderer.gui_surface_size(), PhysicalSize::new(427, 240));
+        assert_eq!(renderer.camera_uniform_writes.get(), baseline + 2);
+    }
+
+    #[test]
+    fn gui_item_camera_uses_the_logical_surface_and_world_camera_stays_physical() {
+        let source = include_str!("renderer.rs");
+        let production = source
+            .split_once("\n#[cfg(test)]\nmod tests")
+            .expect("renderer production/test boundary")
+            .0;
+        let update_camera = production
+            .split_once("pub(crate) fn update_camera(&self) {")
+            .expect("camera owner")
+            .1;
+        // The camera owner is `&self`; the call counter is a `#[cfg(test)]`
+        // seam and never mutates production state for a test.
+        assert!(update_camera.contains("#[cfg(test)]"));
+        // World camera aspect/viewport stays on the physical config.
+        assert!(update_camera
+            .contains("let aspect = self.config.width as f32 / self.config.height.max(1) as f32;"));
+        // The GUI item ortho covers the logical GUI surface.
+        assert!(update_camera.contains("CameraUniform::gui_ortho("));
+        assert!(update_camera.contains("self.gui_surface_size.width as f32"));
+        assert!(update_camera.contains("self.gui_surface_size.height as f32"));
     }
 
     #[test]

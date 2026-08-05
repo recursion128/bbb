@@ -1613,6 +1613,7 @@ pub(crate) fn handle_inventory_text_input(
     true
 }
 
+#[cfg(test)]
 pub(crate) fn handle_inventory_key_input(
     input: &mut ClientInputState,
     world: &mut WorldStore,

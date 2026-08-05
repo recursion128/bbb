@@ -204,7 +204,10 @@ impl ItemModelDrawTarget {
     }
 }
 
-/// Physical-pixel GUI clip carried by one resident item submission.
+/// GUI-space clip carried by one resident item submission. The values are in
+/// logical GUI pixels (`Window.setGuiScale`); the draw boundary converts them
+/// to physical pixels with the `physical / gui` ratio before issuing the
+/// native scissor.
 ///
 /// This is frame-varying placement state, never part of resident asset
 /// identity. Construction rejects empty rectangles; the render pass clamps the

@@ -38,15 +38,31 @@ pub(crate) struct ClientOptionHost {
 }
 
 /// The client's `options.txt` state: every catalogued key, plus the per-element
-/// lines the three trailing loops own.
+/// lines the three trailing loops own, plus the one special startup line
+/// (`fullscreenResolution`) that `Options.save` writes outside the catalog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ClientOptions {
     values: BTreeMap<&'static str, String>,
     /// Lines under `key_`, `soundCategory_` and `modelPart_`, carried through
-    /// verbatim so a shared game directory keeps the bytes Vanilla wrote. The
-    /// `key_` half is read back through `key_bindings`.
+    /// verbatim so a shared game directory keeps the bytes Vanilla wrote.
+    /// The `key_` half is read back through `key_bindings`. The special
+    /// `fullscreenResolution` startup line is deliberately not here: it is
+    /// stored in [`Self::fullscreen_resolution`] so the per-element groups
+    /// never accidentally persist report-only fields.
     dynamic: BTreeMap<String, String>,
+    /// `Options.fullscreenVideoModeString` (`Options.java:1676`): the one
+    /// `fullscreenResolution` line read right after `processOptions` and
+    /// written after the catalog/prefix groups only when present
+    /// (`Options.java:1759-1761`). `None` is the absent preferred mode.
+    fullscreen_resolution: Option<String>,
 }
+
+/// The one `options.txt` line `Options.save` writes outside the generated
+/// catalog (`Options.java:1759-1761`): the stored `fullscreenResolution`
+/// startup video mode. `Options.load` reads it specially too
+/// (`Options.java:1676`). The other `dumpOptionsForReport` fields are report
+/// fields only, never preserved as raw options lines.
+pub(crate) const FULLSCREEN_RESOLUTION_KEY: &str = "fullscreenResolution";
 
 impl ClientOptions {
     /// The state Vanilla starts from when `options.txt` does not exist.
@@ -57,6 +73,7 @@ impl ClientOptions {
                 .map(|spec| (spec.key, default_text(spec, host).to_owned()))
                 .collect(),
             dynamic: BTreeMap::new(),
+            fullscreen_resolution: None,
         }
     }
 
@@ -109,12 +126,28 @@ impl ClientOptions {
                 }
             }
         }
+        // `Options.save` (Options.java:1759-1761) writes the special
+        // `fullscreenResolution` startup line after the per-element groups,
+        // and only while a preferred mode exists. No other report field is
+        // preserved as a raw line.
+        if let Some(value) = &self.fullscreen_resolution {
+            out.push_str(FULLSCREEN_RESOLUTION_KEY);
+            out.push(':');
+            out.push_str(value);
+            out.push('\n');
+        }
         out
     }
 
     /// `Options.dumpOptionsForReport`: the `processDumpedOptions` block plus
-    /// the keys the dump names itself, sorted by key. A crash report carries
-    /// this so a bad frame can be read against the settings that produced it.
+    /// the seven report fields the dump names itself (including
+    /// `fullscreenResolution`), sorted by key. `fullscreenResolution` is
+    /// always present exactly once: the stored string when a mode exists and
+    /// the literal `"null"` when it does not, matching
+    /// `String.valueOf(fullscreenVideoModeString)`. A crash report carries
+    /// this so a bad frame can be read against the settings that produced it;
+    /// these fields are report-only and are never a generic persistence
+    /// whitelist.
     pub(crate) fn dump_for_report(&self) -> Vec<(String, String)> {
         let mut entries: Vec<(String, String)> = CLIENT_OPTIONS
             .iter()
@@ -128,14 +161,25 @@ impl ClientOptions {
                 self.raw(spec.key)
                     .map(|value| (spec.key.to_owned(), value.to_owned()))
             })
+            .chain(std::iter::once((
+                FULLSCREEN_RESOLUTION_KEY.to_owned(),
+                self.fullscreen_resolution
+                    .as_deref()
+                    .unwrap_or("null")
+                    .to_owned(),
+            )))
             .collect();
         entries.sort_by(|left, right| left.0.cmp(&right.0));
         entries.dedup_by(|left, right| left.0 == right.0);
         entries
     }
 
-    /// The text currently on the line for `key`, if the catalog has one.
+    /// The text currently on the line for `key`, if the catalog has one or the
+    /// key is the special `fullscreenResolution` startup line.
     pub(crate) fn raw(&self, key: &str) -> Option<&str> {
+        if key == FULLSCREEN_RESOLUTION_KEY {
+            return self.fullscreen_resolution.as_deref();
+        }
         self.values.get(key).map(String::as_str)
     }
 
@@ -158,14 +202,20 @@ impl ClientOptions {
             self.values.insert(spec.key, value.to_owned());
             return;
         }
+        // `Options.load` (Options.java:1676) treats the special startup
+        // `fullscreenResolution` line separately from the catalog, in its own
+        // field rather than the per-element groups; anything else unknown is
+        // never consumed and dropped on the next save.
+        if key == FULLSCREEN_RESOLUTION_KEY {
+            self.fullscreen_resolution = Some(value.to_owned());
+            return;
+        }
         if CLIENT_OPTION_PREFIXES
             .iter()
             .any(|prefix| key.starts_with(prefix))
         {
             self.dynamic.insert(key.to_owned(), value.to_owned());
         }
-        // Anything else is a key this client does not know; Vanilla reads it
-        // into the raw tag, never consumes it, and drops it on the next save.
     }
 
     /// A boolean line, for the keys whose encoding is a bare `true`/`false`.
@@ -326,6 +376,150 @@ mod tests {
 
     fn options() -> ClientOptions {
         ClientOptions::defaults(ClientOptionHost::default())
+    }
+
+    #[test]
+    fn the_fullscreen_resolution_line_is_retained_across_load_and_save() {
+        let path = unique_options_path("fullscreen-resolution");
+        fs::write(&path, "fullscreenResolution:1920x1080@144:24\n").unwrap();
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(
+            reloaded.raw("fullscreenResolution"),
+            Some("1920x1080@144:24")
+        );
+        // The special startup line has dedicated storage: it is never visible
+        // through the per-element groups `dynamic_raw` reads.
+        assert_eq!(reloaded.dynamic_raw("fullscreenResolution"), None);
+
+        reloaded.save(&path).unwrap();
+        let again = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        assert_eq!(again.raw("fullscreenResolution"), Some("1920x1080@144:24"));
+        assert!(fs::read_to_string(&path)
+            .unwrap()
+            .contains("fullscreenResolution:1920x1080@144:24"));
+        assert_eq!(again.dynamic_raw("fullscreenResolution"), None);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn an_absent_fullscreen_resolution_is_omitted_from_save_and_reported_as_null() {
+        let options = options();
+
+        // `Options.save` writes the special line only while a preferred mode
+        // exists; the defaults have none, so the rendered text omits it.
+        assert_eq!(options.raw("fullscreenResolution"), None);
+        assert!(!options.rendered().contains("fullscreenResolution"));
+
+        // `dumpOptionsForReport` always names it as
+        // `String.valueOf(fullscreenVideoModeString)`, which is the literal
+        // `"null"` when the field is absent.
+        let report = options.dump_for_report();
+        assert_eq!(
+            report
+                .iter()
+                .filter(|(key, _)| key == "fullscreenResolution")
+                .count(),
+            1
+        );
+        assert_eq!(
+            report
+                .iter()
+                .find(|(key, _)| key == "fullscreenResolution")
+                .map(|(_, value)| value.as_str()),
+            Some("null")
+        );
+
+        // Loading a stored line routes it into the dedicated field: the save
+        // round-trips it and the report switches from `null` to the stored
+        // string, still exactly once.
+        let path = unique_options_path("fullscreen-resolution-absent");
+        fs::write(&path, "fullscreenResolution:1920x1080@144:24\n").unwrap();
+        let loaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        loaded.save(&path).unwrap();
+        assert_eq!(
+            fs::read_to_string(&path)
+                .unwrap()
+                .matches("fullscreenResolution")
+                .count(),
+            1
+        );
+        assert_eq!(
+            loaded
+                .dump_for_report()
+                .iter()
+                .filter(|(key, _)| key == "fullscreenResolution")
+                .count(),
+            1
+        );
+        assert_eq!(
+            loaded
+                .dump_for_report()
+                .iter()
+                .find(|(key, _)| key == "fullscreenResolution")
+                .map(|(_, value)| value.as_str()),
+            Some("1920x1080@144:24")
+        );
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn unknown_or_report_only_raw_lines_are_dropped_while_fullscreen_resolution_survives() {
+        // `Options.save` preserves only the special `fullscreenResolution`
+        // startup line plus the catalog: an unknown line is never rewritten,
+        // and a report-only field must not be re-emitted from a generic
+        // report-extra whitelist. `glDebugVerbosity` is a catalogued option,
+        // so it is written exactly once as its own catalog line rather than a
+        // second time from the report block.
+        let path = unique_options_path("report-only-extra");
+        fs::write(
+            &path,
+            "fullscreenResolution:1920x1080@144:24\n\
+             glDebugVerbosity:1\n\
+             futureUnknownOption:true\n",
+        )
+        .unwrap();
+
+        let reloaded = ClientOptions::load(&path, ClientOptionHost::default()).unwrap();
+        reloaded.save(&path).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+
+        assert!(text.contains("fullscreenResolution:1920x1080@144:24"));
+        assert_eq!(text.matches("glDebugVerbosity").count(), 1);
+        assert!(!text.contains("futureUnknownOption"));
+
+        // The report block emits each catalogued report field exactly once
+        // (never twice from a generic whitelist) and `fullscreenResolution`
+        // exactly once with the stored value.
+        let report = reloaded.dump_for_report();
+        for key in [
+            "glDebugVerbosity",
+            "overrideHeight",
+            "overrideWidth",
+            "syncChunkWrites",
+            "useNativeTransport",
+            "resourcePacks",
+        ] {
+            assert_eq!(
+                report.iter().filter(|(k, _)| k == key).count(),
+                1,
+                "{key} must be emitted exactly once"
+            );
+        }
+        assert_eq!(
+            report
+                .iter()
+                .filter(|(key, _)| key == "fullscreenResolution")
+                .count(),
+            1
+        );
+        assert_eq!(
+            report
+                .iter()
+                .find(|(key, _)| key == "fullscreenResolution")
+                .map(|(_, value)| value.as_str()),
+            Some("1920x1080@144:24")
+        );
     }
 
     #[test]
@@ -549,15 +743,15 @@ mod report_tests {
 
         let dump = options.dump_for_report();
 
-        // `processDumpedOptions` names 37 keys and the dump adds 7 more, one of
-        // which (`fullscreenResolution`) `save` writes separately and so is not
-        // a catalogued line.
+        // `processDumpedOptions` names 37 keys and the dump adds 7 more, one
+        // of which (`fullscreenResolution`) `save` writes separately and so is
+        // not a catalogued line.
         let dumped = CLIENT_OPTIONS.iter().filter(|spec| spec.dumped).count();
         let extras = CLIENT_OPTION_REPORT_EXTRA_KEYS
             .iter()
             .filter(|key| client_option_spec(key).is_some_and(|spec| !spec.dumped))
             .count();
-        assert_eq!(dump.len(), dumped + extras);
+        assert_eq!(dump.len(), dumped + extras + 1);
 
         let keys: Vec<&str> = dump.iter().map(|(key, _)| key.as_str()).collect();
         // Vanilla sorts by key before joining.
@@ -570,11 +764,26 @@ mod report_tests {
         assert!(keys.contains(&"useNativeTransport"));
         // A key only `processOptions` names stays out of the dump.
         assert!(!keys.contains(&"autoJump"));
+        // `fullscreenResolution` is always present exactly once, with the
+        // literal `"null"` while no preferred mode is stored.
+        assert_eq!(
+            keys.iter()
+                .filter(|key| **key == "fullscreenResolution")
+                .count(),
+            1
+        );
 
         let values: Vec<&str> = dump.iter().map(|(_, value)| value.as_str()).collect();
         assert_eq!(
             values[keys.iter().position(|key| *key == "ao").unwrap()],
             "true"
+        );
+        assert_eq!(
+            values[keys
+                .iter()
+                .position(|key| *key == "fullscreenResolution")
+                .unwrap()],
+            "null"
         );
     }
 }

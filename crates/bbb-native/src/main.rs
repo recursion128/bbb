@@ -3,10 +3,11 @@ use bbb_control::{AudioCounters, ControlState, NetCounters, SharedControlRequest
 use bbb_world::{ChatPresentationConfig, ChatVisibilityState, WorldStore};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 use winit::{
+    dpi::PhysicalSize,
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{KeyCode, PhysicalKey},
-    window::{CursorGrabMode, CursorIcon, Window},
+    window::{CursorGrabMode, CursorIcon, Fullscreen, Window},
 };
 
 mod audio_runtime;
@@ -84,6 +85,7 @@ mod test_instance_gizmos;
 mod weather_effect_runtime;
 mod win_screen_resources;
 mod window_icon;
+mod window_surface;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use bbb_item_model::default_player_skin_cache_dir;
@@ -238,6 +240,18 @@ struct NativeRenderEffectSink<'a> {
     renderer: &'a mut bbb_renderer::Renderer,
     window: &'a Window,
     cursor_captured: &'a mut bool,
+    /// `Options.enableVsync`; re-applied by `Window.updateVsync` after every
+    /// fullscreen transition. Winit reports no synchronous fullscreen failure,
+    /// so `Minecraft.onFullscreenError` has no runtime trigger on this backend
+    /// (see `/tmp/window-surface-work/audit.md`).
+    vsync_enabled: bool,
+    /// The stored `fullscreenResolution` (`Options.fullscreenVideoModeString`);
+    /// `None` means no preferred exclusive mode, exactly like
+    /// `Window.preferredFullscreenVideoMode` empty.
+    preferred_video_mode: Option<window_surface::PreferredVideoMode>,
+    /// Backend capability, not a stored option: Wayland no-ops
+    /// `Fullscreen::Exclusive`, so BBB falls back to borderless there.
+    exclusive_fullscreen_supported: bool,
     mailbox: &'a SimulationMailbox,
     clipboard: &'a mut NativeDebugClipboard,
     terrain_upload: &'a mut TerrainUploadState,
@@ -513,9 +527,21 @@ impl PlatformEffectSink for NativeRenderEffectSink<'_> {
                 narrator_runtime::submit_chat_narration(narrator, kind, &text);
             }
             PlatformEffect::SetFullscreen(fullscreen) => {
-                self.window.set_fullscreen(
-                    fullscreen.then(|| winit::window::Fullscreen::Borderless(None)),
+                // `Window.updateFullscreen` (Window.java:401-409): apply the
+                // mode, then re-apply vsync. The mode policy is decided
+                // deterministically up front (exclusive when an exact winit
+                // video mode exists on a supporting backend, borderless
+                // otherwise); winit's `set_fullscreen` has no synchronous
+                // error channel to turn into `onFullscreenError`.
+                set_window_fullscreen(
+                    self.window,
+                    fullscreen,
+                    self.preferred_video_mode,
+                    self.exclusive_fullscreen_supported,
                 );
+                if let Err(error) = self.renderer.set_vsync_enabled(self.vsync_enabled) {
+                    tracing::warn!(?error, "failed to reapply vsync after fullscreen change");
+                }
             }
             PlatformEffect::NarratorStatusChanged { requests } => {
                 for request in requests {
@@ -817,10 +843,17 @@ fn run_client(args: startup::Args) -> Result<()> {
     let window = build_window(&event_loop)?;
     let window_backend = window_icon::NativeWindowBackend::detect(&window)?;
     let window_size = window.inner_size();
+    let window_platform = window_backend.platform_identity(std::env::consts::OS);
+    let monitor_refresh_rate_hz = window
+        .current_monitor()
+        .and_then(|monitor| monitor.refresh_rate_millihertz())
+        .map(window_surface::refresh_rate_hz);
     tracing::info!(
         target_os = std::env::consts::OS,
         target_arch = std::env::consts::ARCH,
         window_backend = %window_backend.label(),
+        window_platform = window_platform,
+        monitor_refresh_rate_hz = ?monitor_refresh_rate_hz,
         scale_factor = window.scale_factor(),
         width = window_size.width,
         height = window_size.height,
@@ -863,6 +896,24 @@ fn run_client(args: startup::Args) -> Result<()> {
         args.client_toggle_use,
     );
     input.set_fullscreen(args.client_fullscreen);
+    apply_startup_fullscreen(
+        &window,
+        &mut input,
+        args.client_fullscreen_resolution,
+        window_backend.supports_exclusive_fullscreen(),
+    );
+    // `InputConstants.updateRawMouseInput` (InputConstants.java:231-235) is a
+    // GLFW-specific `glfwSetInputMode(RAW_MOUSE_MOTION)` call. winit 0.29 has
+    // no raw-motion toggle: `DeviceEvent::MouseMotion` is always raw and
+    // unfiltered, and `CursorGrabMode` only controls confinement/locking. The
+    // option is still parsed for ledger fidelity, with one bounded startup
+    // warning when it is disabled.
+    if !args.client_raw_mouse_input {
+        tracing::warn!(
+            "rawMouseInput=false has no effect on the winit backend: \
+             DeviceEvent::MouseMotion is always raw and unfiltered"
+        );
+    }
     input.set_mouse_sensitivity(args.client_mouse_sensitivity);
     input.set_invert_mouse(args.client_invert_mouse_x, args.client_invert_mouse_y);
     input.set_mouse_scroll_options(
@@ -1058,11 +1109,13 @@ fn run_client(args: startup::Args) -> Result<()> {
             }
         }
     }
-    let simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
+    let mut simulation_input_runtime = simulation::input_commands::SimulationInputRuntime::new(
         window.inner_size(),
         false,
         startup_client_information,
     );
+    simulation_input_runtime
+        .set_gui_scale_options(args.client_gui_scale, args.client_force_unicode_font);
     let mut renderer_counters = control_renderer_counters(renderer.counters());
     project_dynamic_texture_counters(&mut renderer_counters, item_runtime.as_ref());
     let publisher = SimulationPublisher::new(
@@ -1139,7 +1192,9 @@ fn run_client(args: startup::Args) -> Result<()> {
         let _ = simulation_event_proxy.send_event(());
     })?;
     let mut render_publication = shared_publication.load_full();
-    let mut event_cursor_position = None;
+    let mut event_cursor_position = window_surface::CursorPositionCache::default();
+    let mut current_cursor_icon = CursorIcon::Default;
+    let mut current_window_title = None;
     let fatal_failures = Rc::new(RefCell::new(RuntimeFailureAccumulator::default()));
     // `Minecraft.fillSystemReport` reports the options the failing run used, so
     // capture them once here rather than reading a file mid-failure.
@@ -1222,6 +1277,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                         renderer: &mut renderer,
                         window: &window,
                         cursor_captured: &mut cursor_captured,
+                        vsync_enabled: args.client_vsync,
+                        preferred_video_mode: args.client_fullscreen_resolution,
+                        exclusive_fullscreen_supported: window_backend
+                            .supports_exclusive_fullscreen(),
                         mailbox: &simulation_mailbox,
                         clipboard: &mut debug_clipboard,
                         terrain_upload: &mut terrain_upload,
@@ -1304,6 +1363,14 @@ fn run_client(args: startup::Args) -> Result<()> {
         if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
             render_publication = latest_publication;
         }
+        // `Minecraft.resizeGui` (Minecraft.java:1433-1442) makes the
+        // GUI-scaled surface observable to HUD layout and hit testing; the
+        // renderer owns it so native event handling and draw extraction share
+        // one logical size while `surface_size()` stays physical.
+        renderer.set_gui_surface_size(PhysicalSize::new(
+            render_publication.input_runtime.gui_scaled_width,
+            render_publication.input_runtime.gui_scaled_height,
+        ));
         if let Some(result) = simulation_thread.poll_finished() {
             if let Err(error) = result {
                 record_runtime_failure(
@@ -1319,6 +1386,11 @@ fn run_client(args: startup::Args) -> Result<()> {
             target.exit();
             return;
         }
+        update_window_title(
+            &window,
+            render_publication.net_counters.connected,
+            &mut current_window_title,
+        );
         if let Some(narrator) = narrator_runtime.as_mut() {
             narrator.tick();
         }
@@ -1363,6 +1435,22 @@ fn run_client(args: startup::Args) -> Result<()> {
                         target.exit();
                         return;
                     }
+                    // `Window.onFramebufferResize` (Window.java:267-297)
+                    // synchronously calls `Minecraft.resizeGui`
+                    // (Minecraft.java:1434-1442) before the resize callback
+                    // returns, so the logical GUI projection is established at
+                    // event time and any later mouse event consumer reads the
+                    // matching ratio. Publish it here before the simulation
+                    // command is queued; a zero-size/minimized callback keeps
+                    // the last usable physical and logical sizes, exactly like
+                    // the simulation's own `SurfaceResized` handling.
+                    if size.width != 0 && size.height != 0 {
+                        renderer.set_gui_surface_size(resize_gui_surface(
+                            size,
+                            args.client_gui_scale,
+                            args.client_force_unicode_font,
+                        ));
+                    }
                     simulation_mailbox.enqueue_or_report(
                         SimulationCommand::SurfaceResized(size),
                         "surface resize",
@@ -1376,6 +1464,8 @@ fn run_client(args: startup::Args) -> Result<()> {
                         &renderer,
                         &window,
                         &mut event_cursor_position,
+                        args.client_allow_cursor_changes,
+                        &mut current_cursor_icon,
                     ) => {}
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
@@ -1594,16 +1684,27 @@ fn run_client(args: startup::Args) -> Result<()> {
                     );
                     let dialog_preedit = render_publication.input.dialog_ime_preedit_hud_state();
                     let sign_preedit_area =
-                        renderer.hud_sign_editor_ime_cursor_area(window.inner_size());
+                        renderer.hud_sign_editor_ime_cursor_area(renderer.gui_surface_size());
                     let dialog_preedit_area = || {
                         dialog_ime_cursor_area(
                             &render_publication.world,
                             dialog_preedit.as_ref(),
-                            window.inner_size(),
+                            renderer.gui_surface_size(),
                             &renderer,
                         )
                     };
-                    if let Some((position, size)) = sign_preedit_area.or_else(dialog_preedit_area) {
+                    // The IME caret comes from logical GUI layout; the native
+                    // cursor rectangle is physical, so convert back at the
+                    // platform boundary (`Window.guiScaledWidth` ratio).
+                    let logical_ime_area = sign_preedit_area.or_else(dialog_preedit_area);
+                    if let Some((position, size)) = logical_ime_area.and_then(|(position, size)| {
+                        window_surface::gui_rect_to_physical(
+                            position,
+                            size,
+                            renderer.gui_surface_size(),
+                            window.inner_size(),
+                        )
+                    }) {
                         window.set_ime_cursor_area(position, size);
                     }
                     let profiler_update_duration = profiler_update_started_at
@@ -1615,7 +1716,10 @@ fn run_client(args: startup::Args) -> Result<()> {
                             &render_publication.world,
                             render_publication.input_runtime.code_of_conduct_overlay,
                             render_publication.code_of_conduct_accepted,
-                            render_publication.input_runtime.surface_size,
+                            PhysicalSize::new(
+                                render_publication.input_runtime.gui_scaled_width,
+                                render_publication.input_runtime.gui_scaled_height,
+                            ),
                             renderer.hud_text_measurements_ref(),
                         );
                     renderer.set_hud_code_of_conduct_screen(code_of_conduct_screen);
@@ -1994,6 +2098,11 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
     }
 
     if capture {
+        // `Minecraft.mouseHandler.grabMouse`-equivalent capture: request
+        // `Locked` first and fall back to `Confined` where the backend does
+        // not implement locking. Neither mode is a raw-motion switch — winit's
+        // raw `DeviceEvent::MouseMotion` is always delivered (see the startup
+        // `rawMouseInput` warning).
         match window
             .set_cursor_grab(CursorGrabMode::Locked)
             .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined))
@@ -2015,67 +2124,184 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
     }
 }
 
+/// `Window.selectCursor` (Window.java:535-540) applied through winit: the
+/// requested icon is gated by `allowCursorChanges` and redundant native cursor
+/// changes are skipped.
+fn apply_window_cursor_icon(
+    window: &Window,
+    allow_cursor_changes: bool,
+    current: &mut CursorIcon,
+    requested: CursorIcon,
+) {
+    if let Some(next) = window_surface::select_cursor(allow_cursor_changes, requested, *current) {
+        window.set_cursor_icon(next);
+        *current = next;
+    }
+}
+
+/// The one transition policy shared by the startup apply and later
+/// `SetFullscreen` effects (`Window.setMode`, Window.java:350-389): enter
+/// exclusive mode only when the stored `fullscreenResolution` exactly matches
+/// a winit video mode on a backend that supports exclusive mode, otherwise
+/// borderless on the current monitor. Windowed restoration is winit-owned
+/// (`set_fullscreen(None)` restores the saved windowed geometry). Winit has no
+/// synchronous failure channel, so the mode choice is decided up front rather
+/// than by inspecting `Window::fullscreen()` afterwards.
+fn set_window_fullscreen(
+    window: &Window,
+    fullscreen: bool,
+    preferred: Option<window_surface::PreferredVideoMode>,
+    exclusive_supported: bool,
+) {
+    if !fullscreen {
+        window.set_fullscreen(None);
+        return;
+    }
+    let monitor = window.current_monitor();
+    let exact =
+        preferred.and_then(|mode| window_surface::find_exact_video_mode(mode, monitor.as_ref()));
+    match window_surface::fullscreen_choice(preferred, exact.is_some(), exclusive_supported) {
+        window_surface::FullscreenChoice::Exclusive => {
+            window.set_fullscreen(Some(Fullscreen::Exclusive(
+                exact.expect("exclusive choice requires an exact video mode"),
+            )));
+        }
+        window_surface::FullscreenChoice::Borderless => {
+            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+        }
+    }
+}
+
+/// `Minecraft.<init>` (Minecraft.java:647-656): a clean start with
+/// `options.fullscreen` applies fullscreen before the event loop through the
+/// shared transition policy. There is no observable failure branch on this
+/// backend (`Window::set_fullscreen` returns `()`), so `input.fullscreen`
+/// keeps the stored intent and `Minecraft.onFullscreenError` stays
+/// unreachable (see `/tmp/window-surface-work/audit.md`).
+fn apply_startup_fullscreen(
+    window: &Window,
+    input: &mut ClientInputState,
+    preferred: Option<window_surface::PreferredVideoMode>,
+    exclusive_supported: bool,
+) {
+    if !input.is_fullscreen() {
+        return;
+    }
+    set_window_fullscreen(window, true, preferred, exclusive_supported);
+}
+
+/// `Minecraft.resizeGui` (Minecraft.java:1434-1442) computed for a fresh
+/// physical framebuffer: `Window.calculateScale` plus `Window.setGuiScale`'s
+/// ceiling division, through the shared pure `window_surface` functions. The
+/// resize arm calls this synchronously so the renderer's logical GUI surface
+/// is current before any later window event (for example a `MouseInput`
+/// projection) is handled; the simulation publishes the same value later.
+fn resize_gui_surface(
+    size: PhysicalSize<u32>,
+    gui_scale_max: u32,
+    enforce_unicode: bool,
+) -> PhysicalSize<u32> {
+    let gui_scale = window_surface::calculate_gui_scale(
+        gui_scale_max,
+        enforce_unicode,
+        size.width,
+        size.height,
+    );
+    let (gui_scaled_width, gui_scaled_height) =
+        window_surface::gui_scaled_size(size.width, size.height, gui_scale);
+    PhysicalSize::new(gui_scaled_width, gui_scaled_height)
+}
+
+/// `Minecraft.updateTitle` (Minecraft.java:802-803): recomputes `createTitle`
+/// and applies it whenever the connection state changes; BBB diffs so an
+/// unchanged state does not spam the native window.
+fn update_window_title(window: &Window, connected: bool, current: &mut Option<String>) {
+    let next = window_surface::create_title(bbb_protocol::MC_VERSION, connected);
+    if current.as_deref() != Some(next.as_str()) {
+        window.set_title(&next);
+        *current = Some(next);
+    }
+}
+
 fn enqueue_simulation_window_event(
     event: &WindowEvent,
     mailbox: &SimulationMailbox,
     clipboard: &mut NativeDebugClipboard,
     renderer: &bbb_renderer::Renderer,
     window: &Window,
-    cursor_position: &mut Option<winit::dpi::PhysicalPosition<f64>>,
+    cursor_position: &mut window_surface::CursorPositionCache,
+    allow_cursor_changes: bool,
+    current_cursor_icon: &mut CursorIcon,
 ) -> bool {
     let command = match event {
         WindowEvent::CloseRequested => SimulationCommand::Shutdown,
         WindowEvent::CursorMoved { position, .. } => {
-            *cursor_position = Some(*position);
-            window.set_cursor_icon(
-                if renderer
-                    .hud_disconnected_screen_hit_target_at((position.x, position.y))
+            // `MouseHandler.onMove` (MouseHandler.java:266-279) stores raw
+            // physical coordinates; `getScaledXPos/getScaledYPos` project
+            // them onto the logical GUI surface at the boundary. The cache
+            // stays physical so a later resize never reuses a stale
+            // projection.
+            cursor_position.on_cursor_moved(*position);
+            let gui_position = cursor_position
+                .project(
+                    renderer.physical_surface_size(),
+                    renderer.gui_surface_size(),
+                )
+                .expect("cursor position cached by CursorMoved");
+            let requested = if renderer
+                .hud_disconnected_screen_hit_target_at((gui_position.x, gui_position.y))
+                .is_some()
+                || renderer
+                    .hud_death_screen_hit_target_at((gui_position.x, gui_position.y))
                     .is_some()
-                    || renderer
-                        .hud_death_screen_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_game_event_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_social_interactions_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_player_reporting_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_book_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_chat_hit_target_at((position.x, position.y))
-                        .is_some()
-                    || renderer
-                        .hud_pause_draft_hit_target_at((position.x, position.y))
-                        .is_some()
-                {
-                    CursorIcon::Pointer
-                } else {
-                    CursorIcon::Default
-                },
-            );
+                || renderer
+                    .hud_game_event_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+                || renderer
+                    .hud_social_interactions_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+                || renderer
+                    .hud_player_reporting_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+                || renderer
+                    .hud_book_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+                || renderer
+                    .hud_chat_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+                || renderer
+                    .hud_pause_draft_hit_target_at((gui_position.x, gui_position.y))
+                    .is_some()
+            {
+                CursorIcon::Pointer
+            } else {
+                CursorIcon::Default
+            };
+            apply_window_cursor_icon(window, allow_cursor_changes, current_cursor_icon, requested);
             SimulationCommand::CursorMoved {
-                position: *position,
+                position: gui_position,
                 disconnected_screen_target: renderer
-                    .hud_disconnected_screen_hit_target_at((position.x, position.y)),
+                    .hud_disconnected_screen_hit_target_at((gui_position.x, gui_position.y)),
                 death_screen_target: renderer
-                    .hud_death_screen_hit_target_at((position.x, position.y)),
-                game_event_target: renderer.hud_game_event_hit_target_at((position.x, position.y)),
+                    .hud_death_screen_hit_target_at((gui_position.x, gui_position.y)),
+                game_event_target: renderer
+                    .hud_game_event_hit_target_at((gui_position.x, gui_position.y)),
                 player_reporting_target: renderer
-                    .hud_player_reporting_hit_target_at((position.x, position.y)),
+                    .hud_player_reporting_hit_target_at((gui_position.x, gui_position.y)),
                 social_interactions_target: renderer
-                    .hud_social_interactions_hit_target_at((position.x, position.y)),
+                    .hud_social_interactions_hit_target_at((gui_position.x, gui_position.y)),
                 pause_draft_target: renderer
-                    .hud_pause_draft_hit_target_at((position.x, position.y)),
+                    .hud_pause_draft_hit_target_at((gui_position.x, gui_position.y)),
             }
         }
         WindowEvent::CursorLeft { .. } => {
-            *cursor_position = None;
-            window.set_cursor_icon(CursorIcon::Default);
+            cursor_position.on_cursor_left();
+            apply_window_cursor_icon(
+                window,
+                allow_cursor_changes,
+                current_cursor_icon,
+                CursorIcon::Default,
+            );
             SimulationCommand::CursorLeft
         }
         WindowEvent::Focused(focused) => SimulationCommand::FocusChanged(*focused),
@@ -2096,88 +2322,100 @@ fn enqueue_simulation_window_event(
         },
         WindowEvent::Ime(Ime::Commit(text)) => SimulationCommand::ImeCommit(text.clone()),
         WindowEvent::Ime(Ime::Disabled) => SimulationCommand::ImeDisabled,
-        WindowEvent::MouseInput { state, button, .. } => SimulationCommand::MouseButton {
-            button: *button,
-            state: *state,
-            chat_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position)
-                    .and_then(|position| renderer.hud_chat_hit_target_at((position.x, position.y)))
-            })
-            .flatten(),
-            book_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position)
-                    .and_then(|position| renderer.hud_book_hit_target_at((position.x, position.y)))
-            })
-            .flatten(),
-            disconnected_screen_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_disconnected_screen_hit_target_at((position.x, position.y))
+        WindowEvent::MouseInput { state, button, .. } => {
+            // `MouseHandler.onButton` (MouseHandler.java:88-100): recompute
+            // the scaled position from the raw physical cache with the
+            // *current* physical/logical sizes at click time.
+            let gui_position = cursor_position.project(
+                renderer.physical_surface_size(),
+                renderer.gui_surface_size(),
+            );
+            SimulationCommand::MouseButton {
+                button: *button,
+                state: *state,
+                position: gui_position,
+                chat_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_chat_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-            death_screen_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_death_screen_hit_target_at((position.x, position.y))
+                .flatten(),
+                book_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_book_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-            game_event_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_game_event_hit_target_at((position.x, position.y))
+                .flatten(),
+                disconnected_screen_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_disconnected_screen_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-            player_reporting_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_player_reporting_hit_target_at((position.x, position.y))
+                .flatten(),
+                death_screen_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_death_screen_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-            social_interactions_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_social_interactions_hit_target_at((position.x, position.y))
+                .flatten(),
+                game_event_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_game_event_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-            pause_draft_target: (matches!(
-                (*button, *state),
-                (winit::event::MouseButton::Left, ElementState::Pressed)
-            ))
-            .then(|| {
-                (*cursor_position).and_then(|position| {
-                    renderer.hud_pause_draft_hit_target_at((position.x, position.y))
+                .flatten(),
+                player_reporting_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_player_reporting_hit_target_at((position.x, position.y))
+                    })
                 })
-            })
-            .flatten(),
-        },
+                .flatten(),
+                social_interactions_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_social_interactions_hit_target_at((position.x, position.y))
+                    })
+                })
+                .flatten(),
+                pause_draft_target: (matches!(
+                    (*button, *state),
+                    (winit::event::MouseButton::Left, ElementState::Pressed)
+                ))
+                .then(|| {
+                    gui_position.and_then(|position| {
+                        renderer.hud_pause_draft_hit_target_at((position.x, position.y))
+                    })
+                })
+                .flatten(),
+            }
+        }
         WindowEvent::MouseWheel { delta, .. } => SimulationCommand::MouseWheel { delta: *delta },
         _ => return false,
     };
@@ -2295,6 +2533,194 @@ mod tests {
         });
 
         assert!(runtime_wants_cursor(&input, &world));
+    }
+
+    #[test]
+    fn window_title_follows_the_published_connection_state_and_diffs_applications() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let running_check = production
+            .find("if platform_exit_requested || !render_publication.running")
+            .expect("terminal running check");
+        let title_call = production
+            .find("update_window_title(")
+            .expect("window title owner");
+        assert!(running_check < title_call);
+        let call_site = &production[title_call..title_call + 160];
+        assert!(call_site.contains("render_publication.net_counters.connected"));
+        let title_update = production
+            .split_once("fn update_window_title(")
+            .expect("window title updater")
+            .1;
+        assert!(title_update.contains("current.as_deref() != Some(next.as_str())"));
+        assert!(title_update.contains("window.set_title(&next)"));
+    }
+
+    #[test]
+    fn cursor_icon_changes_flow_through_select_cursor_gating() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let gate = production
+            .split_once("fn apply_window_cursor_icon(")
+            .expect("cursor gate owner")
+            .1;
+        assert!(gate.contains("window_surface::select_cursor("));
+        assert!(gate.contains("window.set_cursor_icon(next)"));
+        let moved = production
+            .split_once("WindowEvent::CursorMoved { position, .. } =>")
+            .expect("cursor move arm")
+            .1;
+        assert!(moved.contains("apply_window_cursor_icon("));
+        let left = production
+            .split_once("WindowEvent::CursorLeft { .. } =>")
+            .expect("cursor leave arm")
+            .1;
+        assert!(left.contains("apply_window_cursor_icon("));
+    }
+
+    #[test]
+    fn fullscreen_transitions_share_one_deterministic_mode_policy() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let policy = production
+            .split_once("fn set_window_fullscreen(")
+            .expect("fullscreen mode policy owner")
+            .1;
+        assert!(policy.contains("window_surface::find_exact_video_mode("));
+        assert!(policy.contains("window_surface::fullscreen_choice("));
+        assert!(policy.contains("Fullscreen::Exclusive("));
+        assert!(policy.contains("Fullscreen::Borderless(None)"));
+        assert!(!policy.contains("window.fullscreen()"));
+        // Both the startup apply and the runtime SetFullscreen effect route
+        // through the same policy; no second window owner exists.
+        let startup = production
+            .split_once("fn apply_startup_fullscreen(")
+            .expect("startup fullscreen owner")
+            .1;
+        assert!(startup.contains("set_window_fullscreen(window, true,"));
+        let effect = production
+            .split_once("PlatformEffect::SetFullscreen(fullscreen) =>")
+            .expect("runtime fullscreen effect")
+            .1;
+        assert!(effect.contains("set_window_fullscreen("));
+        // One definition plus one startup call site plus one effect call site.
+        assert_eq!(production.matches("set_window_fullscreen(").count(), 3);
+        // The policy helper owns all three native transitions (windowed
+        // restore, exclusive entry, borderless entry).
+        assert_eq!(production.matches("window.set_fullscreen(").count(), 3);
+    }
+
+    #[test]
+    fn cursor_events_cache_physical_and_reproject_at_the_gui_boundary() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let moved = production
+            .split_once("WindowEvent::CursorMoved { position, .. } =>")
+            .expect("cursor move arm")
+            .1;
+        // The raw physical position is cached verbatim; the projection is
+        // derived once for this event's hit tests and simulation command.
+        assert!(moved.contains("cursor_position.on_cursor_moved(*position)"));
+        assert!(moved.contains("let gui_position = cursor_position"));
+        assert!(moved.contains(".project("));
+        assert!(moved.contains("renderer.gui_surface_size()"));
+        assert!(moved.contains("position: gui_position,"));
+        // The click path re-projects the cached physical position with the
+        // current renderer sizes instead of reusing a stale pre-resize
+        // logical cache, and carries that projection into the simulation.
+        let clicked = production
+            .split_once("WindowEvent::MouseInput { state, button, .. } =>")
+            .expect("mouse button arm")
+            .1;
+        assert!(clicked.contains("cursor_position.project("));
+        assert!(clicked.contains("renderer.physical_surface_size()"));
+        assert!(clicked.contains("renderer.gui_surface_size()"));
+        assert!(clicked.contains("position: gui_position,"));
+        let left = production
+            .split_once("WindowEvent::CursorLeft { .. } =>")
+            .expect("cursor leave arm")
+            .1;
+        assert!(left.contains("cursor_position.on_cursor_left()"));
+    }
+
+    #[test]
+    fn cursor_capture_prefers_locked_and_falls_back_to_confined_independently_of_raw_input() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let capture = production
+            .split_once("fn set_cursor_capture(")
+            .expect("cursor capture owner")
+            .1;
+        assert!(capture.contains("CursorGrabMode::Locked"));
+        assert!(capture.contains("CursorGrabMode::Confined"));
+        assert!(!capture.contains("raw_mouse_input"));
+        assert!(!capture.contains("updateRawMouseInput"));
+    }
+
+    #[test]
+    fn resize_gui_surface_projects_1280x720_at_scale_three_to_427x240() {
+        // `Window.setGuiScale` ceiling division: 1280/3 rounds up to 427 and
+        // 720/3 rounds to 240, the exact logical surface Vanilla exposes for
+        // `MouseHandler.getScaledXPos/getScaledYPos`.
+        assert_eq!(
+            resize_gui_surface(PhysicalSize::new(1280, 720), 3, false),
+            PhysicalSize::new(427, 240)
+        );
+        // Auto scale (0) keeps the 320x240 minimum GUI floor at 1280x720.
+        assert_eq!(
+            resize_gui_surface(PhysicalSize::new(1280, 720), 0, false),
+            PhysicalSize::new(427, 240)
+        );
+    }
+
+    #[test]
+    fn resize_arm_publishes_logical_gui_size_before_queuing_surface_resized() {
+        let source = include_str!("main.rs");
+        let production = source
+            .split_once("\nmod tests {")
+            .expect("production/test boundary")
+            .0;
+        let arm = production
+            .split_once("WindowEvent::Resized(size) =>")
+            .expect("resize arm")
+            .1;
+        let arm = arm
+            .split_once("WindowEvent::RedrawRequested =>")
+            .expect("redraw arm")
+            .0;
+        // The synchronous logical-GUI publish must come before the simulation
+        // command is queued, so a `MouseInput` delivered before the
+        // asynchronous publication projects with the new ratio.
+        let publish = arm
+            .find("renderer.set_gui_surface_size(")
+            .expect("synchronous logical GUI publish");
+        let enqueue = arm
+            .find("SimulationCommand::SurfaceResized(size)")
+            .expect("surface resize simulation command");
+        assert!(publish < enqueue);
+        // The projection is computed from the configured GUI-scale arguments
+        // through the shared `window_surface` functions, not a second formula.
+        assert!(arm.contains("resize_gui_surface("));
+        assert!(arm.contains("args.client_gui_scale"));
+        assert!(arm.contains("args.client_force_unicode_font"));
+        // A zero-size/minimized callback retains both last usable sizes: the
+        // synchronous publish is gated on nonzero dimensions.
+        assert!(arm.contains("if size.width != 0 && size.height != 0 {"));
     }
 
     fn insert_empty_sign(world: &mut WorldStore, pos: BlockPos) {

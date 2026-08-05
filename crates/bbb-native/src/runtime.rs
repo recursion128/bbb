@@ -96,6 +96,7 @@ use bbb_world::{
 };
 use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
+use winit::dpi::PhysicalSize;
 
 use crate::{
     audio_runtime::AudioEventSink,
@@ -2753,7 +2754,7 @@ pub(crate) fn advance_simulation(
         input,
         world,
         item_runtime.as_ref(),
-        input_runtime.surface_size(),
+        input_runtime.gui_surface_size(),
     );
     let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
     if terrain_textures_changed {
@@ -2774,6 +2775,7 @@ pub(crate) fn advance_simulation(
         commands,
         &mut crate::simulation::input_commands::SimulationInputContext {
             input,
+            now,
             first_person_hand_presentation,
             world,
             net_counters,
@@ -2804,7 +2806,7 @@ pub(crate) fn advance_simulation(
         input,
         world,
         advancement_scroll_delta,
-        input_runtime.surface_size(),
+        input_runtime.gui_surface_size(),
     );
     let _ = hud_stats_screen(
         input,
@@ -2813,7 +2815,7 @@ pub(crate) fn advance_simulation(
         terrain_textures,
         input.item_model_keybind_context(),
         client_animation_ticks.entity_partial_tick(),
-        input_runtime.surface_size(),
+        input_runtime.gui_surface_size(),
     );
     let pump_control_synced_at = Instant::now();
     let profiling_enabled =
@@ -3361,7 +3363,15 @@ pub(crate) fn update_renderer_from_publication(
     }
     debug_assert_eq!(publication.terrain_revision, world.terrain_revision());
     debug_assert_eq!(publication.frozen, world.ticking().frozen);
-    let surface_size = publication.input_runtime.surface_size;
+    // Physical framebuffer facts (world camera, culling, screenshots, line
+    // width) read the physical surface; every HUD/screen layout, toast,
+    // narration helper and GUI hit test reads the projected logical GUI
+    // surface (`Minecraft.resizeGui` / `Window.setGuiScale`).
+    let physical_surface_size = publication.input_runtime.surface_size;
+    let gui_surface_size = PhysicalSize::new(
+        publication.input_runtime.gui_scaled_width,
+        publication.input_runtime.gui_scaled_height,
+    );
     let net_counters = &publication.net_counters;
     let audio_status = &publication.audio_counters;
     let camera_fov_ticks = publication.camera_fov_ticks;
@@ -3818,11 +3828,11 @@ pub(crate) fn update_renderer_from_publication(
     let hud_debug_options_screen = if exclusive_game_screen_present {
         None
     } else {
-        hud_debug_options_screen(input, world, item_runtime, surface_size)
+        hud_debug_options_screen(input, world, item_runtime, gui_surface_size)
     };
     hud_render_runtime.debug_options_screen_narration =
         hud_debug_options_screen.as_ref().map(|screen| {
-            debug_options_screen_narration_frame(input, screen, item_runtime, surface_size)
+            debug_options_screen_narration_frame(input, screen, item_runtime, gui_surface_size)
         });
     let hud_command_suggestions = if !exclusive_game_screen_present
         && hud_debug_options_screen.is_none()
@@ -3834,7 +3844,7 @@ pub(crate) fn update_renderer_from_publication(
             world,
             renderer,
             item_runtime,
-            surface_size,
+            gui_surface_size,
         )
     } else {
         None
@@ -3842,7 +3852,7 @@ pub(crate) fn update_renderer_from_publication(
     let hud_pause_screen = if exclusive_game_screen_present || hud_debug_options_screen.is_some() {
         None
     } else {
-        hud_pause_screen(input, world, item_runtime, surface_size)
+        hud_pause_screen(input, world, item_runtime, gui_surface_size)
     };
     let hud_game_rules_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -3851,7 +3861,7 @@ pub(crate) fn update_renderer_from_publication(
         None
     } else {
         let mut game_rules_input = input.clone();
-        hud_game_rules_screen(&mut game_rules_input, world, item_runtime, surface_size)
+        hud_game_rules_screen(&mut game_rules_input, world, item_runtime, gui_surface_size)
     };
     let hud_stats_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -3869,12 +3879,12 @@ pub(crate) fn update_renderer_from_publication(
             terrain_textures,
             item_model_keybind_context,
             entity_partial_tick,
-            surface_size,
+            gui_surface_size,
         )
     };
     hud_render_runtime.stats_screen_narration = hud_stats_screen
         .as_ref()
-        .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, surface_size));
+        .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, gui_surface_size));
     let toasts_started_at = profiling_enabled.then(Instant::now);
     let (hud_system_toast, hud_system_toast_sound) =
         hud_system_toast(hud_render_runtime, world, item_runtime, now);
@@ -3918,7 +3928,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_sign_editor_screen(input, world, surface_size)
+        hud_sign_editor_screen(input, world, gui_surface_size)
     };
     let hud_command_block_editor_screen = if exclusive_game_screen_present
         || hud_debug_options_screen.is_some()
@@ -3928,7 +3938,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_command_block_editor_screen(input, item_runtime, surface_size)
+        hud_command_block_editor_screen(input, item_runtime, gui_surface_size)
     };
     let hud_structure_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
@@ -3939,7 +3949,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_structure_block_editor_screen(input, item_runtime, surface_size)
+        hud_structure_block_editor_screen(input, item_runtime, gui_surface_size)
     };
     let hud_jigsaw_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
@@ -3950,7 +3960,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_jigsaw_block_editor_screen(input, item_runtime, surface_size)
+        hud_jigsaw_block_editor_screen(input, item_runtime, gui_surface_size)
     };
     let hud_test_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
@@ -3961,7 +3971,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_test_block_editor_screen(input, item_runtime, surface_size)
+        hud_test_block_editor_screen(input, item_runtime, gui_surface_size)
     };
     let hud_test_instance_block_editor_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
@@ -3972,7 +3982,7 @@ pub(crate) fn update_renderer_from_publication(
     {
         None
     } else {
-        hud_test_instance_block_editor_screen(input, item_runtime, surface_size)
+        hud_test_instance_block_editor_screen(input, item_runtime, gui_surface_size)
     };
     let hud_book_screen = if exclusive_game_screen_present
         || world.dialog_screen_is_open()
@@ -4040,7 +4050,7 @@ pub(crate) fn update_renderer_from_publication(
                     entity_partial_tick,
                 ),
             },
-            surface_size,
+            gui_surface_size,
             renderer,
             renderer.hud_font_book_ref(),
             Some(entity_variant_textures),
@@ -4058,7 +4068,7 @@ pub(crate) fn update_renderer_from_publication(
                     input,
                     world,
                     item_runtime,
-                    surface_size,
+                    gui_surface_size,
                     entity_partial_tick,
                 )
             }
@@ -4180,7 +4190,7 @@ pub(crate) fn update_renderer_from_publication(
         camera_fluid_in_camera(
             world,
             camera,
-            [surface_size.width, surface_size.height],
+            [physical_surface_size.width, physical_surface_size.height],
             camera_fov_ticks.base_degrees(),
         )
     });
@@ -4230,7 +4240,7 @@ pub(crate) fn update_renderer_from_publication(
     let current_post_effect_id = input.camera_post_effect_id();
     let terrain_visibility_context = TerrainVisibilityContext::new(
         camera_pose,
-        [surface_size.width, surface_size.height],
+        [physical_surface_size.width, physical_surface_size.height],
         camera_fov.culling_degrees,
         render_distance_chunks,
         input.debug_smart_cull_enabled(),
@@ -4298,7 +4308,7 @@ pub(crate) fn update_renderer_from_publication(
             EntityRenderVisibilityContext {
                 camera_pose,
                 camera_detached: !input.camera_type().is_first_person(),
-                surface_size: [surface_size.width, surface_size.height],
+                surface_size: [physical_surface_size.width, physical_surface_size.height],
                 camera_fov_degrees: camera_fov.culling_degrees,
                 base_camera_fov_degrees: camera_fov_ticks.base_degrees(),
                 render_distance_chunks,
@@ -4386,7 +4396,7 @@ pub(crate) fn update_renderer_from_publication(
     let block_entity_model_start = entity_instances.len();
     let block_entity_visibility = BlockEntityVisibility::new(
         camera_pose,
-        [surface_size.width, surface_size.height],
+        [physical_surface_size.width, physical_surface_size.height],
         camera_fov.culling_degrees,
         render_distance_chunks,
     );
@@ -4562,8 +4572,8 @@ pub(crate) fn update_renderer_from_publication(
         world,
         item_runtime,
         hud_inventory_screen.as_ref(),
-        surface_size.width,
-        surface_size.height,
+        gui_surface_size.width,
+        gui_surface_size.height,
         map_texture_cache,
     );
     let first_person_item_models = first_person_item_models_with_map_cache(
@@ -4718,7 +4728,7 @@ pub(crate) fn update_renderer_from_publication(
                 world,
                 terrain_textures,
                 selection,
-                surface_size.width,
+                physical_surface_size.width,
                 high_contrast_block_outline,
             )
         });
@@ -4874,7 +4884,8 @@ pub(crate) fn update_renderer_from_publication(
             &renderer_counters,
             gpu_utilization,
             render_distance_chunks,
-            surface_size,
+            gui_surface_size,
+            physical_surface_size,
             hud_debug_fps_sampler,
             client_framerate_limit,
             client_vsync,
@@ -5457,7 +5468,8 @@ fn block_selection_render_state(
     BlockSelectionRenderState {
         boxes: selection.boxes,
         phase,
-        line_width: (surface_width as f32 / 1920.0 * 2.5).max(2.5),
+        // `Window.getAppropriateLineWidth` (Window.java:543).
+        line_width: crate::window_surface::appropriate_line_width(surface_width),
         high_contrast,
     }
 }
@@ -9228,6 +9240,7 @@ fn hud_debug_overlay_with_visible_entity_count(
         None,
         VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
         surface_size,
+        surface_size,
         fps_sampler,
         client_framerate_limit,
         client_vsync,
@@ -9273,6 +9286,7 @@ fn hud_debug_overlay_at_partial_tick(
         gpu_utilization,
         render_distance_chunks,
         surface_size,
+        surface_size,
         fps_sampler,
         client_framerate_limit,
         client_vsync,
@@ -9297,6 +9311,7 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
     gpu_utilization: Option<f64>,
     render_distance_chunks: u32,
     surface_size: winit::dpi::PhysicalSize<u32>,
+    physical_surface_size: winit::dpi::PhysicalSize<u32>,
     fps_sampler: &HudDebugFpsSampler,
     client_framerate_limit: u32,
     client_vsync: bool,
@@ -9503,7 +9518,7 @@ fn hud_debug_overlay_at_partial_tick_with_camera_poses(
         if !right_lines.is_empty() {
             right_lines.push("".to_string());
         }
-        right_lines.extend(hud_debug_system_lines(surface_size));
+        right_lines.extend(hud_debug_system_lines(physical_surface_size));
     }
     if entry_enabled(DebugScreenEntryId::GpuUtilization) {
         if !right_lines.is_empty() {

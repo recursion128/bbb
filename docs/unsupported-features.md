@@ -113,6 +113,48 @@ Matrix routes: `input-keyboard-routing`, `input-debug-key-actions`, `input-mouse
   Implement all repo-owned semantic gaps and keep the separately recorded
   X11/interactive-seat and macOS/Windows runner limitations external; absence
   of those runners must not hide an internally testable mechanism.
+- **The four `platform-window-*` routes now carry focused window-family
+  evidence; they stay `active` for phase ⑦'s per-owner census.** Window
+  construction clamps stored dimensions through `allowedWindowMinSize`,
+  startup fullscreen applies through one deterministic mode policy, and
+  `updateVsync` / `setAllowCursorChanges` consume their `options.txt` keys.
+  `calculateScale` plus `setGuiScale`'s ceiling division publish a renderer-owned
+  logical GUI surface on every nonzero framebuffer resize; HUD layout, hit
+  targets, toasts, narration helpers, the GUI item ortho camera/scissor and the
+  sign-editor IME caret consume that logical size (the native IME rectangle is
+  converted back to physical pixels at the platform boundary), while the world
+  camera, culling, framebuffer counters, screenshots and block-selection line
+  width stay on the physical size; a zero-size resize keeps both last usable
+  sizes and only marks minimized. The event-loop cursor cache stays in raw
+  physical window coordinates (`MouseHandler.xpos/ypos`); `CursorMoved`
+  projects once by the Vanilla ratio (`x * guiWidth / screenWidth`) for hit
+  tests and simulation input, and every mouse click re-projects the cached
+  physical position with the current physical/logical sizes, so a resize
+  without another `CursorMoved` never reuses a stale logical cache.
+  `pauseIfInactive` keeps the strict >500 ms delay, suppresses on any open
+  screen (the input-side predicate includes chat/command entry and player
+  reporting), and is evaluated only after every step command so a focus-regained
+  event in the same step cannot open the pause screen. The stored
+  `fullscreenResolution` parses `(digits)x(digits)[@(digits)[:(digits)]]` with
+  Vanilla's 60 Hz / 24-bit defaults, is the one special startup line
+  `Options.save` writes outside the catalog (the other
+  `dumpOptionsForReport` fields stay report-only and are never preserved as raw
+  options lines), and selects an exact winit video mode
+  (width/height/refresh/total colour bits); a missing or invalid mode falls
+  back deterministically to borderless, which is also the only fullscreen path
+  on Wayland (winit no-ops `Fullscreen::Exclusive` there).
+  `createTitle`/`updateTitle` apply
+  `Minecraft* <version> - Multiplayer` while an external connection is live,
+  and cursor changes flow through `selectCursor` gating. Backend-scope limits
+  are explicit: winit `Window::set_fullscreen` returns `()` with no synchronous
+  error channel, so `Minecraft.onFullscreenError` has no runtime trigger on
+  this backend and vsync is re-applied after transitions instead of being
+  disabled by an unobservable failure; `updateRawMouseInput` is a
+  GLFW-specific raw-motion switch winit cannot express — `DeviceEvent::MouseMotion`
+  is always raw and `CursorGrabMode` only confines/locks, so `rawMouseInput`
+  is parsed and emits one bounded startup warning when false. winit owns
+  monitor selection, windowed-geometry restore and the iconify/occlusion
+  present path; `getPlatform` identity maps winit backends to the GLFW names.
 - **The debug (`key.debug.*`) bindings are the only ones a rebind cannot move.**
   Every `key_<name>` line resolves through the generated catalog
   (`crates/bbb-native/src/client_options/key_mappings_26_1.rs`) to the physical

@@ -132,6 +132,9 @@ pub(crate) enum SimulationCommand {
     MouseButton {
         button: MouseButton,
         state: ElementState,
+        /// The current logical GUI projection of the raw physical cursor
+        /// cache, resolved at click time (`MouseHandler.getScaledXPos`).
+        position: Option<PhysicalPosition<f64>>,
         chat_target: Option<HudChatHitTarget>,
         book_target: Option<HudBookHitTarget>,
         disconnected_screen_target: Option<HudDisconnectedScreenHitTarget>,
@@ -1251,6 +1254,7 @@ mod tests {
             SimulationCommand::MouseButton {
                 button: MouseButton::Left,
                 state: ElementState::Released,
+                position: None,
                 chat_target: None,
                 book_target: None,
                 disconnected_screen_target: None,
@@ -1370,6 +1374,7 @@ mod tests {
             SimulationCommand::MouseButton {
                 button: MouseButton::Left,
                 state: ElementState::Pressed,
+                position: None,
                 chat_target: None,
                 book_target: None,
                 disconnected_screen_target: None,
@@ -1441,6 +1446,7 @@ mod tests {
             SimulationCommand::MouseButton {
                 button: MouseButton::Left,
                 state: ElementState::Pressed,
+                position: None,
                 chat_target: None,
                 book_target: None,
                 disconnected_screen_target: Some(latest),
@@ -1512,6 +1518,7 @@ mod tests {
             SimulationCommand::MouseButton {
                 button: MouseButton::Left,
                 state: ElementState::Pressed,
+                position: None,
                 chat_target: None,
                 book_target: None,
                 disconnected_screen_target: None,

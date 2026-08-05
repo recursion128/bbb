@@ -28,6 +28,31 @@ impl NativeWindowBackend {
             Self::Other => "other",
         }
     }
+
+    /// `Window.getPlatform` (Window.java:144-158): the GLFW platform identity.
+    /// winit has no GLFW "null" backend, so a display handle that is neither
+    /// X11 nor Wayland maps to the unknown label; non-Linux targets are named
+    /// by `target_os`.
+    pub(crate) fn platform_identity(self, target_os: &str) -> &'static str {
+        match target_os {
+            "windows" => "win32",
+            "macos" => "cocoa",
+            "linux" => match self {
+                Self::Wayland => "wayland",
+                Self::X11 => "x11",
+                Self::Other => "unknown",
+            },
+            _ => "unknown",
+        }
+    }
+
+    /// Whether this backend can enter `Fullscreen::Exclusive`. Wayland cannot
+    /// (winit `Window::set_fullscreen` docs: "Wayland does not support
+    /// exclusive fullscreen mode and will no-op a request"), so BBB selects
+    /// borderless there; winit itself decides on the remaining backends.
+    pub(crate) const fn supports_exclusive_fullscreen(self) -> bool {
+        !matches!(self, Self::Wayland)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -263,6 +288,27 @@ mod tests {
         assert_eq!(
             WindowIconTarget::for_platform("macos", NativeWindowBackend::Other).family(),
             Some(WindowIconFamily::MacOs)
+        );
+    }
+
+    #[test]
+    fn platform_identity_matches_glfw_platform_names() {
+        assert_eq!(
+            NativeWindowBackend::Wayland.platform_identity("linux"),
+            "wayland"
+        );
+        assert_eq!(NativeWindowBackend::X11.platform_identity("linux"), "x11");
+        assert_eq!(
+            NativeWindowBackend::Other.platform_identity("linux"),
+            "unknown"
+        );
+        assert_eq!(
+            NativeWindowBackend::Other.platform_identity("windows"),
+            "win32"
+        );
+        assert_eq!(
+            NativeWindowBackend::Other.platform_identity("macos"),
+            "cocoa"
         );
     }
 

@@ -84,6 +84,33 @@ impl<'a> StoredOptions<'a> {
         }
     }
 
+    /// Binds the one special startup line (`fullscreenResolution`,
+    /// Options.java:1676/1759-1761) that `Options.load` reads and
+    /// `Options.save` writes outside the fixed catalog. No other
+    /// `dumpOptionsForReport` field is a persisted options line, so this
+    /// binding carries no encoding assertion beyond the parser.
+    pub(crate) fn bind_fullscreen_resolution<T>(
+        &mut self,
+        arg_id: &'static str,
+        target: &mut Option<T>,
+        parse: impl Fn(&str) -> std::result::Result<T, String>,
+    ) {
+        let key = super::FULLSCREEN_RESOLUTION_KEY;
+        self.bound.push(ClientOptionBinding { arg_id, key });
+        if (self.explicit)(arg_id) {
+            return;
+        }
+        let Some(raw) = self.options.raw(key) else {
+            return;
+        };
+        match parse(raw) {
+            Ok(value) => *target = Some(value),
+            Err(error) => {
+                tracing::warn!(key, raw, %error, "ignoring invalid options.txt value");
+            }
+        }
+    }
+
     pub(crate) fn bound(self) -> Vec<ClientOptionBinding> {
         self.bound
     }
@@ -179,6 +206,20 @@ mod tests {
         assert_eq!(stored_fov_degrees("1.0"), Ok(110));
         assert_eq!(stored_fov_degrees("-1.0"), Ok(30));
         assert!(stored_fov_degrees("nonsense").is_err());
+    }
+
+    #[test]
+    fn fullscreen_resolution_binds_through_the_dedicated_raw_value() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("fullscreenResolution", "1920x1080@144:24");
+        let mut stored = StoredOptions::without_command_line(&options);
+        let mut preferred = None;
+
+        stored.bind_fullscreen_resolution("client_fullscreen_resolution", &mut preferred, |raw| {
+            Ok(raw.to_owned())
+        });
+
+        assert_eq!(preferred.as_deref(), Some("1920x1080@144:24"));
     }
 
     #[test]

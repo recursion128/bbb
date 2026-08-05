@@ -644,6 +644,10 @@ impl Default for MouseWheelSensitivity {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
+    /// `Minecraft.lastActiveTime` (Minecraft.java:370): refreshed while the
+    /// client is active; `pauseIfInactive` pauses after 500 ms of inactivity.
+    /// `Option` keeps the derived `Default` (never-active) honest for tests.
+    last_active_at: Option<Instant>,
     forward: bool,
     backward: bool,
     left: bool,
@@ -1424,6 +1428,10 @@ impl ClientInputState {
         self.fullscreen = fullscreen;
     }
 
+    pub(crate) fn is_fullscreen(&self) -> bool {
+        self.fullscreen
+    }
+
     pub(crate) fn set_mouse_sensitivity(&mut self, sensitivity: f64) {
         self.mouse_sensitivity = MouseSensitivity(sensitivity);
     }
@@ -1642,6 +1650,7 @@ impl ClientInputState {
     pub(crate) fn new(focused: bool) -> Self {
         Self {
             focused,
+            last_active_at: Some(Instant::now()),
             debug_pause_on_lost_focus: true,
             debug_fog_enabled: true,
             debug_smart_cull_enabled: true,
@@ -3359,6 +3368,35 @@ impl ClientInputState {
 
     pub(crate) fn set_debug_pause_on_lost_focus(&mut self, enabled: bool) {
         self.debug_pause_on_lost_focus = enabled;
+    }
+
+    /// `Minecraft.pauseIfInactive` (Minecraft.java:1382-1390): while the window
+    /// is unfocused with `pauseOnLostFocus`, opens the pause screen after
+    /// 500 ms unless a screen is already open. `pauseGame` suppresses on any
+    /// current screen (`Minecraft.java:1588`), so the input-side all-screen
+    /// predicate (including chat/command entry, player reporting, debug
+    /// screens, containers and the editor screens) gates it; any active frame
+    /// refreshes the timestamp. The vanilla touchscreen branch is out of scope
+    /// (this client has no touchscreen option consumer).
+    pub(crate) fn pause_if_inactive(&mut self, now: Instant, world: &mut WorldStore) {
+        if !self.focused && self.debug_pause_on_lost_focus() {
+            if now.saturating_duration_since(self.last_active_at.unwrap_or(now))
+                > Duration::from_millis(500)
+                && !self.gameplay_input_screen_is_open(world)
+            {
+                self.open_debug_pause_screen_with_menu(world);
+            }
+        } else {
+            self.last_active_at = Some(now);
+        }
+    }
+
+    /// Test seam for `pauseIfInactive` ordering regressions: pins the
+    /// last-active timestamp so the strict >500 ms delay is fully
+    /// deterministic.
+    #[cfg(test)]
+    pub(crate) fn set_last_active_at_for_test(&mut self, at: Instant) {
+        self.last_active_at = Some(at);
     }
 
     pub(crate) fn set_reduced_debug_info_option(&mut self, enabled: bool) {

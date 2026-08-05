@@ -34,6 +34,7 @@ use crate::camera_fov::{
     VANILLA_DEFAULT_CAMERA_FOV_DEGREES, VANILLA_DEFAULT_FOV_EFFECT_SCALE,
     VANILLA_MAX_CAMERA_FOV_DEGREES, VANILLA_MIN_CAMERA_FOV_DEGREES,
 };
+use crate::window_surface;
 use winit::{
     dpi::PhysicalSize,
     event_loop::EventLoop,
@@ -119,6 +120,35 @@ pub(crate) struct Args {
     pub(crate) client_narrator_hotkey: bool,
     #[arg(long = "client-fullscreen", default_value_t = false, action = ArgAction::Set)]
     pub(crate) client_fullscreen: bool,
+    #[arg(
+        long = "client-fullscreen-resolution",
+        value_parser = parse_client_fullscreen_resolution
+    )]
+    pub(crate) client_fullscreen_resolution: Option<window_surface::PreferredVideoMode>,
+    #[arg(
+        long = "client-gui-scale",
+        default_value_t = 0,
+        value_parser = parse_client_gui_scale
+    )]
+    pub(crate) client_gui_scale: u32,
+    #[arg(
+        long = "client-force-unicode-font",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_force_unicode_font: bool,
+    #[arg(
+        long = "client-raw-mouse-input",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_raw_mouse_input: bool,
+    #[arg(
+        long = "client-allow-cursor-changes",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_allow_cursor_changes: bool,
     #[arg(long = "client-mouse-sensitivity", default_value_t = 0.5)]
     pub(crate) client_mouse_sensitivity: f64,
     #[arg(long = "client-invert-mouse-x", default_value_t = false, action = ArgAction::Set)]
@@ -691,6 +721,33 @@ fn bind_stored_client_options(
     );
     flag!("client_vsync", "enableVsync", client_vsync);
     flag!("client_fullscreen", "fullscreen", client_fullscreen);
+    stored.bind_fullscreen_resolution(
+        "client_fullscreen_resolution",
+        &mut args.client_fullscreen_resolution,
+        parse_client_fullscreen_resolution,
+    );
+    parsed!(
+        "client_gui_scale",
+        "guiScale",
+        Integer,
+        client_gui_scale,
+        parse_client_gui_scale
+    );
+    flag!(
+        "client_force_unicode_font",
+        "forceUnicodeFont",
+        client_force_unicode_font
+    );
+    flag!(
+        "client_raw_mouse_input",
+        "rawMouseInput",
+        client_raw_mouse_input
+    );
+    flag!(
+        "client_allow_cursor_changes",
+        "allowCursorChanges",
+        client_allow_cursor_changes
+    );
     parsed!(
         "client_mouse_sensitivity",
         "mouseSensitivity",
@@ -1150,6 +1207,24 @@ fn parse_client_mouse_wheel_sensitivity(value: &str) -> std::result::Result<f64,
     Ok(parsed)
 }
 
+/// `Options.guiScale` (Options.java:853-865): `0` (auto) through
+/// `MAX_GUI_SCALE_INCLUSIVE`; `Window.calculateScale` stops the loop at the
+/// cap, so the effective maximum is whatever the framebuffer can still fit at
+/// 320x240.
+fn parse_client_gui_scale(value: &str) -> std::result::Result<u32, String> {
+    window_surface::parse_gui_scale(value)
+}
+
+/// The stored `fullscreenResolution` line (`Options.fullscreenVideoModeString`
+/// -> `VideoMode.read`); an invalid line keeps the current (unset) value,
+/// matching `Optional.empty()`.
+fn parse_client_fullscreen_resolution(
+    value: &str,
+) -> std::result::Result<window_surface::PreferredVideoMode, String> {
+    window_surface::PreferredVideoMode::parse(value)
+        .ok_or_else(|| format!("invalid fullscreen resolution: {value}"))
+}
+
 fn parse_stored_narrator(value: &str) -> std::result::Result<ClientNarratorArg, String> {
     match value {
         "0" => Ok(ClientNarratorArg::Off),
@@ -1264,7 +1339,13 @@ impl Default for WindowConfig {
 
 impl WindowConfig {
     pub(crate) fn physical_size(&self) -> PhysicalSize<u32> {
-        PhysicalSize::new(self.width, self.height)
+        // `Window.allowedWindowMinSize` (Window.java:551) clamps every stored
+        // window dimension to at least one, so a degenerate display size can
+        // never construct a zero-width native window.
+        PhysicalSize::new(
+            window_surface::allowed_window_min_size(self.width),
+            window_surface::allowed_window_min_size(self.height),
+        )
     }
 }
 
@@ -2187,6 +2268,115 @@ mod tests {
         // if the next run starts from it.
         assert!(args.advanced_item_tooltips);
         assert!(!args.pause_on_lost_focus);
+    }
+
+    #[test]
+    fn the_stored_window_family_options_feed_the_window_owner() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("guiScale", "3");
+        options.set_raw_for_test("forceUnicodeFont", "true");
+        options.set_raw_for_test("rawMouseInput", "false");
+        options.set_raw_for_test("allowCursorChanges", "false");
+        options.set_raw_for_test("fullscreenResolution", "1920x1080@144:24");
+        let mut args = Args::parse_from(["bbb-native"]);
+        assert!(args.client_fullscreen_resolution.is_none());
+        assert_eq!(args.client_gui_scale, 0);
+        assert!(!args.client_force_unicode_font);
+        assert!(args.client_raw_mouse_input);
+        assert!(args.client_allow_cursor_changes);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert_eq!(args.client_gui_scale, 3);
+        assert!(args.client_force_unicode_font);
+        assert!(!args.client_raw_mouse_input);
+        assert!(!args.client_allow_cursor_changes);
+        assert_eq!(
+            args.client_fullscreen_resolution.map(|mode| mode.write()),
+            Some("1920x1080@144:24".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_typed_window_family_argument_wins_over_the_stored_line() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("guiScale", "3");
+        options.set_raw_for_test("rawMouseInput", "false");
+        let matches = Args::command().get_matches_from(["bbb-native", "--client-gui-scale", "2"]);
+        let mut args = Args::from_arg_matches(&matches).unwrap();
+
+        bind_stored_client_options(&mut args, StoredOptions::new(&options, &matches));
+
+        assert_eq!(args.client_gui_scale, 2);
+        assert!(!args.client_raw_mouse_input);
+    }
+
+    #[test]
+    fn a_typed_fullscreen_resolution_wins_over_the_stored_line() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("fullscreenResolution", "1920x1080@144:24");
+        let matches = Args::command().get_matches_from([
+            "bbb-native",
+            "--client-fullscreen-resolution",
+            "1280x720@60",
+        ]);
+        let mut args = Args::from_arg_matches(&matches).unwrap();
+        assert_eq!(
+            args.client_fullscreen_resolution.map(|mode| mode.write()),
+            Some("1280x720@60:24".to_owned())
+        );
+
+        bind_stored_client_options(&mut args, StoredOptions::new(&options, &matches));
+
+        assert_eq!(
+            args.client_fullscreen_resolution.map(|mode| mode.write()),
+            Some("1280x720@60:24".to_owned())
+        );
+    }
+
+    #[test]
+    fn an_invalid_stored_fullscreen_resolution_keeps_the_current_value() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_raw_for_test("fullscreenResolution", "not a video mode");
+        let mut args = Args::parse_from(["bbb-native"]);
+
+        bind_stored_client_options(&mut args, StoredOptions::without_command_line(&options));
+
+        assert!(args.client_fullscreen_resolution.is_none());
+    }
+
+    #[test]
+    fn client_gui_scale_rejects_values_outside_the_vanilla_bound() {
+        assert!(parse_client_gui_scale("0").is_ok());
+        assert!(parse_client_gui_scale("4").is_ok());
+        assert!(parse_client_gui_scale("2147483646").is_ok());
+        assert!(parse_client_gui_scale("2147483647").is_err());
+        assert!(parse_client_gui_scale("-1").is_err());
+        assert!(parse_client_gui_scale("auto").is_err());
+    }
+
+    #[test]
+    fn client_fullscreen_resolution_rejects_invalid_forms_at_parse_time() {
+        assert_eq!(
+            parse_client_fullscreen_resolution("1920x1080@144:24")
+                .unwrap()
+                .write(),
+            "1920x1080@144:24"
+        );
+        assert!(parse_client_fullscreen_resolution("").is_err());
+        assert!(parse_client_fullscreen_resolution("1920x1080@").is_err());
+        assert!(parse_client_fullscreen_resolution("1920x1080@144:").is_err());
+    }
+
+    #[test]
+    fn window_config_clamps_dimensions_to_minimum_nonzero() {
+        let mut config = WindowConfig::default();
+        config.width = 0;
+        config.height = 0;
+        assert_eq!(config.physical_size(), PhysicalSize::new(1, 1));
+
+        let config = WindowConfig::default();
+        assert_eq!(config.physical_size(), PhysicalSize::new(1280, 720));
     }
 
     #[test]

@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use wgpu::util::DeviceExt;
+use winit::dpi::PhysicalSize;
 
 use crate::frame_buffers::FrameDataBuffer;
 use crate::renderer::FrameTarget;
@@ -37,6 +38,39 @@ use crate::{
 enum TerrainOpaqueGroupLayer {
     Solid,
     Cutout,
+}
+
+/// Converts a logical-GUI scissor rectangle into physical attachment pixels
+/// using the exact `physical / gui` ratio, clamped to the attachment. HUD
+/// vertices are generated in logical GUI pixels (`Window.setGuiScale`) and the
+/// viewport maps them onto the physical framebuffer; wgpu scissors are
+/// physical pixels, so every GUI clip crosses this boundary. Returns `None`
+/// when the clipped rectangle is empty (the logical rect is fully outside the
+/// GUI or has no area); callers must fail closed for that draw rather than
+/// issuing a zero-area native scissor.
+fn physical_scissor_from_gui(
+    gui: PhysicalSize<u32>,
+    physical: PhysicalSize<u32>,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Option<(u32, u32, u32, u32)> {
+    let scale_x = f64::from(physical.width) / f64::from(gui.width.max(1));
+    let scale_y = f64::from(physical.height) / f64::from(gui.height.max(1));
+    let left = (f64::from(x) * scale_x)
+        .floor()
+        .min(f64::from(physical.width)) as u32;
+    let top = (f64::from(y) * scale_y)
+        .floor()
+        .min(f64::from(physical.height)) as u32;
+    let right = (f64::from(x.saturating_add(width)) * scale_x)
+        .ceil()
+        .min(f64::from(physical.width)) as u32;
+    let bottom = (f64::from(y.saturating_add(height)) * scale_y)
+        .ceil()
+        .min(f64::from(physical.height)) as u32;
+    (left < right && top < bottom).then_some((left, top, right - left, bottom - top))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -4339,8 +4373,25 @@ impl Renderer {
             };
             let scissor = match draw.scissor {
                 Some(scissor) => {
+                    // Item-model scissors are GUI-space rects; scale them to
+                    // the physical attachment before clipping, mirroring the
+                    // HUD sprite pass conversion.
+                    let Some((x, y, width, height)) = physical_scissor_from_gui(
+                        self.gui_surface_size,
+                        self.surface_size(),
+                        scissor.x(),
+                        scissor.y(),
+                        scissor.width(),
+                        scissor.height(),
+                    ) else {
+                        continue;
+                    };
                     let Some(scissor) =
-                        scissor.clipped_to(self.config.width.max(1), self.config.height.max(1))
+                        crate::item_models::ItemModelScissorRect::new(x, y, width, height)
+                            .and_then(|scissor| {
+                                scissor
+                                    .clipped_to(self.config.width.max(1), self.config.height.max(1))
+                            })
                     else {
                         continue;
                     };
@@ -4676,6 +4727,7 @@ impl Renderer {
         commands: &'a [crate::hud::HudDrawCommand<'a>],
     ) -> (u64, u64) {
         let mut active_pipeline = None;
+        let mut scissor_empty = false;
         let mut draw_calls = 0;
         let mut pipeline_switches = 0;
         for command in commands {
@@ -4686,9 +4738,31 @@ impl Renderer {
                     width,
                     height,
                 } => {
-                    pass.set_scissor_rect(*x, *y, *width, *height);
+                    // HUD vertices live in logical GUI pixels and the viewport
+                    // maps them onto the physical framebuffer; wgpu scissors
+                    // are physical pixels, so convert with the same ratio.
+                    let Some((x, y, width, height)) = physical_scissor_from_gui(
+                        self.gui_surface_size,
+                        self.surface_size(),
+                        *x,
+                        *y,
+                        *width,
+                        *height,
+                    ) else {
+                        // A clip fully outside the logical GUI has no physical
+                        // pixels. wgpu cannot express a zero-area scissor, so
+                        // fail closed for this batch: suppress draws until the
+                        // next scissor command instead of dropping the clip.
+                        scissor_empty = true;
+                        continue;
+                    };
+                    pass.set_scissor_rect(x, y, width, height);
+                    scissor_empty = false;
                 }
                 crate::hud::HudDrawCommand::Sprite { sprite, start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
                         pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
@@ -4700,6 +4774,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::NauseaOverlay { sprite, start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     if active_pipeline != Some(HudActivePipeline::NauseaOverlay) {
                         pass.set_pipeline(&self.hud_nausea_overlay_pipeline);
                         pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
@@ -4711,6 +4788,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::TerrainAtlas { start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
                         pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
@@ -4722,6 +4802,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::BannerPattern { atlas, start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     let bind_group = match atlas {
                         crate::hud::HudBannerPatternAtlas::StaticEntity => self
                             .entity_model_texture_atlas
@@ -4746,6 +4829,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::ItemGlint { mask, start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     let Some(glint) = &self.item_glint_texture else {
                         continue;
                     };
@@ -4761,6 +4847,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::MapPreview { preview_index } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     let target = crate::item_models::MapSurfaceTarget::Gui(*preview_index);
                     if !self.has_resident_map_surfaces(target)
                         && !self.has_resident_map_text(target)
@@ -4790,6 +4879,9 @@ impl Renderer {
                     start,
                     end,
                 } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     let Some(target) = self.hud_entity_preview_pip_targets.get(*target_index)
                     else {
                         continue;
@@ -4805,6 +4897,9 @@ impl Renderer {
                     draw_calls += 1;
                 }
                 crate::hud::HudDrawCommand::LightmapPreview { start, end } => {
+                    if scissor_empty {
+                        continue;
+                    }
                     if active_pipeline != Some(HudActivePipeline::Sprite) {
                         pass.set_pipeline(&self.hud_pipeline);
                         pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
@@ -5591,7 +5686,135 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests {
-    use super::{Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+    use super::{
+        physical_scissor_from_gui, Renderer, TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS,
+    };
+    use winit::dpi::PhysicalSize;
+
+    #[test]
+    fn physical_scissor_from_gui_scales_with_the_exact_gui_ratio() {
+        // Scale 4: an integer ratio.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(480, 270),
+                PhysicalSize::new(1920, 1080),
+                120,
+                40,
+                16,
+                16,
+            ),
+            Some((480, 160, 64, 64))
+        );
+        // 1280x720 scale 3 projects 427x240: the ratio is not an integer, so
+        // the physical scissor spans the exact rounded span of the logical
+        // rect (floor left/top, ceil right/bottom), clamped to the attachment.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(427, 240),
+                PhysicalSize::new(1280, 720),
+                213,
+                120,
+                1,
+                1,
+            ),
+            Some((638, 360, 4, 3))
+        );
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(427, 240),
+                PhysicalSize::new(1280, 720),
+                0,
+                0,
+                427,
+                240,
+            ),
+            Some((0, 0, 1280, 720))
+        );
+        // A degenerate gui size cannot divide by zero.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(0, 0),
+                PhysicalSize::new(1920, 1080),
+                0,
+                0,
+                1,
+                1,
+            ),
+            Some((0, 0, 1920, 1080))
+        );
+    }
+
+    #[test]
+    fn physical_scissor_from_gui_clips_partially_outside_rects() {
+        // A logical rect straddling the right GUI edge clips to the physical
+        // attachment boundary: x=400..500 on a 480-wide GUI at scale 4 lands
+        // at physical x=1600..1920 (the tail beyond 1920 is dropped).
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(480, 270),
+                PhysicalSize::new(1920, 1080),
+                400,
+                0,
+                100,
+                270,
+            ),
+            Some((1600, 0, 320, 1080))
+        );
+        // A rect starting inside and ending past the bottom edge clips the
+        // same way on y.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(480, 270),
+                PhysicalSize::new(1920, 1080),
+                0,
+                260,
+                480,
+                20,
+            ),
+            Some((0, 1040, 1920, 40))
+        );
+    }
+
+    #[test]
+    fn physical_scissor_from_gui_fails_closed_for_fully_outside_rects() {
+        // Entirely beyond the right GUI edge: no physical pixels, and the
+        // callers must not issue a zero-area native scissor.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(480, 270),
+                PhysicalSize::new(1920, 1080),
+                480,
+                0,
+                100,
+                270,
+            ),
+            None
+        );
+        // Entirely below the GUI surface.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(480, 270),
+                PhysicalSize::new(1920, 1080),
+                0,
+                270,
+                480,
+                100,
+            ),
+            None
+        );
+        // Entirely outside on both axes at once.
+        assert_eq!(
+            physical_scissor_from_gui(
+                PhysicalSize::new(427, 240),
+                PhysicalSize::new(1280, 720),
+                427,
+                240,
+                10,
+                10,
+            ),
+            None
+        );
+    }
 
     #[cfg(feature = "lifecycle-soak")]
     #[test]
