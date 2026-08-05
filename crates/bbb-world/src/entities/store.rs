@@ -2577,6 +2577,23 @@ impl EntityStore {
         )
     }
 
+    /// Vanilla `Entity.getEyeHeight()` at the entity's currently synced pose.
+    pub(crate) fn pose_eye_height(&self, id: i32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        vanilla_eye_height_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
+        )
+    }
+
     fn metadata_bool(&self, id: i32, data_id: u8, default: bool) -> Option<bool> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;

@@ -3934,6 +3934,16 @@ impl WorldStore {
         self.entities.camera_view_bob_state(id, partial_ticks)
     }
 
+    /// The entity's canonical relative AABB without the spectator pick filter
+    /// that `probe_entity_pick_bounds` applies for ray tracing.
+    pub fn entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {
+        self.entities.pick_bounds(id)
+    }
+
+    pub fn entity_pose_eye_height(&self, id: i32) -> Option<f32> {
+        self.entities.pose_eye_height(id)
+    }
+
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {
         let identity = self.entities.identity(id)?;
         if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
@@ -4906,7 +4916,16 @@ impl WorldStore {
     /// (`vehicle.getMaxHealth()`, Gui.java:727). Boats/minecarts (non-living
     /// vehicles) yield `None`, matching vanilla's hidden vehicle bar.
     pub fn local_player_vehicle_health(&self) -> Option<LocalPlayerVehicleHealth> {
-        let vehicle_id = self.local_player_vehicle_id?;
+        self.vehicle_health(self.local_player_vehicle_id?)
+    }
+
+    /// The same projection for any camera player: vanilla resolves
+    /// `getCameraPlayer().getVehicle()` rather than the local player's mount.
+    pub fn player_vehicle_health(&self, id: i32) -> Option<LocalPlayerVehicleHealth> {
+        self.vehicle_health(self.entities.mount(id)?.vehicle_id?)
+    }
+
+    fn vehicle_health(&self, vehicle_id: i32) -> Option<LocalPlayerVehicleHealth> {
         let entity_type_id = self.entities.entity_type_id(vehicle_id)?;
         if !vanilla_living_entity_type(entity_type_id) {
             return None;
@@ -4932,10 +4951,14 @@ impl WorldStore {
     /// `Attributes.MAX_HEALTH` `RangedAttribute` default 20.0 while unsynced.
     pub fn local_player_max_health(&self) -> f32 {
         self.local_player_id
-            .and_then(|id| {
-                self.entities
-                    .attribute_value(id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
+            .map_or(VANILLA_DEFAULT_MAX_HEALTH as f32, |id| {
+                self.player_max_health(id)
             })
+    }
+
+    pub fn player_max_health(&self, id: i32) -> f32 {
+        self.entities
+            .attribute_value(id, VANILLA_ATTRIBUTE_MAX_HEALTH_ID)
             .unwrap_or(VANILLA_DEFAULT_MAX_HEALTH) as f32
     }
 
@@ -4944,8 +4967,18 @@ impl WorldStore {
     /// local player's synced `DATA_TICKS_FROZEN_ID`.
     pub fn local_player_is_fully_frozen(&self) -> bool {
         self.local_player_id
-            .map(|id| self.entities.is_fully_frozen(id))
-            .unwrap_or(false)
+            .is_some_and(|id| self.player_is_fully_frozen(id))
+    }
+
+    pub fn player_is_fully_frozen(&self, id: i32) -> bool {
+        self.entities.is_fully_frozen(id)
+    }
+
+    /// Vanilla `LivingEntity.getHealth()` for any camera player: the synced
+    /// `DATA_HEALTH_ID` float. The local player's canonical health stays the
+    /// `ClientboundSetHealthPacket` value instead.
+    pub fn player_synced_health(&self, id: i32) -> Option<f32> {
+        self.entities.living_entity_health(id)
     }
 
     pub fn entity_count(&self) -> usize {

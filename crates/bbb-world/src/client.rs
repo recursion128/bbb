@@ -14,6 +14,7 @@ mod entity_block_effects;
 mod features;
 mod game_rules;
 mod hud;
+mod hud_camera_player;
 mod inventory;
 mod level_report;
 mod local_player;

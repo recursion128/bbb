@@ -86,13 +86,13 @@ use bbb_world::{
     java_string_hash_code, sign_wood_and_form_for_block_name, vanilla_entity_type_is_living,
     BlockPos, CartographyAdditionalItemKind, ChunkPos, ClientEnvironmentAttributes, ContainerState,
     EnchantmentTooltipDefinition, EntityClientMovementEffectState, EntityClientTickWork,
-    EnvironmentBiomeSampling, EvokerFangsCritParticleState, ItemEquipmentSlot,
-    LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState, MerchantOfferState,
-    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind,
-    OminousItemSpawnerParticleState, PrimedTntSmokeParticleState, RavagerStunParticleState,
-    SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind, TerrainFluidState,
-    TerrainLight, TerrainMaterialClass, VanillaEnchantmentIdentity, WorldLevelInfo, WorldSkybox,
-    WorldStore, WorldWeatherState,
+    EnvironmentBiomeSampling, EvokerFangsCritParticleState, HudCameraPlayerVitals,
+    ItemEquipmentSlot, LocalPlayerCrosshairAttackIndicatorState, LocalSoundEventState,
+    MerchantOfferState, MerchantOffersState, MobEffectState, MountArmorSlotKind,
+    MountInventoryKind, OminousItemSpawnerParticleState, PrimedTntSmokeParticleState,
+    RavagerStunParticleState, SignBlockForm, SoundEventState, SoundHolderState, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, VanillaEnchantmentIdentity,
+    WorldLevelInfo, WorldSkybox, WorldStore, WorldWeatherState,
 };
 use glam::{Quat, Vec3};
 use tokio::sync::mpsc;
@@ -251,12 +251,13 @@ use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, MobEffectCategory, VANILLA_BEACON_EFFECT_TIERS,
     VANILLA_MOB_EFFECT_BLINDNESS_ID, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
     VANILLA_MOB_EFFECT_DARKNESS_ID, VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID,
-    VANILLA_MOB_EFFECT_HUNGER_ID, VANILLA_MOB_EFFECT_NAUSEA_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
-    VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_WITHER_ID,
+    VANILLA_MOB_EFFECT_NAUSEA_ID, VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
 };
 
 #[cfg(test)]
-use bbb_protocol::mob_effect_types::{VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID};
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
+};
 
 #[cfg(test)]
 use crate::terrain_runtime::TerrainUploadState;
@@ -2239,12 +2240,7 @@ fn local_player_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectSt
 }
 
 fn camera_entity_id(world: &WorldStore) -> Option<i32> {
-    let camera = world.local_player().camera;
-    if camera.follows_player {
-        world.local_player_id()
-    } else {
-        camera.entity_id
-    }
+    world.camera_entity_id()
 }
 
 fn camera_entity_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectState> {
@@ -2279,12 +2275,12 @@ fn camera_mob_effect_blocks_sky(world: &WorldStore) -> bool {
 
 /// Vanilla `Gui.HeartType.forPlayer` (Gui.java:1438-1450): the base heart
 /// sprite family, in precedence order poison > wither > fully-frozen > normal.
-fn local_player_heart_type(world: &WorldStore) -> HudHeartKind {
-    if local_player_effect(world, VANILLA_MOB_EFFECT_POISON_ID).is_some() {
+fn camera_player_heart_type(player: HudCameraPlayerVitals) -> HudHeartKind {
+    if player.poisoned {
         HudHeartKind::Poisoned
-    } else if local_player_effect(world, VANILLA_MOB_EFFECT_WITHER_ID).is_some() {
+    } else if player.withered {
         HudHeartKind::Withered
-    } else if world.local_player_is_fully_frozen() {
+    } else if player.fully_frozen {
         HudHeartKind::Frozen
     } else {
         HudHeartKind::Normal
@@ -3434,86 +3430,94 @@ pub(crate) fn update_renderer_from_publication(
     // and `GameMode.canHurtPlayer()` is true (survival/adventure). The synced
     // health then pairs with the MAX_HEALTH attribute, absorption, hardcore,
     // `HeartType.forPlayer`, Regeneration, and the client tick.
-    let local_player_invulnerable_time = world
-        .local_player_id()
-        .and_then(|entity_id| world.entity_damage_invulnerable_time(entity_id))
-        .unwrap_or(0);
     let game_mode_can_hurt_player = matches!(
         GameType::from_id(world.gameplay().game_type),
         GameType::Survival | GameType::Adventure
     );
-    let camera_player_is_local_player = world.hud_camera_player_id() == world.local_player_id();
-    let hud_player_health =
-        (!input.hide_gui() && game_mode_can_hurt_player && camera_player_is_local_player)
-            .then_some(local_player.health)
-            .flatten()
-            .filter(|health| health.health.is_finite())
-            .map(|health| {
-                let presentation = hud_render_runtime.player_health_frame(
-                    render_started_at,
-                    publication.client_tick_index,
-                    health.health.ceil() as i32,
-                    local_player_invulnerable_time,
-                );
-                HudPlayerHealth {
-                    health: health.health,
-                    display_health: presentation.display_health,
-                    blinking: presentation.blinking,
-                    max_health: world.local_player_max_health(),
-                    absorption: world.local_player_absorption(),
-                    heart_type: local_player_heart_type(world),
-                    hardcore: world.is_hardcore(),
-                    regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
-                    tick_count: publication.client_tick_index,
-                }
-            });
+    let camera_player = world.hud_camera_player_vitals();
+    let hud_player_health = (!input.hide_gui() && game_mode_can_hurt_player)
+        .then_some(camera_player)
+        .flatten()
+        .filter(|player| player.health.is_finite())
+        .map(|player| {
+            let presentation = hud_render_runtime.player_health_frame(
+                render_started_at,
+                publication.client_tick_index,
+                player.health.ceil() as i32,
+                player.invulnerable_time,
+            );
+            HudPlayerHealth {
+                health: player.health,
+                display_health: presentation.display_health,
+                blinking: presentation.blinking,
+                max_health: player.max_health,
+                absorption: player.absorption,
+                heart_type: camera_player_heart_type(player),
+                hardcore: world.is_hardcore(),
+                regen: player.regenerating,
+                tick_count: publication.client_tick_index,
+            }
+        });
     // Unlike ordinary HUD content, Vanilla extracts the sleep overlay outside
     // the `Options.hideGui` branch and does not partial-tick interpolate it.
     let hud_sleep_overlay = hud_sleep_overlay_from_world(world);
     // `Gui.extractHotbarAndDecorations` reaches `extractFood` only through
     // `GameMode.canHurtPlayer`; spectator/creative HUDs must not retain the
     // ordinary food row merely because synced health is still present.
-    let hud_food = (game_mode_can_hurt_player && camera_player_is_local_player)
-        .then_some(local_player.health)
+    let hud_food = game_mode_can_hurt_player
+        .then_some(camera_player)
         .flatten()
-        .map(|health| health.food);
+        .map(|player| player.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
     // the floor of the ARMOR attribute; the renderer gates the row on `armor > 0`.
-    let hud_armor = camera_player_is_local_player.then(|| world.local_player_armor_value());
+    let hud_armor = camera_player.map(|player| player.armor);
     // Vanilla `Gui.extractAirBubbles` inputs (Gui.java:887-890): the synced
     // `DATA_AIR_SUPPLY_ID` int, the fixed 300-tick `getMaxAirSupply()`, the
     // `isEyeInFluid(WATER)` gate, and the client tick for the all-empty
     // wobble; the renderer applies the `isUnderWater || air < max` visibility.
-    let hud_air_state = HudAirSupply {
-        air: world.local_player_air_supply(),
-        max_air: world.local_player_max_air_supply(),
-        eye_in_water: world.local_player_eye_in_water(),
+    let hud_air = camera_player.map(|player| HudAirSupply {
+        air: player.air,
+        max_air: player.max_air,
+        eye_in_water: player.eye_in_water,
         tick_count: publication.client_tick_index,
-    };
-    if let Some(position) = world.local_player_pose().map(|pose| pose.position) {
-        if let Some(sound) = hud_render_runtime.air_bubble_pop_sound(
-            hud_air_state,
-            !input.hide_gui() && game_mode_can_hurt_player && camera_player_is_local_player,
-        ) {
-            mailbox.enqueue_or_report(
-                crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
-                    level_generation: world.client_level_generation(),
-                    position,
-                    volume: sound.volume,
-                    pitch: sound.pitch,
-                },
-                "HUD air bubble sound",
-            );
+    });
+    // Vanilla `Gui.playAirBubblePoppedSound` plays on the camera player, so a
+    // camera set to another player pops at that entity's position.
+    if let Some((player, air)) = camera_player.zip(hud_air) {
+        let position = if player.is_local_player {
+            world.local_player_pose().map(|pose| pose.position)
+        } else {
+            player
+                .entity_id
+                .and_then(|entity_id| world.probe_entity_transform(entity_id))
+                .map(|transform| bbb_protocol::packets::Vec3d {
+                    x: transform.position.x,
+                    y: transform.position.y,
+                    z: transform.position.z,
+                })
+        };
+        if let Some(position) = position {
+            if let Some(sound) = hud_render_runtime
+                .air_bubble_pop_sound(air, !input.hide_gui() && game_mode_can_hurt_player)
+            {
+                mailbox.enqueue_or_report(
+                    crate::simulation::commands::SimulationCommand::HudAirBubblePopSound {
+                        level_generation: world.client_level_generation(),
+                        position,
+                        volume: sound.volume,
+                        pitch: sound.pitch,
+                    },
+                    "HUD air bubble sound",
+                );
+            }
         }
     }
-    let hud_air = camera_player_is_local_player.then_some(hud_air_state);
-    // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the local
+    // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the camera
     // player's living vehicle health + MAX_HEALTH attribute; the renderer
     // derives the heart count (`getVehicleMaxHearts`) and replaces the food
     // row while it is non-zero.
-    let hud_vehicle_health = camera_player_is_local_player
-        .then(|| world.local_player_vehicle_health())
-        .flatten()
+    let hud_vehicle_health = camera_player
+        .and_then(|player| player.vehicle)
         .map(|vehicle| HudVehicleHealth {
             health: vehicle.health,
             max_health: vehicle.max_health as f32,
@@ -3536,11 +3540,8 @@ pub(crate) fn update_renderer_from_publication(
     // the client `tickCount` (bbb's `LightmapTickState.client_tick_count`, the
     // same per-client-tick counter the lightmap uses).
     let hud_food_effect = HudFoodEffect {
-        saturation_empty: local_player
-            .health
-            .map(|health| health.saturation <= 0.0)
-            .unwrap_or(false),
-        hunger_effect: local_player_effect(world, VANILLA_MOB_EFFECT_HUNGER_ID).is_some(),
+        saturation_empty: camera_player.is_some_and(|player| player.saturation <= 0.0),
+        hunger_effect: camera_player.is_some_and(|player| player.hungry),
         tick_count: publication.client_tick_index,
     };
     let hud_mob_effects = hud_mob_effects_from_world(world, item_runtime);
@@ -3555,7 +3556,14 @@ pub(crate) fn update_renderer_from_publication(
     // for the ordinary item hotbar and samples its wall-clock fade during
     // render extraction, after input publication.
     let hud_hotbar_mode = hud_hotbar_mode_from_world(input, world, item_runtime, render_started_at);
-    let hud_selected_slot = local_player.selected_hotbar_slot;
+    // Vanilla `Gui.extractItemHotbar` reads the camera player's
+    // `Inventory.getSelectedSlot()`; a remote player's client-side inventory
+    // keeps the construction-time slot 0.
+    let hud_selected_slot = if world.hud_camera_player_is_local_player() {
+        local_player.selected_hotbar_slot
+    } else {
+        0
+    };
     let selected_hotbar_item = world
         .local_player_id()
         .map(|_| world.inventory().hotbar_items()[usize::from(hud_selected_slot.min(8))].clone());
@@ -5552,6 +5560,9 @@ fn hotbar_item_icons_with_input_context(
     keybind_context: ItemModelKeybindContext,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
     let mut icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] = std::array::from_fn(|_| None);
+    if !world.hud_camera_player_is_local_player() {
+        return icons;
+    }
     let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
     let using_selected_item = world.local_player().interaction.using_item;
     let pop_times = world.hotbar_pop_times();
@@ -5920,7 +5931,8 @@ fn hud_camera_overlays(
 }
 
 fn hud_offhand_slot_side(world: &WorldStore) -> Option<bool> {
-    (world.inventory().offhand_item_state().item.count > 0)
+    (world.hud_camera_player_is_local_player()
+        && world.inventory().offhand_item_state().item.count > 0)
         .then(|| !world.local_player_main_arm_left().unwrap_or(false))
 }
 
@@ -5983,6 +5995,9 @@ fn hotbar_block_item_models(
     keybind_context: ItemModelKeybindContext,
 ) -> Vec<Option<HudBlockItemModel>> {
     let mut models: Vec<Option<HudBlockItemModel>> = (0..HUD_HOTBAR_SLOTS).map(|_| None).collect();
+    if !world.hud_camera_player_is_local_player() {
+        return models;
+    }
     let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
     let using_selected_item = world.local_player().interaction.using_item;
     for (slot, item) in world.inventory().hotbar_item_states().iter().enumerate() {

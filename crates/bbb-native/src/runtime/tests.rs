@@ -2495,6 +2495,66 @@ fn a_non_player_camera_entity_hides_the_ordinary_item_hotbar() {
 }
 
 #[test]
+fn a_remote_camera_player_keeps_the_hotbar_frame_but_projects_no_local_inventory() {
+    let mut world = WorldStore::new();
+    let input = ClientInputState::new(true);
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world.apply_add_entity(test_add_entity(
+        800,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+        item: item_stack(VANILLA_ITEM_SPYGLASS_ID, 1),
+    });
+    assert!(world.hud_camera_player_is_local_player());
+    assert_eq!(hud_offhand_slot_side(&world), Some(true));
+
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 800 }));
+    assert!(!world.hud_camera_player_is_local_player());
+    assert!(matches!(
+        hud_hotbar_mode_from_world(&input, &world, None, Instant::now()),
+        HudHotbarMode::Ordinary
+    ));
+    assert!(hotbar_item_icons(&world, None, 0.0)
+        .iter()
+        .all(Option::is_none));
+    assert!(hotbar_block_item_models(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        false,
+        ItemModelKeybindContext::default(),
+    )
+    .iter()
+    .all(Option::is_none));
+    assert_eq!(hud_offhand_slot_side(&world), None);
+}
+
+#[test]
 fn hud_scoreboard_projection_localizes_rich_team_and_score_runs() {
     use bbb_protocol::packets::{
         ChatFormatting, NumberFormatSummary, ObjectiveRenderType, PlayerTeamMethod,
@@ -3262,7 +3322,7 @@ fn renderer_frame_hud_extracts_after_input_and_use_item_tick() {
         .find("let local_player = world.local_player();")
         .expect("pump should extract HUD state from the local player");
     let selected_slot_extract = source
-        .find("let hud_selected_slot = local_player.selected_hotbar_slot;")
+        .find("let hud_selected_slot = if world.hud_camera_player_is_local_player() {")
         .expect("pump should extract the selected hotbar slot");
     let hotbar_mode_extract = source
         .find("hud_hotbar_mode_from_world(input, world, item_runtime, render_started_at);")

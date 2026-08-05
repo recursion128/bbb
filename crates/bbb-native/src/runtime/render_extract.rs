@@ -2666,10 +2666,16 @@ pub(crate) fn hud_hotbar_mode_from_world(
         return HudHotbarMode::Hidden;
     }
     if !world.local_player_is_spectator() {
-        return if world.hud_camera_player_id() == world.local_player_id() {
-            HudHotbarMode::Ordinary
-        } else {
+        // Vanilla `Gui.extractItemHotbar` draws nothing when
+        // `getCameraPlayer()` is null, which for a live session means the
+        // camera was retargeted at a non-player entity.
+        let camera_is_non_player = world
+            .camera_entity_id()
+            .is_some_and(|entity_id| world.hud_camera_player_id() != Some(entity_id));
+        return if camera_is_non_player {
             HudHotbarMode::Hidden
+        } else {
+            HudHotbarMode::Ordinary
         };
     }
     let Some(page) = input.spectator_menu_page_at(now) else {

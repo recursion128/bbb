@@ -58,6 +58,7 @@ pub use crate::client::hud::{
     ActionBarState, BossBarState, ClientHudState, DifficultyState, HudTitleState,
     SystemChatLineState, TabListState,
 };
+pub use crate::client::hud_camera_player::HudCameraPlayerVitals;
 pub use crate::client::inventory::{
     ContainerClickBuildError, ContainerClickSlotRequest, ContainerDataValue, ContainerSlot,
     ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemAttackRange,

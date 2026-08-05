@@ -93,6 +93,40 @@ pub(super) fn local_player_eye_in_water(world: &WorldStore) -> bool {
         .is_some_and(|pose| local_player_fluid_contact(world, pose).eye_in_water)
 }
 
+/// Vanilla `Entity.isEyeInFluid(FluidTags.WATER)` for a remote entity, whose
+/// canonical position lives in the entity transform rather than the local
+/// player's pose.
+pub(super) fn entity_eye_in_water(world: &WorldStore, id: i32) -> bool {
+    let Some(transform) = world.probe_entity_transform(id) else {
+        return false;
+    };
+    let Some(bounds) = world.entity_pick_bounds(id) else {
+        return false;
+    };
+    let Some(eye_height) = world.entity_pose_eye_height(id) else {
+        return false;
+    };
+    let position = transform.position;
+    let aabb_min = [
+        position.x + f64::from(bounds.min[0]),
+        position.y + f64::from(bounds.min[1]),
+        position.z + f64::from(bounds.min[2]),
+    ];
+    let aabb_max = [
+        position.x + f64::from(bounds.max[0]),
+        position.y + f64::from(bounds.max[1]),
+        position.z + f64::from(bounds.max[2]),
+    ];
+    entity_fluid_contact(
+        world,
+        aabb_min,
+        aabb_max,
+        position.y,
+        [position.x, position.y + f64::from(eye_height), position.z],
+    )
+    .eye_in_water
+}
+
 /// Samples `BubbleColumnAmbientSoundHandler`'s contracted player AABB.
 ///
 /// Vanilla returns an empty stream when any chunk spanning the bounds is not

@@ -351,14 +351,30 @@ impl Default for CameraState {
 }
 
 impl WorldStore {
-    pub fn hud_camera_player_id(&self) -> Option<i32> {
-        let camera_id = self.local_player.camera.entity_id?;
+    /// Vanilla `Minecraft.getCameraEntity()`: the `Camera`'s entity, which
+    /// `Camera.update` initializes to `minecraft.player` (Camera.java:94-97)
+    /// and `ClientboundSetCameraPacket` retargets.
+    pub fn camera_entity_id(&self) -> Option<i32> {
         if self.local_player.camera.follows_player {
-            return Some(camera_id);
+            return self.local_player_id();
         }
-        (self.entity_type_id(camera_id)
-            == Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID))
+        self.local_player.camera.entity_id
+    }
+
+    /// Vanilla `Gui.getCameraPlayer()` (Gui.java:705-707): the camera entity
+    /// when it is a `Player`.
+    pub fn hud_camera_player_id(&self) -> Option<i32> {
+        let camera_id = self.camera_entity_id()?;
+        (Some(camera_id) == self.local_player_id()
+            || self.entity_type_id(camera_id)
+                == Some(bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID))
         .then_some(camera_id)
+    }
+
+    /// Whether `Gui.getCameraPlayer()` resolves to the local player, i.e. the
+    /// camera player's `Inventory` is the client-owned one.
+    pub fn hud_camera_player_is_local_player(&self) -> bool {
+        self.local_player.camera.follows_player
     }
 
     pub fn set_local_player_auto_jump_enabled(&mut self, enabled: bool) {
@@ -738,6 +754,10 @@ impl WorldStore {
         local_player_eye_in_water(self)
     }
 
+    pub fn entity_eye_in_water(&self, id: i32) -> bool {
+        super::local_player_fluid::entity_eye_in_water(self, id)
+    }
+
     /// The client-side composition of `LocalPlayer`'s jump-edge guard,
     /// `Player.tryToStartFallFlying`, `Player.canGlide`, and
     /// `LivingEntity.canGlide`. The server remains authoritative for accepting
@@ -777,10 +797,12 @@ impl WorldStore {
     /// `RangedAttribute` default of `0.0` (and `Mth.floor` toward negative infinity).
     pub fn local_player_armor_value(&self) -> i32 {
         self.local_player_id
-            .and_then(|id| {
-                self.entities
-                    .attribute_value(id, VANILLA_ATTRIBUTE_ARMOR_ID)
-            })
+            .map_or(0, |id| self.player_armor_value(id))
+    }
+
+    pub fn player_armor_value(&self, id: i32) -> i32 {
+        self.entities
+            .attribute_value(id, VANILLA_ATTRIBUTE_ARMOR_ID)
             .map(|value| value.floor() as i32)
             .unwrap_or(0)
     }
@@ -913,7 +935,14 @@ impl WorldStore {
     /// entity or no synced value — the state in which vanilla hides the row.
     pub fn local_player_air_supply(&self) -> i32 {
         self.local_player_id
-            .and_then(|id| self.entities.air_supply(id))
+            .map_or(crate::entities::VANILLA_MAX_AIR_SUPPLY_TICKS, |id| {
+                self.player_air_supply(id)
+            })
+    }
+
+    pub fn player_air_supply(&self, id: i32) -> i32 {
+        self.entities
+            .air_supply(id)
             .unwrap_or(crate::entities::VANILLA_MAX_AIR_SUPPLY_TICKS)
     }
 
@@ -931,8 +960,11 @@ impl WorldStore {
     /// draw absorption hearts yet.
     pub fn local_player_absorption(&self) -> f32 {
         self.local_player_id
-            .and_then(|id| self.entities.player_absorption(id))
-            .unwrap_or(0.0)
+            .map_or(0.0, |id| self.player_absorption_amount(id))
+    }
+
+    pub fn player_absorption_amount(&self, id: i32) -> f32 {
+        self.entities.player_absorption(id).unwrap_or(0.0)
     }
 
     /// Vanilla `Player.getScore()` read by `DeathScreen`: the synced
