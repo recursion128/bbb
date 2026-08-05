@@ -579,6 +579,21 @@ pub(crate) enum StatsScreenFocus {
     Done,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum LastInputType {
+    #[default]
+    None,
+    Mouse,
+    KeyboardArrow,
+    KeyboardTab,
+}
+
+impl LastInputType {
+    pub(crate) fn is_keyboard(self) -> bool {
+        matches!(self, Self::KeyboardArrow | Self::KeyboardTab)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -681,6 +696,8 @@ pub(crate) struct ClientInputState {
     debug_entries: DebugScreenEntryList,
     debug_profile_store_path: Option<PathBuf>,
     hotbar_preset_store: Option<HotbarPresetStore>,
+    last_input_type: LastInputType,
+    last_input_type_screen_was_open: bool,
     debug_modifier_down: bool,
     debug_modifier_used: bool,
     debug_profiler_chart_visible: bool,
@@ -1260,6 +1277,37 @@ impl ClientInputState {
             .saturating_sub(client_ticks.min(u32::from(u16::MAX)) as u16);
     }
 
+    pub(crate) fn last_input_type(&self) -> LastInputType {
+        self.last_input_type
+    }
+
+    fn synchronize_last_input_type_screen_edge(&mut self, world: &WorldStore) {
+        let open = self.gameplay_input_screen_is_open(world);
+        if open && !self.last_input_type_screen_was_open {
+            self.last_input_type = LastInputType::None;
+        }
+        self.last_input_type_screen_was_open = open;
+    }
+
+    fn note_key_input_type(&mut self, world: &WorldStore, code: KeyCode) {
+        if !self.gameplay_input_screen_is_open(world) {
+            return;
+        }
+        match code {
+            KeyCode::Tab => self.last_input_type = LastInputType::KeyboardTab,
+            KeyCode::ArrowUp | KeyCode::ArrowDown | KeyCode::ArrowLeft | KeyCode::ArrowRight => {
+                self.last_input_type = LastInputType::KeyboardArrow
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn note_mouse_button_input_type(&mut self, world: &WorldStore) {
+        if self.gameplay_input_screen_is_open(world) {
+            self.last_input_type = LastInputType::Mouse;
+        }
+    }
+
     fn gameplay_input_screen_is_open(&self, world: &WorldStore) -> bool {
         self.disconnected_screen_runtime().is_some()
             || self.chat_restrictions_screen_is_open()
@@ -1419,6 +1467,7 @@ impl ClientInputState {
     pub(crate) fn render_publication(&self) -> RenderInputPublication {
         let state = Self {
             focused: self.focused,
+            last_input_type: self.last_input_type,
             shift_left_down: self.shift_left_down,
             shift_right_down: self.shift_right_down,
             control_left_down: self.control_left_down,
@@ -11825,6 +11874,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };
+    input.note_key_input_type(world, code);
     let just_pressed = pressed && !input.pressed_keys.contains(&code);
     input.set_key_down(code, pressed);
     if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {

@@ -6,6 +6,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::input::LastInputType;
+
 const SCREEN_NARRATION_SUPPRESS_AFTER_INIT: Duration = Duration::from_secs(2);
 const SCREEN_NARRATION_MOUSE_MOVE_DELAY: Duration = Duration::from_millis(750);
 const SCREEN_NARRATION_ACTION_DELAY: Duration = Duration::from_millis(200);
@@ -157,6 +159,24 @@ pub(crate) enum ScreenNarrationInput {
     KeyboardAction,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum ScreenNarrationSuppression {
+    #[default]
+    None,
+    Until(Instant),
+    UntilNextAction,
+}
+
+impl ScreenNarrationSuppression {
+    fn blocks(self, now: Instant) -> bool {
+        match self {
+            Self::None => false,
+            Self::Until(until) => now <= until,
+            Self::UntilNextAction => true,
+        }
+    }
+}
+
 /// Per-screen delayed narration owner matching `Screen.scheduleNarration` and
 /// `ScreenNarrationCollector`. The latest localized frame remains in native
 /// runtime state; canonical world and renderer state never own speech timing.
@@ -164,7 +184,7 @@ pub(crate) enum ScreenNarrationInput {
 pub(crate) struct ScreenNarrationRuntime {
     collector: ScreenNarrationCollector,
     active: bool,
-    suppress_until: Option<Instant>,
+    suppression: ScreenNarrationSuppression,
     narrate_at: Option<Instant>,
 }
 
@@ -182,7 +202,7 @@ impl ScreenNarrationRuntime {
         };
         self.narrate_at = now.checked_add(delay);
         if ignore_suppression {
-            self.suppress_until = None;
+            self.suppression = ScreenNarrationSuppression::None;
         }
     }
 
@@ -190,6 +210,7 @@ impl ScreenNarrationRuntime {
         &mut self,
         frame: Option<&ScreenNarrationFrame>,
         now: Instant,
+        last_input_type: LastInputType,
         narrator: Option<&mut dyn SystemNarrator>,
     ) {
         let Some(frame) = frame else {
@@ -198,7 +219,14 @@ impl ScreenNarrationRuntime {
         };
         if !self.active {
             self.active = true;
-            self.suppress_until = now.checked_add(SCREEN_NARRATION_SUPPRESS_AFTER_INIT);
+            self.suppression = if last_input_type.is_keyboard() {
+                ScreenNarrationSuppression::UntilNextAction
+            } else {
+                now.checked_add(SCREEN_NARRATION_SUPPRESS_AFTER_INIT)
+                    .map_or(ScreenNarrationSuppression::None, |until| {
+                        ScreenNarrationSuppression::Until(until)
+                    })
+            };
             let text = self.collector.update_and_collect(frame, true);
             if let (Some(narrator), Some(text)) = (narrator, text) {
                 narrator.say_system_now(&text);
@@ -208,7 +236,7 @@ impl ScreenNarrationRuntime {
         let Some(narrate_at) = self.narrate_at else {
             return;
         };
-        if now <= narrate_at || self.suppress_until.is_some_and(|until| now <= until) {
+        if now <= narrate_at || self.suppression.blocks(now) {
             return;
         }
         self.narrate_at = None;
@@ -221,7 +249,7 @@ impl ScreenNarrationRuntime {
     fn reset(&mut self) {
         self.collector.clear();
         self.active = false;
-        self.suppress_until = None;
+        self.suppression = ScreenNarrationSuppression::None;
         self.narrate_at = None;
     }
 }
@@ -548,7 +576,12 @@ mod tests {
         let mut narrator = RecordingNarrator::default();
         let mut first = ScreenNarrationFrame::default();
         first.add(NarratedElementKind::Title, 0, "Stats");
-        runtime.tick(Some(&first), start, Some(&mut narrator));
+        runtime.tick(
+            Some(&first),
+            start,
+            LastInputType::Mouse,
+            Some(&mut narrator),
+        );
         assert_eq!(narrator.0, ["Stats"]);
 
         let mut changed = first.clone();
@@ -560,12 +593,14 @@ mod tests {
         runtime.tick(
             Some(&changed),
             start + Duration::from_millis(900),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(narrator.0, ["Stats"]);
         runtime.tick(
             Some(&changed),
             start + Duration::from_millis(2_001),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(narrator.0, ["Stats", "General tab"]);
@@ -583,12 +618,14 @@ mod tests {
         runtime.tick(
             Some(&keyboard_changed),
             start + Duration::from_millis(2_300),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(narrator.0.len(), 2);
         runtime.tick(
             Some(&keyboard_changed),
             start + Duration::from_millis(2_301),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(
@@ -605,19 +642,68 @@ mod tests {
         runtime.tick(
             Some(&immediate_changed),
             start + Duration::from_millis(2_401),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(narrator.0.last().map(String::as_str), Some("Filtered"));
 
-        runtime.tick(None, start + Duration::from_secs(3), Some(&mut narrator));
+        runtime.tick(
+            None,
+            start + Duration::from_secs(3),
+            LastInputType::Mouse,
+            Some(&mut narrator),
+        );
         runtime.tick(
             Some(&immediate_changed),
             start + Duration::from_secs(4),
+            LastInputType::Mouse,
             Some(&mut narrator),
         );
         assert_eq!(
             narrator.0.last().map(String::as_str),
             Some("Stats. General tab. Screen element 2 out of 3. Filtered")
         );
+    }
+
+    #[test]
+    fn a_keyboard_opened_screen_suppresses_narration_until_the_next_action() {
+        let start = Instant::now();
+        let mut runtime = ScreenNarrationRuntime::default();
+        let mut narrator = RecordingNarrator::default();
+        let mut frame = ScreenNarrationFrame::default();
+        frame.add(NarratedElementKind::Title, 0, "Stats");
+        runtime.tick(
+            Some(&frame),
+            start,
+            LastInputType::KeyboardTab,
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0, ["Stats"]);
+
+        let mut changed = frame.clone();
+        changed.add(NarratedElementKind::Title, 1, "General tab");
+        runtime.after_input(
+            ScreenNarrationInput::MouseMove,
+            start + Duration::from_millis(100),
+        );
+        runtime.tick(
+            Some(&changed),
+            start + Duration::from_secs(60),
+            LastInputType::KeyboardTab,
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0, ["Stats"]);
+
+        runtime.after_input(
+            ScreenNarrationInput::KeyboardAction,
+            start + Duration::from_secs(61),
+        );
+        runtime.tick(
+            Some(&changed),
+            start + Duration::from_millis(61_201),
+            LastInputType::KeyboardTab,
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0, ["Stats", "General tab"]);
     }
 }

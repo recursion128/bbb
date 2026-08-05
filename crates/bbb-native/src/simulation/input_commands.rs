@@ -1452,6 +1452,7 @@ impl SimulationInputRuntime {
         pause_draft_target: Option<HudPauseDraftButton>,
         context: &mut SimulationInputContext<'_, '_, '_>,
     ) {
+        context.input.note_mouse_button_input_type(context.world);
         if context.input.disconnected_screen_runtime().is_some() {
             self.request_cursor_capture(false, context.platform);
             context.input.handle_disconnected_screen_mouse_input(

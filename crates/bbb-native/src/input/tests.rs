@@ -29891,3 +29891,96 @@ fn show_only_reduced_info_ors_the_reduced_debug_info_option_with_the_player_flag
         &flagged
     )));
 }
+
+#[test]
+fn the_last_input_type_follows_the_screen_gated_keyboard_and_mouse_events() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::None);
+
+    assert!(world.open_stats_screen());
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::KeyboardTab);
+    assert!(input.last_input_type().is_keyboard());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::ArrowDown),
+        ElementState::Released,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::KeyboardArrow);
+
+    input.note_mouse_button_input_type(&world);
+    assert_eq!(input.last_input_type(), LastInputType::Mouse);
+}
+
+#[test]
+fn opening_a_screen_from_no_screen_resets_the_last_input_type() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let net_commands = None;
+    let mut world = world_with_debug_player(false);
+    let now = Instant::now();
+
+    assert!(world.open_stats_screen());
+    crate::input::movement::advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        now,
+        0,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &net_commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::KeyboardTab);
+
+    world.close_stats_screen();
+    crate::input::movement::advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        now,
+        0,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::KeyboardTab);
+
+    assert!(world.open_stats_screen());
+    crate::input::movement::advance_player_input_for_client_ticks(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &net_commands,
+        now,
+        0,
+    );
+    assert_eq!(input.last_input_type(), LastInputType::None);
+}

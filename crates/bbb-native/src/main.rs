@@ -1406,6 +1406,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.debug_options_screen_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1418,6 +1419,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.social_interactions_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1430,6 +1432,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.player_reporting_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1441,6 +1444,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.stats_screen_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1448,6 +1452,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                     recipe_book_narration.tick(
                         hud_render_runtime.recipe_book_narration(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1458,6 +1463,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                         .then(|| hud_render_runtime.game_event_screen_narration())
                         .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1470,6 +1476,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.disconnected_screen_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1477,6 +1484,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                     chat_screen_narration.tick(
                         hud_render_runtime.chat_screen_narration(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
@@ -1489,6 +1497,7 @@ fn run_client(args: startup::Args) -> Result<()> {
                             .then(|| hud_render_runtime.death_screen_narration())
                             .flatten(),
                         Instant::now(),
+                        render_publication.input.last_input_type(),
                         narrator_runtime
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
