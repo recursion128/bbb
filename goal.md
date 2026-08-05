@@ -417,10 +417,10 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 <!-- roadmap-status:start -->
 - p1-playable: maintenance
 - p1-generated-facts: maintenance
-- p2-non-entity: active
-- p2-hud: active
-- p3-resources: active
-- p4-delivery: active
+- p2-non-entity: closed
+- p2-hud: closed
+- p3-resources: closed
+- p4-delivery: closed
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -465,9 +465,9 @@ implementation/test evidence，`getMinecraft` 归 direct support）均 `equivale
 
 ### P3：动态资源 presentation breadth
 
-状态：`active`。selected/startup/server pack、indexed default vanilla provider、push/pop、
+状态：`closed`。selected/startup/server pack、indexed default vanilla provider、push/pop、
 原子 immutable resource generation、font/language/sound 与动态 presentation owner 已由 Wiki
-资源机制页、focused tests 和 playable diagnostics 覆盖。20 个 reload-listener consumer
+资源机制页、focused tests 和 playable diagnostics 覆盖并转入维护。20 个 reload-listener consumer
 已完成逐族 prepare/apply/rollback 审计；root window icon 已由 vanilla-only catalog 接入
 native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private generation 服务可达
 断线页。built-in pack ZIP 与 Realms 对应 surface 仍按账本保留为 `not-needed`。
