@@ -855,6 +855,7 @@ fn run_client(args: startup::Args) -> Result<()> {
     input.set_narrator_status(NarratorStatus::from(args.client_narrator));
     input.set_narrator_hotkey_enabled(args.client_narrator_hotkey);
     input.set_narrator_available(narrator_runtime.is_some());
+    input.set_key_bindings(args.client_key_bindings.clone());
     input.set_fullscreen(args.client_fullscreen);
     input.set_mouse_sensitivity(args.client_mouse_sensitivity);
     input.set_invert_mouse(args.client_invert_mouse_x, args.client_invert_mouse_y);
@@ -1151,7 +1152,7 @@ fn run_client(args: startup::Args) -> Result<()> {
             if !rebound.is_empty() {
                 tracing::warn!(
                     bindings = ?rebound,
-                    "options.txt rebinds keys this client still reads at their Vanilla defaults"
+                    "options.txt rebinds keys the raw key dispatch still reads at their Vanilla defaults"
                 );
             }
             Some(options)

@@ -165,6 +165,7 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
+use crate::client_options::key_bindings::{BoundInput, KeyBindings};
 use crate::client_options::{ClientOptionValue, ClientOptionWrite};
 use crate::hotbar_presets::HotbarPresetStore;
 use crate::narrator_runtime::NarratorStatus;
@@ -316,6 +317,17 @@ impl TerrainReloadRequestSink for TerrainUploadState {
     }
 }
 
+const HOTBAR_BINDING_NAMES: [&str; 9] = [
+    "key.hotbar.1",
+    "key.hotbar.2",
+    "key.hotbar.3",
+    "key.hotbar.4",
+    "key.hotbar.5",
+    "key.hotbar.6",
+    "key.hotbar.7",
+    "key.hotbar.8",
+    "key.hotbar.9",
+];
 const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
 const SPRINT_TRIGGER_TICKS: u8 = 7;
@@ -726,6 +738,7 @@ pub(crate) struct ClientInputState {
     narrator_status: NarratorStatus,
     narrator_hotkey_enabled: bool,
     narrator_available: bool,
+    key_bindings: KeyBindings,
     narrator_status_requests: Vec<NarratorStatusRequest>,
     fullscreen: bool,
     fullscreen_requests: Vec<bool>,
@@ -1328,6 +1341,20 @@ impl ClientInputState {
 
     pub(crate) fn set_narrator_available(&mut self, available: bool) {
         self.narrator_available = available;
+    }
+
+    pub(crate) fn set_key_bindings(&mut self, bindings: KeyBindings) {
+        self.key_bindings = bindings;
+    }
+
+    fn binding_down(&self, name: &str) -> bool {
+        match self.key_bindings.input(name) {
+            BoundInput::Key(code) => self.pressed_keys.contains(&code),
+            BoundInput::Mouse(MouseButton::Left) => self.mouse_left_down,
+            BoundInput::Mouse(MouseButton::Right) => self.mouse_right_down,
+            BoundInput::Mouse(MouseButton::Middle) => self.mouse_middle_down,
+            BoundInput::Mouse(_) | BoundInput::Unbound => false,
+        }
     }
 
     pub(crate) fn take_narrator_status_requests(&mut self) -> Vec<NarratorStatusRequest> {
@@ -2059,44 +2086,34 @@ impl ClientInputState {
 
     pub(crate) fn item_model_keybind_context(&self) -> ItemModelKeybindContext {
         ItemModelKeybindContext {
-            forward: self.pressed_keys.contains(&KeyCode::KeyW),
-            left: self.pressed_keys.contains(&KeyCode::KeyA),
-            backward: self.pressed_keys.contains(&KeyCode::KeyS),
-            right: self.pressed_keys.contains(&KeyCode::KeyD),
-            jump: self.pressed_keys.contains(&KeyCode::Space),
-            sneak: self.pressed_keys.contains(&KeyCode::ShiftLeft),
-            sprint: self.pressed_keys.contains(&KeyCode::ControlLeft),
-            attack: self.mouse_left_down,
-            use_item: self.mouse_right_down,
-            pick_item: self.mouse_middle_down,
-            inventory: self.pressed_keys.contains(&KeyCode::KeyE),
-            swap_offhand: self.pressed_keys.contains(&KeyCode::KeyF),
-            drop: self.pressed_keys.contains(&KeyCode::KeyQ),
-            chat: self.pressed_keys.contains(&KeyCode::KeyT),
-            command: self.pressed_keys.contains(&KeyCode::Slash),
-            player_list: self.pressed_keys.contains(&KeyCode::Tab),
-            social_interactions: self.pressed_keys.contains(&KeyCode::KeyP),
-            screenshot: self.pressed_keys.contains(&KeyCode::F2),
-            toggle_perspective: self.pressed_keys.contains(&KeyCode::F5),
-            fullscreen: self.pressed_keys.contains(&KeyCode::F11),
-            advancements: self.pressed_keys.contains(&KeyCode::KeyL),
-            quick_actions: self.pressed_keys.contains(&KeyCode::KeyG),
-            toggle_gui: self.pressed_keys.contains(&KeyCode::F1),
-            toggle_spectator_shader_effects: self.pressed_keys.contains(&KeyCode::F4),
-            save_toolbar_activator: self.pressed_keys.contains(&KeyCode::KeyC),
-            load_toolbar_activator: self.pressed_keys.contains(&KeyCode::KeyX),
-            spectator_hotbar: self.mouse_middle_down,
-            hotbar: [
-                self.pressed_keys.contains(&KeyCode::Digit1),
-                self.pressed_keys.contains(&KeyCode::Digit2),
-                self.pressed_keys.contains(&KeyCode::Digit3),
-                self.pressed_keys.contains(&KeyCode::Digit4),
-                self.pressed_keys.contains(&KeyCode::Digit5),
-                self.pressed_keys.contains(&KeyCode::Digit6),
-                self.pressed_keys.contains(&KeyCode::Digit7),
-                self.pressed_keys.contains(&KeyCode::Digit8),
-                self.pressed_keys.contains(&KeyCode::Digit9),
-            ],
+            forward: self.binding_down("key.forward"),
+            left: self.binding_down("key.left"),
+            backward: self.binding_down("key.back"),
+            right: self.binding_down("key.right"),
+            jump: self.binding_down("key.jump"),
+            sneak: self.binding_down("key.sneak"),
+            sprint: self.binding_down("key.sprint"),
+            attack: self.binding_down("key.attack"),
+            use_item: self.binding_down("key.use"),
+            pick_item: self.binding_down("key.pickItem"),
+            inventory: self.binding_down("key.inventory"),
+            swap_offhand: self.binding_down("key.swapOffhand"),
+            drop: self.binding_down("key.drop"),
+            chat: self.binding_down("key.chat"),
+            command: self.binding_down("key.command"),
+            player_list: self.binding_down("key.playerlist"),
+            social_interactions: self.binding_down("key.socialInteractions"),
+            screenshot: self.binding_down("key.screenshot"),
+            toggle_perspective: self.binding_down("key.togglePerspective"),
+            fullscreen: self.binding_down("key.fullscreen"),
+            advancements: self.binding_down("key.advancements"),
+            quick_actions: self.binding_down("key.quickActions"),
+            toggle_gui: self.binding_down("key.toggleGui"),
+            toggle_spectator_shader_effects: self.binding_down("key.toggleSpectatorShaderEffects"),
+            save_toolbar_activator: self.binding_down("key.saveToolbarActivator"),
+            load_toolbar_activator: self.binding_down("key.loadToolbarActivator"),
+            spectator_hotbar: self.binding_down("key.spectatorHotbar"),
+            hotbar: std::array::from_fn(|slot| self.binding_down(HOTBAR_BINDING_NAMES[slot])),
         }
     }
 

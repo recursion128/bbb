@@ -1,7 +1,9 @@
 use super::key_mappings_26_1::{
-    VanillaKeyMapping, VanillaKeyType, VANILLA_KEY_MAPPINGS, VANILLA_NAMED_KEYS,
+    VanillaKeyMapping, VanillaKeyType, VANILLA_KEYSYM_KEY_CODES, VANILLA_KEY_MAPPINGS,
+    VANILLA_MOUSE_BUTTONS, VANILLA_NAMED_KEYS,
 };
 use super::ClientOptions;
+use winit::{event::MouseButton, keyboard::KeyCode};
 
 /// The key one binding currently resolves to, either from an `options.txt`
 /// `key_<name>` line or from the mapping's own default.
@@ -11,10 +13,75 @@ pub(crate) struct BoundKey {
     pub(crate) value: i32,
 }
 
+/// What the window actually has to deliver for one binding to count as held.
+/// A binding whose key winit cannot report — an unbound mapping, or a device
+/// key with no physical equivalent — stays `Unbound` and never fires.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum BoundInput {
+    #[default]
+    Unbound,
+    Key(KeyCode),
+    Mouse(MouseButton),
+}
+
 impl BoundKey {
     #[cfg(test)]
     pub(crate) fn is_unbound(self) -> bool {
         self.key_type == VanillaKeyType::Keysym && self.value == -1
+    }
+
+    pub(crate) fn input(self) -> BoundInput {
+        match self.key_type {
+            VanillaKeyType::Keysym => VANILLA_KEYSYM_KEY_CODES
+                .iter()
+                .find(|(value, _)| *value == self.value)
+                .map(|(_, code)| BoundInput::Key(*code))
+                .unwrap_or_default(),
+            VanillaKeyType::Mouse => VANILLA_MOUSE_BUTTONS
+                .iter()
+                .find(|(value, _)| *value == self.value)
+                .map(|(_, button)| BoundInput::Mouse(*button))
+                .unwrap_or_default(),
+        }
+    }
+}
+
+/// Every binding resolved once against the stored options, so the input owner
+/// asks for `key.forward` rather than hard-coding the key it happens to sit on.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct KeyBindings {
+    resolved: [BoundInput; VANILLA_KEY_MAPPINGS.len()],
+}
+
+impl Default for KeyBindings {
+    fn default() -> Self {
+        let mut resolved = [BoundInput::Unbound; VANILLA_KEY_MAPPINGS.len()];
+        for (slot, mapping) in resolved.iter_mut().zip(VANILLA_KEY_MAPPINGS.iter()) {
+            *slot = BoundKey {
+                key_type: mapping.default_type,
+                value: mapping.default_value,
+            }
+            .input();
+        }
+        Self { resolved }
+    }
+}
+
+impl KeyBindings {
+    pub(crate) fn from_options(options: &ClientOptions) -> Self {
+        let mut resolved = [BoundInput::Unbound; VANILLA_KEY_MAPPINGS.len()];
+        for (slot, mapping) in resolved.iter_mut().zip(VANILLA_KEY_MAPPINGS.iter()) {
+            *slot = bound_key(options, mapping).input();
+        }
+        Self { resolved }
+    }
+
+    pub(crate) fn input(&self, name: &str) -> BoundInput {
+        VANILLA_KEY_MAPPINGS
+            .iter()
+            .position(|mapping| mapping.name == name)
+            .map(|index| self.resolved[index])
+            .unwrap_or_default()
     }
 }
 
@@ -97,6 +164,70 @@ mod tests {
             value: smooth_camera.default_value,
         }
         .is_unbound());
+    }
+
+    #[test]
+    fn every_binding_resolves_to_a_key_the_window_can_report() {
+        let bindings = KeyBindings::default();
+        assert_eq!(
+            bindings.input("key.forward"),
+            BoundInput::Key(KeyCode::KeyW)
+        );
+        assert_eq!(
+            bindings.input("key.sneak"),
+            BoundInput::Key(KeyCode::ShiftLeft)
+        );
+        assert_eq!(
+            bindings.input("key.hotbar.9"),
+            BoundInput::Key(KeyCode::Digit9)
+        );
+        assert_eq!(
+            bindings.input("key.attack"),
+            BoundInput::Mouse(MouseButton::Left)
+        );
+        assert_eq!(
+            bindings.input("key.use"),
+            BoundInput::Mouse(MouseButton::Right)
+        );
+        assert_eq!(
+            bindings.input("key.pickItem"),
+            BoundInput::Mouse(MouseButton::Middle)
+        );
+        assert_eq!(bindings.input("key.smoothCamera"), BoundInput::Unbound);
+        assert_eq!(bindings.input("key.nonexistent"), BoundInput::Unbound);
+
+        for mapping in &VANILLA_KEY_MAPPINGS {
+            let bound = BoundKey {
+                key_type: mapping.default_type,
+                value: mapping.default_value,
+            };
+            assert_eq!(
+                bound.input() == BoundInput::Unbound,
+                bound.is_unbound(),
+                "{} resolves inconsistently",
+                mapping.name
+            );
+        }
+    }
+
+    #[test]
+    fn a_rebound_key_moves_the_resolved_input() {
+        let mut options = ClientOptions::defaults(ClientOptionHost::default());
+        options.set_dynamic_raw_for_test("key_key.forward", "key.keyboard.up");
+        options.set_dynamic_raw_for_test("key_key.attack", "key.keyboard.z");
+        options.set_dynamic_raw_for_test("key_key.jump", "key.mouse.middle");
+
+        let bindings = KeyBindings::from_options(&options);
+        assert_eq!(
+            bindings.input("key.forward"),
+            BoundInput::Key(KeyCode::ArrowUp)
+        );
+        assert_eq!(bindings.input("key.attack"), BoundInput::Key(KeyCode::KeyZ));
+        assert_eq!(
+            bindings.input("key.jump"),
+            BoundInput::Mouse(MouseButton::Middle)
+        );
+        assert_eq!(bindings.input("key.back"), BoundInput::Key(KeyCode::KeyS));
     }
 
     #[test]

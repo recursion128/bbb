@@ -653,6 +653,494 @@
       "value": 162
     }
   ],
+  "winit_keysym_key_codes": [
+    {
+      "value": 48,
+      "key_code": "Digit0"
+    },
+    {
+      "value": 49,
+      "key_code": "Digit1"
+    },
+    {
+      "value": 50,
+      "key_code": "Digit2"
+    },
+    {
+      "value": 51,
+      "key_code": "Digit3"
+    },
+    {
+      "value": 52,
+      "key_code": "Digit4"
+    },
+    {
+      "value": 53,
+      "key_code": "Digit5"
+    },
+    {
+      "value": 54,
+      "key_code": "Digit6"
+    },
+    {
+      "value": 55,
+      "key_code": "Digit7"
+    },
+    {
+      "value": 56,
+      "key_code": "Digit8"
+    },
+    {
+      "value": 57,
+      "key_code": "Digit9"
+    },
+    {
+      "value": 65,
+      "key_code": "KeyA"
+    },
+    {
+      "value": 66,
+      "key_code": "KeyB"
+    },
+    {
+      "value": 67,
+      "key_code": "KeyC"
+    },
+    {
+      "value": 68,
+      "key_code": "KeyD"
+    },
+    {
+      "value": 69,
+      "key_code": "KeyE"
+    },
+    {
+      "value": 70,
+      "key_code": "KeyF"
+    },
+    {
+      "value": 71,
+      "key_code": "KeyG"
+    },
+    {
+      "value": 72,
+      "key_code": "KeyH"
+    },
+    {
+      "value": 73,
+      "key_code": "KeyI"
+    },
+    {
+      "value": 74,
+      "key_code": "KeyJ"
+    },
+    {
+      "value": 75,
+      "key_code": "KeyK"
+    },
+    {
+      "value": 76,
+      "key_code": "KeyL"
+    },
+    {
+      "value": 77,
+      "key_code": "KeyM"
+    },
+    {
+      "value": 78,
+      "key_code": "KeyN"
+    },
+    {
+      "value": 79,
+      "key_code": "KeyO"
+    },
+    {
+      "value": 80,
+      "key_code": "KeyP"
+    },
+    {
+      "value": 81,
+      "key_code": "KeyQ"
+    },
+    {
+      "value": 82,
+      "key_code": "KeyR"
+    },
+    {
+      "value": 83,
+      "key_code": "KeyS"
+    },
+    {
+      "value": 84,
+      "key_code": "KeyT"
+    },
+    {
+      "value": 85,
+      "key_code": "KeyU"
+    },
+    {
+      "value": 86,
+      "key_code": "KeyV"
+    },
+    {
+      "value": 87,
+      "key_code": "KeyW"
+    },
+    {
+      "value": 88,
+      "key_code": "KeyX"
+    },
+    {
+      "value": 89,
+      "key_code": "KeyY"
+    },
+    {
+      "value": 90,
+      "key_code": "KeyZ"
+    },
+    {
+      "value": 290,
+      "key_code": "F1"
+    },
+    {
+      "value": 291,
+      "key_code": "F2"
+    },
+    {
+      "value": 292,
+      "key_code": "F3"
+    },
+    {
+      "value": 293,
+      "key_code": "F4"
+    },
+    {
+      "value": 294,
+      "key_code": "F5"
+    },
+    {
+      "value": 295,
+      "key_code": "F6"
+    },
+    {
+      "value": 296,
+      "key_code": "F7"
+    },
+    {
+      "value": 297,
+      "key_code": "F8"
+    },
+    {
+      "value": 298,
+      "key_code": "F9"
+    },
+    {
+      "value": 299,
+      "key_code": "F10"
+    },
+    {
+      "value": 300,
+      "key_code": "F11"
+    },
+    {
+      "value": 301,
+      "key_code": "F12"
+    },
+    {
+      "value": 302,
+      "key_code": "F13"
+    },
+    {
+      "value": 303,
+      "key_code": "F14"
+    },
+    {
+      "value": 304,
+      "key_code": "F15"
+    },
+    {
+      "value": 305,
+      "key_code": "F16"
+    },
+    {
+      "value": 306,
+      "key_code": "F17"
+    },
+    {
+      "value": 307,
+      "key_code": "F18"
+    },
+    {
+      "value": 308,
+      "key_code": "F19"
+    },
+    {
+      "value": 309,
+      "key_code": "F20"
+    },
+    {
+      "value": 310,
+      "key_code": "F21"
+    },
+    {
+      "value": 311,
+      "key_code": "F22"
+    },
+    {
+      "value": 312,
+      "key_code": "F23"
+    },
+    {
+      "value": 313,
+      "key_code": "F24"
+    },
+    {
+      "value": 314,
+      "key_code": "F25"
+    },
+    {
+      "value": 282,
+      "key_code": "NumLock"
+    },
+    {
+      "value": 320,
+      "key_code": "Numpad0"
+    },
+    {
+      "value": 321,
+      "key_code": "Numpad1"
+    },
+    {
+      "value": 322,
+      "key_code": "Numpad2"
+    },
+    {
+      "value": 323,
+      "key_code": "Numpad3"
+    },
+    {
+      "value": 324,
+      "key_code": "Numpad4"
+    },
+    {
+      "value": 325,
+      "key_code": "Numpad5"
+    },
+    {
+      "value": 326,
+      "key_code": "Numpad6"
+    },
+    {
+      "value": 327,
+      "key_code": "Numpad7"
+    },
+    {
+      "value": 328,
+      "key_code": "Numpad8"
+    },
+    {
+      "value": 329,
+      "key_code": "Numpad9"
+    },
+    {
+      "value": 334,
+      "key_code": "NumpadAdd"
+    },
+    {
+      "value": 330,
+      "key_code": "NumpadDecimal"
+    },
+    {
+      "value": 335,
+      "key_code": "NumpadEnter"
+    },
+    {
+      "value": 336,
+      "key_code": "NumpadEqual"
+    },
+    {
+      "value": 332,
+      "key_code": "NumpadMultiply"
+    },
+    {
+      "value": 331,
+      "key_code": "NumpadDivide"
+    },
+    {
+      "value": 333,
+      "key_code": "NumpadSubtract"
+    },
+    {
+      "value": 264,
+      "key_code": "ArrowDown"
+    },
+    {
+      "value": 263,
+      "key_code": "ArrowLeft"
+    },
+    {
+      "value": 262,
+      "key_code": "ArrowRight"
+    },
+    {
+      "value": 265,
+      "key_code": "ArrowUp"
+    },
+    {
+      "value": 39,
+      "key_code": "Quote"
+    },
+    {
+      "value": 92,
+      "key_code": "Backslash"
+    },
+    {
+      "value": 44,
+      "key_code": "Comma"
+    },
+    {
+      "value": 61,
+      "key_code": "Equal"
+    },
+    {
+      "value": 96,
+      "key_code": "Backquote"
+    },
+    {
+      "value": 91,
+      "key_code": "BracketLeft"
+    },
+    {
+      "value": 45,
+      "key_code": "Minus"
+    },
+    {
+      "value": 46,
+      "key_code": "Period"
+    },
+    {
+      "value": 93,
+      "key_code": "BracketRight"
+    },
+    {
+      "value": 59,
+      "key_code": "Semicolon"
+    },
+    {
+      "value": 47,
+      "key_code": "Slash"
+    },
+    {
+      "value": 32,
+      "key_code": "Space"
+    },
+    {
+      "value": 258,
+      "key_code": "Tab"
+    },
+    {
+      "value": 342,
+      "key_code": "AltLeft"
+    },
+    {
+      "value": 341,
+      "key_code": "ControlLeft"
+    },
+    {
+      "value": 340,
+      "key_code": "ShiftLeft"
+    },
+    {
+      "value": 343,
+      "key_code": "SuperLeft"
+    },
+    {
+      "value": 346,
+      "key_code": "AltRight"
+    },
+    {
+      "value": 345,
+      "key_code": "ControlRight"
+    },
+    {
+      "value": 344,
+      "key_code": "ShiftRight"
+    },
+    {
+      "value": 347,
+      "key_code": "SuperRight"
+    },
+    {
+      "value": 257,
+      "key_code": "Enter"
+    },
+    {
+      "value": 256,
+      "key_code": "Escape"
+    },
+    {
+      "value": 259,
+      "key_code": "Backspace"
+    },
+    {
+      "value": 261,
+      "key_code": "Delete"
+    },
+    {
+      "value": 269,
+      "key_code": "End"
+    },
+    {
+      "value": 268,
+      "key_code": "Home"
+    },
+    {
+      "value": 260,
+      "key_code": "Insert"
+    },
+    {
+      "value": 267,
+      "key_code": "PageDown"
+    },
+    {
+      "value": 266,
+      "key_code": "PageUp"
+    },
+    {
+      "value": 280,
+      "key_code": "CapsLock"
+    },
+    {
+      "value": 284,
+      "key_code": "Pause"
+    },
+    {
+      "value": 281,
+      "key_code": "ScrollLock"
+    },
+    {
+      "value": 348,
+      "key_code": "ContextMenu"
+    },
+    {
+      "value": 283,
+      "key_code": "PrintScreen"
+    }
+  ],
+  "winit_mouse_buttons": [
+    {
+      "value": 0,
+      "button": "Left"
+    },
+    {
+      "value": 1,
+      "button": "Right"
+    },
+    {
+      "value": 2,
+      "button": "Middle"
+    }
+  ],
   "key_mappings": [
     {
       "order": 0,

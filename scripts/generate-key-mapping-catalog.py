@@ -28,6 +28,108 @@ RUST_KEY_TYPES = {
     "MOUSE": "Mouse",
 }
 
+#: `winit::keyboard::KeyCode` for the `key.keyboard.*` names whose spelling does
+#: not follow one of the mechanical families below. A name that matches neither
+#: fails the build rather than silently losing a binding.
+WINIT_KEY_CODES = {
+    "apostrophe": "Quote",
+    "backslash": "Backslash",
+    "backspace": "Backspace",
+    "caps.lock": "CapsLock",
+    "comma": "Comma",
+    "delete": "Delete",
+    "down": "ArrowDown",
+    "end": "End",
+    "enter": "Enter",
+    "equal": "Equal",
+    "escape": "Escape",
+    "grave.accent": "Backquote",
+    "home": "Home",
+    "insert": "Insert",
+    "keypad.add": "NumpadAdd",
+    "keypad.decimal": "NumpadDecimal",
+    "keypad.divide": "NumpadDivide",
+    "keypad.enter": "NumpadEnter",
+    "keypad.equal": "NumpadEqual",
+    "keypad.multiply": "NumpadMultiply",
+    "keypad.subtract": "NumpadSubtract",
+    "left": "ArrowLeft",
+    "left.alt": "AltLeft",
+    "left.bracket": "BracketLeft",
+    "left.control": "ControlLeft",
+    "left.shift": "ShiftLeft",
+    "left.win": "SuperLeft",
+    "menu": "ContextMenu",
+    "minus": "Minus",
+    "num.lock": "NumLock",
+    "page.down": "PageDown",
+    "page.up": "PageUp",
+    "pause": "Pause",
+    "period": "Period",
+    "print.screen": "PrintScreen",
+    "right": "ArrowRight",
+    "right.alt": "AltRight",
+    "right.bracket": "BracketRight",
+    "right.control": "ControlRight",
+    "right.shift": "ShiftRight",
+    "right.win": "SuperRight",
+    "scroll.lock": "ScrollLock",
+    "semicolon": "Semicolon",
+    "slash": "Slash",
+    "space": "Space",
+    "tab": "Tab",
+    "up": "ArrowUp",
+}
+
+#: Names winit has no physical key for, so no binding can ever resolve to them.
+UNMAPPABLE_KEYBOARD_NAMES = {"unknown", "world.1", "world.2"}
+
+WINIT_MOUSE_BUTTONS = {
+    "left": "Left",
+    "right": "Right",
+    "middle": "Middle",
+}
+
+
+def _winit_key_code(suffix: str) -> str | None:
+    if suffix in UNMAPPABLE_KEYBOARD_NAMES:
+        return None
+    if len(suffix) == 1 and suffix.isalpha():
+        return f"Key{suffix.upper()}"
+    if len(suffix) == 1 and suffix.isdigit():
+        return f"Digit{suffix}"
+    if suffix.startswith("f") and suffix[1:].isdigit():
+        return f"F{suffix[1:]}"
+    if suffix.startswith("keypad.") and suffix[len("keypad.") :].isdigit():
+        return f"Numpad{suffix[len('keypad.') :]}"
+    return WINIT_KEY_CODES.get(suffix)
+
+
+def winit_bindings(keys):
+    """`(glfw value, winit ident)` for every named key winit can deliver."""
+
+    keyboard: list[tuple[int, str]] = []
+    mouse: list[tuple[int, str]] = []
+    for key in keys:
+        if key.key_type == "KEYSYM":
+            suffix = key.name.removeprefix("key.keyboard.")
+            if suffix == key.name:
+                raise SystemExit(f"unexpected keysym name: {key.name}")
+            code = _winit_key_code(suffix)
+            if code is None:
+                if suffix not in UNMAPPABLE_KEYBOARD_NAMES:
+                    raise SystemExit(f"no winit KeyCode for {key.name}")
+                continue
+            keyboard.append((key.value, code))
+        elif key.key_type == "MOUSE":
+            suffix = key.name.removeprefix("key.mouse.")
+            button = WINIT_MOUSE_BUTTONS.get(suffix)
+            if button is not None:
+                mouse.append((key.value, button))
+        else:
+            raise SystemExit(f"unexpected key type for {key.name}: {key.key_type}")
+    return keyboard, mouse
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -61,6 +163,8 @@ def render_rust_catalog(keys, mappings) -> str:
         "// key_<name> line in options.txt reads back.",
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-key-mapping-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-key-mapping-catalog.py --check",
+        "",
+        "use winit::{event::MouseButton, keyboard::KeyCode};",
         "",
         "/// The `InputConstants.Type` variants any catalogued key uses, which",
         "/// decide whether a bound value is a GLFW keysym or a mouse button.",
@@ -133,6 +237,25 @@ def render_rust_catalog(keys, mappings) -> str:
                 "    },",
             ]
         )
+    keyboard, mouse = winit_bindings(keys)
+    lines.extend(
+        [
+            "];",
+            "",
+            "/// The physical key winit reports for each named GLFW keysym.",
+            f"pub(crate) const VANILLA_KEYSYM_KEY_CODES: [(i32, KeyCode); {len(keyboard)}] = [",
+        ]
+    )
+    lines.extend(f"    ({value}, KeyCode::{code})," for value, code in keyboard)
+    lines.extend(
+        [
+            "];",
+            "",
+            "/// The button winit reports for each named GLFW mouse button.",
+            f"pub(crate) const VANILLA_MOUSE_BUTTONS: [(i32, MouseButton); {len(mouse)}] = [",
+        ]
+    )
+    lines.extend(f"    ({value}, MouseButton::{button})," for value, button in mouse)
     lines.append("];")
     lines.append("")
     return "\n".join(lines)
@@ -147,6 +270,14 @@ def render_catalog(keys, mappings) -> str:
         "named_keys": [
             {"name": key.name, "type": key.key_type, "value": key.value}
             for key in keys
+        ],
+        "winit_keysym_key_codes": [
+            {"value": value, "key_code": code}
+            for value, code in winit_bindings(keys)[0]
+        ],
+        "winit_mouse_buttons": [
+            {"value": value, "button": button}
+            for value, button in winit_bindings(keys)[1]
         ],
         "key_mappings": [
             {

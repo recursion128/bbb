@@ -23,6 +23,7 @@ use clap::{ArgAction, ArgMatches, CommandFactory, FromArgMatches, Parser, ValueE
 
 use crate::client_options::{
     args::{parse_stored_boolean, stored_fov_degrees, ClientOptionBinding, StoredOptions},
+    key_bindings::KeyBindings,
     ClientOptionEncoding, ClientOptionHost, ClientOptions,
 };
 use serde::{Deserialize, Serialize};
@@ -128,6 +129,10 @@ pub(crate) struct Args {
     pub(crate) client_discrete_mouse_scroll: bool,
     #[arg(long = "client-mouse-wheel-sensitivity", default_value_t = 1.0)]
     pub(crate) client_mouse_wheel_sensitivity: f64,
+    /// Resolved from every `key_<name>` line at once, so it has no flag of its
+    /// own the way the single-valued options above do.
+    #[arg(skip)]
+    pub(crate) client_key_bindings: KeyBindings,
     #[arg(
         long = "client-show-subtitles",
         default_value_t = false,
@@ -544,6 +549,7 @@ fn apply_stored_client_options(args: &mut Args, matches: &ArgMatches) {
             return;
         }
     };
+    args.client_key_bindings = KeyBindings::from_options(&options);
     bind_stored_client_options(args, StoredOptions::new(&options, matches));
 }
 
