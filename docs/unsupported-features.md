@@ -619,13 +619,11 @@ Matrix routes: `diagnostics-client-only-inspection-exclusions`, `scope-options-u
 
 - **`options.txt` keys whose consumer subsystem does not exist yet.** The values
   round-trip through `crates/bbb-native/src/client_options.rs` like every other
-  key, but eight `Options` owners have nothing to hand them to. `dataFix` needs a
+  key, but six `Options` owners have nothing to hand them to. `dataFix` needs a
   DataFixer, which bbb does not have at all, so an options file written by an
   older version is read as-is rather than migrated.
   `getFullscreenVideoModeString` needs the window's video-mode list, which the
-  native window never enumerates. `maxAnisotropyValue` and `getCloudStatus` feed
-  `GameRenderer`'s `OptionsRenderState` (`GameRenderer.java:765, 775`); the
-  renderer has neither anisotropic terrain filtering nor a cloud-status branch.
+  native window never enumerates.
   `isSoundDeviceDefault` picks the OpenAL device in `SoundEngine.java:106, 198`;
   bbb-audio always uses the system default. `applyGraphicsPreset`
   (`Minecraft.java:517`) fans a preset out over the individual graphics options,

@@ -382,6 +382,8 @@ OPTIONS_METHOD_ROUTES = _method_routes(
     (
         MethodRoute("persistence", "persistence", "persistence-options-derived"),
         (
+            "maxAnisotropyValue",
+            "getCloudStatus",
             "getEffectiveRenderDistance",
             "setServerRenderDistance",
             "getFinalSoundSourceVolume",
@@ -407,8 +409,6 @@ OPTIONS_METHOD_ROUTES = _method_routes(
         (
             "dataFix",
             "getFullscreenVideoModeString",
-            "maxAnisotropyValue",
-            "getCloudStatus",
             "isSoundDeviceDefault",
             "applyGraphicsPreset",
             "loadSelectedResourcePacks",
@@ -4032,6 +4032,29 @@ OPTIONS_FILE_OWNER_EVIDENCE = _owner_evidence(
 OPTIONS_DERIVED_OWNER_EVIDENCE = _owner_evidence(
     (
         OwnerEvidence(
+            ("crates/bbb-renderer/src/renderer.rs#fn effective_terrain_max_anisotropy",),
+            (
+                "crates/bbb-renderer/src/gpu.rs"
+                "#anisotropic_filtering_keeps_the_nearest_shader_and_scales_the_sampler",
+            ),
+        ),
+        ("maxAnisotropyValue",),
+    ),
+    (
+        OwnerEvidence(
+            (
+                "crates/bbb-renderer/src/renderer.rs#pub fn set_cloud_status",
+                "crates/bbb-native/src/startup.rs#fn parse_stored_render_clouds",
+            ),
+            (
+                "crates/bbb-renderer/src/render.rs#clouds_off_exits_the_pass_before_any_encoding",
+                "crates/bbb-native/src/startup.rs#stored_render_clouds_reads_legacy_names_and_booleans",
+            ),
+        ),
+        ("getCloudStatus",),
+    ),
+    (
+        OwnerEvidence(
             (
                 "crates/bbb-native/src/client_options/derived.rs#effective_render_distance",
                 "crates/bbb-native/src/runtime.rs#update_renderer_from_publication",
@@ -4829,11 +4852,9 @@ INPUT_KEYBOARD_ROUTING_OWNER_EVIDENCE = _owner_evidence(
     ),
     (
         OwnerEvidence(
+            ("crates/bbb-native/src/simulation/input_commands.rs#fn sync_ime_preedit_focus",),
             (
-                "docs/unsupported-features.md#Handing an in-flight IME composition to a newly focused field is",
-            ),
-            (
-                "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path",
+                "crates/bbb-native/src/simulation/input_commands.rs#an_open_composition_hands_off_to_a_newly_focused_sign_editor",
             ),
         ),
         ("resubmitLastPreeditEvent",),

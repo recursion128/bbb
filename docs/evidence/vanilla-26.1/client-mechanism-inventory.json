@@ -3,7 +3,7 @@
   "generator_inputs": [
     {
       "path": "scripts/client_mechanism_inventory.py",
-      "sha256": "c873c7b122b60b45093a8c598abf5d6153d9142a8aede94a78e3319de3ff4d77"
+      "sha256": "88137372241d80c3e3c09cb343f17464917d9f6eb95a1c750396da8379fe1872"
     },
     {
       "path": "scripts/generate-client-mechanism-inventory.py",
@@ -268,8 +268,8 @@
       "bbb_evidence": [
         "crates/bbb-native/src/client_options.rs"
       ],
-      "owner_count": 13,
-      "owner_evidence_count": 13
+      "owner_count": 15,
+      "owner_evidence_count": 15
     },
     "persistence-options-file": {
       "bbb_evidence": [
@@ -282,7 +282,7 @@
       "bbb_evidence": [
         "docs/unsupported-features.md"
       ],
-      "owner_count": 8
+      "owner_count": 6
     },
     "persistence-server-list": {
       "bbb_evidence": [
@@ -9331,10 +9331,10 @@
     {
       "bbb_evidence": {
         "implementation": [
-          "docs/unsupported-features.md#Handing an in-flight IME composition to a newly focused field is"
+          "crates/bbb-native/src/simulation/input_commands.rs#fn sync_ime_preedit_focus"
         ],
         "tests": [
-          "crates/bbb-native/src/input/tests.rs#sign_editor_done_mouse_and_ime_preedit_share_one_submit_path"
+          "crates/bbb-native/src/simulation/input_commands.rs#an_open_composition_hands_off_to_a_newly_focused_sign_editor"
         ]
       },
       "category": "input",
@@ -13804,10 +13804,20 @@
       "vanilla_owner": "net.minecraft.client.Options#getCameraType()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#pub fn set_cloud_status",
+          "crates/bbb-native/src/startup.rs#fn parse_stored_render_clouds"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/render.rs#clouds_off_exits_the_pass_before_any_encoding",
+          "crates/bbb-native/src/startup.rs#stored_render_clouds_reads_legacy_names_and_booleans"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#getCloudStatus()",
       "role": "decision",
       "scope": "external-client",
@@ -14347,10 +14357,18 @@
       "vanilla_owner": "net.minecraft.client.Options#maxAnisotropyBit()"
     },
     {
+      "bbb_evidence": {
+        "implementation": [
+          "crates/bbb-renderer/src/renderer.rs#fn effective_terrain_max_anisotropy"
+        ],
+        "tests": [
+          "crates/bbb-renderer/src/gpu.rs#anisotropic_filtering_keeps_the_nearest_shader_and_scales_the_sampler"
+        ]
+      },
       "category": "persistence",
       "domain": "persistence",
       "kind": "method",
-      "mechanism_id": "persistence-options-unconsumed",
+      "mechanism_id": "persistence-options-derived",
       "owner_id": "method:net.minecraft.client.Options#maxAnisotropyValue()",
       "role": "decision",
       "scope": "external-client",

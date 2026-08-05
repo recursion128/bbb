@@ -84,4 +84,12 @@
   system-chat 抑制改走 discovered-names map（vanilla `guessChatUUID`）。authenticated Services 端到端
   仍按账本 deferred。账本 active 项清零，P3/P4 节转维护态。
 
+- **2026-08-05（user-reopened deferred quartet）**：用户重开的四个 deferred 项同日全部落地关闭：
+  vanilla 地形 texture filtering 面（`TextureFilteringMethod` 三模式 wrap 解析 + `maxAnisotropyBit`
+  采样器 `anisotropy_clamp`/nearest 着色器路由/atlas padding `1<<clamp(bit-1,0,4)`）；toast 与 F3
+  overlay 提取到全屏 screen（level-loading/disconnected/win）之上；`SmoothDouble` 平滑镜头转向
+  （每帧 mousea 采样、grab 冻结、scoping 优先级、未绑定 `key.smoothCamera` 切换）；IME preedit
+  焦点移交（`lastPreeditEvent` 常存 + gain/lose 双向 handoff，`clear_pressed` 不再越权清
+  composition，失效由 dialog revision/sign signature 护栏承担）。四 route 回到 `equivalent`。
+
 原子 slice 的精确边界、测试与 commit hash 只在 Git history 中检索；后续只为新的工程 milestone 追加一行，旧月份过长时继续合并，不恢复历史散文。

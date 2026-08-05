@@ -418,9 +418,9 @@ active TODO 为 0 时拒绝仍声明 active 路线。
 - p1-playable: maintenance
 - p1-generated-facts: maintenance
 - p2-non-entity: closed
-- p2-hud: active
+- p2-hud: closed
 - p3-resources: closed
-- p4-delivery: active
+- p4-delivery: closed
 - architecture-convergence: maintenance
 <!-- roadmap-status:end -->
 
@@ -456,13 +456,13 @@ interaction census 22 条 route（149 owner）已全部 `equivalent`，重开判
 
 ### P2：屏幕、HUD、字体与截图
 
-状态：`active`。字体/CJK 与 text shaping、block-entity registration 27 owner、多人可达
+状态：`closed`。字体/CJK 与 text shaping、block-entity registration 27 owner、多人可达
 screen 五 route、`Gui` 72 owner 五条 `hud-*` route 与 `GameRenderer` step surface 四条
 route（frame-order/extract-surface/level-pass/effects-screenshot，52 decision owner 全挂
 implementation/test evidence，`getMinecraft` 归 direct support）均 `equivalent` 关闭
-（见 archive 与 matrix 行重开判据）。2026-08-05 用户重开两项（见账本）：vanilla 地形
+（见 archive 与 matrix 行重开判据）。2026-08-05 用户重开的两项已落地关闭：vanilla 地形
 texture filtering 面（`textureFiltering` 三模式 + `maxAnisotropyBit` 采样器/着色器/
-atlas padding）与全屏 screen 上的 toast/F3 overlay 收集路径。
+atlas padding）与全屏 screen 上的 toast/F3 overlay 收集路径（见 archive）。
 
 ### P3：动态资源 presentation breadth
 
@@ -493,11 +493,12 @@ native startup；indexed panorama 经唯一 CPU catalog 与 renderer-private gen
 
 ### P4：健壮性、运行时性能与平台交付
 
-状态：`active`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
+状态：`closed`。census 登记的 runtime/crash 与 input/accessibility/window 证据缺口已
 关闭（后者十条 route 全 `equivalent`，见 archive）；persistence/profile/secure-session 的
 安全 owner 面已收口（`security-secure-chat-reporting` 30 owner 全挂 evidence 翻
-`equivalent`，authenticated Services 端到端仍按账本 deferred）。2026-08-05 用户重开
-两项输入面（见账本）：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
+`equivalent`，authenticated Services 端到端仍按账本 deferred）。2026-08-05 用户重开的
+两项输入面已落地关闭：`SmoothDouble` 平滑镜头转向与 IME preedit 焦点移交（见
+archive）。官方 Java 同载对照已通过渲染机制、共同 replay、同 tick
 锚点、可见 workload、共同 draw evidence 与两轮 ABBA 门禁；安全预算、bounded
 runtime、lifecycle/fault soak 与已声明平台行已有有界 gate。剩余 GPU-only duration
 关联、扩展 Linux 交互矩阵和非 Linux 发布行只按各自 `Reopen when ...` deferred。
